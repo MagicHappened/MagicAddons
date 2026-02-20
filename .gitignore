@@ -8,7 +8,7 @@
 # ==== Build directories ====
 build/
 out/
-gradle/
+.gradle/
 bin/
 generated/
 tmp/
