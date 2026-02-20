@@ -1,0 +1,55 @@
+# ==== Java ====
+*.class
+*.jar
+*.war
+*.ear
+*.iml
+*.log
+# ==== Build directories ====
+build/
+out/
+gradle/
+bin/
+generated/
+tmp/
+
+# ==== IDE files ====
+# IntelliJ IDEA
+.kotlin/
+.idea/
+*.iws
+*.ipr
+
+# VSCode
+.vscode/
+
+# Eclipse
+.project
+.classpath
+.settings/
+
+# ==== Gradle ====
+.gradle/
+gradle-app.setting
+gradle-wrapper.jar
+gradlew.bat
+gradlew
+
+# ==== Local environment / OS ====
+.DS_Store
+Thumbs.db
+*.swp
+*~
+
+# ==== Minecraft / Fabric / Forge specific ====
+run/
+logs/
+crash-reports/
+cache/
+fabric-cache/
+*.lock
+
+# ==== Other temporary files ====
+*.tmp
+*.bak
+*.orig

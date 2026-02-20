@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "id": "magicaddons",
+  "version": "${version}",
+  "name": "MagicAddons",
+  "description": "",
+  "authors": [],
+  "contact": {},
+  "license": "All-Rights-Reserved",
+  "icon": "assets/magicaddons/icon.png",
+  "environment": "client",
+  "entrypoints": {
+    "main": [
+      "org.magic.magicaddons.MagicAddons"
+    ]
+  },
+  "mixins": [
+    "magicaddons.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=${loader_version}",
+    "fabric-language-kotlin": ">=${kotlin_loader_version}",
+    "fabric-api": "*",
+    "minecraft": "${minecraft_version}",
+    "hypixel-mod-api": ">=1.0.1"
+  }
+}

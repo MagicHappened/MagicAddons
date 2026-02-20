@@ -1,0 +1,17 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "org.magic.mixins",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "HandledScreenMixin",
+    "ClientPlayNetworkHandlerMixin",
+    "ClientWorldMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "overwrites": {
+    "requireAnnotations": true
+  }
+}
