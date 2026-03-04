@@ -20,7 +20,7 @@ object ScreenUtil {
             if (MinecraftClient.getInstance().currentScreen !== target) {
                 MinecraftClient.getInstance().setScreen(target)
             } else {
-                newScreen = null // stop forcing
+                newScreen = null
             }
         }
     }

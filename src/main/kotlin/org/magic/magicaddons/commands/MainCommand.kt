@@ -8,7 +8,8 @@ import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback
 import net.minecraft.command.CommandSource
 import net.minecraft.text.Text
 import org.magic.magicaddons.Common
-import org.magic.magicaddons.ui.screens.ConfigScreen
+import org.magic.magicaddons.ui.ConfigScreen
+import org.magic.magicaddons.util.ScreenUtil
 
 object MainCommand {
     val commandList = mutableListOf<AbstractCommand>()
@@ -23,7 +24,8 @@ object MainCommand {
 
                 val main = literal(Common.MOD_NAME)
                     .executes {
-                        val configScreen = ConfigScreen(Text.literal(Common.MOD_NAME +" Configuration"))
+                        val configScreen = ConfigScreen()
+                        ScreenUtil.setScreen(configScreen)
                         return@executes 1
                     }
 

@@ -9,6 +9,4 @@ class ConfigButtonWidget(
     width: Int,
     height: Int,
     val feature: Feature)
-    : ButtonWidget(x, y, width, height, Text.literal(feature.displayName)) {
-
-}
+    : ButtonWidget(x, y, width, height, Text.literal(feature.displayName))

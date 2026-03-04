@@ -13,7 +13,7 @@ open class ButtonWidget(x: Int, y: Int, width: Int, height: Int, message: Text) 
 
     var borderColor: Int = 0xFF000000.toInt()
     var fillColor: Int = 0xFF333333.toInt()
-    var borderWidth: Int = 2
+    var borderWidth: Int = 1
 
     override fun renderWidget(
         context: DrawContext,
