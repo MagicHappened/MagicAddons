@@ -3,7 +3,7 @@ package org.magic.mixins;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.world.ClientWorld;
 import org.magic.magicaddons.events.EventBus;
-import org.magic.magicaddons.util.ScreenUtil;
+import org.magic.magicaddons.events.world.onGameJoinEvent;import org.magic.magicaddons.util.ScreenUtil;
 import org.magic.magicaddons.util.TablistUtils;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;

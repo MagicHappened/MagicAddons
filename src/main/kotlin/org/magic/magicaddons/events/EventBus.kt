@@ -26,8 +26,14 @@ object EventBus {
 
     @JvmStatic
     fun post(event: Any) {
-        listeners[event::class.java]?.forEach {
-            it.method.invoke(it.owner, event)
+        val eventListeners = listeners[event::class.java] ?: return
+
+        for (listener in eventListeners) {
+            listener.method.invoke(listener.owner, event)
+
+            if (event is Cancellable && event.canceled) {
+                return
+            }
         }
     }
 

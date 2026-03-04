@@ -5,10 +5,11 @@ import net.minecraft.client.MinecraftClient
 import net.minecraft.client.gui.Click
 import net.minecraft.client.gui.DrawContext
 import net.minecraft.client.gui.screen.narration.NarrationMessageBuilder
+import net.minecraft.client.gui.tooltip.Tooltip
 import net.minecraft.client.gui.widget.ClickableWidget
 import net.minecraft.text.Text
 
-class ButtonWidget(x: Int, y: Int, width: Int, height: Int, message: Text) : ClickableWidget(x,y,width,height,message) {
+open class ButtonWidget(x: Int, y: Int, width: Int, height: Int, message: Text) : ClickableWidget(x,y,width,height,message) {
 
     var borderColor: Int = 0xFF000000.toInt()
     var fillColor: Int = 0xFF333333.toInt()
@@ -25,10 +26,8 @@ class ButtonWidget(x: Int, y: Int, width: Int, height: Int, message: Text) : Cli
         val right = x + width
         val bottom = y + height
 
-        // border outline rectangle
         context.fill(left, top, right, bottom, borderColor)
 
-        // inner color
         val innerLeft = left + borderWidth
         val innerTop = top + borderWidth
         val innerRight = right - borderWidth
@@ -38,15 +37,18 @@ class ButtonWidget(x: Int, y: Int, width: Int, height: Int, message: Text) : Cli
             context.fill(innerLeft, innerTop, innerRight, innerBottom, fillColor)
         }
 
-        // hover tooltip
         if (isMouseOver(mouseX.toDouble(), mouseY.toDouble())) {
-            context.drawTooltip(
-                MinecraftClient.getInstance().textRenderer,
-                Text.literal("Tooltip Information"),
-                mouseX,
-                mouseY
-            )
+            renderTooltip(context, mouseX, mouseY, Text.literal("Tooltip information"))
         }
+    }
+
+    fun renderTooltip(context: DrawContext, mouseX: Int, mouseY: Int, tooltip: Text) {
+        context.drawTooltip(
+            MinecraftClient.getInstance().textRenderer,
+            tooltip,
+            mouseX,
+            mouseY
+        )
     }
 
     override fun mouseMoved(mouseX: Double, mouseY: Double) {

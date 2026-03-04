@@ -1,11 +1,15 @@
 package org.magic.magicaddons.features
 
 abstract class Feature {
-    abstract val id: String
-    abstract val category: String
-    open fun register() {
+    init {
         FeatureManager.register(this)
     }
+    abstract val id: String
+    abstract val displayName: String
+    abstract val tooltipMessage: String
+    abstract val category: String
+    abstract var enabled: Boolean
+
     fun onTick() {}
     fun onRender() {}
 }
