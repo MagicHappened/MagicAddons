@@ -4,7 +4,6 @@
   "package": "org.magic.mixins",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
-    "HandledScreenMixin",
     "ClientPlayNetworkHandlerMixin",
     "ClientWorldMixin",
     "ParticleManagerMixin"
