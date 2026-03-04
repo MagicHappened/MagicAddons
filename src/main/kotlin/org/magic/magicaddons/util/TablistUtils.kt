@@ -1,6 +1,7 @@
 package org.magic.magicaddons.util
 
-import org.magic.magicaddons.MagicAddons
+
+import net.minecraft.client.MinecraftClient
 import java.util.Collections.emptyList
 
 object TablistUtils {
@@ -16,7 +17,7 @@ object TablistUtils {
     @JvmStatic
     fun updateTabList(){
         if (!tablistDirty) return
-        lines = MagicAddons.client.player?.networkHandler?.playerList
+        lines = MinecraftClient.getInstance().player?.networkHandler?.playerList
             ?.mapNotNull { it.displayName?.string } ?: emptyList()
         // TODO implement event for tablist listeners?
         tablistDirty = false

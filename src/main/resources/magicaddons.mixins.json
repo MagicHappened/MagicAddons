@@ -6,7 +6,8 @@
   "mixins": [
     "HandledScreenMixin",
     "ClientPlayNetworkHandlerMixin",
-    "ClientWorldMixin"
+    "ClientWorldMixin",
+    "ParticleManagerMixin"
   ],
   "injectors": {
     "defaultRequire": 1

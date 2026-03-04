@@ -1,6 +1,6 @@
 package org.magic.magicaddons.config
 
-import org.magic.magicaddons.config.option.Position
+import org.magic.magicaddons.data.ConfigPosition
 
 object MagicAddonsConfig {
 
@@ -23,7 +23,7 @@ object MagicAddonsConfig {
                 extra = mutableMapOf(
                     "prefixColor" to 0xFFFF0000,
                     "valueColor" to 0xFFFF0000,
-                    "hudPosition" to Position(10,10)
+                    "hudPosition" to ConfigPosition(10,10)
                 )
             )
         )
