@@ -30,14 +30,12 @@ class ConfigScreen : Screen(Text.literal(Common.MOD_NAME + " Configuration")) {
                 feature = feature
             )
 
-            // Set initial color based on feature.enabled
-            button.fillColor = if (feature.enabled) 0xFF00AA00.toInt() else 0xFFAA0000.toInt()
-
             buttons.add(button)
             yPos += buttonHeight + padding
         }
 
         buttons.forEach { this.addDrawable(it) }
+        buttons.forEach { this.addSelectableChild(it) }
     }
 
     override fun render(context: DrawContext, mouseX: Int, mouseY: Int, delta: Float) {
@@ -48,8 +46,8 @@ class ConfigScreen : Screen(Text.literal(Common.MOD_NAME + " Configuration")) {
             width / 2,
             10,
             0xFFFFFF
-        )
-        super.render(context, mouseX, mouseY, delta)
+        ) //heh? not working
+        super.render(context, mouseX, mouseY, delta) // for rendering button drawables
 
     }
 

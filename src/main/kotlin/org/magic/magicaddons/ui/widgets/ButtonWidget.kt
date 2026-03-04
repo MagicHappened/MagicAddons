@@ -8,11 +8,12 @@ import net.minecraft.client.gui.screen.narration.NarrationMessageBuilder
 import net.minecraft.client.gui.tooltip.Tooltip
 import net.minecraft.client.gui.widget.ClickableWidget
 import net.minecraft.text.Text
+import org.magic.magicaddons.util.ChatUtils
 
 open class ButtonWidget(x: Int, y: Int, width: Int, height: Int, message: Text) : ClickableWidget(x,y,width,height,message) {
 
     var borderColor: Int = 0xFF000000.toInt()
-    var fillColor: Int = 0xFF333333.toInt()
+    open val fillColor: Int = 0xFF800080.toInt()
     var borderWidth: Int = 1
 
     override fun renderWidget(
@@ -36,46 +37,22 @@ open class ButtonWidget(x: Int, y: Int, width: Int, height: Int, message: Text) 
         if (innerRight > innerLeft && innerBottom > innerTop) {
             context.fill(innerLeft, innerTop, innerRight, innerBottom, fillColor)
         }
-
-        if (isMouseOver(mouseX.toDouble(), mouseY.toDouble())) {
-            renderTooltip(context, mouseX, mouseY, Text.literal("Tooltip information"))
-        }
-    }
-
-    fun renderTooltip(context: DrawContext, mouseX: Int, mouseY: Int, tooltip: Text) {
-        context.drawTooltip(
+        context.drawText(
             MinecraftClient.getInstance().textRenderer,
-            tooltip,
-            mouseX,
-            mouseY
+            message,
+            x + (width / 2) - (MinecraftClient.getInstance().textRenderer.getWidth(message)/2),
+            y + (height / 2) - (MinecraftClient.getInstance().textRenderer.fontHeight/2),
+            0xFF000000.toInt(),
+            false
         )
     }
 
-    override fun mouseMoved(mouseX: Double, mouseY: Double) {
-        super.mouseMoved(mouseX, mouseY)
-    }
-
-    override fun mouseClicked(click: Click, doubled: Boolean): Boolean {
-        if (!isMouseOver(click.x, click.y)) return false
-
-        if (click.button() == 0) { // Left click
-            MinecraftClient.getInstance().player?.sendMessage(
-                Text.literal("Button Clicked"),
-                false
-            )
-        }
-        if (click.button() == 1) {
-            MinecraftClient.getInstance().player?.sendMessage(
-                Text.literal("Right Clicked"),
-                false
-            )
-        }
-
-        return true
+    override fun onClick(click: Click?, doubled: Boolean) {
+        // click?.button() == 0 left click 1 right click
     }
 
     override fun appendClickableNarrations(builder: NarrationMessageBuilder?) {
-        TODO("Not yet implemented")
+        return
     }
 
 }

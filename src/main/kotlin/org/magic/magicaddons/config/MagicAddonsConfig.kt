@@ -1,46 +1,24 @@
 package org.magic.magicaddons.config
 
-import org.magic.magicaddons.data.ConfigPosition
+import org.magic.magicaddons.features.FeatureManager
 
 object MagicAddonsConfig {
 
     val categories = mutableMapOf<String, MutableMap<String, FeatureConfig>>()
 
-    init {
-        categories["farming"] = mutableMapOf(
-            "highlightFarmingEquipment" to FeatureConfig(
-                enabled = true,
-                extra = mutableMapOf(
-                    "equipmentColor" to 0xFFFF0000,
-                    "zorroSwapping" to false
-                )
-            )
-        )
+    fun save() {
+        categories.clear() // reset
 
-        categories["mining"] = mutableMapOf(
-            "pureOresTracker" to FeatureConfig(
-                enabled = true,
-                extra = mutableMapOf(
-                    "prefixColor" to 0xFFFF0000,
-                    "valueColor" to 0xFFFF0000,
-                    "hudPosition" to ConfigPosition(10,10)
-                )
-            )
-        )
 
-        categories["misc"] = mutableMapOf(
-            "npcBlocking" to FeatureConfig(
-                enabled = false,
-                extra = mutableMapOf(
-                    "keywordTriggers" to listOf(
-                        "Goon"
-                    )
-                )
-            ),
-            "jerryAnnouncer" to FeatureConfig(
-                enabled = false
+        FeatureManager.features.forEach { feature ->
+            val cat = categories.getOrPut(feature.category) { mutableMapOf() }
+
+            cat[feature.id] = FeatureConfig(
+                enabled = feature.enabled,
+                extra = mutableMapOf() // TODO: handle extra if needed later
             )
-        )
+        }
+
+        // TODO: serialize `categories` to disk as JSON
     }
 }
-

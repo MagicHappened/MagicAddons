@@ -8,8 +8,7 @@ abstract class Feature {
     abstract val displayName: String
     abstract val tooltipMessage: String
     abstract val category: String
+    // TODO implement the feature settings widget
     abstract var enabled: Boolean
 
-    fun onTick() {}
-    fun onRender() {}
 }
