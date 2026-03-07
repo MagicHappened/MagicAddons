@@ -1,6 +1,8 @@
 package org.magic.magicaddons.features
 
-abstract class Feature {
+import io.github.notenoughupdates.moulconfig.Config
+
+abstract class Feature : Config() {
     init {
         FeatureManager.register(this)
     }
@@ -8,7 +10,5 @@ abstract class Feature {
     abstract val displayName: String
     abstract val tooltipMessage: String
     abstract val category: String
-    // TODO implement the feature settings widget
-    abstract var enabled: Boolean
-
+    var enabled: Boolean = false
 }

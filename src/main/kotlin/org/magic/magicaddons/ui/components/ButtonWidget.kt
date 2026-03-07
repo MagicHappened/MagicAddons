@@ -1,14 +1,11 @@
-package org.magic.magicaddons.ui.widgets
+package org.magic.magicaddons.ui.components
 
-import com.ibm.icu.number.IntegerWidth
 import net.minecraft.client.MinecraftClient
 import net.minecraft.client.gui.Click
 import net.minecraft.client.gui.DrawContext
 import net.minecraft.client.gui.screen.narration.NarrationMessageBuilder
-import net.minecraft.client.gui.tooltip.Tooltip
 import net.minecraft.client.gui.widget.ClickableWidget
 import net.minecraft.text.Text
-import org.magic.magicaddons.util.ChatUtils
 
 open class ButtonWidget(x: Int, y: Int, width: Int, height: Int, message: Text) : ClickableWidget(x,y,width,height,message) {
 

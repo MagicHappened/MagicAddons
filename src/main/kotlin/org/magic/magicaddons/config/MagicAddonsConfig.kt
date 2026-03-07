@@ -1,24 +1,19 @@
 package org.magic.magicaddons.config
 
-import org.magic.magicaddons.features.FeatureManager
+import io.github.notenoughupdates.moulconfig.Config
+import io.github.notenoughupdates.moulconfig.annotations.Category
+import io.github.notenoughupdates.moulconfig.common.text.StructuredText
+import org.magic.magicaddons.Common
+import org.magic.magicaddons.config.categories.MiningCategory
 
-object MagicAddonsConfig {
+class MagicAddonsConfig : Config() {
 
-    val categories = mutableMapOf<String, MutableMap<String, FeatureConfig>>()
-
-    fun save() {
-        categories.clear() // reset
-
-
-        FeatureManager.features.forEach { feature ->
-            val cat = categories.getOrPut(feature.category) { mutableMapOf() }
-
-            cat[feature.id] = FeatureConfig(
-                enabled = feature.enabled,
-                extra = mutableMapOf() // TODO: handle extra if needed later
-            )
-        }
-
-        // TODO: serialize `categories` to disk as JSON
+    override fun getTitle(): StructuredText? {
+        return StructuredText.of(Common.MOD_NAME + " Config");
     }
+
+    @Category(name = "MiningCategory", desc = "Mining related features")
+    val mining = MiningCategory()
+
+
 }

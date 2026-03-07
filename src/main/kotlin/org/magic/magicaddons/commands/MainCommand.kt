@@ -1,14 +1,10 @@
 package org.magic.magicaddons.commands
 
-import com.mojang.brigadier.builder.LiteralArgumentBuilder
+import io.github.notenoughupdates.moulconfig.gui.GuiContext
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager.literal
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback
-import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource
-import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback
-import net.minecraft.command.CommandSource
-import net.minecraft.text.Text
 import org.magic.magicaddons.Common
-import org.magic.magicaddons.ui.ConfigScreen
+import org.magic.magicaddons.ui.screens.ConfigScreen
 import org.magic.magicaddons.util.ScreenUtil
 
 object MainCommand {

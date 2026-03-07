@@ -1,7 +1,6 @@
-package org.magic.magicaddons.ui.widgets
+package org.magic.magicaddons.ui.components
 
 import net.minecraft.client.gui.Click
-import net.minecraft.client.gui.DrawContext
 import net.minecraft.client.gui.tooltip.Tooltip
 import net.minecraft.text.Text
 import org.magic.magicaddons.features.Feature

@@ -1,16 +1,15 @@
-package org.magic.magicaddons.ui
+package org.magic.magicaddons.ui.screens
 
-import net.minecraft.client.MinecraftClient
-import net.minecraft.client.gui.DrawContext
+import io.github.notenoughupdates.moulconfig.gui.GuiContext
+import io.github.notenoughupdates.moulconfig.gui.MoulConfigEditor
+import io.github.notenoughupdates.moulconfig.platform.MoulConfigScreenComponent
 import net.minecraft.client.gui.screen.Screen
 import net.minecraft.text.Text
-import org.magic.magicaddons.Common
 import org.magic.magicaddons.features.Feature
 import org.magic.magicaddons.features.FeatureManager
-import org.magic.magicaddons.ui.widgets.ButtonWidget
-import org.magic.magicaddons.ui.widgets.ConfigButtonWidget
+import org.magic.magicaddons.ui.components.ConfigButtonWidget
 
-class ConfigScreen : Screen(Text.literal(Common.MOD_NAME + " Configuration")) {
+class ConfigScreen() : MoulConfigEditor<Feature>() {
 
     private val buttons = mutableListOf<ConfigButtonWidget>()
     private val buttonWidth = 150
@@ -20,7 +19,6 @@ class ConfigScreen : Screen(Text.literal(Common.MOD_NAME + " Configuration")) {
     override fun init() {
         var yPos = 50
 
-        // Iterate through all registered features
         FeatureManager.features.forEach { feature ->
             val button = ConfigButtonWidget(
                 x = width / 2 - buttonWidth / 2,
@@ -36,20 +34,9 @@ class ConfigScreen : Screen(Text.literal(Common.MOD_NAME + " Configuration")) {
 
         buttons.forEach { this.addDrawable(it) }
         buttons.forEach { this.addSelectableChild(it) }
+        super.init()
     }
 
-    override fun render(context: DrawContext, mouseX: Int, mouseY: Int, delta: Float) {
-
-        context.drawCenteredTextWithShadow(
-            MinecraftClient.getInstance().textRenderer,
-            title,
-            width / 2,
-            10,
-            0xFFFFFF
-        ) //heh? not working
-        super.render(context, mouseX, mouseY, delta) // for rendering button drawables
-
-    }
 
 
 }

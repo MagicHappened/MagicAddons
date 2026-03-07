@@ -5,6 +5,7 @@ plugins {
     kotlin("jvm") version "2.3.10"
     id("fabric-loom") version "1.15-SNAPSHOT"
     id("maven-publish")
+    id("com.gradleup.shadow") version "9.3.1"
 }
 
 version = project.property("mod_version") as String
@@ -24,6 +25,12 @@ java {
 }
 
 loom {
+    runs {
+        named("client") {
+            programArgs("--tweakClass", "io.github.notenoughupdates.moulconfig.tweaker.DevelopmentResourceTweaker")
+        }
+    }
+
     mods {
         register("magicaddons") {
             sourceSet("main")
@@ -44,8 +51,13 @@ repositories {
     // See https://docs.gradle.org/current/userguide/declaring_repositories.html
     // for more information about repositories.
 
-    maven { url = uri(path = "https://repo.hypixel.net/repository/Hypixel/") }
+    maven("https://maven.notenoughupdates.org/releases/")
 }
+
+val shadowModImpl: Configuration by configurations.creating {
+    configurations.modImplementation.get().extendsFrom(this)
+}
+
 
 dependencies {
     // To change the versions see the gradle.properties file
@@ -54,6 +66,7 @@ dependencies {
     modImplementation("net.fabricmc:fabric-loader:${project.property("loader_version")}")
     modImplementation("net.fabricmc:fabric-language-kotlin:${project.property("kotlin_loader_version")}")
     modImplementation("net.fabricmc.fabric-api:fabric-api:${project.property("fabric_version")}")
+    shadowModImpl("org.notenoughupdates.moulconfig:modern-${project.property("minecraft_version")}:${project.property("moul_config_version")}")
 }
 
 val minecraft_version: String by project
@@ -96,6 +109,12 @@ tasks.jar {
         rename { "${it}_${project.base.archivesName.get()}" }
     }
 }
+
+tasks.shadowJar {
+    configurations = listOf(shadowModImpl)
+    relocate("io.github.notenoughupdates.moulconfig", "org.magic.deps.moulconfig")
+}
+
 
 // configure the maven publication
 publishing {
