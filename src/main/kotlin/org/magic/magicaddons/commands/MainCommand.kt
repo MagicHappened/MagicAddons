@@ -4,6 +4,7 @@ import io.github.notenoughupdates.moulconfig.gui.GuiContext
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager.literal
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback
 import org.magic.magicaddons.Common
+import org.magic.magicaddons.config.MagicAddonsConfig
 import org.magic.magicaddons.ui.screens.ConfigScreen
 import org.magic.magicaddons.util.ScreenUtil
 
@@ -20,8 +21,7 @@ object MainCommand {
 
                 val main = literal(Common.MOD_NAME)
                     .executes {
-                        val configScreen = ConfigScreen()
-                        ScreenUtil.setScreen(configScreen)
+                        val maConfig = MagicAddonsConfig()
                         return@executes 1
                     }
 

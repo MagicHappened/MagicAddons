@@ -8,7 +8,7 @@ import org.magic.magicaddons.config.categories.MiningCategory
 
 class MagicAddonsConfig : Config() {
 
-    override fun getTitle(): StructuredText? {
+    override fun getTitle(): StructuredText {
         return StructuredText.of(Common.MOD_NAME + " Config");
     }
 
