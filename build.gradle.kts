@@ -52,6 +52,7 @@ repositories {
     // for more information about repositories.
 
     maven("https://maven.notenoughupdates.org/releases/")
+    mavenCentral()
 }
 
 val shadowModImpl: Configuration by configurations.creating {
@@ -66,7 +67,9 @@ dependencies {
     modImplementation("net.fabricmc:fabric-loader:${project.property("loader_version")}")
     modImplementation("net.fabricmc:fabric-language-kotlin:${project.property("kotlin_loader_version")}")
     modImplementation("net.fabricmc.fabric-api:fabric-api:${project.property("fabric_version")}")
+
     shadowModImpl("org.notenoughupdates.moulconfig:modern-${project.property("minecraft_version")}:${project.property("moul_config_version")}")
+    implementation(kotlin("stdlib-jdk8"))
 }
 
 val minecraft_version: String by project
@@ -132,4 +135,7 @@ publishing {
         // The repositories here will be used for publishing your artifact, not for
         // retrieving dependencies.
     }
+}
+kotlin {
+    jvmToolchain(8)
 }
