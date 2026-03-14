@@ -21,7 +21,7 @@ object MainCommand {
                 val main = literal(Common.MOD_NAME)
                     .executes {
                         val maConfig = MagicAddonsConfig()
-                        ScreenUtil.setScreen(MoulConfigScreenComponent())
+                        // todo add config implementation here
                         return@executes 1
                     }
 
