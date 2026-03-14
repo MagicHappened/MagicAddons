@@ -18,11 +18,14 @@ object HidePowderCoatingParticles : Feature() {
 
     @EventHandler
     fun onAddParticle(event: AddParticleEvent){
+        if (!this.enabled) return
+
         val dust = event.parameters as? DustParticleEffect ?: return
         val dustPos = Vec3d(event.x, event.y, event.z)
         val distance: Double = dustPos.distanceTo(MinecraftClient.getInstance().player?.entityPos ?: return)
-        event.canceled = distance <= 4.0
 
+        event.canceled = distance <= 4.0
+        // todo add logic checking if divan armor is equipped (use a cache, dont search armor here)
     }
 
     override val id: String = "HidePowderCoatingParticles"

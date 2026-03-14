@@ -6,4 +6,5 @@ object FeatureManager {
     fun register(feature: Feature) {
         features += feature
     }
+
 }
