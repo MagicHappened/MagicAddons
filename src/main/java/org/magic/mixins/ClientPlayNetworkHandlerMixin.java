@@ -19,4 +19,5 @@ public class ClientPlayNetworkHandlerMixin {
     private void onGameJoin(CallbackInfo ci) {
         TablistUtils.markTabListDirty();
     }
+
 }

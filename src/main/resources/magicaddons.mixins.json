@@ -6,7 +6,8 @@
   "mixins": [
     "ClientPlayNetworkHandlerMixin",
     "ClientWorldMixin",
-    "ParticleManagerMixin"
+    "ParticleManagerMixin",
+    "ClientPlayerInteractionManagerMixin"
   ],
   "injectors": {
     "defaultRequire": 1

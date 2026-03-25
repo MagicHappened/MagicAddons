@@ -11,9 +11,9 @@ import org.magic.magicaddons.util.ChatUtils
 object ToggleFeature : AbstractCommand() {
     override val argument: String = "toggle"
     override val description: String = "Toggle a specific feature"
-    val mainCommand: LiteralArgumentBuilder<FabricClientCommandSource> = literal<FabricClientCommandSource>("toggle")
+    val mainCommand: LiteralArgumentBuilder<FabricClientCommandSource> = literal<FabricClientCommandSource>(argument)
         .executes  {
-            it.source.sendError(Text.literal("Missing feature to toggle."))
+            it.source.sendError(ChatUtils.buildWithPrefix("Missing feature to toggle."))
             return@executes 1
         }
     override fun build(): LiteralArgumentBuilder<FabricClientCommandSource> {
