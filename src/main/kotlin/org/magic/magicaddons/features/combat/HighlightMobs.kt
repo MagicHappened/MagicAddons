@@ -21,14 +21,13 @@ object HighlightMobs : Feature() {
     fun onWorldTick(event: OnWorldTickEvent) {
         if (!enabled) return
 
-
         WorldEntities.entityList.forEach { info ->
             val player = info.entity
             if (player !is PlayerEntity) return@forEach
 
             val tags = info.armorStandTags ?: emptyList()
 
-            val shouldHighlight = tags.any { it == "Littlefoot" }
+            val shouldHighlight = tags.any { it.contains("Matcho") }
 
             if (shouldHighlight) {
                 val minX = player.x - 0.5

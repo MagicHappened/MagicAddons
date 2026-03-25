@@ -34,7 +34,7 @@ object WorldEntities {
         val player = client.player ?: return
         val world = client.world ?: return
 
-        val range = 30.0
+        val range = 100.0
         val box = player.boundingBox.expand(range)
 
         val updatedList = mutableListOf<EntityInfo>()
