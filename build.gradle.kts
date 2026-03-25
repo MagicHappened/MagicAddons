@@ -5,7 +5,6 @@ plugins {
     kotlin("jvm") version "2.3.10"
     id("fabric-loom") version "1.15-SNAPSHOT"
     id("maven-publish")
-    id("com.gradleup.shadow") version "9.3.1"
 }
 
 version = project.property("mod_version") as String
@@ -26,12 +25,6 @@ java {
 }
 
 loom {
-    runs {
-        named("client") {
-            programArgs("--tweakClass", "io.github.notenoughupdates.moulconfig.tweaker.DevelopmentResourceTweaker")
-        }
-    }
-
     mods {
         register("magicaddons") {
             sourceSet("main")
@@ -51,14 +44,11 @@ repositories {
     // Loom adds the essential maven repositories to download Minecraft and libraries from automatically.
     // See https://docs.gradle.org/current/userguide/declaring_repositories.html
     // for more information about repositories.
-
-    maven("https://maven.notenoughupdates.org/releases/")
     mavenCentral()
+    maven { url = uri("https://maven.shedaniel.me/") }
+    maven { url = uri("https://maven.terraformersmc.com/releases/") }
 }
 
-val shadowModImpl: Configuration by configurations.creating {
-    configurations.modImplementation.get().extendsFrom(this)
-}
 
 
 dependencies {
@@ -69,7 +59,10 @@ dependencies {
     modImplementation("net.fabricmc:fabric-language-kotlin:${project.property("kotlin_loader_version")}")
     modImplementation("net.fabricmc.fabric-api:fabric-api:${project.property("fabric_version")}")
 
-    shadowModImpl("org.notenoughupdates.moulconfig:modern-${project.property("minecraft_version")}:${project.property("moul_config_version")}")
+    modApi("me.shedaniel.cloth:cloth-config-fabric:${project.property("cloth_config_version")}") {
+        exclude(group = "net.fabricmc.fabric-api")
+    }
+    modApi("com.terraformersmc:modmenu:${project.property("modmenu_version")}")
 }
 
 val minecraft_version: String by project
@@ -107,11 +100,6 @@ tasks.jar {
     from("LICENSE") {
         rename { "${it}_${project.base.archivesName.get()}" }
     }
-}
-
-tasks.shadowJar {
-    configurations = listOf(shadowModImpl)
-    relocate("io.github.notenoughupdates.moulconfig", "org.magic.deps.moulconfig")
 }
 
 

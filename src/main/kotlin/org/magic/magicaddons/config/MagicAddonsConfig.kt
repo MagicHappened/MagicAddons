@@ -1,19 +1,15 @@
 package org.magic.magicaddons.config
 
-import io.github.notenoughupdates.moulconfig.Config
-import io.github.notenoughupdates.moulconfig.annotations.Category
-import io.github.notenoughupdates.moulconfig.common.text.StructuredText
-import org.magic.magicaddons.Common
-import org.magic.magicaddons.config.categories.MiningCategory
+import me.shedaniel.autoconfig.ConfigData
+import me.shedaniel.autoconfig.annotation.Config
+import me.shedaniel.autoconfig.annotation.ConfigEntry
 
-class MagicAddonsConfig : Config() {
+@Config(name = "MagicAddonsConfig")
+class MagicAddonsConfig : ConfigData {
 
-    override fun getTitle(): StructuredText {
-        return StructuredText.of(Common.MOD_NAME + " Config");
-    }
+    @ConfigEntry.Gui.Tooltip
+    var highlightLittleFoot: Boolean = true
 
-    @Category(name = "MiningCategory", desc = "Mining related features")
-    val mining = MiningCategory()
-
-
+    @ConfigEntry.Gui.Tooltip
+    var hidePowderCoating: Boolean = true
 }

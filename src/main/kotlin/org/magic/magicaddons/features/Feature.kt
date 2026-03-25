@@ -1,8 +1,6 @@
 package org.magic.magicaddons.features
 
-import io.github.notenoughupdates.moulconfig.Config
-
-abstract class Feature : Config() {
+abstract class Feature {
     init {
         FeatureManager.register(this)
     }

@@ -2,9 +2,7 @@ package org.magic.magicaddons.commands.features
 
 import com.mojang.brigadier.builder.LiteralArgumentBuilder
 import com.mojang.brigadier.builder.LiteralArgumentBuilder.literal
-import com.mojang.brigadier.context.CommandContext
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource
-import net.minecraft.command.CommandSource
 import net.minecraft.text.Text
 import org.magic.magicaddons.commands.AbstractCommand
 import org.magic.magicaddons.features.FeatureManager

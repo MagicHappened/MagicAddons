@@ -21,6 +21,7 @@ object TablistUtils {
             ?.mapNotNull { it.displayName?.string } ?: emptyList()
         // TODO implement event for tablist listeners?
         tablistDirty = false
+
     }
 
     fun lineExists(keyword: String): Boolean = lines.any { it.contains(keyword) }
