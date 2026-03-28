@@ -10,7 +10,7 @@ import org.magic.magicaddons.features.FeatureManager.features
 
 class ConfigScreen(title: Text, val parent: Screen?) : Screen(title) {
 
-    private val widgets = mutableListOf<ExpandableFeatureWidget>()
+    private val widgets = mutableListOf<BooleanSettingWidget>()
 
     override fun init() {
         widgets.clear()
@@ -89,7 +89,6 @@ class ConfigScreen(title: Text, val parent: Screen?) : Screen(title) {
             categoryIndex++
         }
 
-        // 🔹 Reflow layout EVERY FRAME (IMPORTANT)
         val grouped = widgets.groupBy { it.feature.category }
 
         var categoryIndex2 = 0
