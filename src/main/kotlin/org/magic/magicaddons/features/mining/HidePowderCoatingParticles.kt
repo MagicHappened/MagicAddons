@@ -32,4 +32,5 @@ object HidePowderCoatingParticles : Feature() {
     override val displayName: String = "Powder Coating Hider"
     override val tooltipMessage: String = "Hides powder coating particles when divan armor is equipped"
     override val category: String = "Mining"
+
 }

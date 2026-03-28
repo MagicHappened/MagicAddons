@@ -12,6 +12,9 @@
   "entrypoints": {
     "main": [
       "org.magic.magicaddons.MagicAddons"
+    ],
+    "modmenu": [
+      "org.magic.magicaddons.config.MagicAddonsModMenuCompat"
     ]
   },
   "mixins": [

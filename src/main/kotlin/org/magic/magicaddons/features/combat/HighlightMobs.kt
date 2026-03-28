@@ -28,8 +28,8 @@ object HighlightMobs : Feature() {
             val player = info.entity
             if (player !is PlayerEntity) return@forEach
 
-            // matcho skin
-            val shouldHighlight = PlayerUtils.getSkinHash(player).equals("ef2daabb78a1f7aa12d145d88c0ca46b9e856f5534e9286e555faf0c291f4fd5")
+            // littlefoot skin hash: f2b33640bfb71557e0e1d852287263ceafc9bec205301acf046b7c29fe8cb37b
+            val shouldHighlight = PlayerUtils.getSkinHash(player).equals("f2b33640bfb71557e0e1d852287263ceafc9bec205301acf046b7c29fe8cb37b")
 
             if (shouldHighlight) {
                 val minX = player.x - 0.2

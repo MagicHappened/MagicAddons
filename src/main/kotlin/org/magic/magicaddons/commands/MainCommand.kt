@@ -1,13 +1,12 @@
 package org.magic.magicaddons.commands
 
-import me.shedaniel.clothconfig2.api.ConfigBuilder
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager.literal
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback
 import net.minecraft.text.Text
 import org.magic.magicaddons.Common
 import org.magic.magicaddons.commands.debug.MainDebug
-import org.magic.magicaddons.commands.debug.MobHitSkinHash
 import org.magic.magicaddons.commands.features.ToggleFeature
+import org.magic.magicaddons.config.ui.ConfigScreen
 import org.magic.magicaddons.util.ScreenUtil
 
 
@@ -24,10 +23,7 @@ object MainCommand {
 
                 val main = literal(Common.MOD_NAME)
                     .executes {
-                        val builder = ConfigBuilder.create()
-                            .setParentScreen(null)
-                            .setTitle(Text.literal("Magic Addons"))
-                        val config = builder.build()
+                        val config = ConfigScreen(Text.literal("Magic Addons Config"), null)
                         ScreenUtil.setScreen(config)
                         return@executes 1
                     }

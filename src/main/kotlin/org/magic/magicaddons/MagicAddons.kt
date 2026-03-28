@@ -1,7 +1,9 @@
 package org.magic.magicaddons
 
+
 import net.fabricmc.api.ModInitializer
 import org.magic.magicaddons.commands.MainCommand
+import org.magic.magicaddons.config.MagicAddonsConfigJsonHandler
 import org.magic.magicaddons.features.Feature
 import org.magic.magicaddons.features.combat.HighlightMobs
 import org.magic.magicaddons.features.debug.MobHitSkin
@@ -20,5 +22,7 @@ class MagicAddons : ModInitializer {
         WorldEntities
         ScreenUtil.register()
         MainCommand
+
+        MagicAddonsConfigJsonHandler.load()
     }
 }
