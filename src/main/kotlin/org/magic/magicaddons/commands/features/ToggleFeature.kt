@@ -26,8 +26,8 @@ object ToggleFeature : AbstractCommand() {
             mainCommand.then(
                 literal<FabricClientCommandSource>(feature.id)
                     .executes {
-                        feature.enabled = !feature.enabled
-                        it.source.sendFeedback(ChatUtils.buildWithPrefix(feature.displayName + " Feature "+ if (feature.enabled) "Enabled" else "Disabled"))
+                        feature.baseSetting.value = !feature.baseSetting.value
+                        it.source.sendFeedback(ChatUtils.buildWithPrefix(feature.displayName + " Feature "+ if (feature.baseSetting.value) "Enabled" else "Disabled"))
                         return@executes 1
                     }
             )

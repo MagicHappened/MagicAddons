@@ -12,7 +12,6 @@ abstract class Feature {
     abstract val displayName: String
     abstract val tooltipMessage: String
     abstract val category: String
-    var enabled: Boolean = false
     open val baseSetting: BooleanSetting = BooleanSetting(
     key = "enabled",
     displayName = displayName,

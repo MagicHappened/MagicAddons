@@ -7,7 +7,7 @@ import net.minecraft.client.gui.Element
 import org.magic.magicaddons.config.data.SettingNode
 
 abstract class SettingWidget<T>(
-    protected val node: SettingNode
+    protected val node: SettingNode // getting the setting node to display (what?)
 ) : Drawable, Element {
 
     var x: Int = 0
