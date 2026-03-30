@@ -14,13 +14,19 @@ abstract class Feature {
     abstract val category: String
     var enabled: Boolean = false
     open val baseSetting: BooleanSetting = BooleanSetting(
-    key = id,
+    key = "enabled",
     displayName = displayName,
     tooltip = tooltipMessage,
-    value = configMap.getValue(category).getValue(id).enabled
+    value = false
     )
 
     init {
         FeatureManager.register(this)
+    }
+
+    fun serializeSettings(): MutableMap<String, String> = baseSetting.serializeSettings()
+
+    fun deserializeSettings(settings: MutableMap<String, String>) {
+        baseSetting.updateSettings(settings)
     }
 }

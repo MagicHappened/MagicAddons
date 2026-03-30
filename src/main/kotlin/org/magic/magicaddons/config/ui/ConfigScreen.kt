@@ -7,55 +7,43 @@ import net.minecraft.client.gui.screen.Screen
 import net.minecraft.text.Text
 import org.magic.magicaddons.config.MagicAddonsConfigJsonHandler
 import org.magic.magicaddons.features.FeatureManager.features
+import org.magic.magicaddons.util.ChatUtils
 
 class ConfigScreen(title: Text, val parent: Screen?) : Screen(title) {
 
-    private val widgets = mutableListOf<BooleanSettingWidget>()
+    val categories = MagicAddonsConfigJsonHandler.configMap
+    val categoryWidgets = mutableListOf<ConfigCategoryWidget>()
+
+    val categoryPadding: Int = 20
+    val featurePadding: Int = 10
 
     override fun init() {
-        widgets.clear()
+        if (categories.isEmpty()) {
+            ChatUtils.sendWithPrefix("Unexpected empty category map. Cannot initialize screen.")
+            return
+        }
 
-        val categories = MagicAddonsConfigJsonHandler.configMap
-        if (categories.isEmpty()) return
-
-        val categoryWidth = 200
-        val categorySpacing = 20
-
-        var categoryIndex = 0
+        categoryWidgets.clear()
 
         categories.forEach { (categoryName, featureMap) ->
+            categoryWidgets.add(ConfigCategoryWidget(categoryName, featureMap))
+        }
 
-            val baseX = 20 + categoryIndex * (categoryWidth + categorySpacing)
-            var currentY = 40
+        var currentX = 200
+        val baseY = 100
 
-            featureMap.forEach { (featureId, data) ->
+        categoryWidgets.forEach { category ->
+            category.layout(currentX, baseY)
 
-                val feature = features.find { it.id == featureId } ?: return@forEach
+            currentX += category.width + categoryPadding
 
-                val base = BooleanSettingWidget(feature, baseX, currentY)
-
-                val widget = ExpandableFeatureWidget(
-                    feature,
-                    base,
-                    baseX,
-                    currentY,
-                    categoryWidth,
-                    20
-                )
-
-                widgets.add(widget)
-
-                currentY += widget.getTotalHeight() + 4
-            }
-
-            categoryIndex++
+            addDrawable(category)
         }
     }
 
     override fun render(ctx: DrawContext, mouseX: Int, mouseY: Int, delta: Float) {
         super.render(ctx, mouseX, mouseY, delta)
 
-        // 🔹 Title
         val textWidth = textRenderer.getWidth(title)
         ctx.drawText(
             textRenderer,
@@ -65,51 +53,11 @@ class ConfigScreen(title: Text, val parent: Screen?) : Screen(title) {
             0xFFFFFF,
             false
         )
-
-        val categories = MagicAddonsConfigJsonHandler.configMap
-        val categoryWidth = 200
-        val categorySpacing = 20
-
-        var categoryIndex = 0
-
-        categories.keys.forEach { categoryName: String ->
-
-            val baseX = 20 + categoryIndex * (categoryWidth + categorySpacing)
-
-            // 🔹 Category title
-            ctx.drawText(
-                textRenderer,
-                Text.literal(categoryName),
-                baseX,
-                25,
-                0xAAAAAA,
-                false
-            )
-
-            categoryIndex++
-        }
-
-        val grouped = widgets.groupBy { it.feature.category }
-
-        var categoryIndex2 = 0
-        grouped.forEach { (_, list) ->
-
-            val baseX = 20 + categoryIndex2 * (categoryWidth + categorySpacing)
-            var currentY = 40
-
-            list.forEach { widget ->
-                widget.setY(currentY)
-                widget.render(ctx, mouseX, mouseY, delta)
-                currentY += widget.getTotalHeight() + 4
-            }
-
-            categoryIndex2++
-        }
     }
 
     override fun mouseClicked(click: Click, doubled: Boolean): Boolean {
-        widgets.forEach {
-            if (it.mouseClicked(click, doubled)) return true
+        categoryWidgets.forEach {
+            it.mouseClicked(click, doubled)
         }
         return super.mouseClicked(click, doubled)
     }

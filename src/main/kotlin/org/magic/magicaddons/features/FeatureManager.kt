@@ -1,7 +1,6 @@
 package org.magic.magicaddons.features
 
-import org.magic.magicaddons.config.data.CategoryMap
-import org.magic.magicaddons.config.data.FeatureData
+import org.magic.magicaddons.config.MagicAddonsConfigJsonHandler.configMap
 
 object FeatureManager {
     val features = mutableListOf<Feature>()
@@ -11,27 +10,31 @@ object FeatureManager {
     }
 
 
-    fun syncToConfig(features: List<Feature>, categories: CategoryMap) {
-        // Group features by their category
-        features.groupBy { it.category }.forEach { (category, featureList) ->
-            // Get or create the category map
-            val catMap = categories.getOrPut(category) { mutableMapOf() }
+    fun syncToConfig() {
 
+        val returnedMap = mutableMapOf<
+                String, //category string
+                MutableMap<String, //feature id string
+                        MutableMap<String, String>>>() // feature setting id, value
+        features.groupBy { it.category }.forEach { (category, featureList) ->
+
+            val currentCategoryMap = returnedMap.getOrPut(category) { mutableMapOf() }
+            // iterate over features in the current category
             featureList.forEach { feature ->
-                // Get or create the feature data
-                val data = catMap.getOrPut(feature.id) { FeatureData() }
-                data.enabled = feature.enabled
-                data.settings = feature.serializeSettings().toMutableMap()
+                // get settings from serialize function and assign to feature id identifier
+                currentCategoryMap[feature.id] = feature.serializeSettings()
             }
+
         }
+        configMap = returnedMap
     }
 
-    fun syncFromConfig(features: List<Feature>, categories: CategoryMap) {
+    fun syncFromConfig() {
         features.forEach { feature ->
-            val data = categories[feature.category]?.get(feature.id)
+            val data = configMap[feature.category]?.get(feature.id)
             if (data != null) {
                 feature.enabled = data.enabled
-                feature.deserializeSettings(data.settings)
+                feature.deserializeSettings(data.settings) }
             }
         }
     }

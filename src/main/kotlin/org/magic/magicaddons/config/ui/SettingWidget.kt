@@ -2,12 +2,13 @@ package org.magic.magicaddons.config.ui
 
 import net.minecraft.client.gui.Click
 import net.minecraft.client.gui.DrawContext
+import net.minecraft.client.gui.Drawable
 import net.minecraft.client.gui.Element
 import org.magic.magicaddons.config.data.SettingNode
 
 abstract class SettingWidget<T>(
     protected val node: SettingNode
-) : Element {
+) : Drawable, Element {
 
     var x: Int = 0
     var y: Int = 0
@@ -20,7 +21,7 @@ abstract class SettingWidget<T>(
         y = newY
     }
 
-    fun render(ctx: DrawContext, mouseX: Int, mouseY: Int, delta: Float) {
+    override fun render(ctx: DrawContext, mouseX: Int, mouseY: Int, delta: Float) {
         renderSelf(ctx, mouseX, mouseY, delta)
 
         var childY = y + height
