@@ -1,17 +1,20 @@
 package org.magic.magicaddons.config.ui
 
+import net.minecraft.client.MinecraftClient
 import net.minecraft.client.gui.Click
 import net.minecraft.client.gui.DrawContext
 import net.minecraft.client.gui.Drawable
 import net.minecraft.client.gui.Element
+import org.magic.magicaddons.config.ui.feature.FeatureToggleWidget
+import org.magic.magicaddons.features.Feature
 import org.magic.magicaddons.features.FeatureManager.features
 
 class ConfigCategoryWidget(
     val categoryName: String,
-    featureIds: Map<String, Any> // your featureMap
+    categoryFeatures: List<Feature> // your featureMap
 ) : Drawable, Element {
 
-    val categoryFeatures = mutableListOf<FeatureToggleWidget>()
+    val categoryFeatureWidgets = mutableListOf<FeatureToggleWidget>()
 
     var x: Int = 0
     var y: Int = 0
@@ -19,12 +22,12 @@ class ConfigCategoryWidget(
     var width: Int = 200
     var height: Int = 0
 
+    val categoryTitlePadding: Int = 5
     val featurePadding = 10
 
     init {
-        featureIds.forEach { (featureId, _) ->
-            val feature = features.find { it.id == featureId } ?: return@forEach
-            categoryFeatures.add(FeatureToggleWidget(feature))
+        categoryFeatures.forEach { feature ->
+            categoryFeatureWidgets.add(FeatureToggleWidget(feature))
         }
     }
 
@@ -32,30 +35,46 @@ class ConfigCategoryWidget(
         x = baseX
         y = baseY
 
-        val maxWidth = categoryFeatures.maxOfOrNull { it.getContentWidth() } ?: 200
+        val textRenderer = MinecraftClient.getInstance().textRenderer
+        val titleHeight = textRenderer.fontHeight + categoryTitlePadding * 2
+
+        val maxWidth = categoryFeatureWidgets.maxOfOrNull { it.getContentWidth() } ?: 200
         width = maxWidth
 
-        var currentY = y
+        // start below the title
+        var currentY = y + titleHeight
 
-        categoryFeatures.forEach {
+        categoryFeatureWidgets.forEach {
             it.x = x
             it.y = currentY
             it.width = maxWidth
-
+            it.checkbox.setPosition(x,currentY)
             currentY += it.height + featurePadding
         }
 
+        // total height includes title
         height = currentY - y
     }
 
     override fun render(ctx: DrawContext, mouseX: Int, mouseY: Int, delta: Float) {
-        categoryFeatures.forEach {
+
+        val textRenderer = MinecraftClient.getInstance().textRenderer
+        ctx.drawText(
+            textRenderer,
+            categoryName,
+            x + (width - textRenderer.getWidth(categoryName)) / 2,
+            y + (textRenderer.fontHeight) / 2,
+            0xFFFFFFFF.toInt(),
+            false
+        )
+
+        categoryFeatureWidgets.forEach {
             it.render(ctx, mouseX, mouseY, delta)
         }
     }
 
     override fun mouseClicked(click: Click, doubled: Boolean): Boolean {
-        categoryFeatures.forEach {
+        categoryFeatureWidgets.forEach {
             if (it.mouseClicked(click, doubled)) return true
         }
         return false

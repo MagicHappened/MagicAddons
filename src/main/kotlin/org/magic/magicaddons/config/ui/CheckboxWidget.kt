@@ -5,54 +5,68 @@ import net.minecraft.client.gui.DrawContext
 import net.minecraft.client.gui.Element
 import org.magic.magicaddons.util.ScreenUtil
 
-class CheckboxWidget(val scale: Float = 1.0F) : Element {
+class CheckboxWidget(
+    var width: Int = 24,
+    var height: Int = 24,
+    var checked: Boolean = false
+) : Element {
+
     var x: Int = 0
     var y: Int = 0
 
-    val pxSize: Int = 48
-    val borderColor = 0xFF000000.toInt()
+    val baseSize = 48f
+
     val bgColor = 0xFFC6C6C6.toInt()
     val checkColor = 0xFF00FF00.toInt()
-    val scaledSize: Int = (pxSize.toFloat() * scale).toInt()
-    var checked = false
 
     fun render(ctx: DrawContext, mouseX: Int, mouseY: Int, delta: Float) {
 
-        ctx.fill(x, y, x + scaledSize, y + scaledSize, bgColor)
-
-        ScreenUtil.drawSquareBorder(ctx, x, y, scaledSize, (4*scale).toInt(), borderColor)
+        ctx.fill(x, y, x + width, y + height, bgColor)
 
         if (checked) {
-            drawCheckmark(ctx, x, y)
+            drawCheckmark(ctx)
         }
     }
+    fun setPosition(x: Int, y: Int) {
+        this.x = x
+        this.y = y
+    }
 
-    fun drawCheckmark(ctx: DrawContext, x: Int, y: Int) {
-        val x1 = x + (12f * scale)
-        val y1 = y + (24f * scale)
 
-        val x2 = x + (20f * scale)
-        val y2 = y + (32f * scale)
+    private fun drawCheckmark(ctx: DrawContext) {
 
-        val x3 = x + (36f * scale)
-        val y3 = y + (12f * scale)
+        // normalize based on 48x48 design
+        fun sx(px: Float) = x + (px / baseSize * width)
+        fun sy(py: Float) = y + (py / baseSize * height)
 
-        val thickness = 3f * scale
+        val x1 = sx(12f)
+        val y1 = sy(24f)
 
-        ScreenUtil.drawLine(ctx, x1, y1, x2, y2, thickness.toInt(), checkColor)
-        ScreenUtil.drawLine(ctx, x2, y2, x3, y3, thickness.toInt(), checkColor)
+        val x2 = sx(20f)
+        val y2 = sy(32f)
+
+        val x3 = sx(36f)
+        val y3 = sy(12f)
+
+        val thickness = (width / 8).coerceAtLeast(1)
+
+        ScreenUtil.drawLine(ctx, x1, y1, x2, y2, thickness, checkColor)
+        ScreenUtil.drawLine(ctx, x2, y2, x3, y3, thickness, checkColor)
     }
 
     override fun mouseClicked(click: Click?, doubled: Boolean): Boolean {
-        checked = !checked
-        if (click?.x?.toInt() in x..x+scaledSize &&
-            click?.y?.toInt() in y..y+scaledSize) return true
+        if (click?.x?.toInt() in x..(x + width) &&
+            click?.y?.toInt() in y..(y + height)
+        ) {
+            checked = !checked
+            return true
+        }
         return super.mouseClicked(click, doubled)
     }
-
 
     override fun setFocused(focused: Boolean) {
         isFocused = focused
     }
+
     override fun isFocused(): Boolean = isFocused
 }

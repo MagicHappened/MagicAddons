@@ -25,18 +25,18 @@ object HighlightMobs : Feature() {
     override val id: String = "HighlightMobs"
     override val displayName: String = "Mob Highlight"
     override val  tooltipMessage: String = "Highlights specific mobs of your choosing"
-    override val category: String = "Combat"
+    override val category: String = "combat"
 
     override val baseSetting = super.baseSetting.apply {
         children = listOf(
             BooleanSetting(
-                key =  "${id}EntityTypeEnabled",
+                key =  "EntityTypeEnabled",
                 displayName = "Entity Type",
                 tooltip = "If to use an entity type based filtering for mob highlighting",
                 value = false,
                 children = listOf(
                     EnumSetting<EntityTypeDetection>(
-                        key = "${id}EntityTypePlayerOtherEnum",
+                        key = "EntityTypePlayerOtherEnum",
                         displayName = "Entity Type", // just dont display this (only values)
                         tooltip = "Which entity type detection to use",
                         value = EntityTypeDetection.Player,
@@ -44,7 +44,7 @@ object HighlightMobs : Feature() {
                             when (entityTypeDetection) {
                                 HighlightMobs.EntityTypeDetection.Player -> listOf(
                                     TextSetting(
-                                        key = "${id}EntityTypePlayerSkinHash",
+                                        key = "EntityTypePlayerSkinHash",
                                         displayName = "Skin Hash Value",
                                         tooltip = "The skin hash value to detect",
                                         value = "f2b33640bfb71557e0e1d852287263ceafc9bec205301acf046b7c29fe8cb37b"
@@ -52,7 +52,7 @@ object HighlightMobs : Feature() {
                                 )
                                 HighlightMobs.EntityTypeDetection.Other -> listOf(
                                     TextSetting(
-                                        key = "${id}EntityTypeMobPathValue",
+                                        key = "EntityTypeMobPathValue",
                                         displayName = "Mob Path",
                                         tooltip = "The mob path value to detect",
                                         value = "entity.minecraft.pig"
@@ -64,13 +64,13 @@ object HighlightMobs : Feature() {
                 )
             ),
             BooleanSetting(
-                key = "${id}MobInfoEnabled",
+                key = "MobInfoEnabled",
                 displayName = "Mob Info",
                 tooltip = "If to use a mob info based filtering for mob highlighting",
                 value = false,
                 children = listOf(
                     TextSetting(
-                        key = "${id}MobInfoContains",
+                        key = "MobInfoContains",
                         displayName = "Mob Name Contains",
                         tooltip = "The string which to filter mobs in",
                         value = "Littlefoot"
@@ -92,7 +92,7 @@ object HighlightMobs : Feature() {
     // todo change logic based on settings
     @EventHandler
     fun onWorldTick(event: OnWorldTickEvent) {
-        if (!enabled) return
+        if (!baseSetting.value) return
 
         WorldEntities.entityList.forEach { info ->
             val player = info.entity

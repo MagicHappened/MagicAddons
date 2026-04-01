@@ -14,19 +14,23 @@ object MagicAddonsConfigJsonHandler {
     var configMap = mutableMapOf<
             String, //category string
             MutableMap<String, //feature id string
-                    MutableMap<String, String>>>()
+                    MutableMap<String, String>>>() //each feature setting id mapped to value
 
-    fun load() {
-        if (!file.exists()) return
-        val type = object : TypeToken<MutableMap<String, String>>() {}.type
+    fun load() : Boolean {
+        if (!file.exists()) return false
+        val type = object : TypeToken<
+                MutableMap<String,
+                        MutableMap<String,
+                                MutableMap<String, String>
+                        >
+                >>() {}.type
         configMap = gson.fromJson(file.readText(), type) ?: mutableMapOf()
-        FeatureManager.syncFromConfig()
+        return true
     }
 
-    fun save() {
-        configMap = mutableMapOf()
-        FeatureManager.syncToConfig()
+    fun save() : Boolean {
         file.parentFile.mkdirs()
         file.writeText(gson.toJson(configMap))
+        return true
     }
 }

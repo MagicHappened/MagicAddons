@@ -6,8 +6,8 @@ import net.minecraft.text.Text
 import org.magic.magicaddons.Common
 import org.magic.magicaddons.commands.debug.MainDebug
 import org.magic.magicaddons.commands.features.ToggleFeature
-import org.magic.magicaddons.config.ui.ConfigScreen
-import org.magic.magicaddons.config.ui.FeatureEditScreen
+import org.magic.magicaddons.config.ui.screen.ConfigScreen
+import org.magic.magicaddons.config.ui.screen.FeatureEditScreen
 import org.magic.magicaddons.features.combat.HighlightMobs
 import org.magic.magicaddons.util.ScreenUtil
 
@@ -25,9 +25,8 @@ object MainCommand {
 
                 val main = literal(Common.MOD_NAME)
                     .executes {
-                        //val config = ConfigScreen(Text.literal("Magic Addons Config"), null)
-                        //ScreenUtil.setScreen(config)
-                        val temp = FeatureEditScreen(HighlightMobs, null)
+                        val config = ConfigScreen(Text.literal("Magic Addons Config"), null)
+                        ScreenUtil.setScreen(config)
                         return@executes 1
                     }
 

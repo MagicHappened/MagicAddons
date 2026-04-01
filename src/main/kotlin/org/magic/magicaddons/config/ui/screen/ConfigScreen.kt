@@ -1,23 +1,30 @@
-package org.magic.magicaddons.config.ui
+package org.magic.magicaddons.config.ui.screen
 
-import net.minecraft.client.MinecraftClient
 import net.minecraft.client.gui.Click
 import net.minecraft.client.gui.DrawContext
 import net.minecraft.client.gui.screen.Screen
 import net.minecraft.text.Text
 import org.magic.magicaddons.config.MagicAddonsConfigJsonHandler
-import org.magic.magicaddons.features.FeatureManager.features
+import org.magic.magicaddons.config.ui.ConfigCategoryWidget
+import org.magic.magicaddons.features.Feature
+import org.magic.magicaddons.features.FeatureManager
 import org.magic.magicaddons.util.ChatUtils
 
 class ConfigScreen(title: Text, val parent: Screen?) : Screen(title) {
 
-    val categories = MagicAddonsConfigJsonHandler.configMap
     val categoryWidgets = mutableListOf<ConfigCategoryWidget>()
+    lateinit var categories: MutableMap<String, MutableList<Feature>>
 
     val categoryPadding: Int = 20
-    val featurePadding: Int = 10
 
     override fun init() {
+        MagicAddonsConfigJsonHandler.load()
+        FeatureManager.syncFromConfig()
+        categories = FeatureManager.features
+            .groupBy { it.category }
+            .mapValues { it.value.toMutableList() }
+            .toMutableMap()
+
         if (categories.isEmpty()) {
             ChatUtils.sendWithPrefix("Unexpected empty category map. Cannot initialize screen.")
             return
@@ -25,12 +32,12 @@ class ConfigScreen(title: Text, val parent: Screen?) : Screen(title) {
 
         categoryWidgets.clear()
 
-        categories.forEach { (categoryName, featureMap) ->
-            categoryWidgets.add(ConfigCategoryWidget(categoryName, featureMap))
+        categories.forEach { (categoryName, featureList) ->
+            categoryWidgets.add(ConfigCategoryWidget(categoryName, featureList))
         }
 
-        var currentX = 200
-        val baseY = 100
+        var currentX = 50
+        val baseY = 25
 
         categoryWidgets.forEach { category ->
             category.layout(currentX, baseY)
@@ -63,6 +70,7 @@ class ConfigScreen(title: Text, val parent: Screen?) : Screen(title) {
     }
 
     override fun close() {
+        FeatureManager.syncToConfig()
         MagicAddonsConfigJsonHandler.save()
         client?.setScreen(parent)
     }

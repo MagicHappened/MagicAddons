@@ -4,7 +4,7 @@ import com.terraformersmc.modmenu.api.ConfigScreenFactory
 import com.terraformersmc.modmenu.api.ModMenuApi
 import net.minecraft.client.gui.screen.Screen
 import net.minecraft.text.Text
-import org.magic.magicaddons.config.ui.ConfigScreen
+import org.magic.magicaddons.config.ui.screen.ConfigScreen
 
 class MagicAddonsModMenuCompat : ModMenuApi {
 

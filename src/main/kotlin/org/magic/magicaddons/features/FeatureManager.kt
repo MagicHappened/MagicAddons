@@ -1,13 +1,16 @@
 package org.magic.magicaddons.features
 
 import org.magic.magicaddons.config.MagicAddonsConfigJsonHandler.configMap
+import org.magic.magicaddons.features.combat.HighlightMobs
+import org.magic.magicaddons.features.debug.MobHitSkin
+import org.magic.magicaddons.features.mining.HidePowderCoatingParticles
 
 object FeatureManager {
-    val features = mutableListOf<Feature>()
-
-    fun register(feature: Feature) {
-        features += feature
-    }
+    val features = mutableListOf(
+        HidePowderCoatingParticles,
+        HighlightMobs,
+        MobHitSkin
+    ) // need to call objects somehow for initialization
 
 
     fun syncToConfig() {
@@ -21,6 +24,7 @@ object FeatureManager {
             val currentCategoryMap = returnedMap.getOrPut(category) { mutableMapOf() }
             // iterate over features in the current category
             featureList.forEach { feature ->
+
                 // get settings from serialize function and assign to feature id identifier
                 currentCategoryMap[feature.id] = feature.serializeSettings()
             }
@@ -31,11 +35,9 @@ object FeatureManager {
 
     fun syncFromConfig() {
         features.forEach { feature ->
-            val data = configMap[feature.category]?.get(feature.id)
-            if (data != null) {
-                feature.enabled = data.enabled
-                feature.deserializeSettings(data.settings) }
-            }
+            val categoryMap = configMap[feature.category] ?: return@forEach
+            val settingsMap = categoryMap[feature.id] ?: return@forEach
+            feature.deserializeSettings(settingsMap.toMutableMap())
         }
     }
 

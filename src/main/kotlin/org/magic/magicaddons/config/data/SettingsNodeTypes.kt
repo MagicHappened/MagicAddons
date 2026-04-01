@@ -7,7 +7,7 @@ sealed class SettingNode<T>(
     open var value: T
 
 ) {
-    abstract fun getChildren(): List<SettingNode<*>>?
+    open val children: List<SettingNode<*>>? = null
 
     open fun serializeSettings(): MutableMap<String, String>{
         val result = mutableMapOf<String, String>()
@@ -28,10 +28,8 @@ open class BooleanSetting(
     displayName: String,
     tooltip: String,
     override var value: Boolean,
-    var children: List<SettingNode<*>>? = null
+    override var children: List<SettingNode<*>>? = null
 ) : SettingNode<Boolean>(key, displayName, tooltip, value) {
-
-    override fun getChildren(): List<SettingNode<*>>? = children
 
     override fun serializeSettings(): MutableMap<String, String> {
         val map = super.serializeSettings()
@@ -55,7 +53,6 @@ class TextSetting(
     tooltip: String,
     override var value: String
 ) : SettingNode<String>(key, displayName, tooltip, value) {
-    override fun getChildren(): List<SettingNode<*>>? = null
     override fun parseValue(value: String): String = value
 }
 
@@ -68,9 +65,8 @@ class EnumSetting<T : Enum<T>>(
     val childrenProvider: ((T) -> List<SettingNode<*>>)?
 ) : SettingNode<T>(key, displayName, tooltip, value) {
 
-    override fun getChildren(): List<SettingNode<*>>? {
-        return childrenProvider?.invoke(value)
-    }
+    override val children: List<SettingNode<*>>
+        get() = childrenProvider?.invoke(value) ?: emptyList()
 
     override fun parseValue(value: String): T {
         return java.lang.Enum.valueOf(this.value.javaClass, value)

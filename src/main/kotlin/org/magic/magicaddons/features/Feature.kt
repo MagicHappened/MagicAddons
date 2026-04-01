@@ -12,16 +12,14 @@ abstract class Feature {
     abstract val displayName: String
     abstract val tooltipMessage: String
     abstract val category: String
-    open val baseSetting: BooleanSetting = BooleanSetting(
+    open val baseSetting: BooleanSetting by lazy {
+        BooleanSetting(
     key = "enabled",
     displayName = displayName,
     tooltip = tooltipMessage,
     value = false
-    )
+    )}
 
-    init {
-        FeatureManager.register(this)
-    }
 
     fun serializeSettings(): MutableMap<String, String> = baseSetting.serializeSettings()
 

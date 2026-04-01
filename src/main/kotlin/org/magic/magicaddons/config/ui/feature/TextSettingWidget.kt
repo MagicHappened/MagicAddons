@@ -1,20 +1,17 @@
-package org.magic.magicaddons.config.ui
+package org.magic.magicaddons.config.ui.feature
 
 import net.minecraft.client.MinecraftClient
-import net.minecraft.client.gui.Click
 import net.minecraft.client.gui.DrawContext
-import net.minecraft.client.gui.Selectable
-import net.minecraft.client.gui.screen.narration.NarrationMessageBuilder
 import net.minecraft.text.Text
 import org.magic.magicaddons.config.data.TextSetting
-import org.magic.magicaddons.features.Feature
 
 class TextSettingWidget(
     private val setting: TextSetting
 ) : SettingWidget<String>(setting) {
 
 
-    override fun renderSelf(ctx: DrawContext, mouseX: Int, mouseY: Int, delta: Float) {
+    override fun render(ctx: DrawContext, mouseX: Int, mouseY: Int, delta: Float) {
+        // todo add a text box renderer here for input
         ctx.drawText(
             MinecraftClient.getInstance().textRenderer,
             Text.literal("${setting.displayName}: ${setting.value}"),

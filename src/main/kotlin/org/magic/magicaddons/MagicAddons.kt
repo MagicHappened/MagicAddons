@@ -12,17 +12,16 @@ import org.magic.magicaddons.util.ScreenUtil
 import org.magic.magicaddons.util.WorldEntities
 
 class MagicAddons : ModInitializer {
-    val featuresList: MutableList<Feature> = mutableListOf(
-        HidePowderCoatingParticles,
-        HighlightMobs,
-        MobHitSkin
-    )
 
     override fun onInitialize() {
         WorldEntities
         ScreenUtil.register()
         MainCommand
 
-        MagicAddonsConfigJsonHandler.load()
+
+        if (!MagicAddonsConfigJsonHandler.load()){
+            MagicAddonsConfigJsonHandler.save()
+        }
+
     }
 }

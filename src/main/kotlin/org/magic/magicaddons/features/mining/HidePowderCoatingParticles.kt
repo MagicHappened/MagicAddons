@@ -18,7 +18,7 @@ object HidePowderCoatingParticles : Feature() {
 
     @EventHandler
     fun onAddParticle(event: AddParticleEvent){
-        if (!this.enabled) return
+        if (!baseSetting.value) return
 
         val dust = event.parameters as? DustParticleEffect ?: return
         val dustPos = Vec3d(event.x, event.y, event.z)
@@ -31,6 +31,6 @@ object HidePowderCoatingParticles : Feature() {
     override val id: String = "HidePowderCoatingParticles"
     override val displayName: String = "Powder Coating Hider"
     override val tooltipMessage: String = "Hides powder coating particles when divan armor is equipped"
-    override val category: String = "Mining"
+    override val category: String = "mining"
 
 }

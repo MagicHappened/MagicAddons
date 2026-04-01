@@ -31,7 +31,7 @@ object  MobHitSkin : Feature() {
 
     @EventHandler
     fun onAttackEntity(event: OnAttackEntityEvent) {
-        if (!enabled) return
+        if (!baseSetting.value) return
         event.canceled = true
 
         val target = event.target
