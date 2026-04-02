@@ -6,15 +6,18 @@ import net.minecraft.particle.DustParticleEffect
 import net.minecraft.particle.ParticleType
 import net.minecraft.particle.ParticleTypes
 import net.minecraft.util.math.Vec3d
+import org.magic.magicaddons.config.data.BooleanSetting
 import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.events.EventHandler
 import org.magic.magicaddons.events.world.AddParticleEvent
 import org.magic.magicaddons.features.Feature
+import org.magic.magicaddons.features.combat.HighlightMobs
 
 object HidePowderCoatingParticles : Feature() {
     init {
         EventBus.register(this)
     }
+
 
     @EventHandler
     fun onAddParticle(event: AddParticleEvent){
@@ -32,5 +35,14 @@ object HidePowderCoatingParticles : Feature() {
     override val displayName: String = "Powder Coating Hider"
     override val tooltipMessage: String = "Hides powder coating particles when divan armor is equipped"
     override val category: String = "mining"
+
+    override val baseSetting: BooleanSetting by lazy {
+        BooleanSetting(
+            key = "enabled",
+            displayName = displayName,
+            tooltip = tooltipMessage,
+            value = false
+        )
+    }
 
 }

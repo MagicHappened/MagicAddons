@@ -13,6 +13,8 @@ class TextSettingWidget(
 
     override fun init() {}
 
+    override fun getActualHeight(): Int = height
+
     override fun render(ctx: DrawContext, mouseX: Int, mouseY: Int, delta: Float) {
         // todo add a text box renderer here for input
         ctx.drawText(
@@ -20,7 +22,7 @@ class TextSettingWidget(
             Text.literal("${setting.displayName}: ${setting.value}"),
             x,
             y + 6,
-            0xCCCCCC,
+            0xFFCCCCCC.toInt(),
             false
         )
     }

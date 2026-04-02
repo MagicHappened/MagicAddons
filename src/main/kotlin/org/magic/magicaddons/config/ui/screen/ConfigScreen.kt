@@ -9,6 +9,7 @@ import org.magic.magicaddons.config.ui.ConfigCategoryWidget
 import org.magic.magicaddons.features.Feature
 import org.magic.magicaddons.features.FeatureManager
 import org.magic.magicaddons.util.ChatUtils
+import org.magic.magicaddons.util.ScreenUtil
 
 class ConfigScreen(title: Text, val parent: Screen?) : Screen(title) {
 
@@ -16,6 +17,14 @@ class ConfigScreen(title: Text, val parent: Screen?) : Screen(title) {
     lateinit var categories: MutableMap<String, MutableList<Feature>>
 
     val categoryPadding: Int = 20
+
+    val helpText: String = """
+        Welcome to MagicAddons!
+        Features are togglable by the check mark
+        You can toggle in depth settings by right clicking the objects
+    """.trimIndent()
+
+
 
     override fun init() {
         MagicAddonsConfigJsonHandler.load()
@@ -37,10 +46,10 @@ class ConfigScreen(title: Text, val parent: Screen?) : Screen(title) {
         }
 
         var currentX = 50
-        val baseY = 25
+        val baseY = 60
 
         categoryWidgets.forEach { category ->
-            category.layout(currentX, baseY)
+            category.init(currentX, baseY)
 
             currentX += category.width + categoryPadding
 
@@ -52,14 +61,8 @@ class ConfigScreen(title: Text, val parent: Screen?) : Screen(title) {
         super.render(ctx, mouseX, mouseY, delta)
 
         val textWidth = textRenderer.getWidth(title)
-        ctx.drawText(
-            textRenderer,
-            title,
-            (width - textWidth) / 2,
-            10,
-            0xFFFFFFFF.toInt(),
-            false
-        )
+
+        ScreenUtil.drawMultilineBoxCentered(ctx, helpText, width/2, 35)
     }
 
     override fun mouseClicked(click: Click, doubled: Boolean): Boolean {
@@ -70,15 +73,10 @@ class ConfigScreen(title: Text, val parent: Screen?) : Screen(title) {
     }
 
     override fun close() {
-        saveConfig()
         client?.setScreen(parent)
     }
 
     override fun removed() {
-        saveConfig()
-    }
-
-    fun saveConfig() {
         FeatureManager.syncToConfig()
         MagicAddonsConfigJsonHandler.save()
     }

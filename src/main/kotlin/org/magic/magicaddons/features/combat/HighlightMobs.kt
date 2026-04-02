@@ -24,66 +24,68 @@ object HighlightMobs : Feature() {
 
     override val id: String = "HighlightMobs"
     override val displayName: String = "Mob Highlight"
-    override val  tooltipMessage: String = "Highlights specific mobs of your choosing"
+    override val tooltipMessage: String = "Highlights specific mobs of your choosing"
     override val category: String = "combat"
 
-    override val baseSetting = super.baseSetting.apply {
-        children = listOf(
-            BooleanSetting(
-                key =  "EntityTypeEnabled",
-                displayName = "Entity Type",
-                tooltip = "If to use an entity type based filtering for mob highlighting",
-                value = false,
-                children = listOf(
-                    EnumSetting<EntityTypeDetection>(
-                        key = "EntityTypePlayerOtherEnum",
-                        displayName = "Entity Type", // just dont display this (only values)
-                        tooltip = "Which entity type detection to use",
-                        value = EntityTypeDetection.Player,
-                        childrenProvider = { entityTypeDetection ->
-                            when (entityTypeDetection) {
-                                EntityTypeDetection.Player -> listOf(
-                                    TextSetting(
-                                        key = "EntityTypePlayerSkinHash",
-                                        displayName = "Skin Hash Value",
-                                        tooltip = "The skin hash value to detect",
-                                        value = "f2b33640bfb71557e0e1d852287263ceafc9bec205301acf046b7c29fe8cb37b"
+    override val baseSetting: BooleanSetting by lazy {
+        BooleanSetting(
+            key = "enabled",
+            displayName = displayName,
+            tooltip = tooltipMessage,
+            value = false,
+            children = listOf(
+                BooleanSetting(
+                    key = "EntityTypeEnabled",
+                    displayName = "Entity Type",
+                    tooltip = "If to use an entity type based filtering for mob highlighting",
+                    value = false,
+                    children = listOf(
+                        EnumSetting<EntityTypeDetection>(
+                            key = "EntityTypePlayerOtherEnum",
+                            displayName = "Entity Type", // just dont display this (only values)
+                            tooltip = "Which entity type detection to use",
+                            value = EntityTypeDetection.Player,
+                            childrenProvider = { entityTypeDetection ->
+                                when (entityTypeDetection) {
+                                    EntityTypeDetection.Player -> listOf(
+                                        TextSetting(
+                                            key = "EntityTypePlayerSkinHash",
+                                            displayName = "Skin Hash Value",
+                                            tooltip = "The skin hash value to detect",
+                                            value = "f2b33640bfb71557e0e1d852287263ceafc9bec205301acf046b7c29fe8cb37b"
+                                        )
                                     )
-                                )
-                                EntityTypeDetection.Other -> listOf(
-                                    TextSetting(
-                                        key = "EntityTypeMobPathValue",
-                                        displayName = "Mob Path",
-                                        tooltip = "The mob path value to detect",
-                                        value = "entity.minecraft.pig"
+
+                                    EntityTypeDetection.Other -> listOf(
+                                        TextSetting(
+                                            key = "EntityTypeMobPathValue",
+                                            displayName = "Mob Path",
+                                            tooltip = "The mob path value to detect",
+                                            value = "entity.minecraft.pig"
+                                        )
                                     )
-                                )
+                                }
                             }
-                        }
+                        )
                     )
-                )
-            ),
-            BooleanSetting(
-                key = "MobInfoEnabled",
-                displayName = "Mob Info",
-                tooltip = "If to use a mob info based filtering for mob highlighting",
-                value = false,
-                children = listOf(
-                    TextSetting(
-                        key = "MobInfoContains",
-                        displayName = "Mob Name Contains",
-                        tooltip = "The string which to filter mobs in",
-                        value = "Littlefoot"
+                ),
+                BooleanSetting(
+                    key = "MobInfoEnabled",
+                    displayName = "Mob Info",
+                    tooltip = "If to use a mob info based filtering for mob highlighting",
+                    value = false,
+                    children = listOf(
+                        TextSetting(
+                            key = "MobInfoContains",
+                            displayName = "Mob Name Contains",
+                            tooltip = "The string which to filter mobs in",
+                            value = "Littlefoot"
+                        )
                     )
                 )
             )
-
-
-
         )
     }
-    // might cause NPE cuz config json not loaded
-
 
     init {
         EventBus.register(this)
@@ -120,8 +122,6 @@ object HighlightMobs : Feature() {
 
         }
     }
-
-
 
 
 }

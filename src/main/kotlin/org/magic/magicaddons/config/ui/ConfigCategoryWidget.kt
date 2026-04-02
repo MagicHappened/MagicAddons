@@ -7,7 +7,6 @@ import net.minecraft.client.gui.Drawable
 import net.minecraft.client.gui.Element
 import org.magic.magicaddons.config.ui.feature.FeatureToggleWidget
 import org.magic.magicaddons.features.Feature
-import org.magic.magicaddons.features.FeatureManager.features
 
 class ConfigCategoryWidget(
     val categoryName: String,
@@ -31,7 +30,7 @@ class ConfigCategoryWidget(
         }
     }
 
-    fun layout(baseX: Int, baseY: Int) {
+    fun init(baseX: Int, baseY: Int) {
         x = baseX
         y = baseY
 
@@ -45,10 +44,12 @@ class ConfigCategoryWidget(
         var currentY = y + titleHeight
 
         categoryFeatureWidgets.forEach {
+            it.init()
             it.x = x
             it.y = currentY
             it.width = maxWidth
-            it.checkbox.setPosition(x,currentY)
+            it.checkbox.x = x
+            it.checkbox.y = currentY
             currentY += it.height + featurePadding
         }
 

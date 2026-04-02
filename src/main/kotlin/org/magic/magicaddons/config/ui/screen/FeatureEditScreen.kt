@@ -1,19 +1,23 @@
 package org.magic.magicaddons.config.ui.screen
 
-import net.minecraft.client.MinecraftClient
 import net.minecraft.client.gui.Click
 import net.minecraft.client.gui.DrawContext
 import net.minecraft.client.gui.screen.Screen
 import net.minecraft.text.Text
+import org.magic.magicaddons.config.MagicAddonsConfigJsonHandler
 import org.magic.magicaddons.config.data.SettingNode
 import org.magic.magicaddons.config.ui.feature.SettingWidget
 import org.magic.magicaddons.config.ui.feature.SettingWidgetFactory
 import org.magic.magicaddons.features.Feature
+import org.magic.magicaddons.features.FeatureManager
+import org.magic.magicaddons.util.ScreenUtil
 
 class FeatureEditScreen(
     val feature: Feature,
     val parent: Screen?
 ) : Screen(Text.literal(feature.displayName)) {
+
+    var userClosed = false
 
     val childrenSettings: List<SettingNode<*>> = feature.baseSetting.children
         ?: throw IllegalStateException("Cannot construct a feature edit screen for a feature with no nested settings")
@@ -26,9 +30,6 @@ class FeatureEditScreen(
     val screenPaddingY: Int = 50
 
     val settingSpacingX: Int = 20 // setting childs CANNOT be larger than the base
-
-
-
 
     override fun init() {
         super.init()
@@ -49,6 +50,7 @@ class FeatureEditScreen(
             widget.x = screenPaddingX + xOffset
             widget.y = screenPaddingY
 
+
             widget.init()
             baseChildrenWidgets.add(widget)
             addDrawable(widget)
@@ -58,24 +60,32 @@ class FeatureEditScreen(
     override fun render(ctx: DrawContext, mouseX: Int, mouseY: Int, delta: Float) {
         super.render(ctx, mouseX, mouseY, delta)
 
-        val textWidth = textRenderer.getWidth(screenDisplayTitle)
-
-        ctx.drawText(
-            textRenderer,
+        ScreenUtil.drawMultilineBoxCentered(
+            ctx,
             screenDisplayTitle,
-            (width - textWidth) / 2,
-            10,
-            0xFFFFFFFF.toInt(),
-            false
+            width / 2,
+            20
         )
     }
 
     // todo change this to react to different widgets
-    override fun mouseClicked(click: Click?, doubled: Boolean): Boolean {
-        return super.mouseClicked(click, doubled)
+    override fun mouseClicked(click: Click, doubled: Boolean): Boolean {
+        baseChildrenWidgets.forEach {
+            if (it.mouseClicked(click, doubled))
+                return true
+        }
+        return false
     }
 
     override fun close() {
-        MinecraftClient.getInstance().setScreen(parent)
+        userClosed = true
+        client.setScreen(parent)
+    }
+
+    override fun removed() {
+        FeatureManager.syncToConfig()
+        if (!userClosed) {
+            MagicAddonsConfigJsonHandler.save()
+        }
     }
 }

@@ -33,21 +33,23 @@ class FeatureToggleWidget(
 
     val checkbox = CheckboxWidget(checked = feature.baseSetting.value)
 
-    override fun render(ctx: DrawContext, mouseX: Int, mouseY: Int, delta: Float) {
+    fun init(){
+        checkbox.size = height
 
-        // todo figure out better way to do this lol?
-        checkbox.width = height
-        checkbox.height = height
-        checkbox.render(ctx, mouseX, mouseY, delta)
+    }
+
+    override fun render(ctx: DrawContext, mouseX: Int, mouseY: Int, delta: Float) {
+        checkbox.render(ctx)
 
         ScreenUtil.drawBorder(ctx, x, y, x + width, y + height, borderSize, borderColor)
+
         val textRenderer = MinecraftClient.getInstance().textRenderer
         val textY = y + (height - textRenderer.fontHeight) / 2
 
         ctx.drawText(
             textRenderer,
             feature.displayName,
-            x + checkbox.width + textXPad,
+            x + checkbox.size + textXPad,
             textY,
             0xFFFFFFFF.toInt(),
             false
@@ -58,18 +60,18 @@ class FeatureToggleWidget(
         val textRenderer = MinecraftClient.getInstance().textRenderer
         val textWidth = textRenderer.getWidth(feature.displayName)
 
-        val padding = checkbox.width + textXPad + 10
+        val padding = checkbox.size + textXPad + 10
 
         return maxOf(100, textWidth + padding)
     }
 
-    override fun mouseClicked(click: Click?, doubled: Boolean): Boolean {
+    override fun mouseClicked(click: Click, doubled: Boolean): Boolean {
         if (checkbox.mouseClicked(click, doubled)) {
             feature.baseSetting.value = !feature.baseSetting.value
             return true
         }
-        //
-        if (click?.button() == 1) {
+
+        if (click.button() == 1) {
 
             // no need to check for checkbox x and y because of above if statement
             if (click.x.toInt() in x..x + width

@@ -6,79 +6,70 @@ import net.minecraft.client.gui.DrawContext
 import net.minecraft.text.Text
 import org.magic.magicaddons.config.data.BooleanSetting
 import org.magic.magicaddons.config.ui.CheckboxWidget
-import org.magic.magicaddons.config.ui.feature.SettingWidget
+import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.ScreenUtil
 
 class BooleanSettingWidget(
     private val setting: BooleanSetting
 ) : SettingWidget<Boolean>(setting) {
 
-    private val borderSize = 2
-    private val borderColor: Int = 0xFF000000.toInt()
-    private val textXPad: Int = 10
-
     private val checkbox = CheckboxWidget(checked = setting.value)
     override val childrenWidgets: MutableList<SettingWidget<*>> = mutableListOf()
 
     override fun init() {
-        updateCheckboxLayout()
-        setting.children?.forEach { child ->
-            childrenWidgets.add(SettingWidgetFactory.create(child))
-        }
-    }
 
-    private fun updateCheckboxLayout() {
         checkbox.x = x
         checkbox.y = y
-        checkbox.width = height
-        checkbox.height = height
-    }
+        checkbox.size = height
 
-    private fun getBackgroundColor(): Int {
-        return if (setting.value) 0xFF00FF00.toInt() else 0xFF555555.toInt()
-    }
-
-    private fun getTextY(): Int {
-        val textRenderer = MinecraftClient.getInstance().textRenderer
-        return y + (height - textRenderer.fontHeight) / 2
-    }
-
-    private fun getTextX(): Int {
-        return x + checkbox.width + textXPad
+        setting.children?.forEach {
+            childrenWidgets.add(SettingWidgetFactory.create(it))
+        }
     }
 
 
     override fun render(ctx: DrawContext, mouseX: Int, mouseY: Int, delta: Float) {
-
-        ctx.fill(x, y, x + width, y + height, getBackgroundColor())
-
-        checkbox.render(ctx, mouseX, mouseY, delta)
-
+        ctx.fill(x, y, x + width, y + height, backgroundColor)
+        checkbox.render(ctx)
         ScreenUtil.drawBorder(ctx, x, y, x + width, y + height, borderSize, borderColor)
 
+        renderChildrenIfExpanded(ctx, mouseX, mouseY, delta)
+
+
         val textRenderer = MinecraftClient.getInstance().textRenderer
+
         ctx.drawText(
             textRenderer,
             Text.literal(setting.displayName),
-            getTextX(),
-            getTextY(),
+            x + checkbox.size + textXPad,
+            y + (height - textRenderer.fontHeight) / 2,
             0xFFFFFFFF.toInt(),
             false
         )
+
+
     }
 
     override fun mouseClicked(click: Click, doubled: Boolean): Boolean {
-        // todo change so its only in checkbox thats toggling, and same with parent on right click expand
-        val inside = click.x in x.toDouble()..(x + width).toDouble() &&
-                click.y in y.toDouble()..(y + height).toDouble()
-
-        if (inside) {
+        if (!super.mouseClicked(click, doubled)) return false
+        if (checkbox.mouseClicked(click, doubled)) {
             setting.value = !setting.value
-            checkbox.checked = setting.value // keep UI in sync
             return true
         }
+        if (click.button() == 1){
+            childrenExpanded = !childrenExpanded
+        }
+        childrenWidgets.forEach {
+            if (it.mouseClicked(click, doubled)) return true
+        }
 
-        // TODO: children handling
         return false
     }
+
+    override fun getActualHeight(): Int {
+        if (!childrenExpanded) return height
+        return height + childrenWidgets.sumOf { it.height + childPadding }
+    }
+
+
 }

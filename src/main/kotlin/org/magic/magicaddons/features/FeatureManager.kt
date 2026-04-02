@@ -22,6 +22,7 @@ object FeatureManager {
         features.groupBy { it.category }.forEach { (category, featureList) ->
 
             val currentCategoryMap = returnedMap.getOrPut(category) { mutableMapOf() }
+
             // iterate over features in the current category
             featureList.forEach { feature ->
 
