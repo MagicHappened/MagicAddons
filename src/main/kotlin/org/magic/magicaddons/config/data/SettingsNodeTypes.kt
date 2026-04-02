@@ -65,8 +65,8 @@ class EnumSetting<T : Enum<T>>(
     val childrenProvider: ((T) -> List<SettingNode<*>>)?
 ) : SettingNode<T>(key, displayName, tooltip, value) {
 
-    override val children: List<SettingNode<*>>
-        get() = childrenProvider?.invoke(value) ?: emptyList()
+    override val children: List<SettingNode<*>>?
+        get() = childrenProvider?.invoke(value)
 
     override fun parseValue(value: String): T {
         return java.lang.Enum.valueOf(this.value.javaClass, value)

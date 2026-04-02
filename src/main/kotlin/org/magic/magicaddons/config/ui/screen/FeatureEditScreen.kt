@@ -22,10 +22,36 @@ class FeatureEditScreen(
 
     val screenDisplayTitle: String = "Editing ${feature.displayName}"
 
+    val screenPaddingX: Int = 100
+    val screenPaddingY: Int = 50
+
+    val settingSpacingX: Int = 20 // setting childs CANNOT be larger than the base
+
+
+
+
     override fun init() {
         super.init()
-        childrenSettings.forEach {
-            baseChildrenWidgets.add(SettingWidgetFactory.create(it))
+
+        val count = childrenSettings.size
+        if (count == 0) return
+
+        val settingsTotalWidth = width - 2 * screenPaddingX
+        val totalSpacing = (count - 1) * settingSpacingX
+        val widgetWidth = (settingsTotalWidth - totalSpacing) / count
+
+        childrenSettings.forEachIndexed { index, setting ->
+            val widget = SettingWidgetFactory.create(setting)
+
+            val xOffset = index * (widgetWidth + settingSpacingX)
+
+            widget.width = widgetWidth
+            widget.x = screenPaddingX + xOffset
+            widget.y = screenPaddingY
+
+            widget.init()
+            baseChildrenWidgets.add(widget)
+            addDrawable(widget)
         }
     }
 

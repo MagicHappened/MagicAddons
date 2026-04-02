@@ -9,6 +9,9 @@ class TextSettingWidget(
     private val setting: TextSetting
 ) : SettingWidget<String>(setting) {
 
+    override val childrenWidgets: List<SettingWidget<*>>? = null
+
+    override fun init() {}
 
     override fun render(ctx: DrawContext, mouseX: Int, mouseY: Int, delta: Float) {
         // todo add a text box renderer here for input
@@ -22,11 +25,4 @@ class TextSettingWidget(
         )
     }
 
-    override fun setFocused(focused: Boolean) {
-        isFocused = focused
-    }
-
-    override fun isFocused(): Boolean {
-        return isFocused
-    }
 }

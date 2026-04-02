@@ -11,6 +11,14 @@ class EnumSettingWidget<T : Enum<T>>(
     private val setting: EnumSetting<T>
 ) : SettingWidget<T>(setting) {
 
+    override val childrenWidgets: MutableList<SettingWidget<*>> = mutableListOf()
+
+    override fun init() {
+
+        setting.children?.forEach { child ->
+            childrenWidgets.add(SettingWidgetFactory.create(child))
+        }
+    }
 
     override fun render(ctx: DrawContext, mouseX: Int, mouseY: Int, delta: Float)  {
         ctx.drawText(
@@ -28,9 +36,5 @@ class EnumSettingWidget<T : Enum<T>>(
         //todo change this to actually make the rendering render an on top thing to click different values
     }
 
-    override fun setFocused(focused: Boolean) {
-        isFocused = focused
-    }
 
-    override fun isFocused(): Boolean = isFocused
 }

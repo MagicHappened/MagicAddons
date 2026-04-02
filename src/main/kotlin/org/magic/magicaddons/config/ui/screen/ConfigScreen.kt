@@ -56,7 +56,7 @@ class ConfigScreen(title: Text, val parent: Screen?) : Screen(title) {
             textRenderer,
             title,
             (width - textWidth) / 2,
-            200,
+            10,
             0xFFFFFFFF.toInt(),
             false
         )

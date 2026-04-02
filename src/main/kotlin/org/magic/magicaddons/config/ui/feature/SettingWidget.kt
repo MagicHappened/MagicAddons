@@ -10,11 +10,14 @@ abstract class SettingWidget<T>(
     protected val node: SettingNode<T>
 ) : Drawable, Element {
 
+    abstract val childrenWidgets: List<SettingWidget<*>>?
+
     var x: Int = 0
     var y: Int = 0
-    var width: Int = 300
-    var height: Int = 50
+    var width: Int = 200
+    var height: Int = 40
 
+    abstract fun init()
 
     fun setPosition(newX: Int, newY: Int) {
         x = newX
@@ -28,5 +31,10 @@ abstract class SettingWidget<T>(
                 click.y.toInt() in y..y+height
     }
 
+    override fun isFocused(): Boolean = isFocused
+
+    override fun setFocused(focused: Boolean) {
+        isFocused = focused
+    }
 
 }
