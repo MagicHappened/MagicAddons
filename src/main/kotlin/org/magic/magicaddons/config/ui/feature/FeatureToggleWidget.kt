@@ -9,6 +9,7 @@ import org.magic.magicaddons.config.ui.CheckboxWidget
 import org.magic.magicaddons.config.ui.screen.ConfigScreen
 import org.magic.magicaddons.config.ui.screen.FeatureEditScreen
 import org.magic.magicaddons.features.Feature
+import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.ScreenUtil
 
 class FeatureToggleWidget(
@@ -79,9 +80,12 @@ class FeatureToggleWidget(
                 if (currentScreen !is ConfigScreen) {
                     return false
                 }
-
+                if (feature.baseSetting.children == null){
+                    ChatUtils.sendWithPrefix("Feature ${feature.displayName} does not have sub settings.")
+                    return true
+                }
                 val featureEditScreen = FeatureEditScreen(feature, currentScreen)
-                MinecraftClient.getInstance().currentScreen = featureEditScreen
+                MinecraftClient.getInstance().setScreen(featureEditScreen)
                 return true
             }
         }

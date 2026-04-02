@@ -1,5 +1,6 @@
 package org.magic.magicaddons.config.ui.screen
 
+import net.minecraft.client.MinecraftClient
 import net.minecraft.client.gui.Click
 import net.minecraft.client.gui.DrawContext
 import net.minecraft.client.gui.screen.Screen
@@ -13,31 +14,32 @@ class FeatureEditScreen(
     val feature: Feature,
     val parent: Screen?
 ) : Screen(Text.literal(feature.displayName)) {
+
     val childrenSettings: List<SettingNode<*>> = feature.baseSetting.children
         ?: throw IllegalStateException("Cannot construct a feature edit screen for a feature with no nested settings")
 
-    val childrenWidgets: MutableList<SettingWidget<*>> = mutableListOf()
+    val baseChildrenWidgets: MutableList<SettingWidget<*>> = mutableListOf()
 
-    val screenTitle: String = "Editing ${feature.displayName}"
+    val screenDisplayTitle: String = "Editing ${feature.displayName}"
 
     override fun init() {
         super.init()
         childrenSettings.forEach {
-            childrenWidgets.add(SettingWidgetFactory.create(it))
+            baseChildrenWidgets.add(SettingWidgetFactory.create(it))
         }
     }
 
     override fun render(ctx: DrawContext, mouseX: Int, mouseY: Int, delta: Float) {
         super.render(ctx, mouseX, mouseY, delta)
 
-        val textWidth = textRenderer.getWidth(screenTitle)
+        val textWidth = textRenderer.getWidth(screenDisplayTitle)
 
         ctx.drawText(
             textRenderer,
-            screenTitle,
+            screenDisplayTitle,
             (width - textWidth) / 2,
             10,
-            0xFFFFFF,
+            0xFFFFFFFF.toInt(),
             false
         )
     }
@@ -48,6 +50,6 @@ class FeatureEditScreen(
     }
 
     override fun close() {
-        super.close()
+        MinecraftClient.getInstance().setScreen(parent)
     }
 }

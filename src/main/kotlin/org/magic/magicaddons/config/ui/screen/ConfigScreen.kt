@@ -56,8 +56,8 @@ class ConfigScreen(title: Text, val parent: Screen?) : Screen(title) {
             textRenderer,
             title,
             (width - textWidth) / 2,
-            10,
-            0xFFFFFF,
+            200,
+            0xFFFFFFFF.toInt(),
             false
         )
     }
@@ -70,8 +70,17 @@ class ConfigScreen(title: Text, val parent: Screen?) : Screen(title) {
     }
 
     override fun close() {
-        FeatureManager.syncToConfig()
-        MagicAddonsConfigJsonHandler.save()
+        saveConfig()
         client?.setScreen(parent)
     }
+
+    override fun removed() {
+        saveConfig()
+    }
+
+    fun saveConfig() {
+        FeatureManager.syncToConfig()
+        MagicAddonsConfigJsonHandler.save()
+    }
+
 }

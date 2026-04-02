@@ -42,7 +42,7 @@ object HighlightMobs : Feature() {
                         value = EntityTypeDetection.Player,
                         childrenProvider = { entityTypeDetection ->
                             when (entityTypeDetection) {
-                                HighlightMobs.EntityTypeDetection.Player -> listOf(
+                                EntityTypeDetection.Player -> listOf(
                                     TextSetting(
                                         key = "EntityTypePlayerSkinHash",
                                         displayName = "Skin Hash Value",
@@ -50,7 +50,7 @@ object HighlightMobs : Feature() {
                                         value = "f2b33640bfb71557e0e1d852287263ceafc9bec205301acf046b7c29fe8cb37b"
                                     )
                                 )
-                                HighlightMobs.EntityTypeDetection.Other -> listOf(
+                                EntityTypeDetection.Other -> listOf(
                                     TextSetting(
                                         key = "EntityTypeMobPathValue",
                                         displayName = "Mob Path",
