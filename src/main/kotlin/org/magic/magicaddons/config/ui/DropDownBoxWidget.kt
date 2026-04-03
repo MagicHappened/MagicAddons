@@ -8,18 +8,20 @@ import net.minecraft.text.Text
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.ScreenUtil
 
-class DropDownBoxWidget : Element {
+class DropDownBoxWidget<T : Enum<T>>(
+    val enumValue: T,
+    val onClick: (T) -> Unit
+) : Element {
     var width: Int = 200
     var height: Int = 40
 
     var x: Int = 0
     var y: Int = 0
 
-    var widgetText: String = "placeholder"
+    var widgetText: String = enumValue.name
 
-    val bgColor = 0xFFC6C6C6.toInt()
+    val bgColor = 0xFF555555.toInt()
     val borderColor = 0xFF000000.toInt()
-
 
 
     fun render(ctx: DrawContext) {
@@ -41,7 +43,7 @@ class DropDownBoxWidget : Element {
         if (click.x.toInt() in x..(x + width) &&
             click.y.toInt() in y..(y + height)
         ) {
-            ChatUtils.sendWithPrefix("clicked: $widgetText")
+            onClick(enumValue)
             return true
         }
         return false

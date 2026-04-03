@@ -6,6 +6,7 @@ import net.minecraft.client.gui.DrawContext
 import net.minecraft.text.Text
 import org.magic.magicaddons.config.data.EnumSetting
 import org.magic.magicaddons.config.ui.DropDownBoxWidget
+import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.ScreenUtil
 
 class EnumSettingWidget<T : Enum<T>>(
@@ -16,26 +17,49 @@ class EnumSettingWidget<T : Enum<T>>(
 
     override val childrenWidgets: MutableList<SettingWidget<*>> = mutableListOf()
 
+    override var childrenExpanded: Boolean = false
     var selectionMenuExpanded = false
-    val selectionOptions: MutableList<DropDownBoxWidget> = mutableListOf()
+
+    val selectionOptions: MutableList<DropDownBoxWidget<T>> = mutableListOf()
 
     override fun init() {
+
         val enumValues = setting.value.javaClass.enumConstants
         enumValues.forEachIndexed { index, enumValue ->
-            val dropDownBoxWidget = DropDownBoxWidget()
-            dropDownBoxWidget.x = x
-            dropDownBoxWidget.y = y + height + (index * (height / 2))
-            dropDownBoxWidget.widgetText = enumValue.name
-            selectionOptions.add(dropDownBoxWidget)
+
+            val dropDown = DropDownBoxWidget(enumValue) { selectedValue ->
+                val valueChanged = setting.value != selectedValue
+                setting.value = selectedValue
+                selectionMenuExpanded = false
+                if (valueChanged) {
+                    childrenExpanded = false
+                    childrenWidgets.clear()
+                    setting.children?.forEach {
+                        childrenWidgets.add(SettingWidgetFactory.create(it))
+                    }
+                    super.init()
+                }
+
+                ChatUtils.sendWithPrefix("Selected: $selectedValue")
+            }
+
+            dropDown.x = x
+            dropDown.y = y + height + (index * (height / 2))
+            dropDown.width = width
+            dropDown.height = height / 2
+
+            selectionOptions.add(dropDown)
         }
 
-        setting.children?.forEach { child ->
-            childrenWidgets.add(SettingWidgetFactory.create(child))
+        setting.children?.forEach {
+            childrenWidgets.add(SettingWidgetFactory.create(it))
         }
+
+        super.init()
     }
 
     override fun render(ctx: DrawContext, mouseX: Int, mouseY: Int, delta: Float) {
-        super.renderChildrenIfExpanded(ctx, mouseX, mouseY, delta)
+        renderChildrenIfExpanded(ctx, mouseX, mouseY, delta)
         ctx.fill(x, y, x + width, y + height, backgroundColor)
         ScreenUtil.drawBorder(ctx, x, y, x + width, y + height, borderSize, borderColor)
 
@@ -77,10 +101,23 @@ class EnumSettingWidget<T : Enum<T>>(
             0xFFFFFFFF.toInt(),
             false
         )
+        if (childrenExpanded){
+            childrenWidgets.forEach {
+                it.render(ctx, mouseX, mouseY, delta)
+            }
+        }
 
         if (selectionMenuExpanded) {
             selectionOptions.forEach {
                 it.render(ctx)
+            }
+        }
+    }
+
+    fun renderChildrenIfExpanded(ctx: DrawContext, mouseX: Int, mouseY: Int, delta: Float){
+        if (childrenExpanded) {
+            childrenWidgets.forEach {
+                it.render(ctx, mouseX, mouseY, delta)
             }
         }
     }
@@ -97,7 +134,7 @@ class EnumSettingWidget<T : Enum<T>>(
         }
         val titleEndYHeight = y+height/2
         val selectorEndYHeight = y+height
-        if (clickY in y..titleEndYHeight) { // top for children expanding
+        if (clickY in y..titleEndYHeight && click.button() == 1) { // top for children expanding
             childrenExpanded = !childrenExpanded
             selectionMenuExpanded = false
             return true

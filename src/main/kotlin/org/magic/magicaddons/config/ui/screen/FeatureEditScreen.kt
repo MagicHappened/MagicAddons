@@ -3,11 +3,14 @@ package org.magic.magicaddons.config.ui.screen
 import net.minecraft.client.gui.Click
 import net.minecraft.client.gui.DrawContext
 import net.minecraft.client.gui.screen.Screen
+import net.minecraft.client.input.CharInput
+import net.minecraft.client.input.KeyInput
 import net.minecraft.text.Text
 import org.magic.magicaddons.config.MagicAddonsConfigJsonHandler
 import org.magic.magicaddons.config.data.SettingNode
 import org.magic.magicaddons.config.ui.feature.SettingWidget
 import org.magic.magicaddons.config.ui.feature.SettingWidgetFactory
+import org.magic.magicaddons.config.ui.feature.TextSettingWidget
 import org.magic.magicaddons.features.Feature
 import org.magic.magicaddons.features.FeatureManager
 import org.magic.magicaddons.util.ScreenUtil
@@ -68,7 +71,21 @@ class FeatureEditScreen(
         )
     }
 
-    // todo change this to react to different widgets
+    override fun charTyped(input: CharInput): Boolean {
+        baseChildrenWidgets.forEach {
+            it.charTyped(input)
+        }
+        return super.charTyped(input)
+    }
+
+    override fun keyPressed(input: KeyInput): Boolean {
+        baseChildrenWidgets.forEach {
+            it.keyPressed(input)
+        }
+        return super.keyPressed(input)
+    }
+
+
     override fun mouseClicked(click: Click, doubled: Boolean): Boolean {
         baseChildrenWidgets.forEach {
             if (it.mouseClicked(click, doubled))
