@@ -6,7 +6,7 @@ import net.minecraft.component.DataComponentTypes
 import net.minecraft.entity.player.PlayerEntity
 import net.minecraft.item.ItemStack
 import org.magic.magicaddons.data.SkyblockIsland
-import java.util.Base64
+import java.util.*
 
 object PlayerUtils {
     var location: SkyblockIsland? = null

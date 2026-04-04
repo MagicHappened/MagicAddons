@@ -1,7 +1,5 @@
 package org.magic.magicaddons.features.debug
 
-import com.google.gson.JsonParser
-import net.minecraft.component.DataComponentTypes
 import net.minecraft.entity.Entity
 import net.minecraft.entity.EquipmentSlot
 import net.minecraft.entity.LivingEntity
@@ -20,7 +18,6 @@ import org.magic.magicaddons.features.Feature
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.PlayerUtils
 import java.net.URI
-import java.util.*
 
 object  MobHitDebugInfo : Feature() {
     init {

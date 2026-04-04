@@ -11,8 +11,6 @@ import org.magic.magicaddons.config.data.SettingNode
 import org.magic.magicaddons.config.ui.feature.SettingWidget
 import org.magic.magicaddons.config.ui.feature.SettingWidgetFactory
 import org.magic.magicaddons.features.Feature
-import org.magic.magicaddons.features.FeatureManager
-import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.ScreenUtil
 
 class FeatureEditScreen(

@@ -6,7 +6,6 @@ import net.minecraft.client.gui.DrawContext
 import net.minecraft.text.Text
 import org.magic.magicaddons.config.data.EnumSetting
 import org.magic.magicaddons.config.ui.DropDownBoxWidget
-import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.ScreenUtil
 
 class EnumSettingWidget<T : Enum<T>>(

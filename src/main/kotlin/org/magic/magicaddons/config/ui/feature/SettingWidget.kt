@@ -1,7 +1,5 @@
 package org.magic.magicaddons.config.ui.feature
 
-import net.minecraft.client.MinecraftClient
-import net.minecraft.client.font.TextRenderer
 import net.minecraft.client.gui.Click
 import net.minecraft.client.gui.DrawContext
 import net.minecraft.client.gui.Drawable
@@ -10,8 +8,6 @@ import net.minecraft.client.input.CharInput
 import net.minecraft.client.input.KeyInput
 import net.minecraft.text.Text
 import org.magic.magicaddons.config.data.SettingNode
-import org.magic.magicaddons.util.ChatUtils
-import org.magic.magicaddons.util.ScreenUtil
 
 abstract class SettingWidget<T>(
     protected val node: SettingNode<T>

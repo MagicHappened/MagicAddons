@@ -2,7 +2,6 @@ package org.magic.magicaddons.util
 
 import net.minecraft.client.MinecraftClient
 import net.minecraft.text.ClickEvent
-import net.minecraft.text.HoverEvent
 import net.minecraft.text.Style
 import net.minecraft.text.Text
 import java.net.URI
