@@ -8,6 +8,7 @@ import net.minecraft.client.gui.Drawable
 import net.minecraft.client.gui.Element
 import net.minecraft.client.input.CharInput
 import net.minecraft.client.input.KeyInput
+import net.minecraft.text.Text
 import org.magic.magicaddons.config.data.SettingNode
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.ScreenUtil
@@ -17,6 +18,8 @@ abstract class SettingWidget<T>(
 ) : Drawable, Element {
 
     abstract val childrenWidgets: List<SettingWidget<*>>?
+
+    abstract var hovered: Boolean
 
     var x: Int = 0
     var y: Int = 0
@@ -48,10 +51,32 @@ abstract class SettingWidget<T>(
 
     abstract override fun render(ctx: DrawContext, mouseX: Int, mouseY: Int, delta: Float)
 
+    open fun renderHovered(ctx: DrawContext, mouseX: Int, mouseY: Int, delta: Float) {
+        val tooltip = node.tooltip
+
+        if (tooltip.isNotBlank()) {
+            ctx.drawTooltip(
+                Text.literal(tooltip),
+                mouseX + 8,
+                mouseY + 8
+            )
+        }
+    }
 
     override fun mouseClicked(click: Click, doubled: Boolean): Boolean {
-        return click.x.toInt() in x..x+width &&
-                click.y.toInt() in y..y+height
+        return isMouseOver(click.x, click.y)
+    }
+
+    override fun isMouseOver(mouseX: Double, mouseY: Double): Boolean {
+        return mouseX.toInt() in x..x+width &&
+                mouseY.toInt() in y..y+height
+    }
+
+    override fun mouseMoved(mouseX: Double, mouseY: Double) {
+        childrenWidgets?.forEach {
+            it.mouseMoved(mouseX, mouseY)
+        }
+        hovered = isMouseOver(mouseX, mouseY)
     }
 
     override fun isFocused(): Boolean = isFocused

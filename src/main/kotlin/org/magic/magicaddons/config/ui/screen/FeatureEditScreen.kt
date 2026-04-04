@@ -83,6 +83,12 @@ class FeatureEditScreen(
         return super.keyPressed(input)
     }
 
+    override fun mouseMoved(mouseX: Double, mouseY: Double) {
+        baseChildrenWidgets.forEach {
+            it.mouseMoved(mouseX, mouseY)
+        }
+    }
+
 
     override fun mouseClicked(click: Click, doubled: Boolean): Boolean {
         baseChildrenWidgets.forEach {

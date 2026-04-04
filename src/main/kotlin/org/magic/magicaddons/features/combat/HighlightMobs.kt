@@ -104,12 +104,12 @@ object HighlightMobs : Feature() {
             val shouldHighlight = PlayerUtils.getSkinHash(player).equals("f2b33640bfb71557e0e1d852287263ceafc9bec205301acf046b7c29fe8cb37b")
 
             if (shouldHighlight) {
-                val minX = player.x - 0.2
+                val minX = player.x - 0.5
                 val minY = player.y
-                val minZ = player.z - 0.2
-                val maxX = player.x + 0.2
+                val minZ = player.z - 0.5
+                val maxX = player.x + 0.5
                 val maxY = player.y + 2.0
-                val maxZ = player.z + 0.2
+                val maxZ = player.z + 0.5
 
                 val box = Box(minX, minY, minZ, maxX, maxY, maxZ)
 

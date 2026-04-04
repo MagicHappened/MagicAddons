@@ -15,6 +15,7 @@ class TextSettingWidget(
 ) : SettingWidget<String>(setting) {
 
     override var childrenExpanded: Boolean = false
+    override var hovered: Boolean = false
     override val childrenWidgets: List<SettingWidget<*>>? = null
     val textFieldPadding: Int = 1
     val textPadding: Int = 2
@@ -80,6 +81,9 @@ class TextSettingWidget(
             0xFFCCCCCC.toInt(),
             false
         )
+        if (hovered){
+            renderHovered(ctx, mouseX, mouseY, delta)
+        }
     }
 
     override fun mouseClicked(click: Click, doubled: Boolean): Boolean {

@@ -18,6 +18,7 @@ class EnumSettingWidget<T : Enum<T>>(
     override val childrenWidgets: MutableList<SettingWidget<*>> = mutableListOf()
 
     override var childrenExpanded: Boolean = false
+    override var hovered: Boolean = false
     var selectionMenuExpanded = false
 
     val selectionOptions: MutableList<DropDownBoxWidget<T>> = mutableListOf()
@@ -110,6 +111,10 @@ class EnumSettingWidget<T : Enum<T>>(
             selectionOptions.forEach {
                 it.render(ctx)
             }
+        }
+
+        if (hovered) {
+            renderHovered(ctx, mouseX, mouseY, delta)
         }
     }
 

@@ -18,6 +18,7 @@ class BooleanSettingWidget(
     private val checkbox = CheckboxWidget(checked = setting.value)
     override val childrenWidgets: MutableList<SettingWidget<*>> = mutableListOf()
     override var childrenExpanded: Boolean = false
+    override var hovered: Boolean = false
 
     override fun init() {
 
@@ -53,7 +54,9 @@ class BooleanSettingWidget(
             false
         )
 
-        renderChildrenIfExpanded(ctx, mouseX, mouseY, delta)
+        if (hovered) {
+            renderHovered(ctx, mouseX, mouseY, delta)
+        }
     }
 
     fun renderChildrenIfExpanded(ctx: DrawContext, mouseX: Int, mouseY: Int, delta: Float){
