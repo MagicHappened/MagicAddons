@@ -1,0 +1,110 @@
+package org.magic.magicaddons.util.world
+
+import net.minecraft.client.MinecraftClient
+import net.minecraft.client.render.DrawStyle
+import net.minecraft.client.render.RenderTickCounter
+import net.minecraft.client.world.ClientWorld
+import net.minecraft.entity.Entity
+import net.minecraft.entity.decoration.ArmorStandEntity
+import net.minecraft.entity.player.PlayerEntity
+import net.minecraft.world.EntityList
+import net.minecraft.world.debug.gizmo.GizmoDrawing
+import org.magic.magicaddons.data.EntityInfo
+import org.magic.magicaddons.events.EventBus
+import org.magic.magicaddons.events.world.OnEntityAdded
+import org.magic.magicaddons.events.world.OnEntityRemoved
+import org.magic.magicaddons.events.world.OnWorldTickEvent
+import kotlin.math.sqrt
+
+object WorldEntities {
+
+
+    @JvmStatic
+    var renderTickCounter: RenderTickCounter? = null
+
+    private var tickCounter = 0
+    private const val TICKS_BETWEEN_UPDATE = 5
+
+    //entity list from world tick
+    private var entityList: EntityList? = null
+
+    //maintained entity info
+    var entityInfoList: List<EntityInfo>? = null
+
+    private var entityMapPrev: Map<String, EntityInfo> = emptyMap()
+    private var entityMapCurr: Map<String, EntityInfo> = emptyMap()
+
+    private val addedEntities = mutableListOf<EntityInfo>()
+    private val removedEntities = mutableListOf<EntityInfo>()
+
+
+
+
+    @JvmStatic
+    fun onWorldTick(entityList: EntityList) {
+        this.entityList = entityList
+        EventBus.post(OnWorldTickEvent())
+        tickCounter++
+        if (tickCounter < TICKS_BETWEEN_UPDATE) return
+        tickCounter = 0
+        update()
+
+    }
+
+    private fun update() {
+        val client = MinecraftClient.getInstance()
+        val player = client.player ?: return
+        val world = client.world ?: return
+
+
+        val newList = mutableListOf<EntityInfo>()
+        val newMap = mutableMapOf<String, EntityInfo>()
+
+        entityList?.forEach { entity ->
+            if (entity is ArmorStandEntity && isNearPlayerEntity(world, entity)) return@forEach
+
+            val armorStandTags = if (entity is PlayerEntity) {
+                world.getOtherEntities(null, entity.boundingBox.expand(0.5, 2.0, 0.5))
+                    .filterIsInstance<ArmorStandEntity>()
+                    .mapNotNull { it.customName?.string }
+            } else null
+
+            val distance = sqrt(entity.squaredDistanceTo(player))
+
+            val info = EntityInfo(entity, armorStandTags, distance)
+            newList += info
+            newMap[entity.uuidAsString] = info // use UUID as key
+        }
+
+        addedEntities.clear()
+        removedEntities.clear()
+
+        addedEntities += newMap.filterKeys { it !in entityMapPrev }.values
+        removedEntities += entityMapPrev.filterKeys { it !in newMap }.values
+
+        if (addedEntities.isNotEmpty()) {
+            EventBus.post(OnEntityAdded(addedEntities))
+        }
+        if (removedEntities.isNotEmpty()) {
+            EventBus.post(OnEntityRemoved(removedEntities))
+        }
+
+        entityInfoList = newList
+        entityMapPrev = entityMapCurr
+        entityMapCurr = newMap
+    }
+
+    private fun isNearPlayerEntity(world: ClientWorld, armorStand: ArmorStandEntity): Boolean {
+        return world.players.any { it.squaredDistanceTo(armorStand) < 2.0 }
+    }
+
+    fun renderEntityBoundingBox(entity: Entity) {
+        val box = entity.getDimensions(entity.pose).getBoxAt(entity.getLerpedPos(renderTickCounter?.getTickProgress(false) ?: 0F))
+
+        GizmoDrawing.box(
+            box,
+            DrawStyle.stroked(0xFF00FF00.toInt(), 4f)
+        ).ignoreOcclusion()
+    }
+
+}

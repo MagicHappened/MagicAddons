@@ -21,6 +21,15 @@ sealed class SettingNode<T>(
         }
     }
     protected abstract fun parseValue(value: String): T
+
+    inline fun <reified R : SettingNode<*>> getChild(key: String): R? {
+        return children?.filterIsInstance<R>()?.firstOrNull { it.key == key }
+    }
+
+    inline fun <reified R : SettingNode<*>> getChildOrThrow(key: String): R {
+        return getChild<R>(key) ?: throw IllegalStateException("No child with key '$key' of type ${R::class.java.name}")
+    }
+
 }
 
 open class BooleanSetting(

@@ -7,7 +7,9 @@
     "ClientPlayNetworkHandlerMixin",
     "ClientWorldMixin",
     "ParticleManagerMixin",
-    "ClientPlayerInteractionManagerMixin"
+    "ClientPlayerInteractionManagerMixin",
+    "WorldRendererMixin",
+    "EntityMixin"
   ],
   "injectors": {
     "defaultRequire": 1

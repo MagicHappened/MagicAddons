@@ -1,18 +1,19 @@
 package org.magic.magicaddons.features.combat
 
-import net.minecraft.client.render.DrawStyle
+import net.minecraft.entity.Entity
 import net.minecraft.entity.player.PlayerEntity
-import net.minecraft.util.math.Box
-import net.minecraft.world.debug.gizmo.GizmoDrawing
 import org.magic.magicaddons.config.data.BooleanSetting
 import org.magic.magicaddons.config.data.EnumSetting
 import org.magic.magicaddons.config.data.TextSetting
+import org.magic.magicaddons.data.EntityInfo
 import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.events.EventHandler
+import org.magic.magicaddons.events.world.OnEntityAdded
+import org.magic.magicaddons.events.world.OnEntityRemoved
 import org.magic.magicaddons.events.world.OnWorldTickEvent
 import org.magic.magicaddons.features.Feature
 import org.magic.magicaddons.util.PlayerUtils
-import org.magic.magicaddons.util.WorldEntities
+import org.magic.magicaddons.util.world.WorldEntities
 
 
 object HighlightMobs : Feature() {
@@ -87,24 +88,15 @@ object HighlightMobs : Feature() {
         )
     }
 
+    var highlightedEntityList: MutableList<Entity> = mutableListOf()
+
+
     init {
         EventBus.register(this)
     }
 
-    // todo change logic based on settings
-    @EventHandler
-    fun onWorldTick(event: OnWorldTickEvent) {
-        if (!baseSetting.value) return
-
-        WorldEntities.entityList.forEach { info ->
-            val player = info.entity
-            if (player !is PlayerEntity) return@forEach
-
-            // littlefoot skin hash: f2b33640bfb71557e0e1d852287263ceafc9bec205301acf046b7c29fe8cb37b
-            val shouldHighlight = PlayerUtils.getSkinHash(player).equals("f2b33640bfb71557e0e1d852287263ceafc9bec205301acf046b7c29fe8cb37b")
-
-            if (shouldHighlight) {
-                val minX = player.x - 0.5
+    /*
+    val minX = player.x - 0.5
                 val minY = player.y
                 val minZ = player.z - 0.5
                 val maxX = player.x + 0.5
@@ -112,16 +104,55 @@ object HighlightMobs : Feature() {
                 val maxZ = player.z + 0.5
 
                 val box = Box(minX, minY, minZ, maxX, maxY, maxZ)
-
-                GizmoDrawing.box(
+    GizmoDrawing.box(
                     box,
                     DrawStyle.stroked(0xFFFF0000.toInt(), 2f) // ARGB red
                 ).ignoreOcclusion()
-            }
 
+    */
+    // change to only use WorldEntities instead of event
 
+    // todo change to map with entity info boolean then just based on the boolean render or not
+
+    @EventHandler
+    fun onEntityAdded(event: OnEntityAdded) {
+        event.addedEntityList.forEach {
+            if (shouldHighlight(it))
+                highlightedEntityList.add(it.entity)
         }
     }
+
+    @EventHandler
+    fun onEntityRemoved(event: OnEntityRemoved) {
+        event.removedEntityList.forEach {
+            highlightedEntityList.remove(it.entity)
+        }
+    }
+    fun shouldHighlight(entity: EntityInfo): Boolean {
+
+    }
+
+    @EventHandler
+    fun onWorldTick(onWorldTick: OnWorldTickEvent) {
+        if (!baseSetting.value) return
+
+        highlightedEntityList?.forEach { info ->
+            val entity = info.entity
+            if (entity !is PlayerEntity) return@forEach
+
+            // littlefoot : f2b33640bfb71557e0e1d852287263ceafc9bec205301acf046b7c29fe8cb37b // do NOT delete
+            val shouldHighlight = PlayerUtils.getSkinHash(entity) ==
+                    "213cf0ca79a3611b8e05fe9e264fb2bf8d27e464dc12dc6e95dd0ae0c335a561"
+
+
+            if (shouldHighlight) {
+                WorldEntities.renderEntityBoundingBox(entity)
+            }
+        }
+    }
+
+
+
 
 
 }
