@@ -40,7 +40,6 @@ class EnumSettingWidget<T : Enum<T>>(
                     super.init()
                 }
 
-                ChatUtils.sendWithPrefix("Selected: $selectedValue")
             }
 
             dropDown.x = x

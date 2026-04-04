@@ -61,12 +61,42 @@ class EnumSetting<T : Enum<T>>(
     key: String,
     displayName: String,
     tooltip: String,
-    override var value: T,
+    value: T,
     val childrenProvider: ((T) -> List<SettingNode<*>>)?
 ) : SettingNode<T>(key, displayName, tooltip, value) {
 
+    private var cachedChildren: List<SettingNode<*>>? =
+        childrenProvider?.invoke(value)
+
     override val children: List<SettingNode<*>>?
-        get() = childrenProvider?.invoke(value)
+        get() {
+            return cachedChildren
+        }
+
+    override var value: T = value
+        set(newValue) {
+            if (field == newValue) {return}
+            field = newValue
+            cachedChildren = childrenProvider?.invoke(newValue)
+        }
+
+    override fun serializeSettings(): MutableMap<String, String> {
+        val map = super.serializeSettings()
+        children?.forEach { child ->
+            map.putAll(child.serializeSettings())
+        }
+        return map
+    }
+
+    override fun updateSettings(settings: MutableMap<String, String>) {
+        super.updateSettings(settings)
+        children?.forEach { child ->
+            child.updateSettings(settings)
+        }
+    }
+
+
+
 
     override fun parseValue(value: String): T {
         return java.lang.Enum.valueOf(this.value.javaClass, value)

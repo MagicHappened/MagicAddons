@@ -9,6 +9,7 @@ import net.minecraft.client.gui.Element
 import net.minecraft.client.input.CharInput
 import net.minecraft.client.input.KeyInput
 import org.magic.magicaddons.config.data.SettingNode
+import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.ScreenUtil
 
 abstract class SettingWidget<T>(
@@ -79,4 +80,7 @@ abstract class SettingWidget<T>(
         return super.keyPressed(input)
     }
 
+    override fun toString(): String {
+        return "Display Name: ${node.displayName} Value: ${node.value}"
+    }
 }

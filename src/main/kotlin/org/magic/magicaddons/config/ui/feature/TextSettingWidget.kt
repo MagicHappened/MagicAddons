@@ -22,7 +22,7 @@ class TextSettingWidget(
     val textWidget: TextFieldWidget by lazy {
         TextFieldWidget(
             MinecraftClient.getInstance().textRenderer,
-            width - (borderSize + textFieldPadding) * 2  ,
+            width - (borderSize + textFieldPadding) * 2,
             20, // placeholder, changed in init
             Text.literal("")
         )
@@ -36,6 +36,10 @@ class TextSettingWidget(
         textWidget.height = height - (borderSize + textFieldPadding + textPadding) * 2 - textRenderer.fontHeight
         textWidget.setMaxLength(256)
         textWidget.text = setting.value
+        textWidget.setChangedListener {
+            setting.value = it
+        }
+
         super.init() // kinda redundant
     }
 
@@ -45,7 +49,8 @@ class TextSettingWidget(
         if (super.charTyped(input))
             return true
         if (textWidget.isFocused){
-            textWidget.charTyped(input)
+            if (textWidget.charTyped(input))
+                return true
         }
         return false
     }
@@ -54,7 +59,8 @@ class TextSettingWidget(
         if (super.keyPressed(input))
             return true
         if (textWidget.isFocused){
-            textWidget.keyPressed(input)
+            if (textWidget.keyPressed(input))
+                return true
         }
         return false
     }

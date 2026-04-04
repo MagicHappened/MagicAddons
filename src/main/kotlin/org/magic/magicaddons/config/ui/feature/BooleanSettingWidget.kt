@@ -76,7 +76,6 @@ class BooleanSettingWidget(
             return false
         if (checkbox.mouseClicked(click, doubled)) {
             setting.value = !setting.value
-            ChatUtils.sendWithPrefix("Current value: ${setting.value}")
             return true
         }
         if (click.button() == 1){
