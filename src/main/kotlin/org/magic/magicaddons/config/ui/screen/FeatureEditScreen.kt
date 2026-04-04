@@ -20,8 +20,6 @@ class FeatureEditScreen(
     val parent: Screen?
 ) : Screen(Text.literal(feature.displayName)) {
 
-    var userClosed = false
-
     val childrenSettings: List<SettingNode<*>> = feature.baseSetting.children
         ?: throw IllegalStateException("Cannot construct a feature edit screen for a feature with no nested settings")
 
@@ -95,14 +93,11 @@ class FeatureEditScreen(
     }
 
     override fun close() {
-        userClosed = true
         client.setScreen(parent)
     }
 
     override fun removed() {
         FeatureManager.syncToConfig()
-        if (!userClosed) {
-            MagicAddonsConfigJsonHandler.save()
-        }
+        MagicAddonsConfigJsonHandler.save()
     }
 }

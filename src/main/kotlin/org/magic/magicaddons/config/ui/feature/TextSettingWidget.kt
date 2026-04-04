@@ -24,7 +24,7 @@ class TextSettingWidget(
             MinecraftClient.getInstance().textRenderer,
             width - (borderSize + textFieldPadding) * 2  ,
             20, // placeholder, changed in init
-            Text.literal(setting.value)
+            Text.literal("")
         )
     }
 
@@ -35,6 +35,7 @@ class TextSettingWidget(
         textWidget.y = y + borderSize + textFieldPadding + textRenderer.fontHeight + textPadding * 2
         textWidget.height = height - (borderSize + textFieldPadding + textPadding) * 2 - textRenderer.fontHeight
         textWidget.setMaxLength(256)
+        textWidget.text = setting.value
         super.init() // kinda redundant
     }
 

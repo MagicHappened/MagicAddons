@@ -85,7 +85,7 @@ class EnumSettingWidget<T : Enum<T>>(
         // draw actual setting value
         ctx.drawText(
             textRenderer,
-            Text.literal("${setting.value}: ${setting.value}"),
+            Text.literal("${setting.value}"),
             x + textXPad,
             valueY,
             0xFFFFFFFF.toInt(),
@@ -132,14 +132,12 @@ class EnumSettingWidget<T : Enum<T>>(
             }
             return false
         }
-        val titleEndYHeight = y+height/2
-        val selectorEndYHeight = y+height
-        if (clickY in y..titleEndYHeight && click.button() == 1) { // top for children expanding
+        if (clickY in y..y+height && click.button() == 1) { // top for children expanding
             childrenExpanded = !childrenExpanded
             selectionMenuExpanded = false
             return true
         }
-        if (clickY in titleEndYHeight..selectorEndYHeight) { // button for dropdown overlay
+        if (clickY in y..y+height && click.button() == 0) { // button for dropdown overlay
             selectionMenuExpanded = !selectionMenuExpanded
             return true
         }

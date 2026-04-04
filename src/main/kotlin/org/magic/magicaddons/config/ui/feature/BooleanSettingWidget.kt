@@ -68,12 +68,15 @@ class BooleanSettingWidget(
     override fun mouseClicked(click: Click, doubled: Boolean): Boolean {
         if (childrenExpanded){
             childrenWidgets.forEach {
-                if (it.mouseClicked(click, doubled)) return true
+                if (it.mouseClicked(click, doubled))
+                    return true
             }
         }
-        if (!super.mouseClicked(click, doubled)) return false
+        if (!super.mouseClicked(click, doubled))
+            return false
         if (checkbox.mouseClicked(click, doubled)) {
             setting.value = !setting.value
+            ChatUtils.sendWithPrefix("Current value: ${setting.value}")
             return true
         }
         if (click.button() == 1){
