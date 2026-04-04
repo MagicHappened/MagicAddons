@@ -28,7 +28,6 @@ class ConfigScreen(title: Text, val parent: Screen?) : Screen(title) {
 
     override fun init() {
         MagicAddonsConfigJsonHandler.load()
-        FeatureManager.syncFromConfig()
         categories = FeatureManager.features
             .groupBy { it.category }
             .mapValues { it.value.toMutableList() }
@@ -77,7 +76,6 @@ class ConfigScreen(title: Text, val parent: Screen?) : Screen(title) {
     }
 
     override fun removed() {
-        FeatureManager.syncToConfig()
         MagicAddonsConfigJsonHandler.save()
     }
 

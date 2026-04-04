@@ -2,14 +2,14 @@ package org.magic.magicaddons.features
 
 import org.magic.magicaddons.config.MagicAddonsConfigJsonHandler.configMap
 import org.magic.magicaddons.features.combat.HighlightMobs
-import org.magic.magicaddons.features.debug.MobHitSkin
+import org.magic.magicaddons.features.debug.MobHitDebugInfo
 import org.magic.magicaddons.features.mining.HidePowderCoatingParticles
 
 object FeatureManager {
     val features = mutableListOf(
         HidePowderCoatingParticles,
         HighlightMobs,
-        MobHitSkin
+        MobHitDebugInfo
     ) // need to call objects somehow for initialization
 
 

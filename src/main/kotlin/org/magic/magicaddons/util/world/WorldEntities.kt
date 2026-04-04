@@ -14,6 +14,7 @@ import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.events.world.OnEntityAdded
 import org.magic.magicaddons.events.world.OnEntityRemoved
 import org.magic.magicaddons.events.world.OnWorldTickEvent
+import org.magic.magicaddons.features.combat.HighlightMobs
 import kotlin.math.sqrt
 
 object WorldEntities {
@@ -21,9 +22,6 @@ object WorldEntities {
 
     @JvmStatic
     var renderTickCounter: RenderTickCounter? = null
-
-    private var tickCounter = 0
-    private const val TICKS_BETWEEN_UPDATE = 5
 
     //entity list from world tick
     private var entityList: EntityList? = null
@@ -42,11 +40,11 @@ object WorldEntities {
 
     @JvmStatic
     fun onWorldTick(entityList: EntityList) {
+
+        if (!HighlightMobs.baseSetting.value) return // change this to include more settings that depend on world tick
+
         this.entityList = entityList
         EventBus.post(OnWorldTickEvent())
-        tickCounter++
-        if (tickCounter < TICKS_BETWEEN_UPDATE) return
-        tickCounter = 0
         update()
 
     }
@@ -61,7 +59,7 @@ object WorldEntities {
         val newMap = mutableMapOf<String, EntityInfo>()
 
         entityList?.forEach { entity ->
-            if (entity is ArmorStandEntity && isNearPlayerEntity(world, entity)) return@forEach
+            if (entity is ArmorStandEntity && isNearPlayerEntity(world, entity)) return@forEach //todo improve this check
 
             val armorStandTags = if (entity is PlayerEntity) {
                 world.getOtherEntities(null, entity.boundingBox.expand(0.5, 2.0, 0.5))

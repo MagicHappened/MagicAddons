@@ -1,11 +1,16 @@
 package org.magic.magicaddons.features.combat
 
 import net.minecraft.entity.Entity
+import net.minecraft.entity.EquipmentSlot
+import net.minecraft.entity.LivingEntity
+import net.minecraft.entity.decoration.ArmorStandEntity
 import net.minecraft.entity.player.PlayerEntity
+import net.minecraft.item.ItemStack
 import org.magic.magicaddons.config.data.BooleanSetting
 import org.magic.magicaddons.config.data.EnumSetting
 import org.magic.magicaddons.config.data.TextSetting
 import org.magic.magicaddons.data.EntityInfo
+import org.magic.magicaddons.events.ConfigChangedEvent
 import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.events.EventHandler
 import org.magic.magicaddons.events.world.OnEntityAdded
@@ -52,7 +57,7 @@ object HighlightMobs : Feature() {
                                         TextSetting(
                                             key = "EntityTypePlayerSkinHash",
                                             displayName = "Skin Hash Value",
-                                            tooltip = "The skin hash value to detect",
+                                            tooltip = "The skin hash value to detect (get with mob hit debug)",
                                             value = "f2b33640bfb71557e0e1d852287263ceafc9bec205301acf046b7c29fe8cb37b"
                                         )
                                     )
@@ -61,12 +66,26 @@ object HighlightMobs : Feature() {
                                         TextSetting(
                                             key = "EntityTypeMobPathValue",
                                             displayName = "Mob Path",
-                                            tooltip = "The mob path value to detect",
+                                            tooltip = "The mob path value to detect (get with mob hit debug)",
                                             value = "entity.minecraft.pig"
                                         )
                                     )
                                 }
                             }
+                        )
+                    )
+                ),
+                BooleanSetting(
+                    key = "EntityEquipmentDetectionEnabled",
+                    displayName = "Entity Helmet",
+                    tooltip = "Highlight based on the entity helmet filtering",
+                    value = false,
+                    children = listOf(
+                        TextSetting(
+                            key = "EntityEquipmentHelmetSkullHash",
+                            displayName = "Entity Helmet",
+                            tooltip = "The skull hash to look for on the entity (get with mob hit debug)",
+                            value = "a8abb471db0ab78703011979dc8b40798a941f3a4dec3ec61cbeec2af8cffe8" //default rat helmet skin
                         )
                     )
                 ),
@@ -88,66 +107,139 @@ object HighlightMobs : Feature() {
         )
     }
 
-    var highlightedEntityList: MutableList<Entity> = mutableListOf()
+    var highlightedEntityList: MutableList<Entity>? = null
 
+    fun initializeHighlightedEntityList() {
+
+        highlightedEntityList = mutableListOf()
+
+        WorldEntities.entityInfoList?.forEach {
+            if (shouldHighlight(it)){
+                highlightedEntityList?.add(it.entity)
+            }
+        }
+    }
 
     init {
         EventBus.register(this)
     }
 
-    /*
-    val minX = player.x - 0.5
-                val minY = player.y
-                val minZ = player.z - 0.5
-                val maxX = player.x + 0.5
-                val maxY = player.y + 2.0
-                val maxZ = player.z + 0.5
-
-                val box = Box(minX, minY, minZ, maxX, maxY, maxZ)
-    GizmoDrawing.box(
-                    box,
-                    DrawStyle.stroked(0xFFFF0000.toInt(), 2f) // ARGB red
-                ).ignoreOcclusion()
-
-    */
-    // change to only use WorldEntities instead of event
-
-    // todo change to map with entity info boolean then just based on the boolean render or not
+    @EventHandler
+    fun onConfigChanged(event: ConfigChangedEvent) {
+        highlightedEntityList = null
+    }
 
     @EventHandler
     fun onEntityAdded(event: OnEntityAdded) {
+        if (!baseSetting.value) return
+
+        highlightedEntityList ?: initializeHighlightedEntityList()
+
         event.addedEntityList.forEach {
             if (shouldHighlight(it))
-                highlightedEntityList.add(it.entity)
+                highlightedEntityList?.add(it.entity)
         }
     }
 
     @EventHandler
     fun onEntityRemoved(event: OnEntityRemoved) {
+        if (!baseSetting.value) return
+
+        highlightedEntityList ?: initializeHighlightedEntityList()
+
         event.removedEntityList.forEach {
-            highlightedEntityList.remove(it.entity)
+            highlightedEntityList?.remove(it.entity)
         }
     }
-    fun shouldHighlight(entity: EntityInfo): Boolean {
 
+    fun shouldHighlight(info: EntityInfo): Boolean {
+        val entity = info.entity
+
+        if (!baseSetting.value) return false
+
+        var matches = true
+        var hasAnyFilter = false
+
+        val entityTypeSetting = baseSetting.getChild<BooleanSetting>("EntityTypeEnabled")
+        if (entityTypeSetting?.value == true) {
+            hasAnyFilter = true
+
+            val enumSetting = entityTypeSetting
+                .getChild<EnumSetting<EntityTypeDetection>>("EntityTypePlayerOtherEnum")
+
+            val result = when (enumSetting?.value) {
+                EntityTypeDetection.Player -> {
+                    if (entity !is PlayerEntity) return false
+
+                    val expectedHash = enumSetting
+                        .getChild<TextSetting>("EntityTypePlayerSkinHash")?.value
+                        ?: return false
+
+                    val actualHash = PlayerUtils.getSkinHash(entity)
+                    actualHash == expectedHash
+                }
+
+                EntityTypeDetection.Other -> {
+                    val expectedPath = enumSetting
+                        .getChild<TextSetting>("EntityTypeMobPathValue")?.value
+                        ?: return false
+
+                    entity.type.toString().contains(expectedPath)
+                }
+
+                null -> false
+            }
+
+            matches = result
+        }
+
+        val mobInfoSetting = baseSetting.getChild<BooleanSetting>("MobInfoEnabled")
+        if (mobInfoSetting?.value == true) {
+            hasAnyFilter = true
+
+            val filter = mobInfoSetting
+                .getChild<TextSetting>("MobInfoContains")?.value
+                ?: return false
+
+            val matchesName =
+                entity.customName?.string?.contains(filter, true) == true
+
+            val matchesArmorStandTag =
+                info.armorStandTags?.any { it.contains(filter, true) } == true
+
+            matches = matches && (matchesName || matchesArmorStandTag)
+        }
+
+        val entityEquipmentDetection = baseSetting.getChild<BooleanSetting>("EntityEquipmentDetectionEnabled")
+        if (entityEquipmentDetection?.value == true) {
+            hasAnyFilter = true
+
+            if (entity !is LivingEntity) return false
+
+            val expectedHash = entityEquipmentDetection
+                .getChild<TextSetting>("EntityEquipmentHelmetSkullHash")?.value
+                ?: return false
+
+            val headStack = entity.getEquippedStack(EquipmentSlot.HEAD)
+
+            val actualHash = PlayerUtils.getSkinHash(headStack)
+
+            val result = actualHash == expectedHash
+
+            matches = matches && result
+        }
+
+        if (!hasAnyFilter) return false
+
+        return matches
     }
 
     @EventHandler
     fun onWorldTick(onWorldTick: OnWorldTickEvent) {
-        if (!baseSetting.value) return
+        highlightedEntityList ?: initializeHighlightedEntityList()
 
-        highlightedEntityList?.forEach { info ->
-            val entity = info.entity
-            if (entity !is PlayerEntity) return@forEach
-
-            // littlefoot : f2b33640bfb71557e0e1d852287263ceafc9bec205301acf046b7c29fe8cb37b // do NOT delete
-            val shouldHighlight = PlayerUtils.getSkinHash(entity) ==
-                    "213cf0ca79a3611b8e05fe9e264fb2bf8d27e464dc12dc6e95dd0ae0c335a561"
-
-
-            if (shouldHighlight) {
-                WorldEntities.renderEntityBoundingBox(entity)
-            }
+        highlightedEntityList?.forEach {
+            WorldEntities.renderEntityBoundingBox(it)
         }
     }
 

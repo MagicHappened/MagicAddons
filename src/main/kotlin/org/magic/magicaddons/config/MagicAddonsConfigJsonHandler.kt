@@ -2,8 +2,8 @@ package org.magic.magicaddons.config
 
 import com.google.common.reflect.TypeToken
 import com.google.gson.GsonBuilder
-import org.magic.magicaddons.config.data.CategoryMap
-import org.magic.magicaddons.features.Feature
+import org.magic.magicaddons.events.ConfigChangedEvent
+import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.features.FeatureManager
 import java.io.File
 
@@ -25,12 +25,15 @@ object MagicAddonsConfigJsonHandler {
                         >
                 >>() {}.type
         configMap = gson.fromJson(file.readText(), type) ?: mutableMapOf()
+        FeatureManager.syncFromConfig()
         return true
     }
 
     fun save() : Boolean {
+        FeatureManager.syncToConfig()
         file.parentFile.mkdirs()
         file.writeText(gson.toJson(configMap))
+        EventBus.post(ConfigChangedEvent())
         return true
     }
 }

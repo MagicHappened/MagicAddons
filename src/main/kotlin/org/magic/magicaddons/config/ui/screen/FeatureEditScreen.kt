@@ -103,8 +103,6 @@ class FeatureEditScreen(
     }
 
     override fun removed() {
-
-        FeatureManager.syncToConfig()
         MagicAddonsConfigJsonHandler.save()
     }
 }

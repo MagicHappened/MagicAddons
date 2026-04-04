@@ -19,9 +19,6 @@ class MagicAddons : ModInitializer {
         if (!MagicAddonsConfigJsonHandler.load()){
             MagicAddonsConfigJsonHandler.save()
         }
-        else {
-            FeatureManager.syncFromConfig()
-        }
 
     }
 }
