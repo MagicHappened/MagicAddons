@@ -31,6 +31,21 @@ object HighlightMobs : Feature() {
     override val tooltipMessage: String = "Highlights specific mobs of your choosing"
     override val category: String = "combat"
 
+    val entityTypePlayerSkinHash = TextSetting(
+        key = "EntityTypePlayerSkinHash",
+        displayName = "Skin Hash Value",
+        tooltip = "The skin hash value to detect (get with mob hit debug)",
+        value = "f2b33640bfb71557e0e1d852287263ceafc9bec205301acf046b7c29fe8cb37b"
+    )
+
+    val entityTypeMobPathValue = TextSetting(
+        key = "EntityTypeMobPathValue",
+        displayName = "Mob Path",
+        tooltip = "The mob path value to detect (get with mob hit debug)",
+        value = "entity.minecraft.pig"
+    )
+
+
     override val baseSetting: BooleanSetting by lazy {
         BooleanSetting(
             key = "enabled",
@@ -52,22 +67,12 @@ object HighlightMobs : Feature() {
                             childrenProvider = { entityTypeDetection ->
                                 when (entityTypeDetection) {
                                     EntityTypeDetection.Player -> listOf(
-                                        TextSetting(
-                                            key = "EntityTypePlayerSkinHash",
-                                            displayName = "Skin Hash Value",
-                                            tooltip = "The skin hash value to detect (get with mob hit debug)",
-                                            value = "f2b33640bfb71557e0e1d852287263ceafc9bec205301acf046b7c29fe8cb37b"
-                                        )
+                                        entityTypePlayerSkinHash
                                     )
 
                                     EntityTypeDetection.Other -> listOf(
-                                        TextSetting(
-                                            key = "EntityTypeMobPathValue",
-                                            displayName = "Mob Path",
-                                            tooltip = "The mob path value to detect (get with mob hit debug)",
-                                            value = "entity.minecraft.pig"
-                                        )
-                                    )
+                                        entityTypeMobPathValue
+                                    ) // for children provider cant create new instances cuz no saving of old data
                                 }
                             }
                         )
@@ -173,7 +178,10 @@ object HighlightMobs : Feature() {
                         .getChild<TextSetting>("EntityTypePlayerSkinHash")?.value
                         ?: return false
 
+                    if (expectedHash.isBlank()) return true
+
                     val actualHash = PlayerUtils.getSkinHash(entity)
+
                     actualHash == expectedHash
                 }
 

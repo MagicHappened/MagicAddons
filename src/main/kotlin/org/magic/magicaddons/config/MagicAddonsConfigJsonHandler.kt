@@ -25,12 +25,12 @@ object MagicAddonsConfigJsonHandler {
                         >
                 >>() {}.type
         configMap = gson.fromJson(file.readText(), type) ?: mutableMapOf()
-        FeatureManager.syncFromConfig()
+        FeatureManager.syncFromConfigJson()
         return true
     }
 
     fun save() : Boolean {
-        FeatureManager.syncToConfig()
+        FeatureManager.syncToConfigJson()
         file.parentFile.mkdirs()
         file.writeText(gson.toJson(configMap))
         EventBus.post(ConfigChangedEvent())

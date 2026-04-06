@@ -6,6 +6,7 @@ import net.minecraft.client.gui.DrawContext
 import net.minecraft.text.Text
 import org.magic.magicaddons.config.data.EnumSetting
 import org.magic.magicaddons.config.ui.DropDownBoxWidget
+import org.magic.magicaddons.features.FeatureManager
 import org.magic.magicaddons.util.ScreenUtil
 
 class EnumSettingWidget<T : Enum<T>>(
@@ -27,20 +28,7 @@ class EnumSettingWidget<T : Enum<T>>(
         val enumValues = setting.value.javaClass.enumConstants
         enumValues.forEachIndexed { index, enumValue ->
 
-            val dropDown = DropDownBoxWidget(enumValue) { selectedValue ->
-                val valueChanged = setting.value != selectedValue
-                setting.value = selectedValue
-                selectionMenuExpanded = false
-                if (valueChanged) {
-                    childrenExpanded = false
-                    childrenWidgets.clear()
-                    setting.children?.forEach {
-                        childrenWidgets.add(SettingWidgetFactory.create(it))
-                    }
-                    super.init()
-                }
-
-            }
+            val dropDown = DropDownBoxWidget(enumValue) { valueChanged(it) }
 
             dropDown.x = x
             dropDown.y = y + height + (index * (height / 2))
@@ -125,6 +113,23 @@ class EnumSettingWidget<T : Enum<T>>(
         }
     }
 
+    fun valueChanged(selectedValue: T){
+        val valueChanged = setting.value != selectedValue
+        selectionMenuExpanded = false
+        if (valueChanged) {
+            setting.value = selectedValue
+
+            childrenExpanded = false
+            childrenWidgets.clear()
+            setting.children?.forEach {
+                childrenWidgets.add(SettingWidgetFactory.create(it))
+            }
+            super.init()
+            childrenExpanded = true
+        }
+
+    }
+
 
     override fun mouseClicked(click: Click, doubled: Boolean): Boolean {
         val clickX: Int = click.x.toInt()
@@ -155,6 +160,7 @@ class EnumSettingWidget<T : Enum<T>>(
         return false
 
     }
+
 
     override fun getActualHeight(): Int {
         if (!childrenExpanded) return height

@@ -1,13 +1,19 @@
 package org.magic.magicaddons.features.mining
 
 import net.minecraft.client.MinecraftClient
+import net.minecraft.client.particle.Particle
+import net.minecraft.particle.BlockParticleEffect
+import net.minecraft.particle.BlockStateParticleEffect
 import net.minecraft.particle.DustParticleEffect
+import net.minecraft.particle.ParticleEffect
+import net.minecraft.registry.Registries
 import net.minecraft.util.math.Vec3d
 import org.magic.magicaddons.config.data.BooleanSetting
 import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.events.EventHandler
 import org.magic.magicaddons.events.world.AddParticleEvent
 import org.magic.magicaddons.features.Feature
+import org.magic.magicaddons.util.ChatUtils
 
 object HidePowderCoatingParticles : Feature() {
     init {
@@ -17,6 +23,7 @@ object HidePowderCoatingParticles : Feature() {
 
     @EventHandler
     fun onAddParticle(event: AddParticleEvent){
+
         if (!baseSetting.value) return
 
         val dust = event.parameters as? DustParticleEffect ?: return
