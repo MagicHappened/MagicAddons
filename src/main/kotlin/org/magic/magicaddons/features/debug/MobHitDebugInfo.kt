@@ -19,15 +19,9 @@ import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.PlayerUtils
 import java.net.URI
 
-object  MobHitDebugInfo : Feature() {
+object MobHitDebugInfo : Feature() {
     init {
         EventBus.register(this)
-    }
-
-    enum class MobHitInfoOption { //todo implement options for this later
-        SKIN_URL,
-        SKIN_HASH,
-        BOTH
     }
 
     override val id: String = "MobHitDebug"
@@ -35,15 +29,13 @@ object  MobHitDebugInfo : Feature() {
     override val tooltipMessage: String = "On next mob hit will cancel the actual event and print debug information"
     override val category: String = "debug"
 
-    override val baseSetting: BooleanSetting by lazy {
-        BooleanSetting(
-            key = "enabled",
-            displayName = displayName,
-            tooltip = tooltipMessage,
-            value = false
-            //todo add the select option to return
-        )
-    }
+    override val baseSetting: BooleanSetting = BooleanSetting(
+        key = "enabled",
+        displayName = displayName,
+        tooltip = tooltipMessage,
+        value = false
+        //todo add the select option to return
+    )
 
     @EventHandler
     fun onAttackEntity(event: OnAttackEntityEvent) {
@@ -57,7 +49,6 @@ object  MobHitDebugInfo : Feature() {
             else -> attackUnknownDebug(target)
         }
     }
-
 
 
     fun attackPlayerDebug(player: PlayerEntity) {

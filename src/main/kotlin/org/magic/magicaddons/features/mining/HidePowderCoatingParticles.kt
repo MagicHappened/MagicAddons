@@ -39,13 +39,12 @@ object HidePowderCoatingParticles : Feature() {
     override val tooltipMessage: String = "Hides powder coating particles when divan armor is equipped"
     override val category: String = "mining"
 
-    override val baseSetting: BooleanSetting by lazy {
-        BooleanSetting(
+    override val baseSetting: BooleanSetting = BooleanSetting(
             key = "enabled",
             displayName = displayName,
             tooltip = tooltipMessage,
             value = false
         )
-    }
+
 
 }

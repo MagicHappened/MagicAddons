@@ -45,70 +45,68 @@ object HighlightMobs : Feature() {
         value = "entity.minecraft.pig"
     )
 
+    override val baseSetting: BooleanSetting = BooleanSetting(
+        key = "enabled",
+        displayName = displayName,
+        tooltip = tooltipMessage,
+        value = false,
+        children = listOf(
+            BooleanSetting(
+                key = "EntityTypeEnabled",
+                displayName = "Entity Type",
+                tooltip = "If to use an entity type based filtering for mob highlighting",
+                value = false,
+                children = listOf(
+                    EnumSetting<EntityTypeDetection>(
+                        key = "EntityTypePlayerOtherEnum",
+                        displayName = "Entity Type", // just dont display this (only values)
+                        tooltip = "Which entity type detection to use",
+                        value = EntityTypeDetection.Player,
+                        childrenProvider = { entityTypeDetection ->
+                            when (entityTypeDetection) {
+                                EntityTypeDetection.Player -> listOf(
+                                    entityTypePlayerSkinHash
+                                )
 
-    override val baseSetting: BooleanSetting by lazy {
-        BooleanSetting(
-            key = "enabled",
-            displayName = displayName,
-            tooltip = tooltipMessage,
-            value = false,
-            children = listOf(
-                BooleanSetting(
-                    key = "EntityTypeEnabled",
-                    displayName = "Entity Type",
-                    tooltip = "If to use an entity type based filtering for mob highlighting",
-                    value = false,
-                    children = listOf(
-                        EnumSetting<EntityTypeDetection>(
-                            key = "EntityTypePlayerOtherEnum",
-                            displayName = "Entity Type", // just dont display this (only values)
-                            tooltip = "Which entity type detection to use",
-                            value = EntityTypeDetection.Player,
-                            childrenProvider = { entityTypeDetection ->
-                                when (entityTypeDetection) {
-                                    EntityTypeDetection.Player -> listOf(
-                                        entityTypePlayerSkinHash
-                                    )
-
-                                    EntityTypeDetection.Other -> listOf(
-                                        entityTypeMobPathValue
-                                    ) // for children provider cant create new instances cuz no saving of old data
-                                }
+                                EntityTypeDetection.Other -> listOf(
+                                    entityTypeMobPathValue
+                                ) // for children provider cant create new instances cuz no saving of old data
                             }
-                        )
+                        }
                     )
-                ),
-                BooleanSetting(
-                    key = "EntityEquipmentDetectionEnabled",
-                    displayName = "Entity Helmet",
-                    tooltip = "Highlight based on the entity helmet filtering",
-                    value = false,
-                    children = listOf(
-                        TextSetting(
-                            key = "EntityEquipmentHelmetSkullHash",
-                            displayName = "Entity Helmet",
-                            tooltip = "The skull hash to look for on the entity (get with mob hit debug)",
-                            value = "a8abb471db0ab78703011979dc8b40798a941f3a4dec3ec61cbeec2af8cffe8" //default rat helmet skin
-                        )
+                )
+            ),
+            BooleanSetting(
+                key = "EntityEquipmentDetectionEnabled",
+                displayName = "Entity Helmet",
+                tooltip = "Highlight based on the entity helmet filtering",
+                value = false,
+                children = listOf(
+                    TextSetting(
+                        key = "EntityEquipmentHelmetSkullHash",
+                        displayName = "Entity Helmet",
+                        tooltip = "The skull hash to look for on the entity (get with mob hit debug)",
+                        value = "a8abb471db0ab78703011979dc8b40798a941f3a4dec3ec61cbeec2af8cffe8" //default rat helmet skin
                     )
-                ),
-                BooleanSetting(
-                    key = "MobInfoEnabled",
-                    displayName = "Mob Info",
-                    tooltip = "If to use a mob info based filtering for mob highlighting",
-                    value = false,
-                    children = listOf(
-                        TextSetting(
-                            key = "MobInfoContains",
-                            displayName = "Mob Name Contains",
-                            tooltip = "The string which to filter mobs in",
-                            value = "Littlefoot"
-                        )
+                )
+            ),
+            BooleanSetting(
+                key = "MobInfoEnabled",
+                displayName = "Mob Info",
+                tooltip = "If to use a mob info based filtering for mob highlighting",
+                value = false,
+                children = listOf(
+                    TextSetting(
+                        key = "MobInfoContains",
+                        displayName = "Mob Name Contains",
+                        tooltip = "The string which to filter mobs in",
+                        value = "Littlefoot"
                     )
                 )
             )
         )
-    }
+    )
+
 
     var highlightedEntityList: MutableList<Entity>? = null
 
@@ -117,7 +115,7 @@ object HighlightMobs : Feature() {
         highlightedEntityList = mutableListOf()
 
         WorldEntities.entityInfoList?.forEach {
-            if (shouldHighlight(it)){
+            if (shouldHighlight(it)) {
                 highlightedEntityList?.add(it.entity)
             }
         }
@@ -248,9 +246,6 @@ object HighlightMobs : Feature() {
             WorldEntities.renderEntityBoundingBox(it)
         }
     }
-
-
-
 
 
 }
