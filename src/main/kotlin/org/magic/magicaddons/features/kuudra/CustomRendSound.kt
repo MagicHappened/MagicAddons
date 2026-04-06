@@ -11,13 +11,11 @@ import net.minecraft.util.Identifier
 import net.minecraft.util.math.Box
 import net.minecraft.util.math.Vec3d
 import net.minecraft.util.math.random.Random
-import net.minecraft.world.debug.gizmo.GizmoDrawing
 import org.magic.magicaddons.config.data.BooleanSetting
 import org.magic.magicaddons.config.data.TextSetting
 import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.events.EventHandler
 import org.magic.magicaddons.events.world.AddParticleEvent
-import org.magic.magicaddons.events.world.OnWorldTickEvent
 import org.magic.magicaddons.features.Feature
 import tech.thatgravyboat.skyblockapi.api.location.LocationAPI
 import tech.thatgravyboat.skyblockapi.api.location.SkyBlockIsland
@@ -131,33 +129,6 @@ object CustomRendSound : Feature() {
 
          */
 
-    }
-    @EventHandler
-    private fun onWorldTick(event: OnWorldTickEvent) {
-        if (!baseSetting.value) return
-        val screen = MinecraftClient.getInstance().currentScreen
-        if (screen != null) return
-        val box = Box(
-            stringToVec3d(baseSetting.getChild<TextSetting>("tempcoords")?.value ?: "0,0,0"),
-            stringToVec3d(baseSetting.getChild<TextSetting>("tempcoords2")?.value ?: "0,0,0")
-        )
-
-        GizmoDrawing.box(
-            box,
-            DrawStyle.stroked(0xFF00FF00.toInt(), 4f)
-        ).ignoreOcclusion()
-    }
-
-    fun stringToVec3d(input: String): Vec3d {
-        val parts = input.split(",")
-
-        if (parts.size != 3) return Vec3d(0.0, 0.0, 0.0)
-
-        val x = parts[0].trim().toDoubleOrNull() ?: 0.0
-        val y = parts[1].trim().toDoubleOrNull() ?: 0.0
-        val z = parts[2].trim().toDoubleOrNull() ?: 0.0
-
-        return Vec3d(x, y, z)
     }
 
 
