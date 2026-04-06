@@ -46,6 +46,8 @@ repositories {
     // for more information about repositories.
     mavenCentral()
     maven { url = uri("https://maven.terraformersmc.com/releases/") }
+    maven { url = uri("https://maven.teamresourceful.com/repository/maven-public/") }
+    maven { url = uri("https://pkgs.dev.azure.com/djtheredstoner/DevAuth/_packaging/public/maven/v1")}
 }
 
 
@@ -59,6 +61,13 @@ dependencies {
     modImplementation("net.fabricmc.fabric-api:fabric-api:${project.property("fabric_version")}")
 
     modApi("com.terraformersmc:modmenu:${project.property("modmenu_version")}")
+
+    api("tech.thatgravyboat:skyblock-api:${project.property("skyblock_api_version")}") {
+        capabilities { requireCapability("tech.thatgravyboat:skyblock-api-${project.property("minecraft_version")}") }
+    }
+    include("tech.thatgravyboat:skyblock-api:${project.property("skyblock_api_version")}") {
+        capabilities { requireCapability("tech.thatgravyboat:skyblock-api-${project.property("minecraft_version")}-remapped") }
+    }
 }
 
 val minecraft_version: String by project

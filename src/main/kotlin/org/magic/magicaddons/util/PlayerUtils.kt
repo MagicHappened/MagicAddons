@@ -5,11 +5,9 @@ import com.google.gson.JsonParser
 import net.minecraft.component.DataComponentTypes
 import net.minecraft.entity.player.PlayerEntity
 import net.minecraft.item.ItemStack
-import org.magic.magicaddons.data.SkyblockIsland
 import java.util.*
 
 object PlayerUtils {
-    var location: SkyblockIsland? = null
 
     private val skinCache = mutableMapOf<String, SkinData>()
 
