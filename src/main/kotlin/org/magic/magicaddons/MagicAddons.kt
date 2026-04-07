@@ -5,12 +5,12 @@ import net.fabricmc.api.ModInitializer
 import org.magic.magicaddons.commands.MainCommand
 import org.magic.magicaddons.config.MagicAddonsConfigJsonHandler
 import org.magic.magicaddons.util.ScreenUtil
-import org.magic.magicaddons.util.world.WorldEntities
+import org.magic.magicaddons.util.EntityUtils
 
 class MagicAddons : ModInitializer {
 
     override fun onInitialize() {
-        WorldEntities
+        EntityUtils
         ScreenUtil.register()
         MainCommand
 

@@ -16,7 +16,7 @@ import org.magic.magicaddons.events.world.OnEntityRemoved
 import org.magic.magicaddons.events.world.OnWorldTickEvent
 import org.magic.magicaddons.features.Feature
 import org.magic.magicaddons.util.PlayerUtils
-import org.magic.magicaddons.util.world.WorldEntities
+import org.magic.magicaddons.util.EntityUtils
 
 
 object HighlightMobs : Feature() {
@@ -114,7 +114,7 @@ object HighlightMobs : Feature() {
 
         highlightedEntityList = mutableListOf()
 
-        WorldEntities.entityInfoList?.forEach {
+        EntityUtils.entityInfoList?.forEach {
             if (shouldHighlight(it)) {
                 highlightedEntityList?.add(it.entity)
             }
@@ -243,7 +243,7 @@ object HighlightMobs : Feature() {
         highlightedEntityList ?: initializeHighlightedEntityList()
 
         highlightedEntityList?.forEach {
-            WorldEntities.renderEntityBoundingBox(it)
+            EntityUtils.renderEntityBoundingBox(it)
         }
     }
 

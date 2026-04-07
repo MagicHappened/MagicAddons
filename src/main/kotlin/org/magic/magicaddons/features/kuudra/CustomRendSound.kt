@@ -4,7 +4,6 @@ import net.minecraft.client.MinecraftClient
 import net.minecraft.client.network.AbstractClientPlayerEntity
 import net.minecraft.client.sound.PositionedSoundInstance
 import net.minecraft.client.sound.SoundInstance
-import net.minecraft.entity.EquipmentSlot
 import net.minecraft.sound.SoundCategory
 import net.minecraft.util.Identifier
 import net.minecraft.util.math.Box
@@ -16,10 +15,10 @@ import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.events.EventHandler
 import org.magic.magicaddons.events.interact.OnAnyPlayerSwingEvent
 import org.magic.magicaddons.events.world.OnWorldTickEvent
-import org.magic.magicaddons.extensions.armorStacks
 import org.magic.magicaddons.features.Feature
 import org.magic.magicaddons.util.ChatUtils
-import org.magic.magicaddons.util.world.WorldEntities
+import org.magic.magicaddons.util.EntityUtils
+import org.magic.magicaddons.util.EntityUtils.isEntityWearingArmorId
 import tech.thatgravyboat.skyblockapi.api.location.LocationAPI
 import tech.thatgravyboat.skyblockapi.api.location.SkyBlockIsland
 
@@ -61,7 +60,7 @@ object CustomRendSound : Feature() {
         val inKuudra = LocationAPI.island == SkyBlockIsland.KUUDRA
         if (!inKuudra) return
         if (!inKuudraLair()) return
-        WorldEntities.entityInfoList?.forEach { entity ->
+        EntityUtils.entityInfoList?.forEach { entity ->
             if (entity.entity !is AbstractClientPlayerEntity) {
                 return@forEach
             }
@@ -72,11 +71,11 @@ object CustomRendSound : Feature() {
                 return@forEach
             }
 
-            if (isWearingArmorId("REAPER", entity.entity)){
+            if (isEntityWearingArmorId("REAPER", entity.entity, false)){
                 wornReaperArmorList.add(entity.entity)
             }
             if (entity.entity in wornReaperArmorList) {
-                if (isWearingArmorId("ELEGANT_TUXEDO", entity.entity)){
+                if (isEntityWearingArmorId("ELEGANT_TUXEDO", entity.entity, false)){
                     wornReaperTuxedoArmorList.add(entity.entity)
                 }
             }
@@ -141,45 +140,7 @@ object CustomRendSound : Feature() {
     }
 
 
-    fun isWearingArmorId(id: String, entity: AbstractClientPlayerEntity): Boolean{
-        var correctFeet = false
-        var correctLegs = false
-        var correctChest = false
-        run feet@ {
-            entity.armorStacks.get(EquipmentSlot.FEET).components.forEach { component ->
-                if (component.type.toString() == "minecraft:custom_data") {
-                    if (component.value.toString().contains("${id}_BOOTS")) {
-                        correctFeet = true
-                        return@feet
-                    }
-                }
-            }
-        }
-        if (!correctFeet) return false
-        run legs@{
-            entity.armorStacks.get(EquipmentSlot.LEGS).components.forEach { component ->
-                if (component.type.toString() == "minecraft:custom_data") {
-                    if (component.value.toString().contains("${id}_LEGGINGS")) {
-                        correctLegs = true
-                        return@legs
-                    }
-                }
-            }
-        }
-        if (!correctLegs) return false
 
-        run chest@{
-            entity.armorStacks.get(EquipmentSlot.CHEST).components.forEach { component ->
-                if (component.type.toString() == "minecraft:custom_data") {
-                    if (component.value.toString().contains("${id}_CHESTPLATE")) {
-                        correctChest = true
-                        return@chest
-                    }
-                }
-            }
-        }
-        return correctChest
-    }
 
 
 }
