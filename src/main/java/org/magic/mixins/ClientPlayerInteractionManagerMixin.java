@@ -13,6 +13,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(ClientPlayerInteractionManager.class)
 public class ClientPlayerInteractionManagerMixin {
 
+
+
     @Inject(method = "attackEntity", at = @At("HEAD") , cancellable = true)
     private static void onAttackEntity(PlayerEntity player, Entity target, CallbackInfo ci){
         OnAttackEntityEvent event = new OnAttackEntityEvent(player,target);

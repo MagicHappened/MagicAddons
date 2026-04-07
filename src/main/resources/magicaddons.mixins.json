@@ -4,12 +4,13 @@
   "package": "org.magic.mixins",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
-    "ClientPlayNetworkHandlerMixin",
     "ClientWorldMixin",
     "ParticleManagerMixin",
     "ClientPlayerInteractionManagerMixin",
     "WorldRendererMixin",
-    "EntityMixin"
+    "EntityMixin",
+    "LivingEntityMixin",
+    "LivingEntityAccessor"
   ],
   "injectors": {
     "defaultRequire": 1
