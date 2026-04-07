@@ -14,6 +14,7 @@ import org.magic.magicaddons.events.EventHandler
 import org.magic.magicaddons.events.world.AddParticleEvent
 import org.magic.magicaddons.features.Feature
 import org.magic.magicaddons.util.ChatUtils
+import tech.thatgravyboat.skyblockapi.helpers.McPlayer
 
 object HidePowderCoatingParticles : Feature() {
     init {
@@ -23,10 +24,9 @@ object HidePowderCoatingParticles : Feature() {
 
     @EventHandler
     fun onAddParticle(event: AddParticleEvent){
-
         if (!baseSetting.value) return
 
-        val dust = event.parameters as? DustParticleEffect ?: return
+
         val dustPos = Vec3d(event.x, event.y, event.z)
         val distance: Double = dustPos.distanceTo(MinecraftClient.getInstance().player?.entityPos ?: return)
 

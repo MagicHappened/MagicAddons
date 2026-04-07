@@ -1,10 +1,12 @@
-package org.magic.magicaddons.util.world
+package org.magic.magicaddons.util
 
 import net.minecraft.client.MinecraftClient
+import net.minecraft.client.network.AbstractClientPlayerEntity
 import net.minecraft.client.render.DrawStyle
 import net.minecraft.client.render.RenderTickCounter
 import net.minecraft.client.world.ClientWorld
 import net.minecraft.entity.Entity
+import net.minecraft.entity.EquipmentSlot
 import net.minecraft.entity.decoration.ArmorStandEntity
 import net.minecraft.entity.player.PlayerEntity
 import net.minecraft.world.EntityList
@@ -14,10 +16,12 @@ import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.events.world.OnEntityAdded
 import org.magic.magicaddons.events.world.OnEntityRemoved
 import org.magic.magicaddons.events.world.OnWorldTickEvent
+import org.magic.magicaddons.extensions.armorStacks
 import org.magic.magicaddons.features.combat.HighlightMobs
+import org.magic.magicaddons.features.kuudra.CustomRendSound
 import kotlin.math.sqrt
 
-object WorldEntities {
+object EntityUtils {
 
 
     @JvmStatic
@@ -41,7 +45,7 @@ object WorldEntities {
     @JvmStatic
     fun onWorldTick(entityList: EntityList) {
 
-        if (!HighlightMobs.baseSetting.value) return // change this to include more settings that depend on world tick
+        if (!HighlightMobs.baseSetting.value || !CustomRendSound.baseSetting.value) return // change this to include more settings that depend on world tick
 
         this.entityList = entityList
         EventBus.post(OnWorldTickEvent())
@@ -103,6 +107,61 @@ object WorldEntities {
             box,
             DrawStyle.stroked(0xFF00FF00.toInt(), 4f)
         ).ignoreOcclusion()
+    }
+
+    fun isEntityWearingArmorId(id: String, entity: AbstractClientPlayerEntity, searchHelmet: Boolean): Boolean{
+        var correctFeet = false
+        var correctLegs = false
+        var correctChest = false
+        var correctHelmet = false
+        run feet@ {
+            entity.armorStacks.get(EquipmentSlot.FEET).components.forEach { component ->
+                if (component.type.toString() == "minecraft:custom_data") {
+                    if (component.value.toString().contains("${id}_BOOTS")) {
+                        correctFeet = true
+                        return@feet
+                    }
+                }
+            }
+        }
+
+        if (!correctFeet) return false
+        run legs@{
+            entity.armorStacks.get(EquipmentSlot.LEGS).components.forEach { component ->
+                if (component.type.toString() == "minecraft:custom_data") {
+                    if (component.value.toString().contains("${id}_LEGGINGS")) {
+                        correctLegs = true
+                        return@legs
+                    }
+                }
+            }
+        }
+        if (!correctLegs) return false
+
+        run chest@{
+            entity.armorStacks.get(EquipmentSlot.CHEST).components.forEach { component ->
+                if (component.type.toString() == "minecraft:custom_data") {
+                    if (component.value.toString().contains("${id}_CHESTPLATE")) {
+                        correctChest = true
+                        return@chest
+                    }
+                }
+            }
+        }
+        if (!searchHelmet) return correctChest
+        run helmet@{
+            entity.armorStacks.get(EquipmentSlot.CHEST).components.forEach { component ->
+                if (component.type.toString() == "minecraft:custom_data") {
+                    if (component.value.toString().contains("${id}_CHESTPLATE")) {
+                        correctHelmet = true
+                        return@helmet
+                    }
+                }
+            }
+
+
+        }
+        return correctHelmet
     }
 
 }
