@@ -13,3 +13,14 @@ class AddParticleEvent @JvmOverloads constructor(
     val velocityZ: Double,
     override var canceled: Boolean = false
 ) : Cancellable
+
+/*
+
+        val blockStateParticleEffect = event.parameters as? BlockStateParticleEffect ?: return
+        val block = blockStateParticleEffect.blockState.block
+
+        if (Registries.BLOCK.getId(block).path != "redstone_block") {
+            return
+        }
+
+ */

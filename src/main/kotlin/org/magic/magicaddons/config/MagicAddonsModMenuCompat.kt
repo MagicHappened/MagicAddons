@@ -8,6 +8,7 @@ import org.magic.magicaddons.config.ui.screen.ConfigScreen
 
 class MagicAddonsModMenuCompat : ModMenuApi {
 
+
     override fun getModConfigScreenFactory(): ConfigScreenFactory<Screen> {
         return ConfigScreenFactory { parent: Screen ->
             ConfigScreen(Text.literal("Magic Addons Config"), parent)
