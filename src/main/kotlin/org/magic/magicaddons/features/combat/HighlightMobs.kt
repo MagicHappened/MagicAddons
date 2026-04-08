@@ -13,8 +13,10 @@ import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.events.EventHandler
 import org.magic.magicaddons.events.world.OnEntityAdded
 import org.magic.magicaddons.events.world.OnEntityRemoved
+import org.magic.magicaddons.events.world.OnEntityUpdated
 import org.magic.magicaddons.events.world.OnWorldTickEvent
 import org.magic.magicaddons.features.Feature
+import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.PlayerUtils
 import org.magic.magicaddons.util.EntityUtils
 
@@ -153,6 +155,24 @@ object HighlightMobs : Feature() {
         }
     }
 
+    @EventHandler
+    fun onEntityUpdated(event: OnEntityUpdated) {
+        if (!baseSetting.value) return
+
+        highlightedEntityList ?: initializeHighlightedEntityList()
+
+        event.updatedEntityList.forEach { info ->
+            val should = shouldHighlight(info)
+            val contains = highlightedEntityList?.contains(info.entity) == true
+            when {
+                should && !contains -> highlightedEntityList?.add(info.entity)
+                !should && contains -> highlightedEntityList?.remove(info.entity)
+            }
+        }
+    }
+
+
+
     fun shouldHighlight(info: EntityInfo): Boolean {
         val entity = info.entity
 
@@ -207,9 +227,11 @@ object HighlightMobs : Feature() {
 
             val matchesName =
                 entity.customName?.string?.contains(filter, true) == true
-
             val matchesArmorStandTag =
-                info.armorStandTags?.any { it.contains(filter, true) } == true
+                info.armorStandTags?.any {
+                    it.contains(filter, true)
+                } == true
+
 
             matches = matches && (matchesName || matchesArmorStandTag)
         }
