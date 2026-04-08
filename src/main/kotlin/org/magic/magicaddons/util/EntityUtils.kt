@@ -15,6 +15,7 @@ import org.magic.magicaddons.data.EntityInfo
 import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.events.world.OnEntityAdded
 import org.magic.magicaddons.events.world.OnEntityRemoved
+import org.magic.magicaddons.events.world.OnEntityUpdated
 import org.magic.magicaddons.events.world.OnWorldTickEvent
 import org.magic.magicaddons.extensions.armorStacks
 import org.magic.magicaddons.features.combat.HighlightMobs
@@ -38,7 +39,7 @@ object EntityUtils {
 
     private val addedEntities = mutableListOf<EntityInfo>()
     private val removedEntities = mutableListOf<EntityInfo>()
-
+    private val updatedEntities = mutableListOf<EntityInfo>()
 
 
 
@@ -58,12 +59,11 @@ object EntityUtils {
         val player = client.player ?: return
         val world = client.world ?: return
 
-
         val newList = mutableListOf<EntityInfo>()
         val newMap = mutableMapOf<String, EntityInfo>()
 
         entityList?.forEach { entity ->
-            if (entity is ArmorStandEntity && isNearPlayerEntity(world, entity)) return@forEach //todo improve this check
+            if (entity is ArmorStandEntity && isNearPlayerEntity(world, entity)) return@forEach
 
             val armorStandTags = if (entity is PlayerEntity) {
                 world.getOtherEntities(null, entity.boundingBox.expand(0.5, 2.0, 0.5))
@@ -75,14 +75,31 @@ object EntityUtils {
 
             val info = EntityInfo(entity, armorStandTags, distance)
             newList += info
-            newMap[entity.uuidAsString] = info // use UUID as key
+            newMap[entity.uuidAsString] = info
         }
 
         addedEntities.clear()
         removedEntities.clear()
+        updatedEntities.clear()
 
-        addedEntities += newMap.filterKeys { it !in entityMapPrev }.values
-        removedEntities += entityMapPrev.filterKeys { it !in newMap }.values
+        // detect added
+        addedEntities += newMap.filterKeys { it !in entityMapCurr }.values
+
+        // detect removed
+        removedEntities += entityMapCurr.filterKeys { it !in newMap }.values
+
+        // detect updated
+        newMap.forEach { (uuid, newInfo) ->
+            val oldInfo = entityMapCurr[uuid] ?: return@forEach
+
+            val oldTags = oldInfo.armorStandTags?.toSet()
+            val newTags = newInfo.armorStandTags?.toSet()
+
+            if (oldTags != newTags) {
+                updatedEntities += newInfo
+            }
+        }
+
 
         if (addedEntities.isNotEmpty()) {
             EventBus.post(OnEntityAdded(addedEntities))
@@ -91,6 +108,11 @@ object EntityUtils {
             EventBus.post(OnEntityRemoved(removedEntities))
         }
 
+        if (updatedEntities.isNotEmpty()) {
+            EventBus.post(OnEntityUpdated(updatedEntities))
+        }
+
+        // Update state
         entityInfoList = newList
         entityMapPrev = entityMapCurr
         entityMapCurr = newMap
