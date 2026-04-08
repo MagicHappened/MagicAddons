@@ -45,7 +45,7 @@ object EntityUtils {
     @JvmStatic
     fun onWorldTick(entityList: EntityList) {
 
-        if (!HighlightMobs.baseSetting.value || !CustomRendSound.baseSetting.value) return // change this to include more settings that depend on world tick
+        if (!HighlightMobs.baseSetting.value && !CustomRendSound.baseSetting.value) return // change this to include more settings that depend on world tick
 
         this.entityList = entityList
         EventBus.post(OnWorldTickEvent())
