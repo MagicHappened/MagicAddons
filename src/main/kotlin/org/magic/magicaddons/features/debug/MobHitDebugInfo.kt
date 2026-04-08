@@ -1,5 +1,6 @@
 package org.magic.magicaddons.features.debug
 
+import net.minecraft.client.MinecraftClient
 import net.minecraft.entity.Entity
 import net.minecraft.entity.EquipmentSlot
 import net.minecraft.entity.LivingEntity
@@ -66,6 +67,14 @@ object MobHitDebugInfo : Feature() {
         ChatUtils.sendWithPrefix("=== Player Debug ===")
         ChatUtils.sendWithPrefix(clickableText)
         ChatUtils.sendWithPrefix("Skin hash: $hash")
+        val armorStandTags = MinecraftClient.getInstance().world?.getOtherEntities(null, player.boundingBox.expand(0.5, 2.0, 0.5))
+            ?.filterIsInstance<ArmorStandEntity>()
+            ?.mapNotNull { it.customName?.string }
+        armorStandTags?.forEach {
+            ChatUtils.sendWithPrefix("Nearby armor stand: $it")
+        }
+
+
     }
 
     fun attackArmorStandDebug(stand: ArmorStandEntity) {
