@@ -62,7 +62,16 @@ class TextSetting(
     tooltip: String,
     override var value: String
 ) : SettingNode<String>(key, displayName, tooltip, value) {
+    val history: List<String> = mutableListOf()
+    // todo change this to have a display name and a value
     override fun parseValue(value: String): String = value
+    /*
+    override fun serializeSettings(): MutableMap<String, String> {
+        super.serializeSettings()
+    }
+    todo integrate this with history
+
+     */
 }
 
 
