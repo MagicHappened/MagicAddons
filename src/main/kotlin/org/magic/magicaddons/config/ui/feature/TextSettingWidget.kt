@@ -86,6 +86,7 @@ class TextSettingWidget(
         }
     }
 
+
     override fun mouseClicked(click: Click, doubled: Boolean): Boolean {
         val clickedTextWidget = textWidget.mouseClicked(click, doubled)
         textWidget.isFocused = clickedTextWidget
@@ -93,4 +94,7 @@ class TextSettingWidget(
         return clickedTextWidget
     }
 
+    fun textWidgetFocused(){
+        //todo list of previous value
+    }
 }
