@@ -5,7 +5,7 @@ import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallba
 import net.minecraft.text.Text
 import org.magic.magicaddons.Common
 import org.magic.magicaddons.commands.debug.MainDebug
-import org.magic.magicaddons.commands.debug.PlaySound
+import org.magic.magicaddons.commands.misc.PlaySound
 import org.magic.magicaddons.commands.features.ToggleFeature
 import org.magic.magicaddons.config.ui.screen.ConfigScreen
 import org.magic.magicaddons.config.ui.screen.FeatureEditScreen
