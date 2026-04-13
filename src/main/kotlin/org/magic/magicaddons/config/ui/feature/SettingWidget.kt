@@ -43,7 +43,7 @@ abstract class SettingWidget<T>(
         }
     }
 
-    abstract fun getActualHeight(): Int
+    abstract fun getTotalHeight(): Int
 
     abstract override fun render(ctx: DrawContext, mouseX: Int, mouseY: Int, delta: Float)
 
@@ -60,7 +60,8 @@ abstract class SettingWidget<T>(
     }
 
     override fun mouseClicked(click: Click, doubled: Boolean): Boolean {
-        return isMouseOver(click.x, click.y)
+        return click.x.toInt() in x..x+width &&
+                click.y.toInt() in y..y+getTotalHeight()
     }
 
     override fun isMouseOver(mouseX: Double, mouseY: Double): Boolean {

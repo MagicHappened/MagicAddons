@@ -20,7 +20,7 @@ object FeatureManager {
         val returnedMap = mutableMapOf<
                 String, //category string
                 MutableMap<String, //feature id string
-                        MutableMap<String, String>>>() // feature setting id, value
+                        MutableMap<String, Any>>>() // feature setting id, value
         features.groupBy { it.category }.forEach { (category, featureList) ->
 
             val currentCategoryMap = returnedMap.getOrPut(category) { mutableMapOf() }
