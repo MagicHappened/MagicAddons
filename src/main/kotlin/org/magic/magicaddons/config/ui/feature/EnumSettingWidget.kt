@@ -143,15 +143,13 @@ class EnumSettingWidget<T : Enum<T>>(
 
         }
 
-        val clickY: Int = click.y.toInt()
-
-        if (clickY in y..y+height && click.button() == 1) { // right click children expand
+        if (isMouseOver(click.x, click.y) && click.button() == 1) { // right click children expand
             childrenExpanded = !childrenExpanded
             selectionMenuExpanded = false
             return true
         }
 
-        if (clickY in y..y+height && click.button() == 0) { // left click selection menu expand
+        if (isMouseOver(click.x, click.y) && click.button() == 0) { // left click selection menu expand
             selectionMenuExpanded = !selectionMenuExpanded
             return true
         }
