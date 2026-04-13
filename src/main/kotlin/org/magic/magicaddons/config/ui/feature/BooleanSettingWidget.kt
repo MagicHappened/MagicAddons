@@ -66,25 +66,18 @@ class BooleanSettingWidget(
 
 
     override fun mouseClicked(click: Click, doubled: Boolean): Boolean {
-        if (!super.mouseClicked(click, doubled)){
-            return false
-        }
         if (checkbox.mouseClicked(click, doubled)) {
             setting.value = !setting.value
             return true
-        } //clicked checkbox
-
-        if (childrenExpanded){
-            childrenWidgets.forEach {
-                if (it.mouseClicked(click, doubled))
-                    return true
-            }
         }
         if (click.button() == 1 && super.isMouseOver(click.x, click.y)){
             childrenExpanded = !childrenExpanded
         }
 
-        // clicked on gray area inside the widget boundaries
+        if (childrenExpanded){
+            return childrenWidgets.any { it.mouseClicked(click, doubled) }
+        }
+
         return false
     }
 

@@ -7,6 +7,7 @@ import net.minecraft.client.gui.widget.TextFieldWidget
 import net.minecraft.client.input.CharInput
 import net.minecraft.client.input.KeyInput
 import net.minecraft.text.Text
+import org.apache.commons.io.filefilter.FalseFileFilter
 import org.magic.magicaddons.config.data.TextSetting
 import org.magic.magicaddons.config.ui.DropDownBoxWidget
 import org.magic.magicaddons.util.ScreenUtil
@@ -149,7 +150,7 @@ class TextSettingWidget(
 
         if (textWidget.isFocused){
             if (setting.value !in historyBlacklist && lastFocusedValue != setting.value){
-                setting.history.add(setting.value)
+                setting.history.add(lastFocusedValue)
             }
         }
         lastFocusedValue = setting.value
@@ -157,7 +158,7 @@ class TextSettingWidget(
         shouldRenderHistory = false
 
 
-        return super.mouseClicked(click, doubled)
+        return false
     }
 
     fun onHistoryWidgetXClicked(widget: DropDownBoxWidget<String>) {

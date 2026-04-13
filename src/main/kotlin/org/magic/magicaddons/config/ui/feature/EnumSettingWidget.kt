@@ -138,14 +138,11 @@ class EnumSettingWidget<T : Enum<T>>(
         if (selectionMenuExpanded) {
             selectionOptions.forEach {
                 if (it.mouseClicked(click, doubled))
-                    return true
+                    return true //consume the enum widget click
             }
+
         }
 
-        if (!super.mouseClicked(click, doubled)){
-            selectionMenuExpanded = false
-            return false
-        }
         val clickY: Int = click.y.toInt()
 
         if (clickY in y..y+height && click.button() == 1) { // right click children expand
@@ -158,12 +155,7 @@ class EnumSettingWidget<T : Enum<T>>(
             selectionMenuExpanded = !selectionMenuExpanded
             return true
         }
-
-        childrenWidgets.forEach {
-            if (it.mouseClicked(click, doubled)) return true
-        }
-
-        return false
+        return childrenWidgets.any { it.mouseClicked(click, doubled) }
     }
 
 
