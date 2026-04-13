@@ -149,7 +149,7 @@ class TextSettingWidget(
         }
 
         if (textWidget.isFocused){
-            if (setting.value !in historyBlacklist && lastFocusedValue != setting.value){
+            if (lastFocusedValue !in historyBlacklist && lastFocusedValue != setting.value){
                 setting.history.add(lastFocusedValue)
             }
         }
