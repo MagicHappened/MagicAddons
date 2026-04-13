@@ -64,7 +64,7 @@ class DropDownBoxWidget<T>(
         ctx.drawText(
             textRenderer,
             Text.literal(trimmedText),
-            x + 10,
+            x + 4,
             y + (height - textRenderer.fontHeight) / 2,
             0xFFFFFFFF.toInt(),
             false
