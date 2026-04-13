@@ -60,8 +60,7 @@ abstract class SettingWidget<T>(
     }
 
     override fun mouseClicked(click: Click, doubled: Boolean): Boolean {
-        return click.x.toInt() in x..x+width &&
-                click.y.toInt() in y..y+getTotalHeight()
+        return false
     }
 
     override fun isMouseOver(mouseX: Double, mouseY: Double): Boolean {
@@ -87,7 +86,7 @@ abstract class SettingWidget<T>(
             return false
         }
         childrenWidgets?.forEach {
-            if (it.charTyped(input)) return true
+            it.charTyped(input)
         }
         return false
     }
@@ -97,7 +96,7 @@ abstract class SettingWidget<T>(
             return false
         }
         childrenWidgets?.forEach {
-            if (it.keyPressed(input)) return true
+            it.keyPressed(input)
         }
         return super.keyPressed(input)
     }

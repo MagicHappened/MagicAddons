@@ -89,11 +89,12 @@ class FeatureEditScreen(
 
 
     override fun mouseClicked(click: Click, doubled: Boolean): Boolean {
+        var handled = false
         baseChildrenWidgets.forEach {
             if (it.mouseClicked(click, doubled))
-                return true
+                handled = true
         }
-        return false
+        return handled
     }
 
     override fun close() {
