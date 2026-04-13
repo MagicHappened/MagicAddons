@@ -59,8 +59,6 @@ class ConfigScreen(title: Text, val parent: Screen?) : Screen(title) {
     override fun render(ctx: DrawContext, mouseX: Int, mouseY: Int, delta: Float) {
         super.render(ctx, mouseX, mouseY, delta)
 
-        val textWidth = textRenderer.getWidth(title)
-
         ScreenUtil.drawMultilineBoxCentered(ctx, helpText, width/2, 35)
     }
 

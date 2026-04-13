@@ -8,6 +8,7 @@ import net.minecraft.client.input.CharInput
 import net.minecraft.client.input.KeyInput
 import net.minecraft.text.Text
 import org.magic.magicaddons.config.data.TextSetting
+import org.magic.magicaddons.config.ui.DropDownBoxWidget
 import org.magic.magicaddons.util.ScreenUtil
 
 class TextSettingWidget(
@@ -16,9 +17,18 @@ class TextSettingWidget(
 
     override var childrenExpanded: Boolean = false
     override var hovered: Boolean = false
+    var shouldRenderHistory = false
+
+    var lastFocusedValue: String = setting.value
+
     override val childrenWidgets: List<SettingWidget<*>>? = null
     val textFieldPadding: Int = 1
     val textPadding: Int = 2
+
+    val historyBlacklist = mutableListOf(
+        ""
+    )
+
 
     val textWidget: TextFieldWidget by lazy {
         TextFieldWidget(
@@ -28,6 +38,7 @@ class TextSettingWidget(
             Text.literal("")
         )
     }
+    val historyWidgets: MutableList<DropDownBoxWidget<String>> = mutableListOf()
 
 
     override fun init() {
@@ -41,10 +52,34 @@ class TextSettingWidget(
             setting.value = it
         }
 
+
         super.init() // kinda redundant
     }
 
-    override fun getActualHeight(): Int = height
+    fun initHistoryWidgets() {
+        historyWidgets.clear()
+
+        var currentY = textWidget.y + textWidget.height
+        setting.history.forEach { historyValue ->
+            val historyWidget = DropDownBoxWidget(
+                value = historyValue,
+                displayText = { historyValue },
+                onClick = { historyTextWidgetClicked(it) },
+                removable = true,
+                onRemove = { onHistoryWidgetXClicked(it) }
+            )
+
+            historyWidget.x = textWidget.x
+            historyWidget.y = currentY
+            historyWidget.width = textWidget.width
+            historyWidget.height = textWidget.height
+            currentY += historyWidget.height
+
+            historyWidgets.add(historyWidget)
+        }
+    }
+
+    override fun getTotalHeight(): Int = height
 
     override fun charTyped(input: CharInput): Boolean {
         if (super.charTyped(input))
@@ -84,17 +119,61 @@ class TextSettingWidget(
         if (hovered){
             renderHovered(ctx, mouseX, mouseY, delta)
         }
+        if (shouldRenderHistory){
+            historyWidgets.forEach {
+                it.render(ctx)
+            }
+        }
     }
 
 
     override fun mouseClicked(click: Click, doubled: Boolean): Boolean {
-        val clickedTextWidget = textWidget.mouseClicked(click, doubled)
-        textWidget.isFocused = clickedTextWidget
 
-        return clickedTextWidget
+        val clickedTextWidget = textWidget.mouseClicked(click, doubled)
+        if (clickedTextWidget){
+            textWidget.isFocused = true
+            initHistoryWidgets()
+            shouldRenderHistory = true
+            return true
+        }
+
+        if (shouldRenderHistory){
+            historyWidgets.forEach {
+                if (it.mouseClicked(click, doubled)){
+                    shouldRenderHistory = false
+                    textWidget.isFocused = false
+                    return true
+                }
+            }
+        }
+
+        if (textWidget.isFocused){
+            if (setting.value !in historyBlacklist && lastFocusedValue != setting.value){
+                setting.history.add(setting.value)
+            }
+        }
+        lastFocusedValue = setting.value
+        textWidget.isFocused = false
+        shouldRenderHistory = false
+
+
+        return super.mouseClicked(click, doubled)
     }
 
-    fun textWidgetFocused(){
-        //todo list of previous value
+    fun onHistoryWidgetXClicked(widget: DropDownBoxWidget<String>) {
+        historyWidgets.remove(widget)
+        setting.history.remove(widget.value)
+    }
+
+
+
+    fun historyTextWidgetClicked(widget: DropDownBoxWidget<String>){
+        if (setting.value !in historyBlacklist){
+            setting.history.add(setting.value)
+        }
+        setting.value = widget.value
+        setting.history.remove(widget.value)
+        textWidget.text = widget.value
+        shouldRenderHistory = false
     }
 }

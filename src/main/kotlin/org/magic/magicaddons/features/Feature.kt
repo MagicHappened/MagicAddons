@@ -12,9 +12,9 @@ abstract class Feature {
     abstract val baseSetting: BooleanSetting
 
 
-    fun serializeSettings(): MutableMap<String, String> = baseSetting.serializeSettings()
+    fun serializeSettings(): MutableMap<String, Any> = baseSetting.serializeSettings()
 
-    fun deserializeSettings(settings: MutableMap<String, String>) {
+    fun deserializeSettings(settings: MutableMap<String, Any>) {
         baseSetting.updateSettings(settings)
     }
 }

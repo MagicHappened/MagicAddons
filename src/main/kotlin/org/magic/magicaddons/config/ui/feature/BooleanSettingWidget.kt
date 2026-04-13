@@ -66,29 +66,31 @@ class BooleanSettingWidget(
 
 
     override fun mouseClicked(click: Click, doubled: Boolean): Boolean {
+        if (!super.mouseClicked(click, doubled)){
+            return false
+        }
+        if (checkbox.mouseClicked(click, doubled)) {
+            setting.value = !setting.value
+            return true
+        } //clicked checkbox
+
         if (childrenExpanded){
             childrenWidgets.forEach {
                 if (it.mouseClicked(click, doubled))
                     return true
             }
         }
-        if (!super.mouseClicked(click, doubled))
-            return false
-        if (checkbox.mouseClicked(click, doubled)) {
-            setting.value = !setting.value
-            return true
-        }
-        if (click.button() == 1){
+        if (click.button() == 1 && super.isMouseOver(click.x, click.y)){
             childrenExpanded = !childrenExpanded
         }
 
-
+        // clicked on gray area inside the widget boundaries
         return false
     }
 
-    override fun getActualHeight(): Int {
+    override fun getTotalHeight(): Int {
         if (!childrenExpanded) return height
-        return height + childrenWidgets.sumOf { it.height + childPadding }
+        return height + childrenWidgets.sumOf { it.getTotalHeight() + childPadding }
     }
 
 

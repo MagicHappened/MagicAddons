@@ -9,19 +9,19 @@ import java.io.File
 
 object MagicAddonsConfigJsonHandler {
     private val gson = GsonBuilder().setPrettyPrinting().create()
-    private val file = File("config/magicaddons.json")
+    private val file = File("config/magicaddons/magicaddons.json")
 
     var configMap = mutableMapOf<
             String, //category string
             MutableMap<String, //feature id string
-                    MutableMap<String, String>>>() //each feature setting id mapped to value
+                    MutableMap<String, Any>>>() //each feature setting id mapped to value
 
     fun load() : Boolean {
         if (!file.exists()) return false
         val type = object : TypeToken<
                 MutableMap<String,
                         MutableMap<String,
-                                MutableMap<String, String>
+                                MutableMap<String, Any>
                         >
                 >>() {}.type
         configMap = gson.fromJson(file.readText(), type) ?: mutableMapOf()

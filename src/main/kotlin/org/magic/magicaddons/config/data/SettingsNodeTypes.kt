@@ -9,18 +9,18 @@ sealed class SettingNode<T>(
 ) {
     open val children: List<SettingNode<*>>? = null
 
-    open fun serializeSettings(): MutableMap<String, String>{
-        val result = mutableMapOf<String, String>()
-        result[key] = value.toString()
+    open fun serializeSettings(): MutableMap<String, Any>{
+        val result = mutableMapOf<String, Any>()
+        result[key] = value as Any
         return result
     }
-    open fun updateSettings(settings: MutableMap<String, String>) {
+    open fun updateSettings(settings: MutableMap<String, Any>) {
         val newValue = settings[key]
         if (newValue != null) {
             value = parseValue(newValue)
         }
     }
-    protected abstract fun parseValue(value: String): T
+    protected abstract fun parseValue(value: Any): T
 
     inline fun <reified R : SettingNode<*>> getChild(key: String): R? {
         return children?.filterIsInstance<R>()?.firstOrNull { it.key == key }
@@ -32,7 +32,7 @@ sealed class SettingNode<T>(
 
 }
 
-open class BooleanSetting(
+class BooleanSetting(
     key: String,
     displayName: String,
     tooltip: String,
@@ -40,20 +40,20 @@ open class BooleanSetting(
     override var children: List<SettingNode<*>>? = null
 ) : SettingNode<Boolean>(key, displayName, tooltip, value) {
 
-    override fun serializeSettings(): MutableMap<String, String> {
+    override fun serializeSettings(): MutableMap<String, Any> {
         val map = super.serializeSettings()
         children?.forEach { child ->
             map.putAll(child.serializeSettings())
         }
         return map
     }
-    override fun updateSettings(settings: MutableMap<String, String>) {
+    override fun updateSettings(settings: MutableMap<String, Any>) {
         super.updateSettings(settings)
         children?.forEach { child ->
             child.updateSettings(settings)
         }
     }
-    override fun parseValue(value: String): Boolean = value.toBoolean()
+    override fun parseValue(value: Any): Boolean = value as Boolean
 }
 
 class TextSetting(
@@ -62,16 +62,40 @@ class TextSetting(
     tooltip: String,
     override var value: String
 ) : SettingNode<String>(key, displayName, tooltip, value) {
-    val history: List<String> = mutableListOf()
-    // todo change this to have a display name and a value
-    override fun parseValue(value: String): String = value
-    /*
-    override fun serializeSettings(): MutableMap<String, String> {
-        super.serializeSettings()
-    }
-    todo integrate this with history
 
-     */
+    val history: MutableSet<String> = mutableSetOf()
+
+    override fun parseValue(value: Any): String = value.toString()
+
+    override fun serializeSettings(): MutableMap<String, Any> {
+        return mutableMapOf(
+            key to mutableMapOf(
+                "current_value" to value,
+                "history" to history
+            )
+        )
+    }
+
+    override fun updateSettings(settings: MutableMap<String, Any>) {
+        val nested = settings[key] as? Map<*, *> ?: return
+
+        val current = nested["current_value"]
+        if (current != null) {
+            value = parseValue(current)
+        }
+
+        val historyList = nested["history"] as? List<*> ?: return
+
+        history.clear()
+
+        historyList.forEach { entry ->
+            val str = entry as? String
+            if (str != null) {
+                history.add(str)
+            }
+        }
+    }
+
 }
 
 
@@ -98,7 +122,7 @@ class EnumSetting<T : Enum<T>>(
             cachedChildren = childrenProvider?.invoke(newValue)
         }
 
-    override fun serializeSettings(): MutableMap<String, String> {
+    override fun serializeSettings(): MutableMap<String, Any> {
         val map = super.serializeSettings()
         children?.forEach { child ->
             map.putAll(child.serializeSettings())
@@ -106,18 +130,15 @@ class EnumSetting<T : Enum<T>>(
         return map
     }
 
-    override fun updateSettings(settings: MutableMap<String, String>) {
+    override fun updateSettings(settings: MutableMap<String, Any>) {
         super.updateSettings(settings)
         children?.forEach { child ->
             child.updateSettings(settings)
         }
     }
 
-
-
-
-    override fun parseValue(value: String): T {
-        return java.lang.Enum.valueOf(this.value.javaClass, value)
+    override fun parseValue(value: Any): T {
+        return java.lang.Enum.valueOf(this.value.javaClass, value as String)
     }
 
 }

@@ -6,7 +6,6 @@ import net.minecraft.client.gui.DrawContext
 import net.minecraft.text.Text
 import org.magic.magicaddons.config.data.EnumSetting
 import org.magic.magicaddons.config.ui.DropDownBoxWidget
-import org.magic.magicaddons.features.FeatureManager
 import org.magic.magicaddons.util.ScreenUtil
 
 class EnumSettingWidget<T : Enum<T>>(
@@ -28,7 +27,11 @@ class EnumSettingWidget<T : Enum<T>>(
         val enumValues = setting.value.javaClass.enumConstants
         enumValues.forEachIndexed { index, enumValue ->
 
-            val dropDown = DropDownBoxWidget(enumValue) { valueChanged(it) }
+            val dropDown = DropDownBoxWidget(
+                enumValue,
+                displayText = { enumValue.toString() },
+                onClick = { valueChanged(it.value) }
+            )
 
             dropDown.x = x
             dropDown.y = y + height + (index * (height / 2))
@@ -132,39 +135,41 @@ class EnumSettingWidget<T : Enum<T>>(
 
 
     override fun mouseClicked(click: Click, doubled: Boolean): Boolean {
-        val clickX: Int = click.x.toInt()
-        val clickY: Int = click.y.toInt()
-        if (clickX !in x..x + width) {
-            if (selectionMenuExpanded) {
-                selectionMenuExpanded = false
+        if (selectionMenuExpanded) {
+            selectionOptions.forEach {
+                if (it.mouseClicked(click, doubled))
+                    return true
             }
+        }
+
+        if (!super.mouseClicked(click, doubled)){
+            selectionMenuExpanded = false
             return false
         }
-        if (clickY in y..y+height && click.button() == 1) { // top for children expanding
+        val clickY: Int = click.y.toInt()
+
+        if (clickY in y..y+height && click.button() == 1) { // right click children expand
             childrenExpanded = !childrenExpanded
             selectionMenuExpanded = false
             return true
         }
-        if (clickY in y..y+height && click.button() == 0) { // button for dropdown overlay
+
+        if (clickY in y..y+height && click.button() == 0) { // left click selection menu expand
             selectionMenuExpanded = !selectionMenuExpanded
             return true
         }
-        if (selectionMenuExpanded) {
-            selectionOptions.forEach {
-                if (it.mouseClicked(click, doubled)) return true
-            }
-        }
+
         childrenWidgets.forEach {
             if (it.mouseClicked(click, doubled)) return true
         }
-        return false
 
+        return false
     }
 
 
-    override fun getActualHeight(): Int {
+    override fun getTotalHeight(): Int {
         if (!childrenExpanded) return height
-        return height + childrenWidgets.sumOf { it.height + childPadding }
+        return height + childrenWidgets.sumOf { it.getTotalHeight() + childPadding }
     }
 
 
