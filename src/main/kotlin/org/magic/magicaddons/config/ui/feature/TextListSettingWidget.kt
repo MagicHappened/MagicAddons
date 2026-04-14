@@ -36,6 +36,7 @@ class TextListSettingWidget(
     )
 
     override fun init() {
+        val textRenderer = MinecraftClient.getInstance().textRenderer
         rows.clear()
 
         var currentY = y
@@ -60,13 +61,15 @@ class TextListSettingWidget(
 
         val inputWidths = width - (inputPadding * 3)
 
+        val textHeight = + textRenderer.fontHeight + inputPadding * 2
+        currentY += textHeight
 
         nameInputField.x = x + inputPadding
-        nameInputField.y = currentY + 10
+        nameInputField.y = currentY
         nameInputField.width = (inputWidths*0.4).toInt()
 
         valueInputField.x = x + nameInputField.width + inputPadding
-        valueInputField.y = currentY + 10
+        valueInputField.y = currentY
         valueInputField.width = inputWidths - nameInputField.width
 
         super.init()
@@ -87,7 +90,7 @@ class TextListSettingWidget(
             ScreenUtil.drawLine(ctx, x, currentY, x + width, currentY, 1, 0xFF222222.toInt())
         }
 
-        currentY += 5
+        currentY += inputPadding
 
         ctx.drawText(
             MinecraftClient.getInstance().textRenderer,
@@ -128,5 +131,5 @@ class TextListSettingWidget(
 
     override fun getTotalHeight(): Int {
         return height + rowHeight * rows.size
-    } //todo change this to actual height based on rows etc.
+    }
 }
