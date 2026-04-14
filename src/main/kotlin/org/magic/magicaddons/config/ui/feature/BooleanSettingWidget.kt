@@ -13,34 +13,33 @@ class BooleanSettingWidget(
 ) : SettingWidget<Boolean>(setting) {
 
     private val checkbox = CheckboxWidget(checked = setting.value)
-    override val childrenWidgets: MutableList<SettingWidget<*>> = mutableListOf()
-    override var childrenExpanded: Boolean = false
-    override var hovered: Boolean = false
 
     override fun init() {
-
-        checkbox.x = x
-        checkbox.y = y
-        checkbox.size = height
+        childrenWidgets.clear()
 
         setting.children?.forEach {
-            val widget = SettingWidgetFactory.create(it)
-            childrenWidgets.add(widget)
+            childrenWidgets.add(SettingWidgetFactory.create(it))
         }
+        layoutCheckbox()
 
         super.init()
     }
 
+    private fun layoutCheckbox() {
+        checkbox.x = x
+        checkbox.y = y
+        checkbox.size = height
+    }
 
     override fun render(ctx: DrawContext, mouseX: Int, mouseY: Int, delta: Float) {
-        ctx.fill(x, y, x + width, y + height, backgroundColor)
-        checkbox.render(ctx)
-        ScreenUtil.drawBorder(ctx, x, y, x + width, y + height, borderSize, borderColor)
-
-        renderChildrenIfExpanded(ctx, mouseX, mouseY, delta)
-
-
         val textRenderer = MinecraftClient.getInstance().textRenderer
+
+        ctx.fill(x, y, x + width, y + height, backgroundColor)
+
+        checkbox.checked = setting.value
+        checkbox.render(ctx)
+
+        ScreenUtil.drawBorder(ctx, x, y, x + width, y + height, borderSize, borderColor)
 
         ctx.drawText(
             textRenderer,
@@ -51,40 +50,24 @@ class BooleanSettingWidget(
             false
         )
 
-        if (hovered) {
-            renderHovered(ctx, mouseX, mouseY, delta)
-        }
-    }
+        renderChildren(ctx, mouseX, mouseY, delta)
 
-    fun renderChildrenIfExpanded(ctx: DrawContext, mouseX: Int, mouseY: Int, delta: Float){
-        if (childrenExpanded) {
-            childrenWidgets.forEach {
-                it.render(ctx, mouseX, mouseY, delta)
-            }
-        }
+        renderTooltip(ctx, mouseX, mouseY)
     }
-
 
     override fun mouseClicked(click: Click, doubled: Boolean): Boolean {
         if (checkbox.mouseClicked(click, doubled)) {
             setting.value = !setting.value
             return true
         }
-        if (click.button() == 1 && super.isMouseOver(click.x, click.y)){
+
+        val inside = isMouseOver(click.x, click.y)
+
+        if (inside && click.button() == 1) {
             childrenExpanded = !childrenExpanded
+            return true
         }
 
-        if (childrenExpanded){
-            return childrenWidgets.any { it.mouseClicked(click, doubled) }
-        }
-
-        return false
+        return super.mouseClicked(click, doubled)
     }
-
-    override fun getTotalHeight(): Int {
-        if (!childrenExpanded) return height
-        return height + childrenWidgets.sumOf { it.getTotalHeight() + childPadding }
-    }
-
-
 }

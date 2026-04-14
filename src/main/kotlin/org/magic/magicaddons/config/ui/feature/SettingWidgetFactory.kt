@@ -1,9 +1,6 @@
 package org.magic.magicaddons.config.ui.feature
 
-import org.magic.magicaddons.config.data.BooleanSetting
-import org.magic.magicaddons.config.data.EnumSetting
-import org.magic.magicaddons.config.data.SettingNode
-import org.magic.magicaddons.config.data.TextSetting
+import org.magic.magicaddons.config.data.*
 
 object SettingWidgetFactory {
 
@@ -12,6 +9,7 @@ object SettingWidgetFactory {
             is BooleanSetting -> BooleanSettingWidget(node)
             is TextSetting -> TextSettingWidget(node)
             is EnumSetting<*> -> EnumSettingWidget(node)
+            is ToggleListSetting -> TextListSettingWidget(node)
         }
     }
 }

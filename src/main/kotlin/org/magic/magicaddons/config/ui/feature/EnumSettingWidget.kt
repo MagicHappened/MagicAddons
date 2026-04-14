@@ -5,8 +5,9 @@ import net.minecraft.client.gui.Click
 import net.minecraft.client.gui.DrawContext
 import net.minecraft.text.Text
 import org.magic.magicaddons.config.data.EnumSetting
-import org.magic.magicaddons.config.ui.DropDownBoxWidget
+import org.magic.magicaddons.config.ui.ClickableRowWidget
 import org.magic.magicaddons.util.ScreenUtil
+
 
 class EnumSettingWidget<T : Enum<T>>(
     private val setting: EnumSetting<T>
@@ -14,32 +15,24 @@ class EnumSettingWidget<T : Enum<T>>(
 
     override var height: Int = 80
 
-    override val childrenWidgets: MutableList<SettingWidget<*>> = mutableListOf()
-
-    override var childrenExpanded: Boolean = false
-    override var hovered: Boolean = false
     var selectionMenuExpanded = false
 
-    val selectionOptions: MutableList<DropDownBoxWidget<T>> = mutableListOf()
+    private val selectionOptions: MutableList<ClickableRowWidget<T>> = mutableListOf()
 
     override fun init() {
+        selectionOptions.clear()
+        childrenWidgets.clear()
 
         val enumValues = setting.value.javaClass.enumConstants
-        enumValues.forEachIndexed { index, enumValue ->
-
-            val dropDown = DropDownBoxWidget(
-                enumValue,
+        enumValues.forEach { enumValue ->
+            val dropDown = ClickableRowWidget(
+                value = enumValue,
                 displayText = { enumValue.toString() },
                 onClick = { valueChanged(it.value) }
             )
-
-            dropDown.x = x
-            dropDown.y = y + height + (index * (height / 2))
-            dropDown.width = width
-            dropDown.height = height / 2
-
             selectionOptions.add(dropDown)
         }
+
 
         setting.children?.forEach {
             childrenWidgets.add(SettingWidgetFactory.create(it))
@@ -48,21 +41,38 @@ class EnumSettingWidget<T : Enum<T>>(
         super.init()
     }
 
-    override fun render(ctx: DrawContext, mouseX: Int, mouseY: Int, delta: Float) {
-        renderChildrenIfExpanded(ctx, mouseX, mouseY, delta)
-        ctx.fill(x, y, x + width, y + height, backgroundColor)
-        ScreenUtil.drawBorder(ctx, x, y, x + width, y + height, borderSize, borderColor)
+    private fun layoutDropdown() {
+        var currentY = y + height
 
+        selectionOptions.forEach {
+            it.x = x
+            it.y = currentY
+            it.width = width
+            it.height = height / 2
+            currentY += it.height
+        }
+    }
+
+    override fun render(ctx: DrawContext, mouseX: Int, mouseY: Int, delta: Float) {
         val textRenderer = MinecraftClient.getInstance().textRenderer
         val halfHeight = height / 2
 
         val titleY = y + (halfHeight - textRenderer.fontHeight) / 2
         val valueY = y + halfHeight + (halfHeight - textRenderer.fontHeight) / 2
 
-        // draw divider line
-        ScreenUtil.drawLine(ctx, x + borderSize, y + halfHeight, x + width - borderSize, y + halfHeight, 1, borderColor)
+        ctx.fill(x, y, x + width, y + height, backgroundColor)
+        ScreenUtil.drawBorder(ctx, x, y, x + width, y + height, borderSize, borderColor)
 
-        // draw option title
+        ScreenUtil.drawLine(
+            ctx,
+            x + borderSize,
+            y + halfHeight,
+            x + width - borderSize,
+            y + halfHeight,
+            1,
+            borderColor
+        )
+
         ctx.drawText(
             textRenderer,
             Text.literal("${setting.displayName}:"),
@@ -72,17 +82,15 @@ class EnumSettingWidget<T : Enum<T>>(
             false
         )
 
-        // draw actual setting value
         ctx.drawText(
             textRenderer,
-            Text.literal("${setting.value}"),
+            Text.literal(setting.value.toString()),
             x + textXPad,
             valueY,
             0xFFFFFFFF.toInt(),
             false
         )
 
-        // draw arrow indicating drop down
         ctx.drawText(
             textRenderer,
             Text.literal("↓"),
@@ -91,76 +99,68 @@ class EnumSettingWidget<T : Enum<T>>(
             0xFFFFFFFF.toInt(),
             false
         )
-        if (childrenExpanded){
-            childrenWidgets.forEach {
-                it.render(ctx, mouseX, mouseY, delta)
-            }
-        }
 
         if (selectionMenuExpanded) {
-            selectionOptions.forEach {
-                it.render(ctx)
-            }
+            layoutDropdown()
+            selectionOptions.forEach { it.render(ctx) }
         }
 
-        if (hovered) {
-            renderHovered(ctx, mouseX, mouseY, delta)
-        }
+        renderChildren(ctx, mouseX, mouseY, delta)
+
+        renderTooltip(ctx, mouseX, mouseY)
     }
 
-    fun renderChildrenIfExpanded(ctx: DrawContext, mouseX: Int, mouseY: Int, delta: Float){
-        if (childrenExpanded) {
-            childrenWidgets.forEach {
-                it.render(ctx, mouseX, mouseY, delta)
-            }
-        }
-    }
-
-    fun valueChanged(selectedValue: T){
-        val valueChanged = setting.value != selectedValue
+    private fun valueChanged(selectedValue: T) {
+        val changed = setting.value != selectedValue
         selectionMenuExpanded = false
-        if (valueChanged) {
+
+        if (changed) {
             setting.value = selectedValue
 
-            childrenExpanded = false
+            // rebuild children
             childrenWidgets.clear()
             setting.children?.forEach {
                 childrenWidgets.add(SettingWidgetFactory.create(it))
             }
-            super.init()
+
+            init()
             childrenExpanded = true
         }
-
     }
-
 
     override fun mouseClicked(click: Click, doubled: Boolean): Boolean {
         if (selectionMenuExpanded) {
             selectionOptions.forEach {
-                if (it.mouseClicked(click, doubled))
-                    return true //consume the enum widget click
+                if (it.mouseClicked(click, doubled)) return true
             }
-
         }
 
-        if (isMouseOver(click.x, click.y) && click.button() == 1) { // right click children expand
-            childrenExpanded = !childrenExpanded
-            selectionMenuExpanded = false
-            return true
+        val inside = isMouseOver(click.x, click.y)
+
+        if (inside) {
+            when (click.button()) {
+                1 -> { // right click for children
+                    childrenExpanded = !childrenExpanded
+                    selectionMenuExpanded = false
+                    return true
+                }
+
+                0 -> { // left click for dropdown
+                    selectionMenuExpanded = !selectionMenuExpanded
+                    return true
+                }
+            }
         }
 
-        if (isMouseOver(click.x, click.y) && click.button() == 0) { // left click selection menu expand
-            selectionMenuExpanded = !selectionMenuExpanded
-            return true
-        }
-        return childrenWidgets.any { it.mouseClicked(click, doubled) }
+        return super.mouseClicked(click, doubled)
     }
-
 
     override fun getTotalHeight(): Int {
-        if (!childrenExpanded) return height
-        return height + childrenWidgets.sumOf { it.getTotalHeight() + childPadding }
+        var total = height
+
+        if (childrenExpanded) {
+            total += childrenWidgets.sumOf { it.getTotalHeight() + childPadding }
+        }
+        return total
     }
-
-
 }
