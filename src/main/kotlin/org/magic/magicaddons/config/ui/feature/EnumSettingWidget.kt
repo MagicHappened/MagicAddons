@@ -13,8 +13,6 @@ class EnumSettingWidget<T : Enum<T>>(
     private val setting: EnumSetting<T>
 ) : SettingWidget<T>(setting) {
 
-    override var height: Int = 80
-
     var selectionMenuExpanded = false
 
     private val selectionOptions: MutableList<ClickableRowWidget<T>> = mutableListOf()
@@ -100,12 +98,14 @@ class EnumSettingWidget<T : Enum<T>>(
             false
         )
 
+        renderChildren(ctx, mouseX, mouseY, delta)
+
         if (selectionMenuExpanded) {
             layoutDropdown()
             selectionOptions.forEach { it.render(ctx) }
         }
 
-        renderChildren(ctx, mouseX, mouseY, delta)
+
 
         renderTooltip(ctx, mouseX, mouseY)
     }
