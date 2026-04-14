@@ -1,8 +1,12 @@
 package org.magic.magicaddons.config
 
 import net.minecraft.client.MinecraftClient
+import net.minecraft.client.gl.RenderPipelines
 import net.minecraft.client.gui.DrawContext
+import net.minecraft.client.render.RenderLayer
 import net.minecraft.text.Text
+import net.minecraft.util.Identifier
+import org.magic.magicaddons.util.ScreenUtil
 
 class ClickableButtonWidget(
     var x: Int,
@@ -12,28 +16,43 @@ class ClickableButtonWidget(
     private val message: Text,
     private val onClick: () -> Unit
 ) {
+    val BUTTON = Identifier.of("minecraft", "widget/button")
+    val BUTTON_HOVERED = Identifier.of("minecraft", "widget/button_highlighted")
 
     private var hovered = false
 
     fun render(context: DrawContext, mouseX: Int, mouseY: Int, delta: Float) {
+        val textRenderer = MinecraftClient.getInstance().textRenderer
         hovered = isHovered(mouseX, mouseY)
 
-        val bgColor = if (hovered) 0xFF555555.toInt() else 0xFF333333.toInt()
-        context.fill(x, y, x + width, y + height, bgColor)
+        val sprite = if (hovered)
+            BUTTON_HOVERED
+        else
+            BUTTON
 
-        context.fill(x, y, x + width, y + 1, 0xFF000000.toInt())
-        context.fill(x, y + height - 1, x + width, y + height, 0xFF000000.toInt())
+
+        context.drawGuiTexture(
+            RenderPipelines.GUI_TEXTURED,
+            sprite,
+            x,
+            y,
+            width,
+            height
+        )
+
 
         // centered text
-        val textX = x + width / 2
+        val textX = x + (width - textRenderer.getWidth(message)) / 2
         val textY = y + (height - 8) / 2
+        val color = (message.style.color?.rgb ?: 0xFFFFFF) or 0xFF000000.toInt()
 
-        context.drawCenteredTextWithShadow(
+        context.drawText(
             MinecraftClient.getInstance().textRenderer,
             message,
             textX,
             textY,
-            0xFFFFFF
+            color,
+            false
         )
     }
 

@@ -130,6 +130,7 @@ class TextListSettingWidget(
     }
 
     private fun addEntry(name: String, value: String){
+        if (value.isBlank()) return
         listSetting.value.add(ListEntry(name, value, true))
         init()
     }
