@@ -1,5 +1,7 @@
 package org.magic.magicaddons.config.data
 
+import org.magic.magicaddons.data.ListEntry
+
 sealed class SettingNode<T>(
     val key: String,
     val displayName: String,
@@ -15,9 +17,11 @@ sealed class SettingNode<T>(
         return result
     }
     open fun updateSettings(settings: MutableMap<String, Any>) {
-        val newValue = settings[key]
-        if (newValue != null) {
+        val newValue = settings[key] ?: return
+        try {
             value = parseValue(newValue)
+        } catch (_: Exception) {
+
         }
     }
     protected abstract fun parseValue(value: Any): T
@@ -30,6 +34,50 @@ sealed class SettingNode<T>(
         return getChild<R>(key) ?: throw IllegalStateException("No child with key '$key' of type ${R::class.java.name}")
     }
 
+}
+
+class ToggleListSetting(
+    key: String,
+    displayName: String,
+    tooltip: String,
+    override var value: MutableList<ListEntry>
+) : SettingNode<MutableList<ListEntry>>(key, displayName, tooltip, value) {
+
+    override fun parseValue(value: Any): MutableList<ListEntry> {
+        val list = value as? List<*> ?: return mutableListOf()
+
+        return list.mapNotNull { entry ->
+            val map = entry as? Map<*, *> ?: return@mapNotNull null
+
+            val name = map["name"]?.toString() ?: ""
+            val strValue = map["value"]?.toString() ?: return@mapNotNull null
+
+            val enabled = when (val e = map["enabled"]) {
+                is Boolean -> e
+                is String -> e.toBoolean()
+                is Number -> e.toInt() != 0
+                else -> true
+            }
+
+            ListEntry(
+                name = name,
+                value = strValue,
+                enabled = enabled
+            )
+        }.toMutableList()
+    }
+
+    override fun serializeSettings(): MutableMap<String, Any> {
+        return mutableMapOf(
+            key to value.map { entry ->
+                mapOf(
+                    "name" to entry.name,
+                    "value" to entry.value,
+                    "enabled" to entry.enabled
+                )
+            }
+        )
+    }
 }
 
 class BooleanSetting(
