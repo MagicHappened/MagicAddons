@@ -1,20 +1,18 @@
-package org.magic.magicaddons.config
+package org.magic.magicaddons.config.ui
 
 import net.minecraft.client.MinecraftClient
 import net.minecraft.client.gl.RenderPipelines
+import net.minecraft.client.gui.Click
 import net.minecraft.client.gui.DrawContext
-import net.minecraft.client.render.RenderLayer
 import net.minecraft.text.Text
 import net.minecraft.util.Identifier
-import org.magic.magicaddons.util.ScreenUtil
 
 class ClickableButtonWidget(
     var x: Int,
     var y: Int,
     var width: Int,
     var height: Int,
-    private val message: Text,
-    private val onClick: () -> Unit
+    private val message: Text
 ) {
     val BUTTON = Identifier.of("minecraft", "widget/button")
     val BUTTON_HOVERED = Identifier.of("minecraft", "widget/button_highlighted")
@@ -56,16 +54,12 @@ class ClickableButtonWidget(
         )
     }
 
-    fun mouseClicked(mouseX: Double, mouseY: Double): Boolean {
-        if (isHovered(mouseX.toInt(), mouseY.toInt())) {
-            onClick()
-            return true
-        }
-        return false
+    fun mouseClicked(click: Click, doubled: Boolean): Boolean {
+        return isHovered(click.x.toInt(), click.y.toInt())
     }
 
     private fun isHovered(mouseX: Int, mouseY: Int): Boolean {
-        return mouseX in x until (x + width) &&
-                mouseY in y until (y + height)
+        return mouseX in x..(x + width) &&
+                mouseY in y..(y + height)
     }
 }

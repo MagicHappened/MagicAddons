@@ -1,9 +1,11 @@
 package org.magic.magicaddons.config.ui
 
 import net.minecraft.client.MinecraftClient
+import net.minecraft.client.gl.RenderPipelines
 import net.minecraft.client.gui.Click
 import net.minecraft.client.gui.DrawContext
 import net.minecraft.text.Text
+import net.minecraft.util.Identifier
 
 open class ClickableRowWidget<T>(
     value: T,
@@ -13,26 +15,33 @@ open class ClickableRowWidget<T>(
 ) : BaseRowWidget<T>(value, displayText) {
 
     private val removeWidth = 18
+    private val removePadding = 2
 
     override fun getRightReservedWidth(): Int {
-        return if (onRemove != null) removeWidth else 0
+        return super.getRightReservedWidth() + removeWidth
     }
 
     override fun render(ctx: DrawContext) {
         super.render(ctx)
-
+        val textRenderer = MinecraftClient.getInstance().textRenderer
         if (onRemove != null) {
-            val rx = x + width - removeWidth
+            val rx = x + width - removeWidth - removePadding
 
-            ctx.fill(rx, y, x + width, y + height, 0xFF333333.toInt())
+            ctx.drawGuiTexture(
+                RenderPipelines.GUI_TEXTURED,
+                Identifier.of("minecraft", "widget/button"),
+                rx,
+                y + removePadding,
+                removeWidth,
+                height - removePadding * 2
+            )
 
-            val tr = MinecraftClient.getInstance().textRenderer
             ctx.drawText(
-                tr,
+                textRenderer,
                 Text.literal("X"),
-                rx + 6,
-                y + (height - tr.fontHeight) / 2,
-                0xFFFF5555.toInt(),
+                rx + (removeWidth - textRenderer.getWidth("X"))/2,
+                y + removePadding + textRenderer.fontHeight/2,
+                0xFFFF0000.toInt(),
                 false
             )
         }
