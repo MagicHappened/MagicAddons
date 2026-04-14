@@ -20,9 +20,7 @@ object OldConfigHandler {
         return migrate(raw, version, targetVersion)
     }
 
-    // =========================
-    // NO VERSION → wrap config
-    // =========================
+
     private fun handleNoVersion(
         oldConfig: MutableMap<String, Any>,
         targetVersion: String
@@ -34,9 +32,7 @@ object OldConfigHandler {
         )
     }
 
-    // =========================
-    // VERSIONED MIGRATIONS
-    // =========================
+
     private fun migrate(
         raw: MutableMap<String, Any>,
         oldVersion: String,
