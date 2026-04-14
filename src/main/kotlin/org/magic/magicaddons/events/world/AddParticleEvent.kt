@@ -1,16 +1,10 @@
 package org.magic.magicaddons.events.world
 
-import net.minecraft.particle.ParticleEffect
+import net.minecraft.network.packet.s2c.play.ParticleS2CPacket
 import org.magic.magicaddons.events.Cancellable
 
 class AddParticleEvent @JvmOverloads constructor(
-    val parameters: ParticleEffect,
-    val x: Double,
-    val y: Double,
-    val z: Double,
-    val velocityX: Double,
-    val velocityY: Double,
-    val velocityZ: Double,
+    var packet: ParticleS2CPacket,
     override var canceled: Boolean = false
 ) : Cancellable
 

@@ -22,13 +22,13 @@ open class ToggleRowWidget<T>(
     private val padding = 2
 
     override fun getLeftReservedWidth(): Int {
-        return height + padding // square checkbox
+        return height + padding
     }
 
     override fun render(ctx: DrawContext) {
-        // update checkbox state + position
+
         checkbox.size = height - padding * 2
-        checkbox.x = x + padding
+        checkbox.x = x + padding + 1 // idk why but yes
         checkbox.y = y + padding
         checkbox.checked = isEnabled()
 

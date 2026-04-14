@@ -5,7 +5,7 @@
   "compatibilityLevel": "JAVA_21",
   "mixins": [
     "ClientWorldMixin",
-    "ParticleManagerMixin",
+    "ClientPlayNetworkHandlerMixin",
     "ClientPlayerInteractionManagerMixin",
     "WorldRendererMixin",
     "EntityMixin",

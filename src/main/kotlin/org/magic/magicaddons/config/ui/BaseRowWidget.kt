@@ -33,7 +33,7 @@ open class BaseRowWidget<T>(
         ctx.drawText(
             tr,
             Text.literal(text),
-            x + 6 + getLeftReservedWidth(),
+            x + getLeftReservedWidth(),
             y + (height - tr.fontHeight) / 2,
             0xFFFFFFFF.toInt(),
             false

@@ -3,15 +3,15 @@ package org.magic.magicaddons.config.ui.feature
 import net.minecraft.client.MinecraftClient
 import net.minecraft.client.gui.Click
 import net.minecraft.client.gui.DrawContext
-import net.minecraft.client.gui.widget.ButtonWidget
 import net.minecraft.client.gui.widget.TextFieldWidget
 import net.minecraft.client.input.CharInput
 import net.minecraft.client.input.KeyInput
 import net.minecraft.text.Text
-import org.magic.magicaddons.config.ClickableButtonWidget
+import org.magic.magicaddons.config.ui.ClickableButtonWidget
 import org.magic.magicaddons.config.data.ToggleListSetting
 import org.magic.magicaddons.config.ui.ToggleRowWidget
 import org.magic.magicaddons.data.ListEntry
+import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.ScreenUtil
 
 class TextListSettingWidget(
@@ -22,8 +22,10 @@ class TextListSettingWidget(
     override var childrenExpanded: Boolean = true
     override var hovered: Boolean = false
 
+    private val titleYPadding = 2
     private val rowHeight = 20
-    private val inputPadding = 4
+    private val inputYPadding = 2
+    private val inputXPadding = 4
 
     override val childrenWidgets: MutableList<SettingWidget<*>> = mutableListOf()
 
@@ -41,16 +43,16 @@ class TextListSettingWidget(
     private val submitButton = ClickableButtonWidget(
         x,
         y,
-        18,
-        20,
-        Text.literal("+").styled { it.withColor(0x00FF00) },
-    ) { addEntry(nameInputField.text, valueInputField.text) }
+        width = 18,
+        height = 20,
+        message = Text.literal("+").styled { it.withColor(0x00FF00) }
+    )
 
     override fun init() {
         val textRenderer = MinecraftClient.getInstance().textRenderer
         rows.clear()
-
-        var currentY = y
+        val titleTextHeight = titleYPadding * 2 + textRenderer.fontHeight
+        var currentY = y + borderSize + titleTextHeight
 
         listSetting.value.forEach { entry ->
             val row = ToggleRowWidget(
@@ -64,37 +66,38 @@ class TextListSettingWidget(
 
             row.x = x
             row.y = currentY
-            row.width = width
+            row.width = width - borderSize
             row.height = rowHeight
 
             rows.add(row)
             currentY += rowHeight
         }
 
-        val inputWidths = width - (inputPadding * 4) - 18
+        val inputWidths = width - (inputXPadding * 4) - 18
 
-        val textHeight = + textRenderer.fontHeight + inputPadding * 2
+        val textHeight = + textRenderer.fontHeight + inputYPadding * 2
         currentY += textHeight
 
-        nameInputField.x = x + inputPadding
+        nameInputField.x = x + inputXPadding
         nameInputField.y = currentY
         nameInputField.width = (inputWidths*0.4).toInt()
 
-        valueInputField.x = x + nameInputField.width + inputPadding * 2
+        valueInputField.x = x + nameInputField.width + inputXPadding * 2
         valueInputField.y = currentY
         valueInputField.width = inputWidths - nameInputField.width
 
-        submitButton.x = x + nameInputField.width + valueInputField.width + inputPadding * 3
+        submitButton.x = x + nameInputField.width + valueInputField.width + inputXPadding * 3
         submitButton.y = currentY
         super.init()
     }
 
     override fun render(ctx: DrawContext, mouseX: Int, mouseY: Int, delta: Float) {
-
+        val textRenderer = MinecraftClient.getInstance().textRenderer
         ctx.fill(x, y, x + width, y + getTotalHeight(), backgroundColor)
-        ScreenUtil.drawBorder(ctx, x, y, x + width, y + getTotalHeight(), borderSize, borderColor)
 
-        var currentY = y
+
+        val titleTextHeight = titleYPadding * 2 + textRenderer.fontHeight
+        var currentY = y + borderSize
 
         rows.forEach {
             it.y = currentY
@@ -104,10 +107,10 @@ class TextListSettingWidget(
             ScreenUtil.drawLine(ctx, x, currentY, x + width, currentY, 1, 0xFF222222.toInt())
         }
 
-        currentY += inputPadding
+        currentY += inputYPadding
 
         ctx.drawText(
-            MinecraftClient.getInstance().textRenderer,
+            textRenderer,
             Text.literal("Add new entry:"),
             x + textXPad,
             currentY,
@@ -118,6 +121,8 @@ class TextListSettingWidget(
         nameInputField.render(ctx, mouseX, mouseY, delta)
         valueInputField.render(ctx, mouseX, mouseY, delta)
         submitButton.render(ctx, mouseX, mouseY, delta)
+
+        ScreenUtil.drawBorder(ctx, x, y, x + width, y + getTotalHeight(), borderSize, borderColor)
     }
 
     private fun toggleEntry(entry: ListEntry) {
@@ -130,12 +135,22 @@ class TextListSettingWidget(
     }
 
     private fun addEntry(name: String, value: String){
-        if (value.isBlank()) return
+        if (value.isBlank()) {
+            ChatUtils.sendWithPrefix("Value is a required field.")
+            return
+        }
+        if (listSetting.value.map { it.value }.contains(name)) {
+            ChatUtils.sendWithPrefix("Cannot add a duplicate value.")
+        }
         listSetting.value.add(ListEntry(name, value, true))
         init()
     }
 
     override fun mouseClicked(click: Click, doubled: Boolean): Boolean {
+        if (submitButton.mouseClicked(click,doubled)){
+            addEntry(nameInputField.text, valueInputField.text)
+            return true
+        }
 
         if (nameInputField.mouseClicked(click, doubled)) {
             nameInputField.isFocused = true
