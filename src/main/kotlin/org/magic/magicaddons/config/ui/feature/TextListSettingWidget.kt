@@ -63,7 +63,7 @@ class TextListSettingWidget(
 
         nameInputField.x = x + inputPadding
         nameInputField.y = currentY + 10
-        nameInputField.width = (inputWidths*0.6).toInt()
+        nameInputField.width = (inputWidths*0.4).toInt()
 
         valueInputField.x = x + nameInputField.width + inputPadding
         valueInputField.y = currentY + 10
@@ -74,8 +74,8 @@ class TextListSettingWidget(
 
     override fun render(ctx: DrawContext, mouseX: Int, mouseY: Int, delta: Float) {
 
-        ctx.fill(x, y, x + width, y + height, backgroundColor)
-        ScreenUtil.drawBorder(ctx, x, y, x + width, y + height, borderSize, borderColor)
+        ctx.fill(x, y, x + width, y + getTotalHeight(), backgroundColor)
+        ScreenUtil.drawBorder(ctx, x, y, x + width, y + getTotalHeight(), borderSize, borderColor)
 
         var currentY = y
 
@@ -126,5 +126,7 @@ class TextListSettingWidget(
         return false
     }
 
-    override fun getTotalHeight(): Int = height //todo change this to actual height based on rows etc.
+    override fun getTotalHeight(): Int {
+        return height + rowHeight * rows.size
+    } //todo change this to actual height based on rows etc.
 }
