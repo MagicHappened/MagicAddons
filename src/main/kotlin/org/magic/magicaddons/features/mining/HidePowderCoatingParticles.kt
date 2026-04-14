@@ -8,8 +8,10 @@ import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.events.EventHandler
 import org.magic.magicaddons.events.world.AddParticleEvent
 import org.magic.magicaddons.features.Feature
+import org.magic.magicaddons.util.ChatUtils
 
 object HidePowderCoatingParticles : Feature() {
+
     init {
         EventBus.register(this)
     }
@@ -18,7 +20,9 @@ object HidePowderCoatingParticles : Feature() {
     @EventHandler
     fun onAddParticle(event: AddParticleEvent){
         if (!baseSetting.value) return
-        if (event.packet.packetType != ParticleTypes.DUST) return
+        if (!event.packet.parameters.type.equals(ParticleTypes.DUST)) return
+
+
         val dustPos = Vec3d(event.packet.x, event.packet.y, event.packet.z)
         val distance: Double = dustPos.distanceTo(MinecraftClient.getInstance().player?.entityPos ?: return)
 
