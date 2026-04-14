@@ -7,7 +7,9 @@ import net.minecraft.entity.player.PlayerEntity
 import org.magic.magicaddons.config.data.BooleanSetting
 import org.magic.magicaddons.config.data.EnumSetting
 import org.magic.magicaddons.config.data.TextSetting
+import org.magic.magicaddons.config.data.ToggleListSetting
 import org.magic.magicaddons.data.EntityInfo
+import org.magic.magicaddons.data.ListEntry
 import org.magic.magicaddons.events.ConfigChangedEvent
 import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.events.EventHandler
@@ -16,7 +18,6 @@ import org.magic.magicaddons.events.world.OnEntityRemoved
 import org.magic.magicaddons.events.world.OnEntityUpdated
 import org.magic.magicaddons.events.world.OnWorldTickEvent
 import org.magic.magicaddons.features.Feature
-import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.PlayerUtils
 import org.magic.magicaddons.util.EntityUtils
 
@@ -33,11 +34,13 @@ object HighlightMobs : Feature() {
     override val tooltipMessage: String = "Highlights specific mobs of your choosing"
     override val category: String = "combat"
 
-    val entityTypePlayerSkinHash = TextSetting(
+    val entityTypePlayerSkinHashList = ToggleListSetting(
         key = "EntityTypePlayerSkinHash",
         displayName = "Skin Hash Value",
         tooltip = "The skin hash value to detect (get with mob hit debug)",
-        value = "f2b33640bfb71557e0e1d852287263ceafc9bec205301acf046b7c29fe8cb37b"
+        value = mutableListOf(
+            ListEntry(name = "Littlefoot", "f2b33640bfb71557e0e1d852287263ceafc9bec205301acf046b7c29fe8cb37b", enabled = true)
+        )
     )
 
     val entityTypeMobPathValue = TextSetting(
@@ -67,7 +70,7 @@ object HighlightMobs : Feature() {
                         childrenProvider = { entityTypeDetection ->
                             when (entityTypeDetection) {
                                 EntityTypeDetection.Player -> listOf(
-                                    entityTypePlayerSkinHash
+                                    entityTypePlayerSkinHashList
                                 )
 
                                 EntityTypeDetection.Other -> listOf(
@@ -192,15 +195,15 @@ object HighlightMobs : Feature() {
                 EntityTypeDetection.Player -> {
                     if (entity !is PlayerEntity) return false
 
-                    val expectedHash = enumSetting
-                        .getChild<TextSetting>("EntityTypePlayerSkinHash")?.value
+                    val skinHashEntryList = enumSetting
+                        .getChild<ToggleListSetting>("EntityTypePlayerSkinHash")?.value
                         ?: return false
 
-                    if (expectedHash.isBlank()) return true
-
                     val actualHash = PlayerUtils.getSkinHash(entity)
-
-                    actualHash == expectedHash
+                    val hashList = skinHashEntryList
+                        .filter { it.enabled }
+                        .map { it.value }
+                    return actualHash in hashList
                 }
 
                 EntityTypeDetection.Other -> {
