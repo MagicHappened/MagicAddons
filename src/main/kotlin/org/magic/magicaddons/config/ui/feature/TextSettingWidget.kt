@@ -78,9 +78,11 @@ class TextSettingWidget(
     }
 
     private fun applyHistoryValue(value: String) {
+        val previousValue = setting.value
         setting.value = value
         textWidget.text = value
         removeHistoryValue(value)
+        setting.history.add(previousValue)
         shouldRenderHistory = false
         textWidget.isFocused = false
     }
@@ -88,6 +90,8 @@ class TextSettingWidget(
     private fun removeHistoryValue(value: String) {
         setting.history.remove(value)
         historyWidgets.removeIf { it.value == value }
+        rebuildHistory()
+        shouldRenderHistory = true
     }
 
 
@@ -130,7 +134,6 @@ class TextSettingWidget(
         if (shouldRenderHistory) {
             historyWidgets.forEach {
                 if (it.mouseClicked(click, doubled)) {
-                    shouldRenderHistory = false
                     return true
                 }
             }
@@ -138,6 +141,7 @@ class TextSettingWidget(
 
         val wasFocused = textWidget.isFocused
         textWidget.isFocused = false
+        shouldRenderHistory = false
         val childClicked = super.mouseClicked(click, doubled)
 
         if (wasFocused && textWidget.text != lastFocusedValue) {
