@@ -1,5 +1,6 @@
 package org.magic.magicaddons.config.ui
 
+import net.minecraft.client.gui.Click
 import net.minecraft.client.gui.DrawContext
 
 open class ToggleRowWidget<T>(
@@ -7,20 +8,41 @@ open class ToggleRowWidget<T>(
     displayText: (T) -> String,
     onClick: (ToggleRowWidget<T>) -> Unit,
     onRemove: ((ToggleRowWidget<T>) -> Unit)? = null,
-    val isEnabled: () -> Boolean
+    val isEnabled: () -> Boolean,
+    val onToggle: (Boolean) -> Unit
 ) : ClickableRowWidget<T>(
     value,
     displayText,
     { onClick(it as ToggleRowWidget<T>) },
-    { onRemove?.invoke(it as ToggleRowWidget<T>) } ) {
+    { onRemove?.invoke(it as ToggleRowWidget<T>) }
+) {
 
-    private val toggleWidth = 4
+    private val checkbox = CheckboxWidget()
+
+    private val padding = 2
+
+    override fun getLeftReservedWidth(): Int {
+        return height + padding // square checkbox
+    }
 
     override fun render(ctx: DrawContext) {
+        // update checkbox state + position
+        checkbox.size = height - padding * 2
+        checkbox.x = x + padding
+        checkbox.y = y + padding
+        checkbox.checked = isEnabled()
+
         super.render(ctx)
 
-        val color = if (isEnabled()) 0xFF55FF55.toInt() else 0xFFFF5555.toInt()
+        checkbox.render(ctx)
+    }
 
-        ctx.fill(x, y, x + toggleWidth, y + height, color)
+    override fun mouseClicked(click: Click, doubled: Boolean): Boolean {
+        if (checkbox.mouseClicked(click, doubled)) {
+            onToggle(checkbox.checked)
+            return true
+        }
+
+        return super.mouseClicked(click, doubled)
     }
 }

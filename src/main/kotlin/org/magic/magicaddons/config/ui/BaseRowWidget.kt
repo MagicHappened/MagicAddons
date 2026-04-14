@@ -16,17 +16,24 @@ open class BaseRowWidget<T>(
     var x: Int = 0
     var y: Int = 0
 
+    open fun getRightReservedWidth(): Int = 0
+
+    open fun getLeftReservedWidth(): Int = 0
+
+
     open fun render(ctx: DrawContext) {
         val tr = MinecraftClient.getInstance().textRenderer
 
         ctx.fill(x, y, x + width, y + height, 0xFF555555.toInt())
 
-        val text = tr.trimToWidth(displayText(value), width - 10)
+        val usableWidth = width - getRightReservedWidth() - getLeftReservedWidth() - 10
+
+        val text = tr.trimToWidth(displayText(value), usableWidth)
 
         ctx.drawText(
             tr,
             Text.literal(text),
-            x + 6,
+            x + 6 + getLeftReservedWidth(),
             y + (height - tr.fontHeight) / 2,
             0xFFFFFFFF.toInt(),
             false

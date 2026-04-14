@@ -14,6 +14,10 @@ open class ClickableRowWidget<T>(
 
     private val removeWidth = 18
 
+    override fun getRightReservedWidth(): Int {
+        return if (onRemove != null) removeWidth else 0
+    }
+
     override fun render(ctx: DrawContext) {
         super.render(ctx)
 
@@ -34,7 +38,7 @@ open class ClickableRowWidget<T>(
         }
     }
 
-    fun mouseClicked(click: Click, doubled: Boolean): Boolean {
+    open fun mouseClicked(click: Click, doubled: Boolean): Boolean {
         val mx = click.x.toInt()
         val my = click.y.toInt()
 
