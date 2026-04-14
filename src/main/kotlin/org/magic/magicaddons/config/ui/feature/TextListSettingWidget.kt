@@ -4,6 +4,8 @@ import net.minecraft.client.MinecraftClient
 import net.minecraft.client.gui.Click
 import net.minecraft.client.gui.DrawContext
 import net.minecraft.client.gui.widget.TextFieldWidget
+import net.minecraft.client.input.CharInput
+import net.minecraft.client.input.KeyInput
 import net.minecraft.text.Text
 import org.magic.magicaddons.config.data.ToggleListSetting
 import org.magic.magicaddons.config.ui.ToggleRowWidget
@@ -139,6 +141,31 @@ class TextListSettingWidget(
 
         return false
     }
+
+    override fun charTyped(input: CharInput): Boolean {
+        if (nameInputField.isFocused) {
+            nameInputField.charTyped(input)
+            return true
+        }
+        if (valueInputField.isFocused){
+            valueInputField.charTyped(input)
+            return true
+        }
+        return super.charTyped(input)
+    }
+
+    override fun keyPressed(input: KeyInput): Boolean {
+        if (nameInputField.isFocused) {
+            nameInputField.keyPressed(input)
+            return true
+        }
+        if (valueInputField.isFocused){
+            valueInputField.keyPressed(input)
+            return true
+        }
+        return super.keyPressed(input)
+    }
+
 
     override fun getTotalHeight(): Int {
         return height + rowHeight * rows.size
