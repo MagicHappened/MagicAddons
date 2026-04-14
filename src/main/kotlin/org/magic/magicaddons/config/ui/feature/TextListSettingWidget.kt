@@ -3,10 +3,12 @@ package org.magic.magicaddons.config.ui.feature
 import net.minecraft.client.MinecraftClient
 import net.minecraft.client.gui.Click
 import net.minecraft.client.gui.DrawContext
+import net.minecraft.client.gui.widget.ButtonWidget
 import net.minecraft.client.gui.widget.TextFieldWidget
 import net.minecraft.client.input.CharInput
 import net.minecraft.client.input.KeyInput
 import net.minecraft.text.Text
+import org.magic.magicaddons.config.ClickableButtonWidget
 import org.magic.magicaddons.config.data.ToggleListSetting
 import org.magic.magicaddons.config.ui.ToggleRowWidget
 import org.magic.magicaddons.data.ListEntry
@@ -36,6 +38,13 @@ class TextListSettingWidget(
         MinecraftClient.getInstance().textRenderer,
         150, 20, Text.literal("")
     )
+    private val submitButton = ClickableButtonWidget(
+        x,
+        y,
+        18,
+        20,
+        Text.literal("+").styled { it.withColor(0x00FF00) },
+    ) { addEntry(nameInputField.text, valueInputField.text) }
 
     override fun init() {
         val textRenderer = MinecraftClient.getInstance().textRenderer
@@ -62,7 +71,7 @@ class TextListSettingWidget(
             currentY += rowHeight
         }
 
-        val inputWidths = width - (inputPadding * 3)
+        val inputWidths = width - (inputPadding * 4) - 18
 
         val textHeight = + textRenderer.fontHeight + inputPadding * 2
         currentY += textHeight
@@ -71,10 +80,12 @@ class TextListSettingWidget(
         nameInputField.y = currentY
         nameInputField.width = (inputWidths*0.4).toInt()
 
-        valueInputField.x = x + nameInputField.width + inputPadding
+        valueInputField.x = x + nameInputField.width + inputPadding * 2
         valueInputField.y = currentY
         valueInputField.width = inputWidths - nameInputField.width
 
+        submitButton.x = x + nameInputField.width + valueInputField.width + inputPadding * 3
+        submitButton.y = currentY
         super.init()
     }
 
@@ -106,6 +117,7 @@ class TextListSettingWidget(
 
         nameInputField.render(ctx, mouseX, mouseY, delta)
         valueInputField.render(ctx, mouseX, mouseY, delta)
+        submitButton.render(ctx, mouseX, mouseY, delta)
     }
 
     private fun toggleEntry(entry: ListEntry) {
@@ -114,6 +126,11 @@ class TextListSettingWidget(
 
     private fun removeEntry(entry: ListEntry) {
         listSetting.value.remove(entry)
+        init()
+    }
+
+    private fun addEntry(name: String, value: String){
+        listSetting.value.add(ListEntry(name, value, true))
         init()
     }
 
