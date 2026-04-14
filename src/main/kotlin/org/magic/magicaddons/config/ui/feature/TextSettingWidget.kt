@@ -122,10 +122,10 @@ class TextSettingWidget(
 
         if (clickedText) {
             shouldRenderHistory = true
+            textWidget.isFocused = true
             rebuildHistory()
             return true
         }
-
 
         if (shouldRenderHistory) {
             historyWidgets.forEach {
@@ -137,21 +137,17 @@ class TextSettingWidget(
         }
 
         val wasFocused = textWidget.isFocused
+        textWidget.isFocused = false
+        val childClicked = super.mouseClicked(click, doubled)
 
-        val result = super.mouseClicked(click, doubled)
-
-        if (wasFocused && !textWidget.isFocused) {
-            commitHistory()
+        if (wasFocused && textWidget.text != lastFocusedValue) {
+            if (lastFocusedValue.isNotBlank()){
+                setting.history.add(lastFocusedValue)
+                lastFocusedValue = setting.value
+            }
         }
 
-        return result
-    }
-
-    private fun commitHistory() {
-        if (lastFocusedValue.isNotBlank()) {
-            setting.history.add(lastFocusedValue)
-        }
-        lastFocusedValue = setting.value
+        return childClicked
     }
 
     override fun charTyped(input: CharInput): Boolean {
