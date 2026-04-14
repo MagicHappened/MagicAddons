@@ -47,7 +47,8 @@ class TextListSettingWidget(
                 displayText = { "${entry.name}: ${entry.value}" },
                 onRemove = { removeEntry(it.value) },
                 onClick = { toggleEntry(it.value) },
-                isEnabled = { entry.enabled }
+                isEnabled = { entry.enabled },
+                onToggle = { entry.enabled = !entry.enabled }
             )
 
             row.x = x
@@ -116,12 +117,22 @@ class TextListSettingWidget(
 
     override fun mouseClicked(click: Click, doubled: Boolean): Boolean {
 
-        if (nameInputField.mouseClicked(click, doubled)) return true
-        if (valueInputField.mouseClicked(click, doubled)) return true
+        if (nameInputField.mouseClicked(click, doubled)) {
+            nameInputField.isFocused = true
+            valueInputField.isFocused = false
+            return true
+        }
+        if (valueInputField.mouseClicked(click, doubled)) {
+            valueInputField.isFocused = true
+            nameInputField.isFocused = false
+            return true
+        }
+
+        valueInputField.isFocused = false
+        nameInputField.isFocused = false
 
         rows.forEach {
             if (it.mouseClicked(click, doubled)) {
-                listSetting.value = listSetting.value // persist
                 return true
             }
         }
