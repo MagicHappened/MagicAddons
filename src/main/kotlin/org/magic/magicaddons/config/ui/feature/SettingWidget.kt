@@ -13,7 +13,6 @@ abstract class SettingWidget<T>(
     protected val node: SettingNode<T>
 ) : Drawable, Element {
 
-    // Layout
     var x: Int = 0
     var y: Int = 0
     open var width: Int = 20

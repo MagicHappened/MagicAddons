@@ -14,8 +14,12 @@ class TextListSettingWidget(
     val listSetting: ToggleListSetting
 ) : SettingWidget<MutableList<ListEntry>>(listSetting) {
 
+
     override var childrenExpanded: Boolean = true
     override var hovered: Boolean = false
+
+    private val rowHeight = 20
+    private val inputPadding = 4
 
     override val childrenWidgets: MutableList<SettingWidget<*>> = mutableListOf()
 
@@ -48,18 +52,22 @@ class TextListSettingWidget(
             row.x = x
             row.y = currentY
             row.width = width
-            row.height = 20
+            row.height = rowHeight
 
             rows.add(row)
-            currentY += 20
+            currentY += rowHeight
         }
 
-        // input fields
-        nameInputField.x = x
-        nameInputField.y = currentY + 10
+        val inputWidths = width - (inputPadding * 3)
 
-        valueInputField.x = x + 110
+
+        nameInputField.x = x + inputPadding
+        nameInputField.y = currentY + 10
+        nameInputField.width = (inputWidths*0.6).toInt()
+
+        valueInputField.x = x + nameInputField.width + inputPadding
         valueInputField.y = currentY + 10
+        valueInputField.width = inputWidths - nameInputField.width
 
         super.init()
     }
@@ -84,7 +92,7 @@ class TextListSettingWidget(
         ctx.drawText(
             MinecraftClient.getInstance().textRenderer,
             Text.literal("Add new entry:"),
-            x,
+            x + textXPad,
             currentY,
             0xFFFFFFFF.toInt(),
             false
@@ -118,5 +126,5 @@ class TextListSettingWidget(
         return false
     }
 
-    override fun getTotalHeight(): Int = height
+    override fun getTotalHeight(): Int = height //todo change this to actual height based on rows etc.
 }
