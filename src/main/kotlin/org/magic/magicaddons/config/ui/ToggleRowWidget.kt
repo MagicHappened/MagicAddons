@@ -19,6 +19,8 @@ open class ToggleRowWidget<T>(
 
     private val checkbox = CheckboxWidget()
 
+    override val textLeftPadding: Int = 0
+
     private val padding = 2
 
     override fun getLeftReservedWidth(): Int {

@@ -9,10 +9,12 @@ import net.minecraft.client.input.KeyInput
 import net.minecraft.text.Text
 import org.magic.magicaddons.config.ui.ClickableButtonWidget
 import org.magic.magicaddons.config.data.ToggleListSetting
+import org.magic.magicaddons.config.ui.BaseRowWidget
 import org.magic.magicaddons.config.ui.ToggleRowWidget
 import org.magic.magicaddons.data.ListEntry
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.ScreenUtil
+import org.magic.magicaddons.util.ScreenUtil.drawLine
 
 class TextListSettingWidget(
     val listSetting: ToggleListSetting
@@ -27,9 +29,18 @@ class TextListSettingWidget(
     private val inputYPadding = 2
     private val inputXPadding = 4
 
+    private var addLabelY: Int = 0
+    private var rowY: Int = 0
+
     override val childrenWidgets: MutableList<SettingWidget<*>> = mutableListOf()
 
     private val rows = mutableListOf<ToggleRowWidget<ListEntry>>()
+    private val seperatorYs = mutableListOf<Int>()
+
+    private val titleRow = BaseRowWidget(
+        listSetting.displayName,
+        {listSetting.displayName}
+    )
 
     private val nameInputField = TextFieldWidget(
         MinecraftClient.getInstance().textRenderer,
@@ -40,19 +51,28 @@ class TextListSettingWidget(
         MinecraftClient.getInstance().textRenderer,
         150, 20, Text.literal("")
     )
+
     private val submitButton = ClickableButtonWidget(
-        x,
-        y,
+        x, y,
         width = 18,
         height = 20,
         message = Text.literal("+").styled { it.withColor(0x00FF00) }
     )
 
+
     override fun init() {
         val textRenderer = MinecraftClient.getInstance().textRenderer
+
+        titleRow.y = y + borderSize
+        titleRow.x = x + borderSize
+
+        nameInputField.setMaxLength(256)
+        valueInputField.setMaxLength(256)
+
         rows.clear()
-        val titleTextHeight = titleYPadding * 2 + textRenderer.fontHeight
-        var currentY = y + borderSize + titleTextHeight
+
+        var currentY = y + borderSize + titleRow.height
+        rowY = currentY
 
         listSetting.value.forEach { entry ->
             val row = ToggleRowWidget(
@@ -70,17 +90,25 @@ class TextListSettingWidget(
             row.height = rowHeight
 
             rows.add(row)
+
             currentY += rowHeight
+            seperatorYs.add(currentY)
+
         }
+
+        seperatorYs.removeLastOrNull()
+
+        // after rows y level label y
+        this.addLabelY = currentY
+
+        currentY += textRenderer.fontHeight + inputYPadding * 2
+        // add padding on both top and bottom for input Y padding
 
         val inputWidths = width - (inputXPadding * 4) - 18
 
-        val textHeight = + textRenderer.fontHeight + inputYPadding * 2
-        currentY += textHeight
-
         nameInputField.x = x + inputXPadding
         nameInputField.y = currentY
-        nameInputField.width = (inputWidths*0.4).toInt()
+        nameInputField.width = (inputWidths * 0.4).toInt()
 
         valueInputField.x = x + nameInputField.width + inputXPadding * 2
         valueInputField.y = currentY
@@ -88,32 +116,45 @@ class TextListSettingWidget(
 
         submitButton.x = x + nameInputField.width + valueInputField.width + inputXPadding * 3
         submitButton.y = currentY
+        currentY += valueInputField.height + inputYPadding
+        currentY += borderSize
+        height = currentY - y
         super.init()
     }
 
     override fun render(ctx: DrawContext, mouseX: Int, mouseY: Int, delta: Float) {
         val textRenderer = MinecraftClient.getInstance().textRenderer
-        ctx.fill(x, y, x + width, y + getTotalHeight(), backgroundColor)
 
+        ctx.fill(x, y, x + width, y + height, backgroundColor)
 
-        val titleTextHeight = titleYPadding * 2 + textRenderer.fontHeight
-        var currentY = y + borderSize
+        titleRow.render(ctx)
 
-        rows.forEach {
-            it.y = currentY
-            it.render(ctx)
-            currentY += it.height
+        ctx.state.drawLine(
+            x, rowY, x+width, rowY,
+            2,
+            borderColor)
 
-            ScreenUtil.drawLine(ctx, x, currentY, x + width, currentY, 1, 0xFF222222.toInt())
+        rows.forEach { it.render(ctx) }
+
+        seperatorYs.forEach {
+            ctx.state.drawLine(
+                x, it, x + width, it,
+                1,
+                borderColor
+            )
         }
 
-        currentY += inputYPadding
+
+        ctx.state.drawLine(
+            x, addLabelY, x+width, addLabelY,
+            2,
+            borderColor)
 
         ctx.drawText(
             textRenderer,
             Text.literal("Add new entry:"),
             x + textXPad,
-            currentY,
+            addLabelY + inputYPadding,
             0xFFFFFFFF.toInt(),
             false
         )
@@ -122,7 +163,9 @@ class TextListSettingWidget(
         valueInputField.render(ctx, mouseX, mouseY, delta)
         submitButton.render(ctx, mouseX, mouseY, delta)
 
-        ScreenUtil.drawBorder(ctx, x, y, x + width, y + getTotalHeight(), borderSize, borderColor)
+        ScreenUtil.drawBorder(ctx, x, y, x + width, y + height, borderSize, borderColor)
+
+        renderTooltip(ctx, mouseX, mouseY)
     }
 
     private fun toggleEntry(entry: ListEntry) {
@@ -201,6 +244,21 @@ class TextListSettingWidget(
 
 
     override fun getTotalHeight(): Int {
-        return height + rowHeight * rows.size
+        val tr = MinecraftClient.getInstance().textRenderer
+
+        val rowsHeight = rows.size * rowHeight
+
+        val inputHeight = valueInputField.height
+
+        val addLabelHeight = tr.fontHeight
+        val totalPadding = inputYPadding * 3 // 2 widgets so 3 spacing top bottom and middle
+
+        return borderSize +
+                titleRow.height +
+                rowsHeight +
+                totalPadding +
+                addLabelHeight +
+                inputHeight +
+                borderSize
     }
 }
