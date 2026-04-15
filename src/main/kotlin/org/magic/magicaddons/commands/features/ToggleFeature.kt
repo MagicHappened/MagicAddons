@@ -3,7 +3,6 @@ package org.magic.magicaddons.commands.features
 import com.mojang.brigadier.builder.LiteralArgumentBuilder
 import com.mojang.brigadier.builder.LiteralArgumentBuilder.literal
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource
-import net.minecraft.text.Text
 import org.magic.magicaddons.commands.AbstractCommand
 import org.magic.magicaddons.config.MagicAddonsConfigJsonHandler
 import org.magic.magicaddons.features.FeatureManager
@@ -29,7 +28,7 @@ object ToggleFeature : AbstractCommand() {
                     .executes {
                         feature.baseSetting.value = !feature.baseSetting.value
                         it.source.sendFeedback(ChatUtils.buildWithPrefix(feature.displayName + " Feature "+ if (feature.baseSetting.value) "Enabled" else "Disabled"))
-                        MagicAddonsConfigJsonHandler.save() //hopefully fixes?
+                        MagicAddonsConfigJsonHandler.save()
                         return@executes 1
                     }
             )
