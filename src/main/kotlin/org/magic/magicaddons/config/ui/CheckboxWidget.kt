@@ -3,7 +3,7 @@ package org.magic.magicaddons.config.ui
 import net.minecraft.client.gui.Click
 import net.minecraft.client.gui.DrawContext
 import net.minecraft.client.gui.Element
-import org.magic.magicaddons.util.ScreenUtil
+import org.magic.magicaddons.util.ScreenUtil.drawLine
 
 class CheckboxWidget(
     var size: Int = 24,
@@ -31,7 +31,6 @@ class CheckboxWidget(
 
     private fun drawCheckmark(ctx: DrawContext) {
 
-        // normalize based on 48x48 design
         fun sx(px: Float) = x + (px / baseSize * size)
         fun sy(py: Float) = y + (py / baseSize * size)
 
@@ -44,10 +43,23 @@ class CheckboxWidget(
         val x3 = sx(36f)
         val y3 = sy(12f)
 
-        val thickness = (size / 8).coerceAtLeast(1)
+        val thickness = (size / 8).coerceAtLeast(1).toFloat()
 
-        ScreenUtil.drawLine(ctx, x1, y1, x2, y2, thickness, checkColor)
-        ScreenUtil.drawLine(ctx, x2, y2, x3, y3, thickness, checkColor)
+        // extend first segment slightly
+        val dx = x2 - x1
+        val dy = y2 - y1
+        val len = kotlin.math.sqrt(dx * dx + dy * dy)
+
+        val extend = thickness * 0.5f
+
+        val ex = (dx / len) * extend
+        val ey = (dy / len) * extend
+
+        val newX2 = x2 + ex
+        val newY2 = y2 + ey
+
+        ctx.state.drawLine(x1, y1, newX2, newY2, thickness, checkColor)
+        ctx.state.drawLine(x2, y2, x3, y3, thickness, checkColor)
     }
 
     override fun mouseClicked(click: Click, doubled: Boolean): Boolean {

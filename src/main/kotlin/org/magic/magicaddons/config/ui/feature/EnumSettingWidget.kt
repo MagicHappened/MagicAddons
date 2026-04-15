@@ -7,6 +7,7 @@ import net.minecraft.text.Text
 import org.magic.magicaddons.config.data.EnumSetting
 import org.magic.magicaddons.config.ui.ClickableRowWidget
 import org.magic.magicaddons.util.ScreenUtil
+import org.magic.magicaddons.util.ScreenUtil.drawLine
 
 
 class EnumSettingWidget<T : Enum<T>>(
@@ -61,8 +62,7 @@ class EnumSettingWidget<T : Enum<T>>(
         ctx.fill(x, y, x + width, y + height, backgroundColor)
         ScreenUtil.drawBorder(ctx, x, y, x + width, y + height, borderSize, borderColor)
 
-        ScreenUtil.drawLine(
-            ctx,
+        ctx.state.drawLine(
             x + borderSize,
             y + halfHeight,
             x + width - borderSize,

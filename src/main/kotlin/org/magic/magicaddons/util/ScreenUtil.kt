@@ -2,8 +2,13 @@ package org.magic.magicaddons.util
 
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.minecraft.client.MinecraftClient
+import net.minecraft.client.gl.RenderPipelines
 import net.minecraft.client.gui.DrawContext
+import net.minecraft.client.gui.render.state.ColoredQuadGuiElementRenderState
+import net.minecraft.client.gui.render.state.GuiRenderState
 import net.minecraft.client.gui.screen.Screen
+import net.minecraft.client.texture.TextureSetup
+import org.joml.Matrix3x2f
 
 object ScreenUtil {
 
@@ -75,8 +80,8 @@ object ScreenUtil {
         ctx.fill(x, y, x + thickness, y + size, color)
         ctx.fill(x + size - thickness, y, x + size, y + size, color)
     }
-    fun drawLine(
-        ctx: DrawContext,
+
+    fun GuiRenderState.drawLine(
         x1: Int,
         y1: Int,
         x2: Int,
@@ -84,37 +89,48 @@ object ScreenUtil {
         thickness: Int,
         color: Int
     ) {
-        drawLine(ctx,x1.toFloat(), y1.toFloat(), x2.toFloat(), y2.toFloat(), thickness, color)
+        drawLine(
+            x1.toFloat(),
+            y1.toFloat(),
+            x2.toFloat(),
+            y2.toFloat(),
+            thickness.toFloat(),
+            color
+        )
     }
 
-    fun drawLine(
-        ctx: DrawContext,
-        x1: Float, y1: Float,
-        x2: Float, y2: Float,
-        thickness: Int,
+    fun GuiRenderState.drawLine(
+        x1: Float,
+        y1: Float,
+        x2: Float,
+        y2: Float,
+        thickness: Float,
         color: Int
     ) {
         val dx = x2 - x1
         val dy = y2 - y1
-        val steps = maxOf(kotlin.math.abs(dx), kotlin.math.abs(dy)).toInt()
+        val len = kotlin.math.sqrt(dx * dx + dy * dy)
+        if (len == 0f) return
 
-        if (steps == 0) return
+        val pose = Matrix3x2f()
 
-        for (i in 0..steps) {
-            val t = i.toFloat() / steps
-            val x = (x1 + dx * t).toInt()
-            val y = (y1 + dy * t).toInt()
+        pose.translate(x1, y1)
+        pose.rotate(kotlin.math.atan2(dy, dx))
 
-            // thickness (centered square)
-            val half = thickness / 2
-            ctx.fill(
-                x - half,
-                y - half,
-                x + half + 1,
-                y + half + 1,
-                color
+        val half = thickness / 2f
+
+        addSimpleElement(
+            ColoredQuadGuiElementRenderState(
+                RenderPipelines.GUI,
+                TextureSetup.empty(),
+                pose,
+                0, -half.toInt(),
+                len.toInt(), half.toInt(),
+                color,
+                color,
+                null
             )
-        }
+        )
     }
 
     fun drawMultilineBox(
