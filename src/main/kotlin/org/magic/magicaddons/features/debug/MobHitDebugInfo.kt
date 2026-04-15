@@ -26,7 +26,7 @@ object MobHitDebugInfo : Feature() {
     }
 
     override val id: String = "MobHitDebug"
-    override val displayName: String = "Mob Hit Skin Debug"
+    override val displayName: String = "Mob Hit Debug"
     override val tooltipMessage: String = "On next mob hit will cancel the actual event and print debug information"
     override val category: String = "debug"
 
