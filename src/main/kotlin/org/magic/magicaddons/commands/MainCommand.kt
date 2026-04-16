@@ -8,14 +8,14 @@ import org.magic.magicaddons.commands.debug.MainDebug
 import org.magic.magicaddons.commands.features.EditFeature
 import org.magic.magicaddons.commands.misc.PlaySound
 import org.magic.magicaddons.commands.features.ToggleFeature
+import org.magic.magicaddons.commands.features.farming.GreenhouseScreen
 import org.magic.magicaddons.config.ui.screen.ConfigScreen
-import org.magic.magicaddons.config.ui.screen.FeatureEditScreen
-import org.magic.magicaddons.features.combat.HighlightMobs
 import org.magic.magicaddons.util.ScreenUtil
 
 
 object MainCommand {
     val commandList = mutableListOf(
+        GreenhouseScreen,
         ToggleFeature,
         EditFeature,
         MainDebug,
