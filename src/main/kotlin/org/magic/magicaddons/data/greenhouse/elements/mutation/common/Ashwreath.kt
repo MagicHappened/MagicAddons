@@ -4,7 +4,7 @@ import org.magic.magicaddons.data.greenhouse.Mutation
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockId
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
-class Scourroot : Mutation() {
-    override val name: String = "Scourroot"
-    override val SkyBlockId: SkyBlockId = SkyBlockItemId.item("SCOURROOT")
+class Ashwreath : Mutation() {
+    override val name: String = "Ashwreath"
+    override val SkyBlockId: SkyBlockId = SkyBlockItemId.item("ASHWREATH")
 }
