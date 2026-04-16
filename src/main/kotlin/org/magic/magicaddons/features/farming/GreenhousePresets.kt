@@ -14,6 +14,6 @@ object GreenhousePresets : Feature() {
             key = "enabled",
             displayName = displayName,
             tooltip = tooltipMessage,
-            value = false
-        )
+            value = true
+        ) //todo change to false default, just for testing purposes
 }
