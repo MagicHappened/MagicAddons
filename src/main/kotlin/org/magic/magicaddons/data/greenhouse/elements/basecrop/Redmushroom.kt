@@ -4,7 +4,7 @@ import org.magic.magicaddons.data.greenhouse.BaseCrop
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockId
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
-class Wildrose : BaseCrop() {
-    override val name: String = "Wild Rose"
-    override val SkyBlockId: SkyBlockId = SkyBlockItemId.item("WILD_ROSE")
+class Redmushroom : BaseCrop() {
+    override val name: String = "Red Mushroom"
+    override val SkyBlockId: SkyBlockId = SkyBlockItemId.item("RED_MUSHROOM")
 }

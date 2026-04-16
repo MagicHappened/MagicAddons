@@ -17,6 +17,6 @@ abstract class GreenhouseElement {
     val isRareCrop : Boolean = false
 
 
-    abstract var inSlot: GHSlot? //todo if gh slot expands to just real world needs to change here
+    // abstract var inSlot: GHSlot? //todo if gh slot expands to just real world needs to change here
 
 }
