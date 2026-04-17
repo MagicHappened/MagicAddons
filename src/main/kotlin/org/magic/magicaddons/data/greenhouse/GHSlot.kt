@@ -8,6 +8,7 @@ class GHSlot {
     // bottom left therefore is x=9 y=9
     var x: Int = 0
     var y: Int = 0
-    // var worldPos: Vec3d? = null  //  for now removed
+    var worldPos: Vec3d? = null
+    var unlocked: Boolean = false //todo make this check podzol
     // maybe change without this (open class and then inherit to real world class?)
 }

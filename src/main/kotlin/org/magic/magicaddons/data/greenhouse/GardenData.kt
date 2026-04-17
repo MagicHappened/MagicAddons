@@ -8,11 +8,6 @@ object GardenData {
     //top left = index 0 bottom right index 24
     val GreenhousePlotIndexes = mutableListOf<Int>(2,4,5) //todo change later to not be predetermined
 
-    @Subscription
-    private fun islandChange(islandChangeEvent: IslandChangeEvent) {
-        if (islandChangeEvent.new != SkyBlockIsland.GARDEN) return
 
-
-    }
 
 }

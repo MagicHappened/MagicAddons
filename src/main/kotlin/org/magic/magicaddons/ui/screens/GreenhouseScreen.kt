@@ -1,11 +1,17 @@
 package org.magic.magicaddons.ui.screens
 
+import net.minecraft.block.Block
+import net.minecraft.client.MinecraftClient
 import net.minecraft.client.gl.RenderPipelines
 import net.minecraft.client.gui.DrawContext
 import net.minecraft.client.gui.screen.Screen
+import net.minecraft.client.texture.Sprite
 import net.minecraft.text.Text
 import net.minecraft.util.Identifier
-import org.magic.magicaddons.util.ScreenUtil
+import net.minecraft.util.math.Direction
+import net.minecraft.util.math.random.Random
+import org.magic.magicaddons.data.greenhouse.GreenhouseElement
+import org.magic.magicaddons.data.greenhouse.elements.mutation.common.Ashwreath
 
 class GreenhouseScreen(title: Text) : Screen(title) {
 
@@ -15,13 +21,23 @@ class GreenhouseScreen(title: Text) : Screen(title) {
     var startY: Int = paddingY
     var containerSize: Int = 400
 
+    var sprite: Sprite? = null
+
     override fun init() {
         super.init()
-        containerSize = height-paddingY*2
-        startX = (width-containerSize)/2
+        containerSize = height - paddingY * 2
+        startX = (width - containerSize) / 2
         startY = paddingY
 
+        sprite = getTopSprite(testList[0].requiredSoil)
+
     }
+
+    val testList = mutableListOf<GreenhouseElement>(
+        Ashwreath(),
+        Ashwreath()
+    )
+
 
     /*
     todo to left of grid add menu buttons
@@ -44,5 +60,41 @@ class GreenhouseScreen(title: Text) : Screen(title) {
             containerSize,
             containerSize
         )
+
+        sprite ?: return
+        context.drawSpriteStretched(
+            RenderPipelines.GUI_TEXTURED,
+            sprite,
+            startX,
+            startY,
+            100,
+            100
+        )
+
+    }
+
+    // todo possibly add state for moisture
+    fun getTopSprite(block: Block): Sprite? {
+        val client = MinecraftClient.getInstance()
+        val state = block.defaultState
+        val model = client.blockRenderManager.models.getModel(state)
+
+        val parts = model.getParts(Random.create())
+
+        for (part in parts) {
+            val quads = part.getQuads(Direction.UP)
+            if (quads.isNotEmpty()) {
+                return quads[0].sprite
+            }
+        }
+
+        for (part in parts) {
+            val quads = part.getQuads(null)
+            if (quads.isNotEmpty()) {
+                return quads[0].sprite
+            }
+        }
+
+        return null
     }
 }

@@ -2,6 +2,17 @@ package org.magic.magicaddons.features.farming
 
 import org.magic.magicaddons.config.data.BooleanSetting
 import org.magic.magicaddons.features.Feature
+import tech.thatgravyboat.skyblockapi.api.SkyBlockAPI
+import tech.thatgravyboat.skyblockapi.api.events.base.Subscription
+import tech.thatgravyboat.skyblockapi.api.events.base.predicates.OnlyIn
+import tech.thatgravyboat.skyblockapi.api.events.base.predicates.OnlyNonGuest
+import tech.thatgravyboat.skyblockapi.api.events.info.ScoreboardChangeEvent
+import tech.thatgravyboat.skyblockapi.api.events.info.ScoreboardUpdateEvent
+import tech.thatgravyboat.skyblockapi.api.events.location.IslandChangeEvent
+import tech.thatgravyboat.skyblockapi.api.location.SkyBlockIsland
+import tech.thatgravyboat.skyblockapi.api.profile.garden.PlotAPI
+import tech.thatgravyboat.skyblockapi.api.profile.profile.ProfileData
+import tech.thatgravyboat.skyblockapi.helpers.SkyBlockEntity
 
 object GreenhousePresets : Feature() {
     override val id: String = "GreenhousePresets"
@@ -16,4 +27,26 @@ object GreenhousePresets : Feature() {
             tooltip = tooltipMessage,
             value = true
         ) //todo change to false default, just for testing purposes
+
+
+    @Subscription
+    @OnlyNonGuest
+    @OnlyIn(SkyBlockIsland.GARDEN)
+    fun onScoreboardUpdate(event: ScoreboardUpdateEvent) {
+        val isGreenhouse = PlotAPI.getCurrentPlot()?.data?.isGreenhouse
+        //todo here should be highlighting
+    }
+
+    @Subscription
+    fun islandChanged(event: IslandChangeEvent) {
+        val currentPlot = PlotAPI.getCurrentPlot() ?: return
+        currentPlot.aabb
+    }
+
+
+
+
+
+
+
 }
