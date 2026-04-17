@@ -2,13 +2,15 @@ package org.magic.magicaddons.data.greenhouse
 
 import net.minecraft.block.Block
 import net.minecraft.block.Blocks
+import net.minecraft.client.MinecraftClient
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockId
 
 abstract class GreenhouseElement {
     abstract val name: String
     abstract val SkyBlockId: SkyBlockId?
+    open val requiredSoil: Block = Blocks.FARMLAND
 
-    val requiredSoil: Block = Blocks.FARMLAND
+
 
     // abstract val buffs: todo later lol
     val needsWater: Boolean = false
