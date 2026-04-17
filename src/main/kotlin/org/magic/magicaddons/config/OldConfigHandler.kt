@@ -11,11 +11,7 @@ object OldConfigHandler {
         targetVersion: String
     ): MutableMap<String, Any> {
 
-        val version = extractVersion(raw)
-
-        if (version == null) {
-            return handleNoVersion(raw, targetVersion)
-        }
+        val version = extractVersion(raw) ?: return handleNoVersion(raw, targetVersion)
 
         return migrate(raw, version, targetVersion)
     }
