@@ -1,6 +1,6 @@
 package org.magic.magicaddons.ui.screens
 
-import net.minecraft.block.Block
+import net.minecraft.block.BlockState
 import net.minecraft.client.MinecraftClient
 import net.minecraft.client.gl.RenderPipelines
 import net.minecraft.client.gui.DrawContext
@@ -12,16 +12,22 @@ import net.minecraft.util.math.Direction
 import net.minecraft.util.math.random.Random
 import org.magic.magicaddons.data.greenhouse.GreenhouseElement
 import org.magic.magicaddons.data.greenhouse.elements.mutation.common.Ashwreath
+import org.magic.magicaddons.features.farming.GreenhousePresets
+import org.magic.magicaddons.util.ChatUtils
+import org.magic.magicaddons.util.ScreenUtil
 
 class GreenhouseScreen(title: Text) : Screen(title) {
 
     private val paddingY: Int = 50
-
+    // todo change this to top padding and bottom padding
     var startX: Int = paddingY
     var startY: Int = paddingY
     var containerSize: Int = 400
 
-    var sprite: Sprite? = null
+    val gridSize = 10
+    val slotSize = containerSize / gridSize
+
+    val spriteMap: MutableMap<Sprite, MutableList<Int>> = mutableMapOf()
 
     override fun init() {
         super.init()
@@ -29,7 +35,36 @@ class GreenhouseScreen(title: Text) : Screen(title) {
         startX = (width - containerSize) / 2
         startY = paddingY
 
-        sprite = getTopSprite(testList[0].requiredSoil)
+        if (GreenhousePresets.initializedGreenhouseIds.isEmpty()) {
+            ChatUtils.sendWithPrefix("No initialized greenhouse ids, please enter your greenhouse.")
+            return
+        }
+
+        val grid = GreenhousePresets.greenhouseList.firstOrNull() ?: return
+
+        val stateMap = mutableMapOf<BlockState, MutableList<Int>>()
+        spriteMap.clear()
+
+        for (x in 0 until 10) {
+            for (y in 0 until 10) {
+
+                val slot = grid.getSlot(x, y)
+                val state = slot?.placedBlock ?: continue
+
+                val index = y * 10 + x
+
+                stateMap
+                    .getOrPut(state) { mutableListOf() }
+                    .add(index)
+            }
+        }
+
+        stateMap.forEach { (state, indices) ->
+
+            val sprite = getTopSpriteForState(state) ?: return@forEach
+
+            spriteMap[sprite] = indices
+        }
 
     }
 
@@ -61,22 +96,36 @@ class GreenhouseScreen(title: Text) : Screen(title) {
             containerSize
         )
 
-        sprite ?: return
-        context.drawSpriteStretched(
-            RenderPipelines.GUI_TEXTURED,
-            sprite,
-            startX,
-            startY,
-            100,
-            100
+        ScreenUtil.drawMultilineBoxCentered(
+            context,
+            "Greenhouse 1",
+            width/2,
+            25
         )
+
+        if (spriteMap.isEmpty()) return
+
+        spriteMap.forEach { (sprite, ints) ->
+            ints.forEach {
+                context.drawSpriteStretched(
+                    RenderPipelines.GUI_TEXTURED,
+                    sprite,
+                    startX + it % gridSize,
+                    startY + it / gridSize,
+                    slotSize,
+                    slotSize
+                )
+            }
+        }
+
+
 
     }
 
     // todo possibly add state for moisture
-    fun getTopSprite(block: Block): Sprite? {
+    fun getTopSpriteForState(state: BlockState): Sprite? {
         val client = MinecraftClient.getInstance()
-        val state = block.defaultState
+
         val model = client.blockRenderManager.models.getModel(state)
 
         val parts = model.getParts(Random.create())
