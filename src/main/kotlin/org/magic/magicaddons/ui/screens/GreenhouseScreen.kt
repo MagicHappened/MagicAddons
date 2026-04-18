@@ -3,6 +3,7 @@ package org.magic.magicaddons.ui.screens
 import net.minecraft.block.BlockState
 import net.minecraft.client.MinecraftClient
 import net.minecraft.client.gl.RenderPipelines
+import net.minecraft.client.gui.Click
 import net.minecraft.client.gui.DrawContext
 import net.minecraft.client.gui.screen.Screen
 import net.minecraft.client.texture.Sprite
@@ -15,25 +16,43 @@ import org.magic.magicaddons.data.greenhouse.elements.mutation.common.Ashwreath
 import org.magic.magicaddons.features.farming.GreenhousePresets
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.ScreenUtil
+import org.magic.magicaddons.util.ScreenUtil.drawLine
+import tech.thatgravyboat.skyblockapi.api.profile.items.wardrobe.WardrobeAPI.slots
 
 class GreenhouseScreen(title: Text) : Screen(title) {
 
+    private val gridSize = 10
     private val paddingY: Int = 50
     // todo change this to top padding and bottom padding
-    var startX: Int = paddingY
-    var startY: Int = paddingY
-    var containerSize: Int = 400
+    private var startX: Int = paddingY
+    private var startY: Int = paddingY
+    private var containerSize: Int = 400
+    private var slotSize: Int = 40
 
-    val gridSize = 10
-    val slotSize = containerSize / gridSize
+    val textureSize = 16f
+    val borderPx = 4f
+
+    var scale: Float = 1f
+    var borderPadding: Int = 4
+
+    val forward = Identifier.of("minecraft", "widget/page_forward")
+    val backward = Identifier.of("minecraft", "widget/page_backward")
+    //todo make highlighted arrows as well
 
     val spriteMap: MutableMap<Sprite, MutableList<Int>> = mutableMapOf()
 
     override fun init() {
         super.init()
+
         containerSize = height - paddingY * 2
+        scale = containerSize / textureSize
+        borderPadding = (borderPx * scale).toInt()
+
+        slotSize = (containerSize - borderPadding*2) / (gridSize)
         startX = (width - containerSize) / 2
         startY = paddingY
+
+
 
         if (GreenhousePresets.initializedGreenhouseIds.isEmpty()) {
             ChatUtils.sendWithPrefix("No initialized greenhouse ids, please enter your greenhouse.")
@@ -66,13 +85,8 @@ class GreenhouseScreen(title: Text) : Screen(title) {
             spriteMap[sprite] = indices
         }
 
+
     }
-
-    val testList = mutableListOf<GreenhouseElement>(
-        Ashwreath(),
-        Ashwreath()
-    )
-
 
     /*
     todo to left of grid add menu buttons
@@ -105,19 +119,62 @@ class GreenhouseScreen(title: Text) : Screen(title) {
 
         if (spriteMap.isEmpty()) return
 
+
+        //todo nice and all but turn into widgets cuz need handlers :/
         spriteMap.forEach { (sprite, ints) ->
             ints.forEach {
                 context.drawSpriteStretched(
                     RenderPipelines.GUI_TEXTURED,
                     sprite,
-                    startX + it % gridSize,
-                    startY + it / gridSize,
+                    startX + borderPadding + (it % gridSize)*slotSize,
+                    startY + borderPadding + (it / gridSize)*slotSize,
                     slotSize,
                     slotSize
                 )
             }
         }
 
+        //todo these dont work
+        for (x in 1..9){
+            context.state.drawLine(
+                startX + borderPadding + x * slotSize,
+                startY + borderPadding,
+                startX + borderPadding + x * slotSize,
+                startY + containerSize - borderPadding,
+                1,
+                0xFFFFFFFF.toInt()
+            )
+        }
+        for (y in 1..9){
+            context.state.drawLine(
+                startX + borderPadding,
+                startY + borderPadding + y * slotSize,
+                startX + containerSize - borderPadding,
+                startY + containerSize + y * slotSize,
+                1,
+                0xFFFFFFFF.toInt()
+            )
+
+        }
+
+        //todo also need these to function as actual clickers
+        context.drawGuiTexture(
+            RenderPipelines.GUI_TEXTURED,
+            Identifier.of("minecraft", "widget/page_forward"),
+            (width-20)/2,
+            startY + containerSize + 20,
+            16,
+            16
+        )
+
+        context.drawGuiTexture(
+            RenderPipelines.GUI_TEXTURED,
+            Identifier.of("minecraft", "widget/page_backward"),
+            (width+20)/2,
+            startY + containerSize + 20,
+            16,
+            16
+        )
 
 
     }
@@ -145,5 +202,13 @@ class GreenhouseScreen(title: Text) : Screen(title) {
         }
 
         return null
+    }
+
+    override fun mouseClicked(click: Click?, doubled: Boolean): Boolean {
+        return super.mouseClicked(click, doubled)
+    }
+
+    override fun isMouseOver(mouseX: Double, mouseY: Double): Boolean {
+        return super.isMouseOver(mouseX, mouseY)
     }
 }
