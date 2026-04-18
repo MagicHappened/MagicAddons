@@ -17,7 +17,6 @@ import tech.thatgravyboat.skyblockapi.api.events.base.predicates.OnlyNonGuest
 import tech.thatgravyboat.skyblockapi.api.events.info.ScoreboardUpdateEvent
 import tech.thatgravyboat.skyblockapi.api.events.location.IslandChangeEvent
 import tech.thatgravyboat.skyblockapi.api.location.SkyBlockIsland
-import tech.thatgravyboat.skyblockapi.api.profile.garden.Plot
 import tech.thatgravyboat.skyblockapi.api.profile.garden.PlotAPI
 
 object GreenhousePresets : Feature() {
@@ -46,9 +45,10 @@ object GreenhousePresets : Feature() {
     val initializedGreenhouseIds = mutableListOf<Int>()
     val greenhouseList = mutableListOf<GreenhouseGrid>()
 
-    private fun initData(){
+    private fun initData() {
         if (allInitialized()) return
         if (!knownIdsInitialized) return
+
         val plot = PlotAPI.getCurrentPlot() ?: return
         val plotId = plot.id
         if (!knownGreenhouseIds.contains(plotId)) return
@@ -62,6 +62,7 @@ object GreenhousePresets : Feature() {
 
 
     }
+
     private fun initializeGreenhouse(plotId: Int, box: Box) {
 
         val world = MinecraftClient.getInstance().world ?: return
@@ -85,7 +86,7 @@ object GreenhousePresets : Feature() {
                 val blockState = world.getBlockState(pos)
                 val unlocked = blockState.block != Blocks.PODZOL
 
-                val addedSlot = GreenhouseSlot(x,y, unlocked, blockState)
+                val addedSlot = GreenhouseSlot(x, y, unlocked, blockState)
                 grid.setSlot(addedSlot)
             }
         }
@@ -95,11 +96,25 @@ object GreenhousePresets : Feature() {
         initializedGreenhouseIds.add(plotId)
     }
 
+    fun initKnownIds() {
+        if (knownIdsInitialized) return
 
-    fun allInitialized() = knownGreenhouseIds.all { initializedGreenhouseIds.contains(it) }
+        if (PlotAPI.plots.any { it.data == null }) return
 
+        PlotAPI.plots.forEach {
+            if (it.data?.isGreenhouse != true) return@forEach
+            knownGreenhouseIds.add(it.id)
+        }
+        knownIdsInitialized = true
 
+    }
 
+    fun allInitialized(): Boolean {
+        if (!knownIdsInitialized) {
+            return false
+        }
+        return knownGreenhouseIds.all { initializedGreenhouseIds.contains(it) }
+    }
 
 
     @Subscription
@@ -107,6 +122,8 @@ object GreenhousePresets : Feature() {
     @OnlyIn(SkyBlockIsland.GARDEN)
     fun onScoreboardUpdate(event: ScoreboardUpdateEvent) {
         if (!baseSetting.value) return
+        initKnownIds()
+        if (!knownIdsInitialized) return
         initData()
     }
 
@@ -114,16 +131,8 @@ object GreenhousePresets : Feature() {
     fun islandChanged(event: IslandChangeEvent) {
         if (!baseSetting.value) return
         if (event.new != SkyBlockIsland.GARDEN) return
-        if (!knownIdsInitialized) {
-            if (PlotAPI.plots.isEmpty()) {
-                //todo add warning to the user to open desk
-            }
-            PlotAPI.plots.forEach {
-                if (it.data?.isGreenhouse != true) return@forEach
-                knownGreenhouseIds.add(it.id)
-            }
-            knownIdsInitialized = true
-        }
+        initKnownIds()
+        if (!knownIdsInitialized) return
         initData()
 
 
@@ -145,9 +154,6 @@ object GreenhousePresets : Feature() {
     }
 
 
-
-
-
     //hopefully with 26.1 no longer needed
     fun getAABBUnsafe(plot: Any): Any? {
         return try {
@@ -159,6 +165,7 @@ object GreenhousePresets : Feature() {
             null
         }
     }
+
     fun Any.toBoxFromAABB(): Box? {
         return try {
             val fields = this.javaClass.declaredFields
