@@ -11,7 +11,7 @@ import net.minecraft.item.PlayerHeadItem
 import net.minecraft.text.ClickEvent
 import net.minecraft.text.Style
 import net.minecraft.text.Text
-import org.magic.magicaddons.config.data.BooleanSetting
+import org.magic.magicaddons.data.config.BooleanSetting
 import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.events.EventHandler
 import org.magic.magicaddons.events.interact.OnAttackEntityEvent

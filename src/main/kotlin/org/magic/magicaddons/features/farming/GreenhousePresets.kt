@@ -4,7 +4,7 @@ import net.minecraft.block.Blocks
 import net.minecraft.client.MinecraftClient
 import net.minecraft.util.math.Box
 import net.minecraft.util.math.Vec3d
-import org.magic.magicaddons.config.data.BooleanSetting
+import org.magic.magicaddons.data.config.BooleanSetting
 import org.magic.magicaddons.data.greenhouse.GreenhouseGrid
 import org.magic.magicaddons.data.greenhouse.GreenhouseSlot
 import org.magic.magicaddons.events.EventBus

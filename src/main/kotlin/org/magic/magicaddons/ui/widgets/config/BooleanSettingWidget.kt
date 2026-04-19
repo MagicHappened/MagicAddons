@@ -4,7 +4,7 @@ import net.minecraft.client.MinecraftClient
 import net.minecraft.client.gui.Click
 import net.minecraft.client.gui.DrawContext
 import net.minecraft.text.Text
-import org.magic.magicaddons.config.data.BooleanSetting
+import org.magic.magicaddons.data.config.BooleanSetting
 import org.magic.magicaddons.ui.widgets.CheckboxWidget
 import org.magic.magicaddons.util.ScreenUtil
 
