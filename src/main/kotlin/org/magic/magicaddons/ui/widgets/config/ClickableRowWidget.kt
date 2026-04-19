@@ -1,4 +1,4 @@
-package org.magic.magicaddons.config.ui
+package org.magic.magicaddons.ui.widgets.config
 
 import net.minecraft.client.MinecraftClient
 import net.minecraft.client.gl.RenderPipelines
@@ -6,6 +6,7 @@ import net.minecraft.client.gui.Click
 import net.minecraft.client.gui.DrawContext
 import net.minecraft.text.Text
 import net.minecraft.util.Identifier
+import org.magic.magicaddons.ui.widgets.BaseRowWidget
 
 open class ClickableRowWidget<T>(
     value: T,

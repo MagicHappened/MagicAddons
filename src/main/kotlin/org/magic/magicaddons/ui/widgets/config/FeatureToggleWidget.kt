@@ -1,13 +1,13 @@
-package org.magic.magicaddons.config.ui.feature
+package org.magic.magicaddons.ui.widgets.config
 
 import net.minecraft.client.MinecraftClient
 import net.minecraft.client.gui.Click
 import net.minecraft.client.gui.DrawContext
 import net.minecraft.client.gui.Drawable
 import net.minecraft.client.gui.Element
-import org.magic.magicaddons.config.ui.CheckboxWidget
-import org.magic.magicaddons.config.ui.screen.ConfigScreen
-import org.magic.magicaddons.config.ui.screen.FeatureEditScreen
+import org.magic.magicaddons.ui.widgets.CheckboxWidget
+import org.magic.magicaddons.ui.screens.ConfigScreen
+import org.magic.magicaddons.ui.screens.FeatureEditScreen
 import org.magic.magicaddons.features.Feature
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.ScreenUtil

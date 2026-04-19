@@ -1,4 +1,4 @@
-package org.magic.magicaddons.config.ui.feature
+package org.magic.magicaddons.ui.widgets.config
 
 import net.minecraft.client.gui.Click
 import net.minecraft.client.gui.DrawContext

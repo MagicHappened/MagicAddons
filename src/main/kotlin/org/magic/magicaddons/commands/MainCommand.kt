@@ -9,7 +9,7 @@ import org.magic.magicaddons.commands.features.EditFeature
 import org.magic.magicaddons.commands.misc.PlaySound
 import org.magic.magicaddons.commands.features.ToggleFeature
 import org.magic.magicaddons.commands.features.farming.GreenhouseScreen
-import org.magic.magicaddons.config.ui.screen.ConfigScreen
+import org.magic.magicaddons.ui.screens.ConfigScreen
 import org.magic.magicaddons.util.ScreenUtil
 
 

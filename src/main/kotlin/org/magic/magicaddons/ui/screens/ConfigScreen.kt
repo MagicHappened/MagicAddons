@@ -1,11 +1,11 @@
-package org.magic.magicaddons.config.ui.screen
+package org.magic.magicaddons.ui.screens
 
 import net.minecraft.client.gui.Click
 import net.minecraft.client.gui.DrawContext
 import net.minecraft.client.gui.screen.Screen
 import net.minecraft.text.Text
 import org.magic.magicaddons.config.MagicAddonsConfigJsonHandler
-import org.magic.magicaddons.config.ui.ConfigCategoryWidget
+import org.magic.magicaddons.ui.widgets.config.ConfigCategoryWidget
 import org.magic.magicaddons.features.Feature
 import org.magic.magicaddons.features.FeatureManager
 import org.magic.magicaddons.util.ChatUtils

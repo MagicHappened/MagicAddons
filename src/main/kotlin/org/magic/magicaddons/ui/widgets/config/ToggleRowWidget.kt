@@ -1,7 +1,8 @@
-package org.magic.magicaddons.config.ui
+package org.magic.magicaddons.ui.widgets.config
 
 import net.minecraft.client.gui.Click
 import net.minecraft.client.gui.DrawContext
+import org.magic.magicaddons.ui.widgets.CheckboxWidget
 
 open class ToggleRowWidget<T>(
     value: T,
