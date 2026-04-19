@@ -7,7 +7,7 @@ import net.minecraft.client.input.CharInput
 import net.minecraft.client.input.KeyInput
 import net.minecraft.text.Text
 import org.magic.magicaddons.config.MagicAddonsConfigJsonHandler
-import org.magic.magicaddons.config.data.SettingNode
+import org.magic.magicaddons.data.config.SettingNode
 import org.magic.magicaddons.ui.widgets.config.SettingWidget
 import org.magic.magicaddons.ui.widgets.config.SettingWidgetFactory
 import org.magic.magicaddons.features.Feature

@@ -3,12 +3,11 @@ package org.magic.magicaddons.features.mining
 import net.minecraft.client.MinecraftClient
 import net.minecraft.particle.ParticleTypes
 import net.minecraft.util.math.Vec3d
-import org.magic.magicaddons.config.data.BooleanSetting
+import org.magic.magicaddons.data.config.BooleanSetting
 import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.events.EventHandler
 import org.magic.magicaddons.events.world.AddParticleEvent
 import org.magic.magicaddons.features.Feature
-import org.magic.magicaddons.util.ChatUtils
 
 object HidePowderCoatingParticles : Feature() {
 

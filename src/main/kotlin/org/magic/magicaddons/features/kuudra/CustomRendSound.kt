@@ -9,8 +9,8 @@ import net.minecraft.util.Identifier
 import net.minecraft.util.math.Box
 import net.minecraft.util.math.Vec3d
 import net.minecraft.util.math.random.Random
-import org.magic.magicaddons.config.data.BooleanSetting
-import org.magic.magicaddons.config.data.TextSetting
+import org.magic.magicaddons.data.config.BooleanSetting
+import org.magic.magicaddons.data.config.TextSetting
 import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.events.EventHandler
 import org.magic.magicaddons.events.interact.OnAnyPlayerSwingEvent

@@ -4,10 +4,10 @@ import net.minecraft.entity.Entity
 import net.minecraft.entity.EquipmentSlot
 import net.minecraft.entity.LivingEntity
 import net.minecraft.entity.player.PlayerEntity
-import org.magic.magicaddons.config.data.BooleanSetting
-import org.magic.magicaddons.config.data.EnumSetting
-import org.magic.magicaddons.config.data.TextSetting
-import org.magic.magicaddons.config.data.ToggleListSetting
+import org.magic.magicaddons.data.config.BooleanSetting
+import org.magic.magicaddons.data.config.EnumSetting
+import org.magic.magicaddons.data.config.TextSetting
+import org.magic.magicaddons.data.config.ToggleListSetting
 import org.magic.magicaddons.data.EntityInfo
 import org.magic.magicaddons.data.ListEntry
 import org.magic.magicaddons.events.ConfigChangedEvent
@@ -18,7 +18,6 @@ import org.magic.magicaddons.events.world.OnEntityRemoved
 import org.magic.magicaddons.events.world.OnEntityUpdated
 import org.magic.magicaddons.events.world.OnWorldTickEvent
 import org.magic.magicaddons.features.Feature
-import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.PlayerUtils
 import org.magic.magicaddons.util.EntityUtils
 

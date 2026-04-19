@@ -1,6 +1,7 @@
-package org.magic.magicaddons.config.data
+package org.magic.magicaddons.data.config
 
 import org.magic.magicaddons.data.ListEntry
+import kotlin.collections.get
 
 sealed class SettingNode<T>(
     val key: String,

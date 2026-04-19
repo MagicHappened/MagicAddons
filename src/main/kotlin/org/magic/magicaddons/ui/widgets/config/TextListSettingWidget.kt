@@ -7,7 +7,7 @@ import net.minecraft.client.gui.widget.TextFieldWidget
 import net.minecraft.client.input.CharInput
 import net.minecraft.client.input.KeyInput
 import net.minecraft.text.Text
-import org.magic.magicaddons.config.data.ToggleListSetting
+import org.magic.magicaddons.data.config.ToggleListSetting
 import org.magic.magicaddons.ui.widgets.BaseRowWidget
 import org.magic.magicaddons.data.ListEntry
 import org.magic.magicaddons.util.ChatUtils

@@ -7,7 +7,7 @@ import net.minecraft.client.gui.widget.TextFieldWidget
 import net.minecraft.client.input.CharInput
 import net.minecraft.client.input.KeyInput
 import net.minecraft.text.Text
-import org.magic.magicaddons.config.data.TextSetting
+import org.magic.magicaddons.data.config.TextSetting
 import org.magic.magicaddons.util.ScreenUtil
 
 class TextSettingWidget(
