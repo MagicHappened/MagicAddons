@@ -1,11 +1,10 @@
-package org.magic.magicaddons.config.ui.feature
+package org.magic.magicaddons.ui.widgets.config
 
 import net.minecraft.client.MinecraftClient
 import net.minecraft.client.gui.Click
 import net.minecraft.client.gui.DrawContext
 import net.minecraft.text.Text
 import org.magic.magicaddons.config.data.EnumSetting
-import org.magic.magicaddons.config.ui.ClickableRowWidget
 import org.magic.magicaddons.util.ScreenUtil
 import org.magic.magicaddons.util.ScreenUtil.drawLine
 

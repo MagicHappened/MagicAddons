@@ -1,4 +1,4 @@
-package org.magic.magicaddons.config.ui.screen
+package org.magic.magicaddons.ui.screens
 
 import net.minecraft.client.gui.Click
 import net.minecraft.client.gui.DrawContext
@@ -8,8 +8,8 @@ import net.minecraft.client.input.KeyInput
 import net.minecraft.text.Text
 import org.magic.magicaddons.config.MagicAddonsConfigJsonHandler
 import org.magic.magicaddons.config.data.SettingNode
-import org.magic.magicaddons.config.ui.feature.SettingWidget
-import org.magic.magicaddons.config.ui.feature.SettingWidgetFactory
+import org.magic.magicaddons.ui.widgets.config.SettingWidget
+import org.magic.magicaddons.ui.widgets.config.SettingWidgetFactory
 import org.magic.magicaddons.features.Feature
 import org.magic.magicaddons.util.ScreenUtil
 

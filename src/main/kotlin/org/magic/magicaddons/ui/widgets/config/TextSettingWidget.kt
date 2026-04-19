@@ -1,4 +1,4 @@
-package org.magic.magicaddons.config.ui.feature
+package org.magic.magicaddons.ui.widgets.config
 
 import net.minecraft.client.MinecraftClient
 import net.minecraft.client.gui.Click
@@ -8,7 +8,6 @@ import net.minecraft.client.input.CharInput
 import net.minecraft.client.input.KeyInput
 import net.minecraft.text.Text
 import org.magic.magicaddons.config.data.TextSetting
-import org.magic.magicaddons.config.ui.ClickableRowWidget
 import org.magic.magicaddons.util.ScreenUtil
 
 class TextSettingWidget(

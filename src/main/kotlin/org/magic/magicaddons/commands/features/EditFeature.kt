@@ -3,7 +3,7 @@ package org.magic.magicaddons.commands.features
 import com.mojang.brigadier.builder.LiteralArgumentBuilder
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource
 import org.magic.magicaddons.commands.AbstractCommand
-import org.magic.magicaddons.config.ui.screen.FeatureEditScreen
+import org.magic.magicaddons.ui.screens.FeatureEditScreen
 import org.magic.magicaddons.features.FeatureManager
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.ScreenUtil
