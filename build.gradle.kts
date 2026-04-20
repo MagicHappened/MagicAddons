@@ -70,10 +70,6 @@ dependencies {
     }
 }
 
-val minecraft_version: String by project
-val loader_version: String by project
-val kotlin_loader_version: String by project
-
 
 tasks.processResources {
     inputs.property("version", project.version)
@@ -84,9 +80,9 @@ tasks.processResources {
     filesMatching("fabric.mod.json") {
         expand(
             "version" to project.version,
-            "minecraft_version" to minecraft_version,
-            "loader_version" to loader_version,
-            "kotlin_loader_version" to kotlin_loader_version
+            "minecraft_version" to project.property("minecraft_version")!!,
+            "loader_version" to project.property("loader_version")!!,
+            "kotlin_loader_version" to project.property("kotlin_loader_version")!!
         )
     }
 }
