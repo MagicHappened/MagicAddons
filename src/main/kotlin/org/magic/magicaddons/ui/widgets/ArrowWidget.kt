@@ -12,6 +12,8 @@ class ArrowWidget(
     var y: Int,
     val width: Int = 16,
     val height: Int = 16,
+    val u: Float = 0.0f,
+    val v: Float = 0.0f,
     val normal: Identifier,
     val hovered: Identifier,
     val onClick: () -> Unit
@@ -24,13 +26,17 @@ class ArrowWidget(
 
         val texture = if (isHovered) hovered else normal
 
-        context.drawGuiTexture(
+        context.drawTexture(
             RenderPipelines.GUI_TEXTURED,
             texture,
             x,
             y,
+            0f,5f,
             width,
-            height
+            height,
+            32,
+            32
+
         )
     }
 
