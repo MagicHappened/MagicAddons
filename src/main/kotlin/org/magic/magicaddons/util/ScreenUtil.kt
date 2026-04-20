@@ -1,13 +1,17 @@
 package org.magic.magicaddons.util
 
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
+import net.minecraft.block.BlockState
 import net.minecraft.client.MinecraftClient
 import net.minecraft.client.gl.RenderPipelines
 import net.minecraft.client.gui.DrawContext
 import net.minecraft.client.gui.render.state.ColoredQuadGuiElementRenderState
 import net.minecraft.client.gui.render.state.GuiRenderState
 import net.minecraft.client.gui.screen.Screen
+import net.minecraft.client.texture.Sprite
 import net.minecraft.client.texture.TextureSetup
+import net.minecraft.util.math.Direction
+import net.minecraft.util.math.random.Random
 import org.joml.Matrix3x2f
 
 object ScreenUtil {
@@ -186,6 +190,30 @@ object ScreenUtil {
         val y = centerY - layout.boxHeight / 2
 
         drawMultilineBox(ctx, text, x, y)
+    }
+
+    fun getTopSpriteForState(state: BlockState?): Sprite? {
+        val client = MinecraftClient.getInstance()
+
+        val model = client.blockRenderManager.models.getModel(state)
+
+        val parts = model.getParts(Random.create())
+
+        for (part in parts) {
+            val quads = part.getQuads(Direction.UP)
+            if (quads.isNotEmpty()) {
+                return quads[0].sprite
+            }
+        }
+
+        for (part in parts) {
+            val quads = part.getQuads(null)
+            if (quads.isNotEmpty()) {
+                return quads[0].sprite
+            }
+        }
+
+        return null
     }
 
 }
