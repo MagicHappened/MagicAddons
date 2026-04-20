@@ -27,7 +27,7 @@ java {
 loom {
     mods {
         register("magicaddons") {
-            sourceSet("main")
+            sourceSet(sourceSets.main.get())
         }
     }
 }
