@@ -2,10 +2,10 @@ package org.magic.magicaddons.config.ui.screen
 
 import net.minecraft.client.gui.Click
 import net.minecraft.client.gui.DrawContext
-import net.minecraft.client.gui.screen.Screen
+import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.input.CharInput
 import net.minecraft.client.input.KeyInput
-import net.minecraft.text.Text
+import net.minecraft.network.chat.Component
 import org.magic.magicaddons.config.MagicAddonsConfigJsonHandler
 import org.magic.magicaddons.config.data.SettingNode
 import org.magic.magicaddons.config.ui.feature.SettingWidget
@@ -16,7 +16,7 @@ import org.magic.magicaddons.util.ScreenUtil
 class FeatureEditScreen(
     val feature: Feature,
     val parent: Screen?
-) : Screen(Text.literal(feature.displayName)) {
+) : Screen(Component.literal(feature.displayName)) {
 
     val childrenSettings: List<SettingNode<*>> = feature.baseSetting.children
         ?: throw IllegalStateException("Cannot construct a feature edit screen for a feature with no nested settings")
