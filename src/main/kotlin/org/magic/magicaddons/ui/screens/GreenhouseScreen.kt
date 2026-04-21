@@ -22,8 +22,8 @@ class GreenhouseScreen(title: Text) : Screen(title) {
 
     private var gridWidget: GreenhouseGridWidget? = null
 
-    var forward_arrow: ArrowWidget? = null
-    var backward_arrow: ArrowWidget? = null
+    var forwardArrow: ArrowWidget? = null
+    var backwardArrow: ArrowWidget? = null
 
     override fun init() {
         super.init()
@@ -52,7 +52,7 @@ class GreenhouseScreen(title: Text) : Screen(title) {
             init()
         }
 
-        forward_arrow = ArrowWidget(
+        forwardArrow = ArrowWidget(
             x = (width + 20) / 2,
             y = startY + containerSize + 10,
             normal = Identifier.of("magicaddons", "gui/join"),
@@ -61,7 +61,7 @@ class GreenhouseScreen(title: Text) : Screen(title) {
             ChatUtils.sendWithPrefix("Forward arrow")
         }
 
-        backward_arrow = ArrowWidget(
+        backwardArrow = ArrowWidget(
             x = (width - 20) / 2,
             y = startY + containerSize + 10,
             normal = Identifier.of("magicaddons", "gui/join_backward"),
@@ -95,8 +95,8 @@ class GreenhouseScreen(title: Text) : Screen(title) {
         )
         gridWidget?.render(context, mouseX, mouseY, delta)
 
-        forward_arrow?.render(context, mouseX, mouseY, delta)
-        backward_arrow?.render(context, mouseX, mouseY, delta)
+        forwardArrow?.render(context, mouseX, mouseY, delta)
+        backwardArrow?.render(context, mouseX, mouseY, delta)
     }
 
     override fun mouseClicked(click: Click?, doubled: Boolean): Boolean {

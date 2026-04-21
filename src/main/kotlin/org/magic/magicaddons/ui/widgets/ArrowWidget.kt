@@ -1,19 +1,19 @@
 package org.magic.magicaddons.ui.widgets
 
+import net.minecraft.client.MinecraftClient
 import net.minecraft.client.gl.RenderPipelines
 import net.minecraft.client.gui.Click
 import net.minecraft.client.gui.DrawContext
 import net.minecraft.client.gui.Drawable
 import net.minecraft.client.gui.Element
 import net.minecraft.util.Identifier
+import org.magic.magicaddons.util.ChatUtils
 
 class ArrowWidget(
     var x: Int,
     var y: Int,
     val width: Int = 16,
     val height: Int = 16,
-    val u: Float = 0.0f,
-    val v: Float = 0.0f,
     val normal: Identifier,
     val hovered: Identifier,
     val onClick: () -> Unit
@@ -31,14 +31,16 @@ class ArrowWidget(
             texture,
             x,
             y,
-            0f,5f,
+            0f,0f,
             width,
             height,
             32,
             32
 
         )
+
     }
+
 
     override fun mouseClicked(click: Click, doubled: Boolean): Boolean {
         if (isMouseOver(click.x, click.y)) {
