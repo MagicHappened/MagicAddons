@@ -15,9 +15,12 @@ import net.minecraft.world.entity.player.Player
 import net.minecraft.world.item.ItemStack
 import org.magic.magicaddons.data.EntityInfo
 import org.magic.magicaddons.events.EventBus
+import org.magic.magicaddons.events.EventHandler
 import org.magic.magicaddons.events.world.OnEntityAdded
 import org.magic.magicaddons.events.world.OnEntityRemoved
 import org.magic.magicaddons.events.world.OnEntityUpdated
+import org.magic.magicaddons.events.world.OnWorldTickEvent
+import org.magic.magicaddons.features.combat.HighlightMobs
 import tech.thatgravyboat.skyblockapi.api.SkyBlockAPI
 import tech.thatgravyboat.skyblockapi.api.events.base.predicates.OnlyOnSkyBlock
 import tech.thatgravyboat.skyblockapi.api.events.render.RenderWorldEvent
@@ -25,14 +28,11 @@ import kotlin.math.sqrt
 
 object EntityUtils {
     init {
+        EventBus.register(this)
         SkyBlockAPI.eventBus.register(this)
     }
 
     val highlightEntityList: MutableSet<Entity> = mutableSetOf()
-
-    @JvmStatic
-    private var entityList: List<Entity> = mutableListOf()
-
 
     var entityInfoList: List<EntityInfo>? = null
 
@@ -43,19 +43,24 @@ object EntityUtils {
     private val removedEntities = mutableListOf<EntityInfo>()
     private val updatedEntities = mutableListOf<EntityInfo>()
 
-    private fun update(level: ClientLevel) {
+    @EventHandler
+    private fun onWorldTick(event: OnWorldTickEvent){
+        update()
+    }
+
+    private fun update() {
         val client = Minecraft.getInstance()
         val player = client.player ?: return
-        val world = client.level ?: return
+        val level = client.level ?: return
 
         val newList = mutableListOf<EntityInfo>()
         val newMap = mutableMapOf<String, EntityInfo>()
 
         level.entitiesForRendering().forEach { entity ->
-            if (entity is ArmorStand && isNearPlayerEntity(world, entity)) return@forEach
+            if (entity is ArmorStand && isNearPlayerEntity(level, entity)) return@forEach
 
             val armorStandTags = if (entity is Player) {
-                world.getEntities(null, entity.boundingBox.inflate(0.5, 2.0, 0.5))
+                level.getEntities(null, entity.boundingBox.inflate(0.5, 2.0, 0.5))
                     .filterIsInstance<ArmorStand>()
                     .mapNotNull { it.customName?.string }
             } else null
@@ -101,7 +106,7 @@ object EntityUtils {
             EventBus.post(OnEntityUpdated(updatedEntities))
         }
 
-        // Update state
+        // update state
         entityInfoList = newList
         entityMapPrev = entityMapCurr
         entityMapCurr = newMap
@@ -121,7 +126,7 @@ object EntityUtils {
 
         event.poseStack.pushPose()
 
-        for (entity in highlightEntityList) {
+        for (entity in (HighlightMobs.highlightedEntityList ?: return)) { //todo change to add more features to highlight somehow
 
             if (entity.level() != level) continue
             if (!entity.isAlive) continue

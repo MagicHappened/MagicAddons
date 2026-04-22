@@ -272,41 +272,9 @@ object HighlightMobs : Feature() {
         return matches
     }
 
-    @Subscription
-    fun onWorldTick(event: TickEvent) {
+    @EventHandler
+    fun onWorldTick(onWorldTickEvent: OnWorldTickEvent) {
         highlightedEntityList ?: initializeHighlightedEntityList()
-
-        highlightedEntityList?.forEach {
-            EntityUtils.renderEntityBoundingBox(it)
-        }
-    }
-
-    @OnlyOnSkyBlock
-    fun onRenderWorldEvent(event: RenderWorldEvent.AfterEntities) {
-        val pose = event.poseStack
-        val buffer = event.buffer
-        val camPos = event.cameraPosition
-
-        val level = Minecraft.getInstance().level ?: return
-        val entities = highlightedEntityList ?: return
-
-        for (entity in entities) {
-
-            // optional safety: skip dead / unloaded entities
-            if (!entity.isAlive) continue
-
-            val x = entity.x - camPos.x
-            val y = entity.y - camPos.y
-            val z = entity.z - camPos.z
-
-            pose.pushPose()
-
-            pose.translate(x, y, z)
-
-            EntityUtils.renderEntityBoundingBox(entity)
-
-            pose.popPose()
-        }
     }
 
 
