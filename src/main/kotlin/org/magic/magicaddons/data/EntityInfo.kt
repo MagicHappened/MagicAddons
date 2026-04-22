@@ -1,6 +1,6 @@
 package org.magic.magicaddons.data
 
-import net.minecraft.entity.Entity
+import net.minecraft.world.entity.Entity
 
 data class EntityInfo(
     val entity: Entity,

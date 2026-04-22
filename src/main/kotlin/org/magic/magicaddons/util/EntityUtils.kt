@@ -3,22 +3,22 @@ package org.magic.magicaddons.util
 import com.google.common.eventbus.Subscribe
 import net.minecraft.client.Minecraft
 import net.minecraft.client.multiplayer.ClientLevel
-import net.minecraft.client.renderer.entity.EntityRenderDispatcher
+import net.minecraft.client.renderer.entity.LivingEntityRenderer
+import net.minecraft.client.renderer.entity.state.LivingEntityRenderState
+import net.minecraft.client.renderer.rendertype.RenderTypes
+import net.minecraft.client.renderer.texture.OverlayTexture
+import net.minecraft.core.component.DataComponents
 import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.EquipmentSlot
 import net.minecraft.world.entity.decoration.ArmorStand
 import net.minecraft.world.entity.player.Player
+import net.minecraft.world.item.ItemStack
 import org.magic.magicaddons.data.EntityInfo
 import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.events.world.OnEntityAdded
 import org.magic.magicaddons.events.world.OnEntityRemoved
 import org.magic.magicaddons.events.world.OnEntityUpdated
-import org.magic.magicaddons.events.world.OnWorldTickEvent
-import org.magic.magicaddons.extensions.armorStacks
-import org.magic.magicaddons.features.combat.HighlightMobs
-import org.magic.magicaddons.features.kuudra.CustomRendSound
 import tech.thatgravyboat.skyblockapi.api.SkyBlockAPI
-import tech.thatgravyboat.skyblockapi.api.events.base.predicates.OnlyIn
 import tech.thatgravyboat.skyblockapi.api.events.base.predicates.OnlyOnSkyBlock
 import tech.thatgravyboat.skyblockapi.api.events.render.RenderWorldEvent
 import kotlin.math.sqrt
@@ -29,7 +29,6 @@ object EntityUtils {
     }
 
     val highlightEntityList: MutableSet<Entity> = mutableSetOf()
-
     private var entityList: List<Entity>? = null
 
 
@@ -41,21 +40,6 @@ object EntityUtils {
     private val addedEntities = mutableListOf<EntityInfo>()
     private val removedEntities = mutableListOf<EntityInfo>()
     private val updatedEntities = mutableListOf<EntityInfo>()
-
-
-
-    @JvmStatic
-    fun onWorldTick(level: ClientLevel) {
-
-        if (!HighlightMobs.baseSetting.value && !CustomRendSound.baseSetting.value) return // change this to include more settings that depend on world tick
-
-        EventBus.post(OnWorldTickEvent())
-        update(level)
-
-    }
-
-
-
 
     private fun update(level: ClientLevel) {
         val client = Minecraft.getInstance()
@@ -130,91 +114,91 @@ object EntityUtils {
     fun onRenderWorldEvent(event: RenderWorldEvent.AfterEntities) {
 
         val level = Minecraft.getInstance().level ?: return
-        val camPos = event.cameraPosition
-        val pose = event.poseStack
+        val dispatcher = Minecraft.getInstance().entityRenderDispatcher
 
-        val partialTick = Minecraft.getInstance().deltaTracker.gameTimeDeltaTicks
 
-        for (entity in EntityUtils.highlightedEntityList) {
+        event.poseStack.pushPose()
 
-            // safety: entity may despawn
+        for (entity in highlightEntityList) {
+
             if (entity.level() != level) continue
             if (!entity.isAlive) continue
 
-            val box = entity.boundingBox.move(
-                -camPos.x,
-                -camPos.y,
-                -camPos.z
+            val renderer = dispatcher.getRenderer(entity)
+            if (renderer !is LivingEntityRenderer<*,*,*>) continue
+            try {
+                renderer as? LivingEntityRenderer<Entity, LivingEntityRenderState, *> ?: continue
+            }
+            catch (t: Throwable) {
+                ChatUtils.sendWithPrefix("caught unsafe cast ${t.message}")
+                continue
+            }
+
+
+            val state = renderer.createRenderState(entity, event.partialTicks)
+
+            val vertexConsumer = event.buffer.getBuffer(
+                RenderTypes.outline(renderer.getTextureLocation(state))
             )
 
-            pose.pushPose()
+            val cam = event.cameraPosition
 
-            GizmoDrawing.box(
-                box,
-                DrawStyle.stroked(0xFF00FF00.toInt(), 4f)
-            ).ignoreOcclusion()
+            event.poseStack.pushPose()
 
-            pose.popPose()
+            // camera-relative transform
+            event.poseStack.translate(
+                entity.x - cam.x,
+                entity.y - cam.y,
+                entity.z - cam.z
+            )
+
+            // IMPORTANT: apply entity rotation
+            event.poseStack.mulPose(
+                org.joml.Quaternionf()
+                    .rotateY(-Math.toRadians(entity.yRot.toDouble()).toFloat())
+            )
+
+
+
+            renderer.model.renderToBuffer(
+                event.poseStack,
+                vertexConsumer,
+                0xF000F0,
+                OverlayTexture.NO_OVERLAY,
+                0xFFFFFFFF.toInt()
+            )
+
+            event.poseStack.popPose()
         }
+
     }
 
 
 
 
 
-    fun isEntityWearingArmorId(id: String, entity: Player, searchHelmet: Boolean): Boolean{
-        var correctFeet = false
-        var correctLegs = false
-        var correctChest = false
-        var correctHelmet = false
-        run feet@ {
-            entity.armorStacks.get(EquipmentSlot.FEET).components.forEach { component ->
-                if (component.type.toString() == "minecraft:custom_data") {
-                    if (component.value.toString().contains("${id}_BOOTS")) {
-                        correctFeet = true
-                        return@feet
-                    }
-                }
-            }
-        }
+    fun isEntityWearingArmorId(id: String, entity: Player, searchHelmet: Boolean): Boolean {
 
-        if (!correctFeet) return false
-        run legs@{
-            entity.armorStacks.get(EquipmentSlot.LEGS).components.forEach { component ->
-                if (component.type.toString() == "minecraft:custom_data") {
-                    if (component.value.toString().contains("${id}_LEGGINGS")) {
-                        correctLegs = true
-                        return@legs
-                    }
-                }
-            }
-        }
-        if (!correctLegs) return false
+        val boots = entity.getItemBySlot(EquipmentSlot.FEET)
+        if (!hasArmorId(boots, id, "BOOTS")) return false
 
-        run chest@{
-            entity.armorStacks.get(EquipmentSlot.CHEST).components.forEach { component ->
-                if (component.type.toString() == "minecraft:custom_data") {
-                    if (component.value.toString().contains("${id}_CHESTPLATE")) {
-                        correctChest = true
-                        return@chest
-                    }
-                }
-            }
-        }
-        if (!searchHelmet) return correctChest
-        run helmet@{
-            entity.armorStacks.get(EquipmentSlot.CHEST).components.forEach { component ->
-                if (component.type.toString() == "minecraft:custom_data") {
-                    if (component.value.toString().contains("${id}_CHESTPLATE")) {
-                        correctHelmet = true
-                        return@helmet
-                    }
-                }
-            }
+        val legs = entity.getItemBySlot(EquipmentSlot.LEGS)
+        if (!hasArmorId(legs, id, "LEGGINGS")) return false
 
+        val chest = entity.getItemBySlot(EquipmentSlot.CHEST)
+        if (!hasArmorId(chest, id, "CHESTPLATE")) return false
 
-        }
-        return correctHelmet
+        if (!searchHelmet) return true
+
+        val helmet = entity.getItemBySlot(EquipmentSlot.HEAD)
+        return hasArmorId(helmet, id, "HELMET")
+    }
+    fun hasArmorId(stack: ItemStack, id: String, suffix: String): Boolean {
+        val customData = stack.get(DataComponents.CUSTOM_DATA) ?: return false
+        val tag = customData.copyTag() // CompoundTag
+
+        val armorId = tag.getString("id") // or whatever key you're using
+        return armorId.orElse(null) == "${id}_$suffix"
     }
 
 }
