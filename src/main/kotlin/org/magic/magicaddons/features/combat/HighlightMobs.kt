@@ -1,9 +1,11 @@
 package org.magic.magicaddons.features.combat
 
+import net.minecraft.client.Minecraft
 import net.minecraft.entity.Entity
 import net.minecraft.entity.EquipmentSlot
 import net.minecraft.entity.LivingEntity
 import net.minecraft.entity.player.PlayerEntity
+import net.minecraft.world.entity.Entity
 import org.magic.magicaddons.config.data.BooleanSetting
 import org.magic.magicaddons.config.data.EnumSetting
 import org.magic.magicaddons.config.data.TextSetting
@@ -21,6 +23,8 @@ import org.magic.magicaddons.features.Feature
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.PlayerUtils
 import org.magic.magicaddons.util.EntityUtils
+import tech.thatgravyboat.skyblockapi.api.events.base.predicates.OnlyOnSkyBlock
+import tech.thatgravyboat.skyblockapi.api.events.render.RenderWorldEvent
 
 
 object HighlightMobs : Feature() {
@@ -270,6 +274,34 @@ object HighlightMobs : Feature() {
 
         highlightedEntityList?.forEach {
             EntityUtils.renderEntityBoundingBox(it)
+        }
+    }
+
+    @OnlyOnSkyBlock
+    fun onRenderWorldEvent(event: RenderWorldEvent.AfterEntities) {
+        val pose = event.poseStack
+        val buffer = event.buffer
+        val camPos = event.cameraPosition
+
+        val level = Minecraft.getInstance().level ?: return
+        val entities = highlightedEntityList ?: return
+
+        for (entity in entities) {
+
+            // optional safety: skip dead / unloaded entities
+            if (!entity.isAlive) continue
+
+            val x = entity.x - camPos.x
+            val y = entity.y - camPos.y
+            val z = entity.z - camPos.z
+
+            pose.pushPose()
+
+            pose.translate(x, y, z)
+
+            EntityUtils.renderEntityBoundingBox(entity)
+
+            pose.popPose()
         }
     }
 
