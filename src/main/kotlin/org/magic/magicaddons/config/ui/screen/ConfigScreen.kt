@@ -11,7 +11,7 @@ import org.magic.magicaddons.config.ui.ConfigCategoryWidget
 import org.magic.magicaddons.features.Feature
 import org.magic.magicaddons.features.FeatureManager
 import org.magic.magicaddons.util.ChatUtils
-import org.magic.magicaddons.util.ScreenUtil
+import org.magic.magicaddons.util.ScreenUtil.drawMultilineBox
 import org.magic.magicaddons.util.ScreenUtil.drawMultilineBoxCentered
 
 class ConfigScreen(title: Component, val parent: Screen?) : Screen(title) {

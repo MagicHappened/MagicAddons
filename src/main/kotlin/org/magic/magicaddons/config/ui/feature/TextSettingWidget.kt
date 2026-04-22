@@ -117,8 +117,6 @@ class TextSettingWidget(
                 it.render(graphics)
             }
         }
-
-        renderTooltip(graphics, mouseX, mouseY)
     }
 
     override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {

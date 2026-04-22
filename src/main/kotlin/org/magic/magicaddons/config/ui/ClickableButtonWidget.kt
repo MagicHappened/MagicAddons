@@ -3,6 +3,7 @@ package org.magic.magicaddons.config.ui
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.input.MouseButtonEvent
+import net.minecraft.client.renderer.RenderPipelines
 import net.minecraft.network.chat.Component
 import net.minecraft.resources.Identifier
 import tech.thatgravyboat.skyblockapi.platform.drawTexture
@@ -28,13 +29,13 @@ class ClickableButtonWidget(
         else
             BUTTON
 
-
-        graphics.drawTexture(
+        graphics.blitSprite(
+            RenderPipelines.GUI_TEXTURED,
             sprite,
             x,
             y,
             width,
-            height
+            height,
         )
 
         val textX = x + (width - font.width(message)) / 2

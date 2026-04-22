@@ -178,8 +178,8 @@ object ScreenUtil {
         this.renderTooltip(
             client.font,
             lines,
-            mouseX + 8,
-            mouseY + 8,
+            mouseX,
+            mouseY,
             DefaultTooltipPositioner.INSTANCE,
             null
         )
@@ -188,41 +188,55 @@ object ScreenUtil {
     fun GuiGraphics.drawMultilineBoxCentered(
         text: String,
         centerX: Int,
-        centerY: Int,
+        centerY: Int
+    ) {
+        val layout = computeLayout(text)
+
+        val x = centerX - layout.boxWidth / 2
+        val y = centerY - layout.boxHeight / 2
+
+        drawMultilineBox(text, x, y)
+    }
+
+
+    fun GuiGraphics.drawMultilineBox(
+        text: String,
+        x: Int,
+        y: Int,
     ){
-        drawMultilineBoxCentered(
+        drawMultilineBox(
             text,
-            centerX.toFloat(),
-            centerY.toFloat(),
+            x.toFloat(),
+            y.toFloat(),
         )
     }
 
 
-    fun GuiGraphics.drawMultilineBoxCentered(
+    fun GuiGraphics.drawMultilineBox(
         text: String,
-        centerX: Float,
-        centerY: Float
+        x: Float,
+        y: Float
     ) {
         val font = Minecraft.getInstance().font
         val padding = 4f
 
         val layout = computeLayout(text)
 
-        val x1 = centerX
-        val y1 = centerY
-        val x2 = centerX + layout.boxWidth
-        val y2 = centerY + layout.boxHeight
+        val x1 = x
+        val y1 = y
+        val x2 = x + layout.boxWidth
+        val y2 = y + layout.boxHeight
 
         fill(x1.toInt(), y1.toInt(), x2.toInt(), y2.toInt(), 0x88000000.toInt())
 
         drawBorder(x1, y1, x2, y2, 1f, 0xFFFFFFFF.toInt())
 
         // text
-        var currentY = centerY + padding
+        var currentY = y + padding
 
         layout.lines.forEach { line ->
             val seq = Component.literal(line).visualOrderText
-            val centeredX = centerX + (layout.boxWidth - font.width(line)) / 2f
+            val centeredX = x + (layout.boxWidth - font.width(line)) / 2f
 
             guiRenderState.submitText(
                 GuiTextRenderState(

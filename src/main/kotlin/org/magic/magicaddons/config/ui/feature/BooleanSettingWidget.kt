@@ -51,8 +51,6 @@ class BooleanSettingWidget(
         )
 
         renderChildren(graphics, mouseX, mouseY, delta)
-
-        renderTooltip(graphics, mouseX, mouseY)
     }
 
     override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
