@@ -103,6 +103,32 @@ tasks.jar {
     }
 }
 
+tasks.named<JavaExec>("runClient") {
+
+    javaLauncher.set(javaToolchains.launcherFor {
+        languageVersion.set(JavaLanguageVersion.of(targetJavaVersion))
+        vendor.set(JvmVendorSpec.JETBRAINS)
+    })
+
+    jvmArgs(
+        "-Ddevauth.enabled=true",
+        "-Ddevauth.account=main",
+        "-XX:+AllowEnhancedClassRedefinition"
+    )
+
+    doFirst {
+        val mixinJar = configurations.runtimeClasspath
+            .get()
+            .resolvedConfiguration
+            .resolvedArtifacts
+            .firstOrNull { it.moduleVersion.id.name.contains("sponge-mixin") }
+            ?.file
+
+        if (mixinJar != null) {
+            jvmArgs("-javaagent:${mixinJar.absolutePath}")
+        }
+    }
+}
 
 // configure the maven publication
 publishing {
