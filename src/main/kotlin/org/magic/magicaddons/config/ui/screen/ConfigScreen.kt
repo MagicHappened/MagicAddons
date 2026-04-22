@@ -1,9 +1,11 @@
 package org.magic.magicaddons.config.ui.screen
 
-import net.minecraft.client.gui.Click
-import net.minecraft.client.gui.DrawContext
-import net.minecraft.client.gui.screen.Screen
-import net.minecraft.text.Text
+
+import net.minecraft.client.Minecraft
+import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.gui.screens.Screen
+import net.minecraft.client.input.MouseButtonEvent
+import net.minecraft.network.chat.Component
 import org.magic.magicaddons.config.MagicAddonsConfigJsonHandler
 import org.magic.magicaddons.config.ui.ConfigCategoryWidget
 import org.magic.magicaddons.features.Feature
@@ -11,7 +13,7 @@ import org.magic.magicaddons.features.FeatureManager
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.ScreenUtil
 
-class ConfigScreen(title: Text, val parent: Screen?) : Screen(title) {
+class ConfigScreen(title: Component, val parent: Screen?) : Screen(title) {
 
     val categoryWidgets = mutableListOf<ConfigCategoryWidget>()
     lateinit var categories: MutableMap<String, MutableList<Feature>>
@@ -52,25 +54,25 @@ class ConfigScreen(title: Text, val parent: Screen?) : Screen(title) {
 
             currentX += category.width + categoryPadding
 
-            addDrawable(category)
+            addRenderableWidget(category)
         }
     }
 
-    override fun render(ctx: DrawContext, mouseX: Int, mouseY: Int, delta: Float) {
-        super.render(ctx, mouseX, mouseY, delta)
+    override fun render(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, delta: Float) {
+        super.render(guiGraphics, mouseX, mouseY, delta)
 
-        ScreenUtil.drawMultilineBoxCentered(ctx, helpText, width/2, 35)
+        ScreenUtil.drawMultilineBoxCentered(guiGraphics, helpText, width/2, 35)
     }
 
-    override fun mouseClicked(click: Click, doubled: Boolean): Boolean {
+    override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
         categoryWidgets.forEach {
-            it.mouseClicked(click, doubled)
+            it.mouseClicked(mouseButtonEvent, doubled)
         }
-        return super.mouseClicked(click, doubled)
+        return super.mouseClicked(mouseButtonEvent, doubled)
     }
 
-    override fun close() {
-        client?.setScreen(parent)
+    override fun onClose() {
+        Minecraft.getInstance().setScreen(parent)
     }
 
     override fun removed() {

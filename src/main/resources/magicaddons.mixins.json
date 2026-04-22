@@ -4,10 +4,9 @@
   "package": "org.magic.mixins",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
-    "ClientPlayNetworkHandlerMixin",
+    "ClientPacketListenerMixin",
     "ClientPlayerInteractionManagerMixin",
-    "LivingEntityMixin",
-    "LivingEntityAccessor"
+    "LivingEntityMixin"
   ],
   "injectors": {
     "defaultRequire": 1

@@ -1,10 +1,11 @@
 package org.magic.magicaddons.events.world
 
-import net.minecraft.network.packet.s2c.play.ParticleS2CPacket
+
+import net.minecraft.network.protocol.game.ClientboundLevelParticlesPacket
 import org.magic.magicaddons.events.Cancellable
 
 class AddParticleEvent @JvmOverloads constructor(
-    var packet: ParticleS2CPacket,
+    var packet: ClientboundLevelParticlesPacket,
     override var canceled: Boolean = false
 ) : Cancellable
 

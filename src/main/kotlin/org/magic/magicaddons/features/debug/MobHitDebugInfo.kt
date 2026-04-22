@@ -1,16 +1,16 @@
 package org.magic.magicaddons.features.debug
 
-import net.minecraft.client.MinecraftClient
-import net.minecraft.entity.Entity
-import net.minecraft.entity.EquipmentSlot
-import net.minecraft.entity.LivingEntity
-import net.minecraft.entity.decoration.ArmorStandEntity
-import net.minecraft.entity.player.PlayerEntity
-import net.minecraft.item.ItemStack
-import net.minecraft.item.PlayerHeadItem
-import net.minecraft.text.ClickEvent
-import net.minecraft.text.Style
-import net.minecraft.text.Text
+import net.minecraft.client.Minecraft
+import net.minecraft.network.chat.ClickEvent
+import net.minecraft.network.chat.Component
+import net.minecraft.network.chat.Style
+import net.minecraft.world.entity.Entity
+import net.minecraft.world.entity.EquipmentSlot
+import net.minecraft.world.entity.LivingEntity
+import net.minecraft.world.entity.decoration.ArmorStand
+import net.minecraft.world.entity.player.Player
+import net.minecraft.world.item.ItemStack
+import net.minecraft.world.item.PlayerHeadItem
 import org.magic.magicaddons.config.data.BooleanSetting
 import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.events.EventHandler
@@ -44,15 +44,15 @@ object MobHitDebugInfo : Feature() {
         event.canceled = true
 
         when (val target = event.target) {
-            is PlayerEntity -> attackPlayerDebug(target)
-            is ArmorStandEntity -> attackArmorStandDebug(target)
+            is Player -> attackPlayerDebug(target)
+            is ArmorStand -> attackArmorStandDebug(target)
             is LivingEntity -> attackMobDebug(target)
             else -> attackUnknownDebug(target)
         }
     }
 
 
-    fun attackPlayerDebug(player: PlayerEntity) {
+    fun attackPlayerDebug(player: Player) {
         val url = PlayerUtils.getSkinUrl(player)
         val hash = PlayerUtils.getSkinHash(player)
 
@@ -61,14 +61,14 @@ object MobHitDebugInfo : Feature() {
             return
         }
 
-        val clickableText = Text.literal("Click for skin url").setStyle(
+        val clickableText = Component.literal("Click for skin url").setStyle(
             Style.EMPTY.withClickEvent(ClickEvent.OpenUrl(URI(url)))
         )
         ChatUtils.sendWithPrefix("=== Player Debug ===")
         ChatUtils.sendWithPrefix(clickableText)
         ChatUtils.sendWithPrefix("Skin hash: $hash")
-        val armorStandTags = MinecraftClient.getInstance().world?.getOtherEntities(null, player.boundingBox.expand(0.5, 2.0, 0.5))
-            ?.filterIsInstance<ArmorStandEntity>()
+        val armorStandTags = Minecraft.getInstance().level?.getEntities(null, player.boundingBox.inflate(0.5, 2.0, 0.5))
+            ?.filterIsInstance<ArmorStand>()
             ?.mapNotNull { it.customName?.string }
         armorStandTags?.forEach {
             ChatUtils.sendWithPrefix("Nearby armor stand: $it")
@@ -77,7 +77,7 @@ object MobHitDebugInfo : Feature() {
 
     }
 
-    fun attackArmorStandDebug(stand: ArmorStandEntity) {
+    fun attackArmorStandDebug(stand: ArmorStand) {
         ChatUtils.sendWithPrefix("=== Armor Stand Debug ===")
 
         val name = stand.customName?.string ?: "No custom name"
@@ -107,23 +107,26 @@ object MobHitDebugInfo : Feature() {
     fun sendEntityEquipmentDebug(entity: LivingEntity) {
         ChatUtils.sendWithPrefix("--- Equipment ---")
 
-        val equipment = mutableMapOf<EquipmentSlot, ItemStack>(
-            EquipmentSlot.MAINHAND to entity.getEquippedStack(EquipmentSlot.MAINHAND),
-            EquipmentSlot.OFFHAND to entity.getEquippedStack(EquipmentSlot.OFFHAND),
-            EquipmentSlot.FEET to entity.getEquippedStack(EquipmentSlot.FEET),
-            EquipmentSlot.CHEST to entity.getEquippedStack(EquipmentSlot.CHEST),
-            EquipmentSlot.LEGS to entity.getEquippedStack(EquipmentSlot.LEGS),
-            EquipmentSlot.HEAD to entity.getEquippedStack(EquipmentSlot.HEAD)
+        val slots = listOf(
+            EquipmentSlot.MAINHAND,
+            EquipmentSlot.OFFHAND,
+            EquipmentSlot.FEET,
+            EquipmentSlot.LEGS,
+            EquipmentSlot.CHEST,
+            EquipmentSlot.HEAD
         )
 
-        equipment.forEach { (slot, stack) ->
-            if (stack.isEmpty) return@forEach
+        for (slot in slots) {
+            val stack = entity.getItemBySlot(slot)
+
+            if (stack.isEmpty) continue
 
             val itemName = stack.item.toString()
             ChatUtils.sendWithPrefix("$slot: $itemName")
 
             if (isPlayerHead(stack)) {
                 val skullInfo = getSkullInfo(stack)
+
                 if (skullInfo != null) {
                     ChatUtils.sendWithPrefix("  -> Skull: $skullInfo")
                 } else {
@@ -131,7 +134,6 @@ object MobHitDebugInfo : Feature() {
                 }
             }
         }
-
     }
 
     fun isPlayerHead(stack: ItemStack): Boolean {

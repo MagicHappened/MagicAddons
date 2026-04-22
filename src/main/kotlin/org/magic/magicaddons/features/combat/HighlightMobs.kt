@@ -1,11 +1,10 @@
 package org.magic.magicaddons.features.combat
 
 import net.minecraft.client.Minecraft
-import net.minecraft.entity.Entity
-import net.minecraft.entity.EquipmentSlot
-import net.minecraft.entity.LivingEntity
-import net.minecraft.entity.player.PlayerEntity
 import net.minecraft.world.entity.Entity
+import net.minecraft.world.entity.EquipmentSlot
+import net.minecraft.world.entity.LivingEntity
+import net.minecraft.world.entity.player.Player
 import org.magic.magicaddons.config.data.BooleanSetting
 import org.magic.magicaddons.config.data.EnumSetting
 import org.magic.magicaddons.config.data.TextSetting
@@ -20,14 +19,21 @@ import org.magic.magicaddons.events.world.OnEntityRemoved
 import org.magic.magicaddons.events.world.OnEntityUpdated
 import org.magic.magicaddons.events.world.OnWorldTickEvent
 import org.magic.magicaddons.features.Feature
-import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.PlayerUtils
 import org.magic.magicaddons.util.EntityUtils
+import tech.thatgravyboat.skyblockapi.api.SkyBlockAPI
+import tech.thatgravyboat.skyblockapi.api.events.base.Subscription
 import tech.thatgravyboat.skyblockapi.api.events.base.predicates.OnlyOnSkyBlock
 import tech.thatgravyboat.skyblockapi.api.events.render.RenderWorldEvent
+import tech.thatgravyboat.skyblockapi.api.events.time.TickEvent
 
 
 object HighlightMobs : Feature() {
+
+    init {
+        EventBus.register(this)
+        SkyBlockAPI.eventBus.register(this)
+    }
 
     enum class EntityTypeDetection {
         Player,
@@ -131,9 +137,7 @@ object HighlightMobs : Feature() {
         }
     }
 
-    init {
-        EventBus.register(this)
-    }
+
 
     @EventHandler
     fun onConfigChanged(event: ConfigChangedEvent) {
@@ -198,7 +202,7 @@ object HighlightMobs : Feature() {
 
             val result = when (enumSetting?.value) {
                 EntityTypeDetection.Player -> {
-                    if (entity !is PlayerEntity) return false
+                    if (entity !is Player) return false
 
                     val skinHashEntryList = enumSetting
                         .getChild<ToggleListSetting>("EntityTypePlayerSkinHash")?.value
@@ -254,7 +258,7 @@ object HighlightMobs : Feature() {
                 .getChild<TextSetting>("EntityEquipmentHelmetSkullHash")?.value
                 ?: return false
 
-            val headStack = entity.getEquippedStack(EquipmentSlot.HEAD)
+            val headStack = entity.getItemBySlot(EquipmentSlot.HEAD)
 
             val actualHash = PlayerUtils.getSkinHash(headStack)
 
@@ -268,8 +272,8 @@ object HighlightMobs : Feature() {
         return matches
     }
 
-    @EventHandler
-    fun onWorldTick(onWorldTick: OnWorldTickEvent) {
+    @Subscription
+    fun onWorldTick(event: TickEvent) {
         highlightedEntityList ?: initializeHighlightedEntityList()
 
         highlightedEntityList?.forEach {

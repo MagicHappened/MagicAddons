@@ -1,17 +1,17 @@
 package org.magic.magicaddons.config.ui
 
-import net.minecraft.client.MinecraftClient
-import net.minecraft.client.gui.Click
-import net.minecraft.client.gui.DrawContext
-import net.minecraft.client.gui.Drawable
-import net.minecraft.client.gui.Element
+import net.minecraft.client.Minecraft
+import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.gui.components.Renderable
+import net.minecraft.client.gui.components.events.GuiEventListener
+import net.minecraft.client.input.MouseButtonEvent
 import org.magic.magicaddons.config.ui.feature.FeatureToggleWidget
 import org.magic.magicaddons.features.Feature
 
 class ConfigCategoryWidget(
     val categoryName: String,
     categoryFeatures: List<Feature> // your featureMap
-) : Drawable, Element {
+) : Renderable, GuiEventListener {
 
     val categoryFeatureWidgets = mutableListOf<FeatureToggleWidget>()
 
@@ -34,8 +34,8 @@ class ConfigCategoryWidget(
         x = baseX
         y = baseY
 
-        val textRenderer = MinecraftClient.getInstance().textRenderer
-        val titleHeight = textRenderer.fontHeight + categoryTitlePadding * 2
+        val font = Minecraft.getInstance().font
+        val titleHeight = font.lineHeight + categoryTitlePadding * 2
 
         val maxWidth = categoryFeatureWidgets.maxOfOrNull { it.getContentWidth() } ?: 200
         width = maxWidth
@@ -57,26 +57,26 @@ class ConfigCategoryWidget(
         height = currentY - y
     }
 
-    override fun render(ctx: DrawContext, mouseX: Int, mouseY: Int, delta: Float) {
+    override fun render(graphics: GuiGraphics, mouseX: Int, mouseY: Int, delta: Float) {
 
-        val textRenderer = MinecraftClient.getInstance().textRenderer
-        ctx.drawText(
-            textRenderer,
+        val font = Minecraft.getInstance().font
+        graphics.drawString(
+            font,
             categoryName,
-            x + (width - textRenderer.getWidth(categoryName)) / 2,
-            y + (textRenderer.fontHeight) / 2,
+            x + (width - font.width(categoryName)) / 2,
+            y + (font.lineHeight) / 2,
             0xFFFFFFFF.toInt(),
             false
         )
 
         categoryFeatureWidgets.forEach {
-            it.render(ctx, mouseX, mouseY, delta)
+            it.render(graphics, mouseX, mouseY, delta)
         }
     }
 
-    override fun mouseClicked(click: Click, doubled: Boolean): Boolean {
+    override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
         categoryFeatureWidgets.forEach {
-            if (it.mouseClicked(click, doubled)) return true
+            if (it.mouseClicked(mouseButtonEvent, doubled)) return true
         }
         return false
     }

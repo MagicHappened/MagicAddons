@@ -1,13 +1,14 @@
 package org.magic.magicaddons.util
 
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
-import net.minecraft.client.MinecraftClient
-import net.minecraft.client.gl.RenderPipelines
-import net.minecraft.client.gui.DrawContext
-import net.minecraft.client.gui.render.state.ColoredQuadGuiElementRenderState
-import net.minecraft.client.gui.render.state.GuiRenderState
-import net.minecraft.client.gui.screen.Screen
-import net.minecraft.client.texture.TextureSetup
+import net.minecraft.client.Minecraft
+import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.gui.render.TextureSetup
+import net.minecraft.client.gui.render.state.ColoredRectangleRenderState
+import net.minecraft.client.gui.render.state.GuiTextRenderState
+import net.minecraft.client.gui.screens.Screen
+import net.minecraft.client.renderer.RenderPipelines
+import net.minecraft.network.chat.Component
 import org.joml.Matrix3x2f
 
 object ScreenUtil {
@@ -22,12 +23,12 @@ object ScreenUtil {
     )
 
     private fun computeLayout(text: String): TextBoxLayout {
-        val textRenderer = MinecraftClient.getInstance().textRenderer
+        val textRenderer = Minecraft.getInstance().font
         val padding = 4
 
         val lines = text.lines()
-        val maxWidth = lines.maxOfOrNull { textRenderer.getWidth(it) } ?: 0
-        val lineHeight = textRenderer.fontHeight
+        val maxWidth = lines.maxOfOrNull { textRenderer.width(it) } ?: 0
+        val lineHeight = textRenderer.lineHeight
         val totalHeight = lines.size * lineHeight
 
         val boxWidth = maxWidth + padding * 2
@@ -54,34 +55,50 @@ object ScreenUtil {
         ClientTickEvents.END_CLIENT_TICK.register { _ ->
             val target = newScreen ?: return@register
 
-            if (MinecraftClient.getInstance().currentScreen !== target) {
-                MinecraftClient.getInstance().setScreen(target)
+            if (Minecraft.getInstance().screen !== target) {
+                Minecraft.getInstance().setScreen(target)
             } else {
                 newScreen = null
             }
         }
     }
-    fun drawBorder(
-        ctx: DrawContext,
-        x1: Int, y1: Int,
-        x2: Int, y2: Int,
-        thickness: Int,
+    fun GuiGraphics.drawBorder(
+        x1: Float, y1: Float,
+        x2: Float, y2: Float,
+        thickness: Float,
         color: Int
     ) {
-        ctx.fill(x1, y1, x2, y1 + thickness, color)
-        ctx.fill(x1, y2 - thickness, x2, y2, color)
-        ctx.fill(x1, y1, x1 + thickness, y2, color)
-        ctx.fill(x2 - thickness, y1, x2, y2, color)
+        // top
+        drawLine(x1, y1, x2, y1, thickness, color)
+
+        // bottom
+        drawLine(x1, y2, x2, y2, thickness, color)
+
+        // left
+        drawLine(x1, y1, x1, y2, thickness, color)
+
+        // right
+        drawLine(x2, y1, x2, y2, thickness, color)
     }
 
-    fun drawSquareBorder(ctx: DrawContext, x: Int, y: Int, size: Int, thickness: Int, color: Int) {
-        ctx.fill(x, y, x + size, y + thickness, color)
-        ctx.fill(x, y + size - thickness, x + size, y + size, color)
-        ctx.fill(x, y, x + thickness, y + size, color)
-        ctx.fill(x + size - thickness, y, x + size, y + size, color)
+    fun GuiGraphics.drawSquareBorder(
+        x: Float,
+        y: Float,
+        size: Float,
+        thickness: Float,
+        color: Int
+    ) {
+        drawBorder(
+            x,
+            y,
+            x + size,
+            y + size,
+            thickness,
+            color
+        )
     }
 
-    fun GuiRenderState.drawLine(
+    fun GuiGraphics.drawLine(
         x1: Int,
         y1: Int,
         x2: Int,
@@ -99,7 +116,7 @@ object ScreenUtil {
         )
     }
 
-    fun GuiRenderState.drawLine(
+    fun GuiGraphics.drawLine(
         x1: Float,
         y1: Float,
         x2: Float,
@@ -109,38 +126,39 @@ object ScreenUtil {
     ) {
         val dx = x2 - x1
         val dy = y2 - y1
-        val len = kotlin.math.sqrt(dx * dx + dy * dy)
-        if (len == 0f) return
+        val length = kotlin.math.sqrt(dx * dx + dy * dy)
+        if (length == 0f) return
 
-        val pose = Matrix3x2f()
+        val pose = Matrix3x2f(this.pose())
 
         pose.translate(x1, y1)
         pose.rotate(kotlin.math.atan2(dy, dx))
 
         val half = thickness / 2f
 
-        addSimpleElement(
-            ColoredQuadGuiElementRenderState(
+        this.guiRenderState.submitGuiElement(
+            ColoredRectangleRenderState(
                 RenderPipelines.GUI,
-                TextureSetup.empty(),
+                TextureSetup.noTexture(),
                 pose,
-                0, -half.toInt(),
-                len.toInt(), half.toInt(),
+                0,
+                -half.toInt(),
+                length.toInt(),
+                half.toInt(),
                 color,
                 color,
-                null
+                this.scissorStack.peek()
             )
         )
     }
 
-    fun drawMultilineBox(
-        ctx: DrawContext,
+    fun GuiGraphics.drawMultilineBox(
         text: String,
-        x: Int,
-        y: Int
+        x: Float,
+        y: Float
     ) {
-        val textRenderer = MinecraftClient.getInstance().textRenderer
-        val padding = 4
+        val font = Minecraft.getInstance().font
+        val padding = 4f
 
         val layout = computeLayout(text)
 
@@ -149,43 +167,35 @@ object ScreenUtil {
         val x2 = x + layout.boxWidth
         val y2 = y + layout.boxHeight
 
-        // background
-        ctx.fill(x1, y1, x2, y2, 0x88000000.toInt())
+        // background (still fill is fine here)
+        fill(x1.toInt(), y1.toInt(), x2.toInt(), y2.toInt(), 0x88000000.toInt())
 
-        // border
-        drawBorder(ctx, x1, y1, x2, y2, 1, 0xFFFFFFFF.toInt())
+        // border using your new system
+        drawBorder(x1, y1, x2, y2, 1f, 0xFFFFFFFF.toInt())
 
-        // draw centered lines
+        // text
         var currentY = y + padding
+
         layout.lines.forEach { line ->
-            val lineWidth = textRenderer.getWidth(line)
-            val centeredX = x + (layout.boxWidth - lineWidth) / 2
+            val seq = Component.literal(line).visualOrderText
+            val centeredX = x + (layout.boxWidth - font.width(line)) / 2f
 
-            ctx.drawText(
-                textRenderer,
-                line,
-                centeredX,
-                currentY,
-                0xFFFFFFFF.toInt(),
-                false
+            guiRenderState.submitText(
+                GuiTextRenderState(
+                    font,
+                    seq,
+                    Matrix3x2f(pose()),
+                    centeredX.toInt(),
+                    currentY.toInt(),
+                    0xFFFFFFFF.toInt(),
+                    0,
+                    false,
+                    false,
+                    scissorStack.peek()
+                )
             )
-
             currentY += layout.lineHeight
         }
-    }
-
-    fun drawMultilineBoxCentered(
-        ctx: DrawContext,
-        text: String,
-        centerX: Int,
-        centerY: Int
-    ) {
-        val layout = computeLayout(text)
-
-        val x = centerX - layout.boxWidth / 2
-        val y = centerY - layout.boxHeight / 2
-
-        drawMultilineBox(ctx, text, x, y)
     }
 
 }
