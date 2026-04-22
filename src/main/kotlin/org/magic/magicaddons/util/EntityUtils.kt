@@ -29,7 +29,9 @@ object EntityUtils {
     }
 
     val highlightEntityList: MutableSet<Entity> = mutableSetOf()
-    private var entityList: List<Entity>? = null
+
+    @JvmStatic
+    private var entityList: List<Entity> = mutableListOf()
 
 
     var entityInfoList: List<EntityInfo>? = null

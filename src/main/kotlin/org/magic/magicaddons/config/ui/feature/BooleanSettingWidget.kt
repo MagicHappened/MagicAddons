@@ -1,12 +1,12 @@
 package org.magic.magicaddons.config.ui.feature
 
-import net.minecraft.client.MinecraftClient
-import net.minecraft.client.gui.Click
-import net.minecraft.client.gui.DrawContext
-import net.minecraft.text.Text
+import net.minecraft.client.Minecraft
+import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.input.MouseButtonEvent
+import net.minecraft.network.chat.Component
 import org.magic.magicaddons.config.data.BooleanSetting
 import org.magic.magicaddons.config.ui.CheckboxWidget
-import org.magic.magicaddons.util.ScreenUtil
+import org.magic.magicaddons.util.ScreenUtil.drawBorder
 
 class BooleanSettingWidget(
     private val setting: BooleanSetting
@@ -31,43 +31,43 @@ class BooleanSettingWidget(
         checkbox.size = height
     }
 
-    override fun render(ctx: DrawContext, mouseX: Int, mouseY: Int, delta: Float) {
-        val textRenderer = MinecraftClient.getInstance().textRenderer
+    override fun render(graphics: GuiGraphics, mouseX: Int, mouseY: Int, delta: Float) {
+        val font = Minecraft.getInstance().font
 
-        ctx.fill(x, y, x + width, y + height, backgroundColor)
+        graphics.fill(x, y, x + width, y + height, backgroundColor)
 
         checkbox.checked = setting.value
-        checkbox.render(ctx)
+        checkbox.render(graphics)
 
-        ScreenUtil.drawBorder(ctx, x, y, x + width, y + height, borderSize, borderColor)
+        graphics.drawBorder(x, y, x + width, y + height, borderSize, borderColor)
 
-        ctx.drawText(
-            textRenderer,
-            Text.literal(setting.displayName),
+        graphics.drawString(
+            font,
+            Component.literal(setting.displayName),
             x + checkbox.size + textXPad,
-            y + (height - textRenderer.fontHeight) / 2,
+            y + (height - font.lineHeight) / 2,
             0xFFFFFFFF.toInt(),
             false
         )
 
-        renderChildren(ctx, mouseX, mouseY, delta)
+        renderChildren(graphics, mouseX, mouseY, delta)
 
-        renderTooltip(ctx, mouseX, mouseY)
+        renderTooltip(graphics, mouseX, mouseY)
     }
 
-    override fun mouseClicked(click: Click, doubled: Boolean): Boolean {
-        if (checkbox.mouseClicked(click, doubled)) {
+    override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
+        if (checkbox.mouseClicked(mouseButtonEvent, doubled)) {
             setting.value = !setting.value
             return true
         }
 
-        val inside = isMouseOver(click.x, click.y)
+        val inside = isMouseOver(mouseButtonEvent.x, mouseButtonEvent.y)
 
-        if (inside && click.button() == 1) {
+        if (inside && mouseButtonEvent.button() == 1) {
             childrenExpanded = !childrenExpanded
             return true
         }
 
-        return super.mouseClicked(click, doubled)
+        return super.mouseClicked(mouseButtonEvent, doubled)
     }
 }

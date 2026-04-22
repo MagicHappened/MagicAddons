@@ -1,26 +1,26 @@
 package org.magic.magicaddons.config.ui
 
-import net.minecraft.client.MinecraftClient
-import net.minecraft.client.gl.RenderPipelines
-import net.minecraft.client.gui.Click
-import net.minecraft.client.gui.DrawContext
-import net.minecraft.text.Text
-import net.minecraft.util.Identifier
+import net.minecraft.client.Minecraft
+import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.input.MouseButtonEvent
+import net.minecraft.network.chat.Component
+import net.minecraft.resources.Identifier
+import tech.thatgravyboat.skyblockapi.platform.drawTexture
 
 class ClickableButtonWidget(
     var x: Int,
     var y: Int,
     var width: Int,
     var height: Int,
-    private val message: Text
+    private val message: Component,
 ) {
-    val BUTTON = Identifier.of("minecraft", "widget/button")
-    val BUTTON_HOVERED = Identifier.of("minecraft", "widget/button_highlighted")
+    val BUTTON = Identifier.fromNamespaceAndPath("minecraft", "widget/button")
+    val BUTTON_HOVERED = Identifier.fromNamespaceAndPath("minecraft", "widget/button_highlighted")
 
     private var hovered = false
 
-    fun render(context: DrawContext, mouseX: Int, mouseY: Int, delta: Float) {
-        val textRenderer = MinecraftClient.getInstance().textRenderer
+    fun render(graphics: GuiGraphics, mouseX: Int, mouseY: Int, delta: Float) {
+        val font = Minecraft.getInstance().font
         hovered = isHovered(mouseX, mouseY)
 
         val sprite = if (hovered)
@@ -29,8 +29,7 @@ class ClickableButtonWidget(
             BUTTON
 
 
-        context.drawGuiTexture(
-            RenderPipelines.GUI_TEXTURED,
+        graphics.drawTexture(
             sprite,
             x,
             y,
@@ -38,14 +37,12 @@ class ClickableButtonWidget(
             height
         )
 
-
-        // centered text
-        val textX = x + (width - textRenderer.getWidth(message)) / 2
+        val textX = x + (width - font.width(message)) / 2
         val textY = y + (height - 8) / 2
-        val color = (message.style.color?.rgb ?: 0xFFFFFF) or 0xFF000000.toInt()
+        val color = (message.style.color?.value ?: 0xFFFFFFFF.toInt()) or 0xFF000000.toInt()
 
-        context.drawText(
-            MinecraftClient.getInstance().textRenderer,
+        graphics.drawString(
+            font,
             message,
             textX,
             textY,
@@ -54,8 +51,8 @@ class ClickableButtonWidget(
         )
     }
 
-    fun mouseClicked(click: Click, doubled: Boolean): Boolean {
-        return isHovered(click.x.toInt(), click.y.toInt())
+    fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
+        return isHovered(mouseButtonEvent.x.toInt(), mouseButtonEvent.y.toInt())
     }
 
     private fun isHovered(mouseX: Int, mouseY: Int): Boolean {

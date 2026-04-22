@@ -12,6 +12,7 @@ import org.magic.magicaddons.features.Feature
 import org.magic.magicaddons.features.FeatureManager
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.ScreenUtil
+import org.magic.magicaddons.util.ScreenUtil.drawMultilineBoxCentered
 
 class ConfigScreen(title: Component, val parent: Screen?) : Screen(title) {
 
@@ -61,7 +62,7 @@ class ConfigScreen(title: Component, val parent: Screen?) : Screen(title) {
     override fun render(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, delta: Float) {
         super.render(guiGraphics, mouseX, mouseY, delta)
 
-        ScreenUtil.drawMultilineBoxCentered(guiGraphics, helpText, width/2, 35)
+        guiGraphics.drawMultilineBoxCentered(helpText, width/2, 35)
     }
 
     override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
