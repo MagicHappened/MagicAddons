@@ -1,6 +1,5 @@
 package org.magic.magicaddons.util
 
-import com.google.common.eventbus.Subscribe
 import net.minecraft.client.Minecraft
 import net.minecraft.client.multiplayer.ClientLevel
 import net.minecraft.client.renderer.entity.LivingEntityRenderer
@@ -22,6 +21,7 @@ import org.magic.magicaddons.events.world.OnEntityUpdated
 import org.magic.magicaddons.events.world.OnWorldTickEvent
 import org.magic.magicaddons.features.combat.HighlightMobs
 import tech.thatgravyboat.skyblockapi.api.SkyBlockAPI
+import tech.thatgravyboat.skyblockapi.api.events.base.Subscription
 import tech.thatgravyboat.skyblockapi.api.events.base.predicates.OnlyOnSkyBlock
 import tech.thatgravyboat.skyblockapi.api.events.render.RenderWorldEvent
 import kotlin.math.sqrt
@@ -116,18 +116,12 @@ object EntityUtils {
         return world.players().any { it.distanceToSqr(armorStand) < 2.0 }
     }
 
-    @OnlyOnSkyBlock
-    @Subscribe
+    @Subscription
     fun onRenderWorldEvent(event: RenderWorldEvent.AfterEntities) {
-
         val level = Minecraft.getInstance().level ?: return
         val dispatcher = Minecraft.getInstance().entityRenderDispatcher
 
-
-        event.poseStack.pushPose()
-
         for (entity in (HighlightMobs.highlightedEntityList ?: return)) { //todo change to add more features to highlight somehow
-
             if (entity.level() != level) continue
             if (!entity.isAlive) continue
 
@@ -141,6 +135,7 @@ object EntityUtils {
                 continue
             }
 
+            event.poseStack.pushPose()
 
             val state = renderer.createRenderState(entity, event.partialTicks)
 
@@ -149,8 +144,6 @@ object EntityUtils {
             )
 
             val cam = event.cameraPosition
-
-            event.poseStack.pushPose()
 
             // camera-relative transform
             event.poseStack.translate(
@@ -165,7 +158,7 @@ object EntityUtils {
                     .rotateY(-Math.toRadians(entity.yRot.toDouble()).toFloat())
             )
 
-
+            //todo render is backwards and doesnt reflect the actual entity movement.
 
             renderer.model.renderToBuffer(
                 event.poseStack,
