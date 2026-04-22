@@ -167,7 +167,6 @@ class TextListSettingWidget(
 
         graphics.drawBorder(x, y, x + width, y + height, borderSize, borderColor)
 
-        renderTooltip(graphics, mouseX, mouseY)
     }
 
     private fun toggleEntry(entry: ListEntry) {

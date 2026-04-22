@@ -104,10 +104,6 @@ class EnumSettingWidget<T : Enum<T>>(
             layoutDropdown()
             selectionOptions.forEach { it.render(graphics) }
         }
-
-
-
-        renderTooltip(graphics, mouseX, mouseY)
     }
 
     private fun valueChanged(selectedValue: T) {

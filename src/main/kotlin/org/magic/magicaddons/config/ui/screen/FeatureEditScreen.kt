@@ -12,13 +12,14 @@ import org.magic.magicaddons.config.data.SettingNode
 import org.magic.magicaddons.config.ui.feature.SettingWidget
 import org.magic.magicaddons.config.ui.feature.SettingWidgetFactory
 import org.magic.magicaddons.features.Feature
-import org.magic.magicaddons.util.ScreenUtil
+import org.magic.magicaddons.util.ScreenUtil.drawMultilineBox
 import org.magic.magicaddons.util.ScreenUtil.drawMultilineBoxCentered
 
 class FeatureEditScreen(
     val feature: Feature,
     val parent: Screen?
 ) : Screen(Component.literal(feature.displayName)) {
+    var hoveredWidget: SettingWidget<*>? = null
 
     val childrenSettings: List<SettingNode<*>> = feature.baseSetting.children
         ?: throw IllegalStateException("Cannot construct a feature edit screen for a feature with no nested settings")
@@ -66,6 +67,8 @@ class FeatureEditScreen(
             width / 2,
             20
         )
+
+        hoveredWidget?.renderTooltip(guiGraphics, mouseX, mouseY)
     }
 
     override fun charTyped(characterEvent: CharacterEvent): Boolean {
@@ -83,6 +86,7 @@ class FeatureEditScreen(
     }
 
     override fun mouseMoved(mouseX: Double, mouseY: Double) {
+        hoveredWidget = null
         baseChildrenWidgets.forEach {
             it.mouseMoved(mouseX, mouseY)
         }

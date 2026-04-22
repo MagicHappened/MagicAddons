@@ -3,6 +3,7 @@ package org.magic.magicaddons.config.ui
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.input.MouseButtonEvent
+import net.minecraft.client.renderer.RenderPipelines
 import net.minecraft.network.chat.Component
 import net.minecraft.resources.Identifier
 import tech.thatgravyboat.skyblockapi.platform.drawTexture
@@ -27,7 +28,8 @@ open class ClickableRowWidget<T>(
         if (onRemove != null) {
             val rx = x + width - removeWidth - removePadding
 
-            graphics.drawTexture(
+            graphics.blitSprite(
+                RenderPipelines.GUI_TEXTURED,
                 Identifier.fromNamespaceAndPath("minecraft", "widget/button"),
                 rx,
                 y+ removePadding,

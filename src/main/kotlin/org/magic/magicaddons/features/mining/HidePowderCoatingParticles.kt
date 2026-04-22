@@ -19,7 +19,7 @@ object HidePowderCoatingParticles : Feature() {
     @EventHandler
     fun onAddParticle(event: AddParticleEvent){
         if (!baseSetting.value) return
-        if (!event.packet.type().equals(ParticleTypes.DUST)) return
+        if (!event.packet.particle.type.equals(ParticleTypes.DUST)) return
 
 
         val dustPos = Vec3(event.packet.x, event.packet.y, event.packet.z)

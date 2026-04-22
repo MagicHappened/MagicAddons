@@ -1,5 +1,6 @@
 package org.magic.magicaddons.config.ui.feature
 
+import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.gui.components.Renderable
 import net.minecraft.client.gui.components.events.GuiEventListener
@@ -9,6 +10,7 @@ import net.minecraft.client.input.CharacterEvent
 import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
 import org.magic.magicaddons.config.data.SettingNode
+import org.magic.magicaddons.config.ui.screen.FeatureEditScreen
 import org.magic.magicaddons.util.ScreenUtil.drawSimpleTooltip
 
 abstract class SettingWidget<T>(
@@ -60,7 +62,7 @@ abstract class SettingWidget<T>(
         }
     }
 
-    protected fun renderTooltip(graphics: GuiGraphics, mouseX: Int, mouseY: Int) {
+     fun renderTooltip(graphics: GuiGraphics, mouseX: Int, mouseY: Int) {
         if (hovered && node.tooltip.isNotBlank()) {
             graphics.drawSimpleTooltip(node.tooltip, mouseX + 8, mouseY + 8)
         }
@@ -78,7 +80,10 @@ abstract class SettingWidget<T>(
 
     override fun mouseMoved(mouseX: Double, mouseY: Double) {
         hovered = isMouseOver(mouseX, mouseY)
-
+        val currentScreen = Minecraft.getInstance().screen
+        if (currentScreen is FeatureEditScreen && hovered) {
+            currentScreen.hoveredWidget = this
+        }
         childrenWidgets.forEach {
             it.mouseMoved(mouseX, mouseY)
         }
