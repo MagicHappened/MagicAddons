@@ -6,7 +6,8 @@
   "mixins": [
     "ClientPacketListenerMixin",
     "ClientPlayerInteractionManagerMixin",
-    "LivingEntityMixin"
+    "LivingEntityMixin",
+    "MinecraftMixin"
   ],
   "injectors": {
     "defaultRequire": 1

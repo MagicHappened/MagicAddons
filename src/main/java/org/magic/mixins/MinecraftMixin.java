@@ -3,6 +3,7 @@ package org.magic.mixins;
 import net.minecraft.client.Minecraft;
 import org.magic.magicaddons.events.EventBus;
 import org.magic.magicaddons.events.world.OnWorldTickEvent;
+import org.magic.magicaddons.util.ChatUtils;
 import org.magic.magicaddons.util.EntityUtils;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
