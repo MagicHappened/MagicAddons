@@ -7,6 +7,8 @@ import net.minecraft.client.gui.render.TextureSetup
 import net.minecraft.client.gui.render.state.ColoredRectangleRenderState
 import net.minecraft.client.gui.render.state.GuiTextRenderState
 import net.minecraft.client.gui.screens.Screen
+import net.minecraft.client.gui.screens.inventory.tooltip.ClientTooltipComponent
+import net.minecraft.client.gui.screens.inventory.tooltip.DefaultTooltipPositioner
 import net.minecraft.client.renderer.RenderPipelines
 import net.minecraft.network.chat.Component
 import org.joml.Matrix3x2f
@@ -62,6 +64,19 @@ object ScreenUtil {
             }
         }
     }
+
+    fun GuiGraphics.drawBorder(x1: Int, y1: Int, x2: Int, y2: Int, thickness: Int, color: Int) {
+        drawBorder(
+            x1.toFloat(),
+            y1.toFloat(),
+            x2.toFloat(),
+            y2.toFloat(),
+            thickness.toFloat(),
+            color
+        )
+    }
+
+
     fun GuiGraphics.drawBorder(
         x1: Float, y1: Float,
         x2: Float, y2: Float,
@@ -152,33 +167,62 @@ object ScreenUtil {
         )
     }
 
-    fun GuiGraphics.drawMultilineBox(
+    fun GuiGraphics.drawSimpleTooltip(text: String, mouseX: Int, mouseY: Int) {
+        val client = Minecraft.getInstance()
+        val lines = listOf(
+            ClientTooltipComponent.create(
+                Component.literal(text).visualOrderText
+            )
+        )
+
+        this.renderTooltip(
+            client.font,
+            lines,
+            mouseX + 8,
+            mouseY + 8,
+            DefaultTooltipPositioner.INSTANCE,
+            null
+        )
+    }
+
+    fun GuiGraphics.drawMultilineBoxCentered(
         text: String,
-        x: Float,
-        y: Float
+        centerX: Int,
+        centerY: Int,
+    ){
+        drawMultilineBoxCentered(
+            text,
+            centerX.toFloat(),
+            centerY.toFloat(),
+        )
+    }
+
+
+    fun GuiGraphics.drawMultilineBoxCentered(
+        text: String,
+        centerX: Float,
+        centerY: Float
     ) {
         val font = Minecraft.getInstance().font
         val padding = 4f
 
         val layout = computeLayout(text)
 
-        val x1 = x
-        val y1 = y
-        val x2 = x + layout.boxWidth
-        val y2 = y + layout.boxHeight
+        val x1 = centerX
+        val y1 = centerY
+        val x2 = centerX + layout.boxWidth
+        val y2 = centerY + layout.boxHeight
 
-        // background (still fill is fine here)
         fill(x1.toInt(), y1.toInt(), x2.toInt(), y2.toInt(), 0x88000000.toInt())
 
-        // border using your new system
         drawBorder(x1, y1, x2, y2, 1f, 0xFFFFFFFF.toInt())
 
         // text
-        var currentY = y + padding
+        var currentY = centerY + padding
 
         layout.lines.forEach { line ->
             val seq = Component.literal(line).visualOrderText
-            val centeredX = x + (layout.boxWidth - font.width(line)) / 2f
+            val centeredX = centerX + (layout.boxWidth - font.width(line)) / 2f
 
             guiRenderState.submitText(
                 GuiTextRenderState(

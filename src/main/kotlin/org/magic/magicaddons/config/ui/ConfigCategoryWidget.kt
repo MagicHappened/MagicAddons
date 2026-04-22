@@ -4,6 +4,8 @@ import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.gui.components.Renderable
 import net.minecraft.client.gui.components.events.GuiEventListener
+import net.minecraft.client.gui.narration.NarratableEntry
+import net.minecraft.client.gui.narration.NarrationElementOutput
 import net.minecraft.client.input.MouseButtonEvent
 import org.magic.magicaddons.config.ui.feature.FeatureToggleWidget
 import org.magic.magicaddons.features.Feature
@@ -11,7 +13,7 @@ import org.magic.magicaddons.features.Feature
 class ConfigCategoryWidget(
     val categoryName: String,
     categoryFeatures: List<Feature> // your featureMap
-) : Renderable, GuiEventListener {
+) : Renderable, GuiEventListener, NarratableEntry {
 
     val categoryFeatureWidgets = mutableListOf<FeatureToggleWidget>()
 
@@ -86,4 +88,10 @@ class ConfigCategoryWidget(
     }
 
     override fun isFocused(): Boolean = isFocused
+    override fun narrationPriority(): NarratableEntry.NarrationPriority {
+       return NarratableEntry.NarrationPriority.NONE
+    }
+
+    override fun updateNarration(narrationElementOutput: NarrationElementOutput) {
+    }
 }

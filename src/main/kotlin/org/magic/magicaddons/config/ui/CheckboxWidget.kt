@@ -1,6 +1,5 @@
 package org.magic.magicaddons.config.ui
 
-import net.minecraft.client.gui.DrawContext
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.gui.components.events.GuiEventListener
 import net.minecraft.client.input.MouseButtonEvent
@@ -59,8 +58,8 @@ class CheckboxWidget(
         val newX2 = x2 + ex
         val newY2 = y2 + ey
 
-        graphics.state.drawLine(x1, y1, newX2, newY2, thickness, checkColor)
-        graphics.state.drawLine(x2, y2, x3, y3, thickness, checkColor)
+        graphics.drawLine(x1, y1, newX2, newY2, thickness, checkColor)
+        graphics.drawLine(x2, y2, x3, y3, thickness, checkColor)
     }
 
     override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
