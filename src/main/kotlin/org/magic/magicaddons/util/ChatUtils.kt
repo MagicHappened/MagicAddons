@@ -1,45 +1,31 @@
 package org.magic.magicaddons.util
 
-import net.minecraft.client.MinecraftClient
-import net.minecraft.text.ClickEvent
-import net.minecraft.text.Style
-import net.minecraft.text.Text
-import java.net.URI
+
+import net.minecraft.client.Minecraft
+import net.minecraft.network.chat.Component
 
 object ChatUtils {
     fun sendWithPrefix(message: String) {
-        MinecraftClient.getInstance().player?.sendMessage(Text.literal("[MagicAddons] $message"), false) ?: return
+        Minecraft.getInstance().player?.displayClientMessage(Component.literal("[MagicAddons] $message"), false) ?: return
     }
-    fun buildWithPrefix(message: String?): Text {
+    fun buildWithPrefix(message: String?): Component {
         message?.takeIf { it.isNotBlank() }?.let {
-            return Text.literal("[MagicAddons] $message")
+            return Component.literal("[MagicAddons] $message")
         }
-        return Text.literal("")
+        return Component.literal("")
     }
-    fun sendWithPrefix(message: Text) {
+    fun sendWithPrefix(message: Component) {
         val prefixed = buildWithPrefix(message)
-        MinecraftClient.getInstance().player?.sendMessage(prefixed, false)
+        Minecraft.getInstance().player?.displayClientMessage(prefixed, false)
     }
-    fun buildWithPrefix(message: Text?): Text {
-        val prefix = Text.literal("[MagicAddons] ")
+    fun buildWithPrefix(message: Component?): Component {
+        val prefix = Component.literal("[MagicAddons] ")
 
-        return if (message != null && message != Text.empty()) {
+        return if (message != null && message != Component.empty()) {
             prefix.append(message)
         } else {
             prefix
         }
     }
 
-    fun clickableUrl(
-        text: String,
-        url: String
-    ): Text {
-        val text: Text = Text.literal(text).setStyle(
-            Style.EMPTY
-                .withClickEvent(
-                    ClickEvent.OpenUrl(URI(url))
-                )
-        )
-        return text
-    }
 }

@@ -1,16 +1,13 @@
 package org.magic.magicaddons.util
 
-import net.minecraft.client.MinecraftClient
-import net.minecraft.client.network.AbstractClientPlayerEntity
-import net.minecraft.client.render.DrawStyle
-import net.minecraft.client.render.RenderTickCounter
-import net.minecraft.client.world.ClientWorld
-import net.minecraft.entity.Entity
-import net.minecraft.entity.EquipmentSlot
-import net.minecraft.entity.decoration.ArmorStandEntity
-import net.minecraft.entity.player.PlayerEntity
-import net.minecraft.world.EntityList
-import net.minecraft.world.debug.gizmo.GizmoDrawing
+import com.google.common.eventbus.Subscribe
+import net.minecraft.client.Minecraft
+import net.minecraft.client.multiplayer.ClientLevel
+import net.minecraft.client.renderer.entity.EntityRenderDispatcher
+import net.minecraft.world.entity.Entity
+import net.minecraft.world.entity.EquipmentSlot
+import net.minecraft.world.entity.decoration.ArmorStand
+import net.minecraft.world.entity.player.Player
 import org.magic.magicaddons.data.EntityInfo
 import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.events.world.OnEntityAdded
@@ -20,18 +17,22 @@ import org.magic.magicaddons.events.world.OnWorldTickEvent
 import org.magic.magicaddons.extensions.armorStacks
 import org.magic.magicaddons.features.combat.HighlightMobs
 import org.magic.magicaddons.features.kuudra.CustomRendSound
+import tech.thatgravyboat.skyblockapi.api.SkyBlockAPI
+import tech.thatgravyboat.skyblockapi.api.events.base.predicates.OnlyIn
+import tech.thatgravyboat.skyblockapi.api.events.base.predicates.OnlyOnSkyBlock
+import tech.thatgravyboat.skyblockapi.api.events.render.RenderWorldEvent
 import kotlin.math.sqrt
 
 object EntityUtils {
+    init {
+        SkyBlockAPI.eventBus.register(this)
+    }
+
+    val highlightEntityList: MutableSet<Entity> = mutableSetOf()
+
+    private var entityList: List<Entity>? = null
 
 
-    @JvmStatic
-    var renderTickCounter: RenderTickCounter? = null
-
-    //entity list from world tick
-    private var entityList: EntityList? = null
-
-    //maintained entity info
     var entityInfoList: List<EntityInfo>? = null
 
     private var entityMapPrev: Map<String, EntityInfo> = emptyMap()
@@ -44,38 +45,40 @@ object EntityUtils {
 
 
     @JvmStatic
-    fun onWorldTick(entityList: EntityList) {
+    fun onWorldTick(level: ClientLevel) {
 
         if (!HighlightMobs.baseSetting.value && !CustomRendSound.baseSetting.value) return // change this to include more settings that depend on world tick
 
-        this.entityList = entityList
         EventBus.post(OnWorldTickEvent())
-        update()
+        update(level)
 
     }
 
-    private fun update() {
-        val client = MinecraftClient.getInstance()
+
+
+
+    private fun update(level: ClientLevel) {
+        val client = Minecraft.getInstance()
         val player = client.player ?: return
-        val world = client.world ?: return
+        val world = client.level ?: return
 
         val newList = mutableListOf<EntityInfo>()
         val newMap = mutableMapOf<String, EntityInfo>()
 
-        entityList?.forEach { entity ->
-            if (entity is ArmorStandEntity && isNearPlayerEntity(world, entity)) return@forEach
+        level.entitiesForRendering().forEach { entity ->
+            if (entity is ArmorStand && isNearPlayerEntity(world, entity)) return@forEach
 
-            val armorStandTags = if (entity is PlayerEntity) {
-                world.getOtherEntities(null, entity.boundingBox.expand(0.5, 2.0, 0.5))
-                    .filterIsInstance<ArmorStandEntity>()
+            val armorStandTags = if (entity is Player) {
+                world.getEntities(null, entity.boundingBox.inflate(0.5, 2.0, 0.5))
+                    .filterIsInstance<ArmorStand>()
                     .mapNotNull { it.customName?.string }
             } else null
 
-            val distance = sqrt(entity.squaredDistanceTo(player))
+            val distance = sqrt(entity.distanceToSqr(player))
 
             val info = EntityInfo(entity, armorStandTags, distance)
             newList += info
-            newMap[entity.uuidAsString] = info
+            newMap[entity.uuid.toString()] = info
         }
 
         addedEntities.clear()
@@ -118,20 +121,48 @@ object EntityUtils {
         entityMapCurr = newMap
     }
 
-    private fun isNearPlayerEntity(world: ClientWorld, armorStand: ArmorStandEntity): Boolean {
-        return world.players.any { it.squaredDistanceTo(armorStand) < 2.0 }
+    private fun isNearPlayerEntity(world: ClientLevel, armorStand: ArmorStand): Boolean {
+        return world.players().any { it.distanceToSqr(armorStand) < 2.0 }
     }
 
-    fun renderEntityBoundingBox(entity: Entity) {
-        val box = entity.getDimensions(entity.pose).getBoxAt(entity.getLerpedPos(renderTickCounter?.getTickProgress(false) ?: 0F))
+    @OnlyOnSkyBlock
+    @Subscribe
+    fun onRenderWorldEvent(event: RenderWorldEvent.AfterEntities) {
 
-        GizmoDrawing.box(
-            box,
-            DrawStyle.stroked(0xFF00FF00.toInt(), 4f)
-        ).ignoreOcclusion()
+        val level = Minecraft.getInstance().level ?: return
+        val camPos = event.cameraPosition
+        val pose = event.poseStack
+
+        val partialTick = Minecraft.getInstance().deltaTracker.gameTimeDeltaTicks
+
+        for (entity in EntityUtils.highlightedEntityList) {
+
+            // safety: entity may despawn
+            if (entity.level() != level) continue
+            if (!entity.isAlive) continue
+
+            val box = entity.boundingBox.move(
+                -camPos.x,
+                -camPos.y,
+                -camPos.z
+            )
+
+            pose.pushPose()
+
+            GizmoDrawing.box(
+                box,
+                DrawStyle.stroked(0xFF00FF00.toInt(), 4f)
+            ).ignoreOcclusion()
+
+            pose.popPose()
+        }
     }
 
-    fun isEntityWearingArmorId(id: String, entity: AbstractClientPlayerEntity, searchHelmet: Boolean): Boolean{
+
+
+
+
+    fun isEntityWearingArmorId(id: String, entity: Player, searchHelmet: Boolean): Boolean{
         var correctFeet = false
         var correctLegs = false
         var correctChest = false
