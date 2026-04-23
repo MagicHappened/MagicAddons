@@ -7,7 +7,8 @@
     "ClientPacketListenerMixin",
     "ClientPlayerInteractionManagerMixin",
     "LivingEntityMixin",
-    "MinecraftMixin"
+    "MinecraftMixin",
+    "LevelRendererMixin"
   ],
   "injectors": {
     "defaultRequire": 1

@@ -98,6 +98,7 @@ tasks.withType<KotlinCompile>().configureEach {
 }
 
 tasks.jar {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     from("LICENSE") {
         rename { "${it}_${project.base.archivesName.get()}" }
     }
