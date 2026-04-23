@@ -4,6 +4,7 @@ import net.minecraft.client.Minecraft
 import net.minecraft.client.multiplayer.ClientLevel
 import net.minecraft.client.renderer.entity.LivingEntityRenderer
 import net.minecraft.client.renderer.entity.state.LivingEntityRenderState
+import net.minecraft.client.renderer.rendertype.RenderType
 import net.minecraft.client.renderer.rendertype.RenderTypes
 import net.minecraft.client.renderer.texture.OverlayTexture
 import net.minecraft.core.component.DataComponents
@@ -22,7 +23,6 @@ import org.magic.magicaddons.events.world.OnWorldTickEvent
 import org.magic.magicaddons.features.combat.HighlightMobs
 import tech.thatgravyboat.skyblockapi.api.SkyBlockAPI
 import tech.thatgravyboat.skyblockapi.api.events.base.Subscription
-import tech.thatgravyboat.skyblockapi.api.events.base.predicates.OnlyOnSkyBlock
 import tech.thatgravyboat.skyblockapi.api.events.render.RenderWorldEvent
 import kotlin.math.sqrt
 
@@ -105,7 +105,6 @@ object EntityUtils {
         if (updatedEntities.isNotEmpty()) {
             EventBus.post(OnEntityUpdated(updatedEntities))
         }
-
         // update state
         entityInfoList = newList
         entityMapPrev = entityMapCurr
@@ -118,6 +117,8 @@ object EntityUtils {
 
     @Subscription
     fun onRenderWorldEvent(event: RenderWorldEvent.AfterEntities) {
+        //todo add this back lol
+        /*
         val level = Minecraft.getInstance().level ?: return
         val dispatcher = Minecraft.getInstance().entityRenderDispatcher
 
@@ -139,38 +140,45 @@ object EntityUtils {
 
             val state = renderer.createRenderState(entity, event.partialTicks)
 
+
+
             val vertexConsumer = event.buffer.getBuffer(
                 RenderTypes.outline(renderer.getTextureLocation(state))
             )
 
             val cam = event.cameraPosition
 
-            // camera-relative transform
             event.poseStack.translate(
                 entity.x - cam.x,
                 entity.y - cam.y,
                 entity.z - cam.z
             )
+            //todo render is backwards and doesnt reflect the actual entity movement
 
-            // IMPORTANT: apply entity rotation
+
+            event.poseStack.scale(-1f, -1f, 1f)
+
+            event.poseStack.translate(0.0, -1.501, 0.0)
+
             event.poseStack.mulPose(
                 org.joml.Quaternionf()
-                    .rotateY(-Math.toRadians(entity.yRot.toDouble()).toFloat())
+                    .rotateY(Math.toRadians(state.yRot.toDouble()).toFloat())
             )
-
-            //todo render is backwards and doesnt reflect the actual entity movement.
 
             renderer.model.renderToBuffer(
                 event.poseStack,
                 vertexConsumer,
-                0xF000F0,
-                OverlayTexture.NO_OVERLAY,
-                0xFFFFFFFF.toInt()
+                0xF000F000.toInt(),
+                OverlayTexture.RED_OVERLAY_V,
+                0xFFFFFF00.toInt()
             )
+
+
 
             event.poseStack.popPose()
         }
 
+        */
     }
 
 
