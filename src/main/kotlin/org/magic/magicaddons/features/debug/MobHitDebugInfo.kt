@@ -4,13 +4,12 @@ import net.minecraft.client.Minecraft
 import net.minecraft.network.chat.ClickEvent
 import net.minecraft.network.chat.Component
 import net.minecraft.network.chat.Style
+import net.minecraft.world.entity.Display
 import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.EquipmentSlot
 import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.decoration.ArmorStand
 import net.minecraft.world.entity.player.Player
-import net.minecraft.world.item.ItemStack
-import net.minecraft.world.item.PlayerHeadItem
 import org.magic.magicaddons.config.data.BooleanSetting
 import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.events.EventHandler
@@ -64,17 +63,12 @@ object MobHitDebugInfo : Feature() {
         val clickableText = Component.literal("Click for skin url").setStyle(
             Style.EMPTY.withClickEvent(ClickEvent.OpenUrl(URI(url)))
         )
+
         ChatUtils.sendWithPrefix("=== Player Debug ===")
         ChatUtils.sendWithPrefix(clickableText)
         ChatUtils.sendWithPrefix("Skin hash: $hash")
-        val armorStandTags = Minecraft.getInstance().level?.getEntities(null, player.boundingBox.inflate(0.5, 2.0, 0.5))
-            ?.filterIsInstance<ArmorStand>()
-            ?.mapNotNull { it.customName?.string }
-        armorStandTags?.forEach {
-            ChatUtils.sendWithPrefix("Nearby armor stand: $it")
-        }
 
-
+        printNearbyInfoEntities(player)
     }
 
     fun attackArmorStandDebug(stand: ArmorStand) {
@@ -83,7 +77,7 @@ object MobHitDebugInfo : Feature() {
         val name = stand.customName?.string ?: "No custom name"
         ChatUtils.sendWithPrefix("Name: $name")
 
-        sendEntityEquipmentDebug(stand)
+        sendEntityDebug(stand)
 
     }
 
@@ -95,8 +89,9 @@ object MobHitDebugInfo : Feature() {
 
         val type = mob.type.toString()
         ChatUtils.sendWithPrefix("Type: $type")
-        sendEntityEquipmentDebug(mob)
+        sendEntityDebug(mob)
 
+        printNearbyInfoEntities(mob)
     }
 
     fun attackUnknownDebug(entity: Entity) {
@@ -104,45 +99,75 @@ object MobHitDebugInfo : Feature() {
         ChatUtils.sendWithPrefix("Class: ${entity::class.qualifiedName}")
     }
 
-    fun sendEntityEquipmentDebug(entity: LivingEntity) {
-        ChatUtils.sendWithPrefix("--- Equipment ---")
+    private fun printNearbyInfoEntities(entity: Entity, radius: Double = 0.5, height: Double = 2.0) {
+        val level = Minecraft.getInstance().level ?: return
 
-        val slots = listOf(
-            EquipmentSlot.MAINHAND,
-            EquipmentSlot.OFFHAND,
-            EquipmentSlot.FEET,
-            EquipmentSlot.LEGS,
-            EquipmentSlot.CHEST,
-            EquipmentSlot.HEAD
-        )
+        val entities = level.getEntities(
+            null,
+            entity.boundingBox.inflate(radius, height, radius)
+        ).filter {
+            it !== entity && (
+                    (it is ArmorStand && it.hasCustomName()) ||
+                            it is Display
+                    )
+        }
 
-        for (slot in slots) {
-            val stack = entity.getItemBySlot(slot)
+        if (entities.isEmpty()) return
 
-            if (stack.isEmpty) continue
+        ChatUtils.sendWithPrefix("=== Nearby Info Entities: ===")
 
-            val itemName = stack.item.toString()
-            ChatUtils.sendWithPrefix("$slot: $itemName")
-
-            if (isPlayerHead(stack)) {
-                val skullInfo = getSkullInfo(stack)
-
-                if (skullInfo != null) {
-                    ChatUtils.sendWithPrefix("  -> Skull: $skullInfo")
-                } else {
-                    ChatUtils.sendWithPrefix("  -> Skull: (no texture data)")
-                }
-            }
+        entities.forEach { 
+            val name = it.customName?.string ?: "No custom name"
+            ChatUtils.sendWithPrefix("Name: $name")
+            ChatUtils.sendWithPrefix("Type: ${it.type}")
+            sendEntityDebug(it)
         }
     }
 
-    fun isPlayerHead(stack: ItemStack): Boolean {
-        return stack.item is PlayerHeadItem
+
+    fun sendEntityDebug(entity: Entity) {
+
+        when (entity) {
+
+            is LivingEntity -> {
+                ChatUtils.sendWithPrefix("=== Equipment ===")
+
+                val slots = listOf(
+                    EquipmentSlot.MAINHAND,
+                    EquipmentSlot.OFFHAND,
+                    EquipmentSlot.FEET,
+                    EquipmentSlot.LEGS,
+                    EquipmentSlot.CHEST,
+                    EquipmentSlot.HEAD
+                )
+
+                for (slot in slots) {
+                    val stack = entity.getItemBySlot(slot)
+                    if (stack.isEmpty) continue
+
+                    ChatUtils.sendWithPrefix("  -> ITEM ($slot): ${stack.item}")
+                    ChatUtils.sendWithPrefix(PlayerUtils.getSkinHash(stack) ?: "No skin hash")
+                }
+            }
+
+            is Display.ItemDisplay -> {
+                val stack = entity.itemStack
+                if (stack.isEmpty) return
+
+                ChatUtils.sendWithPrefix("=== ItemDisplay ===")
+                ChatUtils.sendWithPrefix("  -> ITEM: ${stack.item}")
+                ChatUtils.sendWithPrefix(PlayerUtils.getSkinHash(stack) ?: "No skin hash")
+            }
+
+        }
     }
 
-    fun getSkullInfo(stack: ItemStack): String? {
-        val hash = PlayerUtils.getSkinHash(stack) ?: return null
-        return "hash=$hash"
-    }
+
+
+
+
+
+
+
 
 }
