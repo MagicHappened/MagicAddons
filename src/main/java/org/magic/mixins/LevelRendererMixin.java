@@ -18,18 +18,22 @@ import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
 import net.minecraft.client.renderer.state.CameraRenderState;
 import net.minecraft.client.renderer.state.LevelRenderState;
 import net.minecraft.util.profiling.ProfilerFiller;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.animal.pig.Pig;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix4f;
 import org.joml.Vector4f;
 import org.jspecify.annotations.Nullable;
+import org.magic.magicaddons.util.EntityUtils;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+
+import java.util.Map;
 
 @Mixin(LevelRenderer.class)
 public abstract class LevelRendererMixin {
@@ -71,50 +75,47 @@ public abstract class LevelRendererMixin {
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null) return;
 
-        //todo change it so its not just pig lmao
-        Pig pig = mc.level.getEntitiesOfClass(Pig.class, mc.player.getBoundingBox().inflate(50))
-                .stream()
-                .findFirst()
-                .orElse(null);
+        for (Map.Entry<Entity, EntityUtils.HighlightSource> entry : EntityUtils.getResolvedMap().entrySet()) {
+            Entity entity = entry.getKey();
+            EntityUtils.HighlightSource source = entry.getValue();
 
-        if (pig == null) return;
+            if (!(entity instanceof LivingEntity living)) continue;
 
-        EntityRenderDispatcher dispatcher = mc.getEntityRenderDispatcher();
-        EntityRenderer<? super LivingEntity, ?> baseRenderer = dispatcher.getRenderer(pig);
+            EntityRenderer<? super LivingEntity, ?> baseRenderer = entityRenderDispatcher.getRenderer(living);
+            if (!(baseRenderer instanceof LivingEntityRenderer<?, ?, ?> rawRenderer)) continue;
 
-        if (!(baseRenderer instanceof LivingEntityRenderer<?, ?, ?> rawRenderer)) return;
+            @SuppressWarnings("unchecked")
+            LivingEntityRenderer<LivingEntity, LivingEntityRenderState, ?> renderer =
+                    (LivingEntityRenderer<LivingEntity, LivingEntityRenderState, ?>) rawRenderer;
 
-        @SuppressWarnings("unchecked")
-        LivingEntityRenderer<Pig, LivingEntityRenderState, ?> renderer =
-                (LivingEntityRenderer<Pig, LivingEntityRenderState, ?>) rawRenderer;
+            float partialTicks = mc.getDeltaTracker().getGameTimeDeltaPartialTick(false);
 
-        LivingEntityRenderState state = renderer.createRenderState(pig, Minecraft.getInstance().getDeltaTracker().getGameTimeDeltaPartialTick(false));
+            LivingEntityRenderState state = renderer.createRenderState(living, partialTicks);
+            renderer.extractRenderState(living, state, partialTicks);
 
-        poseStack.pushPose();
+            poseStack.pushPose();
 
-        Vec3 cam = levelRenderState.cameraRenderState.pos;
-        // Position relative to camera
-        poseStack.translate(
-                 pig.getX() - cam.x,
-                pig.getY() - cam.y,
-                pig.getZ() - cam.z
-        );
+            Vec3 cam = levelRenderState.cameraRenderState.pos;
 
-        float scale = state.scale;
-        poseStack.scale(scale, scale, scale);
+            poseStack.translate(
+                    living.getX() - cam.x,
+                    living.getY() - cam.y,
+                    living.getZ() - cam.z
+            );
 
-        //todo make this actually be inside the model
-        poseStack.translate(0.0F, 1.501F, 0.0F);
+            poseStack.scale(state.scale, state.scale, state.scale);
+            poseStack.translate(0.0F, 0.0F, 0.0F);
 
-        renderer.extractRenderState(pig,state,Minecraft.getInstance().getDeltaTracker().getGameTimeDeltaPartialTick(false));
-        state.outlineColor = 0xFFFFFF00;
-        levelRenderState.haveGlowingEntities = true;
-        state.isInvisible = true;
-        state.isInvisibleToPlayer = true;
+            state.outlineColor = source.getHighlightColor();
+            state.isInvisible = true;
+            state.isInvisibleToPlayer = true;
 
-        renderer.submit(state,poseStack,submitNodeCollector,new CameraRenderState());
+            levelRenderState.haveGlowingEntities = true;
 
-        poseStack.popPose();
+            renderer.submit(state, poseStack, submitNodeCollector, levelRenderState.cameraRenderState);
+
+            poseStack.popPose();
+        }
     }
 
 
