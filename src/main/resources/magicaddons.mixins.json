@@ -4,13 +4,11 @@
   "package": "org.magic.mixins",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
-    "ClientWorldMixin",
-    "ClientPlayNetworkHandlerMixin",
+    "ClientPacketListenerMixin",
     "ClientPlayerInteractionManagerMixin",
-    "WorldRendererMixin",
-    "EntityMixin",
     "LivingEntityMixin",
-    "LivingEntityAccessor"
+    "MinecraftMixin",
+    "LevelRendererMixin"
   ],
   "injectors": {
     "defaultRequire": 1

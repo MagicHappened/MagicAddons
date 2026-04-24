@@ -1,22 +1,25 @@
 package org.magic.magicaddons.config.ui.screen
 
-import net.minecraft.client.gui.Click
-import net.minecraft.client.gui.DrawContext
-import net.minecraft.client.gui.screen.Screen
-import net.minecraft.client.input.CharInput
-import net.minecraft.client.input.KeyInput
-import net.minecraft.text.Text
+import net.minecraft.client.Minecraft
+import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.gui.screens.Screen
+import net.minecraft.client.input.CharacterEvent
+import net.minecraft.client.input.KeyEvent
+import net.minecraft.client.input.MouseButtonEvent
+import net.minecraft.network.chat.Component
 import org.magic.magicaddons.config.MagicAddonsConfigJsonHandler
 import org.magic.magicaddons.config.data.SettingNode
 import org.magic.magicaddons.config.ui.feature.SettingWidget
 import org.magic.magicaddons.config.ui.feature.SettingWidgetFactory
 import org.magic.magicaddons.features.Feature
-import org.magic.magicaddons.util.ScreenUtil
+import org.magic.magicaddons.util.ScreenUtil.drawMultilineBox
+import org.magic.magicaddons.util.ScreenUtil.drawMultilineBoxCentered
 
 class FeatureEditScreen(
     val feature: Feature,
     val parent: Screen?
-) : Screen(Text.literal(feature.displayName)) {
+) : Screen(Component.literal(feature.displayName)) {
+    var hoveredWidget: SettingWidget<*>? = null
 
     val childrenSettings: List<SettingNode<*>> = feature.baseSetting.children
         ?: throw IllegalStateException("Cannot construct a feature edit screen for a feature with no nested settings")
@@ -52,53 +55,55 @@ class FeatureEditScreen(
 
             widget.init()
             baseChildrenWidgets.add(widget)
-            addDrawable(widget)
+            addRenderableWidget(widget)
         }
     }
 
-    override fun render(ctx: DrawContext, mouseX: Int, mouseY: Int, delta: Float) {
-        super.render(ctx, mouseX, mouseY, delta)
+    override fun render(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, delta: Float) {
+        super.render(guiGraphics, mouseX, mouseY, delta)
 
-        ScreenUtil.drawMultilineBoxCentered(
-            ctx,
+        guiGraphics.drawMultilineBoxCentered(
             screenDisplayTitle,
             width / 2,
             20
         )
+
+        hoveredWidget?.renderTooltip(guiGraphics, mouseX, mouseY)
     }
 
-    override fun charTyped(input: CharInput): Boolean {
+    override fun charTyped(characterEvent: CharacterEvent): Boolean {
         baseChildrenWidgets.forEach {
-            it.charTyped(input)
+            it.charTyped(characterEvent)
         }
-        return super.charTyped(input)
+        return super.charTyped(characterEvent)
     }
 
-    override fun keyPressed(input: KeyInput): Boolean {
+    override fun keyPressed(keyEvent: KeyEvent): Boolean {
         baseChildrenWidgets.forEach {
-            it.keyPressed(input)
+            it.keyPressed(keyEvent)
         }
-        return super.keyPressed(input)
+        return super.keyPressed(keyEvent)
     }
 
     override fun mouseMoved(mouseX: Double, mouseY: Double) {
+        hoveredWidget = null
         baseChildrenWidgets.forEach {
             it.mouseMoved(mouseX, mouseY)
         }
     }
 
 
-    override fun mouseClicked(click: Click, doubled: Boolean): Boolean {
+    override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
         var handled = false
         baseChildrenWidgets.forEach {
-            if (it.mouseClicked(click, doubled))
+            if (it.mouseClicked(mouseButtonEvent, doubled))
                 handled = true
         }
         return handled
     }
 
-    override fun close() {
-        client.setScreen(parent)
+    override fun onClose() {
+        Minecraft.getInstance().setScreen(parent)
     }
 
     override fun removed() {

@@ -1,9 +1,10 @@
 package org.magic.magicaddons.features.combat
 
-import net.minecraft.entity.Entity
-import net.minecraft.entity.EquipmentSlot
-import net.minecraft.entity.LivingEntity
-import net.minecraft.entity.player.PlayerEntity
+import net.minecraft.client.Minecraft
+import net.minecraft.world.entity.Entity
+import net.minecraft.world.entity.EquipmentSlot
+import net.minecraft.world.entity.LivingEntity
+import net.minecraft.world.entity.player.Player
 import org.magic.magicaddons.config.data.BooleanSetting
 import org.magic.magicaddons.config.data.EnumSetting
 import org.magic.magicaddons.config.data.TextSetting
@@ -18,12 +19,23 @@ import org.magic.magicaddons.events.world.OnEntityRemoved
 import org.magic.magicaddons.events.world.OnEntityUpdated
 import org.magic.magicaddons.events.world.OnWorldTickEvent
 import org.magic.magicaddons.features.Feature
-import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.PlayerUtils
 import org.magic.magicaddons.util.EntityUtils
+import tech.thatgravyboat.skyblockapi.api.SkyBlockAPI
+import tech.thatgravyboat.skyblockapi.api.events.base.Subscription
+import tech.thatgravyboat.skyblockapi.api.events.base.predicates.OnlyOnSkyBlock
+import tech.thatgravyboat.skyblockapi.api.events.render.RenderWorldEvent
+import tech.thatgravyboat.skyblockapi.api.events.time.TickEvent
 
 
-object HighlightMobs : Feature() {
+object HighlightMobs : Feature(), EntityUtils.HighlightSource {
+    override val highlightPriority: Int = 0
+    override val highlightColor: Int = 0xFFFFFFFF.toInt()
+
+    init {
+        EventBus.register(this)
+        SkyBlockAPI.eventBus.register(this)
+    }
 
     enum class EntityTypeDetection {
         Player,
@@ -114,37 +126,35 @@ object HighlightMobs : Feature() {
     )
 
 
-    var highlightedEntityList: MutableList<Entity>? = null
 
     fun initializeHighlightedEntityList() {
-
-        highlightedEntityList = mutableListOf()
-
         EntityUtils.entityInfoList?.forEach {
             if (shouldHighlight(it)) {
-                highlightedEntityList?.add(it.entity)
+                EntityUtils.add(it.entity,this)
             }
         }
     }
 
-    init {
-        EventBus.register(this)
-    }
+
 
     @EventHandler
     fun onConfigChanged(event: ConfigChangedEvent) {
-        highlightedEntityList = null
+        EntityUtils.removeAllForSource(this)
+
+        EntityUtils.entityInfoList?.forEach {
+            if (shouldHighlight(it)) {
+                EntityUtils.add(it.entity, this)
+            }
+        }
     }
 
     @EventHandler
     fun onEntityAdded(event: OnEntityAdded) {
         if (!baseSetting.value) return
 
-        highlightedEntityList ?: initializeHighlightedEntityList()
-
         event.addedEntityList.forEach {
             if (shouldHighlight(it))
-                highlightedEntityList?.add(it.entity)
+                EntityUtils.add(it.entity,this)
         }
     }
 
@@ -152,10 +162,8 @@ object HighlightMobs : Feature() {
     fun onEntityRemoved(event: OnEntityRemoved) {
         if (!baseSetting.value) return
 
-        highlightedEntityList ?: initializeHighlightedEntityList()
-
         event.removedEntityList.forEach {
-            highlightedEntityList?.remove(it.entity)
+            EntityUtils.remove(it.entity,this)
         }
     }
 
@@ -163,14 +171,13 @@ object HighlightMobs : Feature() {
     fun onEntityUpdated(event: OnEntityUpdated) {
         if (!baseSetting.value) return
 
-        highlightedEntityList ?: initializeHighlightedEntityList()
-
         event.updatedEntityList.forEach { info ->
             val should = shouldHighlight(info)
-            val contains = highlightedEntityList?.contains(info.entity) == true
+            val has = EntityUtils.hasSource(info.entity, this)
+
             when {
-                should && !contains -> highlightedEntityList?.add(info.entity)
-                !should && contains -> highlightedEntityList?.remove(info.entity)
+                should && !has -> EntityUtils.add(info.entity, this)
+                !should && has -> EntityUtils.remove(info.entity, this)
             }
         }
     }
@@ -194,7 +201,7 @@ object HighlightMobs : Feature() {
 
             val result = when (enumSetting?.value) {
                 EntityTypeDetection.Player -> {
-                    if (entity !is PlayerEntity) return false
+                    if (entity !is Player) return false
 
                     val skinHashEntryList = enumSetting
                         .getChild<ToggleListSetting>("EntityTypePlayerSkinHash")?.value
@@ -250,7 +257,7 @@ object HighlightMobs : Feature() {
                 .getChild<TextSetting>("EntityEquipmentHelmetSkullHash")?.value
                 ?: return false
 
-            val headStack = entity.getEquippedStack(EquipmentSlot.HEAD)
+            val headStack = entity.getItemBySlot(EquipmentSlot.HEAD)
 
             val actualHash = PlayerUtils.getSkinHash(headStack)
 
@@ -264,14 +271,7 @@ object HighlightMobs : Feature() {
         return matches
     }
 
-    @EventHandler
-    fun onWorldTick(onWorldTick: OnWorldTickEvent) {
-        highlightedEntityList ?: initializeHighlightedEntityList()
 
-        highlightedEntityList?.forEach {
-            EntityUtils.renderEntityBoundingBox(it)
-        }
-    }
 
 
 }

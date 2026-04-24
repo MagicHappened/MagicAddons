@@ -1,15 +1,15 @@
 package org.magic.magicaddons.config.ui.feature
 
-import net.minecraft.client.MinecraftClient
-import net.minecraft.client.gui.Click
-import net.minecraft.client.gui.DrawContext
-import net.minecraft.client.gui.widget.TextFieldWidget
-import net.minecraft.client.input.CharInput
-import net.minecraft.client.input.KeyInput
-import net.minecraft.text.Text
+import net.minecraft.client.Minecraft
+import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.gui.components.EditBox
+import net.minecraft.client.input.CharacterEvent
+import net.minecraft.client.input.KeyEvent
+import net.minecraft.client.input.MouseButtonEvent
+import net.minecraft.network.chat.Component
 import org.magic.magicaddons.config.data.TextSetting
 import org.magic.magicaddons.config.ui.ClickableRowWidget
-import org.magic.magicaddons.util.ScreenUtil
+import org.magic.magicaddons.util.ScreenUtil.drawBorder
 
 class TextSettingWidget(
     private val setting: TextSetting
@@ -26,27 +26,27 @@ class TextSettingWidget(
     val textFieldPadding: Int = 1
 
     private val textWidget by lazy {
-        TextFieldWidget(
-            MinecraftClient.getInstance().textRenderer,
+        EditBox(
+            Minecraft.getInstance().font,
             width - (borderSize + textFieldPadding) * 2,
             20,
-            Text.literal("")
+            Component.literal("")
         )
     }
 
     private val historyWidgets: MutableList<ClickableRowWidget<String>> = mutableListOf()
 
     override fun init() {
-        val textRenderer = MinecraftClient.getInstance().textRenderer
+        val font = Minecraft.getInstance().font
 
         textWidget.x = x + borderSize + textFieldPadding
-        textWidget.y = y + borderSize + textFieldPadding + textRenderer.fontHeight + textXPad * 2
-        textWidget.height = height - (borderSize + textFieldPadding + textXPad) * 2 - textRenderer.fontHeight
+        textWidget.y = y + borderSize + textFieldPadding + font.lineHeight + textXPad * 2
+        textWidget.height = height - (borderSize + textFieldPadding + textXPad) * 2 - font.lineHeight
         textWidget.setMaxLength(256)
 
-        textWidget.text = setting.value
+        textWidget.value = setting.value
 
-        textWidget.setChangedListener {
+        textWidget.setResponder {
             setting.value = it
         }
 
@@ -80,7 +80,7 @@ class TextSettingWidget(
     private fun applyHistoryValue(value: String) {
         val previousValue = setting.value
         setting.value = value
-        textWidget.text = value
+        textWidget.value = value
         removeHistoryValue(value)
         setting.history.add(previousValue)
         shouldRenderHistory = false
@@ -95,16 +95,17 @@ class TextSettingWidget(
     }
 
 
-    override fun render(ctx: DrawContext, mouseX: Int, mouseY: Int, delta: Float) {
-        ctx.fill(x, y, x + width, y + height, backgroundColor)
+    override fun render(graphics: GuiGraphics, mouseX: Int, mouseY: Int, delta: Float) {
+        graphics.fill(x, y, x + width, y + height, backgroundColor)
 
-        ScreenUtil.drawBorder(ctx, x, y, x + width, y + height, borderSize, borderColor)
 
-        textWidget.render(ctx, mouseX, mouseY, delta)
+        graphics.drawBorder(x, y, x + width, y + height, borderSize, borderColor)
 
-        ctx.drawText(
-            MinecraftClient.getInstance().textRenderer,
-            Text.literal("${setting.displayName}: "),
+        textWidget.render(graphics, mouseX, mouseY, delta)
+
+        graphics.drawString(
+            Minecraft.getInstance().font,
+            Component.literal("${setting.displayName}: "),
             x + textXPad + borderSize,
             y + textXPad + borderSize,
             0xFFCCCCCC.toInt(),
@@ -113,16 +114,14 @@ class TextSettingWidget(
 
         if (shouldRenderHistory) {
             historyWidgets.forEach {
-                it.render(ctx)
+                it.render(graphics)
             }
         }
-
-        renderTooltip(ctx, mouseX, mouseY)
     }
 
-    override fun mouseClicked(click: Click, doubled: Boolean): Boolean {
+    override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
 
-        val clickedText = textWidget.mouseClicked(click, doubled)
+        val clickedText = textWidget.mouseClicked(mouseButtonEvent, doubled)
 
         if (clickedText) {
             shouldRenderHistory = true
@@ -133,7 +132,7 @@ class TextSettingWidget(
 
         if (shouldRenderHistory) {
             historyWidgets.forEach {
-                if (it.mouseClicked(click, doubled)) {
+                if (it.mouseClicked(mouseButtonEvent, doubled)) {
                     return true
                 }
             }
@@ -142,9 +141,9 @@ class TextSettingWidget(
         val wasFocused = textWidget.isFocused
         textWidget.isFocused = false
         shouldRenderHistory = false
-        val childClicked = super.mouseClicked(click, doubled)
+        val childClicked = super.mouseClicked(mouseButtonEvent, doubled)
 
-        if (wasFocused && textWidget.text != lastFocusedValue) {
+        if (wasFocused && textWidget.value != lastFocusedValue) {
             if (lastFocusedValue.isNotBlank()){
                 setting.history.add(lastFocusedValue)
                 lastFocusedValue = setting.value
@@ -154,16 +153,16 @@ class TextSettingWidget(
         return childClicked
     }
 
-    override fun charTyped(input: CharInput): Boolean {
+    override fun charTyped(characterEvent: CharacterEvent): Boolean {
         if (textWidget.isFocused) {
-            return textWidget.charTyped(input)
+            return textWidget.charTyped(characterEvent)
         }
         return false
     }
 
-    override fun keyPressed(input: KeyInput): Boolean {
+    override fun keyPressed(keyEvent: KeyEvent): Boolean {
         if (textWidget.isFocused) {
-            return textWidget.keyPressed(input)
+            return textWidget.keyPressed(keyEvent)
         }
         return false
     }
