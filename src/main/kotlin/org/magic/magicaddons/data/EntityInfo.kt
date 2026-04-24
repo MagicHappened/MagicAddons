@@ -4,6 +4,6 @@ import net.minecraft.world.entity.Entity
 
 data class EntityInfo(
     val entity: Entity,
-    val armorStandTags: List<String>?,
+    val informationEntities: List<Entity>?,
     val distance: Double
 )

@@ -1,10 +1,11 @@
 package org.magic.magicaddons.features.combat
 
-import net.minecraft.client.Minecraft
-import net.minecraft.world.entity.Entity
+import net.minecraft.world.entity.Display
 import net.minecraft.world.entity.EquipmentSlot
 import net.minecraft.world.entity.LivingEntity
+import net.minecraft.world.entity.decoration.ArmorStand
 import net.minecraft.world.entity.player.Player
+import net.minecraft.world.item.ItemStack
 import org.magic.magicaddons.config.data.BooleanSetting
 import org.magic.magicaddons.config.data.EnumSetting
 import org.magic.magicaddons.config.data.TextSetting
@@ -17,15 +18,10 @@ import org.magic.magicaddons.events.EventHandler
 import org.magic.magicaddons.events.world.OnEntityAdded
 import org.magic.magicaddons.events.world.OnEntityRemoved
 import org.magic.magicaddons.events.world.OnEntityUpdated
-import org.magic.magicaddons.events.world.OnWorldTickEvent
 import org.magic.magicaddons.features.Feature
 import org.magic.magicaddons.util.PlayerUtils
 import org.magic.magicaddons.util.EntityUtils
 import tech.thatgravyboat.skyblockapi.api.SkyBlockAPI
-import tech.thatgravyboat.skyblockapi.api.events.base.Subscription
-import tech.thatgravyboat.skyblockapi.api.events.base.predicates.OnlyOnSkyBlock
-import tech.thatgravyboat.skyblockapi.api.events.render.RenderWorldEvent
-import tech.thatgravyboat.skyblockapi.api.events.time.TickEvent
 
 
 object HighlightMobs : Feature(), EntityUtils.HighlightSource {
@@ -124,17 +120,6 @@ object HighlightMobs : Feature(), EntityUtils.HighlightSource {
             )
         )
     )
-
-
-
-    fun initializeHighlightedEntityList() {
-        EntityUtils.entityInfoList?.forEach {
-            if (shouldHighlight(it)) {
-                EntityUtils.add(it.entity,this)
-            }
-        }
-    }
-
 
 
     @EventHandler
@@ -239,8 +224,8 @@ object HighlightMobs : Feature(), EntityUtils.HighlightSource {
             val matchesName =
                 entity.customName?.string?.contains(filter, true) == true
             val matchesArmorStandTag =
-                info.armorStandTags?.any {
-                    it.contains(filter, true)
+                info.informationEntities?.any {
+                    it.customName?.string?.contains(filter, true) ?: false
                 } == true
 
 
@@ -257,13 +242,39 @@ object HighlightMobs : Feature(), EntityUtils.HighlightSource {
                 .getChild<TextSetting>("EntityEquipmentHelmetSkullHash")?.value
                 ?: return false
 
-            val headStack = entity.getItemBySlot(EquipmentSlot.HEAD)
+            var hashResult = false
 
-            val actualHash = PlayerUtils.getSkinHash(headStack)
+            val entityHeadStack = entity.getItemBySlot(EquipmentSlot.HEAD)
+            var actualHash = PlayerUtils.getSkinHash(entityHeadStack)
 
-            val result = actualHash == expectedHash
+            if (actualHash == expectedHash) {
+                hashResult = true
+            }
 
-            matches = matches && result
+            if (!hashResult) {
+                info.informationEntities?.forEach { infoEntity ->
+                    if (hashResult) return@forEach
+
+                    val stack = when (infoEntity) {
+                        is ArmorStand -> infoEntity.getItemBySlot(EquipmentSlot.HEAD)
+                        is Display.ItemDisplay -> infoEntity.itemStack
+                        else -> ItemStack.EMPTY
+                    }
+
+                    if (!stack.isEmpty) {
+                        val actualHash = PlayerUtils.getSkinHash(stack)
+                        if (actualHash == expectedHash) {
+                            hashResult = true
+                        }
+                    }
+                }
+            }
+
+
+
+
+
+            matches = matches && hashResult
         }
 
         if (!hasAnyFilter) return false

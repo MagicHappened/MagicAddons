@@ -3,8 +3,10 @@ package org.magic.magicaddons.util
 import net.minecraft.client.Minecraft
 import net.minecraft.client.multiplayer.ClientLevel
 import net.minecraft.core.component.DataComponents
+import net.minecraft.world.entity.Display
 import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.EquipmentSlot
+import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.decoration.ArmorStand
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.item.ItemStack
@@ -15,7 +17,6 @@ import org.magic.magicaddons.events.world.OnEntityAdded
 import org.magic.magicaddons.events.world.OnEntityRemoved
 import org.magic.magicaddons.events.world.OnEntityUpdated
 import org.magic.magicaddons.events.world.OnWorldTickEvent
-import org.magic.magicaddons.features.combat.HighlightMobs
 import tech.thatgravyboat.skyblockapi.api.SkyBlockAPI
 import kotlin.math.sqrt
 
@@ -102,17 +103,26 @@ object EntityUtils {
         val newMap = mutableMapOf<String, EntityInfo>()
 
         level.entitiesForRendering().forEach { entity ->
-            if (entity is ArmorStand && isNearPlayerEntity(level, entity)) return@forEach
 
-            val armorStandTags = if (entity is Player) {
-                level.getEntities(null, entity.boundingBox.inflate(0.5, 2.0, 0.5))
-                    .filterIsInstance<ArmorStand>()
-                    .mapNotNull { it.customName?.string }
+            val nearby = level.getEntities(entity,entity.boundingBox.inflate(0.5, 2.0, 0.5))
+
+            if ((entity is ArmorStand || entity is Display) && isNearMeaningfulEntity(level,entity, nearby)) {
+                return@forEach
+            }
+
+            val informationEntities = if (entity is LivingEntity) {
+                nearby
+                    .filter {
+                        it !== entity && (
+                                (it is ArmorStand && it.hasCustomName()) ||
+                                it is Display
+                                )
+                    }
             } else null
 
             val distance = sqrt(entity.distanceToSqr(player))
 
-            val info = EntityInfo(entity, armorStandTags, distance)
+            val info = EntityInfo(entity, informationEntities, distance)
             newList += info
             newMap[entity.uuid.toString()] = info
         }
@@ -131,8 +141,8 @@ object EntityUtils {
         newMap.forEach { (uuid, newInfo) ->
             val oldInfo = entityMapCurr[uuid] ?: return@forEach
 
-            val oldTags = oldInfo.armorStandTags?.toSet()
-            val newTags = newInfo.armorStandTags?.toSet()
+            val oldTags = oldInfo.informationEntities?.toSet()
+            val newTags = newInfo.informationEntities?.toSet()
 
             if (oldTags != newTags) {
                 updatedEntities += newInfo
@@ -156,8 +166,20 @@ object EntityUtils {
         entityMapCurr = newMap
     }
 
-    private fun isNearPlayerEntity(world: ClientLevel, armorStand: ArmorStand): Boolean {
-        return world.players().any { it.distanceToSqr(armorStand) < 2.0 }
+    private fun isNearMeaningfulEntity(world: ClientLevel, entity: Entity, nearby: List<Entity>): Boolean {
+        val box = entity.boundingBox.inflate(2.0)
+
+        return world.getEntities(
+            entity,
+            box
+        ).any { entity ->
+            when (entity) {
+                is ArmorStand -> false
+                is Display -> false
+                is LivingEntity -> true
+                else -> false
+            }
+        }
     }
 
 
@@ -179,9 +201,9 @@ object EntityUtils {
     }
     fun hasArmorId(stack: ItemStack, id: String, suffix: String): Boolean {
         val customData = stack.get(DataComponents.CUSTOM_DATA) ?: return false
-        val tag = customData.copyTag() // CompoundTag
+        val tag = customData.copyTag()
 
-        val armorId = tag.getString("id") // or whatever key you're using
+        val armorId = tag.getString("id")
         return armorId.orElse(null) == "${id}_$suffix"
     }
 

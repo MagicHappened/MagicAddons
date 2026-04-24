@@ -64,7 +64,7 @@ object CustomRendSound : Feature() {
             if (entity.entity !is Player) {
                 return@forEach
             }
-            if (!entity.armorStandTags.isNullOrEmpty()) {
+            if (!entity.informationEntities.isNullOrEmpty()) { // no armor stands = real player
                 return@forEach
             }
             if (entity.entity in wornReaperTuxedoArmorList) {
