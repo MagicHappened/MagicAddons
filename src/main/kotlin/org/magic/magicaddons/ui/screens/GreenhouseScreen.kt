@@ -56,8 +56,8 @@ class GreenhouseScreen(title: Component) : Screen(title) {
         forwardArrow = ArrowWidget(
             x = (width + 20) / 2,
             y = startY + containerSize + 10,
-            normal = Identifier.fromNamespaceAndPath("magicaddons", "gui/join"),
-            hovered = Identifier.fromNamespaceAndPath("magicaddons", "gui/join_highlighted")
+            normal = Identifier.fromNamespaceAndPath("magicaddons", "textures/gui/join.png"),
+            hovered = Identifier.fromNamespaceAndPath("magicaddons", "textures/gui/join_highlighted.png")
         ) {
             ChatUtils.sendWithPrefix("Forward arrow")
         }
@@ -65,8 +65,8 @@ class GreenhouseScreen(title: Component) : Screen(title) {
         backwardArrow = ArrowWidget(
             x = (width - 20) / 2,
             y = startY + containerSize + 10,
-            normal = Identifier.fromNamespaceAndPath("magicaddons", "gui/join_backward"),
-            hovered = Identifier.fromNamespaceAndPath("magicaddons", "gui/join_backward_highlighted")
+            normal = Identifier.fromNamespaceAndPath("magicaddons", "textures/gui/join_backward.png"),
+            hovered = Identifier.fromNamespaceAndPath("magicaddons", "textures/gui/join_backward_highlighted.png")
         ) {
             ChatUtils.sendWithPrefix("Backwards arrow")
         }
