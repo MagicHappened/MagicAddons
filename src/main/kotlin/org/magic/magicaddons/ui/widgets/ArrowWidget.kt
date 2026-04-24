@@ -12,8 +12,8 @@ import tech.thatgravyboat.skyblockapi.platform.drawSprite
 class ArrowWidget(
     var x: Int,
     var y: Int,
-    val width: Int = 16,
-    val height: Int = 16,
+    val width: Int = 14,
+    val height: Int = 22,
     val normal: Identifier,
     val hovered: Identifier,
     val onClick: () -> Unit
@@ -25,11 +25,22 @@ class ArrowWidget(
         isHovered = isMouseOver(mouseX.toDouble(), mouseY.toDouble())
 
         val texture = if (isHovered) hovered else normal
-        graphics.drawSprite(
+        val scaleX = 32f / 14f
+        val scaleY = height.toFloat() / 22f
+
+
+
+        graphics.blit(
+            RenderPipelines.GUI_TEXTURED,
             texture,
-            x,
-            y,
-            width,height
+            (x / scaleX).toInt(),
+            (y / scaleY).toInt(),
+            0f,
+            0f,
+            14,
+            22,
+            14,
+            22
         )
         /*
         graphics.blit(
