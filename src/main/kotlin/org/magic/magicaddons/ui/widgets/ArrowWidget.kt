@@ -1,13 +1,12 @@
 package org.magic.magicaddons.ui.widgets
 
-import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.gui.components.Renderable
 import net.minecraft.client.gui.components.events.GuiEventListener
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.client.renderer.RenderPipelines
 import net.minecraft.resources.Identifier
-import tech.thatgravyboat.skyblockapi.platform.drawSprite
+import org.magic.magicaddons.util.ScreenUtil.blitStretched
 
 class ArrowWidget(
     var x: Int,
@@ -25,37 +24,19 @@ class ArrowWidget(
         isHovered = isMouseOver(mouseX.toDouble(), mouseY.toDouble())
 
         val texture = if (isHovered) hovered else normal
-        val scaleX = 32f / 14f
-        val scaleY = height.toFloat() / 22f
 
-
-
-        graphics.blit(
-            RenderPipelines.GUI_TEXTURED,
-            texture,
-            (x / scaleX).toInt(),
-            (y / scaleY).toInt(),
-            0f,
-            0f,
-            14,
-            22,
-            14,
-            22
-        )
-        /*
-        graphics.blit(
+        graphics.blitStretched(
             RenderPipelines.GUI_TEXTURED,
             texture,
             x,
             y,
-            4f,4f,
+            0f,
+            0f,
             width,
             height,
-            32,
-            32
-
+            14,
+            22
         )
-        */
     }
 
 

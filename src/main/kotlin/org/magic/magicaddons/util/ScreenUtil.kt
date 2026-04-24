@@ -1,5 +1,6 @@
 package org.magic.magicaddons.util
 
+import com.mojang.blaze3d.pipeline.RenderPipeline
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
@@ -13,6 +14,7 @@ import net.minecraft.client.renderer.RenderPipelines
 import net.minecraft.client.renderer.texture.TextureAtlasSprite
 import net.minecraft.core.Direction
 import net.minecraft.network.chat.Component
+import net.minecraft.resources.Identifier
 import net.minecraft.util.RandomSource
 import net.minecraft.world.level.block.state.BlockState
 import org.joml.Matrix3x2f
@@ -260,6 +262,48 @@ object ScreenUtil {
         }
     }
 
+    fun GuiGraphics.blitStretched(
+        pipeline: RenderPipeline,
+        texture: Identifier,
+        x: Int,
+        y: Int,
+        u: Float,
+        v: Float,
+        width: Int,
+        height: Int,
+        textureWidth: Int,
+        textureHeight: Int
+    ){
+
+        val pose = this.pose()
+
+        val scaleTextureX = width.toFloat() / textureWidth.toFloat()
+        val scaleTextureY = height.toFloat() / textureHeight.toFloat()
+
+        pose.pushMatrix()
+
+        pose.scale(scaleTextureX , scaleTextureY )
+
+        pose.translate(x.toFloat() / scaleTextureX, y.toFloat() / scaleTextureY)
+
+        this.blit(
+            pipeline,
+            texture,
+            0,
+            0,
+            u,
+            v,
+            textureWidth,
+            textureHeight,
+            textureWidth,
+            textureHeight
+        )
+
+        pose.popMatrix()
+    }
+
+
+
     fun getTopSpriteForState(state: BlockState?): TextureAtlasSprite? {
         if (state == null) return null
 
@@ -286,5 +330,8 @@ object ScreenUtil {
 
         return null
     }
+
+
+
 
 }

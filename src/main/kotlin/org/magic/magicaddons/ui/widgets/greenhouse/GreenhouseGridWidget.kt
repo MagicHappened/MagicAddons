@@ -11,7 +11,8 @@ import org.magic.magicaddons.util.ScreenUtil.drawLine
 
 class GreenhouseGridWidget(
     val grid: GreenhouseGrid,
-    val gridSize: Int = 10
+    val gridSize: Int,
+    val slotSize: Int
 ) : Renderable, GuiEventListener, NarratableEntry {
 
     private val slotWidgets = mutableListOf<GreenhouseSlotWidget>()
@@ -21,16 +22,10 @@ class GreenhouseGridWidget(
     var widgetWidth: Int = 300
     var widgetHeight: Int = 300
 
-    var borderPadding: Int = 6
-    var slotSize: Int = 0
-
     private var focused: Boolean = false
 
     fun init() {
         slotWidgets.clear()
-
-        val innerSize = widgetWidth - borderPadding * 2
-        slotSize = innerSize / gridSize
 
         for (x in 0 until gridSize) {
             for (y in 0 until gridSize) {
@@ -42,8 +37,8 @@ class GreenhouseGridWidget(
                 widget.widgetWidth = slotSize
                 widget.widgetHeight = slotSize
 
-                widget.widgetX = widgetX + borderPadding + x * slotSize
-                widget.widgetY = widgetY + borderPadding + y * slotSize
+                widget.widgetX = widgetX + x * slotSize
+                widget.widgetY = widgetY + y * slotSize
 
                 widget.init()
 
@@ -62,22 +57,22 @@ class GreenhouseGridWidget(
         for (i in 1 until gridSize) {
             // vertical
             graphics.drawLine(
-                widgetX + borderPadding + i * slotSize,
-                widgetY + borderPadding,
-                widgetX + borderPadding + i * slotSize,
-                widgetY + borderPadding + gridSize * slotSize,
-                1,
-                0xFFFFFFFF.toInt()
+                widgetX  + i * slotSize,
+                widgetY ,
+                widgetX + i * slotSize,
+                widgetY + gridSize * slotSize,
+                2,
+                0xFF000000.toInt()
             )
 
             // horizontal
             graphics.drawLine(
-                widgetX + borderPadding,
-                widgetY + borderPadding + i * slotSize,
-                widgetX + borderPadding + gridSize * slotSize,
-                widgetY + borderPadding + i * slotSize,
-                1,
-                0xFFFFFFFF.toInt()
+                widgetX,
+                widgetY + i * slotSize,
+                widgetX + gridSize * slotSize,
+                widgetY + i * slotSize,
+                2,
+                0xFF000000.toInt()
             )
         }
     }
