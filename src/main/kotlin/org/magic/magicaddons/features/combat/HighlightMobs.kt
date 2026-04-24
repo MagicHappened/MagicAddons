@@ -28,7 +28,9 @@ import tech.thatgravyboat.skyblockapi.api.events.render.RenderWorldEvent
 import tech.thatgravyboat.skyblockapi.api.events.time.TickEvent
 
 
-object HighlightMobs : Feature() {
+object HighlightMobs : Feature(), EntityUtils.HighlightSource {
+    override val highlightPriority: Int = 0
+    override val highlightColor: Int = 0xFFFFFFFF.toInt()
 
     init {
         EventBus.register(this)
@@ -124,15 +126,11 @@ object HighlightMobs : Feature() {
     )
 
 
-    var highlightedEntityList: MutableList<Entity>? = null
 
     fun initializeHighlightedEntityList() {
-
-        highlightedEntityList = mutableListOf()
-
         EntityUtils.entityInfoList?.forEach {
             if (shouldHighlight(it)) {
-                highlightedEntityList?.add(it.entity)
+                EntityUtils.add(it.entity,this)
             }
         }
     }
@@ -141,18 +139,22 @@ object HighlightMobs : Feature() {
 
     @EventHandler
     fun onConfigChanged(event: ConfigChangedEvent) {
-        highlightedEntityList = null
+        EntityUtils.removeAllForSource(this)
+
+        EntityUtils.entityInfoList?.forEach {
+            if (shouldHighlight(it)) {
+                EntityUtils.add(it.entity, this)
+            }
+        }
     }
 
     @EventHandler
     fun onEntityAdded(event: OnEntityAdded) {
         if (!baseSetting.value) return
 
-        highlightedEntityList ?: initializeHighlightedEntityList()
-
         event.addedEntityList.forEach {
             if (shouldHighlight(it))
-                highlightedEntityList?.add(it.entity)
+                EntityUtils.add(it.entity,this)
         }
     }
 
@@ -160,10 +162,8 @@ object HighlightMobs : Feature() {
     fun onEntityRemoved(event: OnEntityRemoved) {
         if (!baseSetting.value) return
 
-        highlightedEntityList ?: initializeHighlightedEntityList()
-
         event.removedEntityList.forEach {
-            highlightedEntityList?.remove(it.entity)
+            EntityUtils.remove(it.entity,this)
         }
     }
 
@@ -171,14 +171,13 @@ object HighlightMobs : Feature() {
     fun onEntityUpdated(event: OnEntityUpdated) {
         if (!baseSetting.value) return
 
-        highlightedEntityList ?: initializeHighlightedEntityList()
-
         event.updatedEntityList.forEach { info ->
             val should = shouldHighlight(info)
-            val contains = highlightedEntityList?.contains(info.entity) == true
+            val has = EntityUtils.hasSource(info.entity, this)
+
             when {
-                should && !contains -> highlightedEntityList?.add(info.entity)
-                !should && contains -> highlightedEntityList?.remove(info.entity)
+                should && !has -> EntityUtils.add(info.entity, this)
+                !should && has -> EntityUtils.remove(info.entity, this)
             }
         }
     }
@@ -272,10 +271,7 @@ object HighlightMobs : Feature() {
         return matches
     }
 
-    @EventHandler
-    fun onWorldTick(onWorldTickEvent: OnWorldTickEvent) {
-        highlightedEntityList ?: initializeHighlightedEntityList()
-    }
+
 
 
 }

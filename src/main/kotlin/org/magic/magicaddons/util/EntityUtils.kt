@@ -2,11 +2,6 @@ package org.magic.magicaddons.util
 
 import net.minecraft.client.Minecraft
 import net.minecraft.client.multiplayer.ClientLevel
-import net.minecraft.client.renderer.entity.LivingEntityRenderer
-import net.minecraft.client.renderer.entity.state.LivingEntityRenderState
-import net.minecraft.client.renderer.rendertype.RenderType
-import net.minecraft.client.renderer.rendertype.RenderTypes
-import net.minecraft.client.renderer.texture.OverlayTexture
 import net.minecraft.core.component.DataComponents
 import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.EquipmentSlot
@@ -22,8 +17,6 @@ import org.magic.magicaddons.events.world.OnEntityUpdated
 import org.magic.magicaddons.events.world.OnWorldTickEvent
 import org.magic.magicaddons.features.combat.HighlightMobs
 import tech.thatgravyboat.skyblockapi.api.SkyBlockAPI
-import tech.thatgravyboat.skyblockapi.api.events.base.Subscription
-import tech.thatgravyboat.skyblockapi.api.events.render.RenderWorldEvent
 import kotlin.math.sqrt
 
 object EntityUtils {
@@ -32,7 +25,40 @@ object EntityUtils {
         SkyBlockAPI.eventBus.register(this)
     }
 
-    val highlightEntityList: MutableSet<Entity> = mutableSetOf()
+    interface HighlightSource {
+        val highlightPriority: Int
+        val highlightColor: Int
+    }
+
+
+    private val highlightMap: MutableMap<Entity, MutableSet<HighlightSource>> = mutableMapOf()
+
+    @JvmStatic
+    val resolvedMap: MutableMap<Entity, HighlightSource> = mutableMapOf()
+
+    fun add(entity: Entity, source: HighlightSource) {
+        val set = highlightMap.computeIfAbsent(entity) { mutableSetOf() }
+        set.add(source)
+
+        resolvedMap[entity] = set.maxByOrNull { source: HighlightSource -> source.highlightPriority }!!
+    }
+
+    fun remove(entity: Entity, source: HighlightSource) {
+        val set = highlightMap[entity] ?: return
+
+        set.remove(source)
+
+        if (set.isEmpty()) {
+            highlightMap.remove(entity)
+            resolvedMap.remove(entity)
+        } else {
+            resolvedMap[entity] = set.maxByOrNull { source: HighlightSource -> source.highlightPriority }!!
+        }
+    }
+
+    fun hasSource(entity: Entity, source: HighlightSource): Boolean {
+        return highlightMap[entity]?.contains(source) == true
+    }
 
     var entityInfoList: List<EntityInfo>? = null
 
@@ -42,6 +68,25 @@ object EntityUtils {
     private val addedEntities = mutableListOf<EntityInfo>()
     private val removedEntities = mutableListOf<EntityInfo>()
     private val updatedEntities = mutableListOf<EntityInfo>()
+
+    fun removeAllForSource(source: HighlightSource) {
+        val iterator = highlightMap.iterator()
+
+        while (iterator.hasNext()) {
+            val (entity, set) = iterator.next()
+
+            if (set.remove(source)) {
+                if (set.isEmpty()) {
+                    iterator.remove()
+                    resolvedMap.remove(entity)
+                } else {
+                    resolvedMap[entity] = set.maxByOrNull { source: HighlightSource -> source.highlightPriority }!!
+                }
+            }
+        }
+    }
+
+
 
     @EventHandler
     private fun onWorldTick(event: OnWorldTickEvent){
@@ -114,75 +159,6 @@ object EntityUtils {
     private fun isNearPlayerEntity(world: ClientLevel, armorStand: ArmorStand): Boolean {
         return world.players().any { it.distanceToSqr(armorStand) < 2.0 }
     }
-
-    @Subscription
-    fun onRenderWorldEvent(event: RenderWorldEvent.AfterEntities) {
-        //todo add this back lol
-        /*
-        val level = Minecraft.getInstance().level ?: return
-        val dispatcher = Minecraft.getInstance().entityRenderDispatcher
-
-        for (entity in (HighlightMobs.highlightedEntityList ?: return)) { //todo change to add more features to highlight somehow
-            if (entity.level() != level) continue
-            if (!entity.isAlive) continue
-
-            val renderer = dispatcher.getRenderer(entity)
-            if (renderer !is LivingEntityRenderer<*,*,*>) continue
-            try {
-                renderer as? LivingEntityRenderer<Entity, LivingEntityRenderState, *> ?: continue
-            }
-            catch (t: Throwable) {
-                ChatUtils.sendWithPrefix("caught unsafe cast ${t.message}")
-                continue
-            }
-
-            event.poseStack.pushPose()
-
-            val state = renderer.createRenderState(entity, event.partialTicks)
-
-
-
-            val vertexConsumer = event.buffer.getBuffer(
-                RenderTypes.outline(renderer.getTextureLocation(state))
-            )
-
-            val cam = event.cameraPosition
-
-            event.poseStack.translate(
-                entity.x - cam.x,
-                entity.y - cam.y,
-                entity.z - cam.z
-            )
-            //todo render is backwards and doesnt reflect the actual entity movement
-
-
-            event.poseStack.scale(-1f, -1f, 1f)
-
-            event.poseStack.translate(0.0, -1.501, 0.0)
-
-            event.poseStack.mulPose(
-                org.joml.Quaternionf()
-                    .rotateY(Math.toRadians(state.yRot.toDouble()).toFloat())
-            )
-
-            renderer.model.renderToBuffer(
-                event.poseStack,
-                vertexConsumer,
-                0xF000F000.toInt(),
-                OverlayTexture.RED_OVERLAY_V,
-                0xFFFFFF00.toInt()
-            )
-
-
-
-            event.poseStack.popPose()
-        }
-
-        */
-    }
-
-
-
 
 
     fun isEntityWearingArmorId(id: String, entity: Player, searchHelmet: Boolean): Boolean {
