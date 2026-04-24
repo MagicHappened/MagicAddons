@@ -1,12 +1,12 @@
-package org.magic.magicaddons.ui.widgets.config
+package org.magic.magicaddons.config.ui
 
-import net.minecraft.client.MinecraftClient
-import net.minecraft.client.gl.RenderPipelines
-import net.minecraft.client.gui.Click
-import net.minecraft.client.gui.DrawContext
-import net.minecraft.text.Text
-import net.minecraft.util.Identifier
-import org.magic.magicaddons.ui.widgets.BaseRowWidget
+import net.minecraft.client.Minecraft
+import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.input.MouseButtonEvent
+import net.minecraft.client.renderer.RenderPipelines
+import net.minecraft.network.chat.Component
+import net.minecraft.resources.Identifier
+import tech.thatgravyboat.skyblockapi.platform.drawTexture
 
 open class ClickableRowWidget<T>(
     value: T,
@@ -22,35 +22,35 @@ open class ClickableRowWidget<T>(
         return super.getRightReservedWidth() + removeWidth
     }
 
-    override fun render(ctx: DrawContext) {
-        super.render(ctx)
-        val textRenderer = MinecraftClient.getInstance().textRenderer
+    override fun render(graphics: GuiGraphics) {
+        super.render(graphics)
+        val font = Minecraft.getInstance().font
         if (onRemove != null) {
             val rx = x + width - removeWidth - removePadding
 
-            ctx.drawGuiTexture(
+            graphics.blitSprite(
                 RenderPipelines.GUI_TEXTURED,
-                Identifier.of("minecraft", "widget/button"),
+                Identifier.fromNamespaceAndPath("minecraft", "widget/button"),
                 rx,
-                y + removePadding,
+                y+ removePadding,
                 removeWidth,
                 height - removePadding * 2
             )
 
-            ctx.drawText(
-                textRenderer,
-                Text.literal("X"),
-                rx + (removeWidth - textRenderer.getWidth("X"))/2,
-                y + removePadding + textRenderer.fontHeight/2,
+            graphics.drawString(
+                font,
+                Component.literal("X"),
+                rx + (removeWidth - font.width("X"))/2,
+                y + removePadding + font.lineHeight/2,
                 0xFFFF0000.toInt(),
                 false
             )
         }
     }
 
-    open fun mouseClicked(click: Click, doubled: Boolean): Boolean {
-        val mx = click.x.toInt()
-        val my = click.y.toInt()
+    open fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
+        val mx = mouseButtonEvent.x.toInt()
+        val my = mouseButtonEvent.y.toInt()
 
         if (mx !in x..x + width || my !in y..y + height) return false
 

@@ -2,9 +2,10 @@ package org.magic.magicaddons.util
 
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
-import net.minecraft.component.DataComponentTypes
-import net.minecraft.entity.player.PlayerEntity
-import net.minecraft.item.ItemStack
+import net.minecraft.core.component.DataComponents
+import net.minecraft.world.entity.player.Player
+import net.minecraft.world.item.ItemStack
+import tech.thatgravyboat.skyblockapi.platform.properties
 import java.util.*
 
 object PlayerUtils {
@@ -42,33 +43,33 @@ object PlayerUtils {
         }
     }
 
-    private fun getTextureValue(player: PlayerEntity): String? {
+    private fun getTextureValue(player: Player): String? {
         val textures = player.gameProfile.properties["textures"]
         if (textures.isEmpty()) return null
         return textures.firstOrNull()?.value
     }
 
-    fun getSkinJson(player: PlayerEntity): JsonObject? {
+    fun getSkinJson(player: Player): JsonObject? {
         val value = getTextureValue(player)
         return getSkinDataFromValue(value)?.json
     }
 
-    fun getSkinUrl(player: PlayerEntity): String? {
+    fun getSkinUrl(player: Player): String? {
         val value = getTextureValue(player)
         return getSkinDataFromValue(value)?.url
     }
 
-    fun getSkinHash(player: PlayerEntity): String? {
+    fun getSkinHash(player: Player): String? {
         val value = getTextureValue(player)
         return getSkinDataFromValue(value)?.hash
     }
 
     fun getSkinHash(stack: ItemStack): String? {
-        val profileComponent = stack.get(DataComponentTypes.PROFILE) ?: return null
-        val value = profileComponent.gameProfile?.properties?.get("textures")
-            ?.firstOrNull()?.value
+        val profile = stack.get(DataComponents.PROFILE) ?: return null
+        val textures = profile.properties.get("textures")?.firstOrNull() ?: return null
+        val skinData = getSkinDataFromValue(textures.value) ?: return null
 
-        return getSkinDataFromValue(value)?.hash
+        return skinData.hash
     }
 
 }

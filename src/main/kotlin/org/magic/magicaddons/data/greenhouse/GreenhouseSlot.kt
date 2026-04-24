@@ -2,17 +2,7 @@ package org.magic.magicaddons.data.greenhouse
 
 import com.mojang.serialization.Codec
 import com.mojang.serialization.codecs.RecordCodecBuilder
-import net.minecraft.block.BlockState
-import net.minecraft.block.Blocks
-import net.minecraft.client.gl.RenderPipelines
-import net.minecraft.client.gui.Click
-import net.minecraft.client.gui.DrawContext
-import net.minecraft.client.gui.Drawable
-import net.minecraft.client.gui.Element
-import net.minecraft.client.texture.Sprite
-import net.minecraft.util.math.Vec3d
-import org.magic.magicaddons.util.ChatUtils
-import org.magic.magicaddons.util.ScreenUtil
+import net.minecraft.world.level.block.state.BlockState
 import java.util.Optional
 import kotlin.jvm.optionals.getOrNull
 
@@ -24,9 +14,6 @@ class GreenhouseSlot(
 ) {
     //facing north top left slot is x=0 y=0
     // bottom left therefore is x=9 y=9
-
-
-
 
 
     companion object {

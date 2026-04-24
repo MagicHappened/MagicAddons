@@ -1,8 +1,8 @@
 package org.magic.magicaddons.data.greenhouse
 
-import net.minecraft.block.Block
-import net.minecraft.block.Blocks
-import net.minecraft.client.MinecraftClient
+
+import net.minecraft.world.level.block.Block
+import net.minecraft.world.level.block.Blocks
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockId
 
 data class Footprint(val width: Int, val height: Int)

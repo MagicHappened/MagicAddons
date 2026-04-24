@@ -1,16 +1,18 @@
 package org.magic.magicaddons.ui.widgets.greenhouse
 
-import net.minecraft.client.gui.Click
-import net.minecraft.client.gui.DrawContext
-import net.minecraft.client.gui.Drawable
-import net.minecraft.client.gui.Element
+import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.gui.components.Renderable
+import net.minecraft.client.gui.components.events.GuiEventListener
+import net.minecraft.client.gui.narration.NarratableEntry
+import net.minecraft.client.gui.narration.NarrationElementOutput
+import net.minecraft.client.input.MouseButtonEvent
 import org.magic.magicaddons.data.greenhouse.GreenhouseGrid
 import org.magic.magicaddons.util.ScreenUtil.drawLine
 
 class GreenhouseGridWidget(
     val grid: GreenhouseGrid,
     val gridSize: Int = 10
-) : Drawable, Element {
+) : Renderable, GuiEventListener, NarratableEntry {
 
     private val slotWidgets = mutableListOf<GreenhouseSlotWidget>()
 
@@ -50,16 +52,16 @@ class GreenhouseGridWidget(
         }
     }
 
-    override fun render(context: DrawContext, mouseX: Int, mouseY: Int, delta: Float) {
+    override fun render(graphics: GuiGraphics, mouseX: Int, mouseY: Int, delta: Float) {
         // draw slots
         slotWidgets.forEach {
-            it.render(context, mouseX, mouseY, delta)
+            it.render(graphics, mouseX, mouseY, delta)
         }
 
         // draw grid lines (clean + fixed)
         for (i in 1 until gridSize) {
             // vertical
-            context.state.drawLine(
+            graphics.drawLine(
                 widgetX + borderPadding + i * slotSize,
                 widgetY + borderPadding,
                 widgetX + borderPadding + i * slotSize,
@@ -69,7 +71,7 @@ class GreenhouseGridWidget(
             )
 
             // horizontal
-            context.state.drawLine(
+            graphics.drawLine(
                 widgetX + borderPadding,
                 widgetY + borderPadding + i * slotSize,
                 widgetX + borderPadding + gridSize * slotSize,
@@ -80,9 +82,9 @@ class GreenhouseGridWidget(
         }
     }
 
-    override fun mouseClicked(click: Click, doubled: Boolean): Boolean {
+    override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
         for (widget in slotWidgets) {
-            if (widget.mouseClicked(click, doubled)) {
+            if (widget.mouseClicked(mouseButtonEvent, doubled)) {
                 return true
             }
         }
@@ -101,4 +103,10 @@ class GreenhouseGridWidget(
     override fun setFocused(focused: Boolean) {
         this.focused = focused
     }
+
+    override fun narrationPriority(): NarratableEntry.NarrationPriority {
+        return NarratableEntry.NarrationPriority.NONE
+    }
+
+    override fun updateNarration(narrationElementOutput: NarrationElementOutput) {}
 }
