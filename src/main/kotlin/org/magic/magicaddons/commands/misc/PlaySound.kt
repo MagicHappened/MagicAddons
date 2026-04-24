@@ -6,9 +6,9 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder
 import com.mojang.brigadier.builder.RequiredArgumentBuilder
 import com.mojang.brigadier.context.CommandContext
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource
-import net.minecraft.client.MinecraftClient
-import net.minecraft.sound.SoundEvent
-import net.minecraft.util.Identifier
+import net.minecraft.client.Minecraft
+import net.minecraft.resources.Identifier
+import net.minecraft.sounds.SoundEvent
 import org.magic.magicaddons.commands.AbstractCommand
 import org.magic.magicaddons.util.ChatUtils
 
@@ -50,9 +50,9 @@ object PlaySound : AbstractCommand() {
     }
 
     private fun playSound(ctx: CommandContext<FabricClientCommandSource>, volume: Float = 1.0F, pitch: Float = 1.0F) {
-        val soundId = Identifier.of(StringArgumentType.getString(ctx, "soundpath"))
-        val soundEvent = SoundEvent.of(soundId)
-        MinecraftClient.getInstance().player?.playSound(soundEvent, volume, pitch)
+        val soundId = Identifier.parse(StringArgumentType.getString(ctx, "soundpath"))
+        val soundEvent = SoundEvent.createVariableRangeEvent(soundId)
+        Minecraft.getInstance().player?.playSound(soundEvent, volume, pitch)
         ctx.source.sendFeedback(ChatUtils.buildWithPrefix("Played sound: $soundId"))
     }
 

@@ -1,20 +1,20 @@
 package org.magic.magicaddons.ui.widgets.config
 
-import net.minecraft.client.MinecraftClient
-import net.minecraft.client.gui.Click
-import net.minecraft.client.gui.DrawContext
-import net.minecraft.client.gui.Drawable
-import net.minecraft.client.gui.Element
-import org.magic.magicaddons.ui.widgets.CheckboxWidget
+import net.minecraft.client.Minecraft
+import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.gui.components.Renderable
+import net.minecraft.client.gui.components.events.GuiEventListener
+import net.minecraft.client.input.MouseButtonEvent
 import org.magic.magicaddons.ui.screens.ConfigScreen
-import org.magic.magicaddons.ui.screens.FeatureEditScreen
+import org.magic.magicaddons.config.ui.screen.FeatureEditScreen
 import org.magic.magicaddons.features.Feature
+import org.magic.magicaddons.ui.widgets.CheckboxWidget
 import org.magic.magicaddons.util.ChatUtils
-import org.magic.magicaddons.util.ScreenUtil
+import org.magic.magicaddons.util.ScreenUtil.drawBorder
 
 class FeatureToggleWidget(
     val feature: Feature
-) : Drawable, Element {
+) : Renderable, GuiEventListener {
     var x: Int = 0
     var y: Int = 0
 
@@ -38,16 +38,16 @@ class FeatureToggleWidget(
 
     }
 
-    override fun render(ctx: DrawContext, mouseX: Int, mouseY: Int, delta: Float) {
-        checkbox.render(ctx)
+    override fun render(guiGraphics: GuiGraphics, mouseY: Int, j: Int, delta: Float) {
+        checkbox.render(guiGraphics)
 
-        ScreenUtil.drawBorder(ctx, x, y, x + width, y + height, borderSize, borderColor)
+        guiGraphics.drawBorder(x, y, x + width, y + height, borderSize, borderColor)
 
-        val textRenderer = MinecraftClient.getInstance().textRenderer
-        val textY = y + (height - textRenderer.fontHeight) / 2
+        val font = Minecraft.getInstance().font
+        val textY = y + (height - font.lineHeight) / 2
 
-        ctx.drawText(
-            textRenderer,
+        guiGraphics.drawString(
+            font,
             feature.displayName,
             x + checkbox.size + textXPad,
             textY,
@@ -57,28 +57,28 @@ class FeatureToggleWidget(
     }
 
     fun getContentWidth(): Int {
-        val textRenderer = MinecraftClient.getInstance().textRenderer
-        val textWidth = textRenderer.getWidth(feature.displayName)
+        val font = Minecraft.getInstance().font
+        val textWidth = font.width(feature.displayName)
 
         val padding = checkbox.size + textXPad + 10
 
         return maxOf(100, textWidth + padding)
     }
 
-    override fun mouseClicked(click: Click, doubled: Boolean): Boolean {
-        if (checkbox.mouseClicked(click, doubled)) {
+    override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
+        if (checkbox.mouseClicked(mouseButtonEvent, doubled)) {
             feature.baseSetting.value = !feature.baseSetting.value
             return true
         }
 
-        if (click.button() == 1) {
+        if (mouseButtonEvent.button() == 1) {
 
             // no need to check for checkbox x and y because of above if statement
-            if (click.x.toInt() in x..x + width
-                && click.y.toInt() in y + 0..y + height
+            if (mouseButtonEvent.x.toInt() in x..x + width
+                && mouseButtonEvent.y.toInt() in y + 0..y + height
             ) {
 
-                val currentScreen = MinecraftClient.getInstance().currentScreen
+                val currentScreen = Minecraft.getInstance().screen
                 if (currentScreen !is ConfigScreen) {
                     return false
                 }
@@ -87,11 +87,11 @@ class FeatureToggleWidget(
                     return true
                 }
                 val featureEditScreen = FeatureEditScreen(feature, currentScreen)
-                MinecraftClient.getInstance().setScreen(featureEditScreen)
+                Minecraft.getInstance().setScreen(featureEditScreen)
                 return true
             }
         }
-        return super.mouseClicked(click, doubled)
+        return super.mouseClicked(mouseButtonEvent, doubled)
     }
 
 

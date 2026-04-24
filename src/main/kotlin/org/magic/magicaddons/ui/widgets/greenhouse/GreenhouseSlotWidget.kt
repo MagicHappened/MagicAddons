@@ -1,21 +1,22 @@
 package org.magic.magicaddons.ui.widgets.greenhouse
 
-import net.minecraft.block.Blocks
-import net.minecraft.client.gl.RenderPipelines
-import net.minecraft.client.gui.Click
-import net.minecraft.client.gui.DrawContext
-import net.minecraft.client.gui.Drawable
-import net.minecraft.client.gui.Element
-import net.minecraft.client.texture.Sprite
+
+import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.gui.components.Renderable
+import net.minecraft.client.gui.components.events.GuiEventListener
+import net.minecraft.client.input.MouseButtonEvent
+import net.minecraft.client.renderer.RenderPipelines
+import net.minecraft.client.renderer.texture.TextureAtlasSprite
+import net.minecraft.world.level.block.Blocks
 import org.magic.magicaddons.data.greenhouse.GreenhouseSlot
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.ScreenUtil
 
 class GreenhouseSlotWidget(
     val slot: GreenhouseSlot
-) : Drawable, Element{
+) : Renderable, GuiEventListener {
 
-    var sprite: Sprite? = null
+    var sprite: TextureAtlasSprite? = null
 
     var widgetFocused
         get() = isFocused
@@ -30,7 +31,7 @@ class GreenhouseSlotWidget(
 
     fun init(){
         if (slot.placedBlock == null){
-            slot.placedBlock = Blocks.PODZOL.defaultState
+            slot.placedBlock = Blocks.PODZOL.defaultBlockState()
             ChatUtils.sendWithPrefix("Block at ${slot.x} ${slot.y} failed to load, rendering as podzol.")
         }
         if (slot.placedBlock?.block == Blocks.AIR)
@@ -38,9 +39,10 @@ class GreenhouseSlotWidget(
         sprite = ScreenUtil.getTopSpriteForState(slot.placedBlock)
     }
 
-    override fun render(context: DrawContext, mouseX: Int, mouseY: Int, deltaTicks: Float) {
-        sprite ?: return
-        context.drawSpriteStretched(
+    override fun render(graphics: GuiGraphics, mouseY: Int, j: Int, deltaTicks: Float) {
+        val sprite = sprite ?: return
+
+        graphics.blitSprite(
             RenderPipelines.GUI_TEXTURED,
             sprite,
             widgetX,
@@ -50,9 +52,9 @@ class GreenhouseSlotWidget(
         )
     }
 
-    override fun mouseClicked(click: Click, doubled: Boolean): Boolean {
-        if (isMouseOver(click.x, click.y)){
-            ChatUtils.sendWithPrefix("Click at slot ${slot.x} , ${slot.y} on ${slot.placedBlock?.block}")
+    override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
+        if (isMouseOver(mouseButtonEvent.x, mouseButtonEvent.y)){
+            ChatUtils.sendWithPrefix("Click at slot ${slot.x} , ${slot.y} on ${slot.placedBlock}")
         }
         return false
     }

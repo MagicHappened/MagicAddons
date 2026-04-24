@@ -1,9 +1,10 @@
 package org.magic.magicaddons.features.farming
 
-import net.minecraft.block.Blocks
-import net.minecraft.client.MinecraftClient
-import net.minecraft.util.math.Box
-import net.minecraft.util.math.Vec3d
+import net.minecraft.client.Minecraft
+import net.minecraft.core.BlockPos
+import net.minecraft.world.level.block.Blocks
+import net.minecraft.world.phys.AABB
+import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.config.BooleanSetting
 import org.magic.magicaddons.data.greenhouse.GreenhouseGrid
 import org.magic.magicaddons.data.greenhouse.GreenhouseSlot
@@ -54,18 +55,16 @@ object GreenhousePresets : Feature() {
         if (!knownGreenhouseIds.contains(plotId)) return
         if (initializedGreenhouseIds.contains(plotId)) return
 
-
-        val unsafeBox = getAABBUnsafe(plot)
-        val box = unsafeBox?.toBoxFromAABB() ?: return
+        val box = plot.aabb
 
         initializeGreenhouse(plotId, box)
 
 
     }
 
-    private fun initializeGreenhouse(plotId: Int, box: Box) {
+    private fun initializeGreenhouse(plotId: Int, box: AABB) {
 
-        val world = MinecraftClient.getInstance().world ?: return
+        val world = Minecraft.getInstance().level ?: return
 
         val startX = box.minX + 43
         val startZ = box.minZ + 43
@@ -78,7 +77,7 @@ object GreenhousePresets : Feature() {
                 val worldX = (startX + x).toInt()
                 val worldZ = (startZ + y).toInt()
 
-                val pos = net.minecraft.util.math.BlockPos(
+                val pos = BlockPos(
                     worldX,
                     73,
                     worldZ
@@ -138,7 +137,7 @@ object GreenhousePresets : Feature() {
 
     }
 
-    fun slotToWorldPos(slot: GreenhouseSlot, box: Box, yLevel: Double = 73.0): Vec3d {
+    fun slotToWorldPos(slot: GreenhouseSlot, box: AABB, yLevel: Double = 73.0): Vec3 {
 
         val startX = box.minX + 43
         val startZ = box.minZ + 43
@@ -146,7 +145,7 @@ object GreenhousePresets : Feature() {
         val x = startX + slot.x
         val z = startZ + slot.y
 
-        return Vec3d(
+        return Vec3(
             x + 0.5,
             yLevel,
             z + 0.5
@@ -154,39 +153,6 @@ object GreenhousePresets : Feature() {
     }
 
 
-    //hopefully with 26.1 no longer needed
-    fun getAABBUnsafe(plot: Any): Any? {
-        return try {
-            val field = plot.javaClass.getDeclaredField("aabb")
-            field.isAccessible = true
-            field.get(plot)
-        } catch (e: Exception) {
-            e.printStackTrace()
-            null
-        }
-    }
 
-    fun Any.toBoxFromAABB(): Box? {
-        return try {
-            val fields = this.javaClass.declaredFields
-                .filter { it.type == Double::class.javaPrimitiveType }
-                .onEach { it.isAccessible = true }
-
-            if (fields.size < 6) return null
-
-            // this is a band aid fix
-            val minX = fields[1].getDouble(this)
-            val minY = fields[2].getDouble(this)
-            val minZ = fields[3].getDouble(this)
-            val maxX = fields[4].getDouble(this)
-            val maxY = fields[5].getDouble(this)
-            val maxZ = fields[6].getDouble(this)
-
-            Box(minX, minY, minZ, maxX, maxY, maxZ)
-        } catch (e: Exception) {
-            e.printStackTrace()
-            null
-        }
-    }
 
 }

@@ -1,13 +1,11 @@
 package org.magic.magicaddons.ui.widgets
 
-import net.minecraft.client.MinecraftClient
-import net.minecraft.client.gl.RenderPipelines
-import net.minecraft.client.gui.Click
-import net.minecraft.client.gui.DrawContext
-import net.minecraft.client.gui.Drawable
-import net.minecraft.client.gui.Element
-import net.minecraft.util.Identifier
-import org.magic.magicaddons.util.ChatUtils
+import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.gui.components.Renderable
+import net.minecraft.client.gui.components.events.GuiEventListener
+import net.minecraft.client.input.MouseButtonEvent
+import net.minecraft.client.renderer.RenderPipelines
+import net.minecraft.resources.Identifier
 
 class ArrowWidget(
     var x: Int,
@@ -17,16 +15,16 @@ class ArrowWidget(
     val normal: Identifier,
     val hovered: Identifier,
     val onClick: () -> Unit
-) : Drawable, Element {
+) : Renderable, GuiEventListener {
 
     private var isHovered = false
 
-    override fun render(context: DrawContext, mouseX: Int, mouseY: Int, delta: Float) {
+    override fun render(graphics: GuiGraphics, mouseX: Int, mouseY:  Int, delta: Float) {
         isHovered = isMouseOver(mouseX.toDouble(), mouseY.toDouble())
 
         val texture = if (isHovered) hovered else normal
 
-        context.drawTexture(
+        graphics.blit(
             RenderPipelines.GUI_TEXTURED,
             texture,
             x,
@@ -42,8 +40,8 @@ class ArrowWidget(
     }
 
 
-    override fun mouseClicked(click: Click, doubled: Boolean): Boolean {
-        if (isMouseOver(click.x, click.y)) {
+    override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
+        if (isMouseOver(mouseButtonEvent.x, mouseButtonEvent.y)) {
             onClick()
             return true
         }

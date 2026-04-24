@@ -1,18 +1,19 @@
 package org.magic.magicaddons.ui.screens
 
-import net.minecraft.client.gl.RenderPipelines
-import net.minecraft.client.gui.Click
-import net.minecraft.client.gui.DrawContext
-import net.minecraft.client.gui.screen.Screen
-import net.minecraft.text.Text
-import net.minecraft.util.Identifier
+import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.gui.screens.Screen
+import net.minecraft.client.input.MouseButtonEvent
+import net.minecraft.client.renderer.RenderPipelines
+import net.minecraft.network.chat.Component
+import net.minecraft.resources.Identifier
 import org.magic.magicaddons.features.farming.GreenhousePresets
 import org.magic.magicaddons.ui.widgets.ArrowWidget
 import org.magic.magicaddons.ui.widgets.greenhouse.GreenhouseGridWidget
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.ScreenUtil
+import org.magic.magicaddons.util.ScreenUtil.drawMultilineBoxCentered
 
-class GreenhouseScreen(title: Text) : Screen(title) {
+class GreenhouseScreen(title: Component) : Screen(title) {
 
     private val paddingY: Int = 40
 
@@ -55,8 +56,8 @@ class GreenhouseScreen(title: Text) : Screen(title) {
         forwardArrow = ArrowWidget(
             x = (width + 20) / 2,
             y = startY + containerSize + 10,
-            normal = Identifier.of("magicaddons", "gui/join"),
-            hovered = Identifier.of("magicaddons", "gui/join_highlighted")
+            normal = Identifier.fromNamespaceAndPath("magicaddons", "gui/join"),
+            hovered = Identifier.fromNamespaceAndPath("magicaddons", "gui/join_highlighted")
         ) {
             ChatUtils.sendWithPrefix("Forward arrow")
         }
@@ -64,8 +65,8 @@ class GreenhouseScreen(title: Text) : Screen(title) {
         backwardArrow = ArrowWidget(
             x = (width - 20) / 2,
             y = startY + containerSize + 10,
-            normal = Identifier.of("magicaddons", "gui/join_backward"),
-            hovered = Identifier.of("magicaddons", "gui/join_backward_highlighted")
+            normal = Identifier.fromNamespaceAndPath("magicaddons", "gui/join_backward"),
+            hovered = Identifier.fromNamespaceAndPath("magicaddons", "gui/join_backward_highlighted")
         ) {
             ChatUtils.sendWithPrefix("Backwards arrow")
         }
@@ -74,36 +75,35 @@ class GreenhouseScreen(title: Text) : Screen(title) {
 
     }
 
-    override fun render(context: DrawContext, mouseX: Int, mouseY: Int, delta: Float) {
-        super.render(context, mouseX, mouseY, delta)
+    override fun render(graphics: GuiGraphics, mouseX: Int, mouseY: Int, delta: Float) {
+        super.render(graphics, mouseX, mouseY, delta)
 
         // background
-        context.drawGuiTexture(
+        graphics.blitSprite(
             RenderPipelines.GUI_TEXTURED,
-            Identifier.of("minecraft", "popup/background"),
+            Identifier.fromNamespaceAndPath("minecraft", "popup/background"),
             startX,
             startY,
             containerSize,
             containerSize
         )
 
-        ScreenUtil.drawMultilineBoxCentered(
-            context,
+        graphics.drawMultilineBoxCentered(
             "Greenhouse 1",
             width / 2,
             18
         )
-        gridWidget?.render(context, mouseX, mouseY, delta)
+        gridWidget?.render(graphics, mouseX, mouseY, delta)
 
-        forwardArrow?.render(context, mouseX, mouseY, delta)
-        backwardArrow?.render(context, mouseX, mouseY, delta)
+        forwardArrow?.render(graphics, mouseX, mouseY, delta)
+        backwardArrow?.render(graphics, mouseX, mouseY, delta)
     }
 
-    override fun mouseClicked(click: Click?, doubled: Boolean): Boolean {
-        if (click != null && gridWidget?.mouseClicked(click, doubled) == true) {
+    override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
+        if (gridWidget?.mouseClicked(mouseButtonEvent, doubled) == true) {
             return true
         }
-        return super.mouseClicked(click, doubled)
+        return super.mouseClicked(mouseButtonEvent, doubled)
     }
 
     override fun isMouseOver(mouseX: Double, mouseY: Double): Boolean {

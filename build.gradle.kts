@@ -55,7 +55,7 @@ repositories {
 dependencies {
     // To change the versions see the gradle.properties file
     minecraft("com.mojang:minecraft:${project.property("minecraft_version")}")
-    mappings("net.fabricmc:yarn:${project.property("yarn_mappings")}:v2")
+    mappings(loom.officialMojangMappings())
     modImplementation("net.fabricmc:fabric-loader:${project.property("loader_version")}")
     modImplementation("net.fabricmc:fabric-language-kotlin:${project.property("kotlin_loader_version")}")
     modImplementation("net.fabricmc.fabric-api:fabric-api:${project.property("fabric_version")}")
@@ -98,11 +98,38 @@ tasks.withType<KotlinCompile>().configureEach {
 }
 
 tasks.jar {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     from("LICENSE") {
         rename { "${it}_${project.base.archivesName.get()}" }
     }
 }
 
+tasks.named<JavaExec>("runClient") {
+
+    javaLauncher.set(javaToolchains.launcherFor {
+        languageVersion.set(JavaLanguageVersion.of(targetJavaVersion))
+        vendor.set(JvmVendorSpec.JETBRAINS)
+    })
+
+    jvmArgs(
+        "-Ddevauth.enabled=true",
+        "-Ddevauth.account=main",
+        "-XX:+AllowEnhancedClassRedefinition"
+    )
+
+    doFirst {
+        val mixinJar = configurations.runtimeClasspath
+            .get()
+            .resolvedConfiguration
+            .resolvedArtifacts
+            .firstOrNull { it.moduleVersion.id.name.contains("sponge-mixin") }
+            ?.file
+
+        if (mixinJar != null) {
+            jvmArgs("-javaagent:${mixinJar.absolutePath}")
+        }
+    }
+}
 
 // configure the maven publication
 publishing {

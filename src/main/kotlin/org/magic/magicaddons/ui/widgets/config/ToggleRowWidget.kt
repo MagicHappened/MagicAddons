@@ -1,8 +1,10 @@
 package org.magic.magicaddons.ui.widgets.config
 
-import net.minecraft.client.gui.Click
-import net.minecraft.client.gui.DrawContext
+import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.input.MouseButtonEvent
+import org.magic.magicaddons.config.ui.ClickableRowWidget
 import org.magic.magicaddons.ui.widgets.CheckboxWidget
+
 
 open class ToggleRowWidget<T>(
     value: T,
@@ -28,24 +30,24 @@ open class ToggleRowWidget<T>(
         return height + padding
     }
 
-    override fun render(ctx: DrawContext) {
+    override fun render(graphics: GuiGraphics) {
 
         checkbox.size = height - padding * 2
         checkbox.x = x + padding + 1 // idk why but yes
         checkbox.y = y + padding
         checkbox.checked = isEnabled()
 
-        super.render(ctx)
+        super.render(graphics)
 
-        checkbox.render(ctx)
+        checkbox.render(graphics)
     }
 
-    override fun mouseClicked(click: Click, doubled: Boolean): Boolean {
-        if (checkbox.mouseClicked(click, doubled)) {
+    override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
+        if (checkbox.mouseClicked(mouseButtonEvent, doubled)) {
             onToggle(checkbox.checked)
             return true
         }
 
-        return super.mouseClicked(click, doubled)
+        return super.mouseClicked(mouseButtonEvent, doubled)
     }
 }

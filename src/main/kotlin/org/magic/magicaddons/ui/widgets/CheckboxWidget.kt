@@ -1,15 +1,14 @@
 package org.magic.magicaddons.ui.widgets
 
-import net.minecraft.client.gui.Click
-import net.minecraft.client.gui.DrawContext
-import net.minecraft.client.gui.Element
+import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.gui.components.events.GuiEventListener
+import net.minecraft.client.input.MouseButtonEvent
 import org.magic.magicaddons.util.ScreenUtil.drawLine
-import kotlin.math.sqrt
 
 class CheckboxWidget(
     var size: Int = 24,
     var checked: Boolean = false
-) : Element {
+) : GuiEventListener {
 
     var x: Int = 0
     var y: Int = 0
@@ -20,17 +19,17 @@ class CheckboxWidget(
     val checkColor = 0xFF00FF00.toInt()
 
 
-    fun render(ctx: DrawContext) {
+    fun render(graphics: GuiGraphics) {
 
-        ctx.fill(x, y, x + size, y + size, bgColor)
+        graphics.fill(x, y, x + size, y + size, bgColor)
 
         if (checked) {
-            drawCheckmark(ctx)
+            drawCheckmark(graphics)
         }
     }
 
 
-    private fun drawCheckmark(ctx: DrawContext) {
+    private fun drawCheckmark(graphics: GuiGraphics) {
 
         fun sx(px: Float) = x + (px / baseSize * size)
         fun sy(py: Float) = y + (py / baseSize * size)
@@ -49,7 +48,7 @@ class CheckboxWidget(
         // extend first segment slightly
         val dx = x2 - x1
         val dy = y2 - y1
-        val len = sqrt(dx * dx + dy * dy)
+        val len = kotlin.math.sqrt(dx * dx + dy * dy)
 
         val extend = thickness * 0.5f
 
@@ -59,18 +58,18 @@ class CheckboxWidget(
         val newX2 = x2 + ex
         val newY2 = y2 + ey
 
-        ctx.state.drawLine(x1, y1, newX2, newY2, thickness, checkColor)
-        ctx.state.drawLine(x2, y2, x3, y3, thickness, checkColor)
+        graphics.drawLine(x1, y1, newX2, newY2, thickness, checkColor)
+        graphics.drawLine(x2, y2, x3, y3, thickness, checkColor)
     }
 
-    override fun mouseClicked(click: Click, doubled: Boolean): Boolean {
-        if (click.x.toInt() in x..(x + size) &&
-            click.y.toInt() in y..(y + size)
+    override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
+        if (mouseButtonEvent.x.toInt() in x..(x + size) &&
+            mouseButtonEvent.y.toInt() in y..(y + size)
         ) {
             checked = !checked
             return true
         }
-        return super.mouseClicked(click, doubled)
+        return super.mouseClicked(mouseButtonEvent, doubled)
     }
 
     override fun setFocused(focused: Boolean) {
