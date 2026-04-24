@@ -1,20 +1,22 @@
 package org.magic.magicaddons.config.ui.feature
 
-import net.minecraft.client.MinecraftClient
-import net.minecraft.client.gui.Click
-import net.minecraft.client.gui.DrawContext
-import net.minecraft.client.gui.widget.TextFieldWidget
-import net.minecraft.client.input.CharInput
-import net.minecraft.client.input.KeyInput
-import net.minecraft.text.Text
+import net.minecraft.client.Minecraft
+import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.gui.components.EditBox
+import net.minecraft.client.input.CharacterEvent
+import net.minecraft.client.input.KeyEvent
+import net.minecraft.client.input.MouseButtonEvent
+import net.minecraft.network.chat.Component
+import net.minecraft.network.chat.Style
 import org.magic.magicaddons.config.ui.ClickableButtonWidget
 import org.magic.magicaddons.config.data.ToggleListSetting
 import org.magic.magicaddons.config.ui.BaseRowWidget
 import org.magic.magicaddons.config.ui.ToggleRowWidget
 import org.magic.magicaddons.data.ListEntry
 import org.magic.magicaddons.util.ChatUtils
-import org.magic.magicaddons.util.ScreenUtil
+import org.magic.magicaddons.util.ScreenUtil.drawBorder
 import org.magic.magicaddons.util.ScreenUtil.drawLine
+import tech.thatgravyboat.skyblockapi.utils.text.TextStyle.style
 
 class TextListSettingWidget(
     val listSetting: ToggleListSetting
@@ -42,26 +44,26 @@ class TextListSettingWidget(
         {listSetting.displayName}
     )
 
-    private val nameInputField = TextFieldWidget(
-        MinecraftClient.getInstance().textRenderer,
-        100, 20, Text.literal("")
+    private val nameInputField = EditBox(
+        Minecraft.getInstance().font,
+        100, 20, Component.literal("")
     )
 
-    private val valueInputField = TextFieldWidget(
-        MinecraftClient.getInstance().textRenderer,
-        150, 20, Text.literal("")
+    private val valueInputField = EditBox(
+        Minecraft.getInstance().font,
+        150, 20, Component.literal("")
     )
 
     private val submitButton = ClickableButtonWidget(
         x, y,
         width = 18,
         height = 20,
-        message = Text.literal("+").styled { it.withColor(0x00FF00) }
+        message = Component.literal("+").style { Style.EMPTY.withColor(0x00FF00) }
     )
 
 
     override fun init() {
-        val textRenderer = MinecraftClient.getInstance().textRenderer
+        val font = Minecraft.getInstance().font
 
         titleRow.y = y + borderSize
         titleRow.x = x + borderSize
@@ -101,7 +103,7 @@ class TextListSettingWidget(
         // after rows y level label y
         this.addLabelY = currentY
 
-        currentY += textRenderer.fontHeight + inputYPadding * 2
+        currentY += font.lineHeight + inputYPadding * 2
         // add padding on both top and bottom for input Y padding
 
         val inputWidths = width - (inputXPadding * 4) - 18
@@ -122,22 +124,22 @@ class TextListSettingWidget(
         super.init()
     }
 
-    override fun render(ctx: DrawContext, mouseX: Int, mouseY: Int, delta: Float) {
-        val textRenderer = MinecraftClient.getInstance().textRenderer
+    override fun render(graphics: GuiGraphics, mouseX: Int, mouseY: Int, delta: Float) {
+        val font = Minecraft.getInstance().font
 
-        ctx.fill(x, y, x + width, y + height, backgroundColor)
+        graphics.fill(x, y, x + width, y + height, backgroundColor)
 
-        titleRow.render(ctx)
+        titleRow.render(graphics)
 
-        ctx.state.drawLine(
+        graphics.drawLine(
             x, rowY, x+width, rowY,
             2,
             borderColor)
 
-        rows.forEach { it.render(ctx) }
+        rows.forEach { it.render(graphics) }
 
         seperatorYs.forEach {
-            ctx.state.drawLine(
+            graphics.drawLine(
                 x, it, x + width, it,
                 1,
                 borderColor
@@ -145,27 +147,26 @@ class TextListSettingWidget(
         }
 
 
-        ctx.state.drawLine(
+        graphics.drawLine(
             x, addLabelY, x+width, addLabelY,
             2,
             borderColor)
 
-        ctx.drawText(
-            textRenderer,
-            Text.literal("Add new entry:"),
+        graphics.drawString(
+            font,
+            Component.literal("Add new entry:"),
             x + textXPad,
             addLabelY + inputYPadding,
             0xFFFFFFFF.toInt(),
             false
         )
 
-        nameInputField.render(ctx, mouseX, mouseY, delta)
-        valueInputField.render(ctx, mouseX, mouseY, delta)
-        submitButton.render(ctx, mouseX, mouseY, delta)
+        nameInputField.render(graphics, mouseX, mouseY, delta)
+        valueInputField.render(graphics, mouseX, mouseY, delta)
+        submitButton.render(graphics, mouseX, mouseY, delta)
 
-        ScreenUtil.drawBorder(ctx, x, y, x + width, y + height, borderSize, borderColor)
+        graphics.drawBorder(x, y, x + width, y + height, borderSize, borderColor)
 
-        renderTooltip(ctx, mouseX, mouseY)
     }
 
     private fun toggleEntry(entry: ListEntry) {
@@ -189,18 +190,18 @@ class TextListSettingWidget(
         init()
     }
 
-    override fun mouseClicked(click: Click, doubled: Boolean): Boolean {
-        if (submitButton.mouseClicked(click,doubled)){
-            addEntry(nameInputField.text, valueInputField.text)
+    override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
+        if (submitButton.mouseClicked(mouseButtonEvent,doubled)){
+            addEntry(nameInputField.value, valueInputField.value)
             return true
         }
 
-        if (nameInputField.mouseClicked(click, doubled)) {
+        if (nameInputField.mouseClicked(mouseButtonEvent, doubled)) {
             nameInputField.isFocused = true
             valueInputField.isFocused = false
             return true
         }
-        if (valueInputField.mouseClicked(click, doubled)) {
+        if (valueInputField.mouseClicked(mouseButtonEvent, doubled)) {
             valueInputField.isFocused = true
             nameInputField.isFocused = false
             return true
@@ -210,7 +211,7 @@ class TextListSettingWidget(
         nameInputField.isFocused = false
 
         rows.forEach {
-            if (it.mouseClicked(click, doubled)) {
+            if (it.mouseClicked(mouseButtonEvent, doubled)) {
                 return true
             }
         }
@@ -218,39 +219,39 @@ class TextListSettingWidget(
         return false
     }
 
-    override fun charTyped(input: CharInput): Boolean {
+    override fun charTyped(characterEvent: CharacterEvent): Boolean {
         if (nameInputField.isFocused) {
-            nameInputField.charTyped(input)
+            nameInputField.charTyped(characterEvent)
             return true
         }
         if (valueInputField.isFocused){
-            valueInputField.charTyped(input)
+            valueInputField.charTyped(characterEvent)
             return true
         }
-        return super.charTyped(input)
+        return super.charTyped(characterEvent)
     }
 
-    override fun keyPressed(input: KeyInput): Boolean {
+    override fun keyPressed(keyEvent: KeyEvent): Boolean {
         if (nameInputField.isFocused) {
-            nameInputField.keyPressed(input)
+            nameInputField.keyPressed(keyEvent)
             return true
         }
         if (valueInputField.isFocused){
-            valueInputField.keyPressed(input)
+            valueInputField.keyPressed(keyEvent)
             return true
         }
-        return super.keyPressed(input)
+        return super.keyPressed(keyEvent)
     }
 
 
     override fun getTotalHeight(): Int {
-        val tr = MinecraftClient.getInstance().textRenderer
+        val font = Minecraft.getInstance().font
 
         val rowsHeight = rows.size * rowHeight
 
         val inputHeight = valueInputField.height
 
-        val addLabelHeight = tr.fontHeight
+        val addLabelHeight = font.lineHeight
         val totalPadding = inputYPadding * 3 // 2 widgets so 3 spacing top bottom and middle
 
         return borderSize +

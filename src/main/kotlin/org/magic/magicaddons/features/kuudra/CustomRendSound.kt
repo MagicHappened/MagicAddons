@@ -1,14 +1,14 @@
 package org.magic.magicaddons.features.kuudra
 
-import net.minecraft.client.MinecraftClient
-import net.minecraft.client.network.AbstractClientPlayerEntity
-import net.minecraft.client.sound.PositionedSoundInstance
-import net.minecraft.client.sound.SoundInstance
-import net.minecraft.sound.SoundCategory
-import net.minecraft.util.Identifier
-import net.minecraft.util.math.Box
-import net.minecraft.util.math.Vec3d
-import net.minecraft.util.math.random.Random
+import net.minecraft.client.Minecraft
+import net.minecraft.client.resources.sounds.SimpleSoundInstance
+import net.minecraft.client.resources.sounds.SoundInstance
+import net.minecraft.resources.Identifier
+import net.minecraft.sounds.SoundSource
+import net.minecraft.util.RandomSource
+import net.minecraft.world.entity.player.Player
+import net.minecraft.world.phys.AABB
+import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.config.data.BooleanSetting
 import org.magic.magicaddons.config.data.TextSetting
 import org.magic.magicaddons.events.EventBus
@@ -27,8 +27,8 @@ object CustomRendSound : Feature() {
         EventBus.register(this)
     }
 
-    var wornReaperArmorList: MutableSet<AbstractClientPlayerEntity> = mutableSetOf()
-    var wornReaperTuxedoArmorList: MutableSet<AbstractClientPlayerEntity> = mutableSetOf()
+    var wornReaperArmorList: MutableSet<Player> = mutableSetOf()
+    var wornReaperTuxedoArmorList: MutableSet<Player> = mutableSetOf()
     var lastPullTimeMs: Long? = null
 
     const val REND_COOLDOWN: Int = 500
@@ -61,7 +61,7 @@ object CustomRendSound : Feature() {
         if (!inKuudra) return
         if (!inKuudraLair()) return
         EntityUtils.entityInfoList?.forEach { entity ->
-            if (entity.entity !is AbstractClientPlayerEntity) {
+            if (entity.entity !is Player) {
                 return@forEach
             }
             if (!entity.armorStandTags.isNullOrEmpty()) {
@@ -93,50 +93,68 @@ object CustomRendSound : Feature() {
         val now = System.currentTimeMillis()
         if (lastPullTimeMs != null && now - lastPullTimeMs!! < REND_COOLDOWN) return
 
+        val player = event.player
 
 
-        if (event.player !in wornReaperTuxedoArmorList){
+        if (player !in wornReaperTuxedoArmorList){
             return
         }
 
         var itemCorrect = false
-        event.mainHandStack.components.forEach {
-            if (it.type.toString() != "minecraft:custom_data") return@forEach
-            if (it.value.toString().contains("BONE_BOOMERANG")) itemCorrect = true
-            if (it.value.toString().contains("TERMINATOR")) itemCorrect = true
-            if (it.value.toString().contains("ATOMSPLIT_KATANA")) itemCorrect = true
+        val stack = event.mainHandStack
+
+        stack.components.forEach { component ->
+            if (component.type.toString() != "minecraft:custom_data") return@forEach
+
+            val value = component.value.toString()
+
+            if (
+                "BONE_BOOMERANG" in value ||
+                "TERMINATOR" in value ||
+                "ATOMSPLIT_KATANA" in value
+            ) {
+                itemCorrect = true
+            }
         }
+
         if (!itemCorrect) return
 
-        wornReaperArmorList.remove(event.player.entity)
-        wornReaperTuxedoArmorList.remove(event.player.entity)
+        wornReaperArmorList.remove(event.player)
+        wornReaperTuxedoArmorList.remove(event.player)
         ChatUtils.sendWithPrefix("${event.player.displayName?.siblings?.get(1)?.string} Pulled!")
         // SoundEvents.ENTITY_GOAT_SCREAMING_DEATH.id
         // minecraft:entity.goat.screaming.death
         // baseSetting.getChild<TextSetting>("RendPullSoundPath")?.value ?: "mob.goat.death.screamer"
-        val goatSound = PositionedSoundInstance(
-            Identifier.of(baseSetting.getChild<TextSetting>("RendPullSoundPath")?.value ?: "minecraft:mob.goat.death.screamer"),
-            SoundCategory.PLAYERS,
-            1F,
-            1F,
-            Random.create(0.toLong()),
+        val soundId = Identifier.parse(
+            baseSetting.getChild<TextSetting>("RendPullSoundPath")?.value
+                ?: "minecraft:entity.goat.screaming.death"
+        )
+
+        val goatSound = SimpleSoundInstance(
+            soundId,
+            SoundSource.PLAYERS,
+            1f,
+            1f,
+            RandomSource.create(0L),
             false,
             0,
-            SoundInstance.AttenuationType.NONE,
-            0.toDouble(), 0.toDouble(), 0.toDouble(),
+            SoundInstance.Attenuation.NONE,
+            0.0,
+            0.0,
+            0.0,
             false
         )
-        MinecraftClient.getInstance().soundManager.play(goatSound)
+        Minecraft.getInstance().soundManager.play(goatSound)
         lastPullTimeMs = now
 
     }
 
     fun inKuudraLair(): Boolean{
-        val player = MinecraftClient.getInstance().player ?: return false
-        val vec1 = Vec3d(-60.0, 40.0, -142.0)
-        val vec2 = Vec3d(-135.0, 1.0, -65.0)
-        val box = Box(vec1, vec2)
-        return box.contains(Vec3d(player.x, player.y, player.z))
+        val player = Minecraft.getInstance().player ?: return false
+        val vec1 = Vec3(-60.0, 40.0, -142.0)
+        val vec2 = Vec3(-135.0, 1.0, -65.0)
+        val box = AABB(vec1, vec2)
+        return box.contains(Vec3(player.x, player.y, player.z))
     }
 
 

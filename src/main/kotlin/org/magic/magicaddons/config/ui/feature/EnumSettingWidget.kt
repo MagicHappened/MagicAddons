@@ -1,12 +1,12 @@
 package org.magic.magicaddons.config.ui.feature
 
-import net.minecraft.client.MinecraftClient
-import net.minecraft.client.gui.Click
-import net.minecraft.client.gui.DrawContext
-import net.minecraft.text.Text
+import net.minecraft.client.Minecraft
+import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.input.MouseButtonEvent
+import net.minecraft.network.chat.Component
 import org.magic.magicaddons.config.data.EnumSetting
 import org.magic.magicaddons.config.ui.ClickableRowWidget
-import org.magic.magicaddons.util.ScreenUtil
+import org.magic.magicaddons.util.ScreenUtil.drawBorder
 import org.magic.magicaddons.util.ScreenUtil.drawLine
 
 
@@ -52,17 +52,17 @@ class EnumSettingWidget<T : Enum<T>>(
         }
     }
 
-    override fun render(ctx: DrawContext, mouseX: Int, mouseY: Int, delta: Float) {
-        val textRenderer = MinecraftClient.getInstance().textRenderer
+    override fun render(graphics: GuiGraphics, mouseX: Int, mouseY: Int, delta: Float) {
+        val font = Minecraft.getInstance().font
         val halfHeight = height / 2
 
-        val titleY = y + (halfHeight - textRenderer.fontHeight) / 2
-        val valueY = y + halfHeight + (halfHeight - textRenderer.fontHeight) / 2
+        val titleY = y + (halfHeight - font.lineHeight) / 2
+        val valueY = y + halfHeight + (halfHeight - font.lineHeight) / 2
 
-        ctx.fill(x, y, x + width, y + height, backgroundColor)
-        ScreenUtil.drawBorder(ctx, x, y, x + width, y + height, borderSize, borderColor)
+        graphics.fill(x, y, x + width, y + height, backgroundColor)
+        graphics.drawBorder(x, y, x + width, y + height, borderSize, borderColor)
 
-        ctx.state.drawLine(
+        graphics.drawLine(
             x + borderSize,
             y + halfHeight,
             x + width - borderSize,
@@ -71,43 +71,39 @@ class EnumSettingWidget<T : Enum<T>>(
             borderColor
         )
 
-        ctx.drawText(
-            textRenderer,
-            Text.literal("${setting.displayName}:"),
+        graphics.drawString(
+            font,
+            Component.literal("${setting.displayName}:"),
             x + textXPad,
             titleY,
             0xFFFFFFFF.toInt(),
             false
         )
 
-        ctx.drawText(
-            textRenderer,
-            Text.literal(setting.value.toString()),
+        graphics.drawString(
+            font,
+            Component.literal(setting.value.toString()),
             x + textXPad,
             valueY,
             0xFFFFFFFF.toInt(),
             false
         )
 
-        ctx.drawText(
-            textRenderer,
-            Text.literal("↓"),
-            x + width - textRenderer.getWidth("↓") - 4,
+        graphics.drawString(
+            font,
+            Component.literal("↓"),
+            x + width - font.width("↓") - 4,
             valueY,
             0xFFFFFFFF.toInt(),
             false
         )
 
-        renderChildren(ctx, mouseX, mouseY, delta)
+        renderChildren(graphics, mouseX, mouseY, delta)
 
         if (selectionMenuExpanded) {
             layoutDropdown()
-            selectionOptions.forEach { it.render(ctx) }
+            selectionOptions.forEach { it.render(graphics) }
         }
-
-
-
-        renderTooltip(ctx, mouseX, mouseY)
     }
 
     private fun valueChanged(selectedValue: T) {
@@ -128,17 +124,17 @@ class EnumSettingWidget<T : Enum<T>>(
         }
     }
 
-    override fun mouseClicked(click: Click, doubled: Boolean): Boolean {
+    override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
         if (selectionMenuExpanded) {
             selectionOptions.forEach {
-                if (it.mouseClicked(click, doubled)) return true
+                if (it.mouseClicked(mouseButtonEvent, doubled)) return true
             }
         }
 
-        val inside = isMouseOver(click.x, click.y)
+        val inside = isMouseOver(mouseButtonEvent.x, mouseButtonEvent.y)
 
         if (inside) {
-            when (click.button()) {
+            when (mouseButtonEvent.button()) {
                 1 -> { // right click for children
                     childrenExpanded = !childrenExpanded
                     selectionMenuExpanded = false
@@ -152,7 +148,7 @@ class EnumSettingWidget<T : Enum<T>>(
             }
         }
 
-        return super.mouseClicked(click, doubled)
+        return super.mouseClicked(mouseButtonEvent, doubled)
     }
 
     override fun getTotalHeight(): Int {
