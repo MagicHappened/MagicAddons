@@ -10,7 +10,7 @@
   "icon": "assets/magicaddons/icon.png",
   "environment": "client",
   "entrypoints": {
-    "main": [
+    "client": [
       "org.magic.magicaddons.MagicAddons"
     ],
     "modmenu": [
