@@ -46,6 +46,9 @@ object GreenhousePresets : Feature() {
     val initializedGreenhouseIds = mutableListOf<Int>()
     val greenhouseList = mutableListOf<GreenhouseGrid>()
 
+
+    var checkedDeskReminder = true
+
     private fun initData() {
         if (allInitialized()) return
         if (!knownIdsInitialized) return
@@ -58,8 +61,6 @@ object GreenhousePresets : Feature() {
         val box = plot.aabb
 
         initializeGreenhouse(plotId, box)
-
-
     }
 
     private fun initializeGreenhouse(plotId: Int, box: AABB) {
@@ -122,7 +123,13 @@ object GreenhousePresets : Feature() {
     fun onScoreboardUpdate(event: ScoreboardUpdateEvent) {
         if (!baseSetting.value) return
         initKnownIds()
-        if (!knownIdsInitialized) return
+        if (!knownIdsInitialized) {
+            if (checkedDeskReminder) {
+                checkedDeskReminder = false //todo see if this works (remove skyblockapi cache)
+                ChatUtils.sendWithPrefix("Cant figure out known greenhouses. Please open your plots menu in /desk")
+            }
+            return
+        }
         initData()
     }
 

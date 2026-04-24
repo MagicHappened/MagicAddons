@@ -1,11 +1,13 @@
 package org.magic.magicaddons.ui.widgets
 
+import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.gui.components.Renderable
 import net.minecraft.client.gui.components.events.GuiEventListener
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.client.renderer.RenderPipelines
 import net.minecraft.resources.Identifier
+import tech.thatgravyboat.skyblockapi.platform.drawSprite
 
 class ArrowWidget(
     var x: Int,
@@ -23,20 +25,26 @@ class ArrowWidget(
         isHovered = isMouseOver(mouseX.toDouble(), mouseY.toDouble())
 
         val texture = if (isHovered) hovered else normal
-
+        graphics.drawSprite(
+            texture,
+            x,
+            y,
+            width,height
+        )
+        /*
         graphics.blit(
             RenderPipelines.GUI_TEXTURED,
             texture,
             x,
             y,
-            0f,0f,
+            4f,4f,
             width,
             height,
             32,
             32
 
         )
-
+        */
     }
 
 
