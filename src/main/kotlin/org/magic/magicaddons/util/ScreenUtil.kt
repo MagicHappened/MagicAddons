@@ -156,6 +156,8 @@ object ScreenUtil {
         pose.rotate(kotlin.math.atan2(dy, dx))
 
         val half = thickness / 2f
+        val y0 = kotlin.math.floor(-half).toInt()
+        val y1 = kotlin.math.ceil(half).toInt()
 
         this.guiRenderState.submitGuiElement(
             ColoredRectangleRenderState(
@@ -163,9 +165,9 @@ object ScreenUtil {
                 TextureSetup.noTexture(),
                 pose,
                 0,
-                -half.toInt(),
+                y0,
                 length.toInt(),
-                half.toInt(),
+                y1,
                 color,
                 color,
                 this.scissorStack.peek()
