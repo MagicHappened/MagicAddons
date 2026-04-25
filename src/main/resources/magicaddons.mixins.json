@@ -8,7 +8,8 @@
     "ClientPlayerInteractionManagerMixin",
     "LivingEntityMixin",
     "MinecraftMixin",
-    "LevelRendererMixin"
+    "LevelRendererMixin",
+    "BlockItemMixin"
   ],
   "injectors": {
     "defaultRequire": 1

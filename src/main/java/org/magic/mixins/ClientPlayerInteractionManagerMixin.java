@@ -4,10 +4,13 @@ import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.client.multiplayer.MultiPlayerGameMode;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import org.magic.magicaddons.events.EventBus;
 import org.magic.magicaddons.events.interact.OnAttackEntityEvent;
+import org.magic.magicaddons.events.interact.OnBlockDestroyedEvent;
 import org.magic.magicaddons.events.interact.OnStartDestroyBlockEvent;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -40,8 +43,17 @@ public abstract class ClientPlayerInteractionManagerMixin {
 
     @Inject(method = "destroyBlock", at = @At("TAIL"))
     private void onBreakBlock(BlockPos blockPos, CallbackInfoReturnable<Boolean> cir){
-        //todo event
+        OnBlockDestroyedEvent event = new OnBlockDestroyedEvent(blockPos);
+        EventBus.post(event);
     }
+
+    @Inject(method = "useItem", at = @At("TAIL"))
+    private void onUseItem(Player player, InteractionHand interactionHand, CallbackInfoReturnable<InteractionResult> cir){
+        if (!cir.getReturnValue().consumesAction()) return;
+        //todo just for fire since its placing skulls
+    }
+
+
 
     //todo block place event?
 
