@@ -21,6 +21,7 @@ import net.minecraft.util.profiling.ProfilerFiller;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.animal.pig.Pig;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix4f;
 import org.joml.Vector4f;
@@ -54,7 +55,6 @@ public abstract class LevelRendererMixin {
 
     @Inject(method = "addMainPass", at = @At("HEAD"))
     private void enableGlow(FrameGraphBuilder frameGraphBuilder, Frustum frustum, Matrix4f matrix4f, GpuBufferSlice gpuBufferSlice, boolean bl, LevelRenderState levelRenderState, DeltaTracker deltaTracker, ProfilerFiller profilerFiller, CallbackInfo ci) {
-        //todo add check if any highlighting exists
         levelRenderState.haveGlowingEntities = true;
     }
 
@@ -80,6 +80,9 @@ public abstract class LevelRendererMixin {
             EntityUtils.HighlightSource source = entry.getValue();
 
             if (!(entity instanceof LivingEntity living)) continue;
+            if (living instanceof Player){
+                living.setCustomNameVisible(false);
+            }
 
             EntityRenderer<? super LivingEntity, ?> baseRenderer = entityRenderDispatcher.getRenderer(living);
             if (!(baseRenderer instanceof LivingEntityRenderer<?, ?, ?> rawRenderer)) continue;
@@ -109,6 +112,8 @@ public abstract class LevelRendererMixin {
             state.outlineColor = source.getHighlightColor();
             state.isInvisible = true;
             state.isInvisibleToPlayer = true;
+
+
 
             levelRenderState.haveGlowingEntities = true;
 
