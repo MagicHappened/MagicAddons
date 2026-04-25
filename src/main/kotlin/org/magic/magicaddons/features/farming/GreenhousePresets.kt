@@ -9,6 +9,9 @@ import org.magic.magicaddons.data.config.BooleanSetting
 import org.magic.magicaddons.data.greenhouse.GreenhouseGrid
 import org.magic.magicaddons.data.greenhouse.GreenhouseSlot
 import org.magic.magicaddons.events.EventBus
+import org.magic.magicaddons.events.EventHandler
+import org.magic.magicaddons.events.interact.OnAttackEntityEvent
+import org.magic.magicaddons.events.interact.OnStartDestroyBlockEvent
 import org.magic.magicaddons.features.Feature
 import org.magic.magicaddons.util.ChatUtils
 import tech.thatgravyboat.skyblockapi.api.SkyBlockAPI
@@ -142,6 +145,18 @@ object GreenhousePresets : Feature() {
         initData()
 
 
+    }
+
+    @EventHandler
+    fun onAttack(event: OnAttackEntityEvent){
+        if (!baseSetting.value) return
+        //todo add attack prevention here.
+    }
+
+    @EventHandler
+    fun onStartBlockBreak(event: OnStartDestroyBlockEvent){
+        if (!baseSetting.value) return
+        //todo add block break filteration logic here
     }
 
     fun slotToWorldPos(slot: GreenhouseSlot, box: AABB, yLevel: Double = 73.0): Vec3 {
