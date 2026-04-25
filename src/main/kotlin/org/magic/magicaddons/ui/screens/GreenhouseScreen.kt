@@ -6,6 +6,7 @@ import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.client.renderer.RenderPipelines
 import net.minecraft.network.chat.Component
 import net.minecraft.resources.Identifier
+import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.features.farming.GreenhousePresets
 import org.magic.magicaddons.ui.widgets.ArrowWidget
 import org.magic.magicaddons.ui.widgets.greenhouse.GreenhouseGridWidget
@@ -14,6 +15,10 @@ import org.magic.magicaddons.util.ScreenUtil.drawMultilineBoxCentered
 import tech.thatgravyboat.skyblockapi.api.profile.garden.PlotAPI
 
 class GreenhouseScreen(title: Component) : Screen(title) {
+
+    init {
+        EventBus.register(this)
+    }
 
 
     private val gridSize = 10
@@ -24,6 +29,7 @@ class GreenhouseScreen(title: Component) : Screen(title) {
     private var containerSize: Int = 400
 
     var ignoreWarnings = false
+    var sentWarnings = false
 
     var borderPadding: Int = 6
 
@@ -35,9 +41,23 @@ class GreenhouseScreen(title: Component) : Screen(title) {
     var forwardArrow: ArrowWidget? = null
     var backwardArrow: ArrowWidget? = null
 
+    var savedWidth: Int? = null
+    var savedHeight: Int? = null
 
     override fun init() {
         super.init()
+        sentWarnings = false
+        initLayout()
+        sentWarnings = true
+    }
+
+    fun initLayout(){
+        displayedGridWidget = null
+        gridWidgets.clear()
+
+        savedWidth = width
+        savedHeight = height
+
         paddingY = height/10
 
         val slotSize = (height - paddingY * 2 - borderPadding * 2) / gridSize
@@ -48,12 +68,17 @@ class GreenhouseScreen(title: Component) : Screen(title) {
         startY = paddingY
 
         if (GreenhousePresets.initializedGreenhouseIds.isEmpty()) {
-            ChatUtils.sendWithPrefix("No initialized greenhouse ids, please enter your greenhouse.")
+            if (!sentWarnings) {
+                ChatUtils.sendWithPrefix("No initialized greenhouse ids, please enter your greenhouse.")
+            }
             displayedGridWidget = null
             return
         }
         if (GreenhousePresets.knownGreenhouseIds.size != GreenhousePresets.initializedGreenhouseIds.size) {
-            ChatUtils.sendWithPrefix("Not all greenhouses initialized, enter the other greenhouses to see them.")
+            if (!sentWarnings) {
+                ChatUtils.sendWithPrefix("Not all greenhouses initialized, enter the other greenhouses to see them.")
+            }
+
         }
         GreenhousePresets.greenhouseList.forEach {
             val gridWidget = GreenhouseGridWidget(it,gridSize,slotSize).apply {
@@ -91,7 +116,6 @@ class GreenhouseScreen(title: Component) : Screen(title) {
             hovered = Identifier.fromNamespaceAndPath("magicaddons", "textures/gui/join_highlighted.png"),
             onClick = {
                 gridWidgetChanged(1)
-                ChatUtils.sendWithPrefix("Moved ahead 1 widget")
             }
         )
 
@@ -103,16 +127,20 @@ class GreenhouseScreen(title: Component) : Screen(title) {
             hovered = Identifier.fromNamespaceAndPath("magicaddons", "textures/gui/join_backward_highlighted.png"),
             onClick = {
                 gridWidgetChanged(-1)
-                ChatUtils.sendWithPrefix("Moved back 1 widget")
             }
         )
-
-
-
     }
 
+
     override fun render(graphics: GuiGraphics, mouseX: Int, mouseY: Int, delta: Float) {
+        if (savedWidth != width || savedHeight != height) {
+            initLayout()
+            return
+        }
+
+
         super.render(graphics, mouseX, mouseY, delta)
+
 
         // background
         graphics.blitSprite(
