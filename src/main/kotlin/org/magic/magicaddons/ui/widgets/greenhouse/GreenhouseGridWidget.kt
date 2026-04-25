@@ -1,5 +1,6 @@
 package org.magic.magicaddons.ui.widgets.greenhouse
 
+import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.gui.components.Renderable
 import net.minecraft.client.gui.components.events.GuiEventListener
@@ -26,9 +27,11 @@ class GreenhouseGridWidget(
 
     fun init() {
         slotWidgets.clear()
+        Minecraft.getInstance().window
 
         for (x in 0 until gridSize) {
             for (y in 0 until gridSize) {
+
 
                 val slot = grid.getSlot(x, y) ?: continue
 
@@ -62,7 +65,7 @@ class GreenhouseGridWidget(
                 widgetX + i * slotSize + i,
                 widgetY + gridSize * slotSize + gridSize,
                 1,
-                0xFF441100.toInt()
+                0xFF0683c1.toInt()
             )
 
             // horizontal
@@ -72,7 +75,7 @@ class GreenhouseGridWidget(
                 widgetX + gridSize * slotSize + gridSize,
                 widgetY + i * slotSize + i,
                 1,
-                0xFF441100.toInt()
+                0xFF0683c1.toInt()
             )
         }
     }
@@ -104,4 +107,6 @@ class GreenhouseGridWidget(
     }
 
     override fun updateNarration(narrationElementOutput: NarrationElementOutput) {}
+
+
 }

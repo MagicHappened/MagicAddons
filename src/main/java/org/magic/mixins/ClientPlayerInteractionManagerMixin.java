@@ -37,4 +37,13 @@ public abstract class ClientPlayerInteractionManagerMixin {
             cir.cancel();
         }
     }
+
+    @Inject(method = "destroyBlock", at = @At("TAIL"))
+    private void onBreakBlock(BlockPos blockPos, CallbackInfoReturnable<Boolean> cir){
+        //todo event
+    }
+
+    //todo block place event?
+
+
 }

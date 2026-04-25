@@ -74,6 +74,7 @@ object GreenhousePresets : Feature() {
         val startZ = box.minZ + 43
 
         val grid = GreenhouseGrid()
+        grid.plot = PlotAPI.getCurrentPlot()
 
         for (x in 0 until 10) {
             for (y in 0 until 10) {
