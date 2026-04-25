@@ -10,8 +10,8 @@ import org.magic.magicaddons.features.farming.GreenhousePresets
 import org.magic.magicaddons.ui.widgets.ArrowWidget
 import org.magic.magicaddons.ui.widgets.greenhouse.GreenhouseGridWidget
 import org.magic.magicaddons.util.ChatUtils
-import org.magic.magicaddons.util.ScreenUtil
 import org.magic.magicaddons.util.ScreenUtil.drawMultilineBoxCentered
+import tech.thatgravyboat.skyblockapi.api.profile.garden.PlotAPI
 
 class GreenhouseScreen(title: Component) : Screen(title) {
 
@@ -23,10 +23,14 @@ class GreenhouseScreen(title: Component) : Screen(title) {
     private var startY: Int = 0
     private var containerSize: Int = 400
 
+    var ignoreWarnings = false
 
     var borderPadding: Int = 6
 
-    private var gridWidget: GreenhouseGridWidget? = null
+    private var displayedGridWidget: GreenhouseGridWidget? = null
+    private val gridWidgets: MutableList<GreenhouseGridWidget> = mutableListOf()
+    private var currentIndex = 0
+
 
     var forwardArrow: ArrowWidget? = null
     var backwardArrow: ArrowWidget? = null
@@ -38,30 +42,46 @@ class GreenhouseScreen(title: Component) : Screen(title) {
 
         val slotSize = (height - paddingY * 2 - borderPadding * 2) / gridSize
 
-        containerSize = (slotSize) * gridSize
+        containerSize = (slotSize + 1) * gridSize
 
         startX = (width - containerSize) / 2
         startY = paddingY
 
         if (GreenhousePresets.initializedGreenhouseIds.isEmpty()) {
             ChatUtils.sendWithPrefix("No initialized greenhouse ids, please enter your greenhouse.")
-            gridWidget = null
+            displayedGridWidget = null
+            return
+        }
+        if (GreenhousePresets.knownGreenhouseIds.size != GreenhousePresets.initializedGreenhouseIds.size) {
+            ChatUtils.sendWithPrefix("Not all greenhouses initialized, enter the other greenhouses to see them.")
+        }
+        GreenhousePresets.greenhouseList.forEach {
+            val gridWidget = GreenhouseGridWidget(it,gridSize,slotSize).apply {
+                widgetX = startX
+                widgetY = startY
+                widgetWidth = containerSize
+                widgetHeight = containerSize
+                init()
+            }
+
+            gridWidgets.add(gridWidget)
+        }
+
+        currentIndex = gridWidgets.indexOfFirst {
+            it.grid.plot?.id == PlotAPI.getCurrentPlot()?.id
+        }.takeIf { it != -1 } ?: 0
+
+        displayedGridWidget = gridWidgets.getOrNull(currentIndex)
+
+        if (displayedGridWidget == null) {
+            displayedGridWidget = gridWidgets.firstOrNull()
+        }
+        if (displayedGridWidget == null) {
+            ChatUtils.sendWithPrefix("No greenhouses to display.")
             return
         }
 
-        val grid = GreenhousePresets.greenhouseList.firstOrNull()
-        if (grid == null) {
-            gridWidget = null
-            return
-        }
 
-        gridWidget = GreenhouseGridWidget(grid,gridSize,slotSize).apply {
-            widgetX = startX
-            widgetY = startY
-            widgetWidth = containerSize
-            widgetHeight = containerSize
-            init()
-        }
         // normal = Identifier.fromNamespaceAndPath("magicaddons", "textures/gui/join.png"),
         forwardArrow = ArrowWidget(
             x = (width / 2) + 10,
@@ -70,7 +90,8 @@ class GreenhouseScreen(title: Component) : Screen(title) {
             normal = Identifier.fromNamespaceAndPath("magicaddons", "textures/gui/join.png"),
             hovered = Identifier.fromNamespaceAndPath("magicaddons", "textures/gui/join_highlighted.png"),
             onClick = {
-                ChatUtils.sendWithPrefix("Forward arrow")
+                gridWidgetChanged(1)
+                ChatUtils.sendWithPrefix("Moved ahead 1 widget")
             }
         )
 
@@ -81,7 +102,8 @@ class GreenhouseScreen(title: Component) : Screen(title) {
             normal = Identifier.fromNamespaceAndPath("magicaddons", "textures/gui/join_backward.png"),
             hovered = Identifier.fromNamespaceAndPath("magicaddons", "textures/gui/join_backward_highlighted.png"),
             onClick = {
-                ChatUtils.sendWithPrefix("Backwards arrow")
+                gridWidgetChanged(-1)
+                ChatUtils.sendWithPrefix("Moved back 1 widget")
             }
         )
 
@@ -98,23 +120,28 @@ class GreenhouseScreen(title: Component) : Screen(title) {
             Identifier.fromNamespaceAndPath("minecraft", "popup/background"),
             startX - borderPadding,
             startY - borderPadding,
-            containerSize + borderPadding * 2 + 1,
-            containerSize + borderPadding * 2 + 1,
+            containerSize + borderPadding * 2,
+            containerSize + borderPadding * 2,
         )
+        val displayedName =
+            displayedGridWidget?.grid?.plot?.data?.name
+                ?: displayedGridWidget?.grid?.plot?.id?.toString()
+                ?: "Unknown greenhouse"
+
 
         graphics.drawMultilineBoxCentered(
-            "Greenhouse 1",
+            displayedName,
             width / 2,
             18
         )
-        gridWidget?.render(graphics, mouseX, mouseY, delta)
+        displayedGridWidget?.render(graphics, mouseX, mouseY, delta)
 
         forwardArrow?.render(graphics, mouseX, mouseY, delta)
         backwardArrow?.render(graphics, mouseX, mouseY, delta)
     }
 
     override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
-        if (gridWidget?.mouseClicked(mouseButtonEvent, doubled) == true) {
+        if (displayedGridWidget?.mouseClicked(mouseButtonEvent, doubled) == true) {
             return true
         }
         if (forwardArrow?.mouseClicked(mouseButtonEvent, doubled) == true) {
@@ -129,4 +156,13 @@ class GreenhouseScreen(title: Component) : Screen(title) {
     override fun isMouseOver(mouseX: Double, mouseY: Double): Boolean {
         return super.isMouseOver(mouseX, mouseY)
     }
+
+    fun gridWidgetChanged(direction: Int) {
+        if (gridWidgets.isEmpty()) return
+
+        currentIndex = (currentIndex + direction).mod(gridWidgets.size)
+
+        displayedGridWidget = gridWidgets[currentIndex]
+    }
+
 }

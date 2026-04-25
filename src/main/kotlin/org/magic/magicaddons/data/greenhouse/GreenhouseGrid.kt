@@ -3,9 +3,11 @@ package org.magic.magicaddons.data.greenhouse
 import com.mojang.serialization.Codec
 import com.mojang.serialization.codecs.RecordCodecBuilder
 import org.apache.logging.log4j.core.pattern.AbstractStyleNameConverter
+import tech.thatgravyboat.skyblockapi.api.profile.garden.Plot
 
 class GreenhouseGrid {
 
+    var plot: Plot? = null
     val width = 10
     val height = 10
 

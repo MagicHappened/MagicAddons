@@ -37,8 +37,8 @@ class GreenhouseGridWidget(
                 widget.widgetWidth = slotSize
                 widget.widgetHeight = slotSize
 
-                widget.widgetX = widgetX + x * slotSize
-                widget.widgetY = widgetY + y * slotSize
+                widget.widgetX = widgetX + x * slotSize + x
+                widget.widgetY = widgetY + y * slotSize + y
 
                 widget.init()
 
@@ -57,22 +57,22 @@ class GreenhouseGridWidget(
         for (i in 1 until gridSize) {
             // vertical
             graphics.drawLine(
-                widgetX  + i * slotSize,
-                widgetY ,
-                widgetX + i * slotSize,
-                widgetY + gridSize * slotSize,
-                2,
-                0xFF000000.toInt()
+                widgetX  + i * slotSize + i,
+                widgetY,
+                widgetX + i * slotSize + i,
+                widgetY + gridSize * slotSize + gridSize,
+                1,
+                0xFF441100.toInt()
             )
 
             // horizontal
             graphics.drawLine(
                 widgetX,
-                widgetY + i * slotSize,
-                widgetX + gridSize * slotSize,
-                widgetY + i * slotSize,
-                2,
-                0xFF000000.toInt()
+                widgetY + i * slotSize + i,
+                widgetX + gridSize * slotSize + gridSize,
+                widgetY + i * slotSize + i,
+                1,
+                0xFF441100.toInt()
             )
         }
     }
