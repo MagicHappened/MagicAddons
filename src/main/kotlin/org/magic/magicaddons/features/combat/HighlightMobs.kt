@@ -1,5 +1,6 @@
 package org.magic.magicaddons.features.combat
 
+import net.minecraft.client.player.LocalPlayer
 import net.minecraft.world.entity.Display
 import net.minecraft.world.entity.EquipmentSlot
 import net.minecraft.world.entity.LivingEntity
@@ -203,7 +204,7 @@ object HighlightMobs : Feature(), EntityUtils.HighlightSource {
                     val expectedPath = enumSetting
                         .getChild<TextSetting>("EntityTypeMobPathValue")?.value
                         ?: return false
-
+                    if (entity is LocalPlayer) return false
                     entity.type.toString().contains(expectedPath)
                 }
 
