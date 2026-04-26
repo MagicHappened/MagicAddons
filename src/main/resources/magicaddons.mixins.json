@@ -9,7 +9,7 @@
     "LivingEntityMixin",
     "MinecraftMixin",
     "LevelRendererMixin",
-    "BlockItemMixin"
+    "ClientLevelMixin"
   ],
   "injectors": {
     "defaultRequire": 1

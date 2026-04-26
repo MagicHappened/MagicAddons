@@ -1,5 +1,6 @@
 package org.magic.mixins;
 
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.client.multiplayer.MultiPlayerGameMode;
 import net.minecraft.core.BlockPos;
@@ -12,6 +13,7 @@ import org.magic.magicaddons.events.EventBus;
 import org.magic.magicaddons.events.interact.OnAttackEntityEvent;
 import org.magic.magicaddons.events.interact.OnBlockDestroyedEvent;
 import org.magic.magicaddons.events.interact.OnStartDestroyBlockEvent;
+import org.magic.magicaddons.util.ChatUtils;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -39,12 +41,6 @@ public abstract class ClientPlayerInteractionManagerMixin {
         if (event.getCanceled()){
             cir.cancel();
         }
-    }
-
-    @Inject(method = "destroyBlock", at = @At("TAIL"))
-    private void onBreakBlock(BlockPos blockPos, CallbackInfoReturnable<Boolean> cir){
-        OnBlockDestroyedEvent event = new OnBlockDestroyedEvent(blockPos);
-        EventBus.post(event);
     }
 
     @Inject(method = "useItem", at = @At("TAIL"))

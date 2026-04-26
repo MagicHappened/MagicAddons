@@ -3,6 +3,7 @@ package org.magic.mixins;
 
 
 import net.minecraft.client.multiplayer.ClientPacketListener;
+import net.minecraft.network.protocol.game.ClientboundBlockUpdatePacket;
 import net.minecraft.network.protocol.game.ClientboundLevelParticlesPacket;
 import org.magic.magicaddons.events.EventBus;
 import org.magic.magicaddons.events.world.AddParticleEvent;
