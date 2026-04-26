@@ -8,13 +8,14 @@ import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.events.EventHandler
 import org.magic.magicaddons.events.world.AddParticleEvent
 import org.magic.magicaddons.features.Feature
+import tech.thatgravyboat.skyblockapi.api.events.base.Subscription
+import tech.thatgravyboat.skyblockapi.api.events.base.predicates.OnlyIn
 
 object HidePowderCoatingParticles : Feature() {
 
     init {
         EventBus.register(this)
     }
-
 
     @EventHandler
     fun onAddParticle(event: AddParticleEvent){

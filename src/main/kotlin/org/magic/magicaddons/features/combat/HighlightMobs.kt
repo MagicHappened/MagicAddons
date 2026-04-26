@@ -77,15 +77,18 @@ object HighlightMobs : Feature(), EntityUtils.HighlightSource {
                         displayName = "Entity Type", // just dont display this (only values)
                         tooltip = "Which entity type detection to use",
                         value = EntityTypeDetection.Player,
+                        children = listOf(
+                            entityTypePlayerSkinHashList,
+                            entityTypeMobPathValue
+                        ),
                         childrenProvider = { entityTypeDetection ->
                             when (entityTypeDetection) {
                                 EntityTypeDetection.Player -> listOf(
                                     entityTypePlayerSkinHashList
                                 )
-
                                 EntityTypeDetection.Other -> listOf(
                                     entityTypeMobPathValue
-                                ) // for children provider cant create new instances cuz no saving of old data
+                                )
                             }
                         }
                     )
