@@ -11,6 +11,7 @@ import org.magic.magicaddons.data.greenhouse.GreenhouseSlot
 import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.events.EventHandler
 import org.magic.magicaddons.events.interact.OnAttackEntityEvent
+import org.magic.magicaddons.events.interact.OnBlockDestroyedEvent
 import org.magic.magicaddons.events.interact.OnStartDestroyBlockEvent
 import org.magic.magicaddons.features.Feature
 import org.magic.magicaddons.util.ChatUtils
@@ -20,6 +21,7 @@ import tech.thatgravyboat.skyblockapi.api.events.base.predicates.OnlyIn
 import tech.thatgravyboat.skyblockapi.api.events.base.predicates.OnlyNonGuest
 import tech.thatgravyboat.skyblockapi.api.events.info.ScoreboardUpdateEvent
 import tech.thatgravyboat.skyblockapi.api.events.location.IslandChangeEvent
+import tech.thatgravyboat.skyblockapi.api.location.LocationAPI
 import tech.thatgravyboat.skyblockapi.api.location.SkyBlockIsland
 import tech.thatgravyboat.skyblockapi.api.profile.garden.PlotAPI
 
@@ -148,6 +150,10 @@ object GreenhousePresets : Feature() {
 
     }
 
+
+
+
+
     @EventHandler
     fun onAttack(event: OnAttackEntityEvent){
         if (!baseSetting.value) return
@@ -176,6 +182,11 @@ object GreenhousePresets : Feature() {
     }
 
 
+
+    @EventHandler
+    private fun onBlockBreak(event: OnBlockDestroyedEvent){
+        if (LocationAPI.island != SkyBlockIsland.GARDEN) return
+    }
 
 
 }
