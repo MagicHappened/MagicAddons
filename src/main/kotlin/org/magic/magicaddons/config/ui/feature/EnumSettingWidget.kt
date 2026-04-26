@@ -4,6 +4,7 @@ import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.network.chat.Component
+import org.magic.magicaddons.config.MagicAddonsConfigJsonHandler
 import org.magic.magicaddons.config.data.EnumSetting
 import org.magic.magicaddons.config.ui.ClickableRowWidget
 import org.magic.magicaddons.util.ScreenUtil.drawBorder
@@ -32,10 +33,9 @@ class EnumSettingWidget<T : Enum<T>>(
             selectionOptions.add(dropDown)
         }
 
-
-        setting.children?.forEach {
+        setting.childrenProvider?.invoke(setting.value)?.forEach {
             childrenWidgets.add(SettingWidgetFactory.create(it))
-        }
+        } ?: throw IllegalStateException("Enum factory must not be null")
 
         super.init()
     }
@@ -112,7 +112,6 @@ class EnumSettingWidget<T : Enum<T>>(
 
         if (changed) {
             setting.value = selectedValue
-
             // rebuild children
             childrenWidgets.clear()
             setting.children?.forEach {
@@ -129,6 +128,7 @@ class EnumSettingWidget<T : Enum<T>>(
             selectionOptions.forEach {
                 if (it.mouseClicked(mouseButtonEvent, doubled)) return true
             }
+
         }
 
         val inside = isMouseOver(mouseButtonEvent.x, mouseButtonEvent.y)
