@@ -38,7 +38,6 @@ object CustomRendSound : Feature() {
     override val tooltipMessage: String = "Plays a custom selected sound when a rend pull is detected"
     override val category: String = "kuudra"
     override val baseSetting: BooleanSetting = BooleanSetting(
-        key = "enabled",
         displayName = displayName,
         tooltip = tooltipMessage,
         value = false,

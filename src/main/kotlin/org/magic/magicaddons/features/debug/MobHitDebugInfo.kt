@@ -30,7 +30,6 @@ object MobHitDebugInfo : Feature() {
     override val category: String = "debug"
 
     override val baseSetting: BooleanSetting = BooleanSetting(
-        key = "enabled",
         displayName = displayName,
         tooltip = tooltipMessage,
         value = false

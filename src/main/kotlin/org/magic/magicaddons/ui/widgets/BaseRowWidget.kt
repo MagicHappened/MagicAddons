@@ -4,7 +4,6 @@ import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.network.chat.Component
 
-
 open class BaseRowWidget<T>(
     val value: T,
     val displayText: (T) -> String
@@ -30,11 +29,11 @@ open class BaseRowWidget<T>(
 
         val usableWidth = width - getRightReservedWidth() - getLeftReservedWidth()
 
-        val text = font.substrByWidth(Component.literal(displayText(value)), usableWidth)
+        val text = font.plainSubstrByWidth(displayText(value), usableWidth)
 
         graphics.drawString(
             font,
-            Component.literal(text.string),
+            Component.literal(text),
             x + textLeftPadding + getLeftReservedWidth(),
             y + (height - font.lineHeight) / 2,
             0xFFFFFFFF.toInt(),

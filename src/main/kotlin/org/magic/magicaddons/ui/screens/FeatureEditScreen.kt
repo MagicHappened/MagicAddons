@@ -1,4 +1,4 @@
-package org.magic.magicaddons.config.ui.screen
+package org.magic.magicaddons.ui.screens
 
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
@@ -20,6 +20,8 @@ class FeatureEditScreen(
 ) : Screen(Component.literal(feature.displayName)) {
     var hoveredWidget: SettingWidget<*>? = null
 
+    var needsRelayout = false
+
     val childrenSettings: List<SettingNode<*>> = feature.baseSetting.children
         ?: throw IllegalStateException("Cannot construct a feature edit screen for a feature with no nested settings")
 
@@ -34,7 +36,11 @@ class FeatureEditScreen(
 
     override fun init() {
         super.init()
+        layoutElements()
 
+    }
+
+    fun layoutElements(){
         val count = childrenSettings.size
         if (count == 0) return
 
@@ -43,16 +49,17 @@ class FeatureEditScreen(
         val widgetWidth = (settingsTotalWidth - totalSpacing) / count
 
         childrenSettings.forEachIndexed { index, setting ->
-            val widget = SettingWidgetFactory.create(setting)
+            val widget = SettingWidgetFactory.create(setting).apply {
+                requestRelayout = { layoutChildren() }
+            }
 
             val xOffset = index * (widgetWidth + settingSpacingX)
 
             widget.width = widgetWidth
             widget.x = screenPaddingX + xOffset
             widget.y = screenPaddingY
-
-
-            widget.init()
+            widget.baseWidget = true
+            widget.layout()
             baseChildrenWidgets.add(widget)
             addRenderableWidget(widget)
         }

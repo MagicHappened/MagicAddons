@@ -40,7 +40,6 @@ object GreenhousePresets : Feature() {
 
     override val baseSetting: BooleanSetting =
         BooleanSetting(
-            key = "enabled",
             displayName = displayName,
             tooltip = tooltipMessage,
             value = true

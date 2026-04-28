@@ -4,7 +4,6 @@ import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.network.chat.Component
-import org.magic.magicaddons.config.ui.ClickableRowWidget
 import org.magic.magicaddons.data.config.EnumSetting
 import org.magic.magicaddons.util.ScreenUtil.drawBorder
 import org.magic.magicaddons.util.ScreenUtil.drawLine
@@ -16,11 +15,24 @@ class EnumSettingWidget<T : Enum<T>>(
 
     var selectionMenuExpanded = false
 
+    override val childrenWidgets: MutableList<SettingWidget<*>> = mutableListOf()
+    override val hasChildren: Boolean = true
+
     private val selectionOptions: MutableList<ClickableRowWidget<T>> = mutableListOf()
 
-    override fun init() {
-        selectionOptions.clear()
+    override fun initChildren() {
         childrenWidgets.clear()
+        setting.childrenProvider?.invoke(setting.value)?.forEach {
+            childrenWidgets.add(SettingWidgetFactory.create(it).apply {
+                selectionMenuExpanded = true
+            }
+            )
+        } ?: throw IllegalStateException("Enum factory must not be null")
+
+    }
+
+    fun initDropdown(){ //call on widget creation (dont need to recreate dropdown option widgets)
+        selectionOptions.clear()
 
         val enumValues = setting.value.javaClass.enumConstants
         enumValues.forEach { enumValue ->
@@ -31,13 +43,11 @@ class EnumSettingWidget<T : Enum<T>>(
             )
             selectionOptions.add(dropDown)
         }
+    }
 
 
-        setting.children?.forEach {
-            childrenWidgets.add(SettingWidgetFactory.create(it))
-        }
-
-        super.init()
+    override fun layout() { //delegate more into this function in future maybe?
+        layoutDropdown() //maybe arrow and text selection too :think:
     }
 
     private fun layoutDropdown() {
@@ -101,7 +111,6 @@ class EnumSettingWidget<T : Enum<T>>(
         renderChildren(graphics, mouseX, mouseY, delta)
 
         if (selectionMenuExpanded) {
-            layoutDropdown()
             selectionOptions.forEach { it.render(graphics) }
         }
     }
@@ -113,13 +122,7 @@ class EnumSettingWidget<T : Enum<T>>(
         if (changed) {
             setting.value = selectedValue
 
-            // rebuild children
-            childrenWidgets.clear()
-            setting.children?.forEach {
-                childrenWidgets.add(SettingWidgetFactory.create(it))
-            }
-
-            init()
+            initChildren()
             childrenExpanded = true
         }
     }
@@ -143,6 +146,7 @@ class EnumSettingWidget<T : Enum<T>>(
 
                 0 -> { // left click for dropdown
                     selectionMenuExpanded = !selectionMenuExpanded
+                    layoutDropdown()
                     return true
                 }
             }

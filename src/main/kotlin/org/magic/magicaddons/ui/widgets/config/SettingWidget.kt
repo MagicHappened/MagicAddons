@@ -9,12 +9,13 @@ import net.minecraft.client.gui.narration.NarrationElementOutput
 import net.minecraft.client.input.CharacterEvent
 import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
-import org.magic.magicaddons.config.ui.screen.FeatureEditScreen
+import org.magic.magicaddons.ui.screens.FeatureEditScreen
 import org.magic.magicaddons.data.config.SettingNode
 import org.magic.magicaddons.util.ScreenUtil.drawSimpleTooltip
 
 abstract class SettingWidget<T>(
-    protected val node: SettingNode<T>
+    protected val node: SettingNode<T>,
+    var requestRelayout: (() -> Unit)? = null
 ) : Renderable, GuiEventListener, NarratableEntry {
 
     var x: Int = 0
@@ -23,11 +24,12 @@ abstract class SettingWidget<T>(
     open var height: Int = 40
 
     protected val childPadding: Int = 4
-
+    var baseWidget = false
     open var hovered: Boolean = false
     open var childrenExpanded: Boolean = false
 
-    open val childrenWidgets: MutableList<SettingWidget<*>> = mutableListOf()
+    abstract val hasChildren: Boolean
+    abstract val childrenWidgets: MutableList<SettingWidget<*>>
 
     protected val borderColor: Int = 0xFF000000.toInt()
     protected val borderSize: Int = 2
@@ -37,20 +39,42 @@ abstract class SettingWidget<T>(
     protected val textYPad: Int = 10
 
 
-    open fun init() {
-        layoutChildren()
-        childrenWidgets.forEach { it.init() }
+    open fun initChildren() {
+        node.children?.forEach {
+            childrenWidgets.add(SettingWidgetFactory.create(it).apply {
+                requestRelayout = {
+                    this@SettingWidget.layoutChildrenBut(this@SettingWidget) // this is calling upper layer!! dont touch
+                }
+            })
+        }
     }
+    open fun layout(){}
 
-    protected open fun layoutChildren() {
+    open fun layoutChildren() {
+        if (!childrenExpanded) return
         var currentY = y + height + childPadding
 
         childrenWidgets.forEach {
-            it.x = x + 10
-            it.y = currentY
-            it.width = width - 10
-            currentY += it.getTotalHeight() + childPadding
+            currentY = layoutChild(it,currentY)
         }
+    }
+    private fun layoutChildrenBut(child: SettingWidget<*>) {
+        if (!childrenExpanded) return
+        var currentY = y + height + childPadding
+
+        childrenWidgets.forEach {
+            if (it == child) return@forEach
+            currentY = layoutChild(it,currentY)
+        }
+    }
+
+    private fun layoutChild(child: SettingWidget<*>, currentY: Int): Int {
+        child.x = x + 10
+        child.y = currentY
+        child.width = width - 10
+        child.layout()
+        child.layoutChildren()
+        return currentY + child.getTotalHeight() + childPadding
     }
 
     abstract override fun render(graphics: GuiGraphics, mouseX: Int, mouseY: Int, delta: Float)
@@ -70,11 +94,36 @@ abstract class SettingWidget<T>(
 
 
     override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
+        val inside = isMouseOver(mouseButtonEvent.x, mouseButtonEvent.y)
+
+        if (inside && mouseButtonEvent.button() == 1) { //right clicked on widget
+            if (!hasChildren){
+                return false // we call super after base widget so this is fine
+            }
+            if (!childrenExpanded){
+                childrenExpanded = true
+                initChildren()
+                layoutChildren()
+            }
+            else {
+                childrenWidgets.clear()
+                childrenExpanded = false
+            }
+
+            if (!baseWidget){ // prevent triggering twice.
+                requestRelayout?.invoke()
+            }
+            return true
+        }
+
         if (childrenExpanded) {
             childrenWidgets.forEach {
-                if (it.mouseClicked(mouseButtonEvent, doubled)) return true
+                if (it.mouseClicked(mouseButtonEvent, doubled))
+                    return true
             }
         }
+
+
         return false
     }
 
