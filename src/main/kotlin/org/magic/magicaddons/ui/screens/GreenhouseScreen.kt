@@ -7,7 +7,7 @@ import net.minecraft.client.renderer.RenderPipelines
 import net.minecraft.network.chat.Component
 import net.minecraft.resources.Identifier
 import org.magic.magicaddons.events.EventBus
-import org.magic.magicaddons.features.farming.GreenhousePresets
+import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData
 import org.magic.magicaddons.ui.widgets.ArrowWidget
 import org.magic.magicaddons.ui.widgets.greenhouse.GreenhouseGridWidget
 import org.magic.magicaddons.util.ChatUtils
@@ -67,21 +67,22 @@ class GreenhouseScreen(title: Component) : Screen(title) {
         startX = (width - containerSize) / 2
         startY = paddingY
 
-        if (GreenhousePresets.initializedGreenhouseIds.isEmpty()) {
+        if (GreenhouseData.initializedIds.isEmpty()) {
             if (!sentWarnings) {
                 ChatUtils.sendWithPrefix("No initialized greenhouse ids, please enter your greenhouse.")
             }
             displayedGridWidget = null
             return
         }
-        if (GreenhousePresets.knownGreenhouseIds.size != GreenhousePresets.initializedGreenhouseIds.size) {
+
+        if (GreenhouseData.knownIds.size != GreenhouseData.initializedIds.size) {
             if (!sentWarnings) {
                 ChatUtils.sendWithPrefix("Not all greenhouses initialized, enter the other greenhouses to see them.")
             }
-
         }
-        GreenhousePresets.greenhouseList.forEach {
-            val gridWidget = GreenhouseGridWidget(it,gridSize,slotSize).apply {
+
+        GreenhouseData.grids.forEach {
+            val gridWidget = GreenhouseGridWidget(it, gridSize, slotSize).apply {
                 widgetX = startX
                 widgetY = startY
                 widgetWidth = containerSize

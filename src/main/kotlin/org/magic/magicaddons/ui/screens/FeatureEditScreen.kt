@@ -20,8 +20,6 @@ class FeatureEditScreen(
 ) : Screen(Component.literal(feature.displayName)) {
     var hoveredWidget: SettingWidget<*>? = null
 
-    var needsRelayout = false
-
     val childrenSettings: List<SettingNode<*>> = feature.baseSetting.children
         ?: throw IllegalStateException("Cannot construct a feature edit screen for a feature with no nested settings")
 

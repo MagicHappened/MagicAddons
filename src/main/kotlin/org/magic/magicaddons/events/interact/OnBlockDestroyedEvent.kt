@@ -4,4 +4,4 @@ import net.minecraft.client.player.LocalPlayer
 import net.minecraft.core.BlockPos
 import net.minecraft.world.level.block.state.BlockState
 
-class OnBlockDestroyedEvent(pos: BlockPos, player: LocalPlayer, blockState: BlockState?)
+class OnBlockDestroyedEvent(val pos: BlockPos,val player: LocalPlayer,val blockState: BlockState?)
