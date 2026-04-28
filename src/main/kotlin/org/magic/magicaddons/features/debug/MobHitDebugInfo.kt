@@ -10,7 +10,7 @@ import net.minecraft.world.entity.EquipmentSlot
 import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.decoration.ArmorStand
 import net.minecraft.world.entity.player.Player
-import org.magic.magicaddons.config.data.BooleanSetting
+import org.magic.magicaddons.data.config.BooleanSetting
 import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.events.EventHandler
 import org.magic.magicaddons.events.interact.OnAttackEntityEvent
@@ -30,7 +30,6 @@ object MobHitDebugInfo : Feature() {
     override val category: String = "debug"
 
     override val baseSetting: BooleanSetting = BooleanSetting(
-        key = "enabled",
         displayName = displayName,
         tooltip = tooltipMessage,
         value = false

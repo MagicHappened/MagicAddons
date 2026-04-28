@@ -41,9 +41,9 @@ object OldConfigHandler {
 
         var updated = raw
 
-        // if (oldVersion == "1.0.0")
-        // updated = migrate_1_0_0_to_1_0_1(updated)
-        //
+        if (oldVersion == "1.0.0") {
+            updated = update_to_1_0_1(updated)
+        }
 
         // always update version at the end
         val info = mutableMapOf<String, Any>(
@@ -59,4 +59,30 @@ object OldConfigHandler {
         val info = raw[INFO_KEY] as? Map<*, *> ?: return null
         return info[VERSION_KEY] as? String
     }
+
+    // change 1_0_0 -> 1_0_1 EntityTypePlayer or Other no longer enum
+    fun update_to_1_0_1(raw: MutableMap<String, Any>): MutableMap<String, Any> {
+        val mapToUpdate = raw.toMutableMap()
+        val configMap = raw["config"] as? MutableMap<String, Any> ?: return raw
+        val combat = configMap["combat"] as? MutableMap<String, Any> ?: return raw
+        val highlightMobs = combat["HighlightMobs"] as? MutableMap<String, Any> ?: return raw
+        val trueValue = highlightMobs["EntityTypePlayerOtherEnum"]
+        when (trueValue) {
+            is String -> {
+                if (trueValue == "Player"){
+                    highlightMobs["EntityTypePlayerEnabled"] = true
+                }
+                else if (trueValue == "Other"){
+                    highlightMobs["EntityTypeOtherEnabled"] = true
+                }
+            }
+            else -> return raw
+        }
+        highlightMobs.remove("EntityTypePlayerOtherEnum")
+        mapToUpdate["config"] = configMap
+        return mapToUpdate
+    }
+
+
+
 }

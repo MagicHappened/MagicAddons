@@ -1,4 +1,4 @@
-package org.magic.magicaddons.config.ui.screen
+package org.magic.magicaddons.ui.screens
 
 
 import net.minecraft.client.Minecraft
@@ -7,11 +7,10 @@ import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.network.chat.Component
 import org.magic.magicaddons.config.MagicAddonsConfigJsonHandler
-import org.magic.magicaddons.config.ui.ConfigCategoryWidget
+import org.magic.magicaddons.ui.widgets.config.ConfigCategoryWidget
 import org.magic.magicaddons.features.Feature
 import org.magic.magicaddons.features.FeatureManager
 import org.magic.magicaddons.util.ChatUtils
-import org.magic.magicaddons.util.ScreenUtil.drawMultilineBox
 import org.magic.magicaddons.util.ScreenUtil.drawMultilineBoxCentered
 
 class ConfigScreen(title: Component, val parent: Screen?) : Screen(title) {

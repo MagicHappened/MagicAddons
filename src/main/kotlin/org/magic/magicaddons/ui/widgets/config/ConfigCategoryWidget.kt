@@ -1,4 +1,4 @@
-package org.magic.magicaddons.config.ui
+package org.magic.magicaddons.ui.widgets.config
 
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
@@ -7,7 +7,6 @@ import net.minecraft.client.gui.components.events.GuiEventListener
 import net.minecraft.client.gui.narration.NarratableEntry
 import net.minecraft.client.gui.narration.NarrationElementOutput
 import net.minecraft.client.input.MouseButtonEvent
-import org.magic.magicaddons.config.ui.feature.FeatureToggleWidget
 import org.magic.magicaddons.features.Feature
 
 class ConfigCategoryWidget(

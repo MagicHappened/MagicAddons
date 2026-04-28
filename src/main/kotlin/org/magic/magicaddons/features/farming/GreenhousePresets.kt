@@ -1,6 +1,6 @@
 package org.magic.magicaddons.features.farming
 
-import org.magic.magicaddons.config.data.BooleanSetting
+import org.magic.magicaddons.data.config.BooleanSetting
 import org.magic.magicaddons.features.Feature
 
 object GreenhousePresets : Feature() {
@@ -11,7 +11,6 @@ object GreenhousePresets : Feature() {
 
     override val baseSetting: BooleanSetting =
         BooleanSetting(
-            key = "enabled",
             displayName = displayName,
             tooltip = tooltipMessage,
             value = false

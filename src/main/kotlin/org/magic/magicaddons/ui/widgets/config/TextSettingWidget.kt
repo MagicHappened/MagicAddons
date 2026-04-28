@@ -1,4 +1,4 @@
-package org.magic.magicaddons.config.ui.feature
+package org.magic.magicaddons.ui.widgets.config
 
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
@@ -7,14 +7,14 @@ import net.minecraft.client.input.CharacterEvent
 import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.network.chat.Component
-import org.magic.magicaddons.config.data.TextSetting
-import org.magic.magicaddons.config.ui.ClickableRowWidget
+import org.magic.magicaddons.data.config.TextSetting
 import org.magic.magicaddons.util.ScreenUtil.drawBorder
 
 class TextSettingWidget(
     private val setting: TextSetting
 ) : SettingWidget<String>(setting) {
 
+    override val hasChildren: Boolean = false
     override var childrenExpanded: Boolean = false
     override var hovered: Boolean = false
 
@@ -36,7 +36,8 @@ class TextSettingWidget(
 
     private val historyWidgets: MutableList<ClickableRowWidget<String>> = mutableListOf()
 
-    override fun init() {
+
+    override fun layout() {
         val font = Minecraft.getInstance().font
 
         textWidget.x = x + borderSize + textFieldPadding
@@ -49,8 +50,6 @@ class TextSettingWidget(
         textWidget.setResponder {
             setting.value = it
         }
-
-        super.init()
     }
 
     private fun rebuildHistory() {

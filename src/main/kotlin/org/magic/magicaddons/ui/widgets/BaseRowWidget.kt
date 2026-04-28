@@ -1,4 +1,4 @@
-package org.magic.magicaddons.config.ui
+package org.magic.magicaddons.ui.widgets
 
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
