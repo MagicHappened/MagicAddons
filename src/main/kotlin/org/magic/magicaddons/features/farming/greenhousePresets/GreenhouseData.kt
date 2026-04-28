@@ -2,18 +2,23 @@ package org.magic.magicaddons.features.farming.greenhousePresets
 
 import net.minecraft.client.Minecraft
 import net.minecraft.core.BlockPos
+import net.minecraft.world.entity.EquipmentSlot
+import net.minecraft.world.entity.decoration.ArmorStand
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
+import org.magic.magicaddons.data.greenhouse.GreenhouseElementRegistry
 import org.magic.magicaddons.data.greenhouse.GreenhouseGrid
 import org.magic.magicaddons.data.greenhouse.GreenhouseSlot
 import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.events.EventHandler
 import org.magic.magicaddons.events.interact.OnBlockDestroyedEvent
 import org.magic.magicaddons.events.interact.OnBlockPlacedEvent
+import org.magic.magicaddons.events.interact.OnStartDestroyBlockEvent
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhousePresets.baseSetting
 import org.magic.magicaddons.util.ChatUtils
+import org.magic.magicaddons.util.PlayerUtils
 import tech.thatgravyboat.skyblockapi.api.SkyBlockAPI
 import tech.thatgravyboat.skyblockapi.api.events.base.Subscription
 import tech.thatgravyboat.skyblockapi.api.events.base.predicates.OnlyIn
@@ -99,6 +104,7 @@ object GreenhouseData {
         val maxX = buildArea.maxX.toInt()
         val maxZ = buildArea.maxZ.toInt()
 
+        //getEntityDataForBox(buildArea)
         var gridX = 0
         for (x in minX until maxX) {
 
@@ -120,6 +126,65 @@ object GreenhouseData {
 
         return grid
     }
+
+    fun getEntityDataForBox(box: AABB) {
+        val world = Minecraft.getInstance().level ?: return
+
+        val entities = world.getEntities(null, box)
+        val foundHashes: MutableList<String> = mutableListOf()
+
+        for (entity in entities) {
+            if (entity !is ArmorStand) continue
+
+            val pos = entity.position()
+
+            val headItem = entity.getItemBySlot(EquipmentSlot.HEAD)
+            if (headItem.isEmpty) continue
+
+            val hash = PlayerUtils.getSkinHash(headItem) ?: continue
+            foundHashes += hash
+            ChatUtils.sendWithPrefix("Found stand at $pos hash=$hash")
+        }
+
+
+        val minX = box.minX.toInt()
+        val minZ = box.minZ.toInt()
+        val maxX = box.maxX.toInt()
+        val maxZ = box.maxZ.toInt()
+
+        for (x in minX until maxX) {
+            for (z in minZ until maxZ) {
+                val pos = BlockPos(x, 74, z)
+                val state = world.getBlockState(pos)
+
+                if (!state.isAir) {
+                    ChatUtils.sendWithPrefix("Found block at $pos: ${state.block}")
+                }
+
+                for (factory in GreenhouseElementRegistry.getAllFactories()) {
+                    val element = factory.invoke()
+
+                    // skip empty definitions
+                    if (element.blocks.isEmpty() && element.standHashes.isEmpty()) continue
+
+                    val blockMatch = element.blocks.contains(state.block)
+
+                    val hashMatch = element.standHashes.any { it in foundHashes }
+
+                    if (blockMatch || hashMatch) {
+                        ChatUtils.sendWithPrefix(
+                            "Detected element '${element.name}' at $pos (block=${state.block})"
+                        )
+                    }
+                }
+
+            }
+        }
+
+
+    }
+
+
 
      fun getBuildableArea(box: AABB): AABB {
         val minX = box.minX + BUILD_OFFSET
@@ -191,4 +256,42 @@ object GreenhouseData {
         grid.setSlot(changedSlot)
     }
 
+    @EventHandler
+    fun onStartBlockBreak(event: OnStartDestroyBlockEvent) {
+        if (!baseSetting.value) return
+        val world = Minecraft.getInstance().level ?: return
+        val pos = event.blockPos
+
+        val state = world.getBlockState(pos)
+
+        ChatUtils.sendWithPrefix(
+            "BLOCK BREAK DEBUG -> pos=$pos block=${state.block}"
+        )
+
+        val box = AABB(
+            pos.x - 1.0, pos.y - 1.0, pos.z - 1.0,
+            pos.x + 2.0, pos.y + 2.0, pos.z + 2.0
+        )
+
+        val entities = world.getEntities(null, box)
+
+        for (entity in entities) {
+            if (entity !is ArmorStand) continue
+
+            val headItem = entity.getItemBySlot(EquipmentSlot.HEAD)
+
+            val hash = if (!headItem.isEmpty)
+                PlayerUtils.getSkinHash(headItem)
+            else
+                null
+
+            ChatUtils.sendWithPrefix(
+                "ARMOR STAND -> pos=${entity.position()} " +
+                        "head=${headItem.item} hash=$hash"
+            )
+        }
+
+        event.canceled = true
+
+    }
 }

@@ -8,8 +8,11 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockId
 data class Footprint(val width: Int, val height: Int)
 
 abstract class GreenhouseElement {
+
     abstract val name: String
     abstract val SkyBlockId: SkyBlockId?
+    open val standHashes: MutableList<String> = mutableListOf()
+    open val blocks: MutableList<Block> = mutableListOf()
 
     open val footprint: Footprint = Footprint(1,1)
     open val requiredSoil: Block = Blocks.FARMLAND
@@ -21,5 +24,6 @@ abstract class GreenhouseElement {
     val isBaseCrop : Boolean = false
     val isMutation : Boolean = false
     val isRareCrop : Boolean = false
+
 
 }

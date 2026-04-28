@@ -4,7 +4,6 @@ import com.mojang.serialization.Codec
 import com.mojang.serialization.codecs.RecordCodecBuilder
 import net.minecraft.core.BlockPos
 import net.minecraft.world.phys.Vec3
-import org.apache.logging.log4j.core.pattern.AbstractStyleNameConverter
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData
 import tech.thatgravyboat.skyblockapi.api.profile.garden.Plot
 
@@ -20,8 +19,9 @@ class GreenhouseGrid {
         }
     }
 
-    val plants = mutableListOf<PlantInstance>()
+    val elementInstances = mutableListOf<GreenhouseElementInstance>()
 
+    val elements = mutableListOf<GreenhouseElement>() // runtime (derived)
 
     fun getSlotAt(blockPos: BlockPos): GreenhouseSlot? {
         if (blockPos.y != 73) return null
@@ -46,8 +46,14 @@ class GreenhouseGrid {
             ?.set(slot.x, slot)
     }
 
+    fun rebuildElements() {
+        elements.clear()
 
-
+        for (instance in elementInstances) {
+            val element = GreenhouseElementRegistry.create(instance.elementId) ?: continue
+            elements.add(element)
+        }
+    }
 
     companion object {
         val CODEC: Codec<GreenhouseGrid> = RecordCodecBuilder.create { instance ->
@@ -59,18 +65,18 @@ class GreenhouseGrid {
                         grid.slots.flatten()
                     },
 
-                PlantInstance.CODEC.listOf()
-                    .fieldOf("plants")
-                    .forGetter { it.plants }
+                GreenhouseElementInstance.CODEC.listOf()
+                    .fieldOf("elements")
+                    .forGetter { it.elementInstances }
 
-            ).apply(instance) { slots, plants ->
+            ).apply(instance) { slots, elements ->
 
                 val grid = GreenhouseGrid()
                 slots.forEach {
                     val slot = GreenhouseSlot(it.x,it.y,it.unlocked,it.placedBlock)
                     grid.setSlot(slot)
                 }
-                grid.plants.addAll(plants)
+                grid.elementInstances.addAll(elements)
 
                 grid
             }
