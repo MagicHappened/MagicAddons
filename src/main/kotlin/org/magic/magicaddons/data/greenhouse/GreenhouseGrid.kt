@@ -2,7 +2,10 @@ package org.magic.magicaddons.data.greenhouse
 
 import com.mojang.serialization.Codec
 import com.mojang.serialization.codecs.RecordCodecBuilder
+import net.minecraft.core.BlockPos
+import net.minecraft.world.phys.Vec3
 import org.apache.logging.log4j.core.pattern.AbstractStyleNameConverter
+import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData
 import tech.thatgravyboat.skyblockapi.api.profile.garden.Plot
 
 class GreenhouseGrid {
@@ -19,6 +22,21 @@ class GreenhouseGrid {
 
     val plants = mutableListOf<PlantInstance>()
 
+
+    fun getSlotAt(blockPos: BlockPos): GreenhouseSlot? {
+        if (blockPos.y != 73) return null
+
+        val plotBox = plot?.aabb ?: return null
+        val buildArea = GreenhouseData.getBuildableArea(plotBox)
+        if (!buildArea.contains(Vec3.atCenterOf(blockPos))) return null
+
+        val minX = buildArea.minX.toInt()
+        val minZ = buildArea.minZ.toInt()
+
+        val gridX = blockPos.x - minX
+        val gridY = blockPos.z - minZ
+        return getSlot(gridX, gridY)
+    }
 
     fun getSlot(x: Int, y: Int): GreenhouseSlot? {
         return slots.getOrNull(y)?.getOrNull(x)

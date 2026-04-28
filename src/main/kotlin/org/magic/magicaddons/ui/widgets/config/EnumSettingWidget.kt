@@ -132,6 +132,7 @@ class EnumSettingWidget<T : Enum<T>>(
             selectionOptions.forEach {
                 if (it.mouseClicked(mouseButtonEvent, doubled)) return true
             }
+
         }
 
         val inside = isMouseOver(mouseButtonEvent.x, mouseButtonEvent.y)

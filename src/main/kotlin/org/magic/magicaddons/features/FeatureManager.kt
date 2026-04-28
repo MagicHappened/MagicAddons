@@ -3,7 +3,7 @@ package org.magic.magicaddons.features
 import org.magic.magicaddons.config.MagicAddonsConfigJsonHandler.configMap
 import org.magic.magicaddons.features.combat.HighlightMobs
 import org.magic.magicaddons.features.debug.MobHitDebugInfo
-import org.magic.magicaddons.features.farming.GreenhousePresets
+import org.magic.magicaddons.features.farming.greenhousePresets.GreenhousePresets
 import org.magic.magicaddons.features.kuudra.CustomRendSound
 import org.magic.magicaddons.features.mining.HidePowderCoatingParticles
 
