@@ -7,20 +7,19 @@ import net.minecraft.client.renderer.RenderPipelines
 import net.minecraft.network.chat.Component
 import net.minecraft.resources.Identifier
 
-
 class ClickableButtonWidget(
     var x: Int,
     var y: Int,
     var width: Int,
     var height: Int,
-    private val message: Component
+    private val message: Component,
 ) {
     val BUTTON = Identifier.fromNamespaceAndPath("minecraft", "widget/button")
     val BUTTON_HOVERED = Identifier.fromNamespaceAndPath("minecraft", "widget/button_highlighted")
 
     private var hovered = false
 
-    fun render(context: GuiGraphics, mouseX: Int, mouseY: Int, delta: Float) {
+    fun render(graphics: GuiGraphics, mouseX: Int, mouseY: Int, delta: Float) {
         val font = Minecraft.getInstance().font
         hovered = isHovered(mouseX, mouseY)
 
@@ -29,8 +28,7 @@ class ClickableButtonWidget(
         else
             BUTTON
 
-
-        context.blitSprite(
+        graphics.blitSprite(
             RenderPipelines.GUI_TEXTURED,
             sprite,
             x,
@@ -39,14 +37,12 @@ class ClickableButtonWidget(
             height
         )
 
-
-        // centered text
         val textX = x + (width - font.width(message)) / 2
         val textY = y + (height - 8) / 2
         val color = (message.style.color?.value ?: 0xFFFFFFFF.toInt()) or 0xFF000000.toInt()
 
-        context.drawString(
-            Minecraft.getInstance().font,
+        graphics.drawString(
+            font,
             message,
             textX,
             textY,

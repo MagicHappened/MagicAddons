@@ -12,17 +12,12 @@ class BooleanSettingWidget(
     private val setting: BooleanSetting
 ) : SettingWidget<Boolean>(setting) {
 
+    override val childrenWidgets: MutableList<SettingWidget<*>> = mutableListOf()
+    override val hasChildren: Boolean = true
     private val checkbox = CheckboxWidget(checked = setting.value)
 
-    override fun init() {
-        childrenWidgets.clear()
-
-        setting.children?.forEach {
-            childrenWidgets.add(SettingWidgetFactory.create(it))
-        }
+    override fun layout() {
         layoutCheckbox()
-
-        super.init()
     }
 
     private fun layoutCheckbox() {
@@ -58,14 +53,6 @@ class BooleanSettingWidget(
             setting.value = !setting.value
             return true
         }
-
-        val inside = isMouseOver(mouseButtonEvent.x, mouseButtonEvent.y)
-
-        if (inside && mouseButtonEvent.button() == 1) {
-            childrenExpanded = !childrenExpanded
-            return true
-        }
-
         return super.mouseClicked(mouseButtonEvent, doubled)
     }
 }

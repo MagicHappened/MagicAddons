@@ -2,9 +2,7 @@ package org.magic.magicaddons.ui.widgets.config
 
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.input.MouseButtonEvent
-import org.magic.magicaddons.config.ui.ClickableRowWidget
 import org.magic.magicaddons.ui.widgets.CheckboxWidget
-
 
 open class ToggleRowWidget<T>(
     value: T,

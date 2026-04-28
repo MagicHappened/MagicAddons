@@ -8,10 +8,9 @@ import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.network.chat.Component
 import net.minecraft.network.chat.Style
-import org.magic.magicaddons.config.ui.ClickableButtonWidget
-import org.magic.magicaddons.config.ui.BaseRowWidget
-import org.magic.magicaddons.data.ListEntry
 import org.magic.magicaddons.data.config.ToggleListSetting
+import org.magic.magicaddons.ui.widgets.BaseRowWidget
+import org.magic.magicaddons.data.ListEntry
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.ScreenUtil.drawBorder
 import org.magic.magicaddons.util.ScreenUtil.drawLine
@@ -21,7 +20,7 @@ class TextListSettingWidget(
     val listSetting: ToggleListSetting
 ) : SettingWidget<MutableList<ListEntry>>(listSetting) {
 
-
+    override val hasChildren: Boolean = false
     override var childrenExpanded: Boolean = true
     override var hovered: Boolean = false
 
@@ -61,9 +60,8 @@ class TextListSettingWidget(
     )
 
 
-    override fun init() {
+    override fun layout() {
         val font = Minecraft.getInstance().font
-
         titleRow.y = y + borderSize
         titleRow.x = x + borderSize
 
@@ -120,7 +118,6 @@ class TextListSettingWidget(
         currentY += valueInputField.height + inputYPadding
         currentY += borderSize
         height = currentY - y
-        super.init()
     }
 
     override fun render(graphics: GuiGraphics, mouseX: Int, mouseY: Int, delta: Float) {
@@ -165,6 +162,7 @@ class TextListSettingWidget(
         submitButton.render(graphics, mouseX, mouseY, delta)
 
         graphics.drawBorder(x, y, x + width, y + height, borderSize, borderColor)
+
     }
 
     private fun toggleEntry(entry: ListEntry) {
@@ -173,7 +171,8 @@ class TextListSettingWidget(
 
     private fun removeEntry(entry: ListEntry) {
         listSetting.value.remove(entry)
-        init()
+        ChatUtils.sendWithPrefix("Removed: ${entry.name} Value:\n${entry.value}")
+        initChildren()
     }
 
     private fun addEntry(name: String, value: String){
@@ -185,7 +184,7 @@ class TextListSettingWidget(
             ChatUtils.sendWithPrefix("Cannot add a duplicate value.")
         }
         listSetting.value.add(ListEntry(name, value, true))
-        init()
+        initChildren()
     }
 
     override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {

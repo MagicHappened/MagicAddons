@@ -72,23 +72,44 @@ object HighlightMobs : Feature(), EntityUtils.HighlightSource {
                 tooltip = "If to use an entity type based filtering for mob highlighting",
                 value = false,
                 children = listOf(
-                    EnumSetting<EntityTypeDetection>(
-                        key = "EntityTypePlayerOtherEnum",
-                        displayName = "Entity Type", // just dont display this (only values)
-                        tooltip = "Which entity type detection to use",
-                        value = EntityTypeDetection.Player,
-                        childrenProvider = { entityTypeDetection ->
-                            when (entityTypeDetection) {
-                                EntityTypeDetection.Player -> listOf(
-                                    entityTypePlayerSkinHashList
-                                )
-
-                                EntityTypeDetection.Other -> listOf(
-                                    entityTypeMobPathValue
-                                ) // for children provider cant create new instances cuz no saving of old data
-                            }
-                        }
+                    BooleanSetting(
+                        key = "EntityTypePlayerEnabled",
+                        displayName = "Player Entity",
+                        tooltip = "Enables searching based on player skin hashes.",
+                        value = false,
+                        children = listOf(
+                            entityTypePlayerSkinHashList
+                        )
+                    ),
+                    BooleanSetting(
+                        key = "EntityTypeOtherEnabled",
+                        displayName = "Other Entities",
+                        tooltip = "Enables searching based on entity paths",
+                        value = false,
+                        children = listOf(
+                            entityTypeMobPathValue
+                        )
                     )
+//                    EnumSetting<EntityTypeDetection>(
+//                        key = "EntityTypePlayerOtherEnum",
+//                        displayName = "Entity Type", // just dont display this (only values)
+//                        tooltip = "Which entity type detection to use",
+//                        value = EntityTypeDetection.Player,
+//                        children = listOf(
+//                            entityTypePlayerSkinHashList,
+//                            entityTypeMobPathValue
+//                        ),
+//                        childrenProvider = { entityTypeDetection ->
+//                            when (entityTypeDetection) {
+//                                EntityTypeDetection.Player -> listOf(
+//                                    entityTypePlayerSkinHashList
+//                                )
+//                                EntityTypeDetection.Other -> listOf(
+//                                    entityTypeMobPathValue
+//                                )
+//                            }
+//                        }
+//                    )
                 )
             ),
             BooleanSetting(
@@ -182,36 +203,44 @@ object HighlightMobs : Feature(), EntityUtils.HighlightSource {
         if (entityTypeSetting?.value == true) {
             hasAnyFilter = true
 
-            val enumSetting = entityTypeSetting
-                .getChild<EnumSetting<EntityTypeDetection>>("EntityTypePlayerOtherEnum")
+            val entityTypePlayerEnabled = entityTypeSetting
+                .getChild<BooleanSetting>("EntityTypePlayerEnabled")
 
-            val result = when (enumSetting?.value) {
-                EntityTypeDetection.Player -> {
-                    if (entity !is Player) return false
-
-                    val skinHashEntryList = enumSetting
-                        .getChild<ToggleListSetting>("EntityTypePlayerSkinHash")?.value
-                        ?: return false
+            val typePlayerResult =
+                if (entity !is Player) {
+                    false
+                } else {
+                    val skinHashEntryList = entityTypePlayerEnabled
+                        ?.getChild<ToggleListSetting>("EntityTypePlayerSkinHash")?.value
+                        ?: emptyList()
 
                     val actualHash = PlayerUtils.getSkinHash(entity)
                     val hashList = skinHashEntryList
                         .filter { it.enabled }
                         .map { it.value }
-                    return actualHash in hashList
+
+                    actualHash in hashList
                 }
 
-                EntityTypeDetection.Other -> {
-                    val expectedPath = enumSetting
-                        .getChild<TextSetting>("EntityTypeMobPathValue")?.value
-                        ?: return false
-                    if (entity is LocalPlayer) return false
-                    entity.type.toString().contains(expectedPath)
+            val entityTypeOtherEnabled = entityTypeSetting
+                .getChild<BooleanSetting>("EntityTypeOtherEnabled")
+
+            val typeOtherResult =
+                if (entity is LocalPlayer) {
+                    false
+                } else {
+                    val expectedPath = entityTypeOtherEnabled
+                        ?.getChild<TextSetting>("EntityTypeMobPathValue")?.value
+                        ?: ""
+
+                    if (expectedPath.isEmpty()){
+                        false
+                    }
+                    else {
+                        entity.type.toString().contains(expectedPath)
+                    }
                 }
-
-                null -> false
-            }
-
-            matches = result
+            matches = typePlayerResult || typeOtherResult
         }
 
         val mobInfoSetting = baseSetting.getChild<BooleanSetting>("MobInfoEnabled")
@@ -230,7 +259,7 @@ object HighlightMobs : Feature(), EntityUtils.HighlightSource {
                 } == true
 
 
-            matches = matches && (matchesName || matchesArmorStandTag)
+            matches = matches || (matchesName || matchesArmorStandTag)
         }
 
         val entityEquipmentDetection = baseSetting.getChild<BooleanSetting>("EntityEquipmentDetectionEnabled")
@@ -275,7 +304,7 @@ object HighlightMobs : Feature(), EntityUtils.HighlightSource {
 
 
 
-            matches = matches && hashResult
+            matches = matches || hashResult
         }
 
         if (!hasAnyFilter) return false

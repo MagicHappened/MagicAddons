@@ -4,6 +4,7 @@ import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.gui.components.events.GuiEventListener
 import net.minecraft.client.input.MouseButtonEvent
 import org.magic.magicaddons.util.ScreenUtil.drawLine
+import kotlin.math.sqrt
 
 class CheckboxWidget(
     var size: Int = 24,
@@ -48,7 +49,7 @@ class CheckboxWidget(
         // extend first segment slightly
         val dx = x2 - x1
         val dy = y2 - y1
-        val len = kotlin.math.sqrt(dx * dx + dy * dy)
+        val len = sqrt(dx * dx + dy * dy)
 
         val extend = thickness * 0.5f
 

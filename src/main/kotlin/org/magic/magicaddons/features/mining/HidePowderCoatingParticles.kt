@@ -15,7 +15,6 @@ object HidePowderCoatingParticles : Feature() {
         EventBus.register(this)
     }
 
-
     @EventHandler
     fun onAddParticle(event: AddParticleEvent){
         if (!baseSetting.value) return
@@ -35,11 +34,10 @@ object HidePowderCoatingParticles : Feature() {
     override val category: String = "mining"
 
     override val baseSetting: BooleanSetting = BooleanSetting(
-        key = "enabled",
-        displayName = displayName,
-        tooltip = tooltipMessage,
-        value = false
-    )
+            displayName = displayName,
+            tooltip = tooltipMessage,
+            value = false
+        )
 
 
 }

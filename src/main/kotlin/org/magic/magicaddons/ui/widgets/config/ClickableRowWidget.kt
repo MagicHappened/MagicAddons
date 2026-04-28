@@ -1,4 +1,4 @@
-package org.magic.magicaddons.config.ui
+package org.magic.magicaddons.ui.widgets.config
 
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
@@ -6,7 +6,7 @@ import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.client.renderer.RenderPipelines
 import net.minecraft.network.chat.Component
 import net.minecraft.resources.Identifier
-import tech.thatgravyboat.skyblockapi.platform.drawTexture
+import org.magic.magicaddons.ui.widgets.BaseRowWidget
 
 open class ClickableRowWidget<T>(
     value: T,
