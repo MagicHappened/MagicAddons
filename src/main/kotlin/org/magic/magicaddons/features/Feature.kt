@@ -1,7 +1,7 @@
 package org.magic.magicaddons.features
 
 
-import org.magic.magicaddons.config.data.BooleanSetting
+import org.magic.magicaddons.data.config.BooleanSetting
 
 abstract class Feature {
 

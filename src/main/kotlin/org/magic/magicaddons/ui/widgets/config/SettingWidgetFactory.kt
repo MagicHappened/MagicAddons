@@ -1,6 +1,10 @@
-package org.magic.magicaddons.config.ui.feature
+package org.magic.magicaddons.ui.widgets.config
 
-import org.magic.magicaddons.config.data.*
+import org.magic.magicaddons.data.config.BooleanSetting
+import org.magic.magicaddons.data.config.EnumSetting
+import org.magic.magicaddons.data.config.SettingNode
+import org.magic.magicaddons.data.config.TextSetting
+import org.magic.magicaddons.data.config.ToggleListSetting
 
 object SettingWidgetFactory {
 

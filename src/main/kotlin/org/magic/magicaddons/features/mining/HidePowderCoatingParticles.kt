@@ -3,13 +3,11 @@ package org.magic.magicaddons.features.mining
 import net.minecraft.client.Minecraft
 import net.minecraft.core.particles.ParticleTypes
 import net.minecraft.world.phys.Vec3
-import org.magic.magicaddons.config.data.BooleanSetting
+import org.magic.magicaddons.data.config.BooleanSetting
 import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.events.EventHandler
 import org.magic.magicaddons.events.world.AddParticleEvent
 import org.magic.magicaddons.features.Feature
-import tech.thatgravyboat.skyblockapi.api.events.base.Subscription
-import tech.thatgravyboat.skyblockapi.api.events.base.predicates.OnlyIn
 
 object HidePowderCoatingParticles : Feature() {
 
@@ -36,7 +34,6 @@ object HidePowderCoatingParticles : Feature() {
     override val category: String = "mining"
 
     override val baseSetting: BooleanSetting = BooleanSetting(
-            key = "enabled",
             displayName = displayName,
             tooltip = tooltipMessage,
             value = false

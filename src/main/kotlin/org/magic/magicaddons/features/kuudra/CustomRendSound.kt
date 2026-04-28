@@ -9,8 +9,8 @@ import net.minecraft.util.RandomSource
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
-import org.magic.magicaddons.config.data.BooleanSetting
-import org.magic.magicaddons.config.data.TextSetting
+import org.magic.magicaddons.data.config.BooleanSetting
+import org.magic.magicaddons.data.config.TextSetting
 import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.events.EventHandler
 import org.magic.magicaddons.events.interact.OnAnyPlayerSwingEvent
@@ -38,7 +38,6 @@ object CustomRendSound : Feature() {
     override val tooltipMessage: String = "Plays a custom selected sound when a rend pull is detected"
     override val category: String = "kuudra"
     override val baseSetting: BooleanSetting = BooleanSetting(
-        key = "enabled",
         displayName = displayName,
         tooltip = tooltipMessage,
         value = false,
