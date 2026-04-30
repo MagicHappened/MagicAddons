@@ -216,29 +216,25 @@ object GreenhouseData {
         val state = world.getBlockState(pos)
 
         ChatUtils.sendWithPrefix(
-            "BLOCK BREAK DEBUG -> pos=$pos block=${state.block}"
+            "BLOCK BREAK DEBUG -> pos=$pos block=${state.block} \n state=$state"
         )
 
         val box = AABB(
-            pos.x - 1.0, pos.y - 1.0, pos.z - 1.0,
-            pos.x + 1.0, pos.y + 1.0, pos.z + 1.0
+            pos.x.toDouble(),
+            pos.y.toDouble(),
+            pos.z.toDouble(),
+            pos.x + 1.0,
+            pos.y.toDouble(),
+            pos.z + 1.0
         )
 
-        val entities = world.getEntities(null, box)
-
-        for (entity in entities) {
+        for (entity in world.getEntities(null, box)) {
             if (entity !is ArmorStand) continue
 
-            val headItem = entity.getItemBySlot(EquipmentSlot.HEAD)
-
-            val hash = if (!headItem.isEmpty)
-                PlayerUtils.getSkinHash(headItem)
-            else
-                null
+            val center = entity.position()
 
             ChatUtils.sendWithPrefix(
-                "ARMOR STAND -> pos=${entity.position()} " +
-                        "head=${headItem.item} hash=$hash"
+                "ARMOR STAND IN BLOCK -> block=$pos entityPos=$center"
             )
         }
 
