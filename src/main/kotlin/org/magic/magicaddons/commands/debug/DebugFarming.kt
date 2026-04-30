@@ -19,7 +19,7 @@ object DebugFarming : AbstractCommand() {
     override val description: String = "farming debug"
 
     override fun build(): LiteralArgumentBuilder<FabricClientCommandSource> {
-        return LiteralArgumentBuilder.literal<FabricClientCommandSource>(GreenhouseScreenCommand.argument).executes {
+        return LiteralArgumentBuilder.literal<FabricClientCommandSource>(argument).executes {
 
             val world = Minecraft.getInstance().level ?: return@executes 0
             val plot = PlotAPI.getCurrentPlot()?.aabb ?: return@executes 0
