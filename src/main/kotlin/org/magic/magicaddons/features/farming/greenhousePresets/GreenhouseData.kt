@@ -128,58 +128,7 @@ object GreenhouseData {
     }
 
     fun getEntityDataForBox(box: AABB) {
-        val world = Minecraft.getInstance().level ?: return
 
-        val entities = world.getEntities(null, box)
-        val foundHashes: MutableList<String> = mutableListOf()
-
-        for (entity in entities) {
-            if (entity !is ArmorStand) continue
-
-            val pos = entity.position()
-
-            val headItem = entity.getItemBySlot(EquipmentSlot.HEAD)
-            if (headItem.isEmpty) continue
-
-            val hash = PlayerUtils.getSkinHash(headItem) ?: continue
-            foundHashes += hash
-            ChatUtils.sendWithPrefix("Found stand at $pos hash=$hash")
-        }
-
-
-        val minX = box.minX.toInt()
-        val minZ = box.minZ.toInt()
-        val maxX = box.maxX.toInt()
-        val maxZ = box.maxZ.toInt()
-
-        for (x in minX until maxX) {
-            for (z in minZ until maxZ) {
-                val pos = BlockPos(x, 74, z)
-                val state = world.getBlockState(pos)
-
-                if (!state.isAir) {
-                    ChatUtils.sendWithPrefix("Found block at $pos: ${state.block}")
-                }
-
-                for (factory in GreenhouseElementRegistry.getAllFactories()) {
-                    val element = factory.invoke()
-
-                    // skip empty definitions
-                    if (element.blocks.isEmpty() && element.standHashes.isEmpty()) continue
-
-                    val blockMatch = element.blocks.contains(state.block)
-
-                    val hashMatch = element.standHashes.any { it in foundHashes }
-
-                    if (blockMatch || hashMatch) {
-                        ChatUtils.sendWithPrefix(
-                            "Detected element '${element.name}' at $pos (block=${state.block})"
-                        )
-                    }
-                }
-
-            }
-        }
 
 
     }
@@ -229,8 +178,10 @@ object GreenhouseData {
         if (!baseSetting.value) return
         val plotId = PlotAPI.getCurrentPlot()?.id ?: return
         if (!isInitialized(plotId)) return
-        val blockVec3 = Vec3.atCenterOf(event.pos)
+
         val grid = getCurrentGrid() ?: return
+
+        val blockVec3 = Vec3.atCenterOf(event.pos)
         if (grid.plot?.aabb?.contains(blockVec3) != true) return
         val changedSlot = grid.getSlotAt(event.pos)
         changedSlot ?: return
@@ -270,7 +221,7 @@ object GreenhouseData {
 
         val box = AABB(
             pos.x - 1.0, pos.y - 1.0, pos.z - 1.0,
-            pos.x + 2.0, pos.y + 2.0, pos.z + 2.0
+            pos.x + 1.0, pos.y + 1.0, pos.z + 1.0
         )
 
         val entities = world.getEntities(null, box)
