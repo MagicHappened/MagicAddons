@@ -1,10 +1,19 @@
 package org.magic.magicaddons.data.greenhouse.elements.mutation.common
 
-import org.magic.magicaddons.data.greenhouse.Mutation
+import net.minecraft.world.level.block.Blocks
+import org.magic.magicaddons.data.greenhouse.CropDefinition
+import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockId
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
-class Witherbloom : Mutation() {
-    override val name: String = "Witherbloom"
-    override val skyBlockId: SkyBlockId = SkyBlockItemId.item("WITHERBLOOM")
+class Witherbloom : CropDefinitionProvider {
+
+    override val definition = CropDefinition(
+        name = "Witherbloom",
+        skyblockId = SkyBlockItemId.item("WITHERBLOOM"),
+        stageDefs = listOf(),
+        requiredSoil = setOf(Blocks.SOUL_SAND),
+        needsWater = false,
+        isMutation = true
+    )
 }

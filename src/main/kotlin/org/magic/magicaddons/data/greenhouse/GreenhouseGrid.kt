@@ -2,9 +2,11 @@ package org.magic.magicaddons.data.greenhouse
 
 import com.mojang.serialization.Codec
 import com.mojang.serialization.codecs.RecordCodecBuilder
+import net.minecraft.client.Minecraft
 import net.minecraft.core.BlockPos
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData
+import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData.getBuildableArea
 import tech.thatgravyboat.skyblockapi.api.profile.garden.Plot
 
 class GreenhouseGrid {
@@ -21,13 +23,25 @@ class GreenhouseGrid {
 
     val elementInstances = mutableListOf<GreenhouseElementInstance>()
 
-    val elements = mutableListOf<GreenhouseElement>() // runtime (derived)
+    val elements = mutableListOf<CropDefinition>() // runtime (derived)
+
+    fun getPosForSlot(slot: GreenhouseSlot): BlockPos? {
+        val box = plot?.getBuildableArea() ?: return null
+
+        val minX = box.minX.toInt()
+        val minZ = box.minZ.toInt()
+
+        val worldX = minX + slot.x
+        val worldZ = minZ + slot.y
+
+        return BlockPos(worldX, 73, worldZ)
+    }
+
 
     fun getSlotAt(blockPos: BlockPos): GreenhouseSlot? {
         if (blockPos.y != 73) return null
 
-        val plotBox = plot?.aabb ?: return null
-        val buildArea = GreenhouseData.getBuildableArea(plotBox)
+        val buildArea = plot?.getBuildableArea() ?: return null
         if (!buildArea.contains(Vec3.atCenterOf(blockPos))) return null
 
         val minX = buildArea.minX.toInt()
@@ -50,8 +64,8 @@ class GreenhouseGrid {
         elements.clear()
 
         for (instance in elementInstances) {
-            val element = GreenhouseElementRegistry.create(instance.elementId) ?: continue
-            elements.add(element)
+            val element = GreenhouseElementFactory.create(instance.elementId)
+            elements.add(element.definition)
         }
     }
 

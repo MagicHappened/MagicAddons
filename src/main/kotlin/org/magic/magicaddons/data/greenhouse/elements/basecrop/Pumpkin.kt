@@ -2,40 +2,63 @@ package org.magic.magicaddons.data.greenhouse.elements.basecrop
 
 import net.minecraft.core.BlockPos
 import net.minecraft.world.phys.Vec3
-import org.magic.magicaddons.data.greenhouse.BaseCrop
+import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
 import org.magic.magicaddons.data.greenhouse.CropArmorStand
 import org.magic.magicaddons.data.greenhouse.CropBlockState
+import org.magic.magicaddons.data.greenhouse.CropDefinition
 import org.magic.magicaddons.data.greenhouse.CropStage
 import org.magic.magicaddons.util.BlockUtils.getIntProperty
 import org.magic.magicaddons.util.BlockUtils.isBlock
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockId
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
-class Pumpkin : BaseCrop() {
-    override val name: String = "Pumpkin"
-    override val skyBlockId: SkyBlockId = SkyBlockItemId.item("PUMPKIN")
-
-    override val stageDefs: List<CropStage> = listOf(
-        CropStage(
-            blocks = listOf(
-                CropBlockState(
-                    offset = BlockPos(0, 1, 0),
-                    matcher = {
-                        it.isBlock("minecraft:melon_stem") &&
-                                it.getIntProperty("age") == 3
-                    }
-                )
+class Pumpkin : CropDefinitionProvider {
+    override val definition = CropDefinition(
+        name = "Pumpkin",
+        skyblockId = SkyBlockItemId.item("PUMPKIN"),
+        stageDefs = listOf(
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0, 1, 0),
+                        matcher = {
+                            it.isBlock("minecraft:melon_stem") &&
+                                    it.getIntProperty("age") == 3
+                        }
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, 0.125, 0.0),
+                        matcher = {
+                            it == "18bd4aa55673e90a3c611117277d94f6ce185b5d13d2a862a3376f50a6139c4f"
+                        }
+                    )
+                ),
+                1..1
             ),
-            armorStands = listOf(
-                CropArmorStand(
-                    offset = Vec3(0.0, 0.125, 0.0),
-                    matcher = {
-                        it == "18bd4aa55673e90a3c611117277d94f6ce185b5d13d2a862a3376f50a6139c4f"
-                    }
-                )
-            ),
-            1..1
-        )
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0,1,0),
+                        matcher = {
+                            it.isBlock("minecraft:melon_stem") &&
+                                    it.getIntProperty("age") == 5
+                        }
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, 0.28125, 0.0),
+                        matcher = {
+                            it == "18bd4aa55673e90a3c611117277d94f6ce185b5d13d2a862a3376f50a6139c4f"
+                        }
+                    )
+                ),
+                2..2
+            )
 
+        ),
+        isBaseCrop = true
     )
 }

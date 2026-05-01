@@ -1,10 +1,17 @@
 package org.magic.magicaddons.data.greenhouse.elements.mutation.epic
 
-import org.magic.magicaddons.data.greenhouse.Mutation
+import net.minecraft.world.level.block.Blocks
+import org.magic.magicaddons.data.greenhouse.CropDefinition
+import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockId
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
-class Turtlellini : Mutation() {
-    override val name: String = "Turtlellini"
-    override val skyBlockId: SkyBlockId = SkyBlockItemId.item("TURTLELLINI")
+class Turtlellini : CropDefinitionProvider {
+    override val definition = CropDefinition(
+        name = "Turtlellini",
+        skyblockId = SkyBlockItemId.item("TURTLELLINI"),
+        stageDefs = listOf(),
+        needsWater = false,
+        isMutation = true
+    )
 }

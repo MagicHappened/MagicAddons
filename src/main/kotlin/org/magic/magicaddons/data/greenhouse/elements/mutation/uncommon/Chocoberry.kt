@@ -1,10 +1,15 @@
 package org.magic.magicaddons.data.greenhouse.elements.mutation.uncommon
 
-import org.magic.magicaddons.data.greenhouse.Mutation
+import org.magic.magicaddons.data.greenhouse.CropDefinition
+import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockId
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
-class Chocoberry : Mutation() {
-    override val name: String = "Chocoberry"
-    override val skyBlockId: SkyBlockId = SkyBlockItemId.item("CHOCOBERRY")
+class Chocoberry : CropDefinitionProvider {
+    override val definition = CropDefinition(
+        name = "Chocoberry",
+        skyblockId = SkyBlockItemId.item("CHOCOBERRY"),
+        stageDefs = listOf(),
+        isMutation = true
+    )
 }
