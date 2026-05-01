@@ -1,14 +1,13 @@
 package org.magic.magicaddons.features.farming.greenhousePresets
 
+import com.mojang.blaze3d.platform.ClipboardManager
 import net.minecraft.client.Minecraft
 import net.minecraft.core.BlockPos
 import net.minecraft.world.entity.EquipmentSlot
 import net.minecraft.world.entity.decoration.ArmorStand
 import net.minecraft.world.level.block.Blocks
-import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
-import org.magic.magicaddons.data.greenhouse.GreenhouseElementRegistry
 import org.magic.magicaddons.data.greenhouse.GreenhouseGrid
 import org.magic.magicaddons.data.greenhouse.GreenhouseSlot
 import org.magic.magicaddons.events.EventBus
@@ -17,6 +16,9 @@ import org.magic.magicaddons.events.interact.OnBlockDestroyedEvent
 import org.magic.magicaddons.events.interact.OnBlockPlacedEvent
 import org.magic.magicaddons.events.interact.OnStartDestroyBlockEvent
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhousePresets.baseSetting
+import org.magic.magicaddons.util.BlockUtils.getId
+import org.magic.magicaddons.util.BlockUtils.getIntProperty
+import org.magic.magicaddons.util.BlockUtils.isBlock
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.PlayerUtils
 import tech.thatgravyboat.skyblockapi.api.SkyBlockAPI
@@ -119,6 +121,7 @@ object GreenhouseData {
                     GreenhouseSlot(gridX, gridY, unlocked, state)
                 )
 
+
                 gridY++
             }
             gridX++
@@ -127,11 +130,6 @@ object GreenhouseData {
         return grid
     }
 
-    fun getEntityDataForBox(box: AABB) {
-
-
-
-    }
 
 
 
@@ -206,39 +204,140 @@ object GreenhouseData {
         changedSlot.placedBlock = event.blockState
         grid.setSlot(changedSlot)
     }
+    // todo add item use for hoeing and fire
+    // (maybe use block updated for farmland since its already there?)
 
     @EventHandler
     fun onStartBlockBreak(event: OnStartDestroyBlockEvent) {
         if (!baseSetting.value) return
+
         val world = Minecraft.getInstance().level ?: return
         val pos = event.blockPos
-
         val state = world.getBlockState(pos)
 
         ChatUtils.sendWithPrefix(
-            "BLOCK BREAK DEBUG -> pos=$pos block=${state.block} \n state=$state"
+            "BLOCK BREAK DEBUG -> pos=$pos block=${state.block}\nstate=$state"
         )
+
+        val sb = StringBuilder(2048)
+
+
+        val blockLines = mutableListOf<String>()
+
+        var y = pos.y + 1
+        var stageIndex = 0
+
+        while (true) {
+            val checkPos = BlockPos(pos.x, y, pos.z)
+            val checkState = world.getBlockState(checkPos)
+
+            if (checkState.isAir) break
+
+            val offsetY = y - pos.y
+            val blockId = checkState.getId()
+
+            val hasAge = checkState.getIntProperty("age") != null
+
+            val matcherLine = if (hasAge) {
+                """
+                it.isBlock("$blockId") &&
+                        it.getIntProperty("age") == ${checkState.getIntProperty("age")}
+            """.trimIndent()
+            } else {
+                """
+                it.isBlock("$blockId")
+            """.trimIndent()
+            }
+
+            blockLines.add(
+                """
+        CropBlockState(
+            offset = BlockPos(0,$offsetY,0),
+            matcher = {
+$matcherLine
+            }
+        )
+            """.trimIndent()
+            )
+
+            stageIndex++
+            y++
+        }
+
 
         val box = AABB(
             pos.x.toDouble(),
-            pos.y.toDouble(),
+            pos.y.toDouble() - 2,
             pos.z.toDouble(),
             pos.x + 1.0,
-            pos.y.toDouble(),
+            pos.y.toDouble() + 4,
             pos.z + 1.0
         )
 
-        for (entity in world.getEntities(null, box)) {
+        val stands = world.getEntities(null, box)
+
+        val standLines = mutableListOf<String>()
+
+        for (entity in stands) {
             if (entity !is ArmorStand) continue
+            val center = Vec3(
+                pos.x + 0.5,
+                pos.y.toDouble(),
+                pos.z + 0.5
+            )
 
-            val center = entity.position()
+            val offset = entity.position().subtract(center)
 
-            ChatUtils.sendWithPrefix(
-                "ARMOR STAND IN BLOCK -> block=$pos entityPos=$center"
+            val head = entity.getItemBySlot(EquipmentSlot.HEAD)
+            val hash = PlayerUtils.getSkinHash(head)
+            ChatUtils.sendWithPrefix("stand pos: ${entity.position()} hash=$hash")
+            val matcher = if (!hash.isNullOrBlank()) {
+                "{ it == \"$hash\" }"
+            } else {
+                "{ true }"
+            }
+
+            standLines.add(
+                """
+        CropArmorStand(
+            offset = Vec3(${offset.x}, ${offset.y}, ${offset.z}),
+            matcher = {
+                ${if (!hash.isNullOrBlank()) "it == \"$hash\"" else "true"}
+            }
+        )
+    """.trimIndent()
             )
         }
 
-        event.canceled = true
 
+        sb.appendLine("CropStage(")
+
+        // blocks
+        sb.appendLine("    blocks = listOf(")
+        if (blockLines.isNotEmpty()) {
+            sb.appendLine(blockLines.joinToString(",\n"))
+        }
+        sb.appendLine("    ),")
+
+        // armor stands
+        if (standLines.isNotEmpty()) {
+            sb.appendLine("    armorStands = listOf(")
+            sb.appendLine(
+                standLines.joinToString(",\n") { "        $it" }
+            )
+            sb.appendLine("    ),")
+        } else {
+            sb.appendLine("    armorStands = null,")
+        }
+
+        sb.appendLine("    1..1")
+        sb.appendLine(")")
+
+        val result = sb.toString()
+
+        Minecraft.getInstance().keyboardHandler.clipboard = result
+
+        ChatUtils.sendWithPrefix("Copied crop stage to clipboard (${result.length} chars)")
+        event.canceled = true
     }
 }

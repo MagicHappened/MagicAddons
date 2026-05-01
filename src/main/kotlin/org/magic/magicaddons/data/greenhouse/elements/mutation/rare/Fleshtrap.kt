@@ -6,5 +6,5 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
 class Fleshtrap : Mutation() {
     override val name: String = "Fleshtrap"
-    override val SkyBlockId: SkyBlockId = SkyBlockItemId.item("FLESHTRAP")
+    override val skyBlockId: SkyBlockId = SkyBlockItemId.item("FLESHTRAP")
 }

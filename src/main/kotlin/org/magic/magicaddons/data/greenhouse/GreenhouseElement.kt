@@ -14,7 +14,7 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockId
 
 data class Footprint(val width: Int, val height: Int)
 
-data class CropArmorStand(val offset: Vec3, val matcher: (String?) -> Boolean)
+data class CropArmorStand(val offset: Vec3, val matcher: (String?) -> Boolean) //offset is defined from the soil top left block
 data class CropBlockState(val offset: BlockPos, val matcher: (BlockState) -> Boolean)
 
 data class CropStage(
@@ -55,13 +55,12 @@ data class CropStage(
 abstract class GreenhouseElement {
 
     abstract val name: String
-    abstract val SkyBlockId: SkyBlockId?
-
+    abstract val skyBlockId: SkyBlockId?
+    
     open val stageDefs: List<CropStage> = mutableListOf()
 
     open val footprint: Footprint = Footprint(1,1)
     open val requiredSoil: Block = Blocks.FARMLAND
-
 
 
     // abstract val buffs: todo later lol

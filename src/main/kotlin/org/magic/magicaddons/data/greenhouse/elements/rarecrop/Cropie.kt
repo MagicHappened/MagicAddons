@@ -6,5 +6,5 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
 class Cropie : RareCrop() {
     override val name: String = "Cropie"
-    override val SkyBlockId: SkyBlockId = SkyBlockItemId.item("CROPIE")
+    override val skyBlockId: SkyBlockId = SkyBlockItemId.item("CROPIE")
 }

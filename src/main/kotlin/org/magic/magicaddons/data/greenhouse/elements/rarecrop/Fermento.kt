@@ -6,5 +6,5 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
 class Fermento : BaseCrop() {
     override val name: String = "Fermento"
-    override val SkyBlockId: SkyBlockId = SkyBlockItemId.item("FERMENTO")
+    override val skyBlockId: SkyBlockId = SkyBlockItemId.item("FERMENTO")
 }

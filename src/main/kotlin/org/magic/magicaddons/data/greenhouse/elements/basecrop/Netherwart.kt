@@ -11,13 +11,13 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
 class Netherwart : BaseCrop() {
     override val name: String = "Nether Wart"
-    override val SkyBlockId: SkyBlockId = SkyBlockItemId.item("NETHER_STALK")
+    override val skyBlockId: SkyBlockId = SkyBlockItemId.item("NETHER_STALK")
 
     override val stageDefs: List<CropStage> = listOf(
         CropStage(
             blocks = listOf(
                 CropBlockState(
-                    offset = BlockPos(0,0,0),
+                    offset = BlockPos(0,1,0),
                     matcher = {
                         it.isBlock("minecraft:nether_wart") &&
                                 it.getIntProperty("age") == 0
@@ -25,14 +25,26 @@ class Netherwart : BaseCrop() {
                 )
             ),
             armorStands = null,
-            1..1
+            1..2
         ),
-
-
         CropStage(
             blocks = listOf(
                 CropBlockState(
-                    offset = BlockPos(0,0,0),
+                    offset = BlockPos(0,1,0),
+                    matcher = {
+                        it.isBlock("minecraft:nether_wart") &&
+                                it.getIntProperty("age") == 1
+                    }
+                )
+            ),
+            armorStands = listOf(
+            ),
+            4..4
+        ),
+                CropStage(
+            blocks = listOf(
+                CropBlockState(
+                    offset = BlockPos(0,1,0),
                     matcher = {
                         it.isBlock("minecraft:nether_wart") &&
                                 it.getIntProperty("age") == 3
@@ -40,7 +52,7 @@ class Netherwart : BaseCrop() {
                 )
             ),
             armorStands = null,
-            0..0
+            8..8
         )
     )
 }
