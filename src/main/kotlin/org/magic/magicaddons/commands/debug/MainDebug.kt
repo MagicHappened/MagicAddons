@@ -8,8 +8,9 @@ import org.magic.magicaddons.util.ChatUtils
 object MainDebug : AbstractCommand() {
     override val argument: String = "debug"
     override val description: String = "base debug command"
-    val debugCommandList = mutableListOf<AbstractCommand>(
-        DebugFarming
+    val debugCommandList = mutableListOf(
+        DebugFarming,
+        DebugFarmingClear
     )
 
     override fun build(): LiteralArgumentBuilder<FabricClientCommandSource> {

@@ -8,7 +8,6 @@ import net.minecraft.client.gui.narration.NarratableEntry
 import net.minecraft.client.gui.narration.NarrationElementOutput
 import net.minecraft.client.input.MouseButtonEvent
 import org.magic.magicaddons.data.greenhouse.GreenhouseGrid
-import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.ScreenUtil.drawLine
 
 class GreenhouseGridWidget(
@@ -54,7 +53,7 @@ class GreenhouseGridWidget(
 
         grid.elements.forEach { element ->
 
-            val widget = GreenhouseElementWidget(element.cropDef)
+            val widget = GreenhouseElementWidget(element)
 
             widget.padding = slotSize / 10
 
@@ -79,7 +78,7 @@ class GreenhouseGridWidget(
             it.render(graphics, mouseX, mouseY, delta)
         }
 
-        // draw grid lines (clean + fixed)
+        // draw grid lines
         for (i in 1 until gridSize) {
             // vertical
             graphics.drawLine(
@@ -120,6 +119,12 @@ class GreenhouseGridWidget(
                 mouseX <= widgetX + widgetWidth &&
                 mouseY >= widgetY &&
                 mouseY <= widgetY + widgetHeight
+    }
+
+    override fun mouseMoved(mouseX: Double, mouseY: Double) {
+        elementWidgets.forEach {
+            it.mouseMoved(mouseX, mouseY)
+        }
     }
 
     override fun isFocused(): Boolean = focused

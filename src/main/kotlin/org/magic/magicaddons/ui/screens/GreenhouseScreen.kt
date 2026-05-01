@@ -1,6 +1,7 @@
 package org.magic.magicaddons.ui.screens
 
 import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.gui.components.events.GuiEventListener
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.client.renderer.RenderPipelines
@@ -9,6 +10,7 @@ import net.minecraft.resources.Identifier
 import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData
 import org.magic.magicaddons.ui.widgets.ArrowWidget
+import org.magic.magicaddons.ui.widgets.greenhouse.GreenhouseElementWidget
 import org.magic.magicaddons.ui.widgets.greenhouse.GreenhouseGridWidget
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.ScreenUtil.drawMultilineBoxCentered
@@ -27,6 +29,8 @@ class GreenhouseScreen(title: Component) : Screen(title) {
     private var startX: Int = 0
     private var startY: Int = 0
     private var containerSize: Int = 400
+
+    var hoveredWidget: GreenhouseElementWidget? = null
 
     var ignoreWarnings = false
     var sentWarnings = false
@@ -167,6 +171,8 @@ class GreenhouseScreen(title: Component) : Screen(title) {
 
         forwardArrow?.render(graphics, mouseX, mouseY, delta)
         backwardArrow?.render(graphics, mouseX, mouseY, delta)
+
+        hoveredWidget?.renderTooltip(graphics, mouseX, mouseY)
     }
 
     override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
@@ -181,6 +187,12 @@ class GreenhouseScreen(title: Component) : Screen(title) {
         }
         return super.mouseClicked(mouseButtonEvent, doubled)
     }
+
+    override fun mouseMoved(mouseX: Double, mouseY: Double) {
+        hoveredWidget = null
+        displayedGridWidget?.mouseMoved(mouseX, mouseY)
+    }
+
 
     override fun isMouseOver(mouseX: Double, mouseY: Double): Boolean {
         return super.isMouseOver(mouseX, mouseY)
