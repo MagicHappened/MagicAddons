@@ -51,7 +51,7 @@ class GreenhouseGridWidget(
                 slotWidgets.add(widget)
             }
         }
-        ChatUtils.sendWithPrefix("size ${grid.elements.size}")
+
         grid.elements.forEach { element ->
 
             val widget = GreenhouseElementWidget(element.cropDef)
@@ -61,12 +61,13 @@ class GreenhouseGridWidget(
             val originX = element.origin.x
             val originY = element.origin.y
 
-            widget.widgetX = widgetX + originX * slotSize + originX + widget.padding
-            widget.widgetY = widgetY + originY * slotSize + originY + widget.padding
+            widget.widgetX = widgetX + originX * slotSize + originX
+            widget.widgetY = widgetY + originY * slotSize + originY
 
-            widget.width = slotSize - widget.padding * 2
-            widget.height = slotSize - widget.padding * 2
+            widget.width = slotSize
+            widget.height = slotSize
 
+            widget.renderedStack = element.cropDef.skyblockId.toItem()
             elementWidgets.add(widget)
         }
 
