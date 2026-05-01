@@ -1,10 +1,16 @@
 package org.magic.magicaddons.data.greenhouse.elements.rarecrop
 
-import org.magic.magicaddons.data.greenhouse.RareCrop
+import org.magic.magicaddons.data.greenhouse.CropDefinition
+import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockId
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
-class Helianthus : RareCrop() {
-    override val name: String = "Helianthus"
-    override val skyBlockId: SkyBlockId = SkyBlockItemId.item("HELIANTHUS")
+class Helianthus : CropDefinitionProvider {
+    override val definition = CropDefinition(
+        name = "Helianthus",
+        skyblockId = SkyBlockItemId.item("HELIANTHUS"),
+        stageDefs = listOf(),
+        needsWater = false,
+        isRareCrop = true
+    )
 }

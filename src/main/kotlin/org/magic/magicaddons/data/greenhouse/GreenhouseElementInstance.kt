@@ -9,10 +9,10 @@ data class GreenhouseElementInstance(
     val originX: Int,
     val originY: Int,
     var waterLevel: Int? = null,
-    var growthStage: Int? = null){
+    var growthStage: GrowthStageInfo? = null){
 
-    fun createElement(): GreenhouseElement {
-        return GreenhouseElementRegistry.create(elementId)
+    fun createElement(): CropDefinitionProvider {
+        return GreenhouseElementFactory.create(elementId)
     }
 
     companion object {
@@ -25,11 +25,9 @@ data class GreenhouseElementInstance(
                 Codec.INT.optionalFieldOf("waterLevel")
                     .forGetter { Optional.ofNullable(it.waterLevel) },
 
-                Codec.INT.optionalFieldOf("growthStage")
+                GrowthStageInfo.CODEC.optionalFieldOf("growthStage")
                     .forGetter { Optional.ofNullable(it.growthStage) }
-
             ).apply(instance) { id, x, y, waterOpt, growthOpt ->
-
                 GreenhouseElementInstance(
                     elementId = id,
                     originX = x,

@@ -8,8 +8,8 @@ import org.magic.magicaddons.data.greenhouse.elements.mutation.epic.*
 import org.magic.magicaddons.data.greenhouse.elements.mutation.legendary.*
 import org.magic.magicaddons.data.greenhouse.elements.rarecrop.*
 
-object GreenhouseElementRegistry {
-    private val factories = mutableMapOf<String,() -> GreenhouseElement>()
+object GreenhouseElementFactory {
+    private val factories = mutableMapOf<String,() -> CropDefinitionProvider>()
 
     init {
         // basecrop
@@ -81,16 +81,16 @@ object GreenhouseElementRegistry {
         this.register("SQUASH") { Squash() }
     }
 
-    fun register(id: String, factory: () -> GreenhouseElement) {
+    fun register(id: String, factory: () -> CropDefinitionProvider) {
         factories[id] = factory
     }
 
-    fun create(idOrName: String): GreenhouseElement {
+    fun create(idOrName: String): CropDefinitionProvider {
         return factories[idOrName]?.invoke()
             ?: error("Unknown greenhouse element id: $idOrName")
     }
 
-    fun getAllFactories(): Collection<() -> GreenhouseElement> {
+    fun getAllFactories(): Collection<() -> CropDefinitionProvider> {
         return factories.values
     }
 }

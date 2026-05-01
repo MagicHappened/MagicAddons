@@ -1,10 +1,19 @@
 package org.magic.magicaddons.data.greenhouse.elements.mutation.epic
 
-import org.magic.magicaddons.data.greenhouse.Mutation
+import net.minecraft.world.level.block.Blocks
+import org.magic.magicaddons.data.greenhouse.CropDefinition
+import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
+import org.magic.magicaddons.data.greenhouse.Footprint
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockId
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
-class PlantBoyAdvance : Mutation() {
-    override val name: String = "PlantBoy Advance"
-    override val skyBlockId: SkyBlockId = SkyBlockItemId.item("PLANTBOY_ADVANCE")
+class PlantBoyAdvance : CropDefinitionProvider {
+    override val definition = CropDefinition(
+        name = "PlantBoy Advance",
+        skyblockId = SkyBlockItemId.item("PLANTBOY_ADVANCE"),
+        stageDefs = listOf(),
+        footprint = Footprint(2,2),
+        needsWater = false,
+        isMutation = true
+    )
 }

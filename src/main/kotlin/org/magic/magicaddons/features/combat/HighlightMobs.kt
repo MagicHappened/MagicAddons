@@ -196,7 +196,7 @@ object HighlightMobs : Feature(), EntityUtils.HighlightSource {
 
         if (!baseSetting.value) return false
 
-        var matches = true
+        var matches = false
         var hasAnyFilter = false
 
         val entityTypeSetting = baseSetting.getChild<BooleanSetting>("EntityTypeEnabled")
