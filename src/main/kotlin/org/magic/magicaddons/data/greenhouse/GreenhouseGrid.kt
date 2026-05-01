@@ -2,13 +2,11 @@ package org.magic.magicaddons.data.greenhouse
 
 import com.mojang.serialization.Codec
 import com.mojang.serialization.codecs.RecordCodecBuilder
-import net.minecraft.client.Minecraft
 import net.minecraft.core.BlockPos
-import net.minecraft.world.inventory.Slot
 import net.minecraft.world.phys.Vec3
-import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData.getBuildableArea
 import tech.thatgravyboat.skyblockapi.api.profile.garden.Plot
+import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
 class GreenhouseGrid {
 
@@ -24,7 +22,7 @@ class GreenhouseGrid {
 
     val elementInstances = mutableListOf<GreenhouseElementInstance>()
 
-    val elements = mutableListOf<CropPosition>() // runtime (derived)
+    val elements = mutableListOf<CropRuntimeState>()
 
     fun getPosForSlot(slot: GreenhouseSlot): BlockPos? {
         val box = plot?.getBuildableArea() ?: return null

@@ -131,9 +131,10 @@ data class CropDefinition(
     val isRareCrop: Boolean = false //todo buffs later
 )
 
-data class CropPosition(
+data class CropRuntimeState(
     val cropDef: CropDefinition,
-    val origin: GreenhouseSlot
+    val origin: GreenhouseSlot,
+    val growthStage: GrowthStageInfo // todo add water level
 
 )
 

@@ -14,8 +14,8 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
 class Gloomgourd : CropDefinitionProvider {
     override val definition = CropDefinition(
-        name = "Ashwreath",
-        skyblockId = SkyBlockItemId.item("ASHWREATH"),
+        name = "Gloomgourd",
+        skyblockId = SkyBlockItemId.item("GLOOMGOURD"),
         stageDefs = listOf(
             CropStage(
                 blocks = listOf(
