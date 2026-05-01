@@ -4,6 +4,7 @@ import com.mojang.serialization.Codec
 import com.mojang.serialization.codecs.RecordCodecBuilder
 import net.minecraft.client.Minecraft
 import net.minecraft.core.BlockPos
+import net.minecraft.world.inventory.Slot
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData.getBuildableArea
@@ -23,7 +24,7 @@ class GreenhouseGrid {
 
     val elementInstances = mutableListOf<GreenhouseElementInstance>()
 
-    val elements = mutableListOf<CropDefinition>() // runtime (derived)
+    val elements = mutableListOf<CropPosition>() // runtime (derived)
 
     fun getPosForSlot(slot: GreenhouseSlot): BlockPos? {
         val box = plot?.getBuildableArea() ?: return null
@@ -60,14 +61,6 @@ class GreenhouseGrid {
             ?.set(slot.x, slot)
     }
 
-    fun rebuildElements() {
-        elements.clear()
-
-        for (instance in elementInstances) {
-            val element = GreenhouseElementFactory.create(instance.elementId)
-            elements.add(element.definition)
-        }
-    }
 
     companion object {
         val CODEC: Codec<GreenhouseGrid> = RecordCodecBuilder.create { instance ->
