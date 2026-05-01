@@ -4,6 +4,7 @@ import com.mojang.blaze3d.pipeline.RenderPipeline
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.gui.layouts.Layout
 import net.minecraft.client.gui.render.TextureSetup
 import net.minecraft.client.gui.render.state.ColoredRectangleRenderState
 import net.minecraft.client.gui.render.state.GuiTextRenderState
@@ -311,22 +312,35 @@ object ScreenUtil {
         x: Int,
         y: Int,
         width: Int,
-        height: Int
+        height: Int,
+        renderDecorations: Boolean = false
     ) {
         if (stack.isEmpty) return
-        val identifier = stack.get(DataComponents.ITEM_MODEL)
-        if (identifier == null){
-            ChatUtils.sendWithPrefix("identifier null")
-            return
+
+        val mc = Minecraft.getInstance()
+
+        val pose = this.pose()
+
+        pose.pushMatrix()
+
+        try {
+            pose.translate(x.toFloat(), y.toFloat())
+
+            val scaleX = width / 16.0f
+            val scaleY = height / 16.0f
+            val scale = minOf(scaleX, scaleY)
+
+            pose.scale(scale, scale)
+
+            this.renderItem(stack, 0, 0)
+
+            if (renderDecorations) {
+                this.renderItemDecorations(mc.font, stack, 0, 0)
+            }
+
+        } finally {
+            pose.popMatrix()
         }
-        this.blitSprite(
-            RenderPipelines.GUI,
-            identifier,
-            x,
-            y,
-            width,
-            height
-            )
     }
 
 

@@ -1,6 +1,5 @@
 package org.magic.magicaddons.ui.widgets.greenhouse
 
-import com.mojang.authlib.minecraft.client.MinecraftClient
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.gui.components.Renderable
@@ -8,8 +7,6 @@ import net.minecraft.client.gui.components.events.GuiEventListener
 import net.minecraft.world.item.ItemStack
 import org.magic.magicaddons.data.greenhouse.CropDefinition
 import org.magic.magicaddons.util.ScreenUtil.renderFakeItem
-import tech.thatgravyboat.skyblockapi.utils.extentions.getItemModel
-import kotlin.math.min
 
 class GreenhouseElementWidget(val definition: CropDefinition) : Renderable, GuiEventListener {
     var widgetX: Int = 0
@@ -31,8 +28,8 @@ class GreenhouseElementWidget(val definition: CropDefinition) : Renderable, GuiE
             renderedStack,
             widgetX + padding,
             widgetY + padding,
-            width,
-            height,
+            width - padding * 2,
+            height - padding * 2
         )
     }
 
