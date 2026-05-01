@@ -9,6 +9,7 @@ import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
+import org.magic.magicaddons.data.greenhouse.CropPosition
 import org.magic.magicaddons.data.greenhouse.CropStage
 import org.magic.magicaddons.data.greenhouse.CropStagePattern
 import org.magic.magicaddons.data.greenhouse.GreenhouseElementFactory
@@ -157,7 +158,7 @@ object GreenhouseData {
 
                 if (visitedSlots[y][x]) continue
                 val slot = grid.getSlot(x, y)
-
+                slot ?: continue
                 val pair = matchElementAtPos(grid, slot) ?: continue
 
                 val def = pair.first.definition
@@ -178,7 +179,10 @@ object GreenhouseData {
                 )
 
                 grid.elements.add(
-                    def
+                    CropPosition(
+                        def,
+                        slot
+                    )
                 )
             }
         }
@@ -240,6 +244,7 @@ object GreenhouseData {
                 origin.y.toDouble() + 4,
                 origin.z + 1.0
             ) // todo fix it so it works on 3x3 plants cuz currently it cant scan for larger than 1x1
+            // todo fix it so it works on allowRotation stages as well.
 
             val stands = level.getEntities(null, box)
 

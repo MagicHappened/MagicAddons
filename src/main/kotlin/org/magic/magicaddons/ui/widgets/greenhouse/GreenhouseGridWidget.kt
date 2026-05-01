@@ -8,6 +8,7 @@ import net.minecraft.client.gui.narration.NarratableEntry
 import net.minecraft.client.gui.narration.NarrationElementOutput
 import net.minecraft.client.input.MouseButtonEvent
 import org.magic.magicaddons.data.greenhouse.GreenhouseGrid
+import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.ScreenUtil.drawLine
 
 class GreenhouseGridWidget(
@@ -17,6 +18,7 @@ class GreenhouseGridWidget(
 ) : Renderable, GuiEventListener, NarratableEntry {
 
     private val slotWidgets = mutableListOf<GreenhouseSlotWidget>()
+    private val elementWidgets = mutableListOf<GreenhouseElementWidget>()
 
     var widgetX: Int = 0
     var widgetY: Int = 0
@@ -27,6 +29,7 @@ class GreenhouseGridWidget(
 
     fun init() {
         slotWidgets.clear()
+        elementWidgets.clear()
         Minecraft.getInstance().window
 
         for (x in 0 until gridSize) {
@@ -48,6 +51,25 @@ class GreenhouseGridWidget(
                 slotWidgets.add(widget)
             }
         }
+        ChatUtils.sendWithPrefix("size ${grid.elements.size}")
+        grid.elements.forEach { element ->
+
+            val widget = GreenhouseElementWidget(element.cropDef)
+
+            widget.padding = slotSize / 10
+
+            val originX = element.origin.x
+            val originY = element.origin.y
+
+            widget.widgetX = widgetX + originX * slotSize + originX + widget.padding
+            widget.widgetY = widgetY + originY * slotSize + originY + widget.padding
+
+            widget.width = slotSize - widget.padding * 2
+            widget.height = slotSize - widget.padding * 2
+
+            elementWidgets.add(widget)
+        }
+
     }
 
     override fun render(graphics: GuiGraphics, mouseX: Int, mouseY: Int, delta: Float) {
@@ -77,6 +99,9 @@ class GreenhouseGridWidget(
                 1,
                 0xFF0683c1.toInt()
             )
+        }
+        elementWidgets.forEach {
+            it.render(graphics, mouseX, mouseY, delta)
         }
     }
 

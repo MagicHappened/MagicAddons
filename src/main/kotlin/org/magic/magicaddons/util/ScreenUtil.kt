@@ -13,9 +13,11 @@ import net.minecraft.client.gui.screens.inventory.tooltip.DefaultTooltipPosition
 import net.minecraft.client.renderer.RenderPipelines
 import net.minecraft.client.renderer.texture.TextureAtlasSprite
 import net.minecraft.core.Direction
+import net.minecraft.core.component.DataComponents
 import net.minecraft.network.chat.Component
 import net.minecraft.resources.Identifier
 import net.minecraft.util.RandomSource
+import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.block.state.BlockState
 import org.joml.Matrix3x2f
 
@@ -303,6 +305,30 @@ object ScreenUtil {
 
         pose.popMatrix()
     }
+
+    fun GuiGraphics.renderFakeItem(
+        stack: ItemStack,
+        x: Int,
+        y: Int,
+        width: Int,
+        height: Int
+    ) {
+        if (stack.isEmpty) return
+        val identifier = stack.get(DataComponents.ITEM_MODEL)
+        if (identifier == null){
+            ChatUtils.sendWithPrefix("identifier null")
+            return
+        }
+        this.blitSprite(
+            RenderPipelines.GUI,
+            identifier,
+            x,
+            y,
+            width,
+            height
+            )
+    }
+
 
 
 

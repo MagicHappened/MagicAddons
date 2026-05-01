@@ -74,7 +74,7 @@ class CropStagePattern(
     blocks = blocks,
     armorStands = armorStands,
     stageRange = stageRange,
-    allowRotation = true
+    allowRotation = allowRotation
 ){
     fun expand(): List<CropStage> {
         val result = mutableListOf<CropStage>()
@@ -129,6 +129,12 @@ data class CropDefinition(
     val isBaseCrop: Boolean = false,
     val isMutation: Boolean = false,
     val isRareCrop: Boolean = false //todo buffs later
+)
+
+data class CropPosition(
+    val cropDef: CropDefinition,
+    val origin: GreenhouseSlot
+
 )
 
 interface CropDefinitionProvider {
