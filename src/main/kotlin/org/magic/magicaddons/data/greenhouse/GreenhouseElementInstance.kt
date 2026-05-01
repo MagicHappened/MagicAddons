@@ -5,7 +5,7 @@ import com.mojang.serialization.codecs.RecordCodecBuilder
 import java.util.Optional
 
 data class GreenhouseElementInstance(
-    val elementId: String,
+    val elementId: String, //just the skyblock id
     val originX: Int,
     val originY: Int,
     var waterLevel: Int? = null,

@@ -6,5 +6,5 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
 class Snoozling : Mutation() {
     override val name: String = "Snoozling"
-    override val SkyBlockId: SkyBlockId = SkyBlockItemId.item("SNOOZLING")
+    override val skyBlockId: SkyBlockId = SkyBlockItemId.item("SNOOZLING")
 }

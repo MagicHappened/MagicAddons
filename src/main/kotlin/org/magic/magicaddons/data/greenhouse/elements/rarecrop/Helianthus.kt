@@ -6,5 +6,5 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
 class Helianthus : RareCrop() {
     override val name: String = "Helianthus"
-    override val SkyBlockId: SkyBlockId = SkyBlockItemId.item("HELIANTHUS")
+    override val skyBlockId: SkyBlockId = SkyBlockItemId.item("HELIANTHUS")
 }
