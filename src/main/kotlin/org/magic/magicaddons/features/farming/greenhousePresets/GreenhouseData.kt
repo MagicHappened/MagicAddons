@@ -1,6 +1,7 @@
 package org.magic.magicaddons.features.farming.greenhousePresets
 
 import net.minecraft.client.Minecraft
+import net.minecraft.client.gui.screens.inventory.ContainerScreen
 import net.minecraft.client.renderer.RenderPipelines
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
@@ -26,6 +27,7 @@ import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.events.EventHandler
 import org.magic.magicaddons.events.interact.OnBlockDestroyedEvent
 import org.magic.magicaddons.events.interact.OnBlockPlacedEvent
+import org.magic.magicaddons.events.interact.OnBlockUseEvent
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhousePresets.baseSetting
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.PlayerUtils
@@ -36,9 +38,15 @@ import tech.thatgravyboat.skyblockapi.api.events.base.predicates.OnlyIn
 import tech.thatgravyboat.skyblockapi.api.events.base.predicates.OnlyNonGuest
 import tech.thatgravyboat.skyblockapi.api.events.info.ScoreboardUpdateEvent
 import tech.thatgravyboat.skyblockapi.api.events.location.IslandChangeEvent
+import tech.thatgravyboat.skyblockapi.api.events.screen.ContainerInitializedEvent
+import tech.thatgravyboat.skyblockapi.api.events.screen.InventoryChangeEvent
+import tech.thatgravyboat.skyblockapi.api.events.screen.ScreenInitializedEvent
 import tech.thatgravyboat.skyblockapi.api.location.SkyBlockIsland
 import tech.thatgravyboat.skyblockapi.api.profile.garden.Plot
 import tech.thatgravyboat.skyblockapi.api.profile.garden.PlotAPI
+import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockId.Companion.getSkyBlockId
+import tech.thatgravyboat.skyblockapi.utils.extentions.getLore
+import tech.thatgravyboat.skyblockapi.utils.extentions.isSkyblockFiller
 import kotlin.math.abs
 
 object GreenhouseData {
@@ -71,7 +79,7 @@ object GreenhouseData {
                 valueTransform = { it.second }
             )
 
-
+    private var listeningElement: ElementRuntimeState? = null
 
     val greenhouses: List<GreenhouseGrid>
         get() = greenhouseList
@@ -388,20 +396,45 @@ object GreenhouseData {
     @OnlyNonGuest
     @OnlyIn(SkyBlockIsland.GARDEN)
     fun onScoreboardUpdate(event: ScoreboardUpdateEvent) {
+        if (!baseSetting.value) return
         initKnownIds()
         initData()
     }
 
     @Subscription
     fun onIslandChange(event: IslandChangeEvent) {
+        if (!baseSetting.value) return
         if (event.new != SkyBlockIsland.GARDEN) return
         initKnownIds()
         initData()
     }
 
+    @Subscription
+    @OnlyNonGuest
+    @OnlyIn(SkyBlockIsland.GARDEN)
+    fun onInventory(event: ContainerInitializedEvent) {
+        if (event.title != "Crop Diagnostics"){
+            listeningElement = null
+            return
+        }
+        if (listeningElement == null) return
+        val realItems = event.containerItems.filter { !it.isSkyblockFiller() }
+        val identifyStack = realItems[0]
+        val stackId = identifyStack.getSkyBlockId()
+        val useNameFallback = stackId == null
+        if (useNameFallback) {
+            if (!identifyStack.getLore().any { it.string.contains("Base Crop")}) {
+
+                return
+            }
+        }
+
+
+    }
+
+
     @EventHandler
     fun onBlockBreak(event: OnBlockDestroyedEvent) {
-        if (!baseSetting.value) return
 
         val plotId = PlotAPI.getCurrentPlot()?.id ?: return
         if (!isInitialized(plotId)) return
@@ -413,12 +446,10 @@ object GreenhouseData {
 
         if (grid.plot?.aabb?.contains(blockCenter) != true) return
 
-        if (pos.y == 73) {
-            val slot = grid.getSlotAt(pos) ?: return
-
+        val slot = grid.getSlotAt(pos)
+        if (slot != null) {
             slot.placedBlock = Blocks.AIR.defaultBlockState()
             grid.setSlot(slot)
-
             return
         }
 
@@ -444,7 +475,6 @@ object GreenhouseData {
     }
     @EventHandler
     fun onBlockPlaced(event: OnBlockPlacedEvent) {
-        if (!baseSetting.value) return
         val plotId = PlotAPI.getCurrentPlot()?.id ?: return
         if (!isInitialized(plotId)) return
 
@@ -460,6 +490,36 @@ object GreenhouseData {
     }
     // todo add item use for hoeing and fire
     // (maybe use block updated for farmland since its already there?)
+
+
+    @EventHandler
+    fun onBlockUse(event: OnBlockUseEvent) {
+        val plot = PlotAPI.getCurrentPlot() ?: return
+        if (!isInitialized(plot.id)) return
+        val plotArea = plot.getBuildableArea()
+        val handItem = event.player.mainHandItem
+        if (handItem.isEmpty) return
+
+        val mainHandId = event.player.mainHandItem.getSkyBlockId()
+        ChatUtils.sendWithPrefix("thingy: $mainHandId thingy id: ${mainHandId?.id}")
+        ChatUtils.sendWithPrefix("block: ${event.hit.blockPos}")
+        if ((mainHandId?.id ?: "") == "item:plant_diagnostics_tool"){
+            tryGetDiagnosticData(event, plotArea)
+        }
+        if (event.hit.direction != Direction.UP) return // for planting.
+
+    }
+
+    fun tryGetDiagnosticData(event: OnBlockUseEvent, plotArea: AABB){
+        if (!plotArea.contains(event.hit.blockPos.center)) return
+        val grid = getCurrentGrid() ?: return
+        val hitSlot = grid.getSlotAt(event.hit.blockPos, false)
+        val hitElement = grid.elements.firstOrNull {
+            it.origin == hitSlot
+        }
+        listeningElement = hitElement
+    }
+
 
 
     data class MatchResult(

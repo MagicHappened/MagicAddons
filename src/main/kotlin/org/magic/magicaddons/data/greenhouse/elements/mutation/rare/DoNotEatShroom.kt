@@ -38,13 +38,30 @@ class DoNotEatShroom : CropDefinitionProvider {
                         }
                     )
                 ),
-                2..7,
+                2..5,
                 baseStageStandOffset = Vec3(0.0, 0.03125, 0.0),
                 stageOffsetMultipliers = mapOf(
                     3 to 2,
                     4 to 1,
                     5 to 1,
                     //todo add 6 and see based on 7
+                )
+            ),
+            CropStagePattern(
+                blocks = listOf(
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, -0.5, 0.0),
+                        matcher = {
+                            it == "6a7ae95a8bb1fcdbf71385fe663c5647e0a5c32004db8c0313c2d45c94e3d1ad"
+                        }
+                    )
+                ),
+                stageRange = 6..7,
+                baseStageStandOffset = Vec3(0.0, 0.03125, 0.0),
+                stageOffsetMultipliers = mapOf(
+                    7 to 2
                 )
             ),
             CropStage(
@@ -130,6 +147,19 @@ class DoNotEatShroom : CropDefinitionProvider {
             ),
             5..5
         ),
+         CropStage(
+    blocks = listOf(
+    ),
+    armorStands = listOf(
+        CropArmorStand(
+    offset = Vec3(0.0, -0.5, 0.0),
+    matcher = {
+        it == "6a7ae95a8bb1fcdbf71385fe663c5647e0a5c32004db8c0313c2d45c94e3d1ad"
+    }
+)
+    ),
+    6..6
+),
         CropStage(
             blocks = listOf(
             ),
