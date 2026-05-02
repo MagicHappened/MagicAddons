@@ -24,7 +24,8 @@ class Scourroot : CropDefinitionProvider {
                         }
                     )
                 ),
-                1..1
+                1..1,
+                allowRotation = true
             )
         ),
         needsWater = false,
