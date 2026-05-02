@@ -7,6 +7,7 @@ import net.minecraft.client.gui.components.events.GuiEventListener
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.client.renderer.RenderPipelines
 import net.minecraft.client.renderer.texture.TextureAtlasSprite
+import net.minecraft.core.Direction
 import net.minecraft.world.level.block.Blocks
 import org.magic.magicaddons.data.greenhouse.GreenhouseSlot
 import org.magic.magicaddons.util.ChatUtils
@@ -36,7 +37,7 @@ class GreenhouseSlotWidget(
         }
         if (slot.placedBlock?.block == Blocks.AIR)
             sprite = null
-        sprite = ScreenUtil.getTopSpriteForState(slot.placedBlock)
+        sprite = ScreenUtil.getSpriteForState(slot.placedBlock, Direction.UP)
     }
 
     override fun render(graphics: GuiGraphics, mouseY: Int, j: Int, deltaTicks: Float) {

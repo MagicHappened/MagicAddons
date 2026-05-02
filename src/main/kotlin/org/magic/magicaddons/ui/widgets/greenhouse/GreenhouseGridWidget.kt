@@ -7,7 +7,11 @@ import net.minecraft.client.gui.components.events.GuiEventListener
 import net.minecraft.client.gui.narration.NarratableEntry
 import net.minecraft.client.gui.narration.NarrationElementOutput
 import net.minecraft.client.input.MouseButtonEvent
+import net.minecraft.world.item.ItemStack
+import net.minecraft.world.item.Items
+import net.minecraft.world.level.block.Blocks
 import org.magic.magicaddons.data.greenhouse.GreenhouseGrid
+import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.ScreenUtil.drawLine
 
 class GreenhouseGridWidget(
@@ -66,7 +70,7 @@ class GreenhouseGridWidget(
             widget.width = slotSize
             widget.height = slotSize
 
-            widget.renderedStack = element.cropDef.skyblockId.toItem()
+            widget.renderedStack = element.cropDef?.skyblockId?.toItem() ?: ItemStack(Items.BARRIER)
             elementWidgets.add(widget)
         }
 

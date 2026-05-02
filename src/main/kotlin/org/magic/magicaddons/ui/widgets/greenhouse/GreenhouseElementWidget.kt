@@ -6,15 +6,16 @@ import net.minecraft.client.gui.components.Renderable
 import net.minecraft.client.gui.components.events.GuiEventListener
 import net.minecraft.client.gui.screens.inventory.tooltip.ClientTooltipComponent
 import net.minecraft.client.gui.screens.inventory.tooltip.DefaultTooltipPositioner
+import net.minecraft.client.renderer.RenderPipelines
 import net.minecraft.network.chat.Component
 import net.minecraft.world.item.ItemStack
-import org.magic.magicaddons.data.greenhouse.CropRuntimeState
+import org.magic.magicaddons.data.greenhouse.ElementRuntimeState
 import org.magic.magicaddons.data.greenhouse.GrowthStageInfo
 import org.magic.magicaddons.ui.screens.GreenhouseScreen
+import org.magic.magicaddons.util.ScreenUtil.blitStretched
 import org.magic.magicaddons.util.ScreenUtil.renderFakeItem
-import java.util.Optional
 
-class GreenhouseElementWidget(val state: CropRuntimeState) : Renderable, GuiEventListener {
+class GreenhouseElementWidget(val state: ElementRuntimeState) : Renderable, GuiEventListener {
     var widgetX: Int = 0
     var widgetY: Int = 0
     var padding: Int = 0
@@ -23,12 +24,18 @@ class GreenhouseElementWidget(val state: CropRuntimeState) : Renderable, GuiEven
 
     var renderedStack: ItemStack = ItemStack.EMPTY
 
-    fun init(){
-        Minecraft.getInstance().itemModelResolver
-    }
-
 
     override fun render(guiGraphics: GuiGraphics, i: Int, j: Int, f: Float) {
+        if (state.renderOverride != null) {
+            state.renderOverride!!.invoke(
+                guiGraphics,
+                widgetX + padding,
+                widgetY + padding,
+                width - padding * 2,
+                height - padding * 2
+                )
+            return
+        }
         guiGraphics.renderFakeItem(
             renderedStack,
             widgetX + padding,
@@ -54,15 +61,23 @@ class GreenhouseElementWidget(val state: CropRuntimeState) : Renderable, GuiEven
     fun renderTooltip(graphics: GuiGraphics, mouseX: Int, mouseY: Int) {
         val font = Minecraft.getInstance().font
 
-        val lines = listOf(
-            Component.literal(state.cropDef.name),
-            Component.literal(
-                "Growth: " + when (val stage = state.growthStage) {
-                    is GrowthStageInfo.Known -> "${stage.stage}"
-                    is GrowthStageInfo.Estimated -> "${stage.range.first}-${stage.range.last}"
-                }
-            )
-        )
+        val lines = buildList {
+            add(Component.literal(state.cropDef?.name ?: state.nameOverride ?: "Unknown"))
+
+            val growthText = when (val stage = state.growthStage) {
+                is GrowthStageInfo.Known ->
+                    "Growth: ${stage.stage}"
+
+                is GrowthStageInfo.Estimated ->
+                    "Growth: ${stage.range.first}-${stage.range.last}"
+
+                null -> null
+            }
+
+            growthText?.let {
+                add(Component.literal(it))
+            }
+        }
 
         val components = lines.map { ClientTooltipComponent.create(it.visualOrderText) }
 

@@ -3,12 +3,14 @@ package org.magic.mixins;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.client.multiplayer.MultiPlayerGameMode;
+import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.phys.BlockHitResult;
 import org.magic.magicaddons.events.EventBus;
 import org.magic.magicaddons.events.interact.OnAttackEntityEvent;
 import org.magic.magicaddons.events.interact.OnBlockDestroyedEvent;
@@ -46,9 +48,19 @@ public abstract class ClientPlayerInteractionManagerMixin {
     @Inject(method = "useItem", at = @At("TAIL"))
     private void onUseItem(Player player, InteractionHand interactionHand, CallbackInfoReturnable<InteractionResult> cir){
         if (!cir.getReturnValue().consumesAction()) return;
-        //todo just for fire since its placing skulls
+        //todo watering can detection.
     }
 
+    @Inject(method = "useItemOn", at = @At("TAIL"))
+    private void onUseItemOn(
+            LocalPlayer localPlayer,
+            InteractionHand interactionHand,
+            BlockHitResult blockHitResult,
+            CallbackInfoReturnable<InteractionResult> cir){
+        if (!cir.getReturnValue().consumesAction()) return;
+        //todo just for fire since its placing skulls
+        //todo also for using hoe on dirt + if watering can needs
+    }
 
 
     //todo block place event?
