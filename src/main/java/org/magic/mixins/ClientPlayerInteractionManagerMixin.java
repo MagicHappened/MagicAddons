@@ -12,9 +12,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.BlockHitResult;
 import org.magic.magicaddons.events.EventBus;
-import org.magic.magicaddons.events.interact.OnAttackEntityEvent;
-import org.magic.magicaddons.events.interact.OnBlockDestroyedEvent;
-import org.magic.magicaddons.events.interact.OnStartDestroyBlockEvent;
+import org.magic.magicaddons.events.interact.*;
 import org.magic.magicaddons.util.ChatUtils;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -47,21 +45,24 @@ public abstract class ClientPlayerInteractionManagerMixin {
 
     @Inject(method = "useItem", at = @At("TAIL"))
     private void onUseItem(Player player, InteractionHand interactionHand, CallbackInfoReturnable<InteractionResult> cir){
-        if (!cir.getReturnValue().consumesAction()) return;
+        OnUseEvent event = new OnUseEvent(player);
+        EventBus.post(event);
+        // possibly add head hook and cancellation?
         //todo watering can detection.
     }
 
     @Inject(method = "useItemOn", at = @At("TAIL"))
     private void onUseItemOn(
-            LocalPlayer localPlayer,
-            InteractionHand interactionHand,
-            BlockHitResult blockHitResult,
-            CallbackInfoReturnable<InteractionResult> cir){
-        if (!cir.getReturnValue().consumesAction()) return;
-        //todo just for fire since its placing skulls
-        //todo also for using hoe on dirt + if watering can needs
+            LocalPlayer player,
+            InteractionHand hand,
+            BlockHitResult hit,
+            CallbackInfoReturnable<InteractionResult> cir
+    ) {
+        OnBlockUseEvent event = new OnBlockUseEvent(player,hit, cir.getReturnValue());
+        EventBus.post(event);
     }
-
+    //todo just for fire since its placing skulls
+    //todo also for using hoe on dirt + if watering can needs
 
     //todo block place event?
 

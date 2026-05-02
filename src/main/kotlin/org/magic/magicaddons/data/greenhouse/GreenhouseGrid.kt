@@ -36,17 +36,20 @@ class GreenhouseGrid {
     }
 
 
-    fun getSlotAt(blockPos: BlockPos): GreenhouseSlot? {
-        if (blockPos.y != 73) return null
-
+    fun getSlotAt(blockPos: BlockPos, matchY: Boolean = true): GreenhouseSlot? {
         val buildArea = plot?.getBuildableArea() ?: return null
+
         if (!buildArea.contains(Vec3.atCenterOf(blockPos))) return null
+
+        // Only enforce Y when requested
+        if (matchY && blockPos.y != 73) return null
 
         val minX = buildArea.minX.toInt()
         val minZ = buildArea.minZ.toInt()
 
         val gridX = blockPos.x - minX
         val gridY = blockPos.z - minZ
+
         return getSlot(gridX, gridY)
     }
 

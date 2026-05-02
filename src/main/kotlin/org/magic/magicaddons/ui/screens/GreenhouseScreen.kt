@@ -9,6 +9,7 @@ import net.minecraft.network.chat.Component
 import net.minecraft.resources.Identifier
 import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData
+import org.magic.magicaddons.features.farming.greenhousePresets.GreenhousePresets
 import org.magic.magicaddons.ui.widgets.ArrowWidget
 import org.magic.magicaddons.ui.widgets.greenhouse.GreenhouseElementWidget
 import org.magic.magicaddons.ui.widgets.greenhouse.GreenhouseGridWidget
@@ -73,7 +74,12 @@ class GreenhouseScreen(title: Component) : Screen(title) {
 
         if (GreenhouseData.initializedIds.isEmpty()) {
             if (!sentWarnings) {
-                ChatUtils.sendWithPrefix("No initialized greenhouse ids, please enter your greenhouse.")
+                if (!GreenhousePresets.baseSetting.value){
+                    ChatUtils.sendWithPrefix("Greenhouse Presets feature not enabled. Please turn it on to enable data scanning.")
+                }
+                else {
+                    ChatUtils.sendWithPrefix("No initialized greenhouse ids, please enter your greenhouse.")
+                }
             }
             displayedGridWidget = null
             return
