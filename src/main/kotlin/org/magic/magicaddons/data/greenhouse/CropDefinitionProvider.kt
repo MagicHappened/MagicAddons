@@ -3,7 +3,9 @@ package org.magic.magicaddons.data.greenhouse
 
 import com.mojang.serialization.Codec
 import com.mojang.serialization.codecs.RecordCodecBuilder
+import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.core.BlockPos
+import net.minecraft.world.entity.Entity
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.level.block.state.BlockState
@@ -131,11 +133,14 @@ data class CropDefinition(
     val isRareCrop: Boolean = false //todo buffs later
 )
 
-data class CropRuntimeState(
-    val cropDef: CropDefinition,
+data class ElementRuntimeState(
+    val cropDef: CropDefinition?,
     val origin: GreenhouseSlot,
-    val growthStage: GrowthStageInfo // todo add water level
-
+    val growthStage: GrowthStageInfo?,
+    val standEntities: List<Entity>?,
+    val blocksMap: Map<BlockPos,BlockState>?, // todo add water level
+    val nameOverride: String? = null,
+    var renderOverride: ((GuiGraphics, Int, Int, Int, Int) -> Unit)? = null
 )
 
 interface CropDefinitionProvider {

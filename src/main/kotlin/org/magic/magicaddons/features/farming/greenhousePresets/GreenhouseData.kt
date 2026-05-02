@@ -1,17 +1,20 @@
 package org.magic.magicaddons.features.farming.greenhousePresets
 
 import net.minecraft.client.Minecraft
+import net.minecraft.client.renderer.RenderPipelines
 import net.minecraft.core.BlockPos
+import net.minecraft.core.Direction
 import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.EquipmentSlot
 import net.minecraft.world.entity.decoration.ArmorStand
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.Blocks
+import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.CropDefinition
 import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
-import org.magic.magicaddons.data.greenhouse.CropRuntimeState
+import org.magic.magicaddons.data.greenhouse.ElementRuntimeState
 import org.magic.magicaddons.data.greenhouse.CropStage
 import org.magic.magicaddons.data.greenhouse.CropStagePattern
 import org.magic.magicaddons.data.greenhouse.GreenhouseElementFactory
@@ -26,6 +29,7 @@ import org.magic.magicaddons.events.interact.OnBlockPlacedEvent
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhousePresets.baseSetting
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.PlayerUtils
+import org.magic.magicaddons.util.ScreenUtil
 import tech.thatgravyboat.skyblockapi.api.SkyBlockAPI
 import tech.thatgravyboat.skyblockapi.api.events.base.Subscription
 import tech.thatgravyboat.skyblockapi.api.events.base.predicates.OnlyIn
@@ -154,12 +158,11 @@ object GreenhouseData {
 
     private fun setPlantData(grid: GreenhouseGrid) {
         val visitedSlots = Array(GRID_SIZE) { BooleanArray(GRID_SIZE) }
+
         val level = Minecraft.getInstance().level ?: return
-        val buildableArea = grid.plot?.getBuildableArea()
-        buildableArea ?: return
+        val buildableArea = grid.plot?.getBuildableArea() ?: return
 
         val stands = level.getEntities(null, buildableArea) ?: return
-
         val remainingStands = stands.toMutableList()
 
         for (y in 0 until GRID_SIZE) {
@@ -170,47 +173,98 @@ object GreenhouseData {
                 val soil = slot.placedBlock?.block ?: continue
 
                 val candidates = elementsBySoil[soil] ?: continue
-
                 val origin = grid.getPosForSlot(slot) ?: continue
 
-                var matchedState: CropRuntimeState? = null
+                val state = level.getBlockState(origin.offset(0,1,0))
+
+                if (state.`is`(Blocks.FIRE)) {
+                    grid.elementInstances.add(
+                        GreenhouseElementInstance(
+                            elementId = "fire",
+                            slot = slot
+                        )
+                    )
+
+                    grid.elements.add(
+                        ElementRuntimeState(
+                            null,
+                            slot,
+                            null,
+                            null,
+                            mapOf(
+                                origin.offset(0,1,0) to state
+                            ),
+                            "Fire",
+                            {graphics, x, y, width, height ->
+                                val sprite = ScreenUtil.getSpriteForState(
+                                    Blocks.FIRE.defaultBlockState(), Direction.NORTH
+                                )
+                                sprite ?: return@ElementRuntimeState
+                                graphics.blitSprite(
+                                    RenderPipelines.GUI_TEXTURED,
+                                    sprite,
+                                    x, y, width, height
+                                )
+                            }
+                        )
+                    )
+                    visitedSlots[y][x] = true
+                    continue
+                }
+
+                var matchedState: ElementRuntimeState? = null
                 var matchedDef: CropDefinition? = null
 
-                candidateLoop@ for (candidate in candidates) {
+                for (candidate in candidates) {
                     val def = candidate.definition
 
                     if (x + def.footprint.width > GRID_SIZE ||
                         y + def.footprint.height > GRID_SIZE
                     ) continue
 
-                    val stages = def.stageDefs.flatMap {
-                        when (it) {
-                            is CropStage -> listOf(it)
-                            is CropStagePattern -> it.expand()
+                    val stages = def.stageDefs.flatMap { stageDef ->
+                        when (stageDef) {
+                            is CropStage -> listOf(stageDef)
+                            is CropStagePattern -> stageDef.expand()
                         }
                     }
 
+                    var bestStage: CropStage? = null
+                    var bestGrowth: GrowthStageInfo? = null
+                    var bestScore = -1
+                    var usedStands: List<Entity>? = null
+                    var blocks: Map<BlockPos,BlockState>? = null
+
                     for (stage in stages) {
-                        val matched = stage.matchesStage(origin, remainingStands) { debug(x,y,it)}
-                        if (!matched) continue
+                        val result = stage.matchesStage(origin, remainingStands)
+                        if (!result.matched) continue
+
+                        if (result.score <= bestScore) continue
+
+                        bestScore = result.score
+                        bestStage = stage
+                        usedStands = result.usedStands
+                        blocks = result.matchedBlocks
 
                         val range = stage.stageRange
-                        val growth = if (range.first == range.last) {
+                        bestGrowth = if (range.first == range.last) {
                             GrowthStageInfo.Known(range.first)
                         } else {
                             GrowthStageInfo.Estimated(range)
                         }
-
-                        matchedState = CropRuntimeState(def, slot, growth)
-                        matchedDef = def
-
-                        break@candidateLoop
                     }
+
+                    if (bestStage == null || bestGrowth == null || usedStands == null || blocks == null) continue
+
+                    matchedState = ElementRuntimeState(def, slot, bestGrowth,usedStands, blocks)
+                    matchedDef = def
+
+                    remainingStands.removeAll(usedStands)
+                    break
                 }
 
                 val runtime = matchedState ?: continue
                 val def = matchedDef ?: continue
-
 
                 for (dy in 0 until def.footprint.height) {
                     for (dx in 0 until def.footprint.width) {
@@ -218,7 +272,6 @@ object GreenhouseData {
                     }
                 }
 
-                // store
                 grid.elementInstances.add(
                     GreenhouseElementInstance(
                         elementId = def.skyblockId.toString(),
@@ -241,56 +294,56 @@ object GreenhouseData {
 
     private fun CropStage.matchesStage(
         origin: BlockPos,
-        remainingStands: MutableList<Entity>,
-        debug: ((String) -> Unit)? = null
-    ): Boolean {
-        val level = Minecraft.getInstance().level ?: return false
+        remainingStands: List<Entity>
+    ): MatchResult {
+
+        val level = Minecraft.getInstance().level ?: return MatchResult(false, 0, emptyList(), emptyMap())
+
+        var score = 0
+        val usedStands = mutableListOf<Entity>()
+        val matchedBlocks = mutableMapOf<BlockPos,BlockState>()
+
         this.blocks?.forEach { blockDef ->
             val pos = origin.offset(blockDef.offset)
             val state = level.getBlockState(pos)
 
             if (!blockDef.matcher(state)) {
-                return false
+                return MatchResult(false, 0, emptyList(), emptyMap())
             }
+            matchedBlocks[pos] = state
+            score += 1
         }
 
-        // check armor stands
         this.armorStands?.forEach { standDef ->
+
             val center = Vec3(
                 origin.x + 0.5,
-                origin.y.toDouble(), // because me stupid on data collection
+                origin.y.toDouble(),
                 origin.z + 0.5
             )
-
-            debug?.invoke("Looking for stand at offset ${standDef.offset}")
 
             val match = remainingStands.firstOrNull { entity ->
                 if (entity !is ArmorStand) return@firstOrNull false
 
                 val offset = entity.position().subtract(center)
+
                 val head = entity.getItemBySlot(EquipmentSlot.HEAD)
                 val hash = PlayerUtils.getSkinHash(head)
 
-                val close = isClose(offset, standDef.offset)
-                val matchHash = standDef.matcher(hash)
+                isClose(offset, standDef.offset) &&
+                        standDef.matcher(hash)
+            } ?: return MatchResult(false, 0, emptyList(), emptyMap())
 
-                if (matchHash){
-                    debug?.invoke("Stand candidate offset=$offset close=$close)")
-                }
-
-                close && matchHash
-            }
-
-            if (match == null) {
-                debug?.invoke(" No matching stand found")
-                return false
-            }
-
-            debug?.invoke(" Matched stand at ${match.position()}")
-            remainingStands.remove(match)
+            usedStands.add(match)
+            score += 2
         }
 
-        return true
+        return MatchResult(
+            matched = true,
+            score = score,
+            usedStands = usedStands,
+            matchedBlocks = matchedBlocks
+        )
     }
     private fun isClose(a: Vec3, b: Vec3, epsilon: Double = 0.01): Boolean {
         return abs(a.x - b.x) < epsilon &&
@@ -349,20 +402,46 @@ object GreenhouseData {
     @EventHandler
     fun onBlockBreak(event: OnBlockDestroyedEvent) {
         if (!baseSetting.value) return
+
         val plotId = PlotAPI.getCurrentPlot()?.id ?: return
         if (!isInitialized(plotId)) return
 
         val grid = getCurrentGrid() ?: return
 
-        val blockVec3 = Vec3.atCenterOf(event.pos)
-        if (grid.plot?.aabb?.contains(blockVec3) != true) return
-        val changedSlot = grid.getSlotAt(event.pos)
-        changedSlot ?: return
-        changedSlot.placedBlock = Blocks.AIR.defaultBlockState()
-        grid.setSlot(changedSlot)
+        val pos = event.pos
+        val blockCenter = Vec3.atCenterOf(pos)
 
+        if (grid.plot?.aabb?.contains(blockCenter) != true) return
+
+        if (pos.y == 73) {
+            val slot = grid.getSlotAt(pos) ?: return
+
+            slot.placedBlock = Blocks.AIR.defaultBlockState()
+            grid.setSlot(slot)
+
+            return
+        }
+
+        val iterator = grid.elements.iterator()
+
+        while (iterator.hasNext()) {
+            val element = iterator.next()
+
+            val blocksMap = element.blocksMap ?: continue
+
+            if (!blocksMap.containsKey(pos)) continue
+
+            val originSlot = element.origin
+
+            iterator.remove()
+
+            grid.elementInstances.removeIf { instance ->
+                instance.slot == originSlot
+            }
+
+            break
+        }
     }
-
     @EventHandler
     fun onBlockPlaced(event: OnBlockPlacedEvent) {
         if (!baseSetting.value) return
@@ -386,7 +465,8 @@ object GreenhouseData {
     data class MatchResult(
         val matched: Boolean,
         val score: Int,
-        val usedStands: List<Entity>
+        val usedStands: List<Entity>,
+        val matchedBlocks: Map<BlockPos, BlockState>
     )
 
 }

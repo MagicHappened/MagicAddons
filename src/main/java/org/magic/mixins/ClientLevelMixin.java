@@ -48,7 +48,6 @@ public class ClientLevelMixin implements BlockEventBufferAccess {
             pendingPlaces.put(pos, context.affectedState());
         }
         else if (holder == GameEvent.BLOCK_DESTROY) {
-
             pendingBreaks.put(pos, context.affectedState());
         }
     }

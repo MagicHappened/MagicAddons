@@ -4,7 +4,6 @@ import com.mojang.blaze3d.pipeline.RenderPipeline
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
-import net.minecraft.client.gui.layouts.Layout
 import net.minecraft.client.gui.render.TextureSetup
 import net.minecraft.client.gui.render.state.ColoredRectangleRenderState
 import net.minecraft.client.gui.render.state.GuiTextRenderState
@@ -14,7 +13,6 @@ import net.minecraft.client.gui.screens.inventory.tooltip.DefaultTooltipPosition
 import net.minecraft.client.renderer.RenderPipelines
 import net.minecraft.client.renderer.texture.TextureAtlasSprite
 import net.minecraft.core.Direction
-import net.minecraft.core.component.DataComponents
 import net.minecraft.network.chat.Component
 import net.minecraft.resources.Identifier
 import net.minecraft.util.RandomSource
@@ -346,7 +344,7 @@ object ScreenUtil {
 
 
 
-    fun getTopSpriteForState(state: BlockState?): TextureAtlasSprite? {
+    fun getSpriteForState(state: BlockState?, direction: Direction): TextureAtlasSprite? {
         if (state == null) return null
 
         val client = Minecraft.getInstance()
@@ -357,7 +355,7 @@ object ScreenUtil {
         val parts = model.collectParts(random)
 
         for (part in parts) {
-            val quads = part.getQuads(Direction.UP)
+            val quads = part.getQuads(direction)
             if (quads.isNotEmpty()) {
                 return quads[0].sprite
             }
