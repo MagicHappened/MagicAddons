@@ -13,6 +13,7 @@ import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
+import org.magic.magicaddons.Common
 import org.magic.magicaddons.data.greenhouse.CropDefinition
 import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
 import org.magic.magicaddons.data.greenhouse.ElementRuntimeState
@@ -172,7 +173,7 @@ object GreenhouseData {
 
         val stands = level.getEntities(null, buildableArea) ?: return
         val remainingStands = stands.toMutableList()
-
+        Common.LOGGER.info("Stands size: ${remainingStands.size}")
         for (y in 0 until GRID_SIZE) {
             for (x in 0 until GRID_SIZE) {
                 if (visitedSlots[y][x]) continue
@@ -232,8 +233,9 @@ object GreenhouseData {
 
                     val stages = def.stageDefs.flatMap { stageDef ->
                         when (stageDef) {
-                            is CropStage -> listOf(stageDef)
                             is CropStagePattern -> stageDef.expand()
+                            is CropStage -> listOf(stageDef)
+
                         }
                     }
 
@@ -338,7 +340,7 @@ object GreenhouseData {
                 val head = entity.getItemBySlot(EquipmentSlot.HEAD)
                 val hash = PlayerUtils.getSkinHash(head)
 
-                isClose(offset, standDef.offset) &&
+                matchesWithRotation(offset,standDef.offset, this.allowRotation) &&
                         standDef.matcher(hash)
             } ?: return MatchResult(false, 0, emptyList(), emptyMap())
 
@@ -353,6 +355,28 @@ object GreenhouseData {
             matchedBlocks = matchedBlocks
         )
     }
+
+    fun matchesWithRotation(
+        actual: Vec3,
+        expected: Vec3,
+        allowRotation: Boolean
+    ): Boolean {
+        if (!allowRotation) {
+            return isClose(actual, expected)
+        }
+
+        val rotations = listOf(
+            expected,
+            Vec3(-expected.z, expected.y, expected.x),
+            Vec3(-expected.x, expected.y, -expected.z),
+            Vec3(expected.z, expected.y, -expected.x)
+        )
+
+        return rotations.any { rotated ->
+            isClose(actual, rotated)
+        }
+    }
+
     private fun isClose(a: Vec3, b: Vec3, epsilon: Double = 0.01): Boolean {
         return abs(a.x - b.x) < epsilon &&
                 abs(a.y - b.y) < epsilon &&
@@ -402,17 +426,10 @@ object GreenhouseData {
     }
 
     @Subscription
-    fun onIslandChange(event: IslandChangeEvent) {
-        if (!baseSetting.value) return
-        if (event.new != SkyBlockIsland.GARDEN) return
-        initKnownIds()
-        initData()
-    }
-
-    @Subscription
     @OnlyNonGuest
     @OnlyIn(SkyBlockIsland.GARDEN)
     fun onInventory(event: ContainerInitializedEvent) {
+        return
         if (event.title != "Crop Diagnostics"){
             listeningElement = null
             return
@@ -494,6 +511,7 @@ object GreenhouseData {
 
     @EventHandler
     fun onBlockUse(event: OnBlockUseEvent) {
+        return
         val plot = PlotAPI.getCurrentPlot() ?: return
         if (!isInitialized(plot.id)) return
         val plotArea = plot.getBuildableArea()

@@ -10,6 +10,7 @@ import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.Vec3
+import org.magic.magicaddons.util.ChatUtils
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockId
 import java.util.Optional
 
@@ -83,20 +84,14 @@ class CropStagePattern(
 
         val start = stageRange.first
 
-        var accumulated = 0
-
         for (stage in stageRange) {
 
-            if (stage == start) {
-                accumulated = 0
-            } else {
-                accumulated += stageOffsetMultipliers[stage] ?: 1
-            }
+            val multiplier = stageOffsetMultipliers[stage]
+                ?: (stage - start) // good fallback
 
             val newStands = armorStands?.map { stand ->
-
                 val offset = stand.offset.add(
-                    baseStageStandOffset.scale(accumulated.toDouble())
+                    baseStageStandOffset.scale(multiplier.toDouble())
                 )
 
                 CropArmorStand(

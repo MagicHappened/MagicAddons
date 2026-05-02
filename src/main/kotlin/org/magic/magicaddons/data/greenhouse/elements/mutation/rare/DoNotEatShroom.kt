@@ -41,9 +41,10 @@ class DoNotEatShroom : CropDefinitionProvider {
                 2..5,
                 baseStageStandOffset = Vec3(0.0, 0.03125, 0.0),
                 stageOffsetMultipliers = mapOf(
+                    2 to 0,
                     3 to 2,
-                    4 to 1,
-                    5 to 1,
+                    4 to 3,
+                    5 to 4
                     //todo add 6 and see based on 7
                 )
             ),
@@ -61,7 +62,8 @@ class DoNotEatShroom : CropDefinitionProvider {
                 stageRange = 6..7,
                 baseStageStandOffset = Vec3(0.0, 0.03125, 0.0),
                 stageOffsetMultipliers = mapOf(
-                    7 to 2
+                    6 to 0,
+                    7 to 2,
                 )
             ),
             CropStage(
