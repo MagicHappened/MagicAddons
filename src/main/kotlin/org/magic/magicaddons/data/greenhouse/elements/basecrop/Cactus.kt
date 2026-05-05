@@ -3,12 +3,7 @@ package org.magic.magicaddons.data.greenhouse.elements.basecrop
 import net.minecraft.core.BlockPos
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.phys.Vec3
-import org.magic.magicaddons.data.greenhouse.CropArmorStand
-import org.magic.magicaddons.data.greenhouse.CropBlockState
-import org.magic.magicaddons.data.greenhouse.CropDefinition
-import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
-import org.magic.magicaddons.data.greenhouse.CropStage
-import org.magic.magicaddons.data.greenhouse.CropStagePattern
+import org.magic.magicaddons.data.greenhouse.*
 import org.magic.magicaddons.util.BlockUtils.getIntProperty
 import org.magic.magicaddons.util.BlockUtils.isBlock
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
@@ -52,7 +47,26 @@ class Cactus : CropDefinitionProvider {
                 stageRange = 2..3,
                 baseStageStandOffset = Vec3(0.0, 0.59375, 0.0)
             ),
-
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0, 1, 0),
+                        matcher = {
+                            it.isBlock("minecraft:cactus") &&
+                                    it.getIntProperty("age") == 0
+                        }
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, 0.5, 0.0),
+                        matcher = {
+                            it == "d4b3ea5cb6b6f046e326621ca11ffb7d6aec22d66c0d81e5039b19ee4400309f"
+                        }
+                    )
+                ),
+                4..4
+            ),
             CropStage(
                 blocks = listOf(
                     CropBlockState(
@@ -84,21 +98,21 @@ class Cactus : CropDefinitionProvider {
             CropStage(
                 blocks = listOf(
                     CropBlockState(
-                        offset = BlockPos(0,1,0),
+                        offset = BlockPos(0, 1, 0),
                         matcher = {
                             it.isBlock("minecraft:cactus") &&
                                     it.getIntProperty("age") == 0
                         }
                     ),
                     CropBlockState(
-                        offset = BlockPos(0,2,0),
+                        offset = BlockPos(0, 2, 0),
                         matcher = {
                             it.isBlock("minecraft:cactus") &&
                                     it.getIntProperty("age") == 0
                         }
                     ),
                     CropBlockState(
-                        offset = BlockPos(0,3,0),
+                        offset = BlockPos(0, 3, 0),
                         matcher = {
                             it.isBlock("minecraft:cactus") &&
                                     it.getIntProperty("age") == 0

@@ -7,13 +7,15 @@ import org.magic.magicaddons.data.greenhouse.CropDefinition
 import org.magic.magicaddons.data.greenhouse.CropStage
 import org.magic.magicaddons.util.BlockUtils.getIntProperty
 import org.magic.magicaddons.util.BlockUtils.isBlock
-import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockId
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
 class Wheat : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Wheat",
         skyblockId = SkyBlockItemId.item("WHEAT"),
+        aliases = listOf(
+            SkyBlockItemId.item("SEEDS")
+        ),
         stageDefs = listOf(
             CropStage(
                 blocks = listOf(
@@ -68,7 +70,21 @@ class Wheat : CropDefinitionProvider {
                 armorStands = listOf(
                 ),
                 4..4
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0,1,0),
+                        matcher = {
+                            it.isBlock("minecraft:wheat") &&
+                                    it.getIntProperty("age") == 7
+                        }
+                    )
+                ),
+                armorStands = null,
+                8..8
             )
+
         ),
         isBaseCrop = true
     )

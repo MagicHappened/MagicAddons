@@ -176,12 +176,18 @@ object EntityUtils {
             when (entity) {
                 is ArmorStand -> false
                 is Display -> false
+                is Player -> {
+                    return !isRealPlayer(entity)
+                }
                 is LivingEntity -> true
                 else -> false
             }
         }
     }
 
+    fun isRealPlayer(entity: Player): Boolean {
+        return entity.uuid.version() == 4
+    }
 
     fun isEntityWearingArmorId(id: String, entity: Player, searchHelmet: Boolean): Boolean {
 

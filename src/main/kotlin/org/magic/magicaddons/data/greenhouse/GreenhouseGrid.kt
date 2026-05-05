@@ -2,7 +2,10 @@ package org.magic.magicaddons.data.greenhouse
 
 import com.mojang.serialization.Codec
 import com.mojang.serialization.codecs.RecordCodecBuilder
+import net.minecraft.client.Minecraft
 import net.minecraft.core.BlockPos
+import net.minecraft.world.entity.decoration.ArmorStand
+import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData.getBuildableArea
 import tech.thatgravyboat.skyblockapi.api.profile.garden.Plot
@@ -59,6 +62,52 @@ class GreenhouseGrid {
     fun setSlot(slot: GreenhouseSlot) {
         slots.getOrNull(slot.y)
             ?.set(slot.x, slot)
+    }
+
+    fun getUnassignedBlockMap(): Map<BlockPos, BlockState> {
+        val level = Minecraft.getInstance().level ?: return emptyMap()
+        val area = plot?.getBuildableArea() ?: return emptyMap()
+
+        val allBlocks = mutableMapOf<BlockPos, BlockState>()
+
+        val minX = area.minX.toInt()
+        val minZ = area.minZ.toInt()
+        val maxX = area.maxX.toInt()
+        val maxZ = area.maxZ.toInt()
+
+        val minY = 74
+        val maxY = 84
+
+        for (x in minX..maxX) {
+            for (z in minZ..maxZ) {
+                for (y in minY..maxY) {
+                    val pos = BlockPos(x, y, z)
+                    val state = level.getBlockState(pos)
+
+                    if (!state.isAir) {
+                        allBlocks[pos] = state
+                    }
+                }
+            }
+        }
+
+        val usedPositions = elements
+            .flatMap { it.blocksMap?.keys ?: emptySet() }
+            .toSet()
+
+        return allBlocks.filterKeys { it !in usedPositions }
+    }
+
+    fun getUnassignedArmorStands(): List<ArmorStand>? {
+        val level = Minecraft.getInstance().level ?: return null
+        val area = plot?.getBuildableArea() ?: return null
+        val stands = level.getEntities(null, area)
+            .filterIsInstance<ArmorStand>()
+            .toMutableList()
+        elements.forEach {
+            it.standEntities?.let { elements -> stands.removeAll(elements) }
+        }
+        return stands.toList()
     }
 
 

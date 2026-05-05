@@ -43,7 +43,7 @@ public abstract class ClientPlayerInteractionManagerMixin {
         }
     }
 
-    @Inject(method = "useItem", at = @At("TAIL"))
+    @Inject(method = "useItem", at = @At("HEAD"))
     private void onUseItem(Player player, InteractionHand interactionHand, CallbackInfoReturnable<InteractionResult> cir){
         OnUseEvent event = new OnUseEvent(player);
         EventBus.post(event);
@@ -51,14 +51,14 @@ public abstract class ClientPlayerInteractionManagerMixin {
         //todo watering can detection.
     }
 
-    @Inject(method = "useItemOn", at = @At("TAIL"))
+    @Inject(method = "useItemOn", at = @At("HEAD"))
     private void onUseItemOn(
             LocalPlayer player,
             InteractionHand hand,
             BlockHitResult hit,
             CallbackInfoReturnable<InteractionResult> cir
     ) {
-        OnBlockUseEvent event = new OnBlockUseEvent(player,hit, cir.getReturnValue());
+        OnBlockUseEvent event = new OnBlockUseEvent(player,hit);
         EventBus.post(event);
     }
     //todo just for fire since its placing skulls

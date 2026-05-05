@@ -12,7 +12,6 @@ import org.magic.magicaddons.events.EventBus;
 import org.magic.magicaddons.events.interact.OnBlockDestroyedEvent;
 import org.magic.magicaddons.events.interact.OnBlockPlacedEvent;
 import org.magic.magicaddons.events.world.AddParticleEvent;
-import org.magic.magicaddons.util.ChatUtils;
 import org.magic.misc.BlockEventBufferAccess;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -49,7 +48,6 @@ public class ClientPacketListenerMixin {
             )
     )
     private void onBlockUpdate(ClientboundBlockUpdatePacket packet, CallbackInfo ci) {
-
         ClientLevel level = Minecraft.getInstance().level;
         if (!(level instanceof BlockEventBufferAccess buffer)) return;
 
