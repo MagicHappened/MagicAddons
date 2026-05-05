@@ -1,6 +1,7 @@
 package org.magic.magicaddons.features.farming.greenhousePresets
 
 import org.magic.magicaddons.data.config.BooleanSetting
+import org.magic.magicaddons.data.greenhouse.CropRegistry
 import org.magic.magicaddons.events.EventHandler
 import org.magic.magicaddons.events.interact.OnBlockDestroyedEvent
 import org.magic.magicaddons.features.Feature
@@ -34,6 +35,7 @@ object GreenhousePresets : Feature() {
     @OnlyIn(SkyBlockIsland.GARDEN)
     private fun onIslandChange(event: IslandChangeEvent){
         GreenhouseData //for now for initialization
+        CropRegistry
     }
 
 
