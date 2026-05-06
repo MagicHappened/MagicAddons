@@ -11,6 +11,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import org.magic.magicaddons.events.EventBus;
 import org.magic.magicaddons.events.interact.OnBlockDestroyedEvent;
 import org.magic.magicaddons.events.interact.OnBlockPlacedEvent;
+import org.magic.magicaddons.events.interact.OnBlockUpdatedEvent;
 import org.magic.magicaddons.events.world.AddParticleEvent;
 import org.magic.misc.BlockEventBufferAccess;
 import org.spongepowered.asm.mixin.Mixin;
@@ -77,6 +78,8 @@ public class ClientPacketListenerMixin {
                 EventBus.post(new OnBlockDestroyedEvent(pos, player, newState));
             }
         }
+
+        EventBus.post(new OnBlockUpdatedEvent(packet));
     }
 
 

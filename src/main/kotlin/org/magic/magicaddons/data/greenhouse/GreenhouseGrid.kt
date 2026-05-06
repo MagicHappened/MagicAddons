@@ -13,6 +13,7 @@ import tech.thatgravyboat.skyblockapi.api.profile.garden.Plot
 class GreenhouseGrid {
 
     var plot: Plot? = null
+    var state: GridState? = null
     val width = 10
     val height = 10
 
@@ -110,11 +111,40 @@ class GreenhouseGrid {
         return stands.toList()
     }
 
+    data class GridState(
+        var lastUpdateTimestamp: Long,
+        var needsUpdate: Boolean = false,
+
+
+    ){
+
+        companion object {
+            val CODEC: Codec<GridState> = RecordCodecBuilder.create { instance ->
+                instance.group(
+                    Codec.LONG.fieldOf("lastUpdateTimestamp").forGetter {
+                        it.lastUpdateTimestamp
+                    },
+                        Codec.BOOL.fieldOf("needsUpdate").forGetter {
+                            it.needsUpdate
+                        }
+
+
+                ).apply(instance) { lastUpdate, needsUpdate ->
+                    GridState(lastUpdate, needsUpdate)
+                }
+            }
+
+        }
+    }
+
 
     companion object {
         val CODEC: Codec<GreenhouseGrid> = RecordCodecBuilder.create { instance ->
             instance.group(
-
+                GridState.CODEC
+                .fieldOf("state")
+                .forGetter { it.state }
+                ,
                 GreenhouseSlot.CODEC.listOf()
                     .fieldOf("slots")
                     .forGetter { grid ->
@@ -125,9 +155,9 @@ class GreenhouseGrid {
                     .fieldOf("elements")
                     .forGetter { it.elementInstances }
 
-            ).apply(instance) { slots, elements ->
-
+            ).apply(instance) { state, slots, elements ->
                 val grid = GreenhouseGrid()
+                grid.state = state
                 slots.forEach {
                     val slot = GreenhouseSlot(it.x,it.y,it.unlocked,it.placedBlock)
                     grid.setSlot(slot)
