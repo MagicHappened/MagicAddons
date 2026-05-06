@@ -61,10 +61,8 @@ public abstract class ClientPlayerInteractionManagerMixin {
         OnBlockUseEvent event = new OnBlockUseEvent(player,hit);
         EventBus.post(event);
     }
-    //todo just for fire since its placing skulls
-    //todo also for using hoe on dirt + if watering can needs
+    //todo if watering can needs
 
-    //todo block place event?
 
 
 }
