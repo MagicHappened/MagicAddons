@@ -522,10 +522,6 @@ object GreenhouseData {
     }
 
 
-    // todo add item use for hoeing and fire
-    // (maybe use block updated for farmland since its already there?)
-
-
     @EventHandler
     fun onBlockUse(event: OnBlockUseEvent) {
         val plot = PlotAPI.getCurrentPlot() ?: return
