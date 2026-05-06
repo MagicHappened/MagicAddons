@@ -1,5 +1,6 @@
 package org.magic.magicaddons.data.greenhouse
 
+import org.magic.magicaddons.data.greenhouse.elements.DeadPlant
 import org.magic.magicaddons.data.greenhouse.elements.basecrop.*
 import org.magic.magicaddons.data.greenhouse.elements.mutation.common.*
 import org.magic.magicaddons.data.greenhouse.elements.mutation.uncommon.*
@@ -12,6 +13,7 @@ object GreenhouseElementFactory {
     private val factories = mutableMapOf<String,() -> CropDefinitionProvider>()
 
     init {
+        this.register("DEAD_PLANT") { DeadPlant() }
         // basecrop
         this.register("BROWN_MUSHROOM") { Brownmushroom() }
         this.register("CACTUS") { Cactus() }
