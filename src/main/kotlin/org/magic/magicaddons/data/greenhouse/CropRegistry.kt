@@ -1,6 +1,7 @@
 package org.magic.magicaddons.data.greenhouse
 
 import org.magic.magicaddons.data.greenhouse.elements.DeadPlant
+import org.magic.magicaddons.data.greenhouse.elements.FireElement
 import org.magic.magicaddons.data.greenhouse.elements.basecrop.*
 import org.magic.magicaddons.data.greenhouse.elements.mutation.common.*
 import org.magic.magicaddons.data.greenhouse.elements.mutation.uncommon.*
@@ -17,6 +18,7 @@ object CropRegistry {
     }
 
     init {
+        register(FireElement())
         register(DeadPlant())
 
         register(Brownmushroom())

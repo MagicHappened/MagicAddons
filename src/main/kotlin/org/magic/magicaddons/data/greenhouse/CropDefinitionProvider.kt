@@ -187,7 +187,7 @@ class CropStagePattern(
 
 data class CropDefinition(
     val name: String,
-    val skyblockId: SkyBlockId,
+    val skyblockId: SkyBlockId?,
     val aliases: List<SkyBlockId>? = null,
     val stageDefs: List<CropStage>,
     val footprint: Footprint = Footprint(1,1),
@@ -211,16 +211,15 @@ data class StageMatchResult(
 
 
 data class ElementRuntimeState(
-    val cropDef: CropDefinition?,
+    val cropDef: CropDefinition,
     val origin: GreenhouseSlot,
-    val growthStage: GrowthStageInfo?,
+    var growthStage: GrowthStageInfo?,
+    var waterLevel: Int? = null, // null represents unknown/not applicable since cropDef holds needsWater already.
     val standEntities: List<Entity>?,
     val blocksMap: Map<BlockPos,BlockState>?, // todo add water level
     val nameOverride: String? = null,
     var renderOverride: ((GuiGraphics, Int, Int, Int, Int) -> Unit)? = null
-){
-
-}
+)
 
 interface CropDefinitionProvider {
     val definition: CropDefinition

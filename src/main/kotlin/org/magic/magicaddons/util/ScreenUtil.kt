@@ -54,6 +54,7 @@ object ScreenUtil {
     }
 
 
+
     private var newScreen: Screen? = null
 
     fun setScreen(screen: Screen) {

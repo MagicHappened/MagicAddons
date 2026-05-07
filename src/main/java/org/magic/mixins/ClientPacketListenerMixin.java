@@ -66,7 +66,6 @@ public class ClientPacketListenerMixin {
             if (!newState.isAir() && newState.is(expectedPlaceState.getBlock())) {
                 EventBus.post(new OnBlockPlacedEvent(pos, player, newState));
             }
-
             return;
         }
 
@@ -77,6 +76,7 @@ public class ClientPacketListenerMixin {
             if (newState.isAir() || newState != expectedBreakState) {
                 EventBus.post(new OnBlockDestroyedEvent(pos, player, newState));
             }
+            return;
         }
 
         EventBus.post(new OnBlockUpdatedEvent(packet));
