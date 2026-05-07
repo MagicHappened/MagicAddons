@@ -70,7 +70,7 @@ class GreenhouseGridWidget(
             widget.width = slotSize
             widget.height = slotSize
 
-            widget.renderedStack = element.cropDef?.skyblockId?.toItem() ?: ItemStack(Items.BARRIER)
+            widget.renderedStack = element.cropDef.skyblockId?.toItem() ?: ItemStack(Items.BARRIER)
             elementWidgets.add(widget)
         }
 

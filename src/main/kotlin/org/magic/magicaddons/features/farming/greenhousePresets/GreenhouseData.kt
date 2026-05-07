@@ -29,6 +29,8 @@ import org.magic.magicaddons.events.interact.OnBlockDestroyedEvent
 import org.magic.magicaddons.events.interact.OnBlockPlacedEvent
 import org.magic.magicaddons.events.interact.OnBlockUpdatedEvent
 import org.magic.magicaddons.events.interact.OnBlockUseEvent
+import org.magic.magicaddons.events.interact.OnInteractEntityEvent
+import org.magic.magicaddons.events.interact.OnUseEvent
 import org.magic.magicaddons.events.world.OnEntityAdded
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhousePresets.baseSetting
 import org.magic.magicaddons.util.ChatUtils
@@ -226,31 +228,7 @@ object GreenhouseData {
         val candidates = elementsBySoil[soil] ?: return null
         val origin = grid.getPosForSlot(slot) ?: return null
 
-        val fireState = level.getBlockState(origin.offset(0, 1, 0))
-        if (fireState.`is`(Blocks.FIRE)) {
-            val runtime = ElementRuntimeState(
-                null,
-                slot,
-                null,
-                null,
-                mapOf(origin.offset(0, 1, 0) to fireState),
-                "Fire",
-                {
-                        graphics, x, y, width, height ->
-                    val sprite = ScreenUtil.getSpriteForState(
-                        Blocks.FIRE.defaultBlockState(), Direction.NORTH
-                    )
-                    sprite ?: return@ElementRuntimeState
-                    graphics.blitSprite(
-                        RenderPipelines.GUI_TEXTURED,
-                        sprite,
-                        x, y, width, height
-                    )
-                }
-            )
 
-            return ElementMatchResult(runtime,emptyList())
-        }
 
         for (candidate in candidates) {
             val def = candidate.definition
@@ -288,11 +266,12 @@ object GreenhouseData {
 
             if (bestStage != null && usedStands != null) {
                 val runtime = ElementRuntimeState(
-                    def,
-                    slot,
-                    bestGrowth,
-                    usedStands,
-                    blocks
+                    cropDef = def,
+                    origin = slot,
+                    growthStage = bestGrowth,
+                    waterLevel = null,
+                    standEntities = usedStands,
+                    blocksMap = blocks
                 )
 
                 return ElementMatchResult(runtime, usedStands)
@@ -509,9 +488,12 @@ object GreenhouseData {
         val gridArea = grid.plot?.getBuildableArea() ?: return
         if (!gridArea.contains(event.packet.pos.center)) return
         val slot = grid.getSlotAt(event.packet.pos, false) ?: return
-        if (event.packet.blockState.block == Blocks.FIRE) {
-            if (event.packet.pos.y == 74){
-
+        if (event.packet.pos.y == 74){
+            if (event.packet.blockState.block == Blocks.FIRE){
+                return
+            }
+            else {
+                ChatUtils.sendWithPrefix("Tick detected?")
             }
         }
 
@@ -521,6 +503,40 @@ object GreenhouseData {
         grid.setSlot(slot)
     }
 
+    private val waterCanIds = setOf(
+        "HYDRO_CAN_1000",
+        "HYDRO_CAN_TURBO_2000",
+        "HYDRO_CAN_ULTRA_3000",
+        "AQUAMASTER_X",
+        "AQUAMASTER_HYDROMAX"
+
+    )
+
+    @EventHandler
+    fun onInteractEntity(event: OnInteractEntityEvent) {
+        val plot = PlotAPI.getCurrentPlot() ?: return
+        if (!isInitialized(plot.id)) return
+        val mainHandId = event.player.mainHandItem.getSkyBlockId() ?: return
+        val standTarget = event.target as? ArmorStand ?: return
+        val grid = getCurrentGrid() ?: return
+        if (mainHandId.id == "item:plant_diagnostics_tool"){
+            tryGetDiagnosticData(null, standTarget, grid)
+            return
+        }
+    }
+
+
+    @EventHandler
+    fun onItemUse(event: OnUseEvent){
+        val plot = PlotAPI.getCurrentPlot() ?: return
+        if (!isInitialized(plot.id)) return
+        val mainHandId = event.player.mainHandItem.getSkyBlockId() ?: return
+
+        if (("item:"+mainHandId.id) in waterCanIds){
+            tryGetWaterCanData()
+            return
+        }
+    }
 
     @EventHandler
     fun onBlockUse(event: OnBlockUseEvent) {
@@ -528,8 +544,16 @@ object GreenhouseData {
         if (!isInitialized(plot.id)) return
         val mainHandId = event.player.mainHandItem.getSkyBlockId() ?: return
         val grid = getCurrentGrid() ?: return
-        val hitSlot = grid.getSlotAt(event.hit.blockPos, false) ?: return
         val foundCrop = CropRegistry.all.firstOrNull { it.matchesId(mainHandId) }
+
+        if (mainHandId.id == "item:plant_diagnostics_tool"){
+            tryGetDiagnosticData(event.hit.blockPos, null, grid)
+            return
+        }
+        if (("item:"+mainHandId.id) in waterCanIds){
+            tryGetWaterCanData()
+            return
+        }
 
         if (foundCrop != null) {
             val pos = event.hit.blockPos.relative(event.hit.direction)
@@ -539,9 +563,7 @@ object GreenhouseData {
             return
         }
 
-        if (mainHandId.id == "item:plant_diagnostics_tool"){
-            tryGetDiagnosticData(event, hitSlot, grid)
-        }
+
     }
 
     fun cropPlanted(){
@@ -551,11 +573,14 @@ object GreenhouseData {
         val slot = grid.getSlotAt(placedCrop!!.second, false) ?: return
         val result = findElementAtSlot(grid,slot, availableStands)
         result ?: return
+        if (result.runtime.cropDef?.needsWater ?: false){
+            result.runtime.waterLevel = 0
+        }
         grid.elements.add(result.runtime)
         grid.elementInstances.add(
             GreenhouseElementInstance(
                 result.runtime.cropDef?.skyblockId?.id ?: result.runtime.nameOverride
-                ?: throw IllegalStateException("Unexpected null at crop def for slot: ${slot.x},${slot.y}"),
+                ?: throw IllegalStateException("Unexpected null at crop def or nameOverride for slot: ${slot.x},${slot.y}"),
                 slot,
                 0, //todo add water
                 result.runtime.growthStage
@@ -563,18 +588,32 @@ object GreenhouseData {
         )
 
     }
+    fun tryGetWaterCanData(){
 
-    fun tryGetDiagnosticData(event: OnBlockUseEvent, slot: GreenhouseSlot, grid: GreenhouseGrid){
-        val plotArea = grid.plot?.getBuildableArea() ?: return
-        if (!plotArea.contains(event.hit.blockPos.center)) return
+    }
 
-        val hitElement = grid.elements.firstOrNull {
-            it.origin == slot
+    fun tryGetDiagnosticData(hitBlock: BlockPos? = null,hitEntity: ArmorStand? = null, grid: GreenhouseGrid){
+        var hitElement: ElementRuntimeState? = null
+
+        if (hitBlock != null){
+            hitElement = grid.elements.find {
+                it.blocksMap?.keys?.contains(hitBlock) ?: return@find false
+            }
         }
+        if (hitEntity != null && hitElement != null){
+            hitElement = grid.elements.find {
+                it.standEntities?.contains(hitEntity) ?: return@find false
+            }
+        }
+        if (hitElement == null) {
+            plantDiagnosticListeningElement = null
+            return
+        }
+
         plantDiagnosticListeningElement = hitElement
     }
 
-    data class ElementMatchResult(
+    data class ElementMatchResult( //todo depreciate this and just remove the used stands from runtime.standEntities
         val runtime: ElementRuntimeState,
         val usedStands: List<Entity>
     )

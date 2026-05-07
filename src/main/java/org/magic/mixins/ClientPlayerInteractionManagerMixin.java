@@ -1,7 +1,5 @@
 package org.magic.mixins;
 
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.client.multiplayer.MultiPlayerGameMode;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
@@ -13,10 +11,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.BlockHitResult;
 import org.magic.magicaddons.events.EventBus;
 import org.magic.magicaddons.events.interact.*;
-import org.magic.magicaddons.util.ChatUtils;
-import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
@@ -61,6 +56,13 @@ public abstract class ClientPlayerInteractionManagerMixin {
         OnBlockUseEvent event = new OnBlockUseEvent(player,hit);
         EventBus.post(event);
     }
+
+    @Inject(method = "interact", at = @At("TAIL"))
+    private void onInteract(Player player, Entity entity, InteractionHand interactionHand, CallbackInfoReturnable<InteractionResult> cir){
+        OnInteractEntityEvent event = new OnInteractEntityEvent(player,entity);
+        EventBus.post(event);
+    }
+
     //todo if watering can needs
 
 
