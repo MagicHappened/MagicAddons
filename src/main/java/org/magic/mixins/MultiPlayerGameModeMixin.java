@@ -11,14 +11,27 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.BlockHitResult;
 import org.magic.magicaddons.events.EventBus;
 import org.magic.magicaddons.events.interact.*;
+import org.magic.misc.BlockUseBufferAccess;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Mixin(MultiPlayerGameMode.class)
-public abstract class ClientPlayerInteractionManagerMixin {
+public abstract class MultiPlayerGameModeMixin implements BlockUseBufferAccess {
+
+    @Unique
+    public final List<BlockPos> blocksUsedOn = new ArrayList<>();
+
+    @Override
+    public List<BlockPos> magicaddons$getBlocksUsedOn() {
+        return blocksUsedOn;
+    }
 
     @Inject(method = "attack", at = @At("HEAD") , cancellable = true)
     private static void onAttackEntity(Player player, Entity entity, CallbackInfo ci){
@@ -46,6 +59,7 @@ public abstract class ClientPlayerInteractionManagerMixin {
         //todo watering can detection.
     }
 
+
     @Inject(method = "useItemOn", at = @At("HEAD"))
     private void onUseItemOn(
             LocalPlayer player,
@@ -53,6 +67,7 @@ public abstract class ClientPlayerInteractionManagerMixin {
             BlockHitResult hit,
             CallbackInfoReturnable<InteractionResult> cir
     ) {
+        blocksUsedOn.add(hit.getBlockPos());
         OnBlockUseEvent event = new OnBlockUseEvent(player,hit);
         EventBus.post(event);
     }

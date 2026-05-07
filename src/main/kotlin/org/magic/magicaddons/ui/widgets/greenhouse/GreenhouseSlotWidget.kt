@@ -35,9 +35,11 @@ class GreenhouseSlotWidget(
             slot.placedBlock = Blocks.PODZOL.defaultBlockState()
             ChatUtils.sendWithPrefix("Block at ${slot.x} ${slot.y} failed to load, rendering as podzol.")
         }
-        if (slot.placedBlock?.block == Blocks.AIR)
+        if (slot.placedBlock?.block == Blocks.AIR){
             sprite = null
-        sprite = ScreenUtil.getSpriteForState(slot.placedBlock, Direction.UP)
+            return
+        }
+        sprite = ScreenUtil.getSpriteForState(slot.placedBlock!!, Direction.UP)
     }
 
     override fun render(graphics: GuiGraphics, mouseY: Int, j: Int, deltaTicks: Float) {

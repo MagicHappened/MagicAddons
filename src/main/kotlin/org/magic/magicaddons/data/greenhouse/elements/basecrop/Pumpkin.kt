@@ -35,7 +35,8 @@ class Pumpkin : CropDefinitionProvider {
                         }
                     )
                 ),
-                1..1
+                1..1,
+                allowRotation = true
             ),
             CropStage(
                 blocks = listOf(
@@ -55,8 +56,37 @@ class Pumpkin : CropDefinitionProvider {
                         }
                     )
                 ),
-                2..2
+                2..2,
+                allowRotation = true
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0,1,0),
+                        matcher = {
+                            it.isBlock("minecraft:melon_stem") &&
+                                    it.getIntProperty("age") == 7
+                        }
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(-0.0625, -0.46875, 0.0),
+                        matcher = {
+                            it == "1839c3565f36c9d6e52d55a1760b11c2060953143ffe4ffe9c8b606ee4e3648f"
+                        }
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(0.09375, -0.625, 0.09375),
+                        matcher = {
+                            it == "1839c3565f36c9d6e52d55a1760b11c2060953143ffe4ffe9c8b606ee4e3648f"
+                        }
+                    )
+                ),
+                11..11,
+                allowRotation = true
             )
+
 
         ),
         isBaseCrop = true

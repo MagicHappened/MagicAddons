@@ -62,7 +62,7 @@ class GreenhouseElementWidget(val state: ElementRuntimeState) : Renderable, GuiE
         val font = Minecraft.getInstance().font
 
         val lines = buildList {
-            add(Component.literal(state.cropDef?.name ?: state.nameOverride ?: "Unknown"))
+            add(Component.literal(state.cropDef.name))
 
             val growthText = when (val stage = state.growthStage) {
                 is GrowthStageInfo.Known ->

@@ -202,7 +202,10 @@ class GreenhouseScreen(title: Component) : Screen(title) {
         forwardArrow?.render(graphics, mouseX, mouseY, delta)
         backwardArrow?.render(graphics, mouseX, mouseY, delta)
 
-        hoveredWidget?.renderTooltip(graphics, mouseX, mouseY)
+        hoveredWidget?.renderTooltip(
+            graphics,
+            startX + containerSize,
+            startY + borderPadding *2)
     }
 
     override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {

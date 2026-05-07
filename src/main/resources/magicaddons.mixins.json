@@ -5,7 +5,7 @@
   "compatibilityLevel": "JAVA_21",
   "mixins": [
     "ClientPacketListenerMixin",
-    "ClientPlayerInteractionManagerMixin",
+    "MultiPlayerGameModeMixin",
     "LivingEntityMixin",
     "MinecraftMixin",
     "LevelRendererMixin",

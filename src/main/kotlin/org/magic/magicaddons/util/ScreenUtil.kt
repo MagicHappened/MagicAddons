@@ -345,8 +345,7 @@ object ScreenUtil {
 
 
 
-    fun getSpriteForState(state: BlockState?, direction: Direction): TextureAtlasSprite? {
-        if (state == null) return null
+    fun getSpriteForState(state: BlockState, direction: Direction): TextureAtlasSprite {
 
         val client = Minecraft.getInstance()
         val model = client.blockRenderer.blockModelShaper.getBlockModel(state)
@@ -368,8 +367,7 @@ object ScreenUtil {
                 return quads[0].sprite
             }
         }
-
-        return null
+        throw IllegalStateException("No sprite for state $state")
     }
 
 

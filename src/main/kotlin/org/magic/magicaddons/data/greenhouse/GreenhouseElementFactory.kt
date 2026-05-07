@@ -14,7 +14,7 @@ object GreenhouseElementFactory {
     private val factories = mutableMapOf<String,() -> CropDefinitionProvider>()
 
     init {
-        this.register("fire") { FireElement() }
+        this.register("Fire") { FireElement() }
         this.register("DEAD_PLANT") { DeadPlant() }
         // basecrop
         this.register("BROWN_MUSHROOM") { Brownmushroom() }

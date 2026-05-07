@@ -75,7 +75,35 @@ class Melon : CropDefinitionProvider {
                     )
                 ),
                 3..3
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0,1,0),
+                        matcher = {
+                            it.isBlock("minecraft:melon_stem") &&
+                                    it.getIntProperty("age") == 7
+                        }
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(-0.0625, -0.46875, 0.0),
+                        matcher = {
+                            it == "fdfae4b11048bc1ce96ed150134e79f16e2bcaf12d43fa0ff0e27fb2e0852130"
+                        }
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(0.09375, -0.625, 0.09375),
+                        matcher = {
+                            it == "fdfae4b11048bc1ce96ed150134e79f16e2bcaf12d43fa0ff0e27fb2e0852130"
+                        }
+                    )
+                ),
+                11..11,
+                allowRotation = true
             )
+
 
         ),
         isBaseCrop = true
