@@ -76,7 +76,33 @@ class Wildrose : CropDefinitionProvider {
                     )
                 ),
                 3..3
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0,1,0),
+                        matcher = {
+                            it.isBlock("minecraft:rose_bush")
+                        }
+                    ),
+                    CropBlockState(
+                        offset = BlockPos(0,2,0),
+                        matcher = {
+                            it.isBlock("minecraft:rose_bush")
+                        }
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, 1.09375, 0.0),
+                        matcher = {
+                            it == "61a37adb8bcad712663771235feeb136ebe0f5c4d593070a5410ccb6f6706aa0"
+                        }
+                    )
+                ),
+                15..15
             )
+
 
         ),
         isBaseCrop = true

@@ -36,7 +36,7 @@ object MagicAddonsConfigJsonHandler {
             file.writeText(gson.toJson(raw))
         }
 
-
+        @Suppress("UNCHECKED_CAST")
         val configSection = raw["config"] as? MutableMap<String, Any> ?: mutableMapOf()
 
         val type = object : TypeToken<

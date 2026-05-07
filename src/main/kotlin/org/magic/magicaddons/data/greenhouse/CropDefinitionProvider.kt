@@ -217,7 +217,6 @@ data class ElementRuntimeState(
     var waterLevel: Int? = null, // null represents unknown/not applicable since cropDef holds needsWater already.
     val standEntities: List<Entity>?,
     val blocksMap: Map<BlockPos,BlockState>?, // todo add water level
-    val nameOverride: String? = null,
     var renderOverride: ((GuiGraphics, Int, Int, Int, Int) -> Unit)? = null
 )
 

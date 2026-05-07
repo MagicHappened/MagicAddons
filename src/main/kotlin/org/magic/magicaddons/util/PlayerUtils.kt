@@ -66,7 +66,7 @@ object PlayerUtils {
 
     fun getSkinHash(stack: ItemStack): String? {
         val profile = stack.get(DataComponents.PROFILE) ?: return null
-        val textures = profile.properties.get("textures")?.firstOrNull() ?: return null
+        val textures = profile.properties.get("textures").firstOrNull() ?: return null
         val skinData = getSkinDataFromValue(textures.value) ?: return null
 
         return skinData.hash

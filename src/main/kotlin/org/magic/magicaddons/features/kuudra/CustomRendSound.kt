@@ -120,7 +120,7 @@ object CustomRendSound : Feature() {
 
         wornReaperArmorList.remove(event.player)
         wornReaperTuxedoArmorList.remove(event.player)
-        ChatUtils.sendWithPrefix("${event.player.displayName?.siblings?.get(1)?.string} Pulled!")
+        ChatUtils.sendWithPrefix("${event.player.displayName.siblings[1].string} Pulled!")
         // SoundEvents.ENTITY_GOAT_SCREAMING_DEATH.id
         // minecraft:entity.goat.screaming.death
         // baseSetting.getChild<TextSetting>("RendPullSoundPath")?.value ?: "mob.goat.death.screamer"
