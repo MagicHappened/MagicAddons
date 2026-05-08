@@ -28,11 +28,9 @@ object MagicAddonsConfigJsonHandler {
 
         val version = extractVersion(raw)
 
-        // 🔥 delegate to OldConfigHandler if needed
         if (version == null || version != CONFIG_VERSION_NUM) {
             raw = OldConfigHandler.updateConfig(raw, CONFIG_VERSION_NUM)
 
-            // IMPORTANT: persist upgraded config
             file.writeText(gson.toJson(raw))
         }
 
