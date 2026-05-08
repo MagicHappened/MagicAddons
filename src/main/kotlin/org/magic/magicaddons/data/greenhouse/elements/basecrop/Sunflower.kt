@@ -65,7 +65,29 @@ class Sunflower : CropDefinitionProvider {
                 ),
                 3..3,
                 allowRotation = true
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0,1,0),
+                        matcher = {
+                            it.isBlock("minecraft:melon_stem") &&
+                                    it.getIntProperty("age") == 6
+                        }
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, 0.0625, 0.1875),
+                        matcher = {
+                            it == "8082ca3aa210204d1daa8a3b737f594e102daf3c87b776530d49ba79b9b22e71"
+                        }
+                    )
+                ),
+                7..7,
+                allowRotation = true
             )
+
 
 
         ),
