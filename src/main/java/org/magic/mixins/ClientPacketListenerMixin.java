@@ -12,15 +12,17 @@ import net.minecraft.world.level.block.state.BlockState;
 import org.magic.magicaddons.events.EventBus;
 import org.magic.magicaddons.events.interact.OnBlockDestroyedEvent;
 import org.magic.magicaddons.events.interact.OnBlockPlacedEvent;
-import org.magic.magicaddons.events.interact.OnBlockUpdatedEvent;
+import org.magic.magicaddons.events.interact.OnBlockChangedEvent;
 import org.magic.magicaddons.events.world.AddParticleEvent;
+import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData;
+import org.magic.magicaddons.util.ChatUtils;
 import org.magic.misc.BlockEventBufferAccess;
-import org.magic.misc.BlockUseBufferAccess;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import java.util.List;
+import java.util.Map;
 
 
 @Mixin(ClientPacketListener.class)
@@ -54,8 +56,6 @@ public class ClientPacketListenerMixin {
     private void onBlockUpdate(ClientboundBlockUpdatePacket packet, CallbackInfo ci) {
         ClientLevel level = Minecraft.getInstance().level;
         if (!(level instanceof BlockEventBufferAccess blockEventBuffer)) return;
-        MultiPlayerGameMode mode = Minecraft.getInstance().gameMode;
-        if (!(mode instanceof BlockUseBufferAccess blockUseBuffer)) return;
 
         BlockPos pos = packet.getPos();
         BlockState newState = packet.getBlockState();
@@ -83,12 +83,19 @@ public class ClientPacketListenerMixin {
             }
             return;
         }
-        List<BlockPos> usesList = blockUseBuffer.magicaddons$getBlocksUsedOn();
-        if (usesList.contains(pos)) {
-            usesList.remove(pos);
-            return;
+        BlockState currentState = level.getBlockState(pos);
+        if (currentState.equals(packet.getBlockState())) return;
+        var removedElement = GreenhouseData.INSTANCE.getRemovedElementByAttack();
+        if (removedElement != null) {
+
+            Map<BlockPos, BlockState> blocksMap = removedElement.getBlocksMap();
+
+            if (blocksMap != null && blocksMap.containsKey(pos)) {
+                GreenhouseData.INSTANCE.setRemovedElementByAttack(null);
+                return;
+            }
         }
-        EventBus.post(new OnBlockUpdatedEvent(packet));
+        EventBus.post(new OnBlockChangedEvent(packet));
     }
 
 

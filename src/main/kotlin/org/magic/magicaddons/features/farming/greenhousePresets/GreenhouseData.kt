@@ -4,8 +4,6 @@ import net.minecraft.client.Minecraft
 import net.minecraft.client.renderer.RenderPipelines
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
-import net.minecraft.core.component.DataComponents
-import net.minecraft.resources.Identifier
 import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.decoration.ArmorStand
 import net.minecraft.world.level.block.Block
@@ -52,6 +50,7 @@ object GreenhouseData {
 
     private val initializedGreenhouseIds = mutableSetOf<Int>()
     private val gridsMap = mutableListOf<GreenhouseGrid>()
+    var removedElementByAttack: ElementRuntimeState? = null
 
     private val elementsBySoil: Map<Block, List<CropDefinitionProvider>> =
         GreenhouseElementFactory.getAllFactories()
@@ -222,7 +221,11 @@ object GreenhouseData {
         val candidates = elementsBySoil[soil] ?: return null
         val origin = grid.getPosForSlot(slot) ?: return null
 
-
+        var bestDef: CropDefinition? = null
+        var bestGrowth: GrowthStageInfo? = null
+        var bestScore = -1
+        var bestUsedStands: List<Entity>? = null
+        var bestBlocks: Map<BlockPos, BlockState>? = null
 
         for (candidate in candidates) {
             val def = candidate.definition
@@ -234,21 +237,16 @@ object GreenhouseData {
                 }
             }
 
-            var bestStage: CropStage? = null
-            var bestGrowth: GrowthStageInfo? = null
-            var bestScore = -1
-            var usedStands: List<Entity>? = null
-            var blocks: Map<BlockPos, BlockState>? = null
-
             for (stage in stages) {
                 val result = stage.matchesStage(origin, remainingStands)
+
                 if (!result.matched) continue
                 if (result.score <= bestScore) continue
 
                 bestScore = result.score
-                bestStage = stage
-                usedStands = result.usedStands
-                blocks = result.matchedBlocks
+                bestDef = def
+                bestUsedStands = result.usedStands
+                bestBlocks = result.matchedBlocks
 
                 val range = stage.stageRange
                 bestGrowth = if (range.first == range.last) {
@@ -257,19 +255,19 @@ object GreenhouseData {
                     GrowthStageInfo.Estimated(range)
                 }
             }
+        }
 
-            if (bestStage != null && usedStands != null) {
-                val runtime = ElementRuntimeState(
-                    cropDef = def,
-                    origin = slot,
-                    growthStage = bestGrowth,
-                    waterLevel = null,
-                    standEntities = usedStands,
-                    blocksMap = blocks
-                )
+        if (bestDef != null && bestUsedStands != null) {
+            val runtime = ElementRuntimeState(
+                cropDef = bestDef,
+                origin = slot,
+                growthStage = bestGrowth,
+                waterLevel = null,
+                standEntities = bestUsedStands,
+                blocksMap = bestBlocks
+            )
 
-                return ElementMatchResult(runtime, usedStands)
-            }
+            return ElementMatchResult(runtime, bestUsedStands)
         }
 
         return null
@@ -417,22 +415,23 @@ object GreenhouseData {
 
         // for now just remove the element later add cancellation with layouts
         val grid = getCurrentGrid() ?: return
-        var removedSlot: GreenhouseSlot? = null
+        var removedElement: ElementRuntimeState? = null
         grid.elements.removeIf { element ->
 
             val removed = (element.standEntities ?: return@removeIf false).any {
                 it == event.target
             }
             if (removed) {
-                removedSlot = element.origin
+                removedElement = element
             }
             removed
         }
-        if (removedSlot != null) {
+        if (removedElement != null) {
             grid.elementInstances.removeIf {
-                it.slot == removedSlot
+                it.slot == removedElement
             }
         }
+        removedElementByAttack = removedElement
 
 
     }
@@ -473,13 +472,14 @@ object GreenhouseData {
     }
 
     @EventHandler
-    fun onBlockUpdated(event: OnBlockUpdatedEvent) {
+    fun onBlockUpdated(event: OnBlockChangedEvent) {
         val plot = PlotAPI.getCurrentPlot()?.id ?: return
         if (!isInitialized(plot)) return
         val grid = getCurrentGrid() ?: return
         val gridArea = grid.plot?.getBuildableArea() ?: return
         if (!gridArea.contains(event.packet.pos.center)) return
         val slot = grid.getSlotAt(event.packet.pos, false) ?: return
+        ChatUtils.sendWithPrefix("continue filteration pls")
         if (event.packet.pos.y == 74) {
             if (event.packet.blockState.block == Blocks.FIRE) {
                 val alreadyHasFire = grid.elements.any {
@@ -493,7 +493,7 @@ object GreenhouseData {
                 }
                 return
             } else {
-                ChatUtils.sendWithPrefix("continue filteration pls")
+
                 //todo fires a lot more than necessary so need block difference detection and
                 // another method for entity difference detection, and that triggers another reinit
             }
