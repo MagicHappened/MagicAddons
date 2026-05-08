@@ -27,5 +27,9 @@ object ChatUtils {
             prefix
         }
     }
+    fun sendWithIgnoreClick(message: String){
+        sendWithPrefix(message)
+        //todo change to sending with actual link and add the command variable.
+    }
 
 }

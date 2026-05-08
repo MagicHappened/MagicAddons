@@ -9,6 +9,7 @@ import net.minecraft.client.renderer.RenderPipelines
 import net.minecraft.client.renderer.texture.TextureAtlasSprite
 import net.minecraft.core.Direction
 import net.minecraft.world.level.block.Blocks
+import org.magic.magicaddons.Common
 import org.magic.magicaddons.data.greenhouse.GreenhouseSlot
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.ScreenUtil
@@ -33,7 +34,7 @@ class GreenhouseSlotWidget(
     fun init(){
         if (slot.placedBlock == null){
             slot.placedBlock = Blocks.PODZOL.defaultBlockState()
-            ChatUtils.sendWithPrefix("Block at ${slot.x} ${slot.y} failed to load, rendering as podzol.")
+            Common.LOGGER.warn("Encountered a null slot block. replacing with podzol")
         }
         if (slot.placedBlock?.block == Blocks.AIR){
             sprite = null

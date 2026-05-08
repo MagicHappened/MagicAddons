@@ -33,7 +33,6 @@ class GreenhouseGridWidget(
     fun init() {
         slotWidgets.clear()
         elementWidgets.clear()
-        Minecraft.getInstance().window
 
         for (x in 0 until gridSize) {
             for (y in 0 until gridSize) {

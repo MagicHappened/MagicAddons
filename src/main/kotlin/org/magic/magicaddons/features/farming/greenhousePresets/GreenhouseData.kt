@@ -11,6 +11,7 @@ import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
+import org.magic.magicaddons.Common
 import org.magic.magicaddons.data.greenhouse.*
 import org.magic.magicaddons.data.greenhouse.elements.FireElement
 import org.magic.magicaddons.events.EventBus
@@ -43,13 +44,10 @@ object GreenhouseData {
 
     private const val BUILD_OFFSET = 43
     private const val GRID_SIZE = 10
-    private const val Y_LEVEL = 73
 
-    private val knownGreenhouseIds = mutableSetOf<Int>()
-    private var knownIdsInitialized = false
+    val knownGreenhouseIds = mutableSetOf<Int>()
+    val grids = mutableListOf<GreenhouseGrid>()
 
-    private val initializedGreenhouseIds = mutableSetOf<Int>()
-    private val gridsMap = mutableListOf<GreenhouseGrid>()
     var removedElementByAttack: ElementRuntimeState? = null
 
     private val elementsBySoil: Map<Block, List<CropDefinitionProvider>> =
@@ -68,85 +66,54 @@ object GreenhouseData {
     private var plantDiagnosticListeningElement: ElementRuntimeState? = null
     private var placedCrop: Pair<CropDefinition, BlockPos>? = null
 
-    val greenhouses: List<GreenhouseGrid>
-        get() = gridsMap
-
-    val initializedIds: Set<Int>
-        get() = initializedGreenhouseIds
-
-    val knownIds: Set<Int>
-        get() = knownGreenhouseIds
-
-    val grids: List<GreenhouseGrid>
-        get() = gridsMap
 
 
     private fun initKnownIds() {
-        if (knownIdsInitialized) return
+        if (!knownGreenhouseIds.isEmpty()) return
         if (PlotAPI.plots.any { it.data == null }) return
 
         PlotAPI.plots.forEach {
             if (it.data?.isGreenhouse == true) {
                 knownGreenhouseIds.add(it.id)
+                val grid = GreenhouseGrid()
+                grid.plot = it
+                grids.add(grid)
             }
         }
-
-        knownIdsInitialized = true
     }
 
-    private fun initData() {
-        if (!knownIdsInitialized) return
+    private fun scanGridData() {
+        if (knownGreenhouseIds.isEmpty()) return
 
         val plot = PlotAPI.getCurrentPlot() ?: return
-        val plotId = plot.id
 
-        if (plotId !in knownGreenhouseIds) return
-        if (plotId in initializedGreenhouseIds) return
+        val grid = grids.find { it.plot?.id == plot.id } ?: return //isnt greenhouse
 
-        val grid = createGrid(plot) ?: return
-
+        if (grid.state.initialized && !grid.state.needsUpdate) return
+        grid.createSlotData()
         setPlantData(grid)
+        grid.state.initialized = true
+        grid.state.needsUpdate = false
+        grid.state.lastUpdateTimestamp = System.currentTimeMillis()
 
-        gridsMap.add(grid)
-        initializedGreenhouseIds.add(plotId)
 
-        ChatUtils.sendWithPrefix("Initialized Greenhouse: $plotId")
+        ChatUtils.sendWithPrefix("Successfully scanned data for ${plot.id}")
     }
 
-    private fun createGrid(plot: Plot): GreenhouseGrid? {
-        val world = Minecraft.getInstance().level ?: return null
-
-        val buildArea = plot.getBuildableArea()
-
-        val grid = GreenhouseGrid()
-        grid.plot = plot
-
-        val minX = buildArea.minX.toInt()
-        val minZ = buildArea.minZ.toInt()
-        val maxX = buildArea.maxX.toInt()
-        val maxZ = buildArea.maxZ.toInt()
-
-        var gridX = 0
-        for (x in minX until maxX) {
-
-            var gridY = 0
-            for (z in minZ until maxZ) {
-
-                val pos = BlockPos(x, Y_LEVEL, z)
-                val state = world.getBlockState(pos)
-                val unlocked = state.block != Blocks.PODZOL
-
-                grid.setSlot(
-                    GreenhouseSlot(gridX, gridY, unlocked, state)
-                )
 
 
-                gridY++
-            }
-            gridX++
-        }
+    fun isInitialized(grid: GreenhouseGrid): Boolean {
+        return grid.state.initialized
+    }
 
-        return grid
+    fun getCurrentGrid(): GreenhouseGrid? {
+        val plotId = PlotAPI.getCurrentPlot()?.id ?: return null
+        return grids.find { it.plot?.id == plotId }
+    }
+
+    fun clearAllData() {
+        knownGreenhouseIds.clear()
+        grids.clear()
     }
 
     private fun setPlantData(grid: GreenhouseGrid) {
@@ -165,11 +132,10 @@ object GreenhouseData {
 
                 val slot = grid.getSlot(x, y) ?: continue
 
-                val result = findElementAtSlot(grid, slot, remainingStands) ?: continue
+                val runtime = findElementAtSlot(grid, slot, remainingStands) ?: continue
 
 
-                val runtime = result.runtime
-                val def = result.runtime.cropDef
+                val def = runtime.cropDef
                 if (runtime.cropDef.name == "Fire"){
                     runtime.renderOverride = {graphics, x, y, width, height ->
                         val sprite = ScreenUtil.getSpriteForState(Blocks.FIRE.defaultBlockState(),Direction.NORTH)
@@ -184,7 +150,7 @@ object GreenhouseData {
                     }
                 }
 
-                remainingStands.removeAll(result.usedStands.toSet())
+                remainingStands.removeAll((runtime.standEntities ?: emptyList()).toSet())
 
                 if (x + def.footprint.width > GRID_SIZE ||
                     y + def.footprint.height > GRID_SIZE
@@ -214,9 +180,8 @@ object GreenhouseData {
         grid: GreenhouseGrid,
         slot: GreenhouseSlot,
         remainingStands: MutableList<ArmorStand>
-    ): ElementMatchResult? {
+    ): ElementRuntimeState? {
 
-        val level = Minecraft.getInstance().level ?: return null
         val soil = slot.placedBlock?.block ?: return null
         val candidates = elementsBySoil[soil] ?: return null
         val origin = grid.getPosForSlot(slot) ?: return null
@@ -257,7 +222,7 @@ object GreenhouseData {
             }
         }
 
-        if (bestDef != null && bestUsedStands != null) {
+        if (bestDef != null) {
             val runtime = ElementRuntimeState(
                 cropDef = bestDef,
                 origin = slot,
@@ -267,7 +232,7 @@ object GreenhouseData {
                 blocksMap = bestBlocks
             )
 
-            return ElementMatchResult(runtime, bestUsedStands)
+            return runtime
         }
 
         return null
@@ -316,21 +281,6 @@ object GreenhouseData {
     }
 
 
-    fun isInitialized(plotId: Int): Boolean {
-        return plotId in initializedGreenhouseIds
-    }
-
-    fun getCurrentGrid(): GreenhouseGrid? {
-        val plotId = PlotAPI.getCurrentPlot()?.id ?: return null
-        return gridsMap.find { it.plot?.id == plotId }
-    }
-
-    fun clearAllData() {
-        knownGreenhouseIds.clear()
-        initializedGreenhouseIds.clear()
-        gridsMap.clear()
-        knownIdsInitialized = false
-    }
 
 
     @Subscription
@@ -339,7 +289,7 @@ object GreenhouseData {
     fun onScoreboardUpdate(event: ScoreboardUpdateEvent) {
         if (!baseSetting.value) return
         initKnownIds()
-        initData()
+        scanGridData()
     }
 
     @Subscription
@@ -368,11 +318,10 @@ object GreenhouseData {
 
     @EventHandler
     fun onBlockBreak(event: OnBlockDestroyedEvent) {
-
-        val plotId = PlotAPI.getCurrentPlot()?.id ?: return
-        if (!isInitialized(plotId)) return
-
         val grid = getCurrentGrid() ?: return
+        if (!isInitialized(grid)) return
+
+
 
         val pos = event.pos
         val blockCenter = Vec3.atCenterOf(pos)
@@ -409,12 +358,12 @@ object GreenhouseData {
 
     @EventHandler
     fun onAttackEntity(event: OnAttackEntityEvent) {
-        val plotId = PlotAPI.getCurrentPlot()?.id ?: return
-        if (!isInitialized(plotId)) return
-        if (event.target !is ArmorStand) return
-
-        // for now just remove the element later add cancellation with layouts
         val grid = getCurrentGrid() ?: return
+        if (!isInitialized(grid)) return
+
+        if (event.target !is ArmorStand) return
+        // for now just remove the element later add cancellation with layouts
+
         var removedElement: ElementRuntimeState? = null
         grid.elements.removeIf { element ->
 
@@ -438,14 +387,11 @@ object GreenhouseData {
 
     @EventHandler
     fun onBlockPlaced(event: OnBlockPlacedEvent) {
-        val plotId = PlotAPI.getCurrentPlot()?.id ?: return
-        if (!isInitialized(plotId)) return
-
         val grid = getCurrentGrid() ?: return
+        if (!isInitialized(grid)) return
 
         val blockVec3 = Vec3.atCenterOf(event.pos)
         if (grid.plot?.aabb?.contains(blockVec3) != true) return
-        val changedSlot = grid.getSlotAt(event.pos, false) ?: return
 
         if (placedCrop == null) return
         cropPlanted()
@@ -455,10 +401,9 @@ object GreenhouseData {
 
     @EventHandler
     fun onEntityAdded(event: OnEntityAdded) {
-        val plotId = PlotAPI.getCurrentPlot()?.id ?: return
-        if (!isInitialized(plotId)) return
-
         val grid = getCurrentGrid() ?: return
+        if (!isInitialized(grid)) return
+
         val gridArea = grid.plot?.getBuildableArea() ?: return
 
         if (event.addedEntityList.any {
@@ -473,9 +418,9 @@ object GreenhouseData {
 
     @EventHandler
     fun onBlockUpdated(event: OnBlockChangedEvent) {
-        val plot = PlotAPI.getCurrentPlot()?.id ?: return
-        if (!isInitialized(plot)) return
         val grid = getCurrentGrid() ?: return
+        if (!isInitialized(grid)) return
+
         val gridArea = grid.plot?.getBuildableArea() ?: return
         if (!gridArea.contains(event.packet.pos.center)) return
         val slot = grid.getSlotAt(event.packet.pos, false) ?: return
@@ -516,11 +461,12 @@ object GreenhouseData {
 
     @EventHandler
     fun onInteractEntity(event: OnInteractEntityEvent) {
-        val plot = PlotAPI.getCurrentPlot() ?: return
-        if (!isInitialized(plot.id)) return
+        val grid = getCurrentGrid() ?: return
+        if (!isInitialized(grid)) return
+
         val mainHandId = event.player.mainHandItem.getSkyBlockId() ?: return
         val standTarget = event.target as? ArmorStand ?: return
-        val grid = getCurrentGrid() ?: return
+
         if (mainHandId.id == "item:plant_diagnostics_tool") {
             tryGetDiagnosticData(null, standTarget, grid)
             return
@@ -530,8 +476,8 @@ object GreenhouseData {
 
     @EventHandler
     fun onItemUse(event: OnUseEvent) {
-        val plot = PlotAPI.getCurrentPlot() ?: return
-        if (!isInitialized(plot.id)) return
+        val grid = getCurrentGrid() ?: return
+        if (!isInitialized(grid)) return
         val mainHandId = event.player.mainHandItem.getSkyBlockId() ?: return
 
         if (("item:" + mainHandId.id) in waterCanIds) {
@@ -542,10 +488,10 @@ object GreenhouseData {
 
     @EventHandler
     fun onBlockUse(event: OnBlockUseEvent) {
-        val plot = PlotAPI.getCurrentPlot() ?: return
-        if (!isInitialized(plot.id)) return
-        val mainHandId = event.player.mainHandItem.getSkyBlockId() ?: return
         val grid = getCurrentGrid() ?: return
+        if (!isInitialized(grid)) return
+        val mainHandId = event.player.mainHandItem.getSkyBlockId() ?: return
+
         val foundCrop = CropRegistry.all.firstOrNull { it.matchesId(mainHandId) }
 
         if (mainHandId.id == "item:plant_diagnostics_tool") {
@@ -573,18 +519,18 @@ object GreenhouseData {
         val grid = getCurrentGrid() ?: return
         val availableStands = grid.getUnassignedArmorStands()?.toMutableList() ?: return
         val slot = grid.getSlotAt(placedCrop!!.second, false) ?: return
-        val result = findElementAtSlot(grid, slot, availableStands)
-        result ?: return
-        if (result.runtime.cropDef.needsWater) {
-            result.runtime.waterLevel = 0
+        val runtime = findElementAtSlot(grid, slot, availableStands)
+        runtime ?: return
+        if (runtime.cropDef.needsWater) {
+            runtime.waterLevel = 0
         }
-        grid.elements.add(result.runtime)
+        grid.elements.add(runtime)
         grid.elementInstances.add(
             GreenhouseElementInstance(
-                result.runtime.cropDef.skyblockId?.id ?: result.runtime.cropDef.name,
+                runtime.cropDef.skyblockId?.id ?: runtime.cropDef.name,
                 slot,
                 0, //todo add water
-                result.runtime.growthStage
+                runtime.growthStage
             )
         )
 
@@ -614,11 +560,6 @@ object GreenhouseData {
 
         plantDiagnosticListeningElement = hitElement
     }
-
-    data class ElementMatchResult( //todo depreciate this and just remove the used stands from runtime.standEntities
-        val runtime: ElementRuntimeState,
-        val usedStands: List<Entity>
-    )
 
 
 }
