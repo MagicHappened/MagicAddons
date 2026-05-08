@@ -9,6 +9,7 @@ import org.magic.magicaddons.commands.features.EditFeature
 import org.magic.magicaddons.commands.misc.PlaySound
 import org.magic.magicaddons.commands.features.ToggleFeature
 import org.magic.magicaddons.commands.features.farming.GreenhouseScreenCommand
+import org.magic.magicaddons.commands.internal.MainInternal
 import org.magic.magicaddons.ui.screens.ConfigScreen
 import org.magic.magicaddons.util.ScreenUtil
 
@@ -16,6 +17,7 @@ import org.magic.magicaddons.util.ScreenUtil
 object MainCommand {
     val commandList = mutableListOf(
         GreenhouseScreenCommand,
+        MainInternal,
         ToggleFeature,
         EditFeature,
         MainDebug,

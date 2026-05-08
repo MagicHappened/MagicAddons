@@ -1,7 +1,6 @@
 package org.magic.magicaddons.ui.screens
 
 import net.minecraft.client.gui.GuiGraphics
-import net.minecraft.client.gui.components.events.GuiEventListener
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.client.renderer.RenderPipelines
@@ -9,7 +8,6 @@ import net.minecraft.network.chat.Component
 import net.minecraft.resources.Identifier
 import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData
-import org.magic.magicaddons.features.farming.greenhousePresets.GreenhousePresets
 import org.magic.magicaddons.ui.widgets.ArrowWidget
 import org.magic.magicaddons.ui.widgets.greenhouse.GreenhouseElementWidget
 import org.magic.magicaddons.ui.widgets.greenhouse.GreenhouseGridWidget
@@ -63,9 +61,10 @@ class GreenhouseScreen(title: Component) : Screen(title) {
     var borderPadding: Int = 6
 
     private var displayedGridWidget: GreenhouseGridWidget? = null
-    private val gridWidgets: MutableList<GreenhouseGridWidget> = mutableListOf()
-    private var currentIndex = 0
-
+    private val greenhouseGridWidgets: MutableList<GreenhouseGridWidget> = mutableListOf()
+    private val presetGridWidgets: MutableList<GreenhouseGridWidget> = mutableListOf()
+    private var currentGreenhouseIndex = 0
+    private val currentPresetIndex = 0
 
     var forwardArrow: ArrowWidget? = null
     var backwardArrow: ArrowWidget? = null
@@ -82,7 +81,7 @@ class GreenhouseScreen(title: Component) : Screen(title) {
 
     fun initLayout(){
         displayedGridWidget = null
-        gridWidgets.clear()
+        greenhouseGridWidgets.clear()
 
         savedWidth = width
         savedHeight = height
@@ -96,26 +95,16 @@ class GreenhouseScreen(title: Component) : Screen(title) {
         startX = (width - containerSize) / 2
         startY = paddingY
 
-        if (GreenhouseData.initializedIds.isEmpty()) {
-            if (!sentWarnings) {
-                if (!GreenhousePresets.baseSetting.value){
-                    ChatUtils.sendWithPrefix("Greenhouse Presets feature not enabled. Please turn it on to enable data scanning.")
-                }
-                else {
-                    ChatUtils.sendWithPrefix("No initialized greenhouse ids, please enter your greenhouse.")
-                }
-            }
-            displayedGridWidget = null
-            return
-        }
-
-        if (GreenhouseData.knownIds.size != GreenhouseData.initializedIds.size) {
-            if (!sentWarnings) {
-                ChatUtils.sendWithPrefix("Not all greenhouses initialized, enter the other greenhouses to see them.")
+        val amountInitialized = GreenhouseData.grids.count { it.state.initialized }
+        if (amountInitialized != GreenhouseData.knownGreenhouseIds.size){
+            if (!ignoreWarnings){ //todo change to persistent
+                ChatUtils.sendWithPrefix("The mod scans greenhouses after you've entered them.")
+                ChatUtils.sendWithIgnoreClick("Not all greenhouses available, enter them to see them.")
             }
         }
 
         GreenhouseData.grids.forEach {
+            if (!it.state.initialized) return@forEach
             val gridWidget = GreenhouseGridWidget(it, gridSize, slotSize).apply {
                 widgetX = startX
                 widgetY = startY
@@ -124,20 +113,20 @@ class GreenhouseScreen(title: Component) : Screen(title) {
                 init()
             }
 
-            gridWidgets.add(gridWidget)
+            greenhouseGridWidgets.add(gridWidget)
         }
 
-        currentIndex = gridWidgets.indexOfFirst {
+        currentGreenhouseIndex = greenhouseGridWidgets.indexOfFirst {
             it.grid.plot?.id == PlotAPI.getCurrentPlot()?.id
         }.takeIf { it != -1 } ?: 0
 
-        displayedGridWidget = gridWidgets.getOrNull(currentIndex)
+        displayedGridWidget = greenhouseGridWidgets.getOrNull(currentGreenhouseIndex)
 
         if (displayedGridWidget == null) {
-            displayedGridWidget = gridWidgets.firstOrNull()
+            displayedGridWidget = greenhouseGridWidgets.firstOrNull()
         }
         if (displayedGridWidget == null) {
-            ChatUtils.sendWithPrefix("No greenhouses to display.")
+            //todo maybe add an auto switch to preset mode if not available.
             return
         }
 
@@ -232,11 +221,11 @@ class GreenhouseScreen(title: Component) : Screen(title) {
     }
 
     fun gridWidgetChanged(direction: Int) {
-        if (gridWidgets.isEmpty()) return
+        if (greenhouseGridWidgets.isEmpty()) return
 
-        currentIndex = (currentIndex + direction).mod(gridWidgets.size)
+        currentGreenhouseIndex = (currentGreenhouseIndex + direction).mod(greenhouseGridWidgets.size)
 
-        displayedGridWidget = gridWidgets[currentIndex]
+        displayedGridWidget = greenhouseGridWidgets[currentGreenhouseIndex]
     }
 
 }

@@ -16,6 +16,7 @@ class Pumpkin : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Pumpkin",
         skyblockId = SkyBlockItemId.item("PUMPKIN"),
+        aliases = listOf(SkyBlockItemId.item("PUMPKIN_SEEDS")),
         stageDefs = listOf(
             CropStage(
                 blocks = listOf(

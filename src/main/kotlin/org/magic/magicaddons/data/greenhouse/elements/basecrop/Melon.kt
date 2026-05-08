@@ -15,6 +15,7 @@ class Melon : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Melon",
         skyblockId = SkyBlockItemId.item("MELON"),
+        aliases = listOf(SkyBlockItemId.item("MELON_SEEDS")),
         stageDefs = listOf(
             CropStage(
                 blocks = listOf(

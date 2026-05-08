@@ -5,15 +5,21 @@ import com.mojang.serialization.codecs.RecordCodecBuilder
 import net.minecraft.client.Minecraft
 import net.minecraft.core.BlockPos
 import net.minecraft.world.entity.decoration.ArmorStand
+import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData.getBuildableArea
 import tech.thatgravyboat.skyblockapi.api.profile.garden.Plot
+import tech.thatgravyboat.skyblockapi.api.profile.garden.PlotAPI
 
 class GreenhouseGrid {
 
     var plot: Plot? = null
-    var state: GridState? = null
+    var state = GridState(
+        lastUpdateTimestamp = -1,
+        needsUpdate = false,
+        initialized = false
+    )
     val width = 10
     val height = 10
 
@@ -65,6 +71,41 @@ class GreenhouseGrid {
             ?.set(slot.x, slot)
     }
 
+    fun createSlotData() {
+        val world = Minecraft.getInstance().level ?: return
+        val plot = PlotAPI.getCurrentPlot() ?: return
+        if (plot != this.plot) return
+        val buildArea = plot.getBuildableArea()
+
+
+        val minX = buildArea.minX.toInt()
+        val minZ = buildArea.minZ.toInt()
+        val maxX = buildArea.maxX.toInt()
+        val maxZ = buildArea.maxZ.toInt()
+
+        var gridX = 0
+        for (x in minX until maxX) {
+
+            var gridY = 0
+            for (z in minZ until maxZ) {
+
+                val pos = BlockPos(x, 73, z)
+                val state = world.getBlockState(pos)
+                val unlocked = state.block != Blocks.PODZOL
+
+                setSlot(
+                    GreenhouseSlot(gridX, gridY, unlocked, state)
+                )
+
+
+                gridY++
+            }
+            gridX++
+        }
+    }
+
+
+
     fun getUnassignedBlockMap(): Map<BlockPos, BlockState> {
         val level = Minecraft.getInstance().level ?: return emptyMap()
         val area = plot?.getBuildableArea() ?: return emptyMap()
@@ -114,6 +155,7 @@ class GreenhouseGrid {
     data class GridState(
         var lastUpdateTimestamp: Long,
         var needsUpdate: Boolean = false,
+        var initialized: Boolean = false
 
 
     ){
@@ -126,11 +168,14 @@ class GreenhouseGrid {
                     },
                         Codec.BOOL.fieldOf("needsUpdate").forGetter {
                             it.needsUpdate
-                        }
+                        },
+                            Codec.BOOL.fieldOf("initialized").forGetter {
+                                it.initialized
+                            }
 
 
-                ).apply(instance) { lastUpdate, needsUpdate ->
-                    GridState(lastUpdate, needsUpdate)
+                ).apply(instance) { lastUpdate, needsUpdate, initialized ->
+                    GridState(lastUpdate, needsUpdate, initialized)
                 }
             }
 

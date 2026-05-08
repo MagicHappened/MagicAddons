@@ -12,8 +12,8 @@ class GreenhouseSlot(
     var unlocked: Boolean = false,
     var placedBlock: BlockState?,
 ) {
-    //facing north top left slot is x=0 y=0
-    // bottom left therefore is x=9 y=9
+    //todo add marking and add it to codec
+
 
 
     companion object {
