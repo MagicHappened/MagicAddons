@@ -9,7 +9,7 @@ import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockId
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
-class Veilshroom : CropDefinitionProvider {
+object Veilshroom : CropDefinitionProvider {
 
     override val definition = CropDefinition(
         name = "Veilshroom",

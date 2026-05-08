@@ -13,7 +13,7 @@ import org.magic.magicaddons.util.BlockUtils.isBlock
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockId
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
-class Redmushroom : CropDefinitionProvider {
+object Redmushroom : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Red Mushroom",
         skyblockId = SkyBlockItemId.item("RED_MUSHROOM"),

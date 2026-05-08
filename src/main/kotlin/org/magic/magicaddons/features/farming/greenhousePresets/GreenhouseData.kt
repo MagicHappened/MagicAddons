@@ -1,17 +1,11 @@
 package org.magic.magicaddons.features.farming.greenhousePresets
 
-import net.minecraft.client.Minecraft
-import net.minecraft.client.renderer.RenderPipelines
 import net.minecraft.core.BlockPos
-import net.minecraft.core.Direction
-import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.decoration.ArmorStand
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.Blocks
-import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
-import org.magic.magicaddons.Common
 import org.magic.magicaddons.data.greenhouse.*
 import org.magic.magicaddons.data.greenhouse.elements.FireElement
 import org.magic.magicaddons.events.EventBus
@@ -20,7 +14,6 @@ import org.magic.magicaddons.events.interact.*
 import org.magic.magicaddons.events.world.OnEntityAdded
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhousePresets.baseSetting
 import org.magic.magicaddons.util.ChatUtils
-import org.magic.magicaddons.util.ScreenUtil
 import tech.thatgravyboat.skyblockapi.api.SkyBlockAPI
 import tech.thatgravyboat.skyblockapi.api.events.base.Subscription
 import tech.thatgravyboat.skyblockapi.api.events.base.predicates.OnlyIn
@@ -45,17 +38,17 @@ object GreenhouseData {
     private const val BUILD_OFFSET = 43
     private const val GRID_SIZE = 10
 
-    val knownGreenhouseIds = mutableSetOf<Int>()
-    val grids = mutableListOf<GreenhouseGrid>()
+    var greenhousesInitialized = false
+    val greenhouseGrids = mutableListOf<GreenhouseGrid>()
+    val presetGrids = mutableListOf<GreenhouseGrid>()
 
     var removedElementByAttack: ElementRuntimeState? = null
 
-    private val elementsBySoil: Map<Block, List<CropDefinitionProvider>> =
-        GreenhouseElementFactory.getAllFactories()
-            .map { factory -> factory() }
-            .flatMap { provider ->
-                provider.definition.requiredSoil.map { soil ->
-                    soil to provider
+    val elementsBySoil: Map<Block, List<CropDefinition>> =
+        CropRegistry.all
+            .flatMap { definition ->
+                definition.requiredSoil.map { soil ->
+                    soil to definition
                 }
             }
             .groupBy(
@@ -63,35 +56,43 @@ object GreenhouseData {
                 valueTransform = { it.second }
             )
 
+
     private var plantDiagnosticListeningElement: ElementRuntimeState? = null
     private var placedCrop: Pair<CropDefinition, BlockPos>? = null
 
 
-
     private fun initKnownIds() {
-        if (!knownGreenhouseIds.isEmpty()) return
+        if (greenhousesInitialized) return
         if (PlotAPI.plots.any { it.data == null }) return
 
         PlotAPI.plots.forEach {
             if (it.data?.isGreenhouse == true) {
-                knownGreenhouseIds.add(it.id)
-                val grid = GreenhouseGrid()
+                val gridLayout = GreenhouseLayout(
+                    id = "plot_${it.id}",
+                    name = null
+                )
+                val gridState = GreenhouseGrid.GridState()
+
+                val grid = GreenhouseGrid(gridState, gridLayout)
                 grid.plot = it
-                grids.add(grid)
+                greenhouseGrids.add(grid)
             }
         }
+        greenhousesInitialized = true
     }
 
     private fun scanGridData() {
-        if (knownGreenhouseIds.isEmpty()) return
+        if (!greenhousesInitialized) return
 
         val plot = PlotAPI.getCurrentPlot() ?: return
 
-        val grid = grids.find { it.plot?.id == plot.id } ?: return //isnt greenhouse
-
+        val grid = greenhouseGrids.find { it.layout.id == "plot_${plot.id}" } ?: return //isnt greenhouse
         if (grid.state.initialized && !grid.state.needsUpdate) return
+
+        grid.plot = plot
         grid.createSlotData()
-        setPlantData(grid)
+        grid.setPlantData()
+
         grid.state.initialized = true
         grid.state.needsUpdate = false
         grid.state.lastUpdateTimestamp = System.currentTimeMillis()
@@ -101,141 +102,18 @@ object GreenhouseData {
     }
 
 
-
     fun isInitialized(grid: GreenhouseGrid): Boolean {
         return grid.state.initialized
     }
 
     fun getCurrentGrid(): GreenhouseGrid? {
         val plotId = PlotAPI.getCurrentPlot()?.id ?: return null
-        return grids.find { it.plot?.id == plotId }
+        return greenhouseGrids.find { it.layout.id == "plot_$plotId" }
     }
 
     fun clearAllData() {
-        knownGreenhouseIds.clear()
-        grids.clear()
-    }
-
-    private fun setPlantData(grid: GreenhouseGrid) {
-        val visitedSlots = Array(GRID_SIZE) { BooleanArray(GRID_SIZE) }
-
-        val level = Minecraft.getInstance().level ?: return
-        val buildableArea = grid.plot?.getBuildableArea() ?: return
-
-        val stands = level.getEntities(null, buildableArea)
-            .filterIsInstance<ArmorStand>()
-        val remainingStands = stands.toMutableList()
-
-        for (y in 0 until GRID_SIZE) {
-            for (x in 0 until GRID_SIZE) {
-                if (visitedSlots[y][x]) continue
-
-                val slot = grid.getSlot(x, y) ?: continue
-
-                val runtime = findElementAtSlot(grid, slot, remainingStands) ?: continue
-
-
-                val def = runtime.cropDef
-                if (runtime.cropDef.name == "Fire"){
-                    runtime.renderOverride = {graphics, x, y, width, height ->
-                        val sprite = ScreenUtil.getSpriteForState(Blocks.FIRE.defaultBlockState(),Direction.NORTH)
-                        graphics.blitSprite(
-                            RenderPipelines.GUI_TEXTURED,
-                            sprite,
-                            x,
-                            y,
-                            width,
-                            height
-                        )
-                    }
-                }
-
-                remainingStands.removeAll((runtime.standEntities ?: emptyList()).toSet())
-
-                if (x + def.footprint.width > GRID_SIZE ||
-                    y + def.footprint.height > GRID_SIZE
-                ) continue
-
-                for (dy in 0 until def.footprint.height) {
-                    for (dx in 0 until def.footprint.width) {
-                        visitedSlots[y + dy][x + dx] = true
-                    }
-                }
-
-
-                grid.elementInstances.add(
-                    GreenhouseElementInstance(
-                        elementId = def.skyblockId?.toString() ?: def.name,
-                        slot = slot,
-                        growthStage = runtime.growthStage
-                    )
-                )
-
-                grid.elements.add(runtime)
-            }
-        }
-    }
-
-    private fun findElementAtSlot(
-        grid: GreenhouseGrid,
-        slot: GreenhouseSlot,
-        remainingStands: MutableList<ArmorStand>
-    ): ElementRuntimeState? {
-
-        val soil = slot.placedBlock?.block ?: return null
-        val candidates = elementsBySoil[soil] ?: return null
-        val origin = grid.getPosForSlot(slot) ?: return null
-
-        var bestDef: CropDefinition? = null
-        var bestGrowth: GrowthStageInfo? = null
-        var bestScore = -1
-        var bestUsedStands: List<Entity>? = null
-        var bestBlocks: Map<BlockPos, BlockState>? = null
-
-        for (candidate in candidates) {
-            val def = candidate.definition
-
-            val stages = def.stageDefs.flatMap {
-                when (it) {
-                    is CropStagePattern -> it.expand()
-                    is CropStage -> listOf(it)
-                }
-            }
-
-            for (stage in stages) {
-                val result = stage.matchesStage(origin, remainingStands)
-
-                if (!result.matched) continue
-                if (result.score <= bestScore) continue
-
-                bestScore = result.score
-                bestDef = def
-                bestUsedStands = result.usedStands
-                bestBlocks = result.matchedBlocks
-
-                val range = stage.stageRange
-                bestGrowth = if (range.first == range.last) {
-                    GrowthStageInfo.Known(range.first)
-                } else {
-                    GrowthStageInfo.Estimated(range)
-                }
-            }
-        }
-
-        if (bestDef != null) {
-            val runtime = ElementRuntimeState(
-                cropDef = bestDef,
-                origin = slot,
-                growthStage = bestGrowth,
-                waterLevel = null,
-                standEntities = bestUsedStands,
-                blocksMap = bestBlocks
-            )
-
-            return runtime
-        }
-
-        return null
+        greenhousesInitialized = false
+        greenhouseGrids.clear()
     }
 
 
@@ -281,8 +159,6 @@ object GreenhouseData {
     }
 
 
-
-
     @Subscription
     @OnlyNonGuest
     @OnlyIn(SkyBlockIsland.GARDEN)
@@ -322,38 +198,18 @@ object GreenhouseData {
         if (!isInitialized(grid)) return
 
 
-
         val pos = event.pos
         val blockCenter = Vec3.atCenterOf(pos)
 
         if (grid.plot?.aabb?.contains(blockCenter) != true) return
 
-        val slot = grid.getSlotAt(pos)
-        if (slot != null) {
+        val slot = grid.getSlotAt(pos, false) ?: return
+        if (event.pos.y == 73) {
             slot.placedBlock = Blocks.AIR.defaultBlockState()
-            grid.setSlot(slot)
             return
         }
 
-        val iterator = grid.elements.iterator()
-
-        while (iterator.hasNext()) {
-            val element = iterator.next()
-
-            val blocksMap = element.blocksMap ?: continue
-
-            if (!blocksMap.containsKey(pos)) continue
-
-            val originSlot = element.origin
-
-            iterator.remove()
-
-            grid.elementInstances.removeIf { instance ->
-                instance.slot == originSlot
-            }
-
-            break
-        }
+        grid.removeMatchingBlock(pos)
     }
 
     @EventHandler
@@ -364,25 +220,9 @@ object GreenhouseData {
         if (event.target !is ArmorStand) return
         // for now just remove the element later add cancellation with layouts
 
-        var removedElement: ElementRuntimeState? = null
-        grid.elements.removeIf { element ->
 
-            val removed = (element.standEntities ?: return@removeIf false).any {
-                it == event.target
-            }
-            if (removed) {
-                removedElement = element
-            }
-            removed
-        }
-        if (removedElement != null) {
-            grid.elementInstances.removeIf {
-                it.slot == removedElement
-            }
-        }
-        removedElementByAttack = removedElement
-
-
+        val removed = grid.removeMatchingEntity(event.target)
+        removedElementByAttack = removed
     }
 
     @EventHandler
@@ -424,30 +264,32 @@ object GreenhouseData {
         val gridArea = grid.plot?.getBuildableArea() ?: return
         if (!gridArea.contains(event.packet.pos.center)) return
         val slot = grid.getSlotAt(event.packet.pos, false) ?: return
-        ChatUtils.sendWithPrefix("continue filteration pls")
-        if (event.packet.pos.y == 74) {
-            if (event.packet.blockState.block == Blocks.FIRE) {
-                val alreadyHasFire = grid.elements.any {
-                    it.origin == slot && it.cropDef.name == "Fire"
-                }
-                if (!alreadyHasFire){
-                    val fireRuntime = FireElement().getFireAtSlot(
-                        slot,
-                        mapOf(event.packet.pos to event.packet.blockState))
-                    grid.elements.add(fireRuntime)
-                }
-                return
-            } else {
 
+        if (gridArea.contains(event.packet.pos.center)) {
+            if (event.packet.pos.y == 74) {
+
+                if (event.packet.blockState.block == Blocks.FIRE) {
+                    val alreadyHasFire = grid.elements.any {
+                        it.instance.slot == slot && it.cropDef.name == "Fire"
+                    }
+                    if (!alreadyHasFire) {
+                        val fireRuntime = FireElement.getFireAtSlot(
+                            slot,
+                            mapOf(event.packet.pos to event.packet.blockState)
+                        )
+                        grid.elements.add(fireRuntime)
+                    }
+                    return
+                }
+            } else {
+                ChatUtils.sendWithPrefix("continue filteration pls")
                 //todo fires a lot more than necessary so need block difference detection and
                 // another method for entity difference detection, and that triggers another reinit
             }
         }
 
         if (event.packet.pos.y != 73) return
-
         slot.placedBlock = event.packet.blockState
-        grid.setSlot(slot)
     }
 
     private val waterCanIds = setOf(
@@ -517,23 +359,15 @@ object GreenhouseData {
     fun cropPlanted() {
         if (placedCrop == null) return
         val grid = getCurrentGrid() ?: return
+
         val availableStands = grid.getUnassignedArmorStands()?.toMutableList() ?: return
         val slot = grid.getSlotAt(placedCrop!!.second, false) ?: return
-        val runtime = findElementAtSlot(grid, slot, availableStands)
+        val runtime = grid.findElementAtSlot(slot, availableStands)
         runtime ?: return
         if (runtime.cropDef.needsWater) {
-            runtime.waterLevel = 0
+            runtime.instance.waterLevel = 0
         }
-        grid.elements.add(runtime)
-        grid.elementInstances.add(
-            GreenhouseElementInstance(
-                runtime.cropDef.skyblockId?.id ?: runtime.cropDef.name,
-                slot,
-                0, //todo add water
-                runtime.growthStage
-            )
-        )
-
+        grid.addElement(runtime)
     }
 
     fun tryGetWaterCanData() {

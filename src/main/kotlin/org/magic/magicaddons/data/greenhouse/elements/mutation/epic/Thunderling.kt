@@ -6,7 +6,7 @@ import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockId
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
-class Thunderling : CropDefinitionProvider {
+object Thunderling : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Thunderling",
         skyblockId = SkyBlockItemId.item("THUNDERLING"),

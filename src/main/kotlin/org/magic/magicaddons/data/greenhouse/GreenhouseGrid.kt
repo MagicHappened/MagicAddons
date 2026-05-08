@@ -1,37 +1,37 @@
 package org.magic.magicaddons.data.greenhouse
 
-import com.mojang.serialization.Codec
-import com.mojang.serialization.codecs.RecordCodecBuilder
 import net.minecraft.client.Minecraft
+import net.minecraft.client.renderer.RenderPipelines
 import net.minecraft.core.BlockPos
+import net.minecraft.core.Direction
+import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.decoration.ArmorStand
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.Vec3
+import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData.elementsBySoil
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData.getBuildableArea
+import org.magic.magicaddons.util.ScreenUtil
 import tech.thatgravyboat.skyblockapi.api.profile.garden.Plot
 import tech.thatgravyboat.skyblockapi.api.profile.garden.PlotAPI
+import kotlin.collections.removeAll
 
-class GreenhouseGrid {
-
+class GreenhouseGrid(
+    var state: GridState,
+    var layout: GreenhouseLayout
+) {
     var plot: Plot? = null
-    var state = GridState(
-        lastUpdateTimestamp = -1,
-        needsUpdate = false,
-        initialized = false
-    )
     val width = 10
     val height = 10
 
-    private val slots = Array(height) { y ->
-        Array(width) { x ->
-            GreenhouseSlot(x, y, false, null)
-        }
+    val elements = mutableListOf<ElementRuntimeState>()
+
+    fun addElement(element: ElementRuntimeState){
+        layout.elementInstances += element.instance
+        elements.add(element)
     }
 
-    val elementInstances = mutableListOf<GreenhouseElementInstance>()
 
-    val elements = mutableListOf<ElementRuntimeState>()
 
     fun getPosForSlot(slot: GreenhouseSlot): BlockPos? {
         val box = plot?.getBuildableArea() ?: return null
@@ -51,7 +51,6 @@ class GreenhouseGrid {
 
         if (!buildArea.contains(Vec3.atCenterOf(blockPos))) return null
 
-        // Only enforce Y when requested
         if (matchY && blockPos.y != 73) return null
 
         val minX = buildArea.minX.toInt()
@@ -60,23 +59,37 @@ class GreenhouseGrid {
         val gridX = blockPos.x - minX
         val gridY = blockPos.z - minZ
 
-        return getSlot(gridX, gridY)
+        return layout.getSlot(gridX, gridY)
     }
 
-    fun getSlot(x: Int, y: Int): GreenhouseSlot? {
-        return slots.getOrNull(y)?.getOrNull(x)
+
+    fun removeMatchingBlock(blockPos: BlockPos): ElementRuntimeState? {
+        return elements.find { element ->
+            element.blocksMap
+                ?.keys
+                ?.any { it == blockPos }
+                ?: false
+        }?.also {
+            elements.remove(it)
+            layout.elementInstances.remove(it.instance)
+        }
     }
-    fun setSlot(slot: GreenhouseSlot) {
-        slots.getOrNull(slot.y)
-            ?.set(slot.x, slot)
+
+    fun removeMatchingEntity(entity: Entity): ElementRuntimeState? {
+        return elements.find { element ->
+            element.standEntities?.any { it == entity } ?: false
+        }?.also {
+            elements.remove(it)
+            layout.elementInstances.remove(it.instance)
+        }
     }
 
     fun createSlotData() {
         val world = Minecraft.getInstance().level ?: return
         val plot = PlotAPI.getCurrentPlot() ?: return
         if (plot != this.plot) return
-        val buildArea = plot.getBuildableArea()
 
+        val buildArea = plot.getBuildableArea()
 
         val minX = buildArea.minX.toInt()
         val minZ = buildArea.minZ.toInt()
@@ -85,23 +98,136 @@ class GreenhouseGrid {
 
         var gridX = 0
         for (x in minX until maxX) {
-
             var gridY = 0
             for (z in minZ until maxZ) {
 
-                val pos = BlockPos(x, 73, z)
-                val state = world.getBlockState(pos)
-                val unlocked = state.block != Blocks.PODZOL
+                val state = world.getBlockState(BlockPos(x, 73, z))
 
-                setSlot(
-                    GreenhouseSlot(gridX, gridY, unlocked, state)
-                )
-
+                layout.getSlot(gridX, gridY)?.placedBlock = state
 
                 gridY++
             }
+
             gridX++
         }
+    }
+
+    fun setPlantData() {
+        val visitedSlots = Array(width) { BooleanArray(height) }
+
+        val level = Minecraft.getInstance().level ?: return
+        val buildableArea = plot?.getBuildableArea() ?: return
+
+        val stands = level.getEntities(null, buildableArea)
+            .filterIsInstance<ArmorStand>()
+        val remainingStands = stands.toMutableList()
+
+        for (x in 0 until width) {
+            for (y in 0 until height) {
+                if (visitedSlots[y][x]) continue
+
+                val slot = layout.getSlot(x, y) ?: continue
+
+                val runtime = findElementAtSlot(slot, remainingStands) ?: continue
+
+
+                val def = runtime.cropDef
+                if (runtime.cropDef.name == "Fire"){
+                    runtime.renderOverride = {graphics, x, y, width, height ->
+                        val sprite = ScreenUtil.getSpriteForState(Blocks.FIRE.defaultBlockState(),Direction.NORTH)
+                        graphics.blitSprite(
+                            RenderPipelines.GUI_TEXTURED,
+                            sprite,
+                            x,
+                            y,
+                            width,
+                            height
+                        )
+                    }
+                }
+
+                remainingStands.removeAll((runtime.standEntities ?: emptyList()).toSet())
+
+                if (x + def.footprint.width > width ||
+                    y + def.footprint.height > height
+                ) continue
+
+                for (dy in 0 until def.footprint.height) {
+                    for (dx in 0 until def.footprint.width) {
+                        visitedSlots[y + dy][x + dx] = true
+                    }
+                }
+
+
+                layout.elementInstances.add(runtime.instance)
+                elements.add(runtime)
+            }
+        }
+    }
+
+    fun findElementAtSlot(
+        slot: GreenhouseSlot,
+        remainingStands: MutableList<ArmorStand>
+    ): ElementRuntimeState? {
+
+        val soil = slot.placedBlock?.block ?: return null
+        val candidates = elementsBySoil[soil] ?: return null
+        val origin = getPosForSlot(slot) ?: return null
+
+        var bestDef: CropDefinition? = null
+        var bestGrowth: GrowthStageInfo? = null
+        var bestScore = -1
+        var bestUsedStands: List<Entity>? = null
+        var bestBlocks: Map<BlockPos, BlockState>? = null
+
+        for (candidate in candidates) {
+
+            val stages = candidate.stageDefs.flatMap {
+                when (it) {
+                    is CropStagePattern -> it.expand()
+                    is CropStage -> listOf(it)
+                }
+            }
+
+            for (stage in stages) {
+                val result = stage.matchesStage(origin, remainingStands)
+
+                if (!result.matched) continue
+                if (result.score <= bestScore) continue
+
+                bestScore = result.score
+                bestDef = candidate
+                bestUsedStands = result.usedStands
+                bestBlocks = result.matchedBlocks
+
+                val range = stage.stageRange
+                bestGrowth = if (range.first == range.last) {
+                    GrowthStageInfo.Known(range.first)
+                } else {
+                    GrowthStageInfo.Estimated(range)
+                }
+            }
+        }
+
+        if (bestDef != null) {
+            val instance = GreenhouseElementInstance(
+                bestDef.skyblockId?.id ?: bestDef.name,
+                slot = slot,
+                growthStage = bestGrowth
+
+            )
+
+            val runtime = ElementRuntimeState(
+                cropDef = bestDef,
+                instance = instance,
+                standEntities = bestUsedStands,
+                blocksMap = bestBlocks
+            )
+
+            return runtime
+        }
+
+        return null
     }
 
 
@@ -153,65 +279,9 @@ class GreenhouseGrid {
     }
 
     data class GridState(
-        var lastUpdateTimestamp: Long,
+        var lastUpdateTimestamp: Long = -1,
         var needsUpdate: Boolean = false,
         var initialized: Boolean = false
-
-
-    ){
-
-        companion object {
-            val CODEC: Codec<GridState> = RecordCodecBuilder.create { instance ->
-                instance.group(
-                    Codec.LONG.fieldOf("lastUpdateTimestamp").forGetter {
-                        it.lastUpdateTimestamp
-                    },
-                        Codec.BOOL.fieldOf("needsUpdate").forGetter {
-                            it.needsUpdate
-                        },
-                            Codec.BOOL.fieldOf("initialized").forGetter {
-                                it.initialized
-                            }
-
-
-                ).apply(instance) { lastUpdate, needsUpdate, initialized ->
-                    GridState(lastUpdate, needsUpdate, initialized)
-                }
-            }
-
-        }
-    }
-
-
-    companion object {
-        val CODEC: Codec<GreenhouseGrid> = RecordCodecBuilder.create { instance ->
-            instance.group(
-                GridState.CODEC
-                .fieldOf("state")
-                .forGetter { it.state }
-                ,
-                GreenhouseSlot.CODEC.listOf()
-                    .fieldOf("slots")
-                    .forGetter { grid ->
-                        grid.slots.flatten()
-                    },
-
-                GreenhouseElementInstance.CODEC.listOf()
-                    .fieldOf("elements")
-                    .forGetter { it.elementInstances }
-
-            ).apply(instance) { state, slots, elements ->
-                val grid = GreenhouseGrid()
-                grid.state = state
-                slots.forEach {
-                    val slot = GreenhouseSlot(it.x,it.y,it.unlocked,it.placedBlock)
-                    grid.setSlot(slot)
-                }
-                grid.elementInstances.addAll(elements)
-
-                grid
-            }
-        }
-    }
+    )
 
 }

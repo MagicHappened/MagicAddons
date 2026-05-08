@@ -10,12 +10,13 @@ import org.magic.magicaddons.data.greenhouse.CropDefinition
 import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
 import org.magic.magicaddons.data.greenhouse.CropStage
 import org.magic.magicaddons.data.greenhouse.ElementRuntimeState
+import org.magic.magicaddons.data.greenhouse.GreenhouseElementInstance
 import org.magic.magicaddons.data.greenhouse.GreenhouseSlot
 import org.magic.magicaddons.util.BlockUtils.isBlock
 import org.magic.magicaddons.util.ScreenUtil
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
-class FireElement : CropDefinitionProvider {
+object FireElement : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Fire",
         skyblockId = null,
@@ -38,11 +39,16 @@ class FireElement : CropDefinitionProvider {
 
     )
     fun getFireAtSlot(slot: GreenhouseSlot, fireBlockMap: Map<BlockPos, BlockState>): ElementRuntimeState {
-        return ElementRuntimeState(
-            cropDef = FireElement().definition,
-            origin = slot,
-            growthStage = null,
+        val instance = GreenhouseElementInstance(
+            elementId = "Fire",
+            slot = slot,
             waterLevel = null,
+            growthStage = null
+        )
+
+        return ElementRuntimeState(
+            cropDef = definition,
+            instance = instance,
             standEntities = null,
             blocksMap = fireBlockMap,
             renderOverride = {graphics, x, y, width, height ->

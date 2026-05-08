@@ -10,7 +10,7 @@ import org.magic.magicaddons.util.BlockUtils.isBlock
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockId
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
-class Potato : CropDefinitionProvider {
+object Potato : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Potato",
         skyblockId = SkyBlockItemId.item("POTATO_ITEM"),

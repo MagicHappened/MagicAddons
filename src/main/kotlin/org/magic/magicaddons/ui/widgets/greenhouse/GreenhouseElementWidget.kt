@@ -64,7 +64,7 @@ class GreenhouseElementWidget(val state: ElementRuntimeState) : Renderable, GuiE
         val lines = buildList {
             add(Component.literal(state.cropDef.name))
 
-            val growthText = when (val stage = state.growthStage) {
+            val growthText = when (val stage = state.instance.growthStage) {
                 is GrowthStageInfo.Known ->
                     "Growth: ${stage.stage}"
 

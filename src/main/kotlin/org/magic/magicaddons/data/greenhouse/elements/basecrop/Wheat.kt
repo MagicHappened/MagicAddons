@@ -9,7 +9,7 @@ import org.magic.magicaddons.util.BlockUtils.getIntProperty
 import org.magic.magicaddons.util.BlockUtils.isBlock
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
-class Wheat : CropDefinitionProvider {
+object Wheat : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Wheat",
         skyblockId = SkyBlockItemId.item("WHEAT"),

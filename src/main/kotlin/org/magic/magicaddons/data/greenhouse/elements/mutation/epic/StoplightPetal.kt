@@ -6,7 +6,7 @@ import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockId
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
-class StoplightPetal : CropDefinitionProvider {
+object StoplightPetal : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Stoplight Petal",
         skyblockId = SkyBlockItemId.item("STOPLIGHT_PETAL"),

@@ -1,6 +1,5 @@
 package org.magic.magicaddons.data.greenhouse
 
-
 import com.mojang.serialization.Codec
 import com.mojang.serialization.codecs.RecordCodecBuilder
 import net.minecraft.client.Minecraft
@@ -13,7 +12,6 @@ import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.Vec3
-import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData.matchesWithRotation
 import org.magic.magicaddons.util.PlayerUtils
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockId
@@ -24,36 +22,6 @@ sealed interface GrowthStageInfo {
     data class Known(val stage: Int) : GrowthStageInfo
 
     data class Estimated(val range: IntRange) : GrowthStageInfo
-
-    companion object {
-        val CODEC: Codec<GrowthStageInfo> = RecordCodecBuilder.create { instance ->
-            instance.group(
-                Codec.STRING.fieldOf("type").forGetter {
-                    when (it) {
-                        is Known -> "known"
-                        is Estimated -> "estimated"
-                    }
-                },
-
-                Codec.INT.optionalFieldOf("stage").forGetter {
-                    Optional.ofNullable((it as? Known)?.stage)
-                },
-
-                Codec.INT.fieldOf("min").forGetter {
-                    (it as? Estimated)?.range?.first ?: 0
-                },
-
-                Codec.INT.fieldOf("max").forGetter {
-                    (it as? Estimated)?.range?.last ?: 0
-                }
-            ).apply(instance) { type, stageOpt, min, max ->
-                when (type) {
-                    "known" -> Known(stageOpt.orElse(0))
-                    else -> Estimated(min..max)
-                }
-            }
-        }
-    }
 
 }
 
@@ -212,9 +180,7 @@ data class StageMatchResult(
 
 data class ElementRuntimeState(
     val cropDef: CropDefinition,
-    val origin: GreenhouseSlot,
-    var growthStage: GrowthStageInfo?,
-    var waterLevel: Int? = null, // null represents unknown/not applicable since cropDef holds needsWater already.
+    val instance: GreenhouseElementInstance,
     val standEntities: List<Entity>?,
     val blocksMap: Map<BlockPos,BlockState>?, // todo add water level
     var renderOverride: ((GuiGraphics, Int, Int, Int, Int) -> Unit)? = null
