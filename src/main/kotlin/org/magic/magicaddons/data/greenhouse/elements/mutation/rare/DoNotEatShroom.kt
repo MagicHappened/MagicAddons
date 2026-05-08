@@ -9,7 +9,7 @@ import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockId
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
-class DoNotEatShroom : CropDefinitionProvider {
+object DoNotEatShroom : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Do-not-eat-shroom",
         skyblockId = SkyBlockItemId.item("DO_NOT_EAT_SHROOM"),

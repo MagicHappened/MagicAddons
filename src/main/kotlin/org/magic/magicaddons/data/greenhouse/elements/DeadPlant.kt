@@ -9,7 +9,7 @@ import org.magic.magicaddons.data.greenhouse.CropStage
 import org.magic.magicaddons.util.BlockUtils.isBlock
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
-class DeadPlant : CropDefinitionProvider {
+object DeadPlant : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Dead Plant",
         skyblockId = SkyBlockItemId.item("DEAD_PLANT"),

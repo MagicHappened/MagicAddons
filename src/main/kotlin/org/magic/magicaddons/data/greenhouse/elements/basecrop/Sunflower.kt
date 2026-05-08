@@ -12,7 +12,7 @@ import org.magic.magicaddons.util.BlockUtils.isBlock
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockId
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
-class Sunflower : CropDefinitionProvider {
+object Sunflower : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Sunflower",
         skyblockId = SkyBlockItemId.item("DOUBLE_PLANT"),

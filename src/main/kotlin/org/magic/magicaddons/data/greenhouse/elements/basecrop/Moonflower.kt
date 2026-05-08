@@ -11,7 +11,7 @@ import org.magic.magicaddons.util.BlockUtils.getIntProperty
 import org.magic.magicaddons.util.BlockUtils.isBlock
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
-class Moonflower : CropDefinitionProvider {
+object Moonflower : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Moonflower",
         skyblockId = SkyBlockItemId.item("MOONFLOWER"),

@@ -38,7 +38,7 @@ class GreenhouseGridWidget(
             for (y in 0 until gridSize) {
 
 
-                val slot = grid.getSlot(x, y) ?: continue
+                val slot = grid.layout.getSlot(x, y) ?: continue
 
                 val widget = GreenhouseSlotWidget(slot)
 
@@ -60,12 +60,12 @@ class GreenhouseGridWidget(
 
             widget.padding = slotSize / 10
 
-            val originX = element.origin.x
-            val originY = element.origin.y
+            val originX = element.instance.slot.x
+            val originY = element.instance.slot.y
 
             widget.widgetX = widgetX + originX * slotSize + originX
             widget.widgetY = widgetY + originY * slotSize + originY
-
+            //todo add footprint scaling for width and height
             widget.width = slotSize
             widget.height = slotSize
 

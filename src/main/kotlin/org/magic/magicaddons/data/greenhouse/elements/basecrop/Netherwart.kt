@@ -10,7 +10,7 @@ import org.magic.magicaddons.util.BlockUtils.getIntProperty
 import org.magic.magicaddons.util.BlockUtils.isBlock
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
-class Netherwart : CropDefinitionProvider {
+object Netherwart : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Netherwart",
         skyblockId = SkyBlockItemId.item("NETHER_STALK"),

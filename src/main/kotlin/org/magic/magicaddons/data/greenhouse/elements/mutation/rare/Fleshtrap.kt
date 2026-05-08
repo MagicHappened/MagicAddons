@@ -5,7 +5,7 @@ import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockId
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
-class Fleshtrap : CropDefinitionProvider {
+object Fleshtrap : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Fleshtrap",
         skyblockId = SkyBlockItemId.item("FLESHTRAP"),

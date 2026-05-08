@@ -95,15 +95,21 @@ class GreenhouseScreen(title: Component) : Screen(title) {
         startX = (width - containerSize) / 2
         startY = paddingY
 
-        val amountInitialized = GreenhouseData.grids.count { it.state.initialized }
-        if (amountInitialized != GreenhouseData.knownGreenhouseIds.size){
+        val amountInitialized = GreenhouseData.greenhouseGrids.count { it.state.initialized }
+        if (PlotAPI.plots.any { it.data == null }) {
+            if (!ignoreWarnings) {
+                ChatUtils.sendWithPrefix("Plot data is null, please open configure plots in desk.")
+            }
+            return
+        }
+        if (amountInitialized != PlotAPI.plots.count { it.data?.isGreenhouse ?: throw IllegalStateException("Plot data was null after null check.") }){
             if (!ignoreWarnings){ //todo change to persistent
                 ChatUtils.sendWithPrefix("The mod scans greenhouses after you've entered them.")
                 ChatUtils.sendWithIgnoreClick("Not all greenhouses available, enter them to see them.")
             }
         }
 
-        GreenhouseData.grids.forEach {
+        GreenhouseData.greenhouseGrids.forEach {
             if (!it.state.initialized) return@forEach
             val gridWidget = GreenhouseGridWidget(it, gridSize, slotSize).apply {
                 widgetX = startX

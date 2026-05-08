@@ -11,7 +11,7 @@ import org.magic.magicaddons.util.BlockUtils.getIntProperty
 import org.magic.magicaddons.util.BlockUtils.isBlock
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
-class Cocoa : CropDefinitionProvider {
+object Cocoa : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Cocoa",
         skyblockId = SkyBlockItemId.item("INK_SACK-3"),
