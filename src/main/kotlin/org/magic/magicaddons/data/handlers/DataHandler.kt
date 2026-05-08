@@ -8,6 +8,7 @@ object DataHandler {
     val configDir: Path = FabricLoader.getInstance().configDir
     val modDir: Path = configDir.resolve("MagicAddons")
     val dataDir: Path = modDir.resolve("data")
+    val greenhouseFile: Path = dataDir.resolve("greenhousepresets.json")
 
     fun init() {
         createIfMissing(modDir)
