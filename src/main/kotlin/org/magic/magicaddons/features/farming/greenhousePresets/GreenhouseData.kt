@@ -7,7 +7,10 @@ import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.*
+import org.magic.magicaddons.data.greenhouse.Codecs.GREENHOUSE_GRID_CODEC
 import org.magic.magicaddons.data.greenhouse.elements.FireElement
+import org.magic.magicaddons.data.handlers.CodecStorage
+import org.magic.magicaddons.data.handlers.DataHandler
 import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.events.EventHandler
 import org.magic.magicaddons.events.interact.*
@@ -19,6 +22,7 @@ import tech.thatgravyboat.skyblockapi.api.events.base.Subscription
 import tech.thatgravyboat.skyblockapi.api.events.base.predicates.OnlyIn
 import tech.thatgravyboat.skyblockapi.api.events.base.predicates.OnlyNonGuest
 import tech.thatgravyboat.skyblockapi.api.events.info.ScoreboardUpdateEvent
+import tech.thatgravyboat.skyblockapi.api.events.location.IslandChangeEvent
 import tech.thatgravyboat.skyblockapi.api.events.screen.ContainerInitializedEvent
 import tech.thatgravyboat.skyblockapi.api.location.SkyBlockIsland
 import tech.thatgravyboat.skyblockapi.api.profile.garden.Plot
@@ -156,6 +160,18 @@ object GreenhouseData {
             minX + GRID_SIZE, box.maxY,
             minZ + GRID_SIZE
         )
+    }
+
+    @Subscription
+    fun onIslandChange(event: IslandChangeEvent){
+        if (event.new != SkyBlockIsland.GARDEN){
+            CodecStorage.save(
+                path = DataHandler.greenhouseFile,
+                codec = GREENHOUSE_GRID_CODEC.listOf(),
+                value = greenhouseGrids,
+                wrapperKey = "greenhouses"
+            )
+        }
     }
 
 
