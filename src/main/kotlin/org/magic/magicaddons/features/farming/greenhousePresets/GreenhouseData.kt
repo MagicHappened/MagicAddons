@@ -43,7 +43,7 @@ object GreenhouseData {
     private const val GRID_SIZE = 10
 
     var greenhousesInitialized = false
-    val greenhouseGrids = mutableListOf<GreenhouseGrid>()
+    var greenhouseGrids = mutableListOf<GreenhouseGrid>()
     val presetGrids = mutableListOf<GreenhouseGrid>()
 
     var removedElementByAttack: ElementRuntimeState? = null
