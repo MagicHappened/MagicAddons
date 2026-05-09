@@ -118,7 +118,6 @@ class GreenhouseScreen(title: Component) : Screen(title) {
                 widgetHeight = containerSize
                 init()
             }
-
             greenhouseGridWidgets.add(gridWidget)
         }
 
@@ -182,8 +181,8 @@ class GreenhouseScreen(title: Component) : Screen(title) {
             containerSize + borderPadding * 2,
         )
         val displayedName =
-            displayedGridWidget?.grid?.plot?.data?.name
-                ?: displayedGridWidget?.grid?.plot?.id?.toString()
+            displayedGridWidget?.grid?.layout?.name
+                ?: displayedGridWidget?.grid?.layout?.id
                 ?: "Unknown greenhouse"
 
 

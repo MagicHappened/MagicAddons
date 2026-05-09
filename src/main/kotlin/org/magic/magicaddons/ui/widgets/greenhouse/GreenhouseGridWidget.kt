@@ -8,6 +8,7 @@ import net.minecraft.client.gui.narration.NarrationElementOutput
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
+import org.magic.magicaddons.data.greenhouse.CropRegistry
 import org.magic.magicaddons.data.greenhouse.GreenhouseGrid
 import org.magic.magicaddons.util.ScreenUtil.drawLine
 
@@ -51,14 +52,14 @@ class GreenhouseGridWidget(
             }
         }
 
-        grid.elements.forEach { element ->
-
-            val widget = GreenhouseElementWidget(element)
+        grid.layout.elementInstances.forEach { instance ->
+            val def = CropRegistry.all.find { instance.elementId == (it.skyblockId?.id ?: it.name) } ?: return@forEach
+            val widget = GreenhouseElementWidget(instance,def)
 
             widget.padding = slotSize / 10
 
-            val originX = element.instance.slot.x
-            val originY = element.instance.slot.y
+            val originX = instance.slot.x
+            val originY = instance.slot.y
 
             widget.widgetX = widgetX + originX * slotSize + originX
             widget.widgetY = widgetY + originY * slotSize + originY
@@ -66,7 +67,7 @@ class GreenhouseGridWidget(
             widget.width = slotSize
             widget.height = slotSize
 
-            widget.renderedStack = element.cropDef.skyblockId?.toItem() ?: ItemStack(Items.BARRIER)
+            widget.renderedStack = def.skyblockId?.toItem() ?: ItemStack(Items.BARRIER)
             elementWidgets.add(widget)
         }
 
