@@ -125,14 +125,14 @@ class TextListSettingWidget(
 
         graphics.fill(x, y, x + width, y + height, backgroundColor)
 
-        titleRow.render(graphics)
+        titleRow.render(graphics, mouseX, mouseY)
 
         graphics.drawLine(
             x, rowY, x+width, rowY,
             2,
             borderColor)
 
-        rows.forEach { it.render(graphics) }
+        rows.forEach { it.render(graphics, mouseX, mouseY) }
 
         seperatorYs.forEach {
             graphics.drawLine(

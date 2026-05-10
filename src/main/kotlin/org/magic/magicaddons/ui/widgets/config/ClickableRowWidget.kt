@@ -22,21 +22,11 @@ open class ClickableRowWidget<T>(
         return super.getRightReservedWidth() + removeWidth
     }
 
-    override fun render(graphics: GuiGraphics) {
-        super.render(graphics)
+    override fun render(graphics: GuiGraphics, mouseX: Int, mouseY: Int) {
+        super.render(graphics, mouseX, mouseY)
         val font = Minecraft.getInstance().font
         if (onRemove != null) {
             val rx = x + width - removeWidth - removePadding
-
-            graphics.blitSprite(
-                RenderPipelines.GUI_TEXTURED,
-                Identifier.fromNamespaceAndPath("minecraft", "widget/button"),
-                rx,
-                y+ removePadding,
-                removeWidth,
-                height - removePadding * 2
-            )
-
             graphics.drawString(
                 font,
                 Component.literal("X"),
@@ -52,7 +42,7 @@ open class ClickableRowWidget<T>(
         val mx = mouseButtonEvent.x.toInt()
         val my = mouseButtonEvent.y.toInt()
 
-        if (mx !in x..x + width || my !in y..y + height) return false
+        if (!isMouseOver(mx,my)) return false
 
         if (onRemove != null) {
             val rx = x + width - removeWidth
@@ -65,4 +55,5 @@ open class ClickableRowWidget<T>(
         onClick(this)
         return true
     }
+
 }

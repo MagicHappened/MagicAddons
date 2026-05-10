@@ -27,7 +27,7 @@ class EnumSettingWidget<T : Enum<T>>(
                 selectionMenuExpanded = true
             }
             )
-        } ?: throw IllegalStateException("Enum factory must not be null")
+        }
 
     }
 
@@ -47,6 +47,7 @@ class EnumSettingWidget<T : Enum<T>>(
 
 
     override fun layout() { //delegate more into this function in future maybe?
+        initDropdown()
         layoutDropdown() //maybe arrow and text selection too :think:
     }
 
@@ -111,7 +112,7 @@ class EnumSettingWidget<T : Enum<T>>(
         renderChildren(graphics, mouseX, mouseY, delta)
 
         if (selectionMenuExpanded) {
-            selectionOptions.forEach { it.render(graphics) }
+            selectionOptions.forEach { it.render(graphics, mouseX, mouseY) }
         }
     }
 
