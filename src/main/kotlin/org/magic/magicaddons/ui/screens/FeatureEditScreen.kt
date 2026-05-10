@@ -77,6 +77,14 @@ class FeatureEditScreen(
         hoveredWidget?.renderTooltip(guiGraphics, mouseX, mouseY)
     }
 
+    override fun renderBackground(guiGraphics: GuiGraphics, i: Int, j: Int, f: Float) {
+        if (this.minecraft.level == null) {
+            this.renderPanorama(guiGraphics, f)
+        }
+        this.renderMenuBackground(guiGraphics)
+        this.minecraft.gui.renderDeferredSubtitles()
+    }
+
     override fun charTyped(characterEvent: CharacterEvent): Boolean {
         baseChildrenWidgets.forEach {
             it.charTyped(characterEvent)
