@@ -28,14 +28,14 @@ open class ToggleRowWidget<T>(
         return height + padding
     }
 
-    override fun render(graphics: GuiGraphics) {
+    override fun render(graphics: GuiGraphics, mouseX: Int, mouseY: Int) {
 
         checkbox.size = height - padding * 2
         checkbox.x = x + padding + 1 // idk why but yes
         checkbox.y = y + padding
         checkbox.checked = isEnabled()
 
-        super.render(graphics)
+        super.render(graphics, mouseX, mouseY)
 
         checkbox.render(graphics)
     }

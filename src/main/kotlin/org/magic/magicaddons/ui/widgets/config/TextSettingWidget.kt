@@ -113,7 +113,7 @@ class TextSettingWidget(
 
         if (shouldRenderHistory) {
             historyWidgets.forEach {
-                it.render(graphics)
+                it.render(graphics, mouseX, mouseY)
             }
         }
     }
