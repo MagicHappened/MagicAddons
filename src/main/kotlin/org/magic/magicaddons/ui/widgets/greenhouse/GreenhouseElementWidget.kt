@@ -6,6 +6,7 @@ import net.minecraft.client.gui.components.Renderable
 import net.minecraft.client.gui.components.events.GuiEventListener
 import net.minecraft.client.gui.screens.inventory.tooltip.ClientTooltipComponent
 import net.minecraft.client.gui.screens.inventory.tooltip.DefaultTooltipPositioner
+import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.client.renderer.RenderPipelines
 import net.minecraft.client.renderer.texture.TextureAtlasSprite
 import net.minecraft.core.Direction
@@ -17,6 +18,7 @@ import org.magic.magicaddons.data.greenhouse.CropRegistry
 import org.magic.magicaddons.data.greenhouse.GreenhouseElementInstance
 import org.magic.magicaddons.data.greenhouse.GrowthStageInfo
 import org.magic.magicaddons.ui.screens.GreenhouseScreen
+import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.ScreenUtil
 import org.magic.magicaddons.util.ScreenUtil.renderFakeItem
 
@@ -57,6 +59,14 @@ class GreenhouseElementWidget(val instance: GreenhouseElementInstance,val defini
             width,
             height
         )
+    }
+
+    override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, bl: Boolean): Boolean {
+        if (isMouseOver(mouseButtonEvent.x, mouseButtonEvent.y)) {
+            ChatUtils.sendWithPrefix("Clicked on ${instance.elementId} ")
+            return true
+        }
+        return false
     }
 
     override fun isMouseOver(mouseX: Double, mouseY: Double): Boolean {

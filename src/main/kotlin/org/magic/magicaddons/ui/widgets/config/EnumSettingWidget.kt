@@ -18,7 +18,7 @@ class EnumSettingWidget<T : Enum<T>>(
     override val childrenWidgets: MutableList<SettingWidget<*>> = mutableListOf()
     override val hasChildren: Boolean = true
 
-    private val selectionOptions: MutableList<ClickableRowWidget<T>> = mutableListOf()
+    private val selectionOptions: MutableList<RemovableRowWidget<T>> = mutableListOf()
 
     override fun initChildren() {
         childrenWidgets.clear()
@@ -36,7 +36,7 @@ class EnumSettingWidget<T : Enum<T>>(
 
         val enumValues = setting.value.javaClass.enumConstants
         enumValues.forEach { enumValue ->
-            val dropDown = ClickableRowWidget(
+            val dropDown = RemovableRowWidget(
                 value = enumValue,
                 displayText = { enumValue.toString() },
                 onClick = { valueChanged(it.value) }

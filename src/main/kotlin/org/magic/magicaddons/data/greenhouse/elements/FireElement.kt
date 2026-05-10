@@ -50,18 +50,7 @@ object FireElement : CropDefinitionProvider {
             cropDef = definition,
             instance = instance,
             standEntities = null,
-            blocksMap = fireBlockMap,
-            renderOverride = {graphics, x, y, width, height ->
-                val sprite = ScreenUtil.getSpriteForState(Blocks.FIRE.defaultBlockState(),Direction.NORTH)
-                graphics.blitSprite(
-                    RenderPipelines.GUI_TEXTURED,
-                    sprite,
-                    x,
-                    y,
-                    width,
-                    height
-                )
-            }
+            blocksMap = fireBlockMap
         )
     }
 }

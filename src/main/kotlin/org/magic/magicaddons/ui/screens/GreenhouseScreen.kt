@@ -8,7 +8,7 @@ import net.minecraft.network.chat.Component
 import net.minecraft.resources.Identifier
 import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData
-import org.magic.magicaddons.ui.widgets.ArrowWidget
+import org.magic.magicaddons.ui.widgets.config.ClickableButtonWidget
 import org.magic.magicaddons.ui.widgets.greenhouse.GreenhouseElementWidget
 import org.magic.magicaddons.ui.widgets.greenhouse.GreenhouseGridWidget
 import org.magic.magicaddons.util.ChatUtils
@@ -21,6 +21,10 @@ class GreenhouseScreen(title: Component) : Screen(title) {
         EventBus.register(this)
     }
 
+    enum class CurrentDisplay {
+        Greenhouses,
+        Presets
+    }
 
     private val gridSize = 10
 
@@ -28,6 +32,8 @@ class GreenhouseScreen(title: Component) : Screen(title) {
     private var startX: Int = 0
     private var startY: Int = 0
     private var containerSize: Int = 400
+
+    var currentDisplay = CurrentDisplay.Greenhouses
 
     var hoveredWidget: GreenhouseElementWidget? = null
 
@@ -55,122 +61,112 @@ class GreenhouseScreen(title: Component) : Screen(title) {
     // x, y, Crop Name, enum
     // enum values: 0 = target crop, 1 = ingredient, 2 = unique crop
 
-    var ignoreWarnings = false
+    var ignoreDataWarnings = false
     var sentWarnings = false
 
     var borderPadding: Int = 6
 
+
     private var displayedGridWidget: GreenhouseGridWidget? = null
     private val greenhouseGridWidgets: MutableList<GreenhouseGridWidget> = mutableListOf()
     private val presetGridWidgets: MutableList<GreenhouseGridWidget> = mutableListOf()
-    private var currentGreenhouseIndex = 0
+    private var currentLayoutIndex: Int = 0
     private val currentPresetIndex = 0
+    private val currentDisplayToggle = ClickableButtonWidget(
+        0,
+        0,
+        60,
+        26,
+        Component.literal("Plots")
+    )
+    var displayedName: String = "Error loading name."
 
-    var forwardArrow: ArrowWidget? = null
-    var backwardArrow: ArrowWidget? = null
-
+    var slotSize: Int = 20
     var savedWidth: Int? = null
     var savedHeight: Int? = null
 
     override fun init() {
         super.init()
-        sentWarnings = false
-        initLayout()
-        sentWarnings = true
+        initBaseLayout()
     }
+    fun initBaseLayout(){
+        sentWarnings = false
 
-    fun initLayout(){
-        displayedGridWidget = null
-        greenhouseGridWidgets.clear()
+
+        sentWarnings = true
 
         savedWidth = width
         savedHeight = height
 
         paddingY = height/10
 
-        val slotSize = (height - paddingY * 2 - borderPadding * 2) / gridSize
-
+        slotSize = (height - paddingY * 2 - borderPadding * 2) / gridSize
         containerSize = (slotSize + 1) * gridSize
 
         startX = (width - containerSize) / 2
         startY = paddingY
 
+        currentDisplayToggle.x = 10
+        currentDisplayToggle.y = startY + borderPadding *2
+        initGreenhouseLayout()
+    }
+
+    fun initGreenhouseLayout(){
+        displayedGridWidget = null
+        greenhouseGridWidgets.clear()
+
         val amountInitialized = GreenhouseData.greenhouseGrids.count { it.state.initialized }
         if (PlotAPI.plots.any { it.data == null }) {
-            if (!ignoreWarnings) {
+            if (!ignoreDataWarnings) {
                 ChatUtils.sendWithPrefix("Plot data is null, please open configure plots in desk.")
             }
             return
         }
         if (amountInitialized != PlotAPI.plots.count { it.data?.isGreenhouse ?: throw IllegalStateException("Plot data was null after null check.") }){
-            if (!ignoreWarnings){ //todo change to persistent
+            if (!ignoreDataWarnings){ //todo change to persistent
                 ChatUtils.sendWithPrefix("The mod scans greenhouses after you've entered them.")
                 ChatUtils.sendWithIgnoreClick("Not all greenhouses available, enter them to see them.")
             }
         }
 
-        GreenhouseData.greenhouseGrids.forEach {
-            if (!it.state.initialized) return@forEach
-            val gridWidget = GreenhouseGridWidget(it, gridSize, slotSize).apply {
+        GreenhouseData.greenhouseGrids.forEachIndexed { index, grid ->
+            if (!grid.state.initialized) return@forEachIndexed
+            val gridWidget = GreenhouseGridWidget(grid.layout, slotSize).apply {
                 widgetX = startX
                 widgetY = startY
                 widgetWidth = containerSize
                 widgetHeight = containerSize
                 init()
             }
+            if ("plot_${PlotAPI.getCurrentPlot()?.id}" == grid.layout.id)
+                currentLayoutIndex = index
             greenhouseGridWidgets.add(gridWidget)
         }
-
-        currentGreenhouseIndex = greenhouseGridWidgets.indexOfFirst {
-            it.grid.plot?.id == PlotAPI.getCurrentPlot()?.id
-        }.takeIf { it != -1 } ?: 0
-
-        displayedGridWidget = greenhouseGridWidgets.getOrNull(currentGreenhouseIndex)
+        displayedGridWidget = greenhouseGridWidgets.getOrNull(currentLayoutIndex)
 
         if (displayedGridWidget == null) {
             displayedGridWidget = greenhouseGridWidgets.firstOrNull()
         }
         if (displayedGridWidget == null) {
             //todo maybe add an auto switch to preset mode if not available.
+            // if ended up here means either we dont have any data, or player doesnt have any greenhouses
             return
         }
 
+        displayedName = displayedGridWidget?.layout?.name
+            ?: displayedGridWidget?.layout?.id
+            ?: "Unknown Plot"
 
-        // normal = Identifier.fromNamespaceAndPath("magicaddons", "textures/gui/join.png"),
-        forwardArrow = ArrowWidget(
-            x = (width / 2) + 10,
-            y = startY + containerSize + borderPadding + 10,
-            width = 22,
-            normal = Identifier.fromNamespaceAndPath("magicaddons", "textures/gui/join.png"),
-            hovered = Identifier.fromNamespaceAndPath("magicaddons", "textures/gui/join_highlighted.png"),
-            onClick = {
-                gridWidgetChanged(1)
-            }
-        )
 
-        backwardArrow = ArrowWidget(
-            x = ((width) / 2) - 22 - 10,
-            y = startY + containerSize + borderPadding + 10,
-            width = 22,
-            normal = Identifier.fromNamespaceAndPath("magicaddons", "textures/gui/join_backward.png"),
-            hovered = Identifier.fromNamespaceAndPath("magicaddons", "textures/gui/join_backward_highlighted.png"),
-            onClick = {
-                gridWidgetChanged(-1)
-            }
-        )
+    }
+
+    fun initPresetLayout(){
+        presetGridWidgets.clear()
+        displayedGridWidget = null
     }
 
 
     override fun render(graphics: GuiGraphics, mouseX: Int, mouseY: Int, delta: Float) {
-        if (savedWidth != width || savedHeight != height) {
-            initLayout()
-            return
-        }
-
-
-        super.render(graphics, mouseX, mouseY, delta)
-
-
         // background
         graphics.blitSprite(
             RenderPipelines.GUI_TEXTURED,
@@ -180,11 +176,6 @@ class GreenhouseScreen(title: Component) : Screen(title) {
             containerSize + borderPadding * 2,
             containerSize + borderPadding * 2,
         )
-        val displayedName =
-            displayedGridWidget?.grid?.layout?.name
-                ?: displayedGridWidget?.grid?.layout?.id
-                ?: "Unknown greenhouse"
-
 
         graphics.drawMultilineBoxCentered(
             displayedName,
@@ -193,23 +184,28 @@ class GreenhouseScreen(title: Component) : Screen(title) {
         )
         displayedGridWidget?.render(graphics, mouseX, mouseY, delta)
 
-        forwardArrow?.render(graphics, mouseX, mouseY, delta)
-        backwardArrow?.render(graphics, mouseX, mouseY, delta)
-
+        currentDisplayToggle.render(graphics, mouseX, mouseY, delta)
         hoveredWidget?.renderTooltip(
             graphics,
             startX + containerSize,
             startY + borderPadding *2)
     }
 
+
+    override fun renderBackground(guiGraphics: GuiGraphics, i: Int, j: Int, f: Float) {
+        if (this.minecraft.level == null) {
+            this.renderPanorama(guiGraphics, f)
+        }
+        this.renderMenuBackground(guiGraphics)
+        this.minecraft.gui.renderDeferredSubtitles()
+    }
+
     override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
+        if (currentDisplayToggle.mouseClicked(mouseButtonEvent,doubled)) {
+            ChatUtils.sendWithPrefix("Pressed toggle.")
+            return true
+        }
         if (displayedGridWidget?.mouseClicked(mouseButtonEvent, doubled) == true) {
-            return true
-        }
-        if (forwardArrow?.mouseClicked(mouseButtonEvent, doubled) == true) {
-            return true
-        }
-        if (backwardArrow?.mouseClicked(mouseButtonEvent, doubled) == true) {
             return true
         }
         return super.mouseClicked(mouseButtonEvent, doubled)
@@ -225,12 +221,13 @@ class GreenhouseScreen(title: Component) : Screen(title) {
         return super.isMouseOver(mouseX, mouseY)
     }
 
+    //todo implement
     fun gridWidgetChanged(direction: Int) {
         if (greenhouseGridWidgets.isEmpty()) return
 
-        currentGreenhouseIndex = (currentGreenhouseIndex + direction).mod(greenhouseGridWidgets.size)
+        currentLayoutIndex = (currentLayoutIndex + direction).mod(greenhouseGridWidgets.size)
 
-        displayedGridWidget = greenhouseGridWidgets[currentGreenhouseIndex]
+        displayedGridWidget = greenhouseGridWidgets[currentLayoutIndex]
     }
 
 }

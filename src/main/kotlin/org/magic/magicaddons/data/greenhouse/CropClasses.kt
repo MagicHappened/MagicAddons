@@ -183,7 +183,6 @@ data class ElementRuntimeState(
     val instance: GreenhouseElementInstance,
     val standEntities: List<Entity>?,
     val blocksMap: Map<BlockPos,BlockState>?, // todo add water level
-    var renderOverride: ((GuiGraphics, Int, Int, Int, Int) -> Unit)? = null
 )
 
 interface CropDefinitionProvider {

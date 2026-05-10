@@ -4,10 +4,11 @@ import net.minecraft.world.level.block.Blocks
 
 data class GreenhouseLayout(
     val id: String, // plot_# for grids, preset_# for presets
-    val name: String?,
+    val name: String = "unnamed",
+    val size: Int = 10,
     val slots: MutableList<GreenhouseSlot> = MutableList(100) { index ->
-        val x = index % 10
-        val y = index / 10
+        val x = index % size
+        val y = index / size
 
         GreenhouseSlot(
             x,
@@ -16,7 +17,7 @@ data class GreenhouseLayout(
         )
     },
 
-    val elementInstances: MutableList<GreenhouseElementInstance> = mutableListOf()
+    val elementInstances: MutableList<GreenhouseElementInstance> = mutableListOf(),
 ){
     private val slotIndex = slots.associateBy { it.x to it.y }
     fun getSlot(x: Int, y: Int) = slotIndex[x to y]

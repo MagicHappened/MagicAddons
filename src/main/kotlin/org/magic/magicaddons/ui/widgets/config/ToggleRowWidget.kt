@@ -11,7 +11,7 @@ open class ToggleRowWidget<T>(
     onRemove: ((ToggleRowWidget<T>) -> Unit)? = null,
     val isEnabled: () -> Boolean,
     val onToggle: (Boolean) -> Unit
-) : ClickableRowWidget<T>(
+) : RemovableRowWidget<T>(
     value,
     displayText,
     { onClick(it as ToggleRowWidget<T>) },

@@ -8,11 +8,11 @@ import net.minecraft.network.chat.Component
 import net.minecraft.resources.Identifier
 import org.magic.magicaddons.ui.widgets.BaseRowWidget
 
-open class ClickableRowWidget<T>(
+open class RemovableRowWidget<T>(
     value: T,
     displayText: (T) -> String,
-    val onClick: (ClickableRowWidget<T>) -> Unit,
-    val onRemove: ((ClickableRowWidget<T>) -> Unit)? = null
+    val onClick: (RemovableRowWidget<T>) -> Unit,
+    val onRemove: ((RemovableRowWidget<T>) -> Unit)? = null
 ) : BaseRowWidget<T>(value, displayText) {
 
     private val removeWidth = 18

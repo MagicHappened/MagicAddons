@@ -10,11 +10,11 @@ import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
 import org.magic.magicaddons.data.greenhouse.CropRegistry
 import org.magic.magicaddons.data.greenhouse.GreenhouseGrid
+import org.magic.magicaddons.data.greenhouse.GreenhouseLayout
 import org.magic.magicaddons.util.ScreenUtil.drawLine
 
 class GreenhouseGridWidget(
-    val grid: GreenhouseGrid,
-    val gridSize: Int,
+    val layout: GreenhouseLayout,
     val slotSize: Int
 ) : Renderable, GuiEventListener, NarratableEntry {
 
@@ -32,11 +32,11 @@ class GreenhouseGridWidget(
         slotWidgets.clear()
         elementWidgets.clear()
 
-        for (x in 0 until gridSize) {
-            for (y in 0 until gridSize) {
+        for (x in 0 until layout.size) {
+            for (y in 0 until layout.size) {
 
 
-                val slot = grid.layout.getSlot(x, y) ?: continue
+                val slot = layout.getSlot(x, y) ?: continue
 
                 val widget = GreenhouseSlotWidget(slot)
 
@@ -52,7 +52,7 @@ class GreenhouseGridWidget(
             }
         }
 
-        grid.layout.elementInstances.forEach { instance ->
+        layout.elementInstances.forEach { instance ->
             val def = CropRegistry.all.find { instance.elementId == (it.skyblockId?.id ?: it.name) } ?: return@forEach
             val widget = GreenhouseElementWidget(instance,def)
 
@@ -80,13 +80,13 @@ class GreenhouseGridWidget(
         }
 
         // draw grid lines
-        for (i in 1 until gridSize) {
+        for (i in 1 until layout.size) {
             // vertical
             graphics.drawLine(
                 widgetX  + i * slotSize + i,
                 widgetY,
                 widgetX + i * slotSize + i,
-                widgetY + gridSize * slotSize + gridSize,
+                widgetY + layout.size * slotSize + layout.size,
                 1,
                 0xFF0683c1.toInt()
             )
@@ -95,7 +95,7 @@ class GreenhouseGridWidget(
             graphics.drawLine(
                 widgetX,
                 widgetY + i * slotSize + i,
-                widgetX + gridSize * slotSize + gridSize,
+                widgetX + layout.size * slotSize + layout.size,
                 widgetY + i * slotSize + i,
                 1,
                 0xFF0683c1.toInt()
@@ -107,8 +107,13 @@ class GreenhouseGridWidget(
     }
 
     override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
-        for (widget in slotWidgets) {
-            if (widget.mouseClicked(mouseButtonEvent, doubled)) {
+        elementWidgets.forEach {
+            if (it.mouseClicked(mouseButtonEvent, doubled)){
+                return true
+            }
+        }
+        slotWidgets.forEach {
+            if (it.mouseClicked(mouseButtonEvent, doubled)) {
                 return true
             }
         }
