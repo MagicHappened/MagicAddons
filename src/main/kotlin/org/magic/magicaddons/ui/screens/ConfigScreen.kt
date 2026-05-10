@@ -64,6 +64,14 @@ class ConfigScreen(title: Component, val parent: Screen?) : Screen(title) {
         guiGraphics.drawMultilineBoxCentered(helpText, width/2, 35)
     }
 
+    override fun renderBackground(guiGraphics: GuiGraphics, i: Int, j: Int, f: Float) {
+        if (this.minecraft.level == null) {
+            this.renderPanorama(guiGraphics, f)
+        }
+        this.renderMenuBackground(guiGraphics)
+        this.minecraft.gui.renderDeferredSubtitles()
+    }
+
     override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
         categoryWidgets.forEach {
             it.mouseClicked(mouseButtonEvent, doubled)
