@@ -153,8 +153,8 @@ class EnumSetting<T : Enum<T>>(
     displayName: String,
     tooltip: String,
     value: T,
-    override val children: List<SettingNode<*>>?,
-    val childrenProvider: ((T) -> List<SettingNode<*>>)?
+    override val children: List<SettingNode<*>>? = null,
+    val childrenProvider: ((T) -> List<SettingNode<*>>)? = null
 ) : SettingNode<T>(key, displayName, tooltip, value) {
 
     private var activeChildren: List<SettingNode<*>>? =
