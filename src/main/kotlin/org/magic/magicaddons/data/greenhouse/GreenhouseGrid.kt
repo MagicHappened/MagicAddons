@@ -132,19 +132,6 @@ class GreenhouseGrid(
 
 
                 val def = runtime.cropDef
-                if (runtime.cropDef.name == "Fire"){
-                    runtime.renderOverride = {graphics, x, y, width, height ->
-                        val sprite = ScreenUtil.getSpriteForState(Blocks.FIRE.defaultBlockState(),Direction.NORTH)
-                        graphics.blitSprite(
-                            RenderPipelines.GUI_TEXTURED,
-                            sprite,
-                            x,
-                            y,
-                            width,
-                            height
-                        )
-                    }
-                }
 
                 remainingStands.removeAll((runtime.standEntities ?: emptyList()).toSet())
 

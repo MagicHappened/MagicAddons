@@ -73,7 +73,7 @@ object GreenhouseData {
             if (it.data?.isGreenhouse == true) {
                 val gridLayout = GreenhouseLayout(
                     id = "plot_${it.id}",
-                    name = null
+                    name = "unnamed"
                 )
                 val gridState = GreenhouseGrid.GridState()
 

@@ -34,7 +34,7 @@ class TextSettingWidget(
         )
     }
 
-    private val historyWidgets: MutableList<ClickableRowWidget<String>> = mutableListOf()
+    private val historyWidgets: MutableList<RemovableRowWidget<String>> = mutableListOf()
 
 
     override fun layout() {
@@ -58,7 +58,7 @@ class TextSettingWidget(
         var currentY = textWidget.y + textWidget.height
 
         setting.history.forEach { value ->
-            val widget = ClickableRowWidget(
+            val widget = RemovableRowWidget(
                 value = value,
                 displayText = { value },
                 onClick = { applyHistoryValue(value) },

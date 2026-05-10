@@ -12,7 +12,7 @@ class ClickableButtonWidget(
     var y: Int,
     var width: Int,
     var height: Int,
-    private val message: Component,
+    var message: Component,
 ) {
     val BUTTON = Identifier.fromNamespaceAndPath("minecraft", "widget/button")
     val BUTTON_HOVERED = Identifier.fromNamespaceAndPath("minecraft", "widget/button_highlighted")
