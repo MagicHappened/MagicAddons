@@ -28,19 +28,17 @@ class TextListSettingWidget(
     private val rowHeight = 20
     private val inputYPadding = 2
     private val inputXPadding = 4
+    private val titleHeight = 20
 
     private var addLabelY: Int = 0
     private var rowY: Int = 0
 
     override val childrenWidgets: MutableList<SettingWidget<*>> = mutableListOf()
 
+
     private val rows = mutableListOf<ToggleRowWidget<ListEntry>>()
     private val seperatorYs = mutableListOf<Int>()
 
-    private val titleRow = BaseRowWidget(
-        listSetting.displayName,
-        {listSetting.displayName}
-    )
 
     private val nameInputField = EditBox(
         Minecraft.getInstance().font,
@@ -53,30 +51,40 @@ class TextListSettingWidget(
     )
 
     private val submitButton = ClickableButtonWidget(
-        x, y,
+        x = x,
+        y = y,
         width = 18,
-        height = 20,
-        message = Component.literal("+").style { Style.EMPTY.withColor(0x00FF00) }
-    )
+        height = 20
+    ) { graphics ->
+
+        val font = Minecraft.getInstance().font
+        val text = "+"
+
+        graphics.drawString(
+            font,
+            Component.literal(text),
+            x + (width - font.width(text)) / 2,
+            y + (height - font.lineHeight) / 2,
+            0xFF00FF00.toInt(),
+            false
+        )
+    }
 
 
     override fun layout() {
         val font = Minecraft.getInstance().font
-        titleRow.y = y + borderSize
-        titleRow.x = x + borderSize
 
         nameInputField.setMaxLength(256)
         valueInputField.setMaxLength(256)
 
         rows.clear()
 
-        var currentY = y + borderSize + titleRow.height
+        var currentY = y + borderSize + titleHeight
         rowY = currentY
 
         listSetting.value.forEach { entry ->
             val row = ToggleRowWidget(
                 value = entry,
-                displayText = { "${entry.name}: ${entry.value}" },
                 onRemove = { removeEntry(it.value) },
                 onClick = { toggleEntry(it.value) },
                 isEnabled = { entry.enabled },
@@ -85,7 +93,7 @@ class TextListSettingWidget(
 
             row.x = x
             row.y = currentY
-            row.width = width - borderSize
+            row.width = width - 1
             row.height = rowHeight
 
             rows.add(row)
@@ -125,7 +133,14 @@ class TextListSettingWidget(
 
         graphics.fill(x, y, x + width, y + height, backgroundColor)
 
-        titleRow.render(graphics, mouseX, mouseY)
+        graphics.drawString(
+            font,
+            Component.literal(listSetting.displayName),
+            x + textXPad,
+            y + borderSize + (titleHeight - font.lineHeight) / 2,
+            0xFFFFFFFF.toInt(),
+            false
+        )
 
         graphics.drawLine(
             x, rowY, x+width, rowY,
@@ -172,7 +187,7 @@ class TextListSettingWidget(
     private fun removeEntry(entry: ListEntry) {
         listSetting.value.remove(entry)
         ChatUtils.sendWithPrefix("Removed: ${entry.name} Value:\n${entry.value}")
-        initChildren()
+        requestRelayout?.invoke()
     }
 
     private fun addEntry(name: String, value: String){
@@ -184,7 +199,12 @@ class TextListSettingWidget(
             ChatUtils.sendWithPrefix("Cannot add a duplicate value.")
         }
         listSetting.value.add(ListEntry(name, value, true))
-        initChildren()
+        requestRelayout?.invoke()
+    }
+
+    override fun mouseMoved(mouseX: Double, mouseY: Double) {
+        submitButton.mouseMoved(mouseX, mouseY)
+        rows.forEach { it.mouseMoved(mouseX,mouseY) }
     }
 
     override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
@@ -252,7 +272,7 @@ class TextListSettingWidget(
         val totalPadding = inputYPadding * 3 // 2 widgets so 3 spacing top bottom and middle
 
         return borderSize +
-                titleRow.height +
+                titleHeight +
                 rowsHeight +
                 totalPadding +
                 addLabelHeight +

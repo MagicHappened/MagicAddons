@@ -24,6 +24,7 @@ class BooleanSettingWidget(
         checkbox.x = x
         checkbox.y = y
         checkbox.size = height
+        checkbox.checked = setting.value
     }
 
     override fun render(graphics: GuiGraphics, mouseX: Int, mouseY: Int, delta: Float) {
@@ -31,7 +32,7 @@ class BooleanSettingWidget(
 
         graphics.fill(x, y, x + width, y + height, backgroundColor)
 
-        checkbox.checked = setting.value
+
         checkbox.render(graphics)
 
         graphics.drawBorder(x, y, x + width, y + height, borderSize, borderColor)

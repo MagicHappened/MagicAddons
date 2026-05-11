@@ -1,10 +1,8 @@
 package org.magic.magicaddons.ui.widgets.config
 
-import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.client.renderer.RenderPipelines
-import net.minecraft.network.chat.Component
 import net.minecraft.resources.Identifier
 
 class ClickableButtonWidget(
@@ -12,16 +10,15 @@ class ClickableButtonWidget(
     var y: Int,
     var width: Int,
     var height: Int,
-    private val message: Component,
+    val renderContent: ClickableButtonWidget.(GuiGraphics) -> Unit
 ) {
+
     val BUTTON = Identifier.fromNamespaceAndPath("minecraft", "widget/button")
     val BUTTON_HOVERED = Identifier.fromNamespaceAndPath("minecraft", "widget/button_highlighted")
 
-    private var hovered = false
+    var hovered = false
 
     fun render(graphics: GuiGraphics, mouseX: Int, mouseY: Int, delta: Float) {
-        val font = Minecraft.getInstance().font
-        hovered = isHovered(mouseX, mouseY)
 
         val sprite = if (hovered)
             BUTTON_HOVERED
@@ -34,29 +31,21 @@ class ClickableButtonWidget(
             x,
             y,
             width,
-            height,
+            height
         )
 
-        val textX = x + (width - font.width(message)) / 2
-        val textY = y + (height - 8) / 2
-        val color = (message.style.color?.value ?: 0xFFFFFFFF.toInt()) or 0xFF000000.toInt()
-
-        graphics.drawString(
-            font,
-            message,
-            textX,
-            textY,
-            color,
-            false
-        )
+        renderContent(graphics)
     }
 
     fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
-        return isHovered(mouseButtonEvent.x.toInt(), mouseButtonEvent.y.toInt())
+        return isMouseOver(mouseButtonEvent.x, mouseButtonEvent.y)
     }
 
-    private fun isHovered(mouseX: Int, mouseY: Int): Boolean {
-        return mouseX in x..(x + width) &&
-                mouseY in y..(y + height)
+    fun isMouseOver(mouseX: Double, mouseY: Double): Boolean {
+        return mouseX.toInt() in x..(x + width) &&
+                mouseY.toInt() in y..(y + height)
+    }
+    fun mouseMoved(mouseX: Double, mouseY: Double) {
+        hovered = isMouseOver(mouseX, mouseY)
     }
 }
