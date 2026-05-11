@@ -5,6 +5,7 @@ import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.network.chat.Component
 import org.magic.magicaddons.data.config.EnumSetting
+import org.magic.magicaddons.ui.widgets.RemovableRowWidget
 import org.magic.magicaddons.util.ScreenUtil.drawBorder
 import org.magic.magicaddons.util.ScreenUtil.drawLine
 
@@ -18,7 +19,7 @@ class EnumSettingWidget<T : Enum<T>>(
     override val childrenWidgets: MutableList<SettingWidget<*>> = mutableListOf()
     override val hasChildren: Boolean = true
 
-    private val selectionOptions: MutableList<ClickableRowWidget<T>> = mutableListOf()
+    private val selectionOptions: MutableList<RemovableRowWidget<T>> = mutableListOf()
 
     override fun initChildren() {
         childrenWidgets.clear()
@@ -36,9 +37,8 @@ class EnumSettingWidget<T : Enum<T>>(
 
         val enumValues = setting.value.javaClass.enumConstants
         enumValues.forEach { enumValue ->
-            val dropDown = ClickableRowWidget(
+            val dropDown = RemovableRowWidget(
                 value = enumValue,
-                displayText = { enumValue.toString() },
                 onClick = { valueChanged(it.value) }
             )
             selectionOptions.add(dropDown)

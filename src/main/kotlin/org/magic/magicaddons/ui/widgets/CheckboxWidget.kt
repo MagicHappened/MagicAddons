@@ -3,6 +3,7 @@ package org.magic.magicaddons.ui.widgets
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.gui.components.events.GuiEventListener
 import net.minecraft.client.input.MouseButtonEvent
+import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.ScreenUtil.drawLine
 import kotlin.math.sqrt
 
@@ -70,7 +71,11 @@ class CheckboxWidget(
             checked = !checked
             return true
         }
-        return super.mouseClicked(mouseButtonEvent, doubled)
+        return false
+    }
+
+    override fun isMouseOver(mouseX: Double, mouseY: Double): Boolean {
+        return (mouseX.toInt() in x..x+size) && (mouseY.toInt() in y..y+size)
     }
 
     override fun setFocused(focused: Boolean) {

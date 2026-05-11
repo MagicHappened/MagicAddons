@@ -8,6 +8,7 @@ import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.network.chat.Component
 import org.magic.magicaddons.data.config.TextSetting
+import org.magic.magicaddons.ui.widgets.RemovableRowWidget
 import org.magic.magicaddons.util.ScreenUtil.drawBorder
 
 class TextSettingWidget(
@@ -34,7 +35,7 @@ class TextSettingWidget(
         )
     }
 
-    private val historyWidgets: MutableList<ClickableRowWidget<String>> = mutableListOf()
+    private val historyWidgets: MutableList<RemovableRowWidget<String>> = mutableListOf()
 
 
     override fun layout() {
@@ -58,9 +59,8 @@ class TextSettingWidget(
         var currentY = textWidget.y + textWidget.height
 
         setting.history.forEach { value ->
-            val widget = ClickableRowWidget(
+            val widget = RemovableRowWidget(
                 value = value,
-                displayText = { value },
                 onClick = { applyHistoryValue(value) },
                 onRemove = { removeHistoryValue(value) }
             )
@@ -116,6 +116,10 @@ class TextSettingWidget(
                 it.render(graphics, mouseX, mouseY)
             }
         }
+    }
+
+    override fun mouseMoved(mouseX: Double, mouseY: Double) {
+        historyWidgets.forEach { it.mouseMoved(mouseX, mouseY) }
     }
 
     override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
