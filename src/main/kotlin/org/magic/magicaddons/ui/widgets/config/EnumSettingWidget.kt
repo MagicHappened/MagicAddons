@@ -5,6 +5,7 @@ import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.network.chat.Component
 import org.magic.magicaddons.data.config.EnumSetting
+import org.magic.magicaddons.ui.widgets.RemovableRowWidget
 import org.magic.magicaddons.util.ScreenUtil.drawBorder
 import org.magic.magicaddons.util.ScreenUtil.drawLine
 
@@ -38,7 +39,6 @@ class EnumSettingWidget<T : Enum<T>>(
         enumValues.forEach { enumValue ->
             val dropDown = RemovableRowWidget(
                 value = enumValue,
-                displayText = { enumValue.toString() },
                 onClick = { valueChanged(it.value) }
             )
             selectionOptions.add(dropDown)

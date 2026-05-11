@@ -4,4 +4,8 @@ data class ListEntry(
     val name: String,
     val value: String,
     var enabled: Boolean
-)
+){
+    override fun toString(): String {
+        return "$name: $value"
+    }
+}

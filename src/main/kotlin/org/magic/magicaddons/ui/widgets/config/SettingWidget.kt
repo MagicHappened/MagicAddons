@@ -44,6 +44,7 @@ abstract class SettingWidget<T>(
             childrenWidgets.add(SettingWidgetFactory.create(it).apply {
                 requestRelayout = {
                     this@SettingWidget.layoutChildrenBut(this@SettingWidget) // this is calling upper layer!! dont touch
+                    this@SettingWidget.requestRelayout?.invoke()
                 }
             })
         }
