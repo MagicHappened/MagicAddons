@@ -7,12 +7,11 @@ import net.minecraft.network.chat.Component
 import net.minecraft.resources.Identifier
 
 open class BaseRowWidget<T>(
-    val value: T,
-    val displayText: (T) -> String
+    val value: T
 ) {
 
     val BUTTON = Identifier.fromNamespaceAndPath("minecraft", "widget/button")
-    val BUTTON_HOVERED = Identifier.fromNamespaceAndPath("minecraft", "widget/button_highlighted")
+
 
     var hovered = false
     var width: Int = 200
@@ -21,28 +20,29 @@ open class BaseRowWidget<T>(
     var x: Int = 0
     var y: Int = 0
 
-    open val textLeftPadding = 2
+    open val textLeftPadding = 4
 
     open fun getRightReservedWidth(): Int = 0
 
     open fun getLeftReservedWidth(): Int = 0
 
+    protected open fun getSprite(): Identifier {
+        return BUTTON
+    }
 
     open fun render(graphics: GuiGraphics, mouseX: Int, mouseY: Int) {
         val font = Minecraft.getInstance().font
-        hovered = isMouseOver(mouseX, mouseY)
         val usableWidth = width - getRightReservedWidth() - getLeftReservedWidth()
-        val sprite = if (hovered) BUTTON_HOVERED else BUTTON
         graphics.blitSprite(
             RenderPipelines.GUI_TEXTURED,
-            sprite,
-            x,
+            getSprite(),
+            x + getLeftReservedWidth(),
             y,
-            width,
+            usableWidth,
             height
         )
 
-        val text = font.plainSubstrByWidth(displayText(value), usableWidth)
+        val text = font.plainSubstrByWidth(value.toString(), usableWidth)
 
         graphics.drawString(
             font,
@@ -54,8 +54,17 @@ open class BaseRowWidget<T>(
         )
 
     }
-
-    open fun isMouseOver(mouseX: Int, mouseY: Int): Boolean {
-        return (mouseX in x..x+width && mouseY in y..y+height)
+    fun isMouseOver(mouseX: Double, mouseY: Double): Boolean {
+        return (mouseX.toInt() in x..x+width && mouseY.toInt() in y..y+height)
     }
+
+    open fun isMouseOverRow(mouseX: Double, mouseY: Double): Boolean {
+        return (mouseX.toInt() in x+getLeftReservedWidth()..x+width-getRightReservedWidth() && mouseY.toInt() in y..y+height)
+    }
+
+    open fun mouseMoved(mouseX: Double, mouseY: Double) {
+        hovered = isMouseOverRow(mouseX, mouseY)
+    }
+
+
 }
