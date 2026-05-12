@@ -8,12 +8,15 @@ import net.minecraft.network.chat.Component
 import net.minecraft.resources.Identifier
 import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData
+import org.magic.magicaddons.ui.OverlayRenderable
+import org.magic.magicaddons.ui.widgets.SelectorWidget
 import org.magic.magicaddons.ui.widgets.config.ClickableButtonWidget
 import org.magic.magicaddons.ui.widgets.greenhouse.GreenhouseElementWidget
 import org.magic.magicaddons.ui.widgets.greenhouse.GreenhouseGridWidget
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.ScreenUtil.drawMultilineBoxCentered
 import tech.thatgravyboat.skyblockapi.api.profile.garden.PlotAPI
+import kotlin.math.max
 
 class GreenhouseScreen(title: Component) : Screen(title) {
 
@@ -66,7 +69,7 @@ class GreenhouseScreen(title: Component) : Screen(title) {
 
     var borderPadding: Int = 6
 
-
+    private val overlays = mutableListOf<OverlayRenderable>()
     private var displayedGridWidget: GreenhouseGridWidget? = null
     private val greenhouseGridWidgets: MutableList<GreenhouseGridWidget> = mutableListOf()
     private val presetGridWidgets: MutableList<GreenhouseGridWidget> = mutableListOf()
@@ -79,6 +82,14 @@ class GreenhouseScreen(title: Component) : Screen(title) {
         26,
         Component.literal("Plots")
     )
+    private val gridSelector = SelectorWidget(
+        values = greenhouseGridWidgets,
+        currentValue = displayedGridWidget,
+        onRightClickValue = { openWidgetContext(it) },
+        valueChanged = { gridWidgetChanged(it) }
+    )
+
+
     var displayedName: String = "Error loading name."
 
     var slotSize: Int = 20
@@ -108,7 +119,14 @@ class GreenhouseScreen(title: Component) : Screen(title) {
 
         currentDisplayToggle.x = 10
         currentDisplayToggle.y = startY + borderPadding *2
+
+        gridSelector.x = currentDisplayToggle.x + currentDisplayToggle.width + 10
+        gridSelector.y = startY + borderPadding *2
+        gridSelector.width = 100
+        gridSelector.height = currentDisplayToggle.height
+        overlays += gridSelector.overlay
         initGreenhouseLayout()
+        overlays.sortBy { it.renderPriority }
     }
 
     fun initGreenhouseLayout(){
@@ -158,6 +176,13 @@ class GreenhouseScreen(title: Component) : Screen(title) {
             ?: "Unknown Plot"
 
 
+        gridSelector.currentValue = displayedGridWidget
+        gridSelector.values = greenhouseGridWidgets
+        val maxWidth = greenhouseGridWidgets.maxOf {
+            font.width(it.toString())
+        }
+        gridSelector.width = maxWidth + 12
+
     }
 
     fun initPresetLayout(){
@@ -183,8 +208,13 @@ class GreenhouseScreen(title: Component) : Screen(title) {
             18
         )
         displayedGridWidget?.render(graphics, mouseX, mouseY, delta)
-
+        gridSelector.render(graphics, mouseX, mouseY, delta)
         currentDisplayToggle.render(graphics, mouseX, mouseY, delta)
+
+        overlays.forEach {
+            it.renderOverlay(graphics, mouseX, mouseY, delta)
+        }
+
         hoveredWidget?.renderTooltip(
             graphics,
             startX + containerSize,
@@ -201,6 +231,15 @@ class GreenhouseScreen(title: Component) : Screen(title) {
     }
 
     override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
+        overlays.forEach {
+            if (it.mouseClicked(mouseButtonEvent, doubled)) {
+                return true
+            }
+        }
+        if (gridSelector.mouseClicked(mouseButtonEvent, doubled)){
+            return true
+        }
+
         if (currentDisplayToggle.mouseClicked(mouseButtonEvent,doubled)) {
             ChatUtils.sendWithPrefix("Pressed toggle.")
             return true
@@ -214,6 +253,7 @@ class GreenhouseScreen(title: Component) : Screen(title) {
     override fun mouseMoved(mouseX: Double, mouseY: Double) {
         hoveredWidget = null
         displayedGridWidget?.mouseMoved(mouseX, mouseY)
+        currentDisplayToggle.mouseMoved(mouseX, mouseY)
     }
 
 
@@ -222,12 +262,16 @@ class GreenhouseScreen(title: Component) : Screen(title) {
     }
 
     //todo implement
-    fun gridWidgetChanged(direction: Int) {
+    fun gridWidgetChanged(widget: GreenhouseGridWidget) {
         if (greenhouseGridWidgets.isEmpty()) return
 
-        currentLayoutIndex = (currentLayoutIndex + direction).mod(greenhouseGridWidgets.size)
+        currentLayoutIndex = greenhouseGridWidgets.indexOf(widget)
+        displayedGridWidget = widget
+    }
 
-        displayedGridWidget = greenhouseGridWidgets[currentLayoutIndex]
+    fun openWidgetContext(widget: GreenhouseGridWidget) {
+        if (widget !in greenhouseGridWidgets) return
+        ChatUtils.sendWithPrefix("open Widget context fired.")
     }
 
 }
