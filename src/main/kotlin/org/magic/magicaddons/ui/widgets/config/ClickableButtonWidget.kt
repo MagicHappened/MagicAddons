@@ -15,6 +15,7 @@ class ClickableButtonWidget(
     val renderContent: ClickableButtonWidget.(GuiGraphics) -> Unit
 ) {
 
+
     constructor(
         x: Int,
         y: Int,
@@ -32,8 +33,8 @@ class ClickableButtonWidget(
             graphics.drawString(
                 font,
                 message,
-                x + (width - font.width(message)) / 2,
-                y + (height - font.lineHeight) / 2,
+                this.x + (width - font.width(message)) / 2,
+                this.y + (height - font.lineHeight) / 2,
                 (message.style.color?.value ?: 0xFFFFFFFF.toInt()) or 0xFF000000.toInt(),
                 false
             )

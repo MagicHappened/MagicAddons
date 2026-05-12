@@ -9,6 +9,7 @@ import net.minecraft.client.gui.narration.NarrationElementOutput
 import net.minecraft.client.input.CharacterEvent
 import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
+import org.magic.magicaddons.Common
 import org.magic.magicaddons.ui.screens.FeatureEditScreen
 import org.magic.magicaddons.data.config.SettingNode
 import org.magic.magicaddons.util.ScreenUtil.drawSimpleTooltip
@@ -31,12 +32,12 @@ abstract class SettingWidget<T>(
     abstract val hasChildren: Boolean
     abstract val childrenWidgets: MutableList<SettingWidget<*>>
 
-    protected val borderColor: Int = 0xFF000000.toInt()
-    protected val borderSize: Int = 2
-    protected val backgroundColor: Int = 0xFF555555.toInt()
+    val borderColor = Common.UI.BORDER_COLOR
+    val borderSize = Common.UI.BORDER_SIZE
+    val backgroundColor: Int = Common.UI.BACKGROUND_COLOR
+    val textXPad: Int = Common.UI.TEXT_X_PAD
 
-    protected val textXPad: Int = 4
-    protected val textYPad: Int = 10
+    val textYPad: Int = 10
 
 
     open fun initChildren() {
