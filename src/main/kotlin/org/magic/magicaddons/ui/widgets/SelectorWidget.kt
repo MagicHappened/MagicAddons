@@ -8,7 +8,6 @@ import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.network.chat.Component
 import org.magic.magicaddons.Common
 import org.magic.magicaddons.ui.OverlayRenderable
-import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.ScreenUtil.drawBorder
 
 class SelectorWidget<T>(
@@ -19,20 +18,18 @@ class SelectorWidget<T>(
     var values: List<T>,
     var currentValue: T?,
     val includeSearch: Boolean = false,
-    val onLeftClickValue: ((T) -> Unit)? = null,
-    val onRightClickValue: ((T) -> Unit)? = null,
+    val onLeftClickValue: ((T, MouseButtonEvent) -> Unit)? = null,
+    val onRightClickValue: ((T, MouseButtonEvent) -> Unit)? = null,
     val valueChanged: ((T) -> Unit)? = null,
 
-) : Renderable, GuiEventListener {
-    val overlay = EnumOverlay(0)
+    ) : Renderable, GuiEventListener {
+    val overlay = EnumOverlay(1)
     val font = Minecraft.getInstance().font
-    var renderOverlay = false
-
+    var overlayOpen = false
     private fun valueChanged(newValue: T) {
         currentValue = newValue
         overlay.valueWidgets.clear()
         valueChanged?.invoke(newValue)
-        renderOverlay = false
     }
 
 
@@ -68,24 +65,19 @@ class SelectorWidget<T>(
     override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, bl: Boolean): Boolean {
         if (isMouseOver(mouseButtonEvent.x, mouseButtonEvent.y)) {
             if (mouseButtonEvent.button() == 0) {
-                if (!renderOverlay) {
-                    values.forEach { value ->
-                        if (value == currentValue) return@forEach
-                        val widget = ClickableRowWidget(
-                            value
-                        )
-                        overlay.valueWidgets.add(widget)
-                    }
-                    overlay.layoutOverlay()
-                    renderOverlay = true
-                } else {
-                    overlay.valueWidgets.clear()
-                    renderOverlay = false
+                overlay.valueWidgets.clear()
+                values.forEach { value ->
+                    if (value == currentValue) return@forEach
+                    val widget = ClickableRowWidget(
+                        value
+                    )
+                    overlay.valueWidgets.add(widget)
                 }
-                onLeftClickValue?.invoke(currentValue!!)
+                overlay.layoutOverlay()
+                onLeftClickValue?.invoke(currentValue!!, mouseButtonEvent)
                 return true
             } else if (mouseButtonEvent.button() == 1) {
-                onRightClickValue?.invoke(currentValue!!)
+                onRightClickValue?.invoke(currentValue!!, mouseButtonEvent)
             }
             return true
         }
@@ -103,14 +95,23 @@ class SelectorWidget<T>(
 
     override fun isFocused(): Boolean = isFocused
 
-    inner class EnumOverlay(override val renderPriority: Int) : OverlayRenderable, GuiEventListener {
-        val overlayX get() = this@SelectorWidget.x
-        val overlayY get() = this@SelectorWidget.y + this@SelectorWidget.height
-        val overlayWidth get() = this@SelectorWidget.width
-        val overlayRowHeight get() = (this@SelectorWidget.height * 0.8f).toInt()
-
+    inner class EnumOverlay(override val renderPriority: Int) : OverlayRenderable {
+        val overlayRowHeight: Int
+            get() = (this@SelectorWidget.height * 0.8f).toInt()
 
         val valueWidgets: MutableList<ClickableRowWidget<T>> = mutableListOf()
+
+        override val overlayX: Int
+            get() = this@SelectorWidget.x
+        override val overlayY: Int
+            get() = this@SelectorWidget.y + this@SelectorWidget.height
+        override val overlayWidth: Int
+            get() = this@SelectorWidget.width
+        override val overlayHeight: Int
+            get() = overlayRowHeight * valueWidgets.size
+
+
+
 
         fun layoutOverlay() {
             var currentY = overlayY
@@ -128,27 +129,23 @@ class SelectorWidget<T>(
         }
 
         override fun renderOverlay(
-            guiGraphics: GuiGraphics,
+            graphics: GuiGraphics,
             mouseX: Int,
             mouseY: Int,
             delta: Float
         ) {
-            if (!renderOverlay) return
-            valueWidgets.forEach { it.render(guiGraphics, mouseX, mouseY) }
+            valueWidgets.forEach { it.render(graphics, mouseX, mouseY) }
         }
 
         override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
             valueWidgets.forEach {
                 if (it.mouseClicked(mouseButtonEvent, doubled)) {
                     if (mouseButtonEvent.button() == 0) {
-                        this@SelectorWidget.onLeftClickValue?.invoke(it.value)
+                        this@SelectorWidget.onLeftClickValue?.invoke(it.value, mouseButtonEvent)
                         this@SelectorWidget.valueChanged(it.value)
-                        ChatUtils.sendWithPrefix("Left clicked on: ${it.value?.javaClass} or ${it.value}")
                         return true
                     } else if (mouseButtonEvent.button() == 1) {
-                        this@SelectorWidget.onRightClickValue?.invoke(it.value)
-                        ChatUtils.sendWithPrefix("Right clicked on: ${it.value?.javaClass} or ${it.value}")
-                        //todo open context menu
+                        this@SelectorWidget.onRightClickValue?.invoke(it.value, mouseButtonEvent)
                     }
 
 
@@ -157,18 +154,14 @@ class SelectorWidget<T>(
             return false
         }
 
-        override fun mouseMoved(d: Double, e: Double) {
+        override fun mouseMoved(mouseX: Double, mouseY: Double) {
             valueWidgets.forEach {
-                it.mouseMoved(d, e)
+                it.mouseMoved(mouseX, mouseY)
+                if (it.hovered){
+                    return
+                }
             }
         }
-
-        override fun setFocused(focused: Boolean) {
-            isFocused = focused
-        }
-
-        override fun isFocused(): Boolean = isFocused
-
 
     }
 }

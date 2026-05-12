@@ -1,6 +1,7 @@
 package org.magic.magicaddons.ui.screens
 
 import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.gui.screens.Overlay
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.client.renderer.RenderPipelines
@@ -9,6 +10,8 @@ import net.minecraft.resources.Identifier
 import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData
 import org.magic.magicaddons.ui.OverlayRenderable
+import org.magic.magicaddons.ui.widgets.AbstractContextMenu
+import org.magic.magicaddons.ui.widgets.EditLayoutContextMenu
 import org.magic.magicaddons.ui.widgets.SelectorWidget
 import org.magic.magicaddons.ui.widgets.config.ClickableButtonWidget
 import org.magic.magicaddons.ui.widgets.greenhouse.GreenhouseElementWidget
@@ -16,7 +19,6 @@ import org.magic.magicaddons.ui.widgets.greenhouse.GreenhouseGridWidget
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.ScreenUtil.drawMultilineBoxCentered
 import tech.thatgravyboat.skyblockapi.api.profile.garden.PlotAPI
-import kotlin.math.max
 
 class GreenhouseScreen(title: Component) : Screen(title) {
 
@@ -38,6 +40,7 @@ class GreenhouseScreen(title: Component) : Screen(title) {
 
     var currentDisplay = CurrentDisplay.Greenhouses
 
+    var contextWidget: AbstractContextMenu? = null
     var hoveredWidget: GreenhouseElementWidget? = null
 
     //todo add presets button which toggles between viewing your current REAL greenhouses
@@ -85,7 +88,8 @@ class GreenhouseScreen(title: Component) : Screen(title) {
     private val gridSelector = SelectorWidget(
         values = greenhouseGridWidgets,
         currentValue = displayedGridWidget,
-        onRightClickValue = { openWidgetContext(it) },
+        onRightClickValue = { widget, event ->
+            openGridWidgetContext(widget, event) },
         valueChanged = { gridWidgetChanged(it) }
     )
 
@@ -95,6 +99,7 @@ class GreenhouseScreen(title: Component) : Screen(title) {
     var slotSize: Int = 20
     var savedWidth: Int? = null
     var savedHeight: Int? = null
+    var activeContext: AbstractContextMenu? = null
 
     override fun init() {
         super.init()
@@ -211,7 +216,7 @@ class GreenhouseScreen(title: Component) : Screen(title) {
         gridSelector.render(graphics, mouseX, mouseY, delta)
         currentDisplayToggle.render(graphics, mouseX, mouseY, delta)
 
-        overlays.forEach {
+        overlays.asReversed().forEach {
             it.renderOverlay(graphics, mouseX, mouseY, delta)
         }
 
@@ -236,7 +241,15 @@ class GreenhouseScreen(title: Component) : Screen(title) {
                 return true
             }
         }
+
+        overlays.clear()
+
         if (gridSelector.mouseClicked(mouseButtonEvent, doubled)){
+            if (!gridSelector.overlayOpen){
+                addOverlay(gridSelector.overlay)
+                gridSelector.overlayOpen = true
+            }
+            gridSelector.overlayOpen = false
             return true
         }
 
@@ -252,6 +265,12 @@ class GreenhouseScreen(title: Component) : Screen(title) {
 
     override fun mouseMoved(mouseX: Double, mouseY: Double) {
         hoveredWidget = null
+        overlays.forEach {
+            it.mouseMoved(mouseX, mouseY)
+            if (it.isMouseOver(mouseX.toInt(),mouseY.toInt())) {
+                return
+            }
+        }
         displayedGridWidget?.mouseMoved(mouseX, mouseY)
         currentDisplayToggle.mouseMoved(mouseX, mouseY)
     }
@@ -261,17 +280,31 @@ class GreenhouseScreen(title: Component) : Screen(title) {
         return super.isMouseOver(mouseX, mouseY)
     }
 
-    //todo implement
+    //todo implement presets as well
     fun gridWidgetChanged(widget: GreenhouseGridWidget) {
         if (greenhouseGridWidgets.isEmpty()) return
 
         currentLayoutIndex = greenhouseGridWidgets.indexOf(widget)
         displayedGridWidget = widget
     }
+    fun addOverlay(overlay: OverlayRenderable) {
+        overlays.add(overlay)
+        overlays.sortBy { it.renderPriority }
+    }
 
-    fun openWidgetContext(widget: GreenhouseGridWidget) {
-        if (widget !in greenhouseGridWidgets) return
-        ChatUtils.sendWithPrefix("open Widget context fired.")
+    fun openGridWidgetContext(widget: GreenhouseGridWidget, buttonEvent: MouseButtonEvent) {
+        if (widget !in greenhouseGridWidgets) return //todo implement preset handling as well
+        val menu = EditLayoutContextMenu(
+            buttonEvent.x.toInt(),
+            buttonEvent.y.toInt(),
+            widget.layout
+        )
+        activeContext?.let {
+            overlays.remove(it)
+        }
+        addOverlay(menu)
+        activeContext = menu
+
     }
 
 }
