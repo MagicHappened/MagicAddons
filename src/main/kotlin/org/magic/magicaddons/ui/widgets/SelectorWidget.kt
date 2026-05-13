@@ -18,8 +18,8 @@ class SelectorWidget<T>(
     var values: List<T>,
     var currentValue: T?,
     val includeSearch: Boolean = false,
-    val onLeftClickValue: ((T, MouseButtonEvent) -> Unit)? = null,
-    val onRightClickValue: ((T, MouseButtonEvent) -> Unit)? = null,
+    val onLeftClickValue: ((T?, MouseButtonEvent) -> Unit)? = null,
+    val onRightClickValue: ((T?, MouseButtonEvent) -> Unit)? = null,
     val valueChanged: ((T) -> Unit)? = null,
 
     ) : Renderable, GuiEventListener {
@@ -74,10 +74,10 @@ class SelectorWidget<T>(
                     overlay.valueWidgets.add(widget)
                 }
                 overlay.layoutOverlay()
-                onLeftClickValue?.invoke(currentValue!!, mouseButtonEvent)
+                onLeftClickValue?.invoke(currentValue, mouseButtonEvent)
                 return true
             } else if (mouseButtonEvent.button() == 1) {
-                onRightClickValue?.invoke(currentValue!!, mouseButtonEvent)
+                onRightClickValue?.invoke(currentValue, mouseButtonEvent)
             }
             return true
         }

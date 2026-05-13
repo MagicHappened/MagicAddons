@@ -271,4 +271,7 @@ class GreenhouseGrid(
         var initialized: Boolean = false
     )
 
+    override fun toString(): String {
+        return "${layout.name?: "unnamed"}: ${layout.id}"
+    }
 }
