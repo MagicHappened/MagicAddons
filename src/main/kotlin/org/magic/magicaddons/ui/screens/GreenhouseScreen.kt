@@ -3,6 +3,8 @@ package org.magic.magicaddons.ui.screens
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.gui.screens.Overlay
 import net.minecraft.client.gui.screens.Screen
+import net.minecraft.client.input.CharacterEvent
+import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.client.renderer.RenderPipelines
 import net.minecraft.network.chat.Component
@@ -72,7 +74,7 @@ class GreenhouseScreen(title: Component) : Screen(title) {
 
     var borderPadding: Int = 6
 
-    private val overlays = mutableListOf<OverlayRenderable>()
+    val overlays = mutableListOf<OverlayRenderable>()
     private var displayedGridWidget: GreenhouseGridWidget? = null
     private val greenhouseGridWidgets: MutableList<GreenhouseGridWidget> = mutableListOf()
     private val presetGridWidgets: MutableList<GreenhouseGridWidget> = mutableListOf()
@@ -290,6 +292,20 @@ class GreenhouseScreen(title: Component) : Screen(title) {
     fun addOverlay(overlay: OverlayRenderable) {
         overlays.add(overlay)
         overlays.sortBy { it.renderPriority }
+    }
+
+    override fun charTyped(characterEvent: CharacterEvent): Boolean {
+        overlays.forEach {
+            it.charTyped(characterEvent)
+        }
+        return super.charTyped(characterEvent)
+    }
+
+    override fun keyPressed(keyEvent: KeyEvent): Boolean {
+        overlays.forEach {
+            it.keyPressed(keyEvent)
+        }
+        return super.keyPressed(keyEvent)
     }
 
     fun openGridWidgetContext(widget: GreenhouseGridWidget, buttonEvent: MouseButtonEvent) {
