@@ -4,7 +4,7 @@ import net.minecraft.world.level.block.Blocks
 
 data class GreenhouseLayout(
     val id: String, // plot_# for grids, preset_# for presets
-    val name: String? = null,
+    var name: String? = null,
     val size: Int = 10,
     val slots: MutableList<GreenhouseSlot> = MutableList(100) { index ->
         val x = index % size
