@@ -15,7 +15,7 @@ class ClickableButtonWidget(
     val renderContent: ClickableButtonWidget.(GuiGraphics) -> Unit
 ) {
 
-
+    var message: Component? = null
     constructor(
         x: Int,
         y: Int,
@@ -29,17 +29,21 @@ class ClickableButtonWidget(
         height,
         { graphics ->
             val font = Minecraft.getInstance().font
+            this.message?.let { message ->
+                graphics.drawString(
+                    font,
+                    message,
+                    this.x + (width - font.width(message)) / 2,
+                    this.y + (height - font.lineHeight) / 2,
+                    (message.style.color?.value ?: 0xFFFFFFFF.toInt()) or 0xFF000000.toInt(),
+                    false
+                )
+            }
 
-            graphics.drawString(
-                font,
-                message,
-                this.x + (width - font.width(message)) / 2,
-                this.y + (height - font.lineHeight) / 2,
-                (message.style.color?.value ?: 0xFFFFFFFF.toInt()) or 0xFF000000.toInt(),
-                false
-            )
         }
-    )
+    ){
+        this.message = message
+    }
 
     val BUTTON = Identifier.fromNamespaceAndPath("minecraft", "widget/button")
     val BUTTON_HOVERED = Identifier.fromNamespaceAndPath("minecraft", "widget/button_highlighted")

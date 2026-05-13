@@ -24,16 +24,8 @@ class MagicAddons : ClientModInitializer {
         if (!MagicAddonsConfigJsonHandler.load()){
             MagicAddonsConfigJsonHandler.save()
         }
-        GreenhouseData.greenhousesInitialized = true
-        GreenhouseData.greenhouseGrids = CodecStorage.load(
-            DataHandler.greenhouseFile,
-            GREENHOUSE_GRID_CODEC.listOf(),
-            wrapperKey = "greenhouses"
-        ) ?: run {
-            GreenhouseData.greenhousesInitialized = false
-            Common.LOGGER.error("Failed to load greenhouses data")
-            return@run mutableListOf()
-        } //todo load data and save better
+
+
 
     }
 }

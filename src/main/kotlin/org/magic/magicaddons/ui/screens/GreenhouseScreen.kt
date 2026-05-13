@@ -1,7 +1,6 @@
 package org.magic.magicaddons.ui.screens
 
 import net.minecraft.client.gui.GuiGraphics
-import net.minecraft.client.gui.screens.Overlay
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.input.CharacterEvent
 import net.minecraft.client.input.KeyEvent
@@ -9,6 +8,8 @@ import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.client.renderer.RenderPipelines
 import net.minecraft.network.chat.Component
 import net.minecraft.resources.Identifier
+import org.magic.magicaddons.data.greenhouse.GreenhouseGrid
+import org.magic.magicaddons.data.greenhouse.GreenhouseLayout
 import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData
 import org.magic.magicaddons.ui.OverlayRenderable
@@ -78,8 +79,8 @@ class GreenhouseScreen(title: Component) : Screen(title) {
     private var displayedGridWidget: GreenhouseGridWidget? = null
     private val greenhouseGridWidgets: MutableList<GreenhouseGridWidget> = mutableListOf()
     private val presetGridWidgets: MutableList<GreenhouseGridWidget> = mutableListOf()
-    private var currentLayoutIndex: Int = 0
-    private val currentPresetIndex = 0
+    private var currentGridIndex: Int = 0
+    private val currentPresetId: String? = null
     private val currentDisplayToggle = ClickableButtonWidget(
         0,
         0,
@@ -87,6 +88,35 @@ class GreenhouseScreen(title: Component) : Screen(title) {
         26,
         Component.literal("Plots")
     )
+    private val importButton = ClickableButtonWidget(
+        0,
+        0,
+        60,
+        26,
+        Component.literal("Import")
+    )
+
+    private val exportButton = ClickableButtonWidget(
+        0,
+        0,
+        60,
+        26,
+        Component.literal("Import")
+    )
+
+    private val applyToSelector = SelectorWidget(
+        0,
+        0,
+        60,
+        26,
+        GreenhouseData.greenhouseGrids,
+        null,
+        valueChanged = {
+            val selectedPreset = GreenhouseData.presetGrids.find { currentPresetId == it.layout.id }
+            assignPresetLayout(selectedPreset?.layout, it)
+        }
+    )
+
     private val gridSelector = SelectorWidget(
         values = greenhouseGridWidgets,
         currentValue = displayedGridWidget,
@@ -131,9 +161,16 @@ class GreenhouseScreen(title: Component) : Screen(title) {
         gridSelector.y = startY + borderPadding *2
         gridSelector.width = 100
         gridSelector.height = currentDisplayToggle.height
-        overlays += gridSelector.overlay
-        initGreenhouseLayout()
-        overlays.sortBy { it.renderPriority }
+        addOverlay(gridSelector.overlay)
+        
+        when (currentDisplay) {
+            CurrentDisplay.Greenhouses -> {
+                initGreenhouseLayout()
+            }
+            CurrentDisplay.Presets -> {
+                initPresetLayout()
+            }
+        }
     }
 
     fun initGreenhouseLayout(){
@@ -164,10 +201,10 @@ class GreenhouseScreen(title: Component) : Screen(title) {
                 init()
             }
             if ("plot_${PlotAPI.getCurrentPlot()?.id}" == grid.layout.id)
-                currentLayoutIndex = index
+                currentGridIndex = index
             greenhouseGridWidgets.add(gridWidget)
         }
-        displayedGridWidget = greenhouseGridWidgets.getOrNull(currentLayoutIndex)
+        displayedGridWidget = greenhouseGridWidgets.getOrNull(currentGridIndex)
 
         if (displayedGridWidget == null) {
             displayedGridWidget = greenhouseGridWidgets.firstOrNull()
@@ -189,12 +226,35 @@ class GreenhouseScreen(title: Component) : Screen(title) {
             font.width(it.toString())
         }
         gridSelector.width = maxWidth + 12
-
+        currentDisplayToggle.message = Component.literal("Plots")
     }
 
     fun initPresetLayout(){
         presetGridWidgets.clear()
         displayedGridWidget = null
+
+        GreenhouseData.presetGrids.forEach { grid ->
+            if (!grid.state.initialized) return@forEach
+            val gridWidget = GreenhouseGridWidget(grid.layout, slotSize).apply {
+                widgetX = startX
+                widgetY = startY
+                widgetWidth = containerSize
+                widgetHeight = containerSize
+                init()
+            }
+
+            greenhouseGridWidgets.add(gridWidget)
+        }
+        displayedGridWidget = greenhouseGridWidgets.find { currentPresetId == it.layout.id  }
+
+        displayedName = displayedGridWidget?.layout?.name
+            ?: displayedGridWidget?.layout?.id
+                    ?: "Unknown Preset"
+        
+        gridSelector.currentValue = displayedGridWidget
+        gridSelector.values = presetGridWidgets
+        currentDisplayToggle.message = Component.literal("Presets")
+        
     }
 
 
@@ -256,6 +316,16 @@ class GreenhouseScreen(title: Component) : Screen(title) {
         }
 
         if (currentDisplayToggle.mouseClicked(mouseButtonEvent,doubled)) {
+            when (currentDisplay) {
+                CurrentDisplay.Greenhouses -> {
+                    currentDisplay = CurrentDisplay.Presets
+                    initPresetLayout()
+                }
+                CurrentDisplay.Presets -> {
+                    currentDisplay = CurrentDisplay.Greenhouses
+                    initGreenhouseLayout()
+                }
+            }
             ChatUtils.sendWithPrefix("Pressed toggle.")
             return true
         }
@@ -277,6 +347,13 @@ class GreenhouseScreen(title: Component) : Screen(title) {
         currentDisplayToggle.mouseMoved(mouseX, mouseY)
     }
 
+    fun assignPresetLayout(layout: GreenhouseLayout?, grid : GreenhouseGrid) {
+        if (layout == null) {
+            ChatUtils.sendWithPrefix("Cannot assign a non existing layout to grid: ${grid.layout.name ?: grid.layout.id}")
+            return
+        }
+        ChatUtils.sendWithPrefix("Assigned ${layout.name ?: layout.id} to grid: ${grid.layout.name ?: grid.layout.id}")
+    }
 
     override fun isMouseOver(mouseX: Double, mouseY: Double): Boolean {
         return super.isMouseOver(mouseX, mouseY)
@@ -286,7 +363,7 @@ class GreenhouseScreen(title: Component) : Screen(title) {
     fun gridWidgetChanged(widget: GreenhouseGridWidget) {
         if (greenhouseGridWidgets.isEmpty()) return
 
-        currentLayoutIndex = greenhouseGridWidgets.indexOf(widget)
+        currentGridIndex = greenhouseGridWidgets.indexOf(widget)
         displayedGridWidget = widget
     }
     fun addOverlay(overlay: OverlayRenderable) {
@@ -308,7 +385,8 @@ class GreenhouseScreen(title: Component) : Screen(title) {
         return super.keyPressed(keyEvent)
     }
 
-    fun openGridWidgetContext(widget: GreenhouseGridWidget, buttonEvent: MouseButtonEvent) {
+    fun openGridWidgetContext(widget: GreenhouseGridWidget?, buttonEvent: MouseButtonEvent) {
+        widget ?: return
         if (widget !in greenhouseGridWidgets) return //todo implement preset handling as well
         val menu = EditLayoutContextMenu(
             buttonEvent.x.toInt(),
