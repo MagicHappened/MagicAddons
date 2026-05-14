@@ -1,4 +1,4 @@
-package org.magic.magicaddons.ui.widgets
+package org.magic.magicaddons.ui.widgets.greenhouse
 
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
@@ -9,9 +9,9 @@ import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.network.chat.Component
 import org.magic.magicaddons.Common
-import org.magic.magicaddons.commands.features.farming.GreenhouseScreenCommand
 import org.magic.magicaddons.data.greenhouse.GreenhouseLayout
 import org.magic.magicaddons.ui.screens.GreenhouseScreen
+import org.magic.magicaddons.ui.widgets.AbstractContextMenu
 import org.magic.magicaddons.ui.widgets.config.ClickableButtonWidget
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.ScreenUtil.drawBorder
@@ -31,16 +31,16 @@ class EditLayoutContextMenu(
     override var hoveredElement: GuiEventListener? = null
 
     val submitButton = ClickableButtonWidget(
-        overlayX+20,
-        overlayY+75,
+        overlayX + 20,
+        overlayY + 75,
         40,
         20,
         Component.literal("Submit")
     )
 
     val cancelButton = ClickableButtonWidget(
-        overlayX+140,
-        overlayY+75,
+        overlayX + 140,
+        overlayY + 75,
         40,
         20,
         Component.literal("Cancel")
