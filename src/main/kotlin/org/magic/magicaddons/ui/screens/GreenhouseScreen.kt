@@ -1,6 +1,7 @@
 package org.magic.magicaddons.ui.screens
 
 import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.gui.components.events.GuiEventListener
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.input.CharacterEvent
 import net.minecraft.client.input.KeyEvent
@@ -12,6 +13,7 @@ import org.magic.magicaddons.data.greenhouse.GreenhouseGrid
 import org.magic.magicaddons.data.greenhouse.GreenhouseLayout
 import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData
+import org.magic.magicaddons.ui.HoverableContainer
 import org.magic.magicaddons.ui.OverlayRenderable
 import org.magic.magicaddons.ui.widgets.AbstractContextMenu
 import org.magic.magicaddons.ui.widgets.EditLayoutContextMenu
@@ -23,7 +25,7 @@ import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.ScreenUtil.drawMultilineBoxCentered
 import tech.thatgravyboat.skyblockapi.api.profile.garden.PlotAPI
 
-class GreenhouseScreen(title: Component) : Screen(title) {
+class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer {
 
     init {
         EventBus.register(this)
@@ -41,10 +43,9 @@ class GreenhouseScreen(title: Component) : Screen(title) {
     private var startY: Int = 0
     private var containerSize: Int = 400
 
-    var currentDisplay = CurrentDisplay.Greenhouses
 
-    var contextWidget: AbstractContextMenu? = null
-    var hoveredWidget: GreenhouseElementWidget? = null
+
+
 
     //todo add presets button which toggles between viewing your current REAL greenhouses
     // and presets you created (or imported)
@@ -72,8 +73,10 @@ class GreenhouseScreen(title: Component) : Screen(title) {
 
     var ignoreDataWarnings = false
     var sentWarnings = false
-
+    var currentDisplay = CurrentDisplay.Greenhouses
     var borderPadding: Int = 6
+
+    override var hoveredElement: GuiEventListener? = null
 
     val overlays = mutableListOf<OverlayRenderable>()
     private var displayedGridWidget: GreenhouseGridWidget? = null
@@ -281,8 +284,9 @@ class GreenhouseScreen(title: Component) : Screen(title) {
         overlays.asReversed().forEach {
             it.renderOverlay(graphics, mouseX, mouseY, delta)
         }
-
-        hoveredWidget?.renderTooltip(
+        val hovered = hoveredElement
+        if (hovered !is GreenhouseElementWidget) return
+        hovered.renderTooltip(
             graphics,
             startX + containerSize,
             startY + borderPadding *2)
@@ -336,15 +340,36 @@ class GreenhouseScreen(title: Component) : Screen(title) {
     }
 
     override fun mouseMoved(mouseX: Double, mouseY: Double) {
-        hoveredWidget = null
+
+        hoveredElement?.isFocused = false
+        hoveredElement = null
+
         overlays.forEach {
             it.mouseMoved(mouseX, mouseY)
-            if (it.isMouseOver(mouseX.toInt(),mouseY.toInt())) {
-                return
+            if (hoveredElement == null && it.hoveredElement != null) {
+                hoveredElement = it.hoveredElement
+            }
+
+            if (hoveredElement == null && it.isMouseOver(mouseX.toInt(), mouseY.toInt())) {
+                hoveredElement = it
             }
         }
         displayedGridWidget?.mouseMoved(mouseX, mouseY)
+
+        if (hoveredElement == null) {
+            if (displayedGridWidget?.hoveredElement != null) {
+                hoveredElement = displayedGridWidget!!.hoveredElement!!
+            }
+        }
         currentDisplayToggle.mouseMoved(mouseX, mouseY)
+
+        if (hoveredElement == null) {
+            if (currentDisplayToggle.isMouseOver(mouseX, mouseY)) {
+                hoveredElement = currentDisplayToggle
+            }
+        }
+
+        hoveredElement?.isFocused = true
     }
 
     fun assignPresetLayout(layout: GreenhouseLayout?, grid : GreenhouseGrid) {
@@ -365,6 +390,9 @@ class GreenhouseScreen(title: Component) : Screen(title) {
 
         currentGridIndex = greenhouseGridWidgets.indexOf(widget)
         displayedGridWidget = widget
+        displayedName = displayedGridWidget?.layout?.name
+            ?: displayedGridWidget?.layout?.id
+                    ?: "Unknown Preset"
     }
     fun addOverlay(overlay: OverlayRenderable) {
         overlays.add(overlay)

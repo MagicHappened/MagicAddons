@@ -7,7 +7,9 @@ import net.minecraft.client.gui.components.events.GuiEventListener
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.network.chat.Component
 import org.magic.magicaddons.Common
+import org.magic.magicaddons.ui.HoverableContainer
 import org.magic.magicaddons.ui.OverlayRenderable
+import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.ScreenUtil.drawBorder
 
 class SelectorWidget<T>(
@@ -26,6 +28,10 @@ class SelectorWidget<T>(
     val overlay = EnumOverlay(1)
     val font = Minecraft.getInstance().font
     var overlayOpen = false
+
+    @JvmField
+    var isFocused = false
+
     private fun valueChanged(newValue: T) {
         currentValue = newValue
         overlay.valueWidgets.clear()
@@ -95,7 +101,12 @@ class SelectorWidget<T>(
 
     override fun isFocused(): Boolean = isFocused
 
-    inner class EnumOverlay(override val renderPriority: Int) : OverlayRenderable {
+    inner class EnumOverlay(override val renderPriority: Int) : OverlayRenderable, GuiEventListener {
+        @JvmField
+        var isFocused: Boolean = false
+
+        override var hoveredElement: GuiEventListener? = null
+
         val overlayRowHeight: Int
             get() = (this@SelectorWidget.height * 0.8f).toInt()
 
@@ -155,12 +166,22 @@ class SelectorWidget<T>(
         }
 
         override fun mouseMoved(mouseX: Double, mouseY: Double) {
+            hoveredElement = null
             valueWidgets.forEach {
                 it.mouseMoved(mouseX, mouseY)
-                if (it.hovered){
-                    return
+                if (hoveredElement == null){
+                    if (it.isMouseOverRow(mouseX, mouseY)) {
+                        hoveredElement = it
+                    }
                 }
+
             }
+        }
+
+        override fun isFocused(): Boolean = isFocused
+
+        override fun setFocused(focused: Boolean) {
+            isFocused = focused
         }
 
     }

@@ -3,6 +3,7 @@ package org.magic.magicaddons.ui.widgets
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.gui.components.EditBox
+import net.minecraft.client.gui.components.events.GuiEventListener
 import net.minecraft.client.input.CharacterEvent
 import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
@@ -23,6 +24,11 @@ class EditLayoutContextMenu(
     val font = Minecraft.getInstance().font
     override val overlayWidth: Int = 200
     override val overlayHeight: Int = 100
+
+    @JvmField
+    var isFocused: Boolean = false
+
+    override var hoveredElement: GuiEventListener? = null
 
     val submitButton = ClickableButtonWidget(
         overlayX+20,
@@ -94,6 +100,12 @@ class EditLayoutContextMenu(
         return super.charTyped(characterEvent)
     }
 
+    override fun setFocused(focused: Boolean) {
+        this.isFocused = focused
+    }
+
+    override fun isFocused(): Boolean = this.isFocused
+
     override fun keyPressed(keyEvent: KeyEvent): Boolean  {
         if (textField.isFocused){
             textField.keyPressed(keyEvent)
@@ -126,6 +138,24 @@ class EditLayoutContextMenu(
             return true
         }
         return true
+    }
+
+    override fun mouseMoved(mouseX: Double, mouseY: Double) {
+        textField.mouseMoved(mouseX, mouseY)
+        cancelButton.mouseMoved(mouseX, mouseY)
+        submitButton.mouseMoved(mouseX, mouseY)
+        hoveredElement = null
+        if (hoveredElement == null){
+            if (cancelButton.isMouseOver(mouseX, mouseY)){
+                hoveredElement = cancelButton
+            }
+        }
+        if (hoveredElement == null){
+            if (submitButton.isMouseOver(mouseX, mouseY)){
+                hoveredElement = submitButton
+            }
+        }
+
     }
 
 }

@@ -20,9 +20,6 @@ class GreenhouseSlotWidget(
 
     var sprite: TextureAtlasSprite? = null
 
-    var widgetFocused
-        get() = isFocused
-        set(value) {isFocused = value}
 
 
     var widgetX: Int = 0
@@ -31,6 +28,9 @@ class GreenhouseSlotWidget(
     var widgetWidth: Int = 25
     var widgetHeight: Int = 25
 
+    @JvmField
+    var isFocused: Boolean = false
+    
     fun init(){
         if (slot.placedBlock == null){
             slot.placedBlock = Blocks.PODZOL.defaultBlockState()
@@ -68,9 +68,9 @@ class GreenhouseSlotWidget(
     }
 
 
-    override fun isFocused(): Boolean = widgetFocused
+    override fun isFocused(): Boolean = isFocused
 
     override fun setFocused(focused: Boolean) {
-        this.widgetFocused = focused
+        isFocused = focused
     }
 }

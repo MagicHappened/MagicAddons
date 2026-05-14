@@ -16,7 +16,7 @@ open class RemovableRowWidget<T>(
 ) {
 
     override fun getSprite(): Identifier {
-        return if (hovered) BUTTON_HOVERED else super.getSprite()
+        return if (isFocused) BUTTON_HOVERED else super.getSprite()
     }
     private val removeWidth = 20
 

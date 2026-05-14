@@ -9,14 +9,14 @@ import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
 import org.magic.magicaddons.data.greenhouse.CropRegistry
-import org.magic.magicaddons.data.greenhouse.GreenhouseGrid
 import org.magic.magicaddons.data.greenhouse.GreenhouseLayout
+import org.magic.magicaddons.ui.HoverableContainer
 import org.magic.magicaddons.util.ScreenUtil.drawLine
 
 class GreenhouseGridWidget(
     val layout: GreenhouseLayout,
     val slotSize: Int
-) : Renderable, GuiEventListener, NarratableEntry {
+) : Renderable, GuiEventListener, NarratableEntry, HoverableContainer {
 
     private val slotWidgets = mutableListOf<GreenhouseSlotWidget>()
     private val elementWidgets = mutableListOf<GreenhouseElementWidget>()
@@ -26,7 +26,10 @@ class GreenhouseGridWidget(
     var widgetWidth: Int = 300
     var widgetHeight: Int = 300
 
-    private var focused: Boolean = false
+    @JvmField
+    var isFocused: Boolean = false
+
+    override var hoveredElement: GuiEventListener? = null
 
     fun init() {
         slotWidgets.clear()
@@ -128,15 +131,21 @@ class GreenhouseGridWidget(
     }
 
     override fun mouseMoved(mouseX: Double, mouseY: Double) {
+        hoveredElement = null
         elementWidgets.forEach {
             it.mouseMoved(mouseX, mouseY)
+            if (hoveredElement != null) return@forEach
+            if (it.isMouseOver(mouseX, mouseY)){
+                hoveredElement = it
+            }
         }
+
     }
 
-    override fun isFocused(): Boolean = focused
+    override fun isFocused(): Boolean = isFocused
 
     override fun setFocused(focused: Boolean) {
-        this.focused = focused
+        isFocused = focused
     }
 
     override fun narrationPriority(): NarratableEntry.NarrationPriority {

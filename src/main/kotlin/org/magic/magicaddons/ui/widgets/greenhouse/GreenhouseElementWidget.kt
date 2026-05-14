@@ -34,6 +34,9 @@ class GreenhouseElementWidget(val instance: GreenhouseElementInstance,val defini
         sprite = ScreenUtil.getSpriteForState(Blocks.FIRE.defaultBlockState(),Direction.NORTH)
     }
 
+    @JvmField
+    var isFocused: Boolean = false
+
     override fun render(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, deltaTick: Float) {
         if (instance.elementId == "Fire") {
             renderFire(guiGraphics, mouseX, mouseY, deltaTick)
@@ -75,12 +78,6 @@ class GreenhouseElementWidget(val instance: GreenhouseElementInstance,val defini
     }
 
     override fun mouseMoved(mouseX: Double, mouseY: Double) {
-        if (isMouseOver(mouseX, mouseY)) {
-            val screen = Minecraft.getInstance().screen
-            if (screen is GreenhouseScreen){
-                screen.hoveredWidget = this
-            }
-        }
     }
     fun renderTooltip(graphics: GuiGraphics, mouseX: Int, mouseY: Int) {
         val font = Minecraft.getInstance().font

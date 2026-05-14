@@ -1,9 +1,6 @@
 package org.magic.magicaddons.ui.widgets
 
-import net.minecraft.client.gui.GuiGraphics
-import net.minecraft.client.gui.navigation.ScreenDirection
 import org.magic.magicaddons.ui.OverlayRenderable
-import java.awt.Graphics
 
 abstract class AbstractContextMenu : OverlayRenderable {
     abstract override val overlayX: Int
