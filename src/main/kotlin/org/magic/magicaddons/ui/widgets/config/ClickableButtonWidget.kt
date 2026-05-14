@@ -2,6 +2,7 @@ package org.magic.magicaddons.ui.widgets.config
 
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.gui.components.events.GuiEventListener
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.client.renderer.RenderPipelines
 import net.minecraft.network.chat.Component
@@ -13,7 +14,9 @@ class ClickableButtonWidget(
     var width: Int,
     var height: Int,
     val renderContent: ClickableButtonWidget.(GuiGraphics) -> Unit
-) {
+) : GuiEventListener {
+    @JvmField
+    var isFocused = false
 
     var message: Component? = null
     constructor(
@@ -48,11 +51,9 @@ class ClickableButtonWidget(
     val BUTTON = Identifier.fromNamespaceAndPath("minecraft", "widget/button")
     val BUTTON_HOVERED = Identifier.fromNamespaceAndPath("minecraft", "widget/button_highlighted")
 
-    var hovered = false
-
     fun render(graphics: GuiGraphics, mouseX: Int, mouseY: Int, delta: Float) {
 
-        val sprite = if (hovered)
+        val sprite = if (isFocused)
             BUTTON_HOVERED
         else
             BUTTON
@@ -69,15 +70,18 @@ class ClickableButtonWidget(
         renderContent(graphics)
     }
 
-    fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
+    override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
         return isMouseOver(mouseButtonEvent.x, mouseButtonEvent.y)
     }
 
-    fun isMouseOver(mouseX: Double, mouseY: Double): Boolean {
+    override fun isMouseOver(mouseX: Double, mouseY: Double): Boolean {
         return mouseX.toInt() in x..(x + width) &&
                 mouseY.toInt() in y..(y + height)
     }
-    fun mouseMoved(mouseX: Double, mouseY: Double) {
-        hovered = isMouseOver(mouseX, mouseY)
+
+    override fun setFocused(focused: Boolean) {
+        this.isFocused = focused
     }
+
+    override fun isFocused(): Boolean = this.isFocused
 }

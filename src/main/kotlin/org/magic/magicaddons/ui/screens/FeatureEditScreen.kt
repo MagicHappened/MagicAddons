@@ -18,6 +18,7 @@ class FeatureEditScreen(
     val feature: Feature,
     val parent: Screen?
 ) : Screen(Component.literal(feature.displayName)) {
+    //todo implement this better with GuiEventListener instead and isFocused
     var hoveredWidget: SettingWidget<*>? = null
 
     val childrenSettings: List<SettingNode<*>> = feature.baseSetting.children
