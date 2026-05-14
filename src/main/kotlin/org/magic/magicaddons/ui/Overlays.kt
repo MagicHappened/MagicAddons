@@ -5,6 +5,7 @@ import net.minecraft.client.gui.components.events.GuiEventListener
 import net.minecraft.client.input.CharacterEvent
 import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
+import org.magic.magicaddons.ui.widgets.AbstractContextMenu
 
 interface OverlayRenderable : GuiEventListener, HoverableContainer {
     val renderPriority: Int
@@ -42,4 +43,33 @@ interface OverlayRenderable : GuiEventListener, HoverableContainer {
         return false
     }
 
+}
+
+interface OverlayContext {
+    val overlays: MutableList<OverlayRenderable>
+
+    var activeContext: AbstractContextMenu?
+    fun changeContext(context: AbstractContextMenu){
+        activeContext?.let {
+            removeOverlay(it)
+        }
+        activeContext = context
+        addOverlay(context)
+    }
+
+
+    fun addOverlay(overlay: OverlayRenderable) {
+        overlays.add(overlay)
+        overlays.sortBy { it.renderPriority }
+    }
+
+    fun removeOverlay(overlay: OverlayRenderable) {
+        overlays.remove(overlay)
+    }
+}
+
+
+sealed class OverlayEvent {
+    data class Open(val overlay: OverlayRenderable) : OverlayEvent()
+    data class Close(val overlay: OverlayRenderable) : OverlayEvent()
 }

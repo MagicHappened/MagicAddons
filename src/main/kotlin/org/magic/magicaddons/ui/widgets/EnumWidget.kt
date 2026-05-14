@@ -7,23 +7,22 @@ import net.minecraft.client.gui.components.events.GuiEventListener
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.network.chat.Component
 import org.magic.magicaddons.Common
-import org.magic.magicaddons.ui.HoverableContainer
+import org.magic.magicaddons.ui.OverlayContext
 import org.magic.magicaddons.ui.OverlayRenderable
-import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.ScreenUtil.drawBorder
 
-class SelectorWidget<T>(
+class EnumWidget<T>(
     var x: Int = 0,
     var y: Int = 0,
     var width: Int = 0,
     var height: Int = 0,
     var values: List<T>,
     var currentValue: T?,
+    val overlayContext: OverlayContext,
     val includeSearch: Boolean = false,
     val onLeftClickValue: ((T?, MouseButtonEvent) -> Unit)? = null,
     val onRightClickValue: ((T?, MouseButtonEvent) -> Unit)? = null,
     val valueChanged: ((T) -> Unit)? = null,
-
     ) : Renderable, GuiEventListener {
     val overlay = EnumOverlay(1)
     val font = Minecraft.getInstance().font
@@ -35,6 +34,7 @@ class SelectorWidget<T>(
     private fun valueChanged(newValue: T) {
         currentValue = newValue
         overlay.valueWidgets.clear()
+        overlayOpen = false
         valueChanged?.invoke(newValue)
     }
 
@@ -71,15 +71,23 @@ class SelectorWidget<T>(
     override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, bl: Boolean): Boolean {
         if (isMouseOver(mouseButtonEvent.x, mouseButtonEvent.y)) {
             if (mouseButtonEvent.button() == 0) {
-                overlay.valueWidgets.clear()
-                values.forEach { value ->
-                    if (value == currentValue) return@forEach
-                    val widget = ClickableRowWidget(
-                        value
-                    )
-                    overlay.valueWidgets.add(widget)
+                if (!overlayOpen){
+                    overlay.valueWidgets.clear()
+                    values.forEach { value ->
+                        if (value == currentValue) return@forEach
+                        val widget = ClickableRowWidget(
+                            value
+                        )
+                        overlay.valueWidgets.add(widget)
+                    }
+                    overlay.layoutOverlay()
+                    overlayOpen = true
+                    overlayContext.addOverlay(overlay)
                 }
-                overlay.layoutOverlay()
+                else {
+                    overlayOpen = false
+                    overlayContext.removeOverlay(overlay)
+                }
                 onLeftClickValue?.invoke(currentValue, mouseButtonEvent)
                 return true
             } else if (mouseButtonEvent.button() == 1) {
@@ -108,16 +116,16 @@ class SelectorWidget<T>(
         override var hoveredElement: GuiEventListener? = null
 
         val overlayRowHeight: Int
-            get() = (this@SelectorWidget.height * 0.8f).toInt()
+            get() = (this@EnumWidget.height * 0.8f).toInt()
 
         val valueWidgets: MutableList<ClickableRowWidget<T>> = mutableListOf()
 
         override val overlayX: Int
-            get() = this@SelectorWidget.x
+            get() = this@EnumWidget.x
         override val overlayY: Int
-            get() = this@SelectorWidget.y + this@SelectorWidget.height
+            get() = this@EnumWidget.y + this@EnumWidget.height
         override val overlayWidth: Int
-            get() = this@SelectorWidget.width
+            get() = this@EnumWidget.width
         override val overlayHeight: Int
             get() = overlayRowHeight * valueWidgets.size
 
@@ -152,11 +160,11 @@ class SelectorWidget<T>(
             valueWidgets.forEach {
                 if (it.mouseClicked(mouseButtonEvent, doubled)) {
                     if (mouseButtonEvent.button() == 0) {
-                        this@SelectorWidget.onLeftClickValue?.invoke(it.value, mouseButtonEvent)
-                        this@SelectorWidget.valueChanged(it.value)
+                        this@EnumWidget.onLeftClickValue?.invoke(it.value, mouseButtonEvent)
+                        this@EnumWidget.valueChanged(it.value)
                         return true
                     } else if (mouseButtonEvent.button() == 1) {
-                        this@SelectorWidget.onRightClickValue?.invoke(it.value, mouseButtonEvent)
+                        this@EnumWidget.onRightClickValue?.invoke(it.value, mouseButtonEvent)
                     }
 
 
