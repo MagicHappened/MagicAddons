@@ -13,7 +13,7 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
 object Cocoa : CropDefinitionProvider {
     override val definition = CropDefinition(
-        name = "Cocoa",
+        name = "Cocoa Beans",
         skyblockId = SkyBlockItemId.item("INK_SACK-3"),
         stageDefs = listOf(
             CropStage(

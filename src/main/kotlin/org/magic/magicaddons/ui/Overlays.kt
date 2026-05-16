@@ -48,14 +48,13 @@ interface OverlayRenderable : GuiEventListener, HoverableContainer {
 interface OverlayContext {
     val overlays: MutableList<OverlayRenderable>
 
-    var activeContext: AbstractContextMenu?
-    fun changeContext(context: AbstractContextMenu){
-        activeContext?.let {
-            removeOverlay(it)
-        }
-        activeContext = context
+    fun addContext(context: AbstractContextMenu) {
+
+        overlays.removeIf { it::class == context::class }
+
         addOverlay(context)
     }
+
 
 
     fun addOverlay(overlay: OverlayRenderable) {

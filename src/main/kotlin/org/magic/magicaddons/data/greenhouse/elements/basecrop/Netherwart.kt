@@ -12,7 +12,7 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
 object Netherwart : CropDefinitionProvider {
     override val definition = CropDefinition(
-        name = "Netherwart",
+        name = "Nether Wart",
         skyblockId = SkyBlockItemId.item("NETHER_STALK"),
         stageDefs = listOf(
             CropStage(

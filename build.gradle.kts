@@ -59,7 +59,7 @@ dependencies {
     modImplementation("net.fabricmc:fabric-loader:${project.property("loader_version")}")
     modImplementation("net.fabricmc:fabric-language-kotlin:${project.property("kotlin_loader_version")}")
     modImplementation("net.fabricmc.fabric-api:fabric-api:${project.property("fabric_version")}")
-
+    implementation("com.github.tommyettinger:blazingchain:${project.property("blazing_chain_version")}")
     modApi("com.terraformersmc:modmenu:${project.property("modmenu_version")}")
 
     api("tech.thatgravyboat:skyblock-api:${project.property("skyblock_api_version")}") {

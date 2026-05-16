@@ -154,8 +154,6 @@ class GreenhouseGridWidget(
 
     override fun updateNarration(narrationElementOutput: NarrationElementOutput) {}
 
-    override fun toString(): String {
-        return "${layout.name?: "unnamed"}: ${layout.id}"
-    }
+
 
 }

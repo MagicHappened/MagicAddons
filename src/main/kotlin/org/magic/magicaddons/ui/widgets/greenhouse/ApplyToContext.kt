@@ -2,6 +2,7 @@ package org.magic.magicaddons.ui.widgets.greenhouse
 
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.input.MouseButtonEvent
 import org.magic.magicaddons.Common
 import org.magic.magicaddons.data.greenhouse.GreenhouseGrid
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData
@@ -38,6 +39,14 @@ class ApplyToContext(
     }
 
     override fun renderOverlay(graphics: GuiGraphics, mouseX: Int, mouseY: Int, delta: Float) {
+        graphics.fill(
+            overlayX,
+            overlayY,
+            overlayX + overlayWidth,
+            overlayY + overlayHeight,
+            Common.UI.BACKGROUND_COLOR
+        )
+
         graphics.drawBorder(
             overlayX,
             overlayY,
@@ -59,6 +68,15 @@ class ApplyToContext(
 
     override fun mouseMoved(mouseX: Double, mouseY: Double) {
         super.mouseMoved(mouseX, mouseY)
+    }
+
+    override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
+        if (!isMouseOver(mouseButtonEvent.x.toInt(), mouseButtonEvent.y.toInt())) return false
+        valueWidgets.forEach {
+            if (it.mouseClicked(mouseButtonEvent, doubled))
+                return true
+        }
+        return true
     }
 
     @JvmField

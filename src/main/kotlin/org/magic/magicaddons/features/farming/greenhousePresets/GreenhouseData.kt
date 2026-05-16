@@ -44,7 +44,7 @@ object GreenhouseData {
 
     var greenhousesInitialized = false
     var greenhouseGrids = mutableListOf<GreenhouseGrid>()
-    val presetGrids = mutableListOf<GreenhouseGrid>()
+    val presetGrids = mutableListOf<GreenhouseLayout>()
 
     var removedElementByAttack: ElementRuntimeState? = null
 
@@ -118,6 +118,7 @@ object GreenhouseData {
     fun clearAllData() {
         greenhousesInitialized = false
         greenhouseGrids.clear()
+        presetGrids.clear()
     }
 
 
@@ -160,6 +161,22 @@ object GreenhouseData {
             minX + GRID_SIZE, box.maxY,
             minZ + GRID_SIZE
         )
+    }
+
+    fun computeNextAvailableId(): Int {
+        val usedIds = presetGrids
+            .mapNotNull {
+                it.id.removePrefix("preset_").toIntOrNull()
+            }
+            .toSet()
+
+        var nextId = 1
+
+        while (nextId in usedIds) {
+            nextId++
+        }
+
+        return nextId
     }
 
     @Subscription

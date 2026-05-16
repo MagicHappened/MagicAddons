@@ -44,7 +44,6 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
     private var startX: Int = 0
     private var startY: Int = 0
     private var containerSize: Int = 400
-    override var activeContext: AbstractContextMenu? = null
 
 
 
@@ -96,8 +95,8 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
 
 
     private val gridSelector = EnumWidget(
-        values = greenhouseGridWidgets,
-        currentValue = displayedGridWidget,
+        values = greenhouseGridWidgets.map { it.layout },
+        currentValue = displayedGridWidget?.layout,
         onRightClickValue = { widget, event ->
             openGridWidgetContext(widget, event) },
         valueChanged = { gridWidgetChanged(it) },
@@ -114,6 +113,9 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         currentGrids = GreenhouseData.greenhouseGrids,
         onAssignedLayout = { assignedLayout, selectedGrid ->
             assignPresetLayout(assignedLayout, selectedGrid)
+        },
+        onAddPreset = {
+            addPresetLayout(it)
         }
     )
 
@@ -211,12 +213,13 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
             ?: "Unknown Plot"
 
 
-        gridSelector.currentValue = displayedGridWidget
-        gridSelector.values = greenhouseGridWidgets
+        gridSelector.currentValue = displayedGridWidget!!.layout
+        gridSelector.values = greenhouseGridWidgets.map { it.layout }
+
         val maxWidth = greenhouseGridWidgets.maxOf {
-            font.width(it.toString())
+            font.width(it.layout.toString())
         }
-        //todo find a both implementation
+
         gridSelector.width = maxWidth + 12
         currentDisplayToggle.message = Component.literal("Plots")
     }
@@ -231,26 +234,29 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         presetUI.init()
 
 
-        GreenhouseData.presetGrids.forEach { grid ->
-            if (!grid.state.initialized) return@forEach
-            val gridWidget = GreenhouseGridWidget(grid.layout, slotSize).apply {
+        GreenhouseData.presetGrids.forEach { layout ->
+            val gridWidget = GreenhouseGridWidget(layout, slotSize).apply {
                 widgetX = startX
                 widgetY = startY
                 widgetWidth = containerSize
                 widgetHeight = containerSize
                 init()
             }
-
-            greenhouseGridWidgets.add(gridWidget)
+            presetGridWidgets.add(gridWidget)
         }
         displayedGridWidget = presetGridWidgets.find { currentPresetLayout == it.layout  }
+        displayedGridWidget = presetGridWidgets.firstOrNull()
 
         displayedName = displayedGridWidget?.layout?.name
             ?: displayedGridWidget?.layout?.id
                     ?: "Unknown Preset"
         
-        gridSelector.currentValue = displayedGridWidget
-        gridSelector.values = presetGridWidgets
+        gridSelector.currentValue = displayedGridWidget?.layout
+        gridSelector.values = presetGridWidgets.map { it.layout }
+        val maxWidth = presetGridWidgets.maxOf {
+            font.width(it.layout.toString())
+        }
+        gridSelector.width = maxWidth + 12
         currentDisplayToggle.message = Component.literal("Presets")
         
     }
@@ -326,7 +332,6 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
                     initGreenhouseLayout()
                 }
             }
-            ChatUtils.sendWithPrefix("Pressed toggle.")
             return true
         }
         if (displayedGridWidget?.mouseClicked(mouseButtonEvent, doubled) == true) {
@@ -410,20 +415,29 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         return super.keyPressed(keyEvent)
     }
 
-    fun openGridWidgetContext(widget: GreenhouseGridWidget?, buttonEvent: MouseButtonEvent) {
-        widget ?: return
-        if (widget !in greenhouseGridWidgets) return //todo implement preset handling as well
+    fun openGridWidgetContext(layout: GreenhouseLayout?, buttonEvent: MouseButtonEvent) {
+        if (layout == null) return
+        if (layout !in greenhouseGridWidgets.map { it.layout } && layout !in presetGridWidgets.map { it.layout }) return //todo implement preset handling as well
         val menu = EditLayoutContextMenu(
             buttonEvent.x.toInt(),
             buttonEvent.y.toInt(),
-            widget.layout
+            layout
         )
-        changeContext(menu)
+        addContext(menu)
     }
 
     //todo implement presets as well
-    fun gridWidgetChanged(widget: GreenhouseGridWidget) {
-        if (greenhouseGridWidgets.isEmpty()) return
+    fun gridWidgetChanged(layout: GreenhouseLayout) {
+        if (greenhouseGridWidgets.isEmpty() && presetGridWidgets.isEmpty()) return
+
+        var widget = greenhouseGridWidgets.find { it.layout == layout }
+        if (widget == null){
+            widget = presetGridWidgets.find {it.layout == layout}
+        }
+        if (widget == null){
+            ChatUtils.sendWithPrefix("Unable to find correct layout")
+            return
+        }
 
         currentGridIndex = greenhouseGridWidgets.indexOf(widget)
         displayedGridWidget = widget
@@ -432,13 +446,18 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
                     ?: "Unknown Preset"
     }
 
-
-
     fun assignPresetLayout(layout: GreenhouseLayout?, grid: GreenhouseGrid) {
         if (layout == null) {
             ChatUtils.sendWithPrefix("Cannot assign a non existing layout to grid: ${grid.layout.name ?: grid.layout.id}")
             return
         }
         ChatUtils.sendWithPrefix("(WIP) Assigned ${layout.name ?: layout.id} to grid: ${grid.layout.name ?: grid.layout.id}")
+    }
+
+    fun addPresetLayout(layout: GreenhouseLayout){
+        ChatUtils.sendWithPrefix("layout size: ${layout.elementInstances.size}")
+        GreenhouseData.presetGrids.add(layout)
+        currentPresetLayout = layout
+        initPresetLayout()
     }
 }
