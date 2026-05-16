@@ -21,4 +21,7 @@ data class GreenhouseLayout(
 ){
     private val slotIndex = slots.associateBy { it.x to it.y }
     fun getSlot(x: Int, y: Int) = slotIndex[x to y]
+    override fun toString(): String {
+        return "${name?: "unnamed"}: $id"
+    }
 }
