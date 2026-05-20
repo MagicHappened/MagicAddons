@@ -121,6 +121,8 @@ class GreenhouseGrid(
         val stands = level.getEntities(null, buildableArea)
             .filterIsInstance<ArmorStand>()
         val remainingStands = stands.toMutableList()
+        layout.elementInstances.clear()
+        elements.clear()
 
         for (x in 0 until width) {
             for (y in 0 until height) {

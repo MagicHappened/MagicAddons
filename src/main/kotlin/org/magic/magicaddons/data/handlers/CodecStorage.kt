@@ -25,18 +25,34 @@ object CodecStorage {
         val encoded = codec.encodeStart(jsonOps, value)
             .resultOrPartial { error ->
                 throw IllegalStateException("Codec encode error: $error")
-            }.orElseThrow()
-
-        val finalJson = if (wrapperKey != null) {
-            JsonObject().apply {
-                add(wrapperKey, encoded)
             }
-        } else {
-            encoded
-        }
+            .orElseThrow()
 
         DataHandler.createFile(path)
-        Files.writeString(path, gson.toJson(finalJson))
+
+        val rootObject = if (Files.exists(path)) {
+            try {
+                JsonParser.parseString(Files.readString(path)).asJsonObject
+            } catch (_: Exception) {
+                JsonObject()
+            }
+        } else {
+            JsonObject()
+        }
+
+        if (wrapperKey != null) {
+            rootObject.add(wrapperKey, encoded)
+        } else {
+            if (encoded is JsonObject) {
+                encoded.entrySet().forEach {
+                    rootObject.add(it.key, it.value)
+                }
+            } else {
+                throw IllegalStateException("Root save without wrapperKey requires JsonObject")
+            }
+        }
+
+        Files.writeString(path, gson.toJson(rootObject))
     }
 
     fun <T> load(

@@ -10,7 +10,7 @@ object MainDebug : AbstractCommand() {
     override val description: String = "base debug command"
     val debugCommandList = mutableListOf(
         DebugFarming,
-        DebugFarmingClear
+        ForceUpdate
     )
 
     override fun build(): LiteralArgumentBuilder<FabricClientCommandSource> {

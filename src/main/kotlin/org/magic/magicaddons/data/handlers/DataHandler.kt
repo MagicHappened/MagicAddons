@@ -2,8 +2,10 @@ package org.magic.magicaddons.data.handlers
 
 import net.fabricmc.loader.api.FabricLoader
 import org.magic.magicaddons.Common
-import org.magic.magicaddons.config.MagicAddonsConfigJsonHandler
 import org.magic.magicaddons.data.greenhouse.Codecs.GREENHOUSE_GRID_CODEC
+import org.magic.magicaddons.data.greenhouse.Codecs.GREENHOUSE_LAYOUT_CODEC
+import org.magic.magicaddons.data.greenhouse.Codecs.MISC_GREENHOUSE_INFO_CODEC
+import org.magic.magicaddons.data.greenhouse.MiscGreenhouseInfo
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData
 import java.nio.file.Files
 import java.nio.file.Path
@@ -35,22 +37,63 @@ object DataHandler {
 
     fun loadGardenData(){
 
+        GreenhouseData.miscInfo = CodecStorage.load(
+            greenhouseFile,
+            MISC_GREENHOUSE_INFO_CODEC,
+            wrapperKey = "misc_info"
+        ) ?: run {
+            Common.LOGGER.error("Failed to load greenhouse misc data")
+            MiscGreenhouseInfo()
+        }
+
+
         GreenhouseData.greenhousesInitialized = true
         GreenhouseData.greenhouseGrids = CodecStorage.load(
             greenhouseFile,
             GREENHOUSE_GRID_CODEC.listOf(),
             wrapperKey = "greenhouses"
-        ) ?: run {
+        )?.toMutableList() ?: run {
             GreenhouseData.greenhousesInitialized = false
             Common.LOGGER.error("Failed to load greenhouses data")
             return@run mutableListOf()
         }
 
-        //todo add presets after.
+        GreenhouseData.presetGrids = CodecStorage.load(
+            greenhouseFile,
+            GREENHOUSE_LAYOUT_CODEC.listOf(),
+            wrapperKey = "presets"
+        )?.toMutableList() ?: run {
+            Common.LOGGER.error("Failed to load preset data")
+            return@run mutableListOf()
+        }
 
 
 
 
+
+    }
+
+    fun saveGardenData(){
+        CodecStorage.save(
+            path = greenhouseFile,
+            codec = MISC_GREENHOUSE_INFO_CODEC,
+            value = GreenhouseData.miscInfo,
+            wrapperKey = "misc_info"
+        )
+
+        CodecStorage.save(
+            path = greenhouseFile,
+            codec = GREENHOUSE_GRID_CODEC.listOf(),
+            value = GreenhouseData.greenhouseGrids,
+            wrapperKey = "greenhouses"
+        )
+
+        CodecStorage.save(
+            path = greenhouseFile,
+            codec = GREENHOUSE_LAYOUT_CODEC.listOf(),
+            value = GreenhouseData.presetGrids,
+            wrapperKey = "presets"
+        )
 
     }
 

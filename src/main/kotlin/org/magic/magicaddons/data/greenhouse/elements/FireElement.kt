@@ -27,7 +27,7 @@ object FireElement : CropDefinitionProvider {
                     CropBlockState(
                         offset = BlockPos(0,1,0),
                         matcher = {
-                            it.isBlock("minecraft:fire") //todo check if true
+                            it.isBlock("minecraft:fire")
                         }
                     )
                 ),
