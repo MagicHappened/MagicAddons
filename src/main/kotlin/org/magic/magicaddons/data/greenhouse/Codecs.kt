@@ -31,7 +31,7 @@ object Codecs {
                     id = id,
                     name = nameOpt.orElse(null),
                     slots = slots,
-                    elementInstances = elements
+                    elementInstances = elements.toMutableList()
                 )
             }
         }
@@ -142,5 +142,22 @@ object Codecs {
                 grid
             }
         }
+    }
+
+    val MISC_GREENHOUSE_INFO_CODEC: Codec<MiscGreenhouseInfo> by lazy {
+        RecordCodecBuilder.create { instance ->
+            instance.group(
+                Codec.LONG.optionalFieldOf("next_tick")
+                    .forGetter { Optional.ofNullable(it.nextTickTime) },
+                    Codec.BOOL.fieldOf("ignore_warnings")
+                        .forGetter { it.shouldIgnoreWarning }
+
+
+            ).apply(instance) { tick, ignoreWarnings ->
+                MiscGreenhouseInfo(tick.getOrNull(), ignoreWarnings)
+            }
+        }
+
+
     }
 }

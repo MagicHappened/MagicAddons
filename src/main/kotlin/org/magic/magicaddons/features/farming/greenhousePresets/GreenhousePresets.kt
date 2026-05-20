@@ -25,23 +25,7 @@ object GreenhousePresets : Feature() {
         displayName = displayName,
         tooltip = tooltipMessage,
         value = true,
-        children = listOf(
-            EnumSetting<Test1>(
-                key = "test",
-                displayName = "test",
-                tooltip = "Just a test lol",
-                value = Test1.EnumValue5forfun
-            )
-        )
     )
-
-    enum class Test1 {
-        EnumValue1,
-        EnumValue2,
-        EnumValue3,
-        EnumValue4,
-        EnumValue5forfun
-    }
 
     @Subscription
     @OnlyNonGuest

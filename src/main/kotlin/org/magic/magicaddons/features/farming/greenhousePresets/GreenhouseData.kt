@@ -2,6 +2,7 @@ package org.magic.magicaddons.features.farming.greenhousePresets
 
 import net.minecraft.core.BlockPos
 import net.minecraft.world.entity.decoration.ArmorStand
+import net.minecraft.world.item.Items
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.phys.AABB
@@ -16,6 +17,7 @@ import org.magic.magicaddons.events.EventHandler
 import org.magic.magicaddons.events.interact.*
 import org.magic.magicaddons.events.world.OnEntityAdded
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhousePresets.baseSetting
+import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseTickTracker.baseTickTimeSeconds
 import org.magic.magicaddons.util.ChatUtils
 import tech.thatgravyboat.skyblockapi.api.SkyBlockAPI
 import tech.thatgravyboat.skyblockapi.api.events.base.Subscription
@@ -23,6 +25,7 @@ import tech.thatgravyboat.skyblockapi.api.events.base.predicates.OnlyIn
 import tech.thatgravyboat.skyblockapi.api.events.base.predicates.OnlyNonGuest
 import tech.thatgravyboat.skyblockapi.api.events.info.ScoreboardUpdateEvent
 import tech.thatgravyboat.skyblockapi.api.events.location.IslandChangeEvent
+import tech.thatgravyboat.skyblockapi.api.events.location.ServerDisconnectEvent
 import tech.thatgravyboat.skyblockapi.api.events.screen.ContainerInitializedEvent
 import tech.thatgravyboat.skyblockapi.api.location.SkyBlockIsland
 import tech.thatgravyboat.skyblockapi.api.profile.garden.Plot
@@ -44,7 +47,8 @@ object GreenhouseData {
 
     var greenhousesInitialized = false
     var greenhouseGrids = mutableListOf<GreenhouseGrid>()
-    val presetGrids = mutableListOf<GreenhouseLayout>()
+    var presetGrids = mutableListOf<GreenhouseLayout>()
+    var miscInfo = MiscGreenhouseInfo()
 
     var removedElementByAttack: ElementRuntimeState? = null
 
@@ -115,12 +119,6 @@ object GreenhouseData {
         return greenhouseGrids.find { it.layout.id == "plot_$plotId" }
     }
 
-    fun clearAllData() {
-        greenhousesInitialized = false
-        greenhouseGrids.clear()
-        presetGrids.clear()
-    }
-
 
     fun matchesWithRotation(
         actual: Vec3,
@@ -179,18 +177,31 @@ object GreenhouseData {
         return nextId
     }
 
+    fun checkForUpdate() {
+        if (!greenhousesInitialized) return
+
+        val currentTime = System.currentTimeMillis()
+
+        //todo make it more sophisticated with actual tick timer
+        greenhouseGrids.forEach {
+            if (it.state.needsUpdate) return@forEach
+            it.state.needsUpdate =
+                it.state.lastUpdateTimestamp + (baseTickTimeSeconds * 1000L) <= currentTime
+        }
+    }
+
+
     @Subscription
     fun onIslandChange(event: IslandChangeEvent){
         if (event.new != SkyBlockIsland.GARDEN){
-            CodecStorage.save(
-                path = DataHandler.greenhouseFile,
-                codec = GREENHOUSE_GRID_CODEC.listOf(),
-                value = greenhouseGrids,
-                wrapperKey = "greenhouses"
-            )
+            DataHandler.saveGardenData()
         }
 
+    }
 
+    @Subscription
+    fun onGameShutdown(event: ServerDisconnectEvent){
+        DataHandler.saveGardenData()
     }
 
 
@@ -200,6 +211,7 @@ object GreenhouseData {
     fun onScoreboardUpdate(event: ScoreboardUpdateEvent) {
         if (!baseSetting.value) return
         initKnownIds()
+        checkForUpdate()
         scanGridData()
     }
 
@@ -216,11 +228,27 @@ object GreenhouseData {
         val identifyStack = realItems[0]
         val stackId = identifyStack.getSkyBlockId()
         val useNameFallback = stackId == null
+        var def: CropDefinition? = null
+
         if (useNameFallback) {
             if (!identifyStack.getLore().any { it.string.contains("Base Crop") }) {
                 ChatUtils.sendWithPrefix("Found Base Crop: $identifyStack")
+                ChatUtils.sendWithPrefix("Trying to find with name ${identifyStack.itemName.string}")
+                def = CropRegistry.all.find { it.name == identifyStack.itemName.string }
                 return
             }
+        }
+        else {
+            def = CropRegistry.all.find {
+                it.skyblockId == stackId
+            }
+        }
+        ChatUtils.sendWithPrefix("Maybe found definition: ${def?.name}")
+
+        val beaconStack = realItems.firstOrNull { it.item == Items.BEACON }
+        ChatUtils.sendWithPrefix("Found beacon stack! lines:")
+        beaconStack?.components?.forEach {
+            ChatUtils.sendWithPrefix("line: $it")
         }
 
 
