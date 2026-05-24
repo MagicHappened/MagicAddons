@@ -28,11 +28,8 @@ class GreenhouseElementWidget(val instance: GreenhouseElementInstance,val defini
     var padding: Int = 0
     var width = 50
     var height = 50
-    var sprite: TextureAtlasSprite? = null
+    var sprite: TextureAtlasSprite? = ScreenUtil.getSpriteForState(Blocks.FIRE.defaultBlockState(),Direction.NORTH)
     var renderedStack: ItemStack = ItemStack.EMPTY
-    fun init(){
-        sprite = ScreenUtil.getSpriteForState(Blocks.FIRE.defaultBlockState(),Direction.NORTH)
-    }
 
     @JvmField
     var isFocused: Boolean = false

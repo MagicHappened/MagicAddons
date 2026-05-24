@@ -16,8 +16,7 @@ object Shadevine : CropDefinitionProvider {
         skyblockId = SkyBlockItemId.item("SHADEVINE"),
         stageDefs = listOf(
             CropStage(
-                blocks = listOf(
-                ),
+                blocks = listOf(),
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.75, 0.1875),
