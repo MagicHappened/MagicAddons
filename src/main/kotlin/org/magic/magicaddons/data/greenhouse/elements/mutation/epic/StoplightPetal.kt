@@ -11,6 +11,7 @@ object StoplightPetal : CropDefinitionProvider {
         name = "Stoplight Petal",
         skyblockId = SkyBlockItemId.item("STOPLIGHT_PETAL"),
         stageDefs = listOf(),
+        maxStage = 12,
         isMutation = true
     )
 }

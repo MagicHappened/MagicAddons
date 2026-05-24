@@ -11,6 +11,7 @@ object Snoozling : CropDefinitionProvider {
         name = "Snoozling",
         skyblockId = SkyBlockItemId.item("SNOOZLING"),
         stageDefs = listOf(),
+        maxStage = 20,
         footprint = Footprint(3,3),
         isMutation = true
     )

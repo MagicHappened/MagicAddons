@@ -11,6 +11,7 @@ object Phantomleaf : CropDefinitionProvider {
         name = "Phantomleaf",
         skyblockId = SkyBlockItemId.item("PHANTOMLEAF"),
         stageDefs = listOf(),
+        maxStage = 15,
         requiredSoil = setOf(Blocks.SOUL_SAND),
         needsWater = false,
         isMutation = true

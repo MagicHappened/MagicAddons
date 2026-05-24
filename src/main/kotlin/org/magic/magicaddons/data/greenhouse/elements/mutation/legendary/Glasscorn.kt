@@ -12,6 +12,7 @@ object Glasscorn : CropDefinitionProvider {
         name = "Glasscorn",
         skyblockId = SkyBlockItemId.item("GLASSCORN"),
         stageDefs = listOf(),
+        maxStage = 9,
         footprint = Footprint(2, 2),
         requiredSoil = setOf(Blocks.SAND),
         isMutation = true

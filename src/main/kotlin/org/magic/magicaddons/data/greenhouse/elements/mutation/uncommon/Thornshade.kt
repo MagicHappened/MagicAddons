@@ -10,6 +10,7 @@ object Thornshade : CropDefinitionProvider {
         name = "Thornshade",
         skyblockId = SkyBlockItemId.item("THORNSHADE"),
         stageDefs = listOf(),
+        maxStage = 8,
         isMutation = true
     )
 }

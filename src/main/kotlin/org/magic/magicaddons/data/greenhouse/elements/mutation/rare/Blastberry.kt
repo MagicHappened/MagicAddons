@@ -11,6 +11,7 @@ object Blastberry : CropDefinitionProvider {
         name = "Blastberry",
         skyblockId = SkyBlockItemId.item("BLASTBERRY"),
         stageDefs = listOf(),
+        maxStage = 6,
         requiredSoil = setOf(Blocks.SAND),
         isMutation = true
     )

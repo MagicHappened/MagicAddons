@@ -10,6 +10,7 @@ object Fleshtrap : CropDefinitionProvider {
         name = "Fleshtrap",
         skyblockId = SkyBlockItemId.item("FLESHTRAP"),
         stageDefs = listOf(),
+        maxStage = 14,
         isMutation = true
     )
 }

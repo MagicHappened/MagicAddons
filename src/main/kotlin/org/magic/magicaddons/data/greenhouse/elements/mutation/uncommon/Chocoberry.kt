@@ -10,6 +10,7 @@ object Chocoberry : CropDefinitionProvider {
         name = "Chocoberry",
         skyblockId = SkyBlockItemId.item("CHOCOBERRY"),
         stageDefs = listOf(),
+        maxStage = 6,
         isMutation = true
     )
 }

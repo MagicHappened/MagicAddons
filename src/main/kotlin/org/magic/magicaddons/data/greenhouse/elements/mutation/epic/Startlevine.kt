@@ -11,6 +11,7 @@ object Startlevine : CropDefinitionProvider {
         name = "Startlevine",
         skyblockId = SkyBlockItemId.item("STARTLEVINE"),
         stageDefs = listOf(),
+        maxStage = 12,
         isMutation = true
     )
 }

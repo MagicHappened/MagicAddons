@@ -86,6 +86,7 @@ object Wheat : CropDefinitionProvider {
             )
 
         ),
+        maxStage = 8,
         isBaseCrop = true
     )
 }

@@ -10,6 +10,7 @@ object Chloronite : CropDefinitionProvider {
         name = "Chloronite",
         skyblockId = SkyBlockItemId.item("CHLORONITE"),
         stageDefs = listOf(),
+        maxStage = 10,
         isMutation = true
     )
 }

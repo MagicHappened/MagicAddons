@@ -10,6 +10,7 @@ object Jerryflower : CropDefinitionProvider {
         name = "Jerryflower",
         skyblockId = SkyBlockItemId.item("JERRYFLOWER"),
         stageDefs = listOf(),
+        maxStage = 10,
         isMutation = true
     )
 }

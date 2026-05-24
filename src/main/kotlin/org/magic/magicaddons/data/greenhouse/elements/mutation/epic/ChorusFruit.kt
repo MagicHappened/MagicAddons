@@ -11,6 +11,7 @@ object ChorusFruit : CropDefinitionProvider {
         name = "Chorus Fruit",
         skyblockId = SkyBlockItemId.item("CHORUS_FRUIT"),
         stageDefs = listOf(),
+        maxStage = 12,
         requiredSoil = setOf(Blocks.END_STONE),
         needsWater = false,
         isMutation = true

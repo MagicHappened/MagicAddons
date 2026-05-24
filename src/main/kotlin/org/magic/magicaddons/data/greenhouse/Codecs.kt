@@ -149,12 +149,24 @@ object Codecs {
             instance.group(
                 Codec.LONG.optionalFieldOf("next_tick")
                     .forGetter { Optional.ofNullable(it.nextTickTime) },
+                Codec.INT.optionalFieldOf("crop_growth_value")
+                    .forGetter { Optional.ofNullable(it.cropGrowthValue) },
+                    Codec.INT.optionalFieldOf("crop_speed_upgrade")
+                            .forGetter { Optional.ofNullable(it.cropSpeedUpgradeValue) },
+                Codec.INT.optionalFieldOf("crop_yield_upgrade")
+                        .forGetter { Optional.ofNullable(it.cropYieldUpgradeValue) },
                     Codec.BOOL.fieldOf("ignore_warnings")
                         .forGetter { it.shouldIgnoreWarning }
 
 
-            ).apply(instance) { tick, ignoreWarnings ->
-                MiscGreenhouseInfo(tick.getOrNull(), ignoreWarnings)
+            ).apply(instance) { tick, cropGrowth, cropSpeed, cropYield, ignoreWarnings ->
+                MiscGreenhouseInfo(
+                    nextTickTime = tick.getOrNull(),
+                    cropGrowthValue = cropGrowth.getOrNull(),
+                    cropSpeedUpgradeValue = cropSpeed.getOrNull(),
+                    cropYieldUpgradeValue = cropYield.getOrNull(),
+                    ignoreWarnings
+                    )
             }
         }
 

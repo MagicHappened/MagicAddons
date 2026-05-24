@@ -26,8 +26,8 @@ object Shadevine : CropDefinitionProvider {
                         }
                     )
                 ),
-                1..1
-                //todo check if rotation needed
+                1..1,
+                allowRotation = true
             )
 
 

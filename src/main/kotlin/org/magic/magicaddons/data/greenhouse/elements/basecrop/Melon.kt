@@ -107,6 +107,7 @@ object Melon : CropDefinitionProvider {
 
 
         ),
+        maxStage = 11,
         isBaseCrop = true
 
     )

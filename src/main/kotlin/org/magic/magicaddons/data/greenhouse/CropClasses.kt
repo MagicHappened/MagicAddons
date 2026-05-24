@@ -158,6 +158,7 @@ data class CropDefinition(
     val skyblockId: SkyBlockId?,
     val aliases: List<SkyBlockId>? = null,
     val stageDefs: List<CropStage>,
+    val maxStage: Int = 1,
     val footprint: Footprint = Footprint(1,1),
     val requiredSoil: Set<Block> = setOf(Blocks.FARMLAND),
     val needsWater: Boolean = true,

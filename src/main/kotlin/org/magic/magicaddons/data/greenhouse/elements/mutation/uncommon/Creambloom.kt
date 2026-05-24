@@ -10,6 +10,7 @@ object Creambloom : CropDefinitionProvider {
         name = "Creambloom",
         skyblockId = SkyBlockItemId.item("CREAMBLOOM"),
         stageDefs = listOf(),
+        maxStage = 6,
         isMutation = true
     )
 }

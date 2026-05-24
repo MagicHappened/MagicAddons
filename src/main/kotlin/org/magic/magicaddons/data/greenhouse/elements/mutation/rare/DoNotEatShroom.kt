@@ -80,6 +80,7 @@ object DoNotEatShroom : CropDefinitionProvider {
                 8..8
             )
         ),
+        maxStage = 8,
         isMutation = true
     )
 

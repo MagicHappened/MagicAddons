@@ -9,6 +9,7 @@ object Soggybud : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Soggybud",
         skyblockId = SkyBlockItemId.item("SOGGYBUD"),
+        maxStage = 10,
         stageDefs = listOf(),
         isMutation = true
     )

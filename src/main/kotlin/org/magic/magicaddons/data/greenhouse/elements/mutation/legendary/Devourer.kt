@@ -10,6 +10,7 @@ object Devourer : CropDefinitionProvider {
         name = "Devourer",
         skyblockId = SkyBlockItemId.item("DEVOURER"),
         stageDefs = listOf(),
+        maxStage = 16,
         isMutation = true
     )
 }

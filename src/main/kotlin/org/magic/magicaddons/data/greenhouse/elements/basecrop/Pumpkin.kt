@@ -90,6 +90,7 @@ object Pumpkin : CropDefinitionProvider {
 
 
         ),
+        maxStage = 11,
         isBaseCrop = true
     )
 }

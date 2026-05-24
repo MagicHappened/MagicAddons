@@ -180,6 +180,7 @@ object Cactus : CropDefinitionProvider {
                 allowRotation = true
             )
         ),
+        maxStage = 8,
         requiredSoil = setOf(Blocks.SAND),
         needsWater = false,
         isBaseCrop = true

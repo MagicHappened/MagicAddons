@@ -138,6 +138,7 @@ object Cocoa : CropDefinitionProvider {
                 allowRotation = true
             )
         ),
+        maxStage = 6,
         needsWater = false,
         isBaseCrop = true
 
