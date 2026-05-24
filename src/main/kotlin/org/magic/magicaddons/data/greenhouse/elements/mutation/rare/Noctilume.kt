@@ -11,6 +11,7 @@ object Noctilume : CropDefinitionProvider {
         name = "Noctilume",
         skyblockId = SkyBlockItemId.item("NOCTILUME"),
         stageDefs = listOf(),
+        maxStage = 4,
         footprint = Footprint(2,2),
         isMutation = true
     )

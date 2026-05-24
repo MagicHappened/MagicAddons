@@ -1,16 +1,17 @@
 package org.magic.magicaddons.features.farming.greenhousePresets
 
+import net.minecraft.client.Minecraft
 import net.minecraft.core.BlockPos
+import net.minecraft.world.entity.EquipmentSlot
 import net.minecraft.world.entity.decoration.ArmorStand
+import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.*
-import org.magic.magicaddons.data.greenhouse.Codecs.GREENHOUSE_GRID_CODEC
 import org.magic.magicaddons.data.greenhouse.elements.FireElement
-import org.magic.magicaddons.data.handlers.CodecStorage
 import org.magic.magicaddons.data.handlers.DataHandler
 import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.events.EventHandler
@@ -18,7 +19,10 @@ import org.magic.magicaddons.events.interact.*
 import org.magic.magicaddons.events.world.OnEntityAdded
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhousePresets.baseSetting
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseTickTracker.baseTickTimeSeconds
+import org.magic.magicaddons.util.BlockUtils.getId
+import org.magic.magicaddons.util.BlockUtils.getIntProperty
 import org.magic.magicaddons.util.ChatUtils
+import org.magic.magicaddons.util.PlayerUtils
 import tech.thatgravyboat.skyblockapi.api.SkyBlockAPI
 import tech.thatgravyboat.skyblockapi.api.events.base.Subscription
 import tech.thatgravyboat.skyblockapi.api.events.base.predicates.OnlyIn
@@ -33,6 +37,7 @@ import tech.thatgravyboat.skyblockapi.api.profile.garden.PlotAPI
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockId.Companion.getSkyBlockId
 import tech.thatgravyboat.skyblockapi.utils.extentions.getLore
 import tech.thatgravyboat.skyblockapi.utils.extentions.isSkyblockFiller
+import java.util.UUID
 import kotlin.math.abs
 
 object GreenhouseData {
@@ -64,7 +69,7 @@ object GreenhouseData {
                 valueTransform = { it.second }
             )
 
-
+    private var plantDiagnosticHitBaseBlock: BlockPos? = null
     private var plantDiagnosticListeningElement: ElementRuntimeState? = null
     private var placedCrop: Pair<CropDefinition, BlockPos>? = null
 
@@ -219,38 +224,23 @@ object GreenhouseData {
     @OnlyNonGuest
     @OnlyIn(SkyBlockIsland.GARDEN)
     fun onInventory(event: ContainerInitializedEvent) {
-        if (event.title != "Crop Diagnostics") {
+        val realItems = event.containerItems.filter { !it.isSkyblockFiller() }
+        if (event.title == "Crop Diagnostics") {
+            sendDiagnosesData(realItems)
             plantDiagnosticListeningElement = null
+            plantDiagnosticHitBaseBlock = null
             return
         }
-        if (plantDiagnosticListeningElement == null) return
-        val realItems = event.containerItems.filter { !it.isSkyblockFiller() }
-        val identifyStack = realItems[0]
-        val stackId = identifyStack.getSkyBlockId()
-        val useNameFallback = stackId == null
-        var def: CropDefinition? = null
-
-        if (useNameFallback) {
-            if (!identifyStack.getLore().any { it.string.contains("Base Crop") }) {
-                ChatUtils.sendWithPrefix("Found Base Crop: $identifyStack")
-                ChatUtils.sendWithPrefix("Trying to find with name ${identifyStack.itemName.string}")
-                def = CropRegistry.all.find { it.name == identifyStack.itemName.string }
-                return
-            }
-        }
-        else {
-            def = CropRegistry.all.find {
-                it.skyblockId == stackId
-            }
-        }
-        ChatUtils.sendWithPrefix("Maybe found definition: ${def?.name}")
-
-        val beaconStack = realItems.firstOrNull { it.item == Items.BEACON }
-        ChatUtils.sendWithPrefix("Found beacon stack! lines:")
-        beaconStack?.components?.forEach {
-            ChatUtils.sendWithPrefix("line: $it")
+        plantDiagnosticListeningElement = null
+        plantDiagnosticHitBaseBlock = null
+        if (event.title == "Desk") {
+            updateCropGrowth(realItems)
+            return
         }
 
+        if (event.title == "Greenhouse Upgrades"){
+            updateUpgrades(realItems)
+        }
 
     }
 
@@ -373,7 +363,9 @@ object GreenhouseData {
         val standTarget = event.target as? ArmorStand ?: return
 
         if (mainHandId.id == "item:plant_diagnostics_tool") {
-            tryGetDiagnosticData(null, standTarget, grid)
+            setDiagnosesListeningElement(null, standTarget, grid)
+            val entityBlockPos = BlockPos.containing(event.target.position())
+            plantDiagnosticHitBaseBlock = BlockPos(entityBlockPos.x, 73, entityBlockPos.z)
             return
         }
     }
@@ -400,7 +392,8 @@ object GreenhouseData {
         val foundCrop = CropRegistry.all.firstOrNull { it.matchesId(mainHandId) }
 
         if (mainHandId.id == "item:plant_diagnostics_tool") {
-            tryGetDiagnosticData(event.hit.blockPos, null, grid)
+            setDiagnosesListeningElement(event.hit.blockPos, null, grid)
+            plantDiagnosticHitBaseBlock = BlockPos(event.hit.blockPos.x, 73, event.hit.blockPos.z)
             return
         }
         if (("item:" + mainHandId.id) in waterCanIds) {
@@ -437,7 +430,7 @@ object GreenhouseData {
 
     }
 
-    fun tryGetDiagnosticData(hitBlock: BlockPos? = null, hitEntity: ArmorStand? = null, grid: GreenhouseGrid) {
+    fun setDiagnosesListeningElement(hitBlock: BlockPos? = null, hitEntity: ArmorStand? = null, grid: GreenhouseGrid) {
         var hitElement: ElementRuntimeState? = null
 
         if (hitBlock != null) {
@@ -458,5 +451,283 @@ object GreenhouseData {
         plantDiagnosticListeningElement = hitElement
     }
 
+    fun sendDiagnosesData(realItems: List<ItemStack>) {
+        val identifyStack = realItems.firstOrNull() ?: return
+
+        val stackId = identifyStack.getSkyBlockId()
+        val useNameFallback = stackId == null
+
+        var def: CropDefinition? = null
+
+        if (useNameFallback) {
+            if (identifyStack.getLore().any { it.string.contains("Base Crop") }) {
+                def = CropRegistry.all.find { it.name == identifyStack.itemName.string }
+            }
+        } else {
+            def = CropRegistry.all.find {
+                it.skyblockId == stackId
+            }
+        }
+
+        val beaconStack = realItems.firstOrNull { it.item == Items.BEACON }
+        val beaconLore = beaconStack?.getLore() ?: return
+
+        val saplingStack = realItems.firstOrNull { it.item == Items.JUNGLE_SAPLING }
+        val saplingLore = saplingStack?.getLore() ?: return
+
+        val status = runCatching {
+            beaconLore[0].siblings[1].string
+        }.getOrNull()
+
+        val age = runCatching {
+            saplingLore[0].siblings[1].string
+        }.getOrNull()
+
+        val stageRaw = runCatching {
+            saplingLore[1].siblings[2].string
+        }.getOrNull()
+            ?.let { raw ->
+                when {
+                    raw.equals("FULLY GROWN", ignoreCase = true) -> def?.maxStage
+                    raw.equals("DEAD", ignoreCase = true) -> null
+                    else -> raw.toIntOrNull()
+                }
+            }
+
+        val nextStage = runCatching {
+            saplingLore[2].siblings.getOrNull(2)?.string
+                ?.ifBlank { saplingLore[2].siblings.getOrNull(1)?.string ?: "" }
+                ?: saplingLore[2].siblings.getOrNull(1)?.string
+        }.getOrNull()
+
+        def ?: return
+        val matchingStage = def.stageDefs.find { stageDef ->
+            stageRaw in stageDef.stageRange
+        }
+        stageRaw ?: return
+
+
+
+        val isSelf = UUID.fromString("eef58b9d-39e1-4062-8a1a-2f921f14a46d") == Minecraft.getInstance().player?.uuid
+
+        if (matchingStage == null) {
+            ChatUtils.sendWithPrefix("No matching stage for ${def.name} please send the copied output")
+            plantDiagnosticHitBaseBlock?.let {
+                copyCropStageData(it, stageRaw, def, !isSelf)
+            }
+        }
+    }
+
+    fun updateCropGrowth(realItems: List<ItemStack>) {
+        val sunflower = realItems.firstOrNull {
+            it.item == Items.SUNFLOWER
+        } ?: return
+
+        val lore = sunflower.getLore()
+
+        val cropGrowthLine = lore.firstOrNull { component ->
+            component.siblings.any { it.string.contains("Crop Growth") }
+        }
+
+        val cropGrowth = cropGrowthLine
+            ?.siblings
+            ?.firstOrNull { it.string.any { c -> c.isDigit() } }
+            ?.string
+            ?.filter { it.isDigit() }
+            ?.toIntOrNull()
+
+        cropGrowth ?: return
+        if (miscInfo.cropGrowthValue != cropGrowth) {
+            ChatUtils.sendWithPrefix("Updated crop growth value to $cropGrowth")
+            miscInfo.cropGrowthValue = cropGrowth
+        }
+
+    }
+
+    fun updateUpgrades(realItems: List<ItemStack>) {
+
+
+        val seedsStack = realItems.firstOrNull { it.item == Items.WHEAT_SEEDS }
+        val plantPotStack = realItems.firstOrNull { it.item == Items.FLOWER_POT }
+        val seedsLore = seedsStack?.getLore()
+        val potLore = plantPotStack?.getLore()
+
+        val speedTier = seedsLore?.firstOrNull { line ->
+            line.siblings.any { it.string.contains("Current Tier") }
+        }?.siblings?.firstOrNull { it.string.toIntOrNull() != null }
+            ?.string
+            ?.toIntOrNull()
+
+        val yieldTier = potLore?.firstOrNull { line ->
+            line.siblings.any { it.string.contains("Current Tier") }
+        }?.siblings?.firstOrNull { it.string.toIntOrNull() != null }
+            ?.string
+            ?.toIntOrNull()
+
+        speedTier ?: return
+        yieldTier ?: return
+
+        if (miscInfo.cropSpeedUpgradeValue != speedTier){
+            miscInfo.cropSpeedUpgradeValue = speedTier
+            ChatUtils.sendWithPrefix("Updated Growth Speed Tier to $speedTier")
+        }
+        if (miscInfo.cropYieldUpgradeValue != yieldTier){
+            miscInfo.cropYieldUpgradeValue = yieldTier
+            ChatUtils.sendWithPrefix("Updated Plant Yield Tier to $speedTier")
+        }
+    }
+
+    fun computeGrowthStageTimeSeconds(
+        uniqueCrops: Int,
+        cropGrowthStat: Int,
+        greenhouseUpgrade: Int
+    ): Double {
+
+        val uniqueCropBonus = 0.025 * uniqueCrops
+        val cropGrowthBonus = 0.0025 * cropGrowthStat
+
+        val upgradeBonus = when (greenhouseUpgrade) {
+            in 0..8 -> 0.05 * greenhouseUpgrade
+            9 -> 0.50
+            else -> throw IllegalArgumentException("Invalid greenhouse upgrade level: $greenhouseUpgrade")
+        }
+
+        val denominator =
+            1.0 +
+                    uniqueCropBonus +
+                    cropGrowthBonus +
+                    upgradeBonus
+
+        return 14400.0 / denominator
+    }
+
+    fun copyCropStageData(basePos: BlockPos,stageNum: Int? = null,foundDefinition: CropDefinition? = null, discordFormat: Boolean = false) {
+        val world = Minecraft.getInstance().level ?: return
+        val sb = StringBuilder(2048)
+
+
+        val blockLines = mutableListOf<String>()
+
+        var y = basePos.y + 1
+        var stageIndex = 0
+
+        if (discordFormat) {
+            sb.appendLine("```")
+        }
+
+
+
+        while (true) {
+            val checkPos = BlockPos(basePos.x, y, basePos.z)
+            val checkState = world.getBlockState(checkPos)
+
+            if (checkState.isAir) break
+
+            val offsetY = y - basePos.y
+            val blockId = checkState.getId()
+
+            val hasAge = checkState.getIntProperty("age") != null
+
+            val matcherLine = if (hasAge) {
+                """
+                it.isBlock("$blockId") &&
+                        it.getIntProperty("age") == ${checkState.getIntProperty("age")}
+            """.trimIndent()
+            } else {
+                """
+                it.isBlock("$blockId")
+            """.trimIndent()
+            }
+
+            blockLines.add(
+                """
+        CropBlockState(
+            offset = BlockPos(0,$offsetY,0),
+            matcher = {
+$matcherLine
+            }
+        )
+            """.trimIndent()
+            )
+
+            stageIndex++
+            y++
+        }
+
+
+        val box = AABB(
+            basePos.x.toDouble(),
+            basePos.y.toDouble() - 2,
+            basePos.z.toDouble(),
+            basePos.x + 1.0,
+            basePos.y.toDouble() + 4,
+            basePos.z + 1.0
+        )
+
+        val stands = world.getEntities(null, box)
+
+        val standLines = mutableListOf<String>()
+
+        for (entity in stands) {
+            if (entity !is ArmorStand) continue
+            val center = Vec3(
+                basePos.x + 0.5,
+                basePos.y.toDouble(),
+                basePos.z + 0.5
+            )
+
+            val offset = entity.position().subtract(center)
+
+            val head = entity.getItemBySlot(EquipmentSlot.HEAD)
+            val hash = PlayerUtils.getSkinHash(head)
+
+            standLines.add(
+                """
+        CropArmorStand(
+            offset = Vec3(${offset.x}, ${offset.y}, ${offset.z}),
+            matcher = {
+                ${if (!hash.isNullOrBlank()) "it == \"$hash\"" else "true"}
+            }
+        )
+    """.trimIndent()
+            )
+        }
+
+
+        sb.appendLine("CropStage(")
+
+        // blocks
+        sb.appendLine("    blocks = listOf(")
+        if (blockLines.isNotEmpty()) {
+            sb.appendLine(blockLines.joinToString(",\n"))
+        }
+        sb.appendLine("    ),")
+
+        // armor stands
+        if (standLines.isNotEmpty()) {
+            sb.appendLine("    armorStands = listOf(")
+            sb.appendLine(
+                standLines.joinToString(",\n") { "        $it" }
+            )
+            sb.appendLine("    ),")
+        } else {
+            sb.appendLine("    armorStands = null,")
+        }
+
+        sb.appendLine("    ${stageNum ?: 1}..${stageNum ?: 1}")
+        sb.appendLine(")")
+
+        if (discordFormat) {
+            sb.appendLine("```")
+            sb.appendLine("Crop found: ${foundDefinition?.name} stageNum=$stageNum")
+        }
+
+
+        val result = sb.toString()
+
+        Minecraft.getInstance().keyboardHandler.clipboard = result
+
+        ChatUtils.sendWithPrefix("Copied crop stage to clipboard (${result.length} chars)")
+    }
 
 }

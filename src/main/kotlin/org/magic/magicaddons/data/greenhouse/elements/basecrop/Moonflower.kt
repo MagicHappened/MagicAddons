@@ -89,6 +89,7 @@ object Moonflower : CropDefinitionProvider {
 
 
         ),
+        maxStage = 15,
         isBaseCrop = true
 
 

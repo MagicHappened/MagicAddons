@@ -12,6 +12,7 @@ object PlantBoyAdvance : CropDefinitionProvider {
         name = "PlantBoy Advance",
         skyblockId = SkyBlockItemId.item("PLANTBOY_ADVANCE"),
         stageDefs = listOf(),
+        maxStage = 12,
         footprint = Footprint(2,2),
         needsWater = false,
         isMutation = true

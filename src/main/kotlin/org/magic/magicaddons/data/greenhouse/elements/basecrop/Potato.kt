@@ -85,6 +85,7 @@ object Potato : CropDefinitionProvider {
 
 
         ),
+        maxStage = 8,
         isBaseCrop = true
 
     )

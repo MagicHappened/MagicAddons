@@ -11,6 +11,7 @@ object Timestalk : CropDefinitionProvider {
         name = "Timestalk",
         skyblockId = SkyBlockItemId.item("TIMESTALK"),
         stageDefs = listOf(),
+        maxStage = 14,
         requiredSoil = setOf(Blocks.END_STONE),
         isMutation = true
     )

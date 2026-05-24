@@ -11,6 +11,7 @@ object Puffercloud : CropDefinitionProvider {
         name = "Puffercloud",
         skyblockId = SkyBlockItemId.item("PUFFERCLOUD"),
         stageDefs = listOf(),
+        maxStage = 14,
         isMutation = true
     )
 }

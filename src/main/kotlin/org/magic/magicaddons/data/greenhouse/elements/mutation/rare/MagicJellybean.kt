@@ -11,6 +11,7 @@ object MagicJellybean : CropDefinitionProvider {
         name = "Magic Jellybean",
         skyblockId = SkyBlockItemId.item("MAGIC_JELLYBEAN"),
         stageDefs = listOf(),
+        maxStage = 120,
         requiredSoil = setOf(Blocks.SAND),
         isMutation = true
     )

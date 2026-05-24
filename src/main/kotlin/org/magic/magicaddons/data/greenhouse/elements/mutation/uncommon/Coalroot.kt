@@ -11,6 +11,7 @@ object Coalroot : CropDefinitionProvider {
         name = "Coalroot",
         skyblockId = SkyBlockItemId.item("COALROOT"),
         stageDefs = listOf(),
+        maxStage = 8,
         isMutation = true
     )
 }

@@ -11,6 +11,7 @@ object Zombud : CropDefinitionProvider {
         name = "Zombud",
         skyblockId = SkyBlockItemId.item("ZOMBUD"),
         stageDefs = listOf(),
+        maxStage = 16,
         requiredSoil = setOf(Blocks.SOUL_SAND),
         needsWater = false,
         isMutation = true

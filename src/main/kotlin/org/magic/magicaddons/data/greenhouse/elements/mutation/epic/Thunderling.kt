@@ -11,6 +11,7 @@ object Thunderling : CropDefinitionProvider {
         name = "Thunderling",
         skyblockId = SkyBlockItemId.item("THUNDERLING"),
         stageDefs = listOf(),
+        maxStage = 16,
         needsWater = false,
         isMutation = true
     )

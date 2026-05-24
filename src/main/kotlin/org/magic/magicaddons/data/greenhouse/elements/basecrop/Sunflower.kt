@@ -91,6 +91,7 @@ object Sunflower : CropDefinitionProvider {
 
 
         ),
+        maxStage = 15,
         isBaseCrop = true
 
     )

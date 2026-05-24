@@ -10,6 +10,7 @@ object Cheesebite : CropDefinitionProvider {
         name = "Cheesebite",
         skyblockId = SkyBlockItemId.item("CHEESBITE"),
         stageDefs = listOf(),
+        maxStage = 10,
         isMutation = true
     )
 }

@@ -10,6 +10,7 @@ object Duskbloom : CropDefinitionProvider {
         name = "Duskbloom",
         skyblockId = SkyBlockItemId.item("DUSKBLOOM"),
         stageDefs = listOf(),
+        maxStage = 8,
         isMutation = true
     )
 }

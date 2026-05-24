@@ -11,6 +11,7 @@ object Cindershade : CropDefinitionProvider {
         name = "Cindershade",
         skyblockId = SkyBlockItemId.item("CINDERSHADE"),
         stageDefs = listOf(),
+        maxStage = 8,
         requiredSoil = setOf(Blocks.SOUL_SAND),
         needsWater = false,
         isMutation = true

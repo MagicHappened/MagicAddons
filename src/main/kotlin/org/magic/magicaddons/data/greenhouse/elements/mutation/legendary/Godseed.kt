@@ -12,6 +12,7 @@ object Godseed : CropDefinitionProvider {
         skyblockId = SkyBlockItemId.item("GODSEED"),
         footprint = Footprint(3, 3),
         stageDefs = listOf(),
+        maxStage = 40,
         isMutation = true
     )
 }

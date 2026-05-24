@@ -13,6 +13,7 @@ object AllinAloe : CropDefinitionProvider {
         name = "All-in Aloe",
         skyblockId = SkyBlockItemId.item("ALL_IN_ALOE"),
         stageDefs = listOf(),
+        maxStage = 27,
         requiredSoil = setOf(Blocks.SAND),
         needsWater = false,
         isMutation = true
