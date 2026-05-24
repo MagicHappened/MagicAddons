@@ -452,6 +452,7 @@ object GreenhouseData {
     }
 
     fun sendDiagnosesData(realItems: List<ItemStack>) {
+        if (!baseSetting.value) return
         val identifyStack = realItems.firstOrNull() ?: return
 
         val stackId = identifyStack.getSkyBlockId()
