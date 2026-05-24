@@ -66,6 +66,53 @@ object Pumpkin : CropDefinitionProvider {
                         offset = BlockPos(0,1,0),
                         matcher = {
                             it.isBlock("minecraft:melon_stem") &&
+                                    it.getIntProperty("age") == 6
+                        }
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, -0.53125, 0.0),
+                        matcher = {
+                            it == "afa92dd43afed9e640cf3d3b008ca5199634ec8512de5e1f5eeaecd761296cb9"
+                        }
+                    )
+                ),
+                5..5,
+                allowRotation = true
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0,1,0),
+                        matcher = {
+                            it.isBlock("minecraft:melon_stem") &&
+                                    it.getIntProperty("age") == 7
+                        }
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.09375, -0.625, -0.09375),
+                        matcher = {
+                            it == "18bd4aa55673e90a3c611117277d94f6ce185b5d13d2a862a3376f50a6139c4f"
+                        }
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(0.0, -0.46875, 0.0625),
+                        matcher = {
+                            it == "a9d2abe3c6d6400a20b47179bbe9be278ed336c07fcc1e03ab0eb0c470d620c"
+                        }
+                    )
+                ),
+                9..9 //todo might need to allow rotation
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0,1,0),
+                        matcher = {
+                            it.isBlock("minecraft:melon_stem") &&
                                     it.getIntProperty("age") == 7
                         }
                     )

@@ -221,7 +221,6 @@ object GreenhouseData {
     }
 
     @Subscription
-    @OnlyNonGuest
     @OnlyIn(SkyBlockIsland.GARDEN)
     fun onInventory(event: ContainerInitializedEvent) {
         val realItems = event.containerItems.filter { !it.isSkyblockFiller() }
@@ -334,10 +333,6 @@ object GreenhouseData {
                     }
                     return
                 }
-            } else {
-                ChatUtils.sendWithPrefix("continue filteration pls")
-                //todo fires a lot more than necessary so need block difference detection and
-                // another method for entity difference detection, and that triggers another reinit
             }
         }
 
@@ -356,6 +351,9 @@ object GreenhouseData {
 
     @EventHandler
     fun onInteractEntity(event: OnInteractEntityEvent) {
+        val entityBlockPos = BlockPos.containing(event.target.position())
+        plantDiagnosticHitBaseBlock = BlockPos(entityBlockPos.x, 73, entityBlockPos.z)
+        ChatUtils.sendWithPrefix("Set block to $plantDiagnosticHitBaseBlock")
         val grid = getCurrentGrid() ?: return
         if (!isInitialized(grid)) return
 
@@ -364,8 +362,6 @@ object GreenhouseData {
 
         if (mainHandId.id == "item:plant_diagnostics_tool") {
             setDiagnosesListeningElement(null, standTarget, grid)
-            val entityBlockPos = BlockPos.containing(event.target.position())
-            plantDiagnosticHitBaseBlock = BlockPos(entityBlockPos.x, 73, entityBlockPos.z)
             return
         }
     }
@@ -385,6 +381,7 @@ object GreenhouseData {
 
     @EventHandler
     fun onBlockUse(event: OnBlockUseEvent) {
+        plantDiagnosticHitBaseBlock = BlockPos(event.hit.blockPos.x, 73, event.hit.blockPos.z)
         val grid = getCurrentGrid() ?: return
         if (!isInitialized(grid)) return
         val mainHandId = event.player.mainHandItem.getSkyBlockId() ?: return
@@ -393,7 +390,7 @@ object GreenhouseData {
 
         if (mainHandId.id == "item:plant_diagnostics_tool") {
             setDiagnosesListeningElement(event.hit.blockPos, null, grid)
-            plantDiagnosticHitBaseBlock = BlockPos(event.hit.blockPos.x, 73, event.hit.blockPos.z)
+
             return
         }
         if (("item:" + mainHandId.id) in waterCanIds) {
@@ -462,7 +459,9 @@ object GreenhouseData {
 
         if (useNameFallback) {
             if (identifyStack.getLore().any { it.string.contains("Base Crop") }) {
-                def = CropRegistry.all.find { it.name == identifyStack.itemName.string }
+                def = CropRegistry.all.find {
+                    it.name == (identifyStack.customName?.string ?: identifyStack.itemName.string)
+                }
             }
         } else {
             def = CropRegistry.all.find {
@@ -516,6 +515,7 @@ object GreenhouseData {
             plantDiagnosticHitBaseBlock?.let {
                 copyCropStageData(it, stageRaw, def, !isSelf)
             }
+            return
         }
     }
 
@@ -605,7 +605,6 @@ object GreenhouseData {
     fun copyCropStageData(basePos: BlockPos,stageNum: Int? = null,foundDefinition: CropDefinition? = null, discordFormat: Boolean = false) {
         val world = Minecraft.getInstance().level ?: return
         val sb = StringBuilder(2048)
-
 
         val blockLines = mutableListOf<String>()
 

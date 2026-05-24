@@ -26,7 +26,7 @@ object Netherwart : CropDefinitionProvider {
                     )
                 ),
                 armorStands = null,
-                1..2
+                1..3
             ),
             CropStage(
                 blocks = listOf(
@@ -41,6 +41,19 @@ object Netherwart : CropDefinitionProvider {
                 armorStands = listOf(
                 ),
                 4..4
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0,1,0),
+                        matcher = {
+                            it.isBlock("minecraft:nether_wart") &&
+                                    it.getIntProperty("age") == 2
+                        }
+                    )
+                ),
+                armorStands = null,
+                6..7
             ),
             CropStage(
                 blocks = listOf(

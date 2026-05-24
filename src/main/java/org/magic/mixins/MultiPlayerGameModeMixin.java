@@ -11,6 +11,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.BlockHitResult;
 import org.magic.magicaddons.events.EventBus;
 import org.magic.magicaddons.events.interact.*;
+import org.magic.magicaddons.util.ChatUtils;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
