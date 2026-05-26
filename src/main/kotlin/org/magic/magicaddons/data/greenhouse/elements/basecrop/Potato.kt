@@ -51,8 +51,7 @@ object Potato : CropDefinitionProvider {
                         }
                     )
                 ),
-                armorStands = listOf(
-                ),
+                armorStands = null,
                 3..3
             ),
             CropStage(
@@ -65,8 +64,7 @@ object Potato : CropDefinitionProvider {
                         }
                     )
                 ),
-                armorStands = listOf(
-                ),
+                armorStands = null,
                 4..4
             ),
             CropStage(

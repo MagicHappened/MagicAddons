@@ -5,9 +5,6 @@ data class GreenhouseElementInstance(
     val elementId: String, //just the skyblock id
     val slot: GreenhouseSlot,
     var waterLevel: Int? = null,
-    var growthStage: GrowthStageInfo? = null){
-
-
-
-
-}
+    var growthStage: GrowthStageInfo? = null,
+    var age: Long? = null
+)

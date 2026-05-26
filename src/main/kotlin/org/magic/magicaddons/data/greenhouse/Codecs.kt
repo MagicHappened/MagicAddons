@@ -6,6 +6,7 @@ import net.minecraft.world.level.block.state.BlockState
 import org.magic.magicaddons.data.greenhouse.GreenhouseGrid.GridState
 import org.magic.magicaddons.data.greenhouse.GrowthStageInfo.Estimated
 import org.magic.magicaddons.data.greenhouse.GrowthStageInfo.Known
+import java.time.Instant
 import java.util.*
 import kotlin.jvm.optionals.getOrNull
 
@@ -94,19 +95,18 @@ object Codecs {
     val GRID_STATE_CODEC: Codec<GridState> by lazy {
         RecordCodecBuilder.create { instance ->
             instance.group(
-                Codec.LONG.fieldOf("lastUpdateTimestamp").forGetter {
-                    it.lastUpdateTimestamp
+                Codec.LONG.optionalFieldOf("lastUpdateTimestamp").forGetter {
+                    Optional.ofNullable(it.lastUpdateTimestamp?.toEpochMilli())
                 },
-                Codec.BOOL.fieldOf("needsUpdate").forGetter {
-                    it.needsUpdate
-                },
-                Codec.BOOL.fieldOf("initialized").forGetter {
-                    it.initialized
+                Codec.STRING.optionalFieldOf("assigned_layout_id").forGetter {
+                    Optional.ofNullable(it.assignedLayoutId)
                 }
 
 
-            ).apply(instance) { lastUpdate, needsUpdate, initialized ->
-                GridState(lastUpdate, needsUpdate, initialized)
+            ).apply(instance) { lastUpdate, assignedLayout ->
+                GridState(
+                    lastUpdateTimestamp = lastUpdate.orElse(null)?.let { Instant.ofEpochMilli(it) },
+                    assignedLayoutId = assignedLayout.orElse(null))
             }
         }
     }
@@ -121,7 +121,7 @@ object Codecs {
                     .optionalFieldOf("block")
                     .forGetter { Optional.ofNullable(it.placedBlock) },
             ).apply(instance) { x, y, block ->
-                GreenhouseSlot(x, y, block.getOrNull())
+                GreenhouseSlot(x, y, block.orElse(null))
             }
         }
     }
@@ -148,7 +148,7 @@ object Codecs {
         RecordCodecBuilder.create { instance ->
             instance.group(
                 Codec.LONG.optionalFieldOf("next_tick")
-                    .forGetter { Optional.ofNullable(it.nextTickTime) },
+                    .forGetter { Optional.ofNullable(it.nextTickTime?.toEpochMilli()) },
                 Codec.INT.optionalFieldOf("crop_growth_value")
                     .forGetter { Optional.ofNullable(it.cropGrowthValue) },
                     Codec.INT.optionalFieldOf("crop_speed_upgrade")
@@ -161,10 +161,10 @@ object Codecs {
 
             ).apply(instance) { tick, cropGrowth, cropSpeed, cropYield, ignoreWarnings ->
                 MiscGreenhouseInfo(
-                    nextTickTime = tick.getOrNull(),
-                    cropGrowthValue = cropGrowth.getOrNull(),
-                    cropSpeedUpgradeValue = cropSpeed.getOrNull(),
-                    cropYieldUpgradeValue = cropYield.getOrNull(),
+                    nextTickTime = tick.orElse(null)?.let { Instant.ofEpochMilli(it) } ,
+                    cropGrowthValue = cropGrowth.orElse(null),
+                    cropSpeedUpgradeValue = cropSpeed.orElse(null),
+                    cropYieldUpgradeValue = cropYield.orElse(null),
                     ignoreWarnings
                     )
             }

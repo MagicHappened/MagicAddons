@@ -14,6 +14,7 @@ import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData.g
 import org.magic.magicaddons.util.ScreenUtil
 import tech.thatgravyboat.skyblockapi.api.profile.garden.Plot
 import tech.thatgravyboat.skyblockapi.api.profile.garden.PlotAPI
+import java.time.Instant
 import kotlin.collections.removeAll
 
 class GreenhouseGrid(
@@ -26,12 +27,16 @@ class GreenhouseGrid(
 
     val elements = mutableListOf<ElementRuntimeState>()
 
-    fun addElement(element: ElementRuntimeState){
+    fun addElement(element: ElementRuntimeState, age: Long? = null){
+        if (age != null)
+            element.instance.age = age
         layout.elementInstances += element.instance
         elements.add(element)
     }
 
-
+    fun hasRuntime(): Boolean {
+        return state.hasRuntimeReferences
+    }
 
     fun getPosForSlot(slot: GreenhouseSlot): BlockPos? {
         val box = plot?.getBuildableArea() ?: return null
@@ -262,15 +267,17 @@ class GreenhouseGrid(
             .filterIsInstance<ArmorStand>()
             .toMutableList()
         elements.forEach {
-            it.standEntities?.let { elements -> stands.removeAll(elements) }
+            it.standEntities?.let { elements -> stands.removeAll(elements.toSet()) }
         }
         return stands.toList()
     }
 
     data class GridState(
-        var lastUpdateTimestamp: Long = -1,
+        var lastUpdateTimestamp: Instant? = null,
         var needsUpdate: Boolean = false,
-        var initialized: Boolean = false
+        var assignedLayoutId: String? = null,
+        var hasRuntimeReferences: Boolean = false,
+        var pendingTicks: Int? = null
     )
 
     override fun toString(): String {

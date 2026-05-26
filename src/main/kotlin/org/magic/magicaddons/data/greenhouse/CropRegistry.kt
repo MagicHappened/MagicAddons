@@ -1,6 +1,9 @@
 package org.magic.magicaddons.data.greenhouse
 
+import net.minecraft.client.renderer.texture.TextureAtlasSprite
+import net.minecraft.resources.Identifier
 import org.magic.magicaddons.data.greenhouse.elements.DeadPlant
+import org.magic.magicaddons.data.greenhouse.elements.DevourerRoots
 import org.magic.magicaddons.data.greenhouse.elements.FireElement
 import org.magic.magicaddons.data.greenhouse.elements.basecrop.*
 import org.magic.magicaddons.data.greenhouse.elements.mutation.common.*
@@ -20,6 +23,7 @@ object CropRegistry {
     init {
         register(FireElement)
         register(DeadPlant)
+        register(DevourerRoots)
 
         register(Brownmushroom)
         register(Cactus)

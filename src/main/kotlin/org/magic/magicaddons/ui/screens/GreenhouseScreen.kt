@@ -16,7 +16,6 @@ import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData
 import org.magic.magicaddons.ui.HoverableContainer
 import org.magic.magicaddons.ui.OverlayContext
 import org.magic.magicaddons.ui.OverlayRenderable
-import org.magic.magicaddons.ui.widgets.AbstractContextMenu
 import org.magic.magicaddons.ui.widgets.greenhouse.EditLayoutContextMenu
 import org.magic.magicaddons.ui.widgets.EnumWidget
 import org.magic.magicaddons.ui.widgets.config.ClickableButtonWidget
@@ -70,7 +69,6 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
     // informing the user that the crop definition has not been added for this crop and to send the debug to me
 
     var ignoreDataWarnings = false
-    var sentWarnings = false
     var currentDisplay = CurrentDisplay.Greenhouses
     var borderPadding: Int = 6
 
@@ -128,10 +126,6 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         initBaseLayout()
     }
     fun initBaseLayout(){
-        sentWarnings = false
-
-
-        sentWarnings = true
 
         savedWidth = width
         savedHeight = height
@@ -167,22 +161,27 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         displayedGridWidget = null
         greenhouseGridWidgets.clear()
 
-        val amountInitialized = GreenhouseData.greenhouseGrids.count { it.state.initialized }
+        val amountInitialized = GreenhouseData.greenhouseGrids.count { it.state.lastUpdateTimestamp != null }
         if (PlotAPI.plots.any { it.data == null }) {
-            if (!ignoreDataWarnings) {
-                ChatUtils.sendWithPrefix("Plot data is null, please open configure plots in desk.")
+            if (!GreenhouseData.miscInfo.shouldIgnoreWarning) {
+                ChatUtils.sendWithCommand(
+                    "Plot data is null, please open desk. (CLICK TO OPEN)",
+                    "/desk"
+                )
             }
             return
         }
         if (amountInitialized != PlotAPI.plots.count { it.data?.isGreenhouse ?: throw IllegalStateException("Plot data was null after null check.") }){
-            if (!ignoreDataWarnings){ //todo change to persistent
-                ChatUtils.sendWithPrefix("The mod scans greenhouses after you've entered them.")
-                ChatUtils.sendWithIgnoreClick("Not all greenhouses available, enter them to see them.")
+            if (!GreenhouseData.miscInfo.shouldIgnoreWarning){
+                ChatUtils.sendWithCommand(
+                    "Not all greenhouses available, enter them to see them. (IGNORE)",
+                    "/MagicAddons internal ignoreFarmingWarnings"
+                )
             }
         }
 
         GreenhouseData.greenhouseGrids.forEachIndexed { index, grid ->
-            if (!grid.state.initialized) return@forEachIndexed
+            if (grid.state.lastUpdateTimestamp == null) return@forEachIndexed
             val gridWidget = GreenhouseGridWidget(grid.layout, slotSize).apply {
                 widgetX = startX
                 widgetY = startY

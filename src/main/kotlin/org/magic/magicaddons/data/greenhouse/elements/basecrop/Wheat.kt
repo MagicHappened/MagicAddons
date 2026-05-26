@@ -53,8 +53,7 @@ object Wheat : CropDefinitionProvider {
                         }
                     )
                 ),
-                armorStands = listOf(
-                ),
+                armorStands = null,
                 3..3
             ),
             CropStage(
@@ -67,9 +66,21 @@ object Wheat : CropDefinitionProvider {
                         }
                     )
                 ),
-                armorStands = listOf(
-                ),
+                armorStands = null,
                 4..4
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0,1,0),
+                        matcher = {
+                            it.isBlock("minecraft:wheat") &&
+                                    it.getIntProperty("age") == 4
+                        }
+                    )
+                ),
+                armorStands = null,
+                5..5
             ),
             CropStage(
                 blocks = listOf(

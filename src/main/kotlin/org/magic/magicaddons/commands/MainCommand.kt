@@ -25,22 +25,31 @@ object MainCommand {
     )
 
     init {
-
         ClientCommandRegistrationCallback.EVENT.register(
             ClientCommandRegistrationCallback { dispatcher, _ ->
 
-                val main = literal(Common.MOD_NAME)
-                    .executes {
-                        val config = ConfigScreen(Component.literal("Magic Addons Config"), null)
+                val roots = listOf(
+                    literal(Common.MOD_NAME),
+                    literal("ma"),
+                    literal("MA")
+                )
+
+                roots.forEach { root ->
+                    root.executes {
+                        val config = ConfigScreen(
+                            Component.literal("Magic Addons Config"),
+                            null
+                        )
                         ScreenUtil.setScreen(config)
-                        return@executes 1
+                        1
                     }
 
-                commandList.forEach { command ->
-                    main.then(command.build())
-                }
+                    commandList.forEach { command ->
+                        root.then(command.build())
+                    }
 
-                dispatcher.register(main)
+                    dispatcher.register(root)
+                }
             }
         )
     }

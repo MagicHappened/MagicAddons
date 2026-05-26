@@ -42,25 +42,3 @@ object Devourer : CropDefinitionProvider {
         isMutation = true
     )
 }
-
-
-/*
-
-CropStage(
-    blocks = listOf(
-    ),
-    armorStands = listOf(
-        CropArmorStand(
-    offset = Vec3(0.1875, -0.75, 0.0),
-    matcher = {
-        it == "438788f3e6237fa486cc01e256496bc7a80cbc34f48935a1e1764be1ba69377a"
-    }
-)
-    ),
-    1..1,
-    allowRotation = true
-)
-
-
-devourer roots ^^
- */
