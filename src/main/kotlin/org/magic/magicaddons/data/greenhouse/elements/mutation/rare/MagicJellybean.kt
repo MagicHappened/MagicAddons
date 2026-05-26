@@ -78,7 +78,116 @@ object MagicJellybean : CropDefinitionProvider {
                 ),
                 18..18,
                 allowRotation = true
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0,1,0),
+                        matcher = {
+                            it.isBlock("minecraft:sugar_cane") &&
+                                    it.getIntProperty("age") == 0
+                        }
+                    ),
+                    CropBlockState(
+                        offset = BlockPos(0,2,0),
+                        matcher = {
+                            it.isBlock("minecraft:sugar_cane") &&
+                                    it.getIntProperty("age") == 0
+                        }
+                    ),
+                    CropBlockState(
+                        offset = BlockPos(0,3,0),
+                        matcher = {
+                            it.isBlock("minecraft:sugar_cane") &&
+                                    it.getIntProperty("age") == 0
+                        }
+                    ),
+                    CropBlockState(
+                        offset = BlockPos(0,4,0),
+                        matcher = {
+                            it.isBlock("minecraft:sugar_cane") &&
+                                    it.getIntProperty("age") == 0
+                        }
+                    ),
+                    CropBlockState(
+                        offset = BlockPos(0,5,0),
+                        matcher = {
+                            it.isBlock("minecraft:sugar_cane") &&
+                                    it.getIntProperty("age") == 0
+                        }
+                    ),
+                    CropBlockState(
+                        offset = BlockPos(0,6,0),
+                        matcher = {
+                            it.isBlock("minecraft:sugar_cane") &&
+                                    it.getIntProperty("age") == 0
+                        }
+                    ),
+                    CropBlockState(
+                        offset = BlockPos(0,7,0),
+                        matcher = {
+                            it.isBlock("minecraft:sugar_cane") &&
+                                    it.getIntProperty("age") == 0
+                        }
+                    ),
+                    CropBlockState(
+                        offset = BlockPos(0,8,0),
+                        matcher = {
+                            it.isBlock("minecraft:sugar_cane") &&
+                                    it.getIntProperty("age") == 0
+                        }
+                    ),
+                    CropBlockState(
+                        offset = BlockPos(0,9,0),
+                        matcher = {
+                            it.isBlock("minecraft:sugar_cane") &&
+                                    it.getIntProperty("age") == 0
+                        }
+                    ),
+                    CropBlockState(
+                        offset = BlockPos(0,10,0),
+                        matcher = {
+                            it.isBlock("minecraft:sugar_cane") &&
+                                    it.getIntProperty("age") == 0
+                        }
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, -0.21875, 0.0),
+                        matcher = {
+                            it == "c526a56b80f56a6870f891d1d46fa7f8c71494cad24e94326da84b3829417b81"
+                        }
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(0.0, 0.78125, 0.0),
+                        matcher = {
+                            it == "c526a56b80f56a6870f891d1d46fa7f8c71494cad24e94326da84b3829417b81"
+                        }
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(0.0, 1.78125, 0.0),
+                        matcher = {
+                            it == "c526a56b80f56a6870f891d1d46fa7f8c71494cad24e94326da84b3829417b81"
+                        }
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(0.0, 2.78125, 0.0),
+                        matcher = {
+                            it == "c526a56b80f56a6870f891d1d46fa7f8c71494cad24e94326da84b3829417b81"
+                        }
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(0.0, 3.78125, 0.0),
+                        matcher = {
+                            it == "c526a56b80f56a6870f891d1d46fa7f8c71494cad24e94326da84b3829417b81"
+                        }
+                    )
+                ),
+                120..120,
+                allowRotation = true
             )
+
 
 
         ),

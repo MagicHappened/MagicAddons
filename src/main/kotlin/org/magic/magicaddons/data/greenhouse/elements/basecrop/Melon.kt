@@ -126,8 +126,36 @@ object Melon : CropDefinitionProvider {
                         }
                     )
                 ),
-                9..9
+                9..9,
+                allowRotation = true
             ), //todo check other rotations
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0,1,0),
+                        matcher = {
+                            it.isBlock("minecraft:melon_stem") &&
+                                    it.getIntProperty("age") == 7
+                        }
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0625, -0.46875, 0.0),
+                        matcher = {
+                            it == "192600cad8dbec5b6a6ec4dcf9bb4e9cd76190cad80aeee8b047de719cf5e36d"
+                        }
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(-0.09375, -0.625, -0.09375),
+                        matcher = {
+                            it == "192600cad8dbec5b6a6ec4dcf9bb4e9cd76190cad80aeee8b047de719cf5e36d"
+                        }
+                    )
+                ),
+                10..10,
+                allowRotation = true
+            ),
             CropStage(
                 blocks = listOf(
                     CropBlockState(

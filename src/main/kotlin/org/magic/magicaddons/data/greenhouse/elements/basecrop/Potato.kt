@@ -73,6 +73,19 @@ object Potato : CropDefinitionProvider {
                         offset = BlockPos(0,1,0),
                         matcher = {
                             it.isBlock("minecraft:potatoes") &&
+                                    it.getIntProperty("age") == 4
+                        }
+                    )
+                ),
+                armorStands = null,
+                5..5
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0,1,0),
+                        matcher = {
+                            it.isBlock("minecraft:potatoes") &&
                                     it.getIntProperty("age") == 7
                         }
                     )

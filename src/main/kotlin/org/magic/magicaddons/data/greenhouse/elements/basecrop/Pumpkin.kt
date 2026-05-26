@@ -105,7 +105,35 @@ object Pumpkin : CropDefinitionProvider {
                         }
                     )
                 ),
-                9..9 //todo might need to allow rotation
+                9..9,
+                allowRotation = true
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0,1,0),
+                        matcher = {
+                            it.isBlock("minecraft:melon_stem") &&
+                                    it.getIntProperty("age") == 7
+                        }
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(-0.09375, -0.625, 0.09375),
+                        matcher = {
+                            it == "a9d2abe3c6d6400a20b47179bbe9be278ed336c07fcc1e03ab0eb0c470d620c"
+                        }
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(0.0, -0.46875, -0.0625),
+                        matcher = {
+                            it == "a9d2abe3c6d6400a20b47179bbe9be278ed336c07fcc1e03ab0eb0c470d620c"
+                        }
+                    )
+                ),
+                10..10,
+                allowRotation = true
             ),
             CropStage(
                 blocks = listOf(

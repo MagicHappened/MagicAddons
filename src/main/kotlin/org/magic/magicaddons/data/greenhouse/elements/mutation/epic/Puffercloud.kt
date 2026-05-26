@@ -90,6 +90,26 @@ object Puffercloud : CropDefinitionProvider {
                 ),
                 armorStands = listOf(
                     CropArmorStand(
+                        offset = Vec3(0.5, -0.65625, 0.5),
+                        matcher = {
+                            it == "2f9502a6895a90bbbb25921842fa6a213744ba967bbdfd861a44c92a79530aa0"
+                        }
+                    )
+                ),
+                8..8
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0,1,0),
+                        matcher = {
+                            it.isBlock("minecraft:wheat") &&
+                                    it.getIntProperty("age") == 3
+                        }
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
                         offset = Vec3(0.0, -0.59375, 0.0),
                         matcher = {
                             it == "fb1e911b28a5bc539bba0e159256c415c6f74833cbee9c32fbcac4ca7b98a77b"

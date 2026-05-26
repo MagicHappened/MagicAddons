@@ -105,7 +105,28 @@ object Sunflower : CropDefinitionProvider {
                         }
                     )
                 ),
-                9..9
+                9..9,
+                allowRotation = true
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0,1,0),
+                        matcher = {
+                            it.isBlock("minecraft:sunflower")
+                        }
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(-0.1875, 0.4375, 0.0),
+                        matcher = {
+                            it == "8082ca3aa210204d1daa8a3b737f594e102daf3c87b776530d49ba79b9b22e71"
+                        }
+                    )
+                ),
+                12..12,
+                allowRotation = true
             ),
             CropStage(
                 blocks = listOf(
@@ -124,7 +145,8 @@ object Sunflower : CropDefinitionProvider {
                         }
                     )
                 ),
-                15..15
+                15..15,
+                allowRotation = true
             )
 
 
