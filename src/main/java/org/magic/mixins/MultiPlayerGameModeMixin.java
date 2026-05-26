@@ -9,6 +9,7 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.EntityHitResult;
 import org.magic.magicaddons.events.EventBus;
 import org.magic.magicaddons.events.interact.*;
 import org.magic.magicaddons.util.ChatUtils;
@@ -64,8 +65,15 @@ public abstract class MultiPlayerGameModeMixin {
         EventBus.post(event);
     }
 
-    @Inject(method = "interact", at = @At("TAIL"))
-    private void onInteract(Player player, Entity entity, InteractionHand interactionHand, CallbackInfoReturnable<InteractionResult> cir){
+    @Inject(
+            method = "interactAt",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/client/multiplayer/ClientPacketListener;send(Lnet/minecraft/network/protocol/Packet;)V",
+                    shift = At.Shift.AFTER
+            )
+    )
+    private void onInteractAt(Player player, Entity entity, EntityHitResult entityHitResult, InteractionHand interactionHand, CallbackInfoReturnable<InteractionResult> cir){
         OnInteractEntityEvent event = new OnInteractEntityEvent(player,entity);
         EventBus.post(event);
     }

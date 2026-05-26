@@ -7,6 +7,7 @@ import org.magic.magicaddons.data.greenhouse.Codecs.GREENHOUSE_LAYOUT_CODEC
 import org.magic.magicaddons.data.greenhouse.Codecs.MISC_GREENHOUSE_INFO_CODEC
 import org.magic.magicaddons.data.greenhouse.MiscGreenhouseInfo
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData
+import org.magic.magicaddons.util.ChatUtils
 import java.nio.file.Files
 import java.nio.file.Path
 
@@ -67,13 +68,10 @@ object DataHandler {
             return@run mutableListOf()
         }
 
-
-
-
-
     }
 
     fun saveGardenData(){
+        Common.LOGGER.info("Saving misc info: ${GreenhouseData.miscInfo}")
         CodecStorage.save(
             path = greenhouseFile,
             codec = MISC_GREENHOUSE_INFO_CODEC,

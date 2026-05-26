@@ -128,24 +128,6 @@ object Wildrose : CropDefinitionProvider {
                         matcher = {
                             it == "4a99a01317a01f65f7a7610122bea792c22a771e7a48ce1a5b352bccc8335074"
                         }
-                    ),
-                    CropArmorStand(
-                        offset = Vec3(0.0, 2.4869999999999948, 0.0),
-                        matcher = {
-                            true
-                        }
-                    ),
-                    CropArmorStand(
-                        offset = Vec3(0.0, 2.1169999999999902, 0.0),
-                        matcher = {
-                            true
-                        }
-                    ),
-                    CropArmorStand(
-                        offset = Vec3(0.0, 1.7469999999999857, 0.0),
-                        matcher = {
-                            true
-                        }
                     )
                 ),
                 7..7
@@ -174,46 +156,6 @@ object Wildrose : CropDefinitionProvider {
                     CropBlockState(
                         offset = BlockPos(0,1,0),
                         matcher = {
-                            it.isBlock("minecraft:cactus") &&
-                                    it.getIntProperty("age") == 0
-                        }
-                    ),
-                    CropBlockState(
-                        offset = BlockPos(0,2,0),
-                        matcher = {
-                            it.isBlock("minecraft:cactus") &&
-                                    it.getIntProperty("age") == 0
-                        }
-                    ),
-                    CropBlockState(
-                        offset = BlockPos(0,3,0),
-                        matcher = {
-                            it.isBlock("minecraft:cactus") &&
-                                    it.getIntProperty("age") == 0
-                        }
-                    )
-                ),
-                armorStands = listOf(
-                    CropArmorStand(
-                        offset = Vec3(0.3125, 1.0, 0.0),
-                        matcher = {
-                            it == "d4b3ea5cb6b6f046e326621ca11ffb7d6aec22d66c0d81e5039b19ee4400309f"
-                        }
-                    ),
-                    CropArmorStand(
-                        offset = Vec3(-0.28125, 2.0, -0.03125),
-                        matcher = {
-                            it == "d4b3ea5cb6b6f046e326621ca11ffb7d6aec22d66c0d81e5039b19ee4400309f"
-                        }
-                    )
-                ),
-                11..11
-            ),
-            CropStage(
-                blocks = listOf(
-                    CropBlockState(
-                        offset = BlockPos(0,1,0),
-                        matcher = {
                             it.isBlock("minecraft:rose_bush")
                         }
                     )
@@ -224,27 +166,9 @@ object Wildrose : CropDefinitionProvider {
                         matcher = {
                             it == "4a99a01317a01f65f7a7610122bea792c22a771e7a48ce1a5b352bccc8335074"
                         }
-                    ),
-                    CropArmorStand(
-                        offset = Vec3(0.0, 2.911999999999992, 0.0),
-                        matcher = {
-                            true
-                        }
-                    ),
-                    CropArmorStand(
-                        offset = Vec3(0.0, 2.5419999999999874, 0.0),
-                        matcher = {
-                            true
-                        }
-                    ),
-                    CropArmorStand(
-                        offset = Vec3(0.0, 2.171999999999983, 0.0),
-                        matcher = {
-                            true
-                        }
                     )
                 ),
-                12..12
+                12..13
             ),
             CropStage(
                 blocks = listOf(
