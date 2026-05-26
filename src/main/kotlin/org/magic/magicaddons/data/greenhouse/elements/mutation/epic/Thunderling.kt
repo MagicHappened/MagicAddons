@@ -26,7 +26,51 @@ object Thunderling : CropDefinitionProvider {
                     )
                 ),
                 2..2
+            ),
+            CropStage(
+                blocks = listOf(
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.15625, -0.5, 0.21875),
+                        matcher = {
+                            it == "3724327576a20876fc95f41bb37fd0e2f2c79014455f19262f185ce88b155385"
+                        }
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(0.0625, -0.625, -0.25),
+                        matcher = {
+                            it == "3724327576a20876fc95f41bb37fd0e2f2c79014455f19262f185ce88b155385"
+                        }
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(-0.21875, -0.5, 0.03125),
+                        matcher = {
+                            it == "3724327576a20876fc95f41bb37fd0e2f2c79014455f19262f185ce88b155385"
+                        }
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(0.0, 2.411999999999992, 0.0),
+                        matcher = {
+                            true
+                        }
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(0.0, 2.0419999999999874, 0.0),
+                        matcher = {
+                            true
+                        }
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(0.0, 1.6719999999999828, 0.0),
+                        matcher = {
+                            true
+                        }
+                    )
+                ),
+                16..16
             )
+
 
         ),
         maxStage = 16,

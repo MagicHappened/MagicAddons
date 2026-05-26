@@ -91,7 +91,61 @@ object StoplightPetal : CropDefinitionProvider {
                 ),
                 10..10,
                 allowRotation = true
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0,1,0),
+                        matcher = {
+                            it.isBlock("minecraft:melon_stem") &&
+                                    it.getIntProperty("age") == 5
+                        }
+                    ),
+                    CropBlockState(
+                        offset = BlockPos(0,2,0),
+                        matcher = {
+                            it.isBlock("minecraft:melon_stem") &&
+                                    it.getIntProperty("age") == 5
+                        }
+                    ),
+                    CropBlockState(
+                        offset = BlockPos(0,3,0),
+                        matcher = {
+                            it.isBlock("minecraft:melon_stem") &&
+                                    it.getIntProperty("age") == 5
+                        }
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, -0.4375, 0.0),
+                        matcher = {
+                            it == "4c2b797e7172a05169e313739908515864d6b372f9a5ecc772f81d9c4e402a54"
+                        }
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(0.0, 0.71875, 0.0),
+                        matcher = {
+                            it == "d6653a481cc301bcf694a70bfb5969485dc42f1e6803288d24d31b7261b61811"
+                        }
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(0.0, 0.15625, 0.0),
+                        matcher = {
+                            it == "f15bd3a726eee1f2f8ffd3a92ae95c44a2f37f6b0345a795b44e0360564c67fe"
+                        }
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(-0.03125, 2.125, 0.21875),
+                        matcher = {
+                            it == "57f6c922e742b5c571b1cf091d6d4bc06360f4f03443d79c5174097b0b373d7e"
+                        }
+                    )
+                ),
+                12..12,
+                allowRotation = true
             )
+
 
 
 
