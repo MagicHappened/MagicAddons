@@ -2,6 +2,7 @@ package org.magic.magicaddons.features.farming.greenhousePresets
 
 import net.minecraft.client.Minecraft
 import net.minecraft.core.BlockPos
+import net.minecraft.network.chat.Component
 import net.minecraft.world.entity.EquipmentSlot
 import net.minecraft.world.entity.decoration.ArmorStand
 import net.minecraft.world.item.ItemStack
@@ -458,27 +459,30 @@ object GreenhouseData {
 
 
     fun warnUnknownValues(sendWarning: Boolean = true): Boolean {
-        var unknownValue = false
+        val warnings = mutableListOf<Component>()
         if (miscInfo.cropGrowthValue == null) {
-            ChatUtils.sendWithCommand(
+            warnings.add(
+                ChatUtils.buildWithCommand(
                 "Unknown Crop Growth value. Click here to open desk",
-                "/desk"
+                "/desk")
             )
-            unknownValue = true
         }
         if (miscInfo.cropSpeedUpgradeValue == null || miscInfo.cropYieldUpgradeValue == null) {
-            ChatUtils.sendWithCommand(
-                "Unknown Crop Speed or Yield upgrade. Click here to open desk",
-                "/greenhouseupgrades"
+            warnings.add(
+                ChatUtils.buildWithCommand(
+                    "Unknown Crop Speed or Yield upgrade. Click here to open desk",
+                    "/greenhouseupgrades")
             )
-            unknownValue = true
         }
         if (miscInfo.nextTickTime == null){
-            ChatUtils.sendWithPrefix("Unknown tick time, please right click a non fully grown plant")
-            unknownValue = true
+            warnings.add(
+                ChatUtils.buildWithPrefix("Unknown tick time, please right click a non fully grown plant")
+            )
         }
-
-        return unknownValue
+        if (sendWarning){
+            ChatUtils.sendWarnings(warnings)
+        }
+        return warnings.isNotEmpty()
     }
 
     fun cropPlanted() {
