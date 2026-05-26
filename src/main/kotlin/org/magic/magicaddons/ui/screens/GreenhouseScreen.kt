@@ -13,6 +13,7 @@ import org.magic.magicaddons.data.greenhouse.GreenhouseGrid
 import org.magic.magicaddons.data.greenhouse.GreenhouseLayout
 import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData
+import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData.toReadableDuration
 import org.magic.magicaddons.ui.HoverableContainer
 import org.magic.magicaddons.ui.OverlayContext
 import org.magic.magicaddons.ui.OverlayRenderable
@@ -274,6 +275,13 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
             width / 2,
             18
         )
+        val timeText = GreenhouseData.miscInfo.nextTickTime?.toReadableDuration() ?: "Unknown Time"
+        val timeWidth = font.width(timeText)
+
+        graphics.drawMultilineBoxCentered(
+            timeText,
+            10 + timeWidth/2, 18)
+
         displayedGridWidget?.render(graphics, mouseX, mouseY, delta)
         gridSelector.render(graphics, mouseX, mouseY, delta)
         currentDisplayToggle.render(graphics, mouseX, mouseY, delta)

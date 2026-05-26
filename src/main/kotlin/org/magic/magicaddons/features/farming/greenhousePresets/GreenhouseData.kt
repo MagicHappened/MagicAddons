@@ -31,12 +31,15 @@ import tech.thatgravyboat.skyblockapi.api.events.info.ScoreboardUpdateEvent
 import tech.thatgravyboat.skyblockapi.api.events.location.IslandChangeEvent
 import tech.thatgravyboat.skyblockapi.api.events.location.ServerDisconnectEvent
 import tech.thatgravyboat.skyblockapi.api.events.screen.ContainerInitializedEvent
+import tech.thatgravyboat.skyblockapi.api.events.time.TickEvent
+import tech.thatgravyboat.skyblockapi.api.location.LocationAPI
 import tech.thatgravyboat.skyblockapi.api.location.SkyBlockIsland
 import tech.thatgravyboat.skyblockapi.api.profile.garden.Plot
 import tech.thatgravyboat.skyblockapi.api.profile.garden.PlotAPI
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockId.Companion.getSkyBlockId
 import tech.thatgravyboat.skyblockapi.utils.extentions.getLore
 import tech.thatgravyboat.skyblockapi.utils.extentions.isSkyblockFiller
+import java.time.Duration
 import java.time.Instant
 import java.util.*
 import kotlin.math.abs
@@ -64,6 +67,8 @@ object GreenhouseData {
     var greenhouseGrids = mutableListOf<GreenhouseGrid>()
     var presetGrids = mutableListOf<GreenhouseLayout>()
     var miscInfo = MiscGreenhouseInfo()
+
+    var lastCheckTime: Instant? = null
 
     var removedElementByAttack: ElementRuntimeState? = null
     private var placedCrop: Pair<CropDefinition, BlockPos>? = null
@@ -119,7 +124,8 @@ object GreenhouseData {
         if (!greenhousesInitialized) return
         val plot = PlotAPI.getCurrentPlot() ?: return
 
-        val grid = greenhouseGrids.find { it.layout.id == "plot_${plot.id}" } ?: return //isnt greenhouse
+        val grid = getCurrentGrid() ?: return
+        checkForUpdate()
         if (grid.state.hasRuntimeReferences && !grid.state.needsUpdate) return
 
         grid.plot = plot
@@ -129,7 +135,7 @@ object GreenhouseData {
         grid.state.hasRuntimeReferences = true
         grid.state.needsUpdate = false
         grid.state.lastUpdateTimestamp = Instant.now()
-
+        grid.state.pendingTicks = 0
 
         ChatUtils.sendWithPrefix("Successfully scanned data for ${plot.id}")
     }
@@ -191,6 +197,28 @@ object GreenhouseData {
         return totalMs
     }
 
+    fun Instant.toReadableDuration(from: Instant = Instant.now()): String {
+        var seconds = abs(Duration.between(this, from).seconds)
+
+        val days = seconds / 86400
+        seconds %= 86400
+
+        val hours = seconds / 3600
+        seconds %= 3600
+
+        val minutes = seconds / 60
+        seconds %= 60
+
+        val parts = mutableListOf<String>()
+
+        if (days > 0) parts += "${days}d"
+        if (hours > 0) parts += "${hours}h"
+        if (minutes > 0) parts += "${minutes}m"
+        if (seconds > 0 || parts.isEmpty()) parts += "${seconds}s"
+
+        return parts.joinToString(" ")
+    }
+
     fun Plot.getBuildableArea(): AABB {
         val box = this.aabb
         val minX = box.minX + BUILD_OFFSET
@@ -225,15 +253,26 @@ object GreenhouseData {
 
         if (warnUnknownValues(!miscInfo.shouldIgnoreWarning)) return
 
-        val uniques = countUniques()
+        val uniques = getCurrentUniques().size
         val tickMs = computeGrowthStageTimeSeconds(
             uniques,
             miscInfo.cropGrowthValue!!,
             miscInfo.cropSpeedUpgradeValue!!) * 1000L
 
         if (miscInfo.nextTickTime == null) return
-
         val now = Instant.now()
+
+        var nextTick = miscInfo.nextTickTime ?: return
+        if (nextTick.isBefore(now)) {
+
+            val overdueMs = now.toEpochMilli() - nextTick.toEpochMilli()
+
+            val passedGlobalTicks = (overdueMs / tickMs) + 1
+
+            nextTick = nextTick.plusMillis((passedGlobalTicks * tickMs).toLong())
+
+            miscInfo.nextTickTime = nextTick
+        }
 
         greenhouseGrids.forEach { grid ->
 
@@ -250,6 +289,21 @@ object GreenhouseData {
         }
     }
 
+    @Subscription
+    fun onTick(event: TickEvent){
+        val now = Instant.now()
+        val last = lastCheckTime
+
+        if (last == null ||
+            last.plusSeconds(300).isBefore(now) ||
+            miscInfo.nextTickTime?.isBefore(now) ?: false
+            ){
+            lastCheckTime = now
+            checkForUpdate()
+        }
+    }
+
+
 
     @Subscription
     fun onIslandChange(event: IslandChangeEvent) {
@@ -260,6 +314,7 @@ object GreenhouseData {
             }
         }
 
+        checkForUpdate()
     }
 
     @Subscription
@@ -274,8 +329,8 @@ object GreenhouseData {
     fun onScoreboardUpdate(event: ScoreboardUpdateEvent) {
         if (!baseSetting.value) return
         initKnownIds()
-        checkForUpdate()
         scanGridData()
+
     }
 
     @Subscription
@@ -480,7 +535,7 @@ object GreenhouseData {
             )
         }
         if (sendWarning){
-            ChatUtils.sendWarnings(warnings)
+            ChatUtils.sendWarningsComponents(warnings)
         }
         return warnings.isNotEmpty()
     }
@@ -581,9 +636,11 @@ object GreenhouseData {
                 ?.ifBlank { saplingLore[2].siblings.getOrNull(1)?.string ?: "" }
                 ?: saplingLore[2].siblings.getOrNull(1)?.string
         }.getOrNull()
-        ChatUtils.sendWithPrefix("Next stage: $nextStage")
+
         if (nextStage?.contains(Regex("\\d")) ?: false){
+            if (!LocationAPI.isGuest){
             miscInfo.nextTickTime = Instant.now().plusMillis(nextStage.parseDurationToMs())
+            }
         }
 
         def ?: return
@@ -666,8 +723,8 @@ object GreenhouseData {
         }
     }
 
-    fun countUniques(): Int {
-        val foundUniques = mutableSetOf<String>()
+    fun getCurrentUniques(): Set<UniqueCropKey> {
+        val foundUniques = mutableSetOf<UniqueCropKey>()
 
         greenhouseGrids.forEach { grid ->
             grid.layout.elementInstances.forEach { instance ->
@@ -678,17 +735,20 @@ object GreenhouseData {
 
                 if (!cropDef.isBaseCrop) return@forEach
 
-                val uniqueKey = when (cropDef.name) {
-                    "Sunflower", "Moonflower" -> "FLOWER"
-                    "Red Mushroom", "Brown Mushroom" -> "MUSHROOM"
-                    else -> cropDef.skyblockId?.id ?: cropDef.name
-                }
-
-                foundUniques.add(uniqueKey)
+                foundUniques.add(UniqueCropKey.from(cropDef))
             }
         }
 
-        return foundUniques.size
+        return foundUniques
+    }
+
+    fun getMissingUniques(): Set<UniqueCropKey> {
+        val found = getCurrentUniques()
+        return CropRegistry.all
+            .filter { it.isBaseCrop }
+            .map { UniqueCropKey.from(it) }
+            .toSet()
+            .minus(found)
     }
 
 
@@ -849,4 +909,20 @@ $matcherLine
         ChatUtils.sendWithPrefix("Copied crop stage to clipboard (${result.length} chars)")
     }
 
+    sealed class UniqueCropKey {
+
+        data class Def(val id: String) : UniqueCropKey()
+        data object Flower : UniqueCropKey()
+        data object Mushroom : UniqueCropKey()
+
+        companion object {
+            fun from(def: CropDefinition): UniqueCropKey {
+                return when (def.name) {
+                    "Sunflower", "Moonflower" -> Flower
+                    "Red Mushroom", "Brown Mushroom" -> Mushroom
+                    else -> Def(def.skyblockId?.id ?: def.name)
+                }
+            }
+        }
+    }
 }

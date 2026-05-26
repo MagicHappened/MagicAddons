@@ -76,7 +76,28 @@ object Chocoberry : CropDefinitionProvider {
                     )
                 ),
                 4..4
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0,1,0),
+                        matcher = {
+                            it.isBlock("minecraft:melon_stem") &&
+                                    it.getIntProperty("age") == 3
+                        }
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, -0.0625, 0.0),
+                        matcher = {
+                            it == "167bb9880a3ab37435a21b1f135a01a96cca45b49daeb4a1e91baf358e37d89d"
+                        }
+                    )
+                ),
+                6..6
             )
+
 
 
 

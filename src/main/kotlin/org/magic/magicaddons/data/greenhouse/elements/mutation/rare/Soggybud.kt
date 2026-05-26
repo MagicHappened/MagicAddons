@@ -36,6 +36,19 @@ object Soggybud : CropDefinitionProvider {
                 ),
                 armorStands = listOf(
                     CropArmorStand(
+                        offset = Vec3(0.0, 0.0625, 0.0),
+                        matcher = {
+                            it == "b4bdf477d2f417f75798ad6377b131aca787be9bc05a2fddc1972d81d40c7356"
+                        }
+                    )
+                ),
+                2..2
+            ),
+            CropStage(
+                blocks = listOf(
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
                         offset = Vec3(0.0, 0.15625, 0.0),
                         matcher = {
                             it == "b4bdf477d2f417f75798ad6377b131aca787be9bc05a2fddc1972d81d40c7356"
@@ -69,6 +82,59 @@ object Soggybud : CropDefinitionProvider {
                     )
                 ),
                 5..5
+            ),
+            CropStage(
+                blocks = listOf(
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, -0.5625, 0.0),
+                        matcher = {
+                            it == "b4bdf477d2f417f75798ad6377b131aca787be9bc05a2fddc1972d81d40c7356"
+                        }
+                    )
+                ),
+                6..6
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0,1,0),
+                        matcher = {
+                            it.isBlock("minecraft:melon_stem") &&
+                                    it.getIntProperty("age") == 4
+                        }
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, -0.4375, 0.0),
+                        matcher = {
+                            it == "b4bdf477d2f417f75798ad6377b131aca787be9bc05a2fddc1972d81d40c7356"
+                        }
+                    )
+                ),
+                7..7
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0,1,0),
+                        matcher = {
+                            it.isBlock("minecraft:melon_stem") &&
+                                    it.getIntProperty("age") == 4
+                        }
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, -0.1875, 0.0),
+                        matcher = {
+                            it == "b4bdf477d2f417f75798ad6377b131aca787be9bc05a2fddc1972d81d40c7356"
+                        }
+                    )
+                ),
+                8..8
             ),
             CropStage(
                 blocks = listOf(

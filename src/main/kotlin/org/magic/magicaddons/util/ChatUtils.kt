@@ -11,7 +11,7 @@ import java.time.Instant
 
 object ChatUtils {
     //todo add warning system instead of send and add cooldown
-    var lastWarningtime: Instant? = null
+    var lastWarningTime: Instant? = null
 
     fun sendWithPrefix(message: String) {
         val prefixed = buildWithPrefix(message)
@@ -60,7 +60,7 @@ object ChatUtils {
     }
 
     fun cooldownReady(): Boolean {
-        return lastWarningtime
+        return lastWarningTime
             ?.plusSeconds(60)
             ?.isBefore(Instant.now())
             ?: true
@@ -68,28 +68,23 @@ object ChatUtils {
 
     fun sendWarning(message: String) {
         if (cooldownReady()) {
-            lastWarningtime = Instant.now()
+            lastWarningTime = Instant.now()
             sendWithPrefix(message)
         }
     }
     fun buildWarning(message: String): Component? {
         if (cooldownReady()) {
-            lastWarningtime = Instant.now()
+            lastWarningTime = Instant.now()
             return buildWithPrefix(message)
         }
         return null
     }
     fun sendWarnings(messages: List<String>) {
-        if (cooldownReady()) {
-            lastWarningtime = Instant.now()
-            messages.forEach {
-                sendWithPrefix(it)
-            }
-        }
+        sendWarningsComponents(messages.map { Component.literal(it) })
     }
-    fun sendWarnings(messages: List<Component>) {
+    fun sendWarningsComponents(messages: List<Component>) {
         if (cooldownReady()) {
-            lastWarningtime = Instant.now()
+            lastWarningTime = Instant.now()
             messages.forEach {
                 sendWithPrefix(it)
             }
