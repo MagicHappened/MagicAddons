@@ -1,8 +1,15 @@
 package org.magic.magicaddons.data.greenhouse.elements.mutation.rare
 
+import net.minecraft.core.BlockPos
+import net.minecraft.world.phys.Vec3
+import org.magic.magicaddons.data.greenhouse.CropArmorStand
+import org.magic.magicaddons.data.greenhouse.CropBlockState
 import org.magic.magicaddons.data.greenhouse.CropDefinition
 import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
+import org.magic.magicaddons.data.greenhouse.CropStage
 import org.magic.magicaddons.data.greenhouse.Footprint
+import org.magic.magicaddons.util.BlockUtils.getIntProperty
+import org.magic.magicaddons.util.BlockUtils.isBlock
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockId
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
@@ -10,7 +17,362 @@ object Snoozling : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Snoozling",
         skyblockId = SkyBlockItemId.item("SNOOZLING"),
-        stageDefs = listOf(),
+        stageDefs = listOf(
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0,1,0),
+                        matcher = {
+                            it.isBlock("minecraft:wheat") &&
+                                    it.getIntProperty("age") == 0
+                        }
+                    ),
+                    CropBlockState(
+                        offset = BlockPos(0,1,2),
+                        matcher = {
+                            it.isBlock("minecraft:wheat") &&
+                                    it.getIntProperty("age") == 0
+                        }
+                    ),
+                    CropBlockState(
+                        offset = BlockPos(2,1,0),
+                        matcher = {
+                            it.isBlock("minecraft:wheat") &&
+                                    it.getIntProperty("age") == 0
+                        }
+                    ),
+                    CropBlockState(
+                        offset = BlockPos(2,1,2),
+                        matcher = {
+                            it.isBlock("minecraft:wheat") &&
+                                    it.getIntProperty("age") == 0
+                        }
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(1.5625, -0.0625, 2.03125),
+                        matcher = {
+                            it == "77bb86dedeb827f2489aa0103d58d0e12e64a8152d5a0f5b1d4d208a3cb55999"
+                        }
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(1.5, -0.46875, 1.53125),
+                        matcher = {
+                            it == "b82d442528456547474dd88166a97818f057ecc4b3ed350ef9a5e4dbd27f98d7"
+                        }
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(2.0, 0.25, 1.3125),
+                        matcher = {
+                            it == "b82d442528456547474dd88166a97818f057ecc4b3ed350ef9a5e4dbd27f98d7"
+                        }
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(1.0, 0.25, 1.28125),
+                        matcher = {
+                            it == "b82d442528456547474dd88166a97818f057ecc4b3ed350ef9a5e4dbd27f98d7"
+                        }
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(1.5, 0.1875, 1.09375),
+                        matcher = {
+                            it == "b82d442528456547474dd88166a97818f057ecc4b3ed350ef9a5e4dbd27f98d7"
+                        }
+                    )
+                ),
+                4..4,
+                allowRotation = true
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0,1,0),
+                        matcher = {
+                            it.isBlock("minecraft:wheat") &&
+                                    it.getIntProperty("age") == 0
+                        }
+                    ),
+                    CropBlockState(
+                        offset = BlockPos(0,1,2),
+                        matcher = {
+                            it.isBlock("minecraft:wheat") &&
+                                    it.getIntProperty("age") == 0
+                        }
+                    ),
+                    CropBlockState(
+                        offset = BlockPos(2,1,0),
+                        matcher = {
+                            it.isBlock("minecraft:wheat") &&
+                                    it.getIntProperty("age") == 0
+                        }
+                    ),
+                    CropBlockState(
+                        offset = BlockPos(2,1,2),
+                        matcher = {
+                            it.isBlock("minecraft:wheat") &&
+                                    it.getIntProperty("age") == 0
+                        }
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.96875, 0.25, 1.34375),
+                        matcher = {
+                            it == "b82d442528456547474dd88166a97818f057ecc4b3ed350ef9a5e4dbd27f98d7"
+                        }
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(1.5, 0.1875, 1.09375),
+                        matcher = {
+                            it == "b82d442528456547474dd88166a97818f057ecc4b3ed350ef9a5e4dbd27f98d7"
+                        }
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(2.0, 0.25, 1.34375),
+                        matcher = {
+                            it == "b82d442528456547474dd88166a97818f057ecc4b3ed350ef9a5e4dbd27f98d7"
+                        }
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(1.5, -0.46875, 1.53125),
+                        matcher = {
+                            it == "b82d442528456547474dd88166a97818f057ecc4b3ed350ef9a5e4dbd27f98d7"
+                        }
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(1.5625, -0.0625, 2.03125),
+                        matcher = {
+                            it == "77bb86dedeb827f2489aa0103d58d0e12e64a8152d5a0f5b1d4d208a3cb55999"
+                        }
+                    )
+                ),
+                5..5,
+                allowRotation = true
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0,1,0),
+                        matcher = {
+                            it.isBlock("minecraft:wheat") &&
+                                    it.getIntProperty("age") == 3
+                        }
+                    ),
+                    CropBlockState(
+                        offset = BlockPos(0,1,2),
+                        matcher = {
+                            it.isBlock("minecraft:wheat") &&
+                                    it.getIntProperty("age") == 3
+                        }
+                    ),
+                    CropBlockState(
+                        offset = BlockPos(2,1,0),
+                        matcher = {
+                            it.isBlock("minecraft:wheat") &&
+                                    it.getIntProperty("age") == 3
+                        }
+                    ),
+                    CropBlockState(
+                        offset = BlockPos(2,1,2),
+                        matcher = {
+                            it.isBlock("minecraft:wheat") &&
+                                    it.getIntProperty("age") == 3
+                        }
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(1.9375, -0.84375, 1.125),
+                        matcher = {
+                            it == "b82d442528456547474dd88166a97818f057ecc4b3ed350ef9a5e4dbd27f98d7"
+                        }
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(1.5, 0.4375, 1.90625),
+                        matcher = {
+                            it == "b82d442528456547474dd88166a97818f057ecc4b3ed350ef9a5e4dbd27f98d7"
+                        }
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(1.5, -0.5625, 1.5),
+                        matcher = {
+                            it == "b82d442528456547474dd88166a97818f057ecc4b3ed350ef9a5e4dbd27f98d7"
+                        }
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(1.5, 0.0, 2.34375),
+                        matcher = {
+                            it == "77bb86dedeb827f2489aa0103d58d0e12e64a8152d5a0f5b1d4d208a3cb55999"
+                        }
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(1.5, 0.15625, 1.09375),
+                        matcher = {
+                            it == "b82d442528456547474dd88166a97818f057ecc4b3ed350ef9a5e4dbd27f98d7"
+                        }
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(1.03125, -0.78125, 1.125),
+                        matcher = {
+                            it == "b82d442528456547474dd88166a97818f057ecc4b3ed350ef9a5e4dbd27f98d7"
+                        }
+                    )
+                ),
+                10..10,
+                allowRotation = true //todo check if its different when sleeping.
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0,1,0),
+                        matcher = {
+                            it.isBlock("minecraft:wheat") &&
+                                    it.getIntProperty("age") == 4
+                        }
+                    ),
+                    CropBlockState(
+                        offset = BlockPos(0,1,2),
+                        matcher = {
+                            it.isBlock("minecraft:wheat") &&
+                                    it.getIntProperty("age") == 4
+                        }
+                    ),
+                    CropBlockState(
+                        offset = BlockPos(2,1,0),
+                        matcher = {
+                            it.isBlock("minecraft:wheat") &&
+                                    it.getIntProperty("age") == 4
+                        }
+                    ),
+                    CropBlockState(
+                        offset = BlockPos(2,1,2),
+                        matcher = {
+                            it.isBlock("minecraft:wheat") &&
+                                    it.getIntProperty("age") == 4
+                        }
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(1.5, -0.125, 2.34375),
+                        matcher = {
+                            it == "77bb86dedeb827f2489aa0103d58d0e12e64a8152d5a0f5b1d4d208a3cb55999"
+                        }
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(1.5, 0.4375, 1.90625),
+                        matcher = {
+                            it == "b82d442528456547474dd88166a97818f057ecc4b3ed350ef9a5e4dbd27f98d7"
+                        }
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(2.0, -0.84375, 1.125),
+                        matcher = {
+                            it == "b82d442528456547474dd88166a97818f057ecc4b3ed350ef9a5e4dbd27f98d7"
+                        }
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(1.03125, -0.78125, 1.125),
+                        matcher = {
+                            it == "b82d442528456547474dd88166a97818f057ecc4b3ed350ef9a5e4dbd27f98d7"
+                        }
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(1.5, -0.75, 1.5),
+                        matcher = {
+                            it == "b82d442528456547474dd88166a97818f057ecc4b3ed350ef9a5e4dbd27f98d7"
+                        }
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(1.5, -0.65625, 0.875),
+                        matcher = {
+                            it == "b82d442528456547474dd88166a97818f057ecc4b3ed350ef9a5e4dbd27f98d7"
+                        }
+                    )
+                ),
+                15..15
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0,1,0),
+                        matcher = {
+                            it.isBlock("minecraft:wheat") &&
+                                    it.getIntProperty("age") == 5
+                        }
+                    ),
+                    CropBlockState(
+                        offset = BlockPos(0,1,2),
+                        matcher = {
+                            it.isBlock("minecraft:wheat") &&
+                                    it.getIntProperty("age") == 5
+                        }
+                    ),
+                    CropBlockState(
+                        offset = BlockPos(2,1,0),
+                        matcher = {
+                            it.isBlock("minecraft:wheat") &&
+                                    it.getIntProperty("age") == 5
+                        }
+                    ),
+                    CropBlockState(
+                        offset = BlockPos(2,1,2),
+                        matcher = {
+                            it.isBlock("minecraft:wheat") &&
+                                    it.getIntProperty("age") == 5
+                        }
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.65625, 0.0, 1.5),
+                        matcher = {
+                            it == "24c64afa58bef69ff567b012a2b1638cf475c5bdb050d382308399ffa0b06a8d"
+                        }
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(1.09375, 0.4375, 1.5),
+                        matcher = {
+                            it == "b82d442528456547474dd88166a97818f057ecc4b3ed350ef9a5e4dbd27f98d7"
+                        }
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(1.5, -0.5625, 1.5),
+                        matcher = {
+                            it == "b82d442528456547474dd88166a97818f057ecc4b3ed350ef9a5e4dbd27f98d7"
+                        }
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(1.875, -0.65625, 2.0),
+                        matcher = {
+                            it == "b82d442528456547474dd88166a97818f057ecc4b3ed350ef9a5e4dbd27f98d7"
+                        }
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(1.875, -0.59375, 1.03125),
+                        matcher = {
+                            it == "b82d442528456547474dd88166a97818f057ecc4b3ed350ef9a5e4dbd27f98d7"
+                        }
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(2.125, -0.25, 1.5),
+                        matcher = {
+                            it == "b82d442528456547474dd88166a97818f057ecc4b3ed350ef9a5e4dbd27f98d7"
+                        }
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(2.40625, 0.9375, 1.5),
+                        matcher = {
+                            it == "b82d442528456547474dd88166a97818f057ecc4b3ed350ef9a5e4dbd27f98d7"
+                        }
+                    )
+                ),
+                20..20,
+                allowRotation = true
+            )
+
+        ),
         maxStage = 20,
         footprint = Footprint(3,3),
         isMutation = true

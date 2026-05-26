@@ -786,76 +786,88 @@ object GreenhouseData {
         val sb = StringBuilder(2048)
 
         val blockLines = mutableListOf<String>()
+        val standLines = mutableListOf<String>()
 
-        var y = basePos.y + 1
-        var stageIndex = 0
+        val footprint = foundDefinition?.footprint
+        val width = footprint?.width ?: 1
+        val height = footprint?.height ?: 1
 
         if (discordFormat) {
             sb.appendLine("```")
         }
 
+        for (dx in 0 until width) {
+            for (dz in 0 until height) {
 
+                var y = basePos.y + 1
 
-        while (true) {
-            val checkPos = BlockPos(basePos.x, y, basePos.z)
-            val checkState = world.getBlockState(checkPos)
+                while (true) {
 
-            if (checkState.isAir) break
+                    val checkPos = BlockPos(
+                        basePos.x + dx,
+                        y,
+                        basePos.z + dz
+                    )
 
-            val offsetY = y - basePos.y
-            val blockId = checkState.getId()
+                    val checkState = world.getBlockState(checkPos)
 
-            val hasAge = checkState.getIntProperty("age") != null
+                    if (checkState.isAir) break
 
-            val matcherLine = if (hasAge) {
-                """
-                it.isBlock("$blockId") &&
-                        it.getIntProperty("age") == ${checkState.getIntProperty("age")}
-            """.trimIndent()
-            } else {
-                """
-                it.isBlock("$blockId")
-            """.trimIndent()
-            }
+                    val offsetY = y - basePos.y
+                    val blockId = checkState.getId()
 
-            blockLines.add(
-                """
+                    val hasAge = checkState.getIntProperty("age") != null
+
+                    val matcherLine = if (hasAge) {
+                        """
+                    it.isBlock("$blockId") &&
+                            it.getIntProperty("age") == ${checkState.getIntProperty("age")}
+                    """.trimIndent()
+                    } else {
+                        """
+                    it.isBlock("$blockId")
+                    """.trimIndent()
+                    }
+
+                    blockLines.add(
+                        """
         CropBlockState(
-            offset = BlockPos(0,$offsetY,0),
+            offset = BlockPos($dx,$offsetY,$dz),
             matcher = {
 $matcherLine
             }
         )
-            """.trimIndent()
-            )
+                    """.trimIndent()
+                    )
 
-            stageIndex++
-            y++
+                    y++
+                }
+            }
         }
-
 
         val box = AABB(
             basePos.x.toDouble(),
             basePos.y.toDouble() - 2,
             basePos.z.toDouble(),
-            basePos.x + 1.0,
+            basePos.x + width.toDouble(),
             basePos.y.toDouble() + 4,
-            basePos.z + 1.0
+            basePos.z + height.toDouble()
         )
 
         val stands = world.getEntities(null, box)
 
-        val standLines = mutableListOf<String>()
+        val originVec = Vec3(
+            basePos.x.toDouble(),
+            basePos.y.toDouble(),
+            basePos.z.toDouble()
+        )
+
+
 
         for (entity in stands) {
             if (entity !is ArmorStand) continue
-            val center = Vec3(
-                basePos.x + 0.5,
-                basePos.y.toDouble(),
-                basePos.z + 0.5
-            )
 
-            val offset = entity.position().subtract(center)
+            val offset = entity.position().subtract(originVec)
 
             val head = entity.getItemBySlot(EquipmentSlot.HEAD)
             val hash = PlayerUtils.getSkinHash(head)
@@ -868,26 +880,21 @@ $matcherLine
                 ${if (!hash.isNullOrBlank()) "it == \"$hash\"" else "true"}
             }
         )
-    """.trimIndent()
+            """.trimIndent()
             )
         }
+
 
 
         sb.appendLine("CropStage(")
 
-        // blocks
         sb.appendLine("    blocks = listOf(")
-        if (blockLines.isNotEmpty()) {
-            sb.appendLine(blockLines.joinToString(",\n"))
-        }
+        if (blockLines.isNotEmpty()) sb.appendLine(blockLines.joinToString(",\n"))
         sb.appendLine("    ),")
 
-        // armor stands
         if (standLines.isNotEmpty()) {
             sb.appendLine("    armorStands = listOf(")
-            sb.appendLine(
-                standLines.joinToString(",\n") { "        $it" }
-            )
+            sb.appendLine(standLines.joinToString(",\n") { "        $it" })
             sb.appendLine("    ),")
         } else {
             sb.appendLine("    armorStands = null,")
@@ -901,9 +908,7 @@ $matcherLine
             sb.appendLine("Crop found: ${foundDefinition?.name} stageNum=$stageNum")
         }
 
-
         val result = sb.toString()
-
         Minecraft.getInstance().keyboardHandler.clipboard = result
 
         ChatUtils.sendWithPrefix("Copied crop stage to clipboard (${result.length} chars)")
