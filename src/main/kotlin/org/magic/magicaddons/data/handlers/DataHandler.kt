@@ -71,7 +71,7 @@ object DataHandler {
     }
 
     fun saveGardenData(){
-        Common.LOGGER.info("Saving misc info: ${GreenhouseData.miscInfo}")
+
         CodecStorage.save(
             path = greenhouseFile,
             codec = MISC_GREENHOUSE_INFO_CODEC,
