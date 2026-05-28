@@ -6,9 +6,9 @@ import net.minecraft.world.level.block.state.BlockState
 import org.magic.magicaddons.data.greenhouse.GreenhouseGrid.GridState
 import org.magic.magicaddons.data.greenhouse.GrowthStageInfo.Estimated
 import org.magic.magicaddons.data.greenhouse.GrowthStageInfo.Known
+import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData
 import java.time.Instant
 import java.util.*
-import kotlin.jvm.optionals.getOrNull
 
 object Codecs {
     val GREENHOUSE_LAYOUT_CODEC: Codec<GreenhouseLayout> by lazy {
@@ -99,14 +99,15 @@ object Codecs {
                     Optional.ofNullable(it.lastUpdateTimestamp?.toEpochMilli())
                 },
                 Codec.STRING.optionalFieldOf("assigned_layout_id").forGetter {
-                    Optional.ofNullable(it.assignedLayoutId)
+                    Optional.ofNullable(it.assignedLayout?.id)
                 }
 
 
             ).apply(instance) { lastUpdate, assignedLayout ->
                 GridState(
                     lastUpdateTimestamp = lastUpdate.orElse(null)?.let { Instant.ofEpochMilli(it) },
-                    assignedLayoutId = assignedLayout.orElse(null))
+                    assignedLayout = GreenhouseData.presetGrids.find { it.id == assignedLayout.orElse(null) }
+                )
             }
         }
     }
@@ -120,8 +121,15 @@ object Codecs {
                 BlockState.CODEC
                     .optionalFieldOf("block")
                     .forGetter { Optional.ofNullable(it.placedBlock) },
-            ).apply(instance) { x, y, block ->
-                GreenhouseSlot(x, y, block.orElse(null))
+                Codec.INT.optionalFieldOf("slot_marking")
+                    .forGetter { Optional.ofNullable(it.slotMark?.ordinal) }
+            ).apply(instance) { x, y, block, marking ->
+                GreenhouseSlot(
+                    x,
+                    y,
+                    block.orElse(null),
+                    marking.orElse(null)?.let { GreenhouseSlot.Marking.entries[it] }
+                )
             }
         }
     }

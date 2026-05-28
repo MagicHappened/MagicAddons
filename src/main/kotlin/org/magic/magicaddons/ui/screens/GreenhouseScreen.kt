@@ -69,7 +69,6 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
     // and if no crop has been detected in an old crop's spot, make it a yellow warning on the corner
     // informing the user that the crop definition has not been added for this crop and to send the debug to me
 
-    var ignoreDataWarnings = false
     var currentDisplay = CurrentDisplay.Greenhouses
     var borderPadding: Int = 6
 
@@ -106,7 +105,6 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         400,
         this,
         selectedPreset = currentPresetLayout,
-        currentGrids = GreenhouseData.greenhouseGrids,
         onAssignedLayout = { assignedLayout, selectedGrid ->
             assignPresetLayout(assignedLayout, selectedGrid)
         },
@@ -166,7 +164,7 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         if (PlotAPI.plots.any { it.data == null }) {
             if (!GreenhouseData.miscInfo.shouldIgnoreWarning) {
                 ChatUtils.sendWithCommand(
-                    "Plot data is null, please open desk. (CLICK TO OPEN)",
+                    "Plot data is null, please join skyblock.",
                     "/desk"
                 )
             }
@@ -242,7 +240,7 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
             presetGridWidgets.add(gridWidget)
         }
         displayedGridWidget = presetGridWidgets.find { currentPresetLayout == it.layout  }
-        displayedGridWidget = presetGridWidgets.firstOrNull()
+        displayedGridWidget = displayedGridWidget ?: presetGridWidgets.firstOrNull()
 
         displayedName = displayedGridWidget?.layout?.name
             ?: displayedGridWidget?.layout?.id
@@ -250,10 +248,10 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         
         gridSelector.currentValue = displayedGridWidget?.layout
         gridSelector.values = presetGridWidgets.map { it.layout }
-        val maxWidth = presetGridWidgets.maxOf {
+        val maxWidth = presetGridWidgets.maxOfOrNull {
             font.width(it.layout.toString())
         }
-        gridSelector.width = maxWidth + 12
+        gridSelector.width = (maxWidth ?: font.width("null")) + 20
         currentDisplayToggle.message = Component.literal("Presets")
         
     }
@@ -456,6 +454,7 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
             return
         }
         ChatUtils.sendWithPrefix("(WIP) Assigned ${layout.name ?: layout.id} to grid: ${grid.layout.name ?: grid.layout.id}")
+        grid.state.assignedLayout = layout
     }
 
     fun addPresetLayout(layout: GreenhouseLayout){

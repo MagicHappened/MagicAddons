@@ -9,19 +9,17 @@ data class GreenhouseLayout(
     val slots: MutableList<GreenhouseSlot> = MutableList(100) { index ->
         val x = index % size
         val y = index / size
-
         GreenhouseSlot(
             x,
             y,
             Blocks.AIR.defaultBlockState()
         )
     },
-
     val elementInstances: MutableList<GreenhouseElementInstance> = mutableListOf(),
 ){
     private val slotIndex = slots.associateBy { it.x to it.y }
     fun getSlot(x: Int, y: Int) = slotIndex[x to y]
     override fun toString(): String {
-        return "${name?: "unnamed"}: $id"
+        return "${name ?: "unnamed"}: $id"
     }
 }

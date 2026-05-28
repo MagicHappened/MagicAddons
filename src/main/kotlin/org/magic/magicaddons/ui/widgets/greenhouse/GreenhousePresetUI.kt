@@ -26,13 +26,11 @@ class GreenhousePresetUI(
     var height: Int,
     val overlayContext: OverlayContext,
     val selectedPreset: GreenhouseLayout?,
-    val currentGrids: List<GreenhouseGrid>,
     val onAssignedLayout: (assignedLayout: GreenhouseLayout?, selectedGrid: GreenhouseGrid) -> Unit,
     val onAddPreset: (GreenhouseLayout) -> Unit
 ) : Renderable, GuiEventListener, HoverableContainer {
 
     override var hoveredElement: GuiEventListener? = null
-    var contextOpened = false
 
     @JvmField
     var isFocused: Boolean = false
@@ -63,7 +61,6 @@ class GreenhousePresetUI(
 
 
     fun init() {
-
         importButton.x = x + 10
         importButton.y = y + 10
 
@@ -72,8 +69,6 @@ class GreenhousePresetUI(
 
         applyToButton.x = exportButton.x + exportButton.width + 10
         applyToButton.y = y + 10
-        val font = Minecraft.getInstance().font
-
     }
 
 
