@@ -149,32 +149,7 @@ object GreenhouseData {
     }
 
 
-    fun matchesWithRotation(
-        actual: Vec3,
-        expected: Vec3,
-        allowRotation: Boolean
-    ): Boolean {
-        if (!allowRotation) {
-            return isClose(actual, expected)
-        }
 
-        val rotations = listOf(
-            expected,
-            Vec3(-expected.z, expected.y, expected.x),
-            Vec3(-expected.x, expected.y, -expected.z),
-            Vec3(expected.z, expected.y, -expected.x)
-        )
-
-        return rotations.any { rotated ->
-            isClose(actual, rotated)
-        }
-    }
-
-    private fun isClose(a: Vec3, b: Vec3, epsilon: Double = 0.01): Boolean {
-        return abs(a.x - b.x) < epsilon &&
-                abs(a.y - b.y) < epsilon &&
-                abs(a.z - b.z) < epsilon
-    }
 
     fun String.parseDurationToMs(): Long {
         var totalMs = 0L
@@ -555,7 +530,13 @@ object GreenhouseData {
     }
 
     fun tryGetWaterCanData() {
-
+        val buildableArea = getCurrentGrid()?.plot?.getBuildableArea() ?: return
+        val stands = Minecraft.getInstance().level?.getEntitiesOfClass(ArmorStand::class.java, buildableArea) ?: return
+        ChatUtils.sendWithPrefix("Stands size: ${stands.size}")
+        val filteredStands = stands.filter {
+            it.getItemBySlot(EquipmentSlot.HEAD) == ItemStack.EMPTY
+        }
+        ChatUtils.sendWithPrefix("Filtered stand size: ${filteredStands.size}")
     }
 
     fun setDiagnosesListeningElement(hitBlock: BlockPos? = null, hitEntity: ArmorStand? = null, grid: GreenhouseGrid) {

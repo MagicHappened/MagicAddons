@@ -28,6 +28,8 @@ class GreenhouseSlotWidget(
     var widgetWidth: Int = 25
     var widgetHeight: Int = 25
 
+    var markingColor: Int? = null
+
     @JvmField
     var isFocused: Boolean = false
     
@@ -41,6 +43,19 @@ class GreenhouseSlotWidget(
             return
         }
         sprite = ScreenUtil.getSpriteForState(slot.placedBlock!!, Direction.UP)
+
+        markingColor = when (slot.slotMark){
+            GreenhouseSlot.Marking.Target -> {
+                0x262dbcf6
+            }
+            GreenhouseSlot.Marking.Ingredient -> {
+                0x26e49906
+            }
+            GreenhouseSlot.Marking.UniqueCrop -> {
+                0x26bb00bb
+            }
+            else -> {null}
+        }
     }
 
     override fun render(graphics: GuiGraphics, mouseY: Int, j: Int, deltaTicks: Float) {
@@ -54,6 +69,16 @@ class GreenhouseSlotWidget(
             widgetWidth,
             widgetHeight
         )
+
+        markingColor?.let {
+            graphics.fill(
+                widgetX,
+                widgetY,
+                widgetWidth,
+                widgetHeight,
+                it
+            )
+        }
     }
 
     override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {

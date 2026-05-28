@@ -47,6 +47,14 @@ object DataHandler {
             MiscGreenhouseInfo()
         }
 
+        GreenhouseData.presetGrids = CodecStorage.load(
+            greenhouseFile,
+            GREENHOUSE_LAYOUT_CODEC.listOf(),
+            wrapperKey = "presets"
+        )?.toMutableList() ?: run {
+            Common.LOGGER.error("Failed to load preset data")
+            return@run mutableListOf()
+        }
 
         GreenhouseData.greenhousesInitialized = true
         GreenhouseData.greenhouseGrids = CodecStorage.load(
@@ -58,16 +66,6 @@ object DataHandler {
             Common.LOGGER.error("Failed to load greenhouses data")
             return@run mutableListOf()
         }
-
-        GreenhouseData.presetGrids = CodecStorage.load(
-            greenhouseFile,
-            GREENHOUSE_LAYOUT_CODEC.listOf(),
-            wrapperKey = "presets"
-        )?.toMutableList() ?: run {
-            Common.LOGGER.error("Failed to load preset data")
-            return@run mutableListOf()
-        }
-
     }
 
     fun saveGardenData(){
@@ -81,17 +79,19 @@ object DataHandler {
 
         CodecStorage.save(
             path = greenhouseFile,
+            codec = GREENHOUSE_LAYOUT_CODEC.listOf(),
+            value = GreenhouseData.presetGrids,
+            wrapperKey = "presets"
+        )
+
+        CodecStorage.save(
+            path = greenhouseFile,
             codec = GREENHOUSE_GRID_CODEC.listOf(),
             value = GreenhouseData.greenhouseGrids,
             wrapperKey = "greenhouses"
         )
 
-        CodecStorage.save(
-            path = greenhouseFile,
-            codec = GREENHOUSE_LAYOUT_CODEC.listOf(),
-            value = GreenhouseData.presetGrids,
-            wrapperKey = "presets"
-        )
+
 
     }
 

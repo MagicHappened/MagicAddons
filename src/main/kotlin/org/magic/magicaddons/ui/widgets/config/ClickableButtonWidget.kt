@@ -32,13 +32,13 @@ class ClickableButtonWidget(
         height,
         { graphics ->
             val font = Minecraft.getInstance().font
-            this.message?.let { message ->
+            this.message?.let {
                 graphics.drawString(
                     font,
-                    message,
-                    this.x + (width - font.width(message)) / 2,
+                    it,
+                    this.x + (width - font.width(it)) / 2,
                     this.y + (height - font.lineHeight) / 2,
-                    (message.style.color?.value ?: 0xFFFFFFFF.toInt()) or 0xFF000000.toInt(),
+                    (it.style.color?.value ?: 0xFFFFFFFF.toInt()) or 0xFF000000.toInt(),
                     false
                 )
             }

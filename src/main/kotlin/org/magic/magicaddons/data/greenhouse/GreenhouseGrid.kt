@@ -123,9 +123,11 @@ class GreenhouseGrid(
         val level = Minecraft.getInstance().level ?: return
         val buildableArea = plot?.getBuildableArea() ?: return
 
-        val stands = level.getEntities(null, buildableArea)
-            .filterIsInstance<ArmorStand>()
+        val stands = level.getEntitiesOfClass(ArmorStand::class.java, buildableArea)
         val remainingStands = stands.toMutableList()
+
+        //todo change this so it respects previous data based on ticks
+        // maybe change it so it just scans new data and returns a new grid and then can differentiate the changes?
         layout.elementInstances.clear()
         elements.clear()
 
@@ -275,7 +277,7 @@ class GreenhouseGrid(
     data class GridState(
         var lastUpdateTimestamp: Instant? = null,
         var needsUpdate: Boolean = false,
-        var assignedLayoutId: String? = null,
+        var assignedLayout: GreenhouseLayout? = null,
         var hasRuntimeReferences: Boolean = false,
         var pendingTicks: Int? = null
     )

@@ -1,9 +1,6 @@
 package org.magic.magicaddons.data.greenhouse
 
-import com.mojang.serialization.Codec
-import com.mojang.serialization.codecs.RecordCodecBuilder
 import net.minecraft.client.Minecraft
-import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.core.BlockPos
 import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.EquipmentSlot
@@ -12,10 +9,9 @@ import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.Vec3
-import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData.matchesWithRotation
 import org.magic.magicaddons.util.PlayerUtils
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockId
-import java.util.Optional
+import kotlin.math.abs
 
 sealed interface GrowthStageInfo {
 
@@ -96,7 +92,32 @@ open class CropStage(
             matchedBlocks = matchedBlocks
         )
     }
+    fun matchesWithRotation(
+        actual: Vec3,
+        expected: Vec3,
+        allowRotation: Boolean
+    ): Boolean {
+        if (!allowRotation) {
+            return isClose(actual, expected)
+        }
 
+        val rotations = listOf(
+            expected,
+            Vec3(-expected.z, expected.y, expected.x),
+            Vec3(-expected.x, expected.y, -expected.z),
+            Vec3(expected.z, expected.y, -expected.x)
+        )
+
+        return rotations.any { rotated ->
+            isClose(actual, rotated)
+        }
+    }
+
+    private fun isClose(a: Vec3, b: Vec3, epsilon: Double = 0.01): Boolean {
+        return abs(a.x - b.x) < epsilon &&
+                abs(a.y - b.y) < epsilon &&
+                abs(a.z - b.z) < epsilon
+    }
 
 
 

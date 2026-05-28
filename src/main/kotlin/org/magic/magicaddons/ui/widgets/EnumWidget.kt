@@ -165,6 +165,7 @@ class EnumWidget<T>(
                         return true
                     } else if (mouseButtonEvent.button() == 1) {
                         this@EnumWidget.onRightClickValue?.invoke(it.value, mouseButtonEvent)
+                        return true
                     }
 
 
