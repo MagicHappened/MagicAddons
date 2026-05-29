@@ -18,6 +18,7 @@ import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.events.EventHandler
 import org.magic.magicaddons.events.interact.*
 import org.magic.magicaddons.events.world.OnEntityAdded
+import org.magic.magicaddons.events.world.OnServerTickEvent
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhousePresets.baseSetting
 import org.magic.magicaddons.util.BlockUtils.getId
 import org.magic.magicaddons.util.BlockUtils.getIntProperty
@@ -129,9 +130,12 @@ object GreenhouseData {
         if (grid.state.hasRuntimeReferences && !grid.state.needsUpdate) return
 
         grid.plot = plot
+
+        //gather in world data
         grid.createSlotData()
         grid.setPlantData()
 
+        // after grid update
         grid.state.hasRuntimeReferences = true
         grid.state.needsUpdate = false
         grid.state.lastUpdateTimestamp = Instant.now()
@@ -264,15 +268,48 @@ object GreenhouseData {
         }
     }
 
-    @Subscription
-    fun onTick(event: TickEvent){
+    private var tickCounter = 0
+    private var benchmarkStart: Instant? = null
+    private var benchmarkRuns = 0
+
+    @EventHandler
+    fun onTick(event: OnServerTickEvent) {
         val now = Instant.now()
         val last = lastCheckTime
 
-        if (last == null ||
-            last.plusSeconds(300).isBefore(now) ||
+        // =========================
+        // BENCHMARK BLOCK (100 ticks)
+        // =========================
+        if (benchmarkStart == null) {
+            benchmarkStart = now
+            tickCounter = 0
+        }
+
+        tickCounter++
+
+        if (tickCounter == 100) {
+            val duration = Duration.between(benchmarkStart, now)
+            val ms = duration.toMillis()
+
+            benchmarkRuns++
+
+            ChatUtils.sendWithPrefix(
+                "Tick benchmark #$benchmarkRuns: 100 ticks took ${ms}ms (${ms / 100.0}ms per tick)"
+            )
+
+            // reset
+            tickCounter = 0
+            benchmarkStart = now
+        }
+
+        // =========================
+        // ORIGINAL LOGIC
+        // =========================
+        if (
+            last == null ||
+            last.plusSeconds(60).isBefore(now) ||
             miscInfo.nextTickTime?.isBefore(now) ?: false
-            ){
+        ) {
             lastCheckTime = now
             checkForUpdate()
         }

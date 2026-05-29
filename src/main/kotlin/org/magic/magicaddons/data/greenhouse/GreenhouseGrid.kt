@@ -89,31 +89,33 @@ class GreenhouseGrid(
         }
     }
 
-    fun createSlotData() {
-        val world = Minecraft.getInstance().level ?: return
-        val plot = PlotAPI.getCurrentPlot() ?: return
-        if (plot != this.plot) return
+    fun createSlotData(): List<GreenhouseSlot>? {
+        val world = Minecraft.getInstance().level ?: return null
+        val plot = PlotAPI.getCurrentPlot() ?: return null
+        if (plot != this.plot) return null
 
         val buildArea = plot.getBuildableArea()
 
         val minX = buildArea.minX.toInt()
         val minZ = buildArea.minZ.toInt()
-        val maxX = buildArea.maxX.toInt()
-        val maxZ = buildArea.maxZ.toInt()
 
-        var gridX = 0
-        for (x in minX until maxX) {
-            var gridY = 0
-            for (z in minZ until maxZ) {
+        return List(width * height) { index ->
 
-                val state = world.getBlockState(BlockPos(x, 73, z))
+            val gridX = index % width
+            val gridY = index / width
 
-                layout.getSlot(gridX, gridY)?.placedBlock = state
+            val worldX = minX + gridX
+            val worldZ = minZ + gridY
 
-                gridY++
-            }
+            val state = world.getBlockState(
+                BlockPos(worldX, 73, worldZ)
+            )
 
-            gridX++
+            GreenhouseSlot(
+                gridX,
+                gridY,
+                state
+            )
         }
     }
 
@@ -126,8 +128,6 @@ class GreenhouseGrid(
         val stands = level.getEntitiesOfClass(ArmorStand::class.java, buildableArea)
         val remainingStands = stands.toMutableList()
 
-        //todo change this so it respects previous data based on ticks
-        // maybe change it so it just scans new data and returns a new grid and then can differentiate the changes?
         layout.elementInstances.clear()
         elements.clear()
 
