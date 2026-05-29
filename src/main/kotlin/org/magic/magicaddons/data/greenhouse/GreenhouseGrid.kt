@@ -1,17 +1,13 @@
 package org.magic.magicaddons.data.greenhouse
 
 import net.minecraft.client.Minecraft
-import net.minecraft.client.renderer.RenderPipelines
 import net.minecraft.core.BlockPos
-import net.minecraft.core.Direction
 import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.decoration.ArmorStand
-import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData.elementsBySoil
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData.getBuildableArea
-import org.magic.magicaddons.util.ScreenUtil
 import tech.thatgravyboat.skyblockapi.api.profile.garden.Plot
 import tech.thatgravyboat.skyblockapi.api.profile.garden.PlotAPI
 import java.time.Instant
@@ -279,7 +275,7 @@ class GreenhouseGrid(
         var needsUpdate: Boolean = false,
         var assignedLayout: GreenhouseLayout? = null,
         var hasRuntimeReferences: Boolean = false,
-        var pendingTicks: Int? = null
+        var pendingGrowthTicks: Int? = null
     )
 
     override fun toString(): String {

@@ -428,7 +428,6 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         addContext(menu)
     }
 
-    //todo implement presets as well
     fun gridWidgetChanged(layout: GreenhouseLayout) {
         if (greenhouseGridWidgets.isEmpty() && presetGridWidgets.isEmpty()) return
 

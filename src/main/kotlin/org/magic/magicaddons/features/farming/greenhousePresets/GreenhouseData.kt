@@ -18,12 +18,12 @@ import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.events.EventHandler
 import org.magic.magicaddons.events.interact.*
 import org.magic.magicaddons.events.world.OnEntityAdded
-import org.magic.magicaddons.events.world.OnServerTickEvent
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhousePresets.baseSetting
 import org.magic.magicaddons.util.BlockUtils.getId
 import org.magic.magicaddons.util.BlockUtils.getIntProperty
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.PlayerUtils
+import org.magic.magicaddons.util.ServerUtils
 import tech.thatgravyboat.skyblockapi.api.SkyBlockAPI
 import tech.thatgravyboat.skyblockapi.api.events.base.Subscription
 import tech.thatgravyboat.skyblockapi.api.events.base.predicates.OnlyIn
@@ -70,6 +70,7 @@ object GreenhouseData {
     var miscInfo = MiscGreenhouseInfo()
 
     var lastCheckTime: Instant? = null
+    var lastServerTick: Long? = null
 
     var removedElementByAttack: ElementRuntimeState? = null
     private var placedCrop: Pair<CropDefinition, BlockPos>? = null
@@ -139,7 +140,7 @@ object GreenhouseData {
         grid.state.hasRuntimeReferences = true
         grid.state.needsUpdate = false
         grid.state.lastUpdateTimestamp = Instant.now()
-        grid.state.pendingTicks = 0
+        grid.state.pendingGrowthTicks = 0
 
         ChatUtils.sendWithPrefix("Successfully scanned data for ${plot.id}")
     }
@@ -232,23 +233,56 @@ object GreenhouseData {
 
         if (warnUnknownValues(!miscInfo.shouldIgnoreWarning)) return
 
+        var nextTick = miscInfo.nextTickTime ?: return
+
         val uniques = getCurrentUniques().size
-        val tickMs = computeGrowthStageTimeSeconds(
+        val growthTickMs = computeGrowthStageTimeSeconds(
             uniques,
             miscInfo.cropGrowthValue!!,
             miscInfo.cropSpeedUpgradeValue!!) * 1000L
 
-        if (miscInfo.nextTickTime == null) return
+        val onlineTickTracking =
+            LocationAPI.island == SkyBlockIsland.GARDEN &&
+                    !LocationAPI.isGuest
+
         val now = Instant.now()
 
-        var nextTick = miscInfo.nextTickTime ?: return
+        if (onlineTickTracking){
+            val lastTick = lastServerTick
+            val currentTick = ServerUtils.totalServerTicks
+
+            val passedTicks = if (lastTick != null){
+                currentTick - lastTick
+            }
+            else {
+                0L
+            }
+            lastServerTick = currentTick
+            if (passedTicks <= 0) return
+
+            val passedMs = passedTicks * 50L
+            val passedGrowthTicks = (passedMs / growthTickMs).toInt()
+
+            if (passedGrowthTicks <= 0) return
+
+            miscInfo.nextTickTime = miscInfo.nextTickTime!!.plusMillis((passedGrowthTicks * growthTickMs).toLong())
+
+            greenhouseGrids.forEach { grid ->
+                if (!grid.hasRuntime()) return@forEach
+
+                grid.state.pendingGrowthTicks = passedGrowthTicks
+                grid.state.needsUpdate = true
+            }
+            return
+        }
+
         if (nextTick.isBefore(now)) {
 
             val overdueMs = now.toEpochMilli() - nextTick.toEpochMilli()
 
-            val passedGlobalTicks = (overdueMs / tickMs) + 1
+            val passedGlobalTicks = (overdueMs / growthTickMs) + 1
 
-            nextTick = nextTick.plusMillis((passedGlobalTicks * tickMs).toLong())
+            nextTick = nextTick.plusMillis((passedGlobalTicks * growthTickMs).toLong())
 
             miscInfo.nextTickTime = nextTick
         }
@@ -259,52 +293,20 @@ object GreenhouseData {
 
             val elapsedMs = now.toEpochMilli() - lastUpdate.toEpochMilli()
 
-            val passedTicks = (elapsedMs / tickMs).toInt()
+            val passedTicks = (elapsedMs / growthTickMs).toInt()
 
             if (passedTicks <= 0) return@forEach
 
-            grid.state.pendingTicks = passedTicks
+            grid.state.pendingGrowthTicks = passedTicks
             grid.state.needsUpdate = true
         }
     }
 
-    private var tickCounter = 0
-    private var benchmarkStart: Instant? = null
-    private var benchmarkRuns = 0
-
-    @EventHandler
-    fun onTick(event: OnServerTickEvent) {
+    @Subscription
+    fun onTick(event: TickEvent){
         val now = Instant.now()
         val last = lastCheckTime
 
-        // =========================
-        // BENCHMARK BLOCK (100 ticks)
-        // =========================
-        if (benchmarkStart == null) {
-            benchmarkStart = now
-            tickCounter = 0
-        }
-
-        tickCounter++
-
-        if (tickCounter == 100) {
-            val duration = Duration.between(benchmarkStart, now)
-            val ms = duration.toMillis()
-
-            benchmarkRuns++
-
-            ChatUtils.sendWithPrefix(
-                "Tick benchmark #$benchmarkRuns: 100 ticks took ${ms}ms (${ms / 100.0}ms per tick)"
-            )
-
-            // reset
-            tickCounter = 0
-            benchmarkStart = now
-        }
-
-        // =========================
-        // ORIGINAL LOGIC
-        // =========================
         if (
             last == null ||
             last.plusSeconds(60).isBefore(now) ||

@@ -8,14 +8,10 @@ class GreenhouseSlot(
     var placedBlock: BlockState?,
     var slotMark: Marking? = null
 ) {
-    //todo add marking and add it to codec
     enum class Marking {
         Target,
         Ingredient,
         UniqueCrop
     }
-
-
-
 
 }
