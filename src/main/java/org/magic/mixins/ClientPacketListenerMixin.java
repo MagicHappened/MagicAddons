@@ -8,12 +8,14 @@ import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.protocol.game.ClientboundBlockUpdatePacket;
 import net.minecraft.network.protocol.game.ClientboundLevelParticlesPacket;
+import net.minecraft.network.protocol.game.ClientboundSetTimePacket;
 import net.minecraft.world.level.block.state.BlockState;
 import org.magic.magicaddons.events.EventBus;
 import org.magic.magicaddons.events.interact.OnBlockDestroyedEvent;
 import org.magic.magicaddons.events.interact.OnBlockPlacedEvent;
 import org.magic.magicaddons.events.interact.OnBlockChangedEvent;
 import org.magic.magicaddons.events.world.AddParticleEvent;
+import org.magic.magicaddons.events.world.OnSetTimePacket;
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData;
 import org.magic.magicaddons.util.ChatUtils;
 import org.magic.misc.BlockEventBufferAccess;
@@ -44,6 +46,20 @@ public class ClientPacketListenerMixin {
             ci.cancel();
         }
     }
+
+    @Inject(
+            method = "handleSetTime",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/network/protocol/PacketUtils;ensureRunningOnSameThread(Lnet/minecraft/network/protocol/Packet;Lnet/minecraft/network/PacketListener;Lnet/minecraft/network/PacketProcessor;)V",
+                    shift = At.Shift.AFTER
+            )
+    )
+    private void onSetTime(ClientboundSetTimePacket packet, CallbackInfo ci){
+        OnSetTimePacket event = new OnSetTimePacket(packet);
+        EventBus.post(event);
+    }
+
 
     @Inject(
             method = "handleBlockUpdate(Lnet/minecraft/network/protocol/game/ClientboundBlockUpdatePacket;)V",
