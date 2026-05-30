@@ -21,6 +21,124 @@ object Zombud : CropDefinitionProvider {
             CropStage(
                 blocks = listOf(
                     CropBlockState(
+                        offset = BlockPos(0,1,0),
+                        matcher = {
+                            it.isBlock("minecraft:nether_wart") &&
+                                    it.getIntProperty("age") == 0
+                        }
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.5, 0.21875, 0.5),
+                        matcher = {
+                            it == "de090b85462e85f7f44be07e55f1486602c141bb6fd0c277d5bb7c68deda265d"
+                        }
+                    )
+                ),
+                1..1
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0,1,0),
+                        matcher = {
+                            it.isBlock("minecraft:nether_wart") &&
+                                    it.getIntProperty("age") == 0
+                        }
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.5, -0.625, 0.5),
+                        matcher = {
+                            it == "de090b85462e85f7f44be07e55f1486602c141bb6fd0c277d5bb7c68deda265d"
+                        }
+                    )
+                ),
+                2..2
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0,1,0),
+                        matcher = {
+                            it.isBlock("minecraft:nether_wart") &&
+                                    it.getIntProperty("age") == 0
+                        }
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.5, -0.4375, 0.5),
+                        matcher = {
+                            it == "de090b85462e85f7f44be07e55f1486602c141bb6fd0c277d5bb7c68deda265d"
+                        }
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(0.5, 2.911999999999992, 0.5),
+                        matcher = {
+                            true
+                        }
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(0.5, 2.5419999999999874, 0.5),
+                        matcher = {
+                            true
+                        }
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(0.5, 2.171999999999983, 0.5),
+                        matcher = {
+                            true
+                        }
+                    )
+                ),
+                3..3
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0,1,0),
+                        matcher = {
+                            it.isBlock("minecraft:nether_wart") &&
+                                    it.getIntProperty("age") == 0
+                        }
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.5, -0.4375, 0.5),
+                        matcher = {
+                            it == "29e27b7ee26e272ce53f19e169a593ea83cc120bfa3a209e1a8a279fcdf463e7"
+                        }
+                    )
+                ),
+                4..4
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0,1,0),
+                        matcher = {
+                            it.isBlock("minecraft:nether_wart") &&
+                                    it.getIntProperty("age") == 0
+                        }
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.5, -0.4375, 0.5),
+                        matcher = {
+                            it == "29e27b7ee26e272ce53f19e169a593ea83cc120bfa3a209e1a8a279fcdf463e7"
+                        }
+                    )
+                ),
+                5..5
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
                         offset = BlockPos(0, 1, 0),
                         matcher = {
                             it.isBlock("minecraft:nether_wart") &&
