@@ -24,37 +24,38 @@ open class RemovableRowWidget<T>(
         x = 0,
         y = 0,
         width = removeWidth,
-        height = 20
-    ) { graphics ->
+        height = 20,
+        { graphics ->
 
-        val pad = 4
+            val pad = 4
 
-        val size = minOf(width, height) - pad * 2
+            val size = minOf(width, height) - pad * 2
 
-        val startX = x + (width - size) / 2
-        val startY = y + (height - size) / 2
+            val startX = x + (width - size) / 2
+            val startY = y + (height - size) / 2
 
-        val endX = startX + size
-        val endY = startY + size
+            val endX = startX + size
+            val endY = startY + size
 
-        graphics.drawLine(
-            startX,
-            startY,
-            endX,
-            endY,
-            2,
-            0xFFFF0000.toInt()
-        )
+            graphics.drawLine(
+                startX,
+                startY,
+                endX,
+                endY,
+                2,
+                0xFFFF0000.toInt()
+            )
 
-        graphics.drawLine(
-            endX,
-            startY,
-            startX,
-            endY,
-            2,
-            0xFFFF0000.toInt()
-        )
-    }
+            graphics.drawLine(
+                endX,
+                startY,
+                startX,
+                endY,
+                2,
+                0xFFFF0000.toInt()
+            )
+        }
+    )
 
     override fun getRightReservedWidth(): Int {
         return super.getRightReservedWidth() + removeWidth

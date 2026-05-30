@@ -13,6 +13,7 @@ import org.magic.magicaddons.data.greenhouse.GreenhouseGrid
 import org.magic.magicaddons.data.greenhouse.GreenhouseLayout
 import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData
+import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData.greenhousesInitialized
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData.toReadableDuration
 import org.magic.magicaddons.ui.HoverableContainer
 import org.magic.magicaddons.ui.OverlayContext
@@ -25,6 +26,7 @@ import org.magic.magicaddons.ui.widgets.greenhouse.GreenhouseGridWidget
 import org.magic.magicaddons.ui.widgets.greenhouse.GreenhousePresetUI
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.ScreenUtil.drawMultilineBoxCentered
+import org.magic.magicaddons.util.ScreenUtil.drawSimpleTooltip
 import tech.thatgravyboat.skyblockapi.api.profile.garden.PlotAPI
 
 class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, OverlayContext {
@@ -88,6 +90,9 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         Component.literal("Plots")
     )
 
+    private var dynamicNameDisplay: ClickableButtonWidget? = null
+    private var hoverWarning = false
+    private var shouldWarn = false
 
     private val gridSelector = EnumWidget(
         values = greenhouseGridWidgets.map { it.layout },
@@ -112,6 +117,8 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
             addPresetLayout(it)
         }
     )
+
+
 
     var displayedName: String = "Error loading name."
 
@@ -154,6 +161,9 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
                 initPresetLayout()
             }
         }
+
+
+
     }
 
     fun initGreenhouseLayout(){
@@ -208,6 +218,8 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
             ?: "Unknown Plot"
 
 
+        initDynamicName()
+
         gridSelector.currentValue = displayedGridWidget!!.layout
         gridSelector.values = greenhouseGridWidgets.map { it.layout }
 
@@ -253,9 +265,45 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         }
         gridSelector.width = (maxWidth ?: font.width("null")) + 20
         currentDisplayToggle.message = Component.literal("Presets")
-        
+
+
+        initDynamicName()
+
     }
 
+    fun initDynamicName(){
+        //todo make the icon width to variable
+        val widgetWidth = font.width(displayedName) + 10 //padding = 4 border size 1 x2 (from multiline box centered)
+        val widgetHeight = font.lineHeight + 10
+        val screenWidth = width
+        shouldWarn = currentDisplay == CurrentDisplay.Greenhouses && (GreenhouseData.greenhouseGrids[currentGridIndex].state.pendingGrowthTicks ?: 1) > 0
+
+        dynamicNameDisplay = ClickableButtonWidget(
+            (screenWidth-widgetWidth) / 2,
+            9,
+            widgetWidth + 1 + 18, //icon padding + icon width
+            widgetHeight,
+            {
+                it.drawMultilineBoxCentered(
+                    displayedName,
+                    screenWidth / 2,
+                    18,
+                    if (shouldWarn) 0xFFAA0000.toInt() else null
+                )
+                if (shouldWarn){
+                it.blitSprite(
+                    RenderPipelines.GUI_TEXTURED,
+                    Identifier.fromNamespaceAndPath("minecraft", "icon/unseen_notification"),
+                    ((screenWidth + widgetWidth) / 2) + 1,
+                    9,
+                    18,
+                    19, // why 19? idk height is randomly +1
+                )
+                }
+            },
+            false
+        )
+    }
 
     override fun render(graphics: GuiGraphics, mouseX: Int, mouseY: Int, delta: Float) {
         // background
@@ -268,11 +316,8 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
             containerSize + borderPadding * 2,
         )
 
-        graphics.drawMultilineBoxCentered(
-            displayedName,
-            width / 2,
-            18
-        )
+        dynamicNameDisplay?.render(graphics,mouseX,mouseY,delta)
+
         val timeText = GreenhouseData.miscInfo.nextTickTime?.toReadableDuration() ?: "Unknown Time"
         val timeWidth = font.width(timeText)
 
@@ -291,6 +336,16 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
             CurrentDisplay.Presets -> {
                 presetUI.render(graphics, mouseX, mouseY, delta)
             }
+        }
+        if (hoverWarning) {
+            graphics.drawSimpleTooltip(
+                """
+                    The displayed greenhouse uses prediction based data.
+                    Enter it to update its state.
+                    """.trimIndent(),
+                mouseX + 7,
+                mouseY + 30
+            )
         }
 
         overlays.asReversed().forEach {
@@ -390,7 +445,9 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
             }
         }
 
-
+        dynamicNameDisplay?.mouseMoved(mouseX, mouseY)
+        //todo add a check for if the grid is unupdated.
+        hoverWarning = dynamicNameDisplay?.isMouseOver(mouseX, mouseY) ?: false && shouldWarn
         hoveredElement?.isFocused = true
     }
 
@@ -445,6 +502,9 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         displayedName = displayedGridWidget?.layout?.name
             ?: displayedGridWidget?.layout?.id
                     ?: "Unknown Preset"
+
+        dynamicNameDisplay = null
+        initDynamicName()
     }
 
     fun assignPresetLayout(layout: GreenhouseLayout?, grid: GreenhouseGrid) {

@@ -89,7 +89,7 @@ object ScreenUtil {
         x1: Float, y1: Float,
         x2: Float, y2: Float,
         thickness: Float,
-        color: Int
+        color: Int? = null
     ) {
         // top
         drawLine(x1, y1, x2, y1, thickness, color)
@@ -145,7 +145,7 @@ object ScreenUtil {
         x2: Float,
         y2: Float,
         thickness: Float,
-        color: Int
+        color: Int? = null
     ) {
         val dx = x2 - x1
         val dy = y2 - y1
@@ -161,6 +161,8 @@ object ScreenUtil {
         val y0 = kotlin.math.floor(-half).toInt()
         val y1 = kotlin.math.ceil(half).toInt()
 
+        val actualColor = color ?: 0xFFFFFFFF.toInt()
+
         this.guiRenderState.submitGuiElement(
             ColoredRectangleRenderState(
                 RenderPipelines.GUI,
@@ -170,8 +172,8 @@ object ScreenUtil {
                 y0,
                 length.toInt(),
                 y1,
-                color,
-                color,
+                actualColor,
+                actualColor,
                 this.scissorStack.peek()
             )
         )
@@ -179,11 +181,12 @@ object ScreenUtil {
 
     fun GuiGraphics.drawSimpleTooltip(text: String, mouseX: Int, mouseY: Int) {
         val client = Minecraft.getInstance()
-        val lines = listOf(
+
+        val lines = text.split("\n").map {
             ClientTooltipComponent.create(
-                Component.literal(text).visualOrderText
+                Component.literal(it).visualOrderText
             )
-        )
+        }
 
         this.renderTooltip(
             client.font,
@@ -198,14 +201,15 @@ object ScreenUtil {
     fun GuiGraphics.drawMultilineBoxCentered(
         text: String,
         centerX: Int,
-        centerY: Int
+        centerY: Int,
+        color: Int? = null
     ) {
         val layout = computeLayout(text)
 
         val x = centerX - layout.boxWidth / 2
         val y = centerY - layout.boxHeight / 2
 
-        drawMultilineBox(text, x, y)
+        drawMultilineBox(text, x, y, color)
     }
 
 
@@ -213,11 +217,13 @@ object ScreenUtil {
         text: String,
         x: Int,
         y: Int,
+        color: Int? = null
     ){
         drawMultilineBox(
             text,
             x.toFloat(),
             y.toFloat(),
+            color
         )
     }
 
@@ -225,7 +231,8 @@ object ScreenUtil {
     fun GuiGraphics.drawMultilineBox(
         text: String,
         x: Float,
-        y: Float
+        y: Float,
+        color: Int? = null
     ) {
         val font = Minecraft.getInstance().font
         val padding = 4f
@@ -239,7 +246,7 @@ object ScreenUtil {
 
         fill(x1.toInt(), y1.toInt(), x2.toInt(), y2.toInt(), 0x88000000.toInt())
 
-        drawBorder(x1, y1, x2, y2, 1f, 0xFFFFFFFF.toInt())
+        drawBorder(x1, y1, x2, y2, 1f, color)
 
         // text
         var currentY = y + padding
