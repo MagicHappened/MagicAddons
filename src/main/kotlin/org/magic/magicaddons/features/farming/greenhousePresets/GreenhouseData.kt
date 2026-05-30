@@ -132,6 +132,7 @@ object GreenhouseData {
         grid.plot = plot
 
         //gather in world data
+        //todo not only need to change this to find diffs
         grid.createSlotData()
         grid.setPlantData()
 
@@ -291,7 +292,6 @@ object GreenhouseData {
             grid.state.needsUpdate = true
         }
     }
-
 
     @Subscription
     fun onTick(event: TickEvent){
@@ -666,8 +666,8 @@ object GreenhouseData {
         }
 
         val isSelf = UUID.fromString("eef58b9d-39e1-4062-8a1a-2f921f14a46d") == Minecraft.getInstance().player?.uuid
-
-        if (matchingStage == null) {
+        val override = false
+        if (matchingStage == null || override) {
             ChatUtils.sendWithPrefix("No matching stage for ${def.name} please send the copied output")
             plantDiagnosticHitBaseBlock?.let {
                 copyCropStageData(it, stageRaw, def, !isSelf)
@@ -881,19 +881,33 @@ $matcherLine
             if (entity !is ArmorStand) continue
 
             val offset = entity.position().subtract(originVec)
-
             val head = entity.getItemBySlot(EquipmentSlot.HEAD)
             val hash = PlayerUtils.getSkinHash(head)
+
+            val customName = if (entity.hasCustomName()) {
+                entity.name.string
+                    .replace("\"", "\\\"")
+            } else null
+
+            val nameMatcher = if (customName != null) {
+                """
+                it.name == "$customName"
+        """.trimIndent()
+            } else ""
 
             standLines.add(
                 """
         CropArmorStand(
             offset = Vec3(${offset.x}, ${offset.y}, ${offset.z}),
             matcher = {
-                ${if (!hash.isNullOrBlank()) "it == \"$hash\"" else "true"}
+                ${if (!hash.isNullOrBlank())
+                    "it == \"$hash\"$nameMatcher"
+                else
+                    nameMatcher
+                }
             }
         )
-            """.trimIndent()
+        """.trimIndent()
             )
         }
 
