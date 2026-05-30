@@ -13,7 +13,8 @@ class ClickableButtonWidget(
     var y: Int,
     var width: Int,
     var height: Int,
-    val renderContent: ClickableButtonWidget.(GuiGraphics) -> Unit
+    val renderContent: ClickableButtonWidget.(GuiGraphics) -> Unit,
+    val shouldRenderButton: Boolean = true
 ) : GuiEventListener {
     @JvmField
     var isFocused = false
@@ -58,14 +59,16 @@ class ClickableButtonWidget(
         else
             BUTTON
 
-        graphics.blitSprite(
-            RenderPipelines.GUI_TEXTURED,
-            sprite,
-            x,
-            y,
-            width,
-            height
-        )
+        if (shouldRenderButton) {
+            graphics.blitSprite(
+                RenderPipelines.GUI_TEXTURED,
+                sprite,
+                x,
+                y,
+                width,
+                height
+            )
+        }
 
         renderContent(graphics)
     }

@@ -70,15 +70,16 @@ class GreenhouseSlotWidget(
             widgetHeight
         )
 
-        markingColor?.let {
-            graphics.fill(
-                widgetX,
-                widgetY,
-                widgetWidth,
-                widgetHeight,
-                it
-            )
-        }
+        //todo figure out why this is a mess of color
+//        markingColor?.let {
+//            graphics.fill(
+//                widgetX,
+//                widgetY,
+//                widgetWidth,
+//                widgetHeight,
+//                it
+//            )
+//        }
     }
 
     override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {

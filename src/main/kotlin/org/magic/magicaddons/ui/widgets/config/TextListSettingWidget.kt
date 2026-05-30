@@ -54,21 +54,22 @@ class TextListSettingWidget(
         x = x,
         y = y,
         width = 18,
-        height = 20
-    ) { graphics ->
+        height = 20,
+        { graphics ->
 
-        val font = Minecraft.getInstance().font
-        val text = "+"
+            val font = Minecraft.getInstance().font
+            val text = "+"
 
-        graphics.drawString(
-            font,
-            Component.literal(text),
-            x + (width - font.width(text)) / 2,
-            y + (height - font.lineHeight) / 2,
-            0xFF00FF00.toInt(),
-            false
-        )
-    }
+            graphics.drawString(
+                font,
+                Component.literal(text),
+                x + (width - font.width(text)) / 2,
+                y + (height - font.lineHeight) / 2,
+                0xFF00FF00.toInt(),
+                false
+            )
+        }
+    )
 
 
     override fun layout() {

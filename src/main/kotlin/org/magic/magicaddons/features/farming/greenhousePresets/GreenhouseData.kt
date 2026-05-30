@@ -127,7 +127,6 @@ object GreenhouseData {
         val plot = PlotAPI.getCurrentPlot() ?: return
 
         val grid = getCurrentGrid() ?: return
-        checkForUpdate()
         if (grid.state.hasRuntimeReferences && !grid.state.needsUpdate) return
 
         grid.plot = plot
@@ -230,77 +229,69 @@ object GreenhouseData {
 
     fun checkForUpdate() {
         if (!greenhousesInitialized) return
-
         if (warnUnknownValues(!miscInfo.shouldIgnoreWarning)) return
 
-        var nextTick = miscInfo.nextTickTime ?: return
+        val nextTick = miscInfo.nextTickTime ?: return
 
-        val uniques = getCurrentUniques().size
-        val growthTickMs = computeGrowthStageTimeSeconds(
-            uniques,
+        val growthTickMs = computeGrowthStageTimeMs(
+            getCurrentUniques().size,
             miscInfo.cropGrowthValue!!,
-            miscInfo.cropSpeedUpgradeValue!!) * 1000L
-
-        val onlineTickTracking =
-            LocationAPI.island == SkyBlockIsland.GARDEN &&
-                    !LocationAPI.isGuest
+            miscInfo.cropSpeedUpgradeValue!!
+        )
 
         val now = Instant.now()
 
-        if (onlineTickTracking){
-            val lastTick = lastServerTick
+        val onlineTickTracking =
+            LocationAPI.island == SkyBlockIsland.GARDEN &&
+                    !LocationAPI.isGuest &&
+                    lastCheckTime != null
+
+        val overdueMs = if (onlineTickTracking) {
             val currentTick = ServerUtils.totalServerTicks
+            val previousTick = lastServerTick
 
-            val passedTicks = if (lastTick != null){
-                currentTick - lastTick
-            }
-            else {
-                0L
-            }
             lastServerTick = currentTick
-            if (passedTicks <= 0) return
 
-            val passedMs = passedTicks * 50L
-            val passedGrowthTicks = (passedMs / growthTickMs).toInt()
+            if (previousTick == null) return
 
-            if (passedGrowthTicks <= 0) return
+            val passedServerTicks = currentTick - previousTick
+            if (passedServerTicks <= 0) return
 
-            miscInfo.nextTickTime = miscInfo.nextTickTime!!.plusMillis((passedGrowthTicks * growthTickMs).toLong())
+            val lastCheck = lastCheckTime ?: return
 
-            greenhouseGrids.forEach { grid ->
-                if (!grid.hasRuntime()) return@forEach
+            val serverMs = passedServerTicks * 50L
+            val realMs = now.toEpochMilli() - lastCheck.toEpochMilli()
 
-                grid.state.pendingGrowthTicks = passedGrowthTicks
-                grid.state.needsUpdate = true
-            }
-            return
+            val adjustmentDelta = realMs - serverMs
+
+            miscInfo.nextTickTime =
+                miscInfo.nextTickTime!!.minusMillis(adjustmentDelta)
+
+            now.toEpochMilli() -
+                    miscInfo.nextTickTime!!.toEpochMilli()
+        } else {
+            now.toEpochMilli() - nextTick.toEpochMilli()
         }
 
-        if (nextTick.isBefore(now)) {
+        if (overdueMs <= 0) return
 
-            val overdueMs = now.toEpochMilli() - nextTick.toEpochMilli()
+        val passedGrowthTicks = (overdueMs / growthTickMs)
 
-            val passedGlobalTicks = (overdueMs / growthTickMs) + 1
+        if (passedGrowthTicks <= 0) return
 
-            nextTick = nextTick.plusMillis((passedGlobalTicks * growthTickMs).toLong())
-
-            miscInfo.nextTickTime = nextTick
-        }
+        miscInfo.nextTickTime =
+            miscInfo.nextTickTime!!.plusMillis(
+                passedGrowthTicks * growthTickMs
+            )
 
         greenhouseGrids.forEach { grid ->
+            if (onlineTickTracking && !grid.hasRuntime()) return@forEach
 
-            val lastUpdate = grid.state.lastUpdateTimestamp ?: return@forEach
-
-            val elapsedMs = now.toEpochMilli() - lastUpdate.toEpochMilli()
-
-            val passedTicks = (elapsedMs / growthTickMs).toInt()
-
-            if (passedTicks <= 0) return@forEach
-
-            grid.state.pendingGrowthTicks = passedTicks
+            grid.state.pendingGrowthTicks = passedGrowthTicks.toInt()
             grid.state.needsUpdate = true
         }
     }
+
 
     @Subscription
     fun onTick(event: TickEvent){
@@ -312,8 +303,8 @@ object GreenhouseData {
             last.plusSeconds(60).isBefore(now) ||
             miscInfo.nextTickTime?.isBefore(now) ?: false
         ) {
-            lastCheckTime = now
             checkForUpdate()
+            lastCheckTime = now
         }
     }
 
@@ -772,11 +763,11 @@ object GreenhouseData {
     }
 
 
-    fun computeGrowthStageTimeSeconds(
+    fun computeGrowthStageTimeMs(
         uniqueCrops: Int,
         cropGrowthStat: Int,
         greenhouseUpgrade: Int
-    ): Double {
+    ): Long {
 
         val uniqueCropBonus = 0.025 * uniqueCrops
         val cropGrowthBonus = 0.0025 * cropGrowthStat
@@ -793,7 +784,9 @@ object GreenhouseData {
                     cropGrowthBonus +
                     upgradeBonus
 
-        return 14400.0 / denominator
+        val seconds = 14400.0 / denominator
+
+        return (seconds * 1000.0).toLong()
     }
 
     fun copyCropStageData(
