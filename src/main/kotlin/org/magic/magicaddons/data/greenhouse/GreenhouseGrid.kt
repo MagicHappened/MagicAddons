@@ -141,7 +141,10 @@ class GreenhouseGrid(
                 val slot = layout.getSlot(x, y) ?: continue
 
                 val runtime = findElementAtSlot(slot, remainingStands) ?: continue
-
+                //todo insert code here that catches certain types of mutations:
+                // aka Fleshtraps and other stuff that might arise, and add
+                // catching of hunger and bonus data.
+                // fuck i forgot it needs to be saved to disk fucking fleshtrap grr
 
                 val def = runtime.cropDef
 
@@ -191,8 +194,7 @@ class GreenhouseGrid(
                     }
                 }
                 for (stage in stages) {
-                    val result = stage.matchesStage(pos, remainingStands)
-
+                    val result = stage.matchesStage(pos, remainingStands, candidate.footprint, candidate.name == "Snoozling")
                     if (!result.matched) continue
                     if (result.score <= bestScore) {
                         continue
@@ -260,7 +262,7 @@ class GreenhouseGrid(
             }
 
             for (stage in stages) {
-                val result = stage.matchesStage(origin, remainingStands)
+                val result = stage.matchesStage(origin, remainingStands, candidate.footprint)
 
                 if (!result.matched) continue
                 if (result.score <= bestScore) continue

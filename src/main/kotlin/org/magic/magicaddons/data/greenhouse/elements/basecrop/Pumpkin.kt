@@ -36,7 +36,6 @@ object Pumpkin : CropDefinitionProvider {
                     )
                 ),
                 1..1,
-                allowRotation = true
             ),
             CropStage(
                 blocks = listOf(
@@ -57,7 +56,6 @@ object Pumpkin : CropDefinitionProvider {
                     )
                 ),
                 2..2,
-                allowRotation = true
             ),
             CropStage(
                 blocks = listOf(
@@ -73,14 +71,12 @@ object Pumpkin : CropDefinitionProvider {
                     CropArmorStand(
                         offset = Vec3(0.0, -0.53125, 0.0),
                         hashMatches = {
-                            it == "afa92dd43afed9e640cf3d3b008ca5199634ec8512de5e1f5eeaecd761296cb9"
-                        }
+                            it == "18bd4aa55673e90a3c611117277d94f6ce185b5d13d2a862a3376f50a6139c4f"
+                        },
                     )
                 ),
-                5..5, //maybe not needed?
-                allowRotation = true
-            ),
-            CropStage(
+                5..5
+            ) ,CropStage(
                 blocks = listOf(
                     CropBlockState(
                         offset = BlockPos(0,1,0),
@@ -92,13 +88,13 @@ object Pumpkin : CropDefinitionProvider {
                 ),
                 armorStands = listOf(
                     CropArmorStand(
-                        offset = Vec3(0.0, -0.53125, 0.0), //should work?
+                        offset = Vec3(0.0, -0.53125, 0.0),
                         hashMatches = {
                             it == "18bd4aa55673e90a3c611117277d94f6ce185b5d13d2a862a3376f50a6139c4f"
                         },
                     ),
                     CropArmorStand(
-                        offset = Vec3(0.3125, 0.1875, 0.71875),
+                        offset = Vec3(-0.1875, 0.1875, 0.21875),
                         hashMatches = {
                             it == "18bd4aa55673e90a3c611117277d94f6ce185b5d13d2a862a3376f50a6139c4f"
                         },
@@ -106,7 +102,34 @@ object Pumpkin : CropDefinitionProvider {
                 ),
                 7..7,
                 allowRotation = true
-            ),
+            ), // check which 7 is it
+//            CropStage(
+//                blocks = listOf(
+//                    CropBlockState(
+//                        offset = BlockPos(0,1,0),
+//                        matcher = {
+//                            it.isBlock("minecraft:melon_stem") &&
+//                                    it.getIntProperty("age") == 6
+//                        }
+//                    )
+//                ),
+//                armorStands = listOf(
+//                    CropArmorStand(
+//                        offset = Vec3(0.0, -0.53125, 0.0), //should work?
+//                        hashMatches = {
+//                            it == "18bd4aa55673e90a3c611117277d94f6ce185b5d13d2a862a3376f50a6139c4f"
+//                        },
+//                    ),
+//                    CropArmorStand(
+//                        offset = Vec3(0.3125, 0.1875, 0.71875),
+//                        hashMatches = {
+//                            it == "18bd4aa55673e90a3c611117277d94f6ce185b5d13d2a862a3376f50a6139c4f"
+//                        },
+//                    )
+//                ),
+//                7..7,
+//                allowRotation = true
+//            ),
             CropStage(
                 blocks = listOf(
                     CropBlockState(

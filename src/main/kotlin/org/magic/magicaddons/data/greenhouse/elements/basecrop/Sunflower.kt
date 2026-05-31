@@ -71,6 +71,26 @@ object Sunflower : CropDefinitionProvider {
                         offset = BlockPos(0,1,0),
                         matcher = {
                             it.isBlock("minecraft:melon_stem") &&
+                                    it.getIntProperty("age") == 4
+                        }
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(-0.1875, 0.03125, 0.0),
+                        hashMatches = {
+                            it == "b40d6fc1e1b67c58d7f82350bcac083f9e9547f9131236463164417fbdd3bee4"
+                        },
+                    )
+                ),
+                5..5
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0,1,0),
+                        matcher = {
+                            it.isBlock("minecraft:melon_stem") &&
                                     it.getIntProperty("age") == 6
                         }
                     )

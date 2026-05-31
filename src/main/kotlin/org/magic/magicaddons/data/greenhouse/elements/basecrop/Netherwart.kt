@@ -40,7 +40,7 @@ object Netherwart : CropDefinitionProvider {
                 ),
                 armorStands = listOf(
                 ),
-                4..4
+                4..5
             ),
             CropStage(
                 blocks = listOf(

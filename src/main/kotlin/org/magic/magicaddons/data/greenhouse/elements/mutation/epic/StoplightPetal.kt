@@ -19,6 +19,32 @@ object StoplightPetal : CropDefinitionProvider {
             CropStage(
                 blocks = listOf(
                     CropBlockState(
+                        offset = BlockPos(0,1,0),
+                        matcher = {
+                            it.isBlock("minecraft:melon_stem") &&
+                                    it.getIntProperty("age") == 5
+                        }
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(-0.21875, 0.875, 0.0),
+                        hashMatches = {
+                            it == "f15bd3a726eee1f2f8ffd3a92ae95c44a2f37f6b0345a795b44e0360564c67fe"
+                        },
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(0.0, -0.4375, 0.0),
+                        hashMatches = {
+                            it == "57f6c922e742b5c571b1cf091d6d4bc06360f4f03443d79c5174097b0b373d7e"
+                        },
+                    )
+                ),
+                3..3
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
                         offset = BlockPos(0, 1, 0),
                         matcher = {
                             it.isBlock("minecraft:melon_stem") &&
@@ -48,6 +74,40 @@ object StoplightPetal : CropDefinitionProvider {
                     )
                 ),
                 5..5,
+                allowRotation = true
+            ),
+            CropStage(
+                blocks = CropBlockState.matcherPattern(
+                    listOf(
+                        BlockPos(0,1,0),
+                        BlockPos(0,2,0)
+                    ),
+                    {
+                        it.isBlock("minecraft:melon_stem") &&
+                                it.getIntProperty("age") == 5
+                    }
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(-0.21875, 1.4375, 0.0),
+                        hashMatches = {
+                            it == "57f6c922e742b5c571b1cf091d6d4bc06360f4f03443d79c5174097b0b373d7e"
+                        },
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(0.0, 0.15625, 0.0),
+                        hashMatches = {
+                            it == "f15bd3a726eee1f2f8ffd3a92ae95c44a2f37f6b0345a795b44e0360564c67fe"
+                        },
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(0.0, -0.4375, 0.0),
+                        hashMatches = {
+                            it == "57f6c922e742b5c571b1cf091d6d4bc06360f4f03443d79c5174097b0b373d7e"
+                        },
+                    )
+                ),
+                7..7,
                 allowRotation = true
             ),
             CropStage(

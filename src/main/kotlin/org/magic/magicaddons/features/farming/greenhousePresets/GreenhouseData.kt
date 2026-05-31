@@ -691,7 +691,7 @@ object GreenhouseData {
         }
 
         val isSelf = UUID.fromString("eef58b9d-39e1-4062-8a1a-2f921f14a46d") == Minecraft.getInstance().player?.uuid
-        val override = false
+        val override = true
         if (matchingStage == null || override) {
             ChatUtils.sendWithPrefix("No matching stage for ${def.name} please send the copied output")
             plantDiagnosticHitBaseBlock?.let {
@@ -895,11 +895,10 @@ $matcherLine
         val stands = world.getEntities(null, box)
 
         val originVec = Vec3(
-            basePos.x.toDouble() + 0.5,
+            basePos.x.toDouble() + width / 2.0,
             basePos.y.toDouble(),
-            basePos.z.toDouble() + 0.5
+            basePos.z.toDouble() + width / 2.0
         )
-
 
 
         for (entity in stands) {

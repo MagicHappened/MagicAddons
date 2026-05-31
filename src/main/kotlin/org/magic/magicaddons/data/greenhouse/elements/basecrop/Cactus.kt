@@ -25,7 +25,6 @@ object Cactus : CropDefinitionProvider {
                     )
                 ),
                 1..1,
-                allowRotation = true
             ),
 
             CropStagePattern(
@@ -46,7 +45,6 @@ object Cactus : CropDefinitionProvider {
                     )
                 ),
                 stageRange = 2..3,
-                allowRotation = true,
                 baseStageStandOffset = Vec3(0.0, 0.59375, 0.0)
             ),
             CropStage(
@@ -68,6 +66,32 @@ object Cactus : CropDefinitionProvider {
                     )
                 ),
                 4..4,
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0,1,0),
+                        matcher = {
+                            it.isBlock("minecraft:cactus") &&
+                                    it.getIntProperty("age") == 0
+                        }
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, 0.5, 0.0),
+                        hashMatches = {
+                            it == "d4b3ea5cb6b6f046e326621ca11ffb7d6aec22d66c0d81e5039b19ee4400309f"
+                        },
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(0.03125, 1.53125, 0.1875),
+                        hashMatches = {
+                            it == "d4b3ea5cb6b6f046e326621ca11ffb7d6aec22d66c0d81e5039b19ee4400309f"
+                        },
+                    )
+                ),
+                5..5,
                 allowRotation = true
             ),
             CropStage(

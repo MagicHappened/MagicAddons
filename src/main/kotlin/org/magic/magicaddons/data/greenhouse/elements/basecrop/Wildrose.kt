@@ -104,6 +104,26 @@ object Wildrose : CropDefinitionProvider {
                 ),
                 armorStands = listOf(
                     CropArmorStand(
+                        offset = Vec3(0.0, -0.625, 0.0),
+                        hashMatches = {
+                            it == "816176a32c70d53e5aaade1f16e7d4ab6f5750e37d55b3e9e99977cbd5fa9f19"
+                        },
+                    )
+                ),
+                5..5
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0,1,0),
+                        matcher = {
+                            it.isBlock("minecraft:wheat") &&
+                                    it.getIntProperty("age") == 3
+                        }
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
                         offset = Vec3(0.0, -0.53125, 0.0),
                         hashMatches = {
                             it == "816176a32c70d53e5aaade1f16e7d4ab6f5750e37d55b3e9e99977cbd5fa9f19"

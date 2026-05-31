@@ -81,7 +81,7 @@ object Startlevine : CropDefinitionProvider {
                 ),
                 armorStands = listOf(
                     CropArmorStand(
-                        offset = Vec3(0.5, -0.6875, 0.5),
+                        offset = Vec3(0.0, -0.6875, 0.0),
                         hashMatches = {
                             it == "a7c545c10c035790615642a9ed6d689448b778cc16ac423c0f7fb19a0d057c6a"
                         }
@@ -101,14 +101,56 @@ object Startlevine : CropDefinitionProvider {
                 ),
                 armorStands = listOf(
                     CropArmorStand(
-                        offset = Vec3(0.5, -0.6875, 0.5),
+                        offset = Vec3(0.0, -0.6875, 0.0),
                         hashMatches = {
                             it == "a7c545c10c035790615642a9ed6d689448b778cc16ac423c0f7fb19a0d057c6a"
                         }
                     )
                 ),
                 5..5
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0,1,0),
+                        matcher = {
+                            it.isBlock("minecraft:wheat") &&
+                                    it.getIntProperty("age") == 2
+                        }
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, -0.65625, 0.0),
+                        hashMatches = {
+                            it == "a7c545c10c035790615642a9ed6d689448b778cc16ac423c0f7fb19a0d057c6a"
+                        },
+                    )
+                ),
+                6..6
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0,1,0),
+                        matcher = {
+                            it.isBlock("minecraft:wheat") &&
+                                    it.getIntProperty("age") == 3
+                        }
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, -0.59375, 0.0),
+                        hashMatches = {
+                            it == "a7c545c10c035790615642a9ed6d689448b778cc16ac423c0f7fb19a0d057c6a"
+                        },
+                    )
+                ),
+                7..7
             )
+
+
 
         ),
         maxStage = 12,

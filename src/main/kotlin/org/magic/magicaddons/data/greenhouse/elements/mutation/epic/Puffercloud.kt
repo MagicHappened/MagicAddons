@@ -19,6 +19,46 @@ object Puffercloud : CropDefinitionProvider {
             CropStage(
                 blocks = listOf(
                     CropBlockState(
+                        offset = BlockPos(0,1,0),
+                        matcher = {
+                            it.isBlock("minecraft:wheat") &&
+                                    it.getIntProperty("age") == 1
+                        }
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, -0.75, 0.0),
+                        hashMatches = {
+                            it == "a9ceff4063b495dbe5c42885f5f81b022d5b37322255b71e30963c489f936985"
+                        },
+                    )
+                ),
+                2..2
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0,1,0),
+                        matcher = {
+                            it.isBlock("minecraft:wheat") &&
+                                    it.getIntProperty("age") == 2
+                        }
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, -0.75, 0.0),
+                        hashMatches = {
+                            it == "a9ceff4063b495dbe5c42885f5f81b022d5b37322255b71e30963c489f936985"
+                        },
+                    )
+                ),
+                3..3
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
                         offset = BlockPos(0, 1, 0),
                         matcher = {
                             it.isBlock("minecraft:wheat") &&
@@ -55,6 +95,26 @@ object Puffercloud : CropDefinitionProvider {
                     )
                 ),
                 5..5
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0,1,0),
+                        matcher = {
+                            it.isBlock("minecraft:wheat") &&
+                                    it.getIntProperty("age") == 2
+                        }
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, -0.6875, 0.0),
+                        hashMatches = {
+                            it == "4c5d2d992b12548a4112cd533627ef76e193fec3f4452d367d654a4bb60f0a04"
+                        },
+                    )
+                ),
+                6..6
             ),
             CropStage(
                 blocks = listOf(
@@ -115,7 +175,28 @@ object Puffercloud : CropDefinitionProvider {
                     )
                 ),
                 10..10
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0,1,0),
+                        matcher = {
+                            it.isBlock("minecraft:wheat") &&
+                                    it.getIntProperty("age") == 5
+                        }
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, -0.4375, 0.0),
+                        hashMatches = {
+                            it == "9a488340c3d9131b6e97bae6279aac852037367cb93a6b50c60a7d328aec173e"
+                        },
+                    )
+                ),
+                14..14
             )
+
 
 
 

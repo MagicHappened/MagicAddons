@@ -81,6 +81,26 @@ object Cheesebite : CropDefinitionProvider {
                     CropBlockState(
                         offset = BlockPos(0,1,0),
                         matcher = {
+                            it.isBlock("minecraft:wheat") &&
+                                    it.getIntProperty("age") == 3
+                        }
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, -0.65625, 0.0),
+                        hashMatches = {
+                            it == "411f19c783959807338e2bf7080b1e34abb8c452464c0dce5bdf434cdc250717"
+                        },
+                    )
+                ),
+                4..4 //todo figure out rats thing
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0,1,0),
+                        matcher = {
                             it.isBlock("minecraft:melon_stem") &&
                                     it.getIntProperty("age") == 3
                         }

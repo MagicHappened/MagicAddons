@@ -18,6 +18,83 @@ object ChorusFruit : CropDefinitionProvider {
                 ),
                 armorStands = listOf(
                     CropArmorStand(
+                        offset = Vec3(0.0, 0.21875, 0.0),
+                        hashMatches = {
+                            it == "e044238503102f64f30f4d58f0843b215d8dd54fc9f1f70cc17d8dd891bb3e5e"
+                        },
+                    )
+                ),
+                1..1
+            ),
+            CropStage(
+                blocks = listOf(
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, -0.65625, 0.0),
+                        hashMatches = {
+                            it == "c5214cc92140cdf9b402b3e7ed1fa0bac7fb4b39e39b46d11b06301caf0f9c3d"
+                        },
+                    )
+                ),
+                2..2
+            ),
+            CropStage(
+                blocks = listOf(
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, -0.53125, 0.0),
+                        hashMatches = {
+                            it == "c5214cc92140cdf9b402b3e7ed1fa0bac7fb4b39e39b46d11b06301caf0f9c3d"
+                        },
+                    )
+                ),
+                3..3
+            ),
+            CropStage(
+                blocks = listOf(
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, -0.75, 0.0),
+                        hashMatches = {
+                            it == "c5214cc92140cdf9b402b3e7ed1fa0bac7fb4b39e39b46d11b06301caf0f9c3d"
+                        },
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(0.0, -0.21875, 0.0),
+                        hashMatches = {
+                            it == "c5214cc92140cdf9b402b3e7ed1fa0bac7fb4b39e39b46d11b06301caf0f9c3d"
+                        },
+                    )
+                ),
+                5..5
+            ),
+            CropStage(
+                blocks = listOf(
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, -0.125, 0.0),
+                        hashMatches = {
+                            it == "c5214cc92140cdf9b402b3e7ed1fa0bac7fb4b39e39b46d11b06301caf0f9c3d"
+                        },
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(0.0, -0.65625, 0.0),
+                        hashMatches = {
+                            it == "c5214cc92140cdf9b402b3e7ed1fa0bac7fb4b39e39b46d11b06301caf0f9c3d"
+                        },
+                    )
+                ),
+                6..6
+            ),
+            CropStage(
+                blocks = listOf(
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
                         offset = Vec3(0.0, -0.46875, 0.0),
                         hashMatches = {
                             it == "c5214cc92140cdf9b402b3e7ed1fa0bac7fb4b39e39b46d11b06301caf0f9c3d"
