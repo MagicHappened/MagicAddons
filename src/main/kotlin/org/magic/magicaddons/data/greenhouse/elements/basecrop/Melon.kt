@@ -36,7 +36,6 @@ object Melon : CropDefinitionProvider {
                     )
                 ),
                 1..1,
-                allowRotation = true
             ),
             CropStage(
                 blocks = listOf(
@@ -57,7 +56,6 @@ object Melon : CropDefinitionProvider {
                     )
                 ),
                 2..2,
-                allowRotation = true
             ),
             CropStage(
                 blocks = listOf(
@@ -78,7 +76,6 @@ object Melon : CropDefinitionProvider {
                     )
                 ),
                 3..3,
-                allowRotation = true
             ),
             CropStage(
                 blocks = listOf(
@@ -99,7 +96,6 @@ object Melon : CropDefinitionProvider {
                     )
                 ),
                 5..5,
-                allowRotation = true // maybe not needed?
             ),
             CropStage(
                 blocks = listOf(
@@ -113,13 +109,13 @@ object Melon : CropDefinitionProvider {
                 ),
                 armorStands = listOf(
                     CropArmorStand(
-                        offset = Vec3(0.78125, 0.1875, 0.8125),
+                        offset = Vec3(-0.21875, 0.1875, -0.1875),
                         hashMatches = {
                             it == "afa92dd43afed9e640cf3d3b008ca5199634ec8512de5e1f5eeaecd761296cb9"
                         },
                     ),
                     CropArmorStand(
-                        offset = Vec3(1.0, -0.53125, 1.0),
+                        offset = Vec3(0.0, -0.53125, 0.0),
                         hashMatches = {
                             it == "afa92dd43afed9e640cf3d3b008ca5199634ec8512de5e1f5eeaecd761296cb9"
                         },
@@ -127,7 +123,8 @@ object Melon : CropDefinitionProvider {
                 ),
                 7..7,
                 allowRotation = true
-            ),
+            )
+            ,
             CropStage(
                 blocks = listOf(
                     CropBlockState(

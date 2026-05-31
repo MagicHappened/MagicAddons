@@ -95,7 +95,7 @@ object Zombud : CropDefinitionProvider {
                         }
                     )
                 ),
-                4..4
+                4..5
             ),
             CropStage(
                 blocks = listOf(
@@ -103,19 +103,19 @@ object Zombud : CropDefinitionProvider {
                         offset = BlockPos(0,1,0),
                         matcher = {
                             it.isBlock("minecraft:nether_wart") &&
-                                    it.getIntProperty("age") == 0
+                                    it.getIntProperty("age") == 2
                         }
                     )
                 ),
                 armorStands = listOf(
                     CropArmorStand(
-                        offset = Vec3(0.0, -0.4375, 0.0),
+                        offset = Vec3(0.0, -0.28125, 0.0),
                         hashMatches = {
-                            it == "29e27b7ee26e272ce53f19e169a593ea83cc120bfa3a209e1a8a279fcdf463e7"
-                        }
+                            it == "7a65b2ac222b9b875d7bd33d0fbe60c60434eb86fe16ce451e9f8c4d81cc6455"
+                        },
                     )
                 ),
-                5..5
+                12..12
             ),
             CropStage(
                 blocks = listOf(

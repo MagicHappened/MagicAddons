@@ -35,6 +35,26 @@ object Devourer : CropDefinitionProvider {
                     )
                 ),
                 10..10
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0,1,0),
+                        matcher = {
+                            it.isBlock("minecraft:melon_stem") &&
+                                    it.getIntProperty("age") == 5
+                        }
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, 0.03125, 0.0),
+                        hashMatches = {
+                            it == "ed83f2f247c8a9374ac9e14eb67b55dbb1f17b7db3a5052342968af71cc2c2a0"
+                        },
+                    )
+                ),
+                11..11
             )
         ),
         maxStage = 16,

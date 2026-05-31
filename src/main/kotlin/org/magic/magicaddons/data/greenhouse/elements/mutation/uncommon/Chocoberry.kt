@@ -18,6 +18,21 @@ object Chocoberry : CropDefinitionProvider {
         stageDefs = listOf(
             CropStage(
                 blocks = listOf(
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.03125, -0.75, 0.21875),
+                        hashMatches = {
+                            it == "4478a25a4c5189aa292e6076ae5938cf6c8253b7719e310118fb8312a9b62470"
+                        },
+                    )
+                ),
+                1..1,
+                allowRotation = true
+            ),
+
+            CropStage(
+                blocks = listOf(
                     CropBlockState(
                         offset = BlockPos(0, 1, 0),
                         matcher = {

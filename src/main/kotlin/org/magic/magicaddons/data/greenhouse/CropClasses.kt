@@ -10,6 +10,7 @@ import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.Common
+import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.PlayerUtils
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockId
 import kotlin.math.abs
@@ -86,10 +87,10 @@ open class CropStage(
     // for now leaving debug in just in case
     fun matchesStage(
         origin: BlockPos,
-        remainingStands: List<Entity>,
+        remainingStands: List<ArmorStand>,
+        footprint: Footprint,
         debug: Boolean = false
     ): StageMatchResult {
-
         val level = Minecraft.getInstance().level ?: return StageMatchResult(
             false,
             0,
@@ -122,54 +123,45 @@ open class CropStage(
             matchedBlocks[pos] = state
             score += 1
         }
-
+        val center = Vec3(
+            origin.x + footprint.width / 2.0,
+            origin.y.toDouble(),
+            origin.z + footprint.height / 2.0
+        )
         this.armorStands?.forEach { standDef ->
 
-            val center = Vec3(
-                origin.x + 0.5,
-                origin.y.toDouble(),
-                origin.z + 0.5
-            )
 
-            val match = remainingStands.firstOrNull { entity ->
-                if (entity !is ArmorStand) return@firstOrNull false
 
-                val offset = entity.position().subtract(center)
+            val match = remainingStands
+                .map { entity ->
 
-                val head = entity.getItemBySlot(EquipmentSlot.HEAD)
-                val hash = PlayerUtils.getSkinHash(head)
-                val name = entity.customName?.string
+                    val offset = entity.position().subtract(center)
+                    val head = entity.getItemBySlot(EquipmentSlot.HEAD)
+                    val hash = PlayerUtils.getSkinHash(head)
+                    val name = entity.customName?.string
 
-                val offsetMatches =
-                    matchesWithRotation(
-                        offset,
-                        standDef.offset,
-                        this.allowRotation
-                    )
+                    val offsetOk = matchesWithRotation(offset, standDef.offset, allowRotation)
+                    val hashOk = standDef.hashMatches?.invoke(hash) ?: true
+                    val nameOk = standDef.customNameMatches?.invoke(name) ?: true
 
-                val hashMatches =
-                    standDef.hashMatches?.invoke(hash) ?: true
+                    if (debug) {
+                        Common.LOGGER.info(
+                            """
+                [ArmorStandMatch Debug]
+                entity=${entity.uuid}
+                offset=$offset expected=${standDef.offset} offsetOk=$offsetOk
+                hash=$hash hashOk=$hashOk
+                name=$name nameOk=$nameOk
+                FINAL=${offsetOk && hashOk && nameOk}
+                """.trimIndent()
+                        )
+                    }
 
-                val nameMatches =
-                    standDef.customNameMatches?.invoke(name) ?: true
-
-                if (debug) {
-                    Common.LOGGER.info(
-                        """
-                    Checking stand:
-                    offset=$offset
-                    expectedOffset=${standDef.offset}
-                    hash=$hash
-                    name=$name
-                    offsetMatches=$offsetMatches
-                    hashMatches=$hashMatches
-                    nameMatches=$nameMatches
-                    """.trimIndent()
-                    )
+                    entity to (offsetOk && hashOk && nameOk)
                 }
-
-                offsetMatches && hashMatches && nameMatches
-            }
+                .filter { it.second }
+                .map { it.first }
+                .firstOrNull()
 
             if (match == null) {
                 if (debug) {
@@ -217,7 +209,9 @@ open class CropStage(
             expected,
             Vec3(-expected.z, expected.y, expected.x),
             Vec3(-expected.x, expected.y, -expected.z),
-            Vec3(expected.z, expected.y, -expected.x)
+            Vec3(expected.z, expected.y, -expected.x),
+            Vec3(expected.z, expected.y, expected.x),
+            Vec3(-expected.z, expected.y, -expected.x)
         )
 
         return rotations.any { rotated ->
@@ -319,7 +313,8 @@ data class ElementRuntimeState(
     val cropDef: CropDefinition,
     val instance: GreenhouseElementInstance,
     val standEntities: List<Entity>?,
-    val blocksMap: Map<BlockPos,BlockState>?, // todo add water level
+    val blocksMap: Map<BlockPos,BlockState>?, // todo add handling of water level
+    //todo add here an extra info thing (maybe use the original one?)
 )
 
 interface CropDefinitionProvider {
