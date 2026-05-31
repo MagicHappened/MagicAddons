@@ -9,7 +9,6 @@ import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
 import org.magic.magicaddons.data.greenhouse.CropStage
 import org.magic.magicaddons.util.BlockUtils.getIntProperty
 import org.magic.magicaddons.util.BlockUtils.isBlock
-import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockId
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
 object Thornshade : CropDefinitionProvider {
@@ -23,7 +22,7 @@ object Thornshade : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.5625, 0.0),
-                        matcher = {
+                        hashMatches = {
                             it == "f847308b40613358974ba94675da63759b442dc50a241a506a77e5ca446f130f"
                         }
                     )
@@ -43,7 +42,7 @@ object Thornshade : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.34375, 0.0),
-                        matcher = {
+                        hashMatches = {
                             it == "f847308b40613358974ba94675da63759b442dc50a241a506a77e5ca446f130f"
                         }
                     )
@@ -63,7 +62,7 @@ object Thornshade : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.0625, 0.0),
-                        matcher = {
+                        hashMatches = {
                             it == "f847308b40613358974ba94675da63759b442dc50a241a506a77e5ca446f130f"
                         }
                     )
@@ -83,7 +82,7 @@ object Thornshade : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, 0.0625, 0.0),
-                        matcher = {
+                        hashMatches = {
                             it == "f847308b40613358974ba94675da63759b442dc50a241a506a77e5ca446f130f"
                         }
                     )
@@ -103,7 +102,7 @@ object Thornshade : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, 0.15625, 0.0),
-                        matcher = {
+                        hashMatches = {
                             it == "f847308b40613358974ba94675da63759b442dc50a241a506a77e5ca446f130f"
                         }
                     )

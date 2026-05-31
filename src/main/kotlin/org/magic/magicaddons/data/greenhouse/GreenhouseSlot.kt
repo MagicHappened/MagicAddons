@@ -14,4 +14,7 @@ class GreenhouseSlot(
         UniqueCrop
     }
 
+    override fun toString(): String {
+        return "$x,$y block: $placedBlock"
+    }
 }

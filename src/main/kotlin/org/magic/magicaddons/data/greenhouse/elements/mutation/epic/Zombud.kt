@@ -10,7 +10,6 @@ import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
 import org.magic.magicaddons.data.greenhouse.CropStage
 import org.magic.magicaddons.util.BlockUtils.getIntProperty
 import org.magic.magicaddons.util.BlockUtils.isBlock
-import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockId
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
 object Zombud : CropDefinitionProvider {
@@ -30,8 +29,8 @@ object Zombud : CropDefinitionProvider {
                 ),
                 armorStands = listOf(
                     CropArmorStand(
-                        offset = Vec3(0.5, 0.21875, 0.5),
-                        matcher = {
+                        offset = Vec3(0.0, 0.21875, 0.0),
+                        hashMatches = {
                             it == "de090b85462e85f7f44be07e55f1486602c141bb6fd0c277d5bb7c68deda265d"
                         }
                     )
@@ -50,8 +49,8 @@ object Zombud : CropDefinitionProvider {
                 ),
                 armorStands = listOf(
                     CropArmorStand(
-                        offset = Vec3(0.5, -0.625, 0.5),
-                        matcher = {
+                        offset = Vec3(0.0, -0.625, 0.0),
+                        hashMatches = {
                             it == "de090b85462e85f7f44be07e55f1486602c141bb6fd0c277d5bb7c68deda265d"
                         }
                     )
@@ -70,27 +69,9 @@ object Zombud : CropDefinitionProvider {
                 ),
                 armorStands = listOf(
                     CropArmorStand(
-                        offset = Vec3(0.5, -0.4375, 0.5),
-                        matcher = {
+                        offset = Vec3(0.0, -0.4375, 0.0),
+                        hashMatches = {
                             it == "de090b85462e85f7f44be07e55f1486602c141bb6fd0c277d5bb7c68deda265d"
-                        }
-                    ),
-                    CropArmorStand(
-                        offset = Vec3(0.5, 2.911999999999992, 0.5),
-                        matcher = {
-                            true
-                        }
-                    ),
-                    CropArmorStand(
-                        offset = Vec3(0.5, 2.5419999999999874, 0.5),
-                        matcher = {
-                            true
-                        }
-                    ),
-                    CropArmorStand(
-                        offset = Vec3(0.5, 2.171999999999983, 0.5),
-                        matcher = {
-                            true
                         }
                     )
                 ),
@@ -108,8 +89,8 @@ object Zombud : CropDefinitionProvider {
                 ),
                 armorStands = listOf(
                     CropArmorStand(
-                        offset = Vec3(0.5, -0.4375, 0.5),
-                        matcher = {
+                        offset = Vec3(0.0, -0.4375, 0.0),
+                        hashMatches = {
                             it == "29e27b7ee26e272ce53f19e169a593ea83cc120bfa3a209e1a8a279fcdf463e7"
                         }
                     )
@@ -128,8 +109,8 @@ object Zombud : CropDefinitionProvider {
                 ),
                 armorStands = listOf(
                     CropArmorStand(
-                        offset = Vec3(0.5, -0.4375, 0.5),
-                        matcher = {
+                        offset = Vec3(0.0, -0.4375, 0.0),
+                        hashMatches = {
                             it == "29e27b7ee26e272ce53f19e169a593ea83cc120bfa3a209e1a8a279fcdf463e7"
                         }
                     )
@@ -149,13 +130,13 @@ object Zombud : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.375, 0.0),
-                        matcher = {
+                        hashMatches = {
                             it == "de090b85462e85f7f44be07e55f1486602c141bb6fd0c277d5bb7c68deda265d"
                         }
                     ),
                     CropArmorStand(
                         offset = Vec3(0.0, 0.21875, 0.0),
-                        matcher = {
+                        hashMatches = {
                             it == "b2c4994b7a1c45231b623b8245c117382b267c8856c57cffa2d808c241027a51"
                         }
                     )

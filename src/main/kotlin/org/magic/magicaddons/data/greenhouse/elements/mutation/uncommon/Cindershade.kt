@@ -10,7 +10,6 @@ import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
 import org.magic.magicaddons.data.greenhouse.CropStage
 import org.magic.magicaddons.util.BlockUtils.getIntProperty
 import org.magic.magicaddons.util.BlockUtils.isBlock
-import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockId
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
 object Cindershade : CropDefinitionProvider {
@@ -30,14 +29,14 @@ object Cindershade : CropDefinitionProvider {
                 ),
                 armorStands = listOf(
                     CropArmorStand(
-                        offset = Vec3(0.5, -0.5, 0.5),
-                        matcher = {
+                        offset = Vec3(0.0, -0.5, 0.0),
+                        hashMatches = {
                             it == "66aa7b369efc0186937373242fe406e196281f0caf76899a4661c960b47fb74c"
                         }
                     ),
                     CropArmorStand(
-                        offset = Vec3(0.5, 0.09375, 0.5),
-                        matcher = {
+                        offset = Vec3(0.0, 0.09375, 0.0),
+                        hashMatches = {
                             it == "a0646bc0558155207204711cf5d3d07920e0e98c9b2be0b6107becb409a97427"
                         }
                     )

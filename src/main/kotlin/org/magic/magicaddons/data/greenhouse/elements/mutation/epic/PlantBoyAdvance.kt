@@ -1,7 +1,6 @@
 package org.magic.magicaddons.data.greenhouse.elements.mutation.epic
 
 import net.minecraft.core.BlockPos
-import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.CropArmorStand
 import org.magic.magicaddons.data.greenhouse.CropBlockState
@@ -11,7 +10,6 @@ import org.magic.magicaddons.data.greenhouse.CropStage
 import org.magic.magicaddons.data.greenhouse.Footprint
 import org.magic.magicaddons.util.BlockUtils.getIntProperty
 import org.magic.magicaddons.util.BlockUtils.isBlock
-import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockId
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
 object PlantBoyAdvance : CropDefinitionProvider {
@@ -53,19 +51,19 @@ object PlantBoyAdvance : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(1.0, -0.5625, 1.0),
-                        matcher = {
+                        hashMatches = {
                             it == "1822281949d048a10d54ed72cdd4c222312a86fbf946ba56aea35f5142d0ee7a"
                         }
                     ),
                     CropArmorStand(
                         offset = Vec3(1.5, -0.65625, 1.0),
-                        matcher = {
+                        hashMatches = {
                             it == "9eaf5fc0bf98649111f53d7516b18dec5d9d13f19273bef2b2b04f068ca9d337"
                         }
                     ),
                     CropArmorStand(
                         offset = Vec3(0.5, -0.65625, 1.0),
-                        matcher = {
+                        hashMatches = {
                             it == "9eaf5fc0bf98649111f53d7516b18dec5d9d13f19273bef2b2b04f068ca9d337"
                         }
                     )

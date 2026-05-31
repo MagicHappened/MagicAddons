@@ -6,7 +6,6 @@ import org.magic.magicaddons.data.greenhouse.CropDefinition
 import org.magic.magicaddons.data.greenhouse.CropStage
 import org.magic.magicaddons.data.greenhouse.CropStagePattern
 import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
-import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockId
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
 object DoNotEatShroom : CropDefinitionProvider {
@@ -20,7 +19,7 @@ object DoNotEatShroom : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, 0.125, 0.0),
-                        matcher = {
+                        hashMatches = {
                             it == "77a99b274b5e21a3537469b2ae717bb4cedcacca76df7525092a99bc08ea8c9"
                         }
                     )
@@ -33,7 +32,7 @@ object DoNotEatShroom : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.6875, 0.0),
-                        matcher = {
+                        hashMatches = {
                             it == "77a99b274b5e21a3537469b2ae717bb4cedcacca76df7525092a99bc08ea8c9"
                         }
                     )
@@ -45,7 +44,6 @@ object DoNotEatShroom : CropDefinitionProvider {
                     3 to 2,
                     4 to 3,
                     5 to 4
-                    //todo add 6 and see based on 7
                 )
             ),
             CropStagePattern(
@@ -54,7 +52,7 @@ object DoNotEatShroom : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.5, 0.0),
-                        matcher = {
+                        hashMatches = {
                             it == "6a7ae95a8bb1fcdbf71385fe663c5647e0a5c32004db8c0313c2d45c94e3d1ad"
                         }
                     )
@@ -72,7 +70,7 @@ object DoNotEatShroom : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.4375, 0.0),
-                        matcher = {
+                        hashMatches = {
                             it == "3f22178e2e72d6929a6ef9199795a93cfbad999bbee0aba235b277d0b18e0e94"
                         }
                     )
