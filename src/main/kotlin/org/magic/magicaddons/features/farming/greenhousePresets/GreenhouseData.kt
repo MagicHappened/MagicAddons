@@ -11,6 +11,7 @@ import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
+import org.magic.magicaddons.Common
 import org.magic.magicaddons.data.greenhouse.*
 import org.magic.magicaddons.data.greenhouse.elements.FireElement
 import org.magic.magicaddons.data.handlers.DataHandler
@@ -262,27 +263,29 @@ object GreenhouseData {
 
             val serverMs = passedServerTicks * 50L
             val realMs = now.toEpochMilli() - lastCheck.toEpochMilli()
-
             val adjustmentDelta = realMs - serverMs
-
             miscInfo.nextTickTime =
                 miscInfo.nextTickTime!!.minusMillis(adjustmentDelta)
+            lastCheckTime = now
 
             now.toEpochMilli() -
                     miscInfo.nextTickTime!!.toEpochMilli()
+
+
         } else {
+            lastCheckTime = now
             now.toEpochMilli() - nextTick.toEpochMilli()
         }
 
         if (overdueMs <= 0) return
-
         val passedGrowthTicks = (overdueMs / growthTickMs)
 
         if (passedGrowthTicks <= 0) return
 
+        val nextTickAdvance = (passedGrowthTicks + 1) * growthTickMs
         miscInfo.nextTickTime =
             miscInfo.nextTickTime!!.plusMillis(
-                passedGrowthTicks * growthTickMs
+                nextTickAdvance
             )
 
         greenhouseGrids.forEach { grid ->
@@ -297,14 +300,12 @@ object GreenhouseData {
     fun onTick(event: TickEvent){
         val now = Instant.now()
         val last = lastCheckTime
-
         if (
             last == null ||
             last.plusSeconds(60).isBefore(now) ||
             miscInfo.nextTickTime?.isBefore(now) ?: false
         ) {
             checkForUpdate()
-            lastCheckTime = now
         }
     }
 
