@@ -10,7 +10,6 @@ import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
 import org.magic.magicaddons.data.greenhouse.CropStage
 import org.magic.magicaddons.util.BlockUtils.getIntProperty
 import org.magic.magicaddons.util.BlockUtils.isBlock
-import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockId
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
 object Timestalk : CropDefinitionProvider {
@@ -38,7 +37,7 @@ object Timestalk : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.40625, 0.0),
-                        matcher = {
+                        hashMatches = {
                             it == "d2306f4c5946990204517a73bbfa8281fd7d9a294f908b0286e708c51f79a063"
                         }
                     )

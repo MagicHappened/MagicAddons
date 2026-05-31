@@ -1,7 +1,6 @@
 package org.magic.magicaddons.data.greenhouse.elements.mutation.epic
 
 import net.minecraft.core.BlockPos
-import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.CropArmorStand
 import org.magic.magicaddons.data.greenhouse.CropBlockState
@@ -10,7 +9,6 @@ import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
 import org.magic.magicaddons.data.greenhouse.CropStage
 import org.magic.magicaddons.util.BlockUtils.getIntProperty
 import org.magic.magicaddons.util.BlockUtils.isBlock
-import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockId
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
 object Startlevine : CropDefinitionProvider {
@@ -23,8 +21,8 @@ object Startlevine : CropDefinitionProvider {
                 ),
                 armorStands = listOf(
                     CropArmorStand(
-                        offset = Vec3(0.5, -0.8125, 0.5),
-                        matcher = {
+                        offset = Vec3(0.0, -0.8125, 0.0),
+                        hashMatches = {
                             it == "a7c545c10c035790615642a9ed6d689448b778cc16ac423c0f7fb19a0d057c6a"
                         }
                     )
@@ -43,8 +41,8 @@ object Startlevine : CropDefinitionProvider {
                 ),
                 armorStands = listOf(
                     CropArmorStand(
-                        offset = Vec3(0.5, -0.8125, 0.5),
-                        matcher = {
+                        offset = Vec3(0.0, -0.8125, 0.0),
+                        hashMatches = {
                             it == "a7c545c10c035790615642a9ed6d689448b778cc16ac423c0f7fb19a0d057c6a"
                         }
                     )
@@ -63,8 +61,8 @@ object Startlevine : CropDefinitionProvider {
                 ),
                 armorStands = listOf(
                     CropArmorStand(
-                        offset = Vec3(0.5, -0.8125, 0.5),
-                        matcher = {
+                        offset = Vec3(0.0, -0.8125, 0.0),
+                        hashMatches = {
                             it == "a7c545c10c035790615642a9ed6d689448b778cc16ac423c0f7fb19a0d057c6a"
                         }
                     )
@@ -84,7 +82,7 @@ object Startlevine : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.5, -0.6875, 0.5),
-                        matcher = {
+                        hashMatches = {
                             it == "a7c545c10c035790615642a9ed6d689448b778cc16ac423c0f7fb19a0d057c6a"
                         }
                     )
@@ -104,7 +102,7 @@ object Startlevine : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.5, -0.6875, 0.5),
-                        matcher = {
+                        hashMatches = {
                             it == "a7c545c10c035790615642a9ed6d689448b778cc16ac423c0f7fb19a0d057c6a"
                         }
                     )

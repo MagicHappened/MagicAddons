@@ -19,7 +19,7 @@ object Cactus : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.5, 0.0),
-                        matcher = {
+                        hashMatches = {
                             it == "d4b3ea5cb6b6f046e326621ca11ffb7d6aec22d66c0d81e5039b19ee4400309f"
                         }
                     )
@@ -34,13 +34,13 @@ object Cactus : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.5, 0.0),
-                        matcher = {
+                        hashMatches = {
                             it == "d4b3ea5cb6b6f046e326621ca11ffb7d6aec22d66c0d81e5039b19ee4400309f"
                         }
                     ),
                     CropArmorStand(
                         offset = Vec3(0.0, 0.78125, 0.0),
-                        matcher = {
+                        hashMatches = {
                             it == "d4b3ea5cb6b6f046e326621ca11ffb7d6aec22d66c0d81e5039b19ee4400309f"
                         }
                     )
@@ -62,7 +62,7 @@ object Cactus : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, 0.5, 0.0),
-                        matcher = {
+                        hashMatches = {
                             it == "d4b3ea5cb6b6f046e326621ca11ffb7d6aec22d66c0d81e5039b19ee4400309f"
                         }
                     )
@@ -90,7 +90,7 @@ object Cactus : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(-0.3125, 1.0, 0.0),
-                        matcher = {
+                        hashMatches = {
                             it == "d4b3ea5cb6b6f046e326621ca11ffb7d6aec22d66c0d81e5039b19ee4400309f"
                         }
                     )
@@ -118,19 +118,19 @@ object Cactus : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.03125, 2.59375, -0.15625),
-                        matcher = {
+                        hashMatches = {
                             it == "d4b3ea5cb6b6f046e326621ca11ffb7d6aec22d66c0d81e5039b19ee4400309f"
                         }
                     ),
                     CropArmorStand(
                         offset = Vec3(0.0, 1.0, 0.3125),
-                        matcher = {
+                        hashMatches = {
                             it == "d4b3ea5cb6b6f046e326621ca11ffb7d6aec22d66c0d81e5039b19ee4400309f"
                         }
                     ),
                     CropArmorStand(
                         offset = Vec3(0.0, 1.5, 0.0),
-                        matcher = {
+                        hashMatches = {
                             it == "d4b3ea5cb6b6f046e326621ca11ffb7d6aec22d66c0d81e5039b19ee4400309f"
                         }
                     )
@@ -165,13 +165,13 @@ object Cactus : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, 1.0, 0.3125),
-                        matcher = {
+                        hashMatches = {
                             it == "d4b3ea5cb6b6f046e326621ca11ffb7d6aec22d66c0d81e5039b19ee4400309f"
                         }
                     ),
                     CropArmorStand(
                         offset = Vec3(0.03125, 2.0, -0.28125),
-                        matcher = {
+                        hashMatches = {
                             it == "d4b3ea5cb6b6f046e326621ca11ffb7d6aec22d66c0d81e5039b19ee4400309f"
                         }
                     )

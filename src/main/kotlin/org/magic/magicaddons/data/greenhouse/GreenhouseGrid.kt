@@ -8,10 +8,10 @@ import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData.elementsBySoil
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData.getBuildableArea
+import org.magic.magicaddons.util.ChatUtils
 import tech.thatgravyboat.skyblockapi.api.profile.garden.Plot
 import tech.thatgravyboat.skyblockapi.api.profile.garden.PlotAPI
 import java.time.Instant
-import kotlin.collections.removeAll
 
 class GreenhouseGrid(
     var state: GridState,
@@ -23,7 +23,7 @@ class GreenhouseGrid(
 
     val elements = mutableListOf<ElementRuntimeState>()
 
-    fun addElement(element: ElementRuntimeState, age: Long? = null){
+    fun addElement(element: ElementRuntimeState, age: Long? = null) {
         if (age != null)
             element.instance.age = age
         layout.elementInstances += element.instance
@@ -164,6 +164,77 @@ class GreenhouseGrid(
         }
     }
 
+    // temp for testing
+    companion object {
+        fun findElementAtBasePos(
+            pos: BlockPos,
+            remainingStands: MutableList<ArmorStand>
+        ): ElementRuntimeState? {
+            val level = Minecraft.getInstance().level ?: return null
+            val state = level.getBlockState(pos)
+            val soil = state.block
+            val candidates = elementsBySoil[soil] ?: return null
+
+            var bestDef: CropDefinition? = null
+            var bestGrowth: GrowthStageInfo? = null
+            var bestScore = -1
+            var bestUsedStands: List<Entity>? = null
+            var bestBlocks: Map<BlockPos, BlockState>? = null
+
+
+            for (candidate in candidates) {
+
+                val stages = candidate.stageDefs.flatMap {
+                    when (it) {
+                        is CropStagePattern -> it.expand()
+                        is CropStage -> listOf(it)
+                    }
+                }
+                for (stage in stages) {
+                    val result = stage.matchesStage(pos, remainingStands)
+
+                    if (!result.matched) continue
+                    if (result.score <= bestScore) {
+                        continue
+                    }
+
+                    bestScore = result.score
+                    bestDef = candidate
+                    bestUsedStands = result.usedStands
+                    bestBlocks = result.matchedBlocks
+
+                    val range = stage.stageRange
+                    bestGrowth = if (range.first == range.last) {
+                        GrowthStageInfo.Known(range.first)
+                    } else {
+                        GrowthStageInfo.Estimated(range)
+                    }
+                }
+            }
+            if (bestDef != null) {
+                val instance = GreenhouseElementInstance(
+                    bestDef.skyblockId?.id ?: bestDef.name,
+                    slot = GreenhouseSlot(
+                        0, 0, state
+                    ),
+                    growthStage = bestGrowth
+
+                )
+
+                val runtime = ElementRuntimeState(
+                    cropDef = bestDef,
+                    instance = instance,
+                    standEntities = bestUsedStands,
+                    blocksMap = bestBlocks
+                )
+
+                return runtime
+            }
+
+            return null
+        }
+    }
+
     fun findElementAtSlot(
         slot: GreenhouseSlot,
         remainingStands: MutableList<ArmorStand>
@@ -230,7 +301,6 @@ class GreenhouseGrid(
     }
 
 
-
     fun getUnassignedBlockMap(): Map<BlockPos, BlockState> {
         val level = Minecraft.getInstance().level ?: return emptyMap()
         val area = plot?.getBuildableArea() ?: return emptyMap()
@@ -286,6 +356,6 @@ class GreenhouseGrid(
     )
 
     override fun toString(): String {
-        return "${layout.name?: "unnamed"}: ${layout.id}"
+        return "${layout.name ?: "unnamed"}: ${layout.id}"
     }
 }

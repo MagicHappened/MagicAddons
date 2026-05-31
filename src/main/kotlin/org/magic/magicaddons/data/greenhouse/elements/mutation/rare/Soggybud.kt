@@ -9,7 +9,6 @@ import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
 import org.magic.magicaddons.data.greenhouse.CropStage
 import org.magic.magicaddons.util.BlockUtils.getIntProperty
 import org.magic.magicaddons.util.BlockUtils.isBlock
-import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockId
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
 object Soggybud : CropDefinitionProvider {
@@ -24,7 +23,7 @@ object Soggybud : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, 0.0625, 0.0),
-                        matcher = {
+                        hashMatches = {
                             it == "b4bdf477d2f417f75798ad6377b131aca787be9bc05a2fddc1972d81d40c7356"
                         }
                     )
@@ -37,7 +36,7 @@ object Soggybud : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, 0.0625, 0.0),
-                        matcher = {
+                        hashMatches = {
                             it == "b4bdf477d2f417f75798ad6377b131aca787be9bc05a2fddc1972d81d40c7356"
                         }
                     )
@@ -50,7 +49,7 @@ object Soggybud : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, 0.15625, 0.0),
-                        matcher = {
+                        hashMatches = {
                             it == "b4bdf477d2f417f75798ad6377b131aca787be9bc05a2fddc1972d81d40c7356"
                         }
                     )
@@ -63,7 +62,7 @@ object Soggybud : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, 0.1875, 0.0),
-                        matcher = {
+                        hashMatches = {
                             it == "b4bdf477d2f417f75798ad6377b131aca787be9bc05a2fddc1972d81d40c7356"
                         }
                     )
@@ -76,7 +75,7 @@ object Soggybud : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.65625, 0.0),
-                        matcher = {
+                        hashMatches = {
                             it == "b4bdf477d2f417f75798ad6377b131aca787be9bc05a2fddc1972d81d40c7356"
                         }
                     )
@@ -89,7 +88,7 @@ object Soggybud : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.5625, 0.0),
-                        matcher = {
+                        hashMatches = {
                             it == "b4bdf477d2f417f75798ad6377b131aca787be9bc05a2fddc1972d81d40c7356"
                         }
                     )
@@ -109,7 +108,7 @@ object Soggybud : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.4375, 0.0),
-                        matcher = {
+                        hashMatches = {
                             it == "b4bdf477d2f417f75798ad6377b131aca787be9bc05a2fddc1972d81d40c7356"
                         }
                     )
@@ -129,7 +128,7 @@ object Soggybud : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.1875, 0.0),
-                        matcher = {
+                        hashMatches = {
                             it == "b4bdf477d2f417f75798ad6377b131aca787be9bc05a2fddc1972d81d40c7356"
                         }
                     )
@@ -149,7 +148,7 @@ object Soggybud : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, 0.15625, 0.0),
-                        matcher = {
+                        hashMatches = {
                             it == "b4bdf477d2f417f75798ad6377b131aca787be9bc05a2fddc1972d81d40c7356"
                         }
                     )

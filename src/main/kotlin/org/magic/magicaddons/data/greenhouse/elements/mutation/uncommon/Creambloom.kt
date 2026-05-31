@@ -9,7 +9,6 @@ import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
 import org.magic.magicaddons.data.greenhouse.CropStage
 import org.magic.magicaddons.util.BlockUtils.getIntProperty
 import org.magic.magicaddons.util.BlockUtils.isBlock
-import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockId
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
 object Creambloom : CropDefinitionProvider {
@@ -30,7 +29,7 @@ object Creambloom : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.4375, 0.0),
-                        matcher = {
+                        hashMatches = {
                             it == "c777c2f2d01bd8d93f8694d63e1fcbee74aef4664625720e9062c6c7675f35a"
                         }
                     )
@@ -50,7 +49,7 @@ object Creambloom : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, 0.0625, 0.0),
-                        matcher = {
+                        hashMatches = {
                             it == "c777c2f2d01bd8d93f8694d63e1fcbee74aef4664625720e9062c6c7675f35a"
                         }
                     )
@@ -70,7 +69,7 @@ object Creambloom : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, 0.0625, 0.0),
-                        matcher = {
+                        hashMatches = {
                             it == "60e98c0b598e2f5ce7c5ee8183ed157c5436a00585da711f8a87f24ea1ff055b"
                         }
                     )

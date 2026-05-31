@@ -9,6 +9,7 @@ import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.Vec3
+import org.magic.magicaddons.Common
 import org.magic.magicaddons.util.PlayerUtils
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockId
 import kotlin.math.abs
@@ -25,18 +26,68 @@ sealed interface GrowthStageInfo {
 
 data class Footprint(val width: Int, val height: Int)
 
-data class CropArmorStand(val offset: Vec3, val matcher: (String?) -> Boolean) //offset is defined from the soil top left block
-data class CropBlockState(val offset: BlockPos, val matcher: (BlockState) -> Boolean)
+data class CropArmorStand(
+    val offset: Vec3, //offset is defined from the soil top left block
+    val hashMatches: ((String?) -> Boolean)? = null,
+    val customNameMatches: ((String?) -> Boolean)? = null,
+) {
+    companion object {
+        fun matcherPattern(
+            offsets: List<Vec3>,
+            hashMatches: ((String?) -> Boolean)? = null,
+            customNameMatches: ((String?) -> Boolean)? = null
+        ): List<CropArmorStand> {
+            val result = mutableListOf<CropArmorStand>()
+            offsets.forEach {
+                result.add(
+                    CropArmorStand(
+                        it,
+                        hashMatches,
+                        customNameMatches
+                    )
+                )
+            }
+            return result
+        }
+    }
+}
+data class CropBlockState(
+    val offset: BlockPos,
+    val matcher: (BlockState) -> Boolean){
+
+    companion object {
+        fun matcherPattern(
+            positions: List<BlockPos>,
+            matcher: (BlockState) -> Boolean
+        ): List<CropBlockState> {
+            val result = mutableListOf<CropBlockState>()
+            positions.forEach {
+                result.add(
+                    CropBlockState(
+                        it,
+                        matcher
+                    )
+                )
+            }
+            return result
+        }
+    }
+}
+
+
 
 open class CropStage(
     val blocks: List<CropBlockState>? = null,
     val armorStands: List<CropArmorStand>? = null,  // make sure on the matcher if its NULL it shouldnt have the respective thing on it!
     val stageRange: IntRange, // eg if its a wheat crop it CANNOT have any armor stands on it otherwise it will be considered something
-    val allowRotation: Boolean = false // else at runtime (eg ashwreath having partially grown wheat block)
+    val allowRotation: Boolean = false, // else at runtime (eg ashwreath having partially grown wheat block)
+    val extraInfo: CropExtraInfo? = null
 ) {
+    // for now leaving debug in just in case
     fun matchesStage(
         origin: BlockPos,
-        remainingStands: List<Entity>
+        remainingStands: List<Entity>,
+        debug: Boolean = false
     ): StageMatchResult {
 
         val level = Minecraft.getInstance().level ?: return StageMatchResult(
@@ -48,15 +99,26 @@ open class CropStage(
 
         var score = 0
         val usedStands = mutableListOf<Entity>()
-        val matchedBlocks = mutableMapOf<BlockPos,BlockState>()
+        val matchedBlocks = mutableMapOf<BlockPos, BlockState>()
 
         this.blocks?.forEach { blockDef ->
             val pos = origin.offset(blockDef.offset)
             val state = level.getBlockState(pos)
 
             if (!blockDef.matcher(state)) {
+                if (debug) {
+                    Common.LOGGER.info(
+                        "Block mismatch at $pos. State=${state.block}"
+                    )
+                }
+
                 return StageMatchResult(false, 0, emptyList(), emptyMap())
             }
+
+            if (debug) {
+                Common.LOGGER.info("Matched block at $pos")
+            }
+
             matchedBlocks[pos] = state
             score += 1
         }
@@ -76,13 +138,63 @@ open class CropStage(
 
                 val head = entity.getItemBySlot(EquipmentSlot.HEAD)
                 val hash = PlayerUtils.getSkinHash(head)
+                val name = entity.customName?.string
 
-                matchesWithRotation(offset,standDef.offset, this.allowRotation) &&
-                        standDef.matcher(hash)
-            } ?: return StageMatchResult(false, 0, emptyList(), emptyMap())
+                val offsetMatches =
+                    matchesWithRotation(
+                        offset,
+                        standDef.offset,
+                        this.allowRotation
+                    )
+
+                val hashMatches =
+                    standDef.hashMatches?.invoke(hash) ?: true
+
+                val nameMatches =
+                    standDef.customNameMatches?.invoke(name) ?: true
+
+                if (debug) {
+                    Common.LOGGER.info(
+                        """
+                    Checking stand:
+                    offset=$offset
+                    expectedOffset=${standDef.offset}
+                    hash=$hash
+                    name=$name
+                    offsetMatches=$offsetMatches
+                    hashMatches=$hashMatches
+                    nameMatches=$nameMatches
+                    """.trimIndent()
+                    )
+                }
+
+                offsetMatches && hashMatches && nameMatches
+            }
+
+            if (match == null) {
+                if (debug) {
+                    Common.LOGGER.info(
+                        "Failed to find matching armor stand for expected offset ${standDef.offset}"
+                    )
+                }
+
+                return StageMatchResult(false, 0, emptyList(), emptyMap())
+            }
+
+            if (debug) {
+                Common.LOGGER.info(
+                    "Matched armor stand at ${match.position()}"
+                )
+            }
 
             usedStands.add(match)
             score += 2
+        }
+
+        if (debug) {
+            Common.LOGGER.info(
+                "Stage matched successfully. Score=$score"
+            )
         }
 
         return StageMatchResult(
@@ -118,24 +230,23 @@ open class CropStage(
                 abs(a.y - b.y) < epsilon &&
                 abs(a.z - b.z) < epsilon
     }
-
-
-
-
 }
+
 
 class CropStagePattern(
     blocks: List<CropBlockState>? = null,
     armorStands: List<CropArmorStand>? = null,
     stageRange: IntRange,
     allowRotation: Boolean = false,
+    extraInfo: CropExtraInfo? = null,
     val baseStageStandOffset: Vec3,
     val stageOffsetMultipliers: Map<Int, Int> = emptyMap()
 ) : CropStage(
     blocks = blocks,
     armorStands = armorStands,
     stageRange = stageRange,
-    allowRotation = allowRotation
+    allowRotation = allowRotation,
+    extraInfo = extraInfo
 ){
     fun expand(): List<CropStage> {
         val result = mutableListOf<CropStage>()
@@ -154,7 +265,7 @@ class CropStagePattern(
 
                 CropArmorStand(
                     offset = offset,
-                    matcher = stand.matcher
+                    hashMatches = stand.hashMatches
                 )
             }
 
@@ -172,7 +283,7 @@ class CropStagePattern(
     }
 
 }
-
+interface CropExtraInfo
 
 data class CropDefinition(
     val name: String,
@@ -189,6 +300,10 @@ data class CropDefinition(
 ){
     fun matchesId(id: SkyBlockId): Boolean{
         return skyblockId == id || (aliases?.any { it == id } ?: false)
+    }
+
+    override fun toString(): String {
+        return name
     }
 }
 

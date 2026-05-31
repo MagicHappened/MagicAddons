@@ -9,7 +9,6 @@ import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
 import org.magic.magicaddons.data.greenhouse.CropStage
 import org.magic.magicaddons.util.BlockUtils.getIntProperty
 import org.magic.magicaddons.util.BlockUtils.isBlock
-import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockId
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
 object Fleshtrap : CropDefinitionProvider {
@@ -29,30 +28,27 @@ object Fleshtrap : CropDefinitionProvider {
                 ),
                 armorStands = listOf(
                     CropArmorStand(
-                        offset = Vec3(0.5, -0.15625, 0.5),
-                        matcher = {
+                        offset = Vec3(0.0, -0.15625, 0.0),
+                        hashMatches = {
                             it == "c7f45f6cb2e4bbf45c5537c4dc3055a323021d62db7d91cc60beb02956401fb9"
                         }
                     ),
                     CropArmorStand(
-                        offset = Vec3(0.5, 2.6119999999999948, 0.5),
-                        matcher = {
-                            // it.name //"+60% Bonus"
-                            true //for now
+                        offset = Vec3(0.0, 2.612, 0.0),
+                        customNameMatches = {
+                            it?.contains("Bonus") ?: false
                         }
                     ),
                     CropArmorStand(
-                        offset = Vec3(0.5, 2.2419999999999902, 0.5),
-                        matcher = {
-                            // it.name == "Hunger"
-                            true
+                        offset = Vec3(0.0, 2.242, 0.0),
+                        customNameMatches = {
+                            it == "Hunger"
                         }
                     ),
                     CropArmorStand(
-                        offset = Vec3(0.5, 1.8719999999999857, 0.5),
-                        matcher = {
-                            // it.name == "||||||||||||||||||||" //todo well this solves what water looks like lol prob with & to color it.
-                            true
+                        offset = Vec3(0.0, 1.872, 0.0),
+                        customNameMatches = {
+                            it == "||||||||||||||||||||"
                         }
                     )
                 ),
@@ -66,6 +62,11 @@ object Fleshtrap : CropDefinitionProvider {
 }
 
 /*
+
+
+// BEWARE SUBTRACT 0.5 FROM X AND Z
+
+
 CropStage(
     blocks = listOf(
         CropBlockState(

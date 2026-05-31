@@ -9,7 +9,6 @@ import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
 import org.magic.magicaddons.data.greenhouse.CropStage
 import org.magic.magicaddons.util.BlockUtils.getIntProperty
 import org.magic.magicaddons.util.BlockUtils.isBlock
-import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockId
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
 object Duskbloom : CropDefinitionProvider {
@@ -30,7 +29,7 @@ object Duskbloom : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.4375, 0.0),
-                        matcher = {
+                        hashMatches = {
                             it == "7dca7951b36f5f749e883758b379c8008ca55f245987e4ef0c3788cf0c903d5"
                         }
                     )

@@ -11,7 +11,6 @@ import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
-import org.magic.magicaddons.Common
 import org.magic.magicaddons.data.greenhouse.*
 import org.magic.magicaddons.data.greenhouse.elements.FireElement
 import org.magic.magicaddons.data.handlers.DataHandler
@@ -91,6 +90,7 @@ object GreenhouseData {
 
     private var plantDiagnosticHitBaseBlock: BlockPos? = null
     private var plantDiagnosticListeningElement: ElementRuntimeState? = null
+    // ^^ temp
 
 
     private fun initKnownIds() {
@@ -147,14 +147,10 @@ object GreenhouseData {
     }
 
 
-
-
     fun getCurrentGrid(): GreenhouseGrid? {
         val plotId = PlotAPI.getCurrentPlot()?.id ?: return null
         return greenhouseGrids.find { it.layout.id == "plot_$plotId" }
     }
-
-
 
 
     fun String.parseDurationToMs(): Long {
@@ -297,7 +293,7 @@ object GreenhouseData {
     }
 
     @Subscription
-    fun onTick(event: TickEvent){
+    fun onTick(event: TickEvent) {
         val now = Instant.now()
         val last = lastCheckTime
         if (
@@ -308,7 +304,6 @@ object GreenhouseData {
             checkForUpdate()
         }
     }
-
 
 
     @Subscription
@@ -518,29 +513,30 @@ object GreenhouseData {
     }
 
 
-
     fun warnUnknownValues(sendWarning: Boolean = true): Boolean {
         val warnings = mutableListOf<Component>()
         if (miscInfo.cropGrowthValue == null) {
             warnings.add(
                 ChatUtils.buildWithCommand(
-                "Unknown Crop Growth value. Click here to open desk",
-                "/desk")
+                    "Unknown Crop Growth value. Click here to open desk",
+                    "/desk"
+                )
             )
         }
         if (miscInfo.cropSpeedUpgradeValue == null || miscInfo.cropYieldUpgradeValue == null) {
             warnings.add(
                 ChatUtils.buildWithCommand(
                     "Unknown Crop Speed or Yield upgrade. Click here to open desk",
-                    "/greenhouseupgrades")
+                    "/greenhouseupgrades"
+                )
             )
         }
-        if (miscInfo.nextTickTime == null){
+        if (miscInfo.nextTickTime == null) {
             warnings.add(
                 ChatUtils.buildWithPrefix("Unknown tick time, please right click a non fully grown plant")
             )
         }
-        if (sendWarning){
+        if (sendWarning) {
             ChatUtils.sendWarningsComponents(warnings)
         }
         return warnings.isNotEmpty()
@@ -560,6 +556,7 @@ object GreenhouseData {
         grid.addElement(runtime, System.currentTimeMillis())
     }
 
+    // "||||||||||||||||||||" this is the custom name of the armor to string we just need the formatting??
     fun tryGetWaterCanData() {
         val buildableArea = getCurrentGrid()?.plot?.getBuildableArea() ?: return
         val stands = Minecraft.getInstance().level?.getEntitiesOfClass(ArmorStand::class.java, buildableArea) ?: return
@@ -649,9 +646,9 @@ object GreenhouseData {
                 ?: saplingLore[2].siblings.getOrNull(1)?.string
         }.getOrNull()
 
-        if (nextStage?.contains(Regex("\\d")) ?: false){
-            if (!LocationAPI.isGuest){
-            miscInfo.nextTickTime = Instant.now().plusMillis(nextStage.parseDurationToMs())
+        if (nextStage?.contains(Regex("\\d")) ?: false) {
+            if (!LocationAPI.isGuest) {
+                miscInfo.nextTickTime = Instant.now().plusMillis(nextStage.parseDurationToMs())
             }
         }
 
@@ -664,6 +661,33 @@ object GreenhouseData {
             it.instance.age = age?.parseDurationToMs()
             it.instance.growthStage = GrowthStageInfo.Known(stageRaw)
             it.instance.waterLevel = waterLevel
+        }
+        val level = Minecraft.getInstance().level ?: return
+
+        val element = plantDiagnosticHitBaseBlock?.let { block ->
+            val minX = block.x.toDouble()
+            val minY = block.y.toDouble()
+            val minZ = block.z.toDouble()
+
+            val maxX = (block.x + 3).toDouble()   // 3x3 area (0,1,2)
+            val maxY = (block.y + 15).toDouble()  // height
+            val maxZ = (block.z + 3).toDouble()
+
+            val box = AABB(
+                minX, minY, minZ,
+                maxX, maxY, maxZ
+            )
+
+            val armorStands = level.getEntitiesOfClass(ArmorStand::class.java, box)
+
+            GreenhouseGrid.findElementAtBasePos(
+                block,
+                armorStands
+            )
+        }
+
+        element?.let {
+            ChatUtils.sendWithPrefix("Successfully matched element ${it.instance.elementId} : ${it.instance.growthStage} to block $plantDiagnosticHitBaseBlock")
         }
 
         val isSelf = UUID.fromString("eef58b9d-39e1-4062-8a1a-2f921f14a46d") == Minecraft.getInstance().player?.uuid
@@ -864,16 +888,16 @@ $matcherLine
             basePos.y.toDouble() - 2,
             basePos.z.toDouble(),
             basePos.x + width.toDouble(),
-            basePos.y.toDouble() + 4,
+            basePos.y.toDouble() + 14,
             basePos.z + height.toDouble()
         )
 
         val stands = world.getEntities(null, box)
 
         val originVec = Vec3(
-            basePos.x.toDouble(),
+            basePos.x.toDouble() + 0.5,
             basePos.y.toDouble(),
-            basePos.z.toDouble()
+            basePos.z.toDouble() + 0.5
         )
 
 
@@ -882,17 +906,27 @@ $matcherLine
             if (entity !is ArmorStand) continue
 
             val offset = entity.position().subtract(originVec)
+
             val head = entity.getItemBySlot(EquipmentSlot.HEAD)
             val hash = PlayerUtils.getSkinHash(head)
 
             val customName = if (entity.hasCustomName()) {
-                entity.name.string
-                    .replace("\"", "\\\"")
+                entity.name.string.replace("\"", "\\\"")
             } else null
+
+            val hashMatcher = if (!hash.isNullOrBlank()) {
+                """
+        hashMatches = {
+            it == "$hash"
+        },
+        """.trimIndent()
+            } else ""
 
             val nameMatcher = if (customName != null) {
                 """
-                it.name == "$customName"
+        customNameMatches = {
+            it == "$customName"
+        },
         """.trimIndent()
             } else ""
 
@@ -900,13 +934,7 @@ $matcherLine
                 """
         CropArmorStand(
             offset = Vec3(${offset.x}, ${offset.y}, ${offset.z}),
-            matcher = {
-                ${if (!hash.isNullOrBlank())
-                    "it == \"$hash\"$nameMatcher"
-                else
-                    nameMatcher
-                }
-            }
+            $hashMatcher$nameMatcher
         )
         """.trimIndent()
             )

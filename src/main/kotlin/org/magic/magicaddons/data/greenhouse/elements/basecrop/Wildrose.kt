@@ -25,7 +25,7 @@ object Wildrose : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, 0.0625, 0.0),
-                        matcher = {
+                        hashMatches = {
                             it == "f341905af17c74a1c6181a56c88d8f91853f2cff0a9a33aaa16c0d835fdceece"
                         }
                     )
@@ -45,7 +45,7 @@ object Wildrose : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, 0.0625, 0.0),
-                        matcher = {
+                        hashMatches = {
                             it == "f341905af17c74a1c6181a56c88d8f91853f2cff0a9a33aaa16c0d835fdceece"
                         }
                     )
@@ -65,7 +65,7 @@ object Wildrose : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.71875, 0.0),
-                        matcher = {
+                        hashMatches = {
                             it == "f341905af17c74a1c6181a56c88d8f91853f2cff0a9a33aaa16c0d835fdceece"
                         }
                     )
@@ -85,7 +85,7 @@ object Wildrose : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.625, 0.0),
-                        matcher = {
+                        hashMatches = {
                             it == "f341905af17c74a1c6181a56c88d8f91853f2cff0a9a33aaa16c0d835fdceece"
                         }
                     )
@@ -105,7 +105,7 @@ object Wildrose : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.53125, 0.0),
-                        matcher = {
+                        hashMatches = {
                             it == "816176a32c70d53e5aaade1f16e7d4ab6f5750e37d55b3e9e99977cbd5fa9f19"
                         }
                     )
@@ -125,7 +125,7 @@ object Wildrose : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.34375, 0.0),
-                        matcher = {
+                        hashMatches = {
                             it == "4a99a01317a01f65f7a7610122bea792c22a771e7a48ce1a5b352bccc8335074"
                         }
                     )
@@ -144,7 +144,7 @@ object Wildrose : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, 0.09375, 0.0),
-                        matcher = {
+                        hashMatches = {
                             it == "4a99a01317a01f65f7a7610122bea792c22a771e7a48ce1a5b352bccc8335074"
                         }
                     )
@@ -163,7 +163,7 @@ object Wildrose : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, 0.5, 0.0),
-                        matcher = {
+                        hashMatches = {
                             it == "4a99a01317a01f65f7a7610122bea792c22a771e7a48ce1a5b352bccc8335074"
                         }
                     )
@@ -188,7 +188,7 @@ object Wildrose : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, 0.78125, 0.0),
-                        matcher = {
+                        hashMatches = {
                             it == "4a99a01317a01f65f7a7610122bea792c22a771e7a48ce1a5b352bccc8335074"
                         }
                     )
@@ -213,7 +213,7 @@ object Wildrose : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, 1.09375, 0.0),
-                        matcher = {
+                        hashMatches = {
                             it == "61a37adb8bcad712663771235feeb136ebe0f5c4d593070a5410ccb6f6706aa0"
                         }
                     )

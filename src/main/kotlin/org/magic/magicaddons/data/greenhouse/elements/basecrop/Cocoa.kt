@@ -21,19 +21,19 @@ object Cocoa : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         Vec3(0.0, 0.34375, 0.0),
-                        matcher = {
+                        hashMatches = {
                             it == "e1f5cb495ba97bf9c05c15b8c9cc866c14c1fe14807fed5802a0bf68deec8912"
                         }
                     ),
                     CropArmorStand(
                         Vec3(0.0, 1.472, 0.0),
-                        matcher = {
+                        hashMatches = {
                             it == "e1f5cb495ba97bf9c05c15b8c9cc866c14c1fe14807fed5802a0bf68deec8912"
                         }
                     ),
                     CropArmorStand(
                         Vec3(0.0, 1.842, 0.0),
-                        matcher = {
+                        hashMatches = {
                             it == "e1f5cb495ba97bf9c05c15b8c9cc866c14c1fe14807fed5802a0bf68deec8912"
                         }
                     )
@@ -54,7 +54,7 @@ object Cocoa : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, 0.34375, 0.0),
-                        matcher = {
+                        hashMatches = {
                             it == "e1f5cb495ba97bf9c05c15b8c9cc866c14c1fe14807fed5802a0bf68deec8912"
                         }
                     )
@@ -75,7 +75,7 @@ object Cocoa : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.125, 0.0),
-                        matcher = {
+                        hashMatches = {
                             it == "db8f7d08f93594e385058afda93b0a077b218345751c1b9415d2623110e6afbd"
                         }
                     )
@@ -96,13 +96,13 @@ object Cocoa : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, 0.0, 0.0),
-                        matcher = {
+                        hashMatches = {
                             it == "db8f7d08f93594e385058afda93b0a077b218345751c1b9415d2623110e6afbd"
                         }
                     ),
                     CropArmorStand(
                         offset = Vec3(-0.125, 0.5625, 0.0625),
-                        matcher = {
+                        hashMatches = {
                             it == "db8f7d08f93594e385058afda93b0a077b218345751c1b9415d2623110e6afbd"
                         }
                     )
@@ -123,13 +123,13 @@ object Cocoa : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, 0.09375, 0.0),
-                        matcher = {
+                        hashMatches = {
                             it == "44d72eed58354ce14bfc497138a13564070fb4653898aeb3e66c73082ae1f993"
                         }
                     ),
                     CropArmorStand(
                         offset = Vec3(0.0625, 0.65625, 0.125),
-                        matcher = {
+                        hashMatches = {
                             it == "44d72eed58354ce14bfc497138a13564070fb4653898aeb3e66c73082ae1f993"
                         }
                     )

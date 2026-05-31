@@ -6,7 +6,6 @@ import org.magic.magicaddons.data.greenhouse.CropArmorStand
 import org.magic.magicaddons.data.greenhouse.CropDefinition
 import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
 import org.magic.magicaddons.data.greenhouse.CropStage
-import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockId
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
 object ChorusFruit : CropDefinitionProvider {
@@ -20,31 +19,31 @@ object ChorusFruit : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.46875, 0.0),
-                        matcher = {
+                        hashMatches = {
                             it == "c5214cc92140cdf9b402b3e7ed1fa0bac7fb4b39e39b46d11b06301caf0f9c3d"
                         }
                     ),
                     CropArmorStand(
                         offset = Vec3(0.0, 0.125, 0.0),
-                        matcher = {
+                        hashMatches = {
                             it == "c5214cc92140cdf9b402b3e7ed1fa0bac7fb4b39e39b46d11b06301caf0f9c3d"
                         }
                     ),
                     CropArmorStand(
                         offset = Vec3(0.1875, 0.53125, 0.21875),
-                        matcher = {
+                        hashMatches = {
                             it == "e044238503102f64f30f4d58f0843b215d8dd54fc9f1f70cc17d8dd891bb3e5e"
                         }
                     ),
                     CropArmorStand(
                         offset = Vec3(-0.09375, 0.25, -0.21875),
-                        matcher = {
+                        hashMatches = {
                             it == "e044238503102f64f30f4d58f0843b215d8dd54fc9f1f70cc17d8dd891bb3e5e"
                         }
                     ),
                     CropArmorStand(
                         offset = Vec3(0.0, 0.6875, 0.0),
-                        matcher = {
+                        hashMatches = {
                             it == "e044238503102f64f30f4d58f0843b215d8dd54fc9f1f70cc17d8dd891bb3e5e"
                         }
                     )
