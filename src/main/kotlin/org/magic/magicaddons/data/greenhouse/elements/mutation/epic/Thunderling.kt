@@ -46,27 +46,10 @@ object Thunderling : CropDefinitionProvider {
                         hashMatches = {
                             it == "3724327576a20876fc95f41bb37fd0e2f2c79014455f19262f185ce88b155385"
                         }
-                    ),
-                    CropArmorStand(
-                        offset = Vec3(0.0, 2.411999999999992, 0.0),
-                        hashMatches = {
-                            true
-                        }
-                    ),
-                    CropArmorStand(
-                        offset = Vec3(0.0, 2.0419999999999874, 0.0),
-                        hashMatches = {
-                            true
-                        }
-                    ),
-                    CropArmorStand(
-                        offset = Vec3(0.0, 1.6719999999999828, 0.0),
-                        hashMatches = {
-                            true
-                        }
                     )
                 ),
-                16..16
+                16..16,
+                allowRotation = true
             )
 
 

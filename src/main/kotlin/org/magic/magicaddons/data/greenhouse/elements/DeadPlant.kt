@@ -26,9 +26,9 @@ object DeadPlant : CropDefinitionProvider {
                 armorStands = null,
                 1..1
             )
-
         ),
         requiredSoil = setOf(Blocks.SAND, Blocks.DIRT, Blocks.FARMLAND, Blocks.MYCELIUM, Blocks.SOUL_SAND, Blocks.END_STONE),
-        needsWater = false
+        needsWater = false,
+        isMutation = true // see if needed
     )
 }

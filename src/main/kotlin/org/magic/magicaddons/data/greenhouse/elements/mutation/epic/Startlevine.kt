@@ -148,7 +148,29 @@ object Startlevine : CropDefinitionProvider {
                     )
                 ),
                 7..7
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0,1,0),
+                        matcher = {
+                            it.isBlock("minecraft:sunflower")
+                        }
+                    )
+                ),
+                armorStands =
+                    listOf(
+                        CropArmorStand(
+                            offset = Vec3(0.0, -0.4375, 0.0),
+                            hashMatches = {
+                                it == "98bef15a64354093d26b8f002e476b8012ed3ad9b061796953b6b1dad447d7"
+                            },
+                        )
+                    )
+                ,
+                12..12
             )
+
 
 
 

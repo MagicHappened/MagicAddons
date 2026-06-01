@@ -33,7 +33,7 @@ object MobHitDebugInfo : Feature() {
         displayName = displayName,
         tooltip = tooltipMessage,
         value = false
-        //todo add the select option to return
+        //todo make all the components into boolean settings and togglable.
     )
 
     @EventHandler

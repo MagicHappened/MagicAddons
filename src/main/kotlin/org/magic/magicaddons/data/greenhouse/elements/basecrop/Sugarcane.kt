@@ -13,7 +13,7 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
 object Sugarcane : CropDefinitionProvider {
     override val definition = CropDefinition(
-        name = "Sugar cane",
+        name = "Sugar Cane",
         skyblockId = SkyBlockItemId.item("SUGAR_CANE"),
         stageDefs = listOf(
             CropStage(

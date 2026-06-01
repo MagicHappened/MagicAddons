@@ -11,6 +11,7 @@ import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
+import org.magic.magicaddons.commands.debug.FarmingDebug
 import org.magic.magicaddons.data.greenhouse.*
 import org.magic.magicaddons.data.greenhouse.elements.FireElement
 import org.magic.magicaddons.data.handlers.DataHandler
@@ -38,6 +39,7 @@ import tech.thatgravyboat.skyblockapi.api.location.SkyBlockIsland
 import tech.thatgravyboat.skyblockapi.api.profile.garden.Plot
 import tech.thatgravyboat.skyblockapi.api.profile.garden.PlotAPI
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockId.Companion.getSkyBlockId
+import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 import tech.thatgravyboat.skyblockapi.utils.extentions.getLore
 import tech.thatgravyboat.skyblockapi.utils.extentions.isSkyblockFiller
 import java.time.Duration
@@ -635,7 +637,11 @@ object GreenhouseData {
             ?.let { raw ->
                 when {
                     raw.equals("FULLY GROWN", ignoreCase = true) -> def?.maxStage
-                    raw.equals("DEAD", ignoreCase = true) -> null
+                    raw.equals("DEAD", ignoreCase = true) -> {
+                        if (def?.skyblockId == SkyBlockItemId.item("DEAD_PLANT"))
+                            return@let 1
+                        return@let null
+                    }
                     else -> raw.toIntOrNull()
                 }
             }
@@ -669,9 +675,9 @@ object GreenhouseData {
             val minY = block.y.toDouble()
             val minZ = block.z.toDouble()
 
-            val maxX = (block.x + 3).toDouble()   // 3x3 area (0,1,2)
+            val maxX = (block.x + FarmingDebug.footprint.width).toDouble()
             val maxY = (block.y + 15).toDouble()  // height
-            val maxZ = (block.z + 3).toDouble()
+            val maxZ = (block.z + FarmingDebug.footprint.height).toDouble()
 
             val box = AABB(
                 minX, minY, minZ,
@@ -685,13 +691,12 @@ object GreenhouseData {
                 armorStands
             )
         }
-
         element?.let {
             ChatUtils.sendWithPrefix("Successfully matched element ${it.instance.elementId} : ${it.instance.growthStage} to block $plantDiagnosticHitBaseBlock")
         }
 
         val isSelf = UUID.fromString("eef58b9d-39e1-4062-8a1a-2f921f14a46d") == Minecraft.getInstance().player?.uuid
-        val override = true
+        val override = false
         if (matchingStage == null || override) {
             ChatUtils.sendWithPrefix("No matching stage for ${def.name} please send the copied output")
             plantDiagnosticHitBaseBlock?.let {
@@ -824,7 +829,7 @@ object GreenhouseData {
         val sb = StringBuilder(2048)
 
         val blockLines = mutableListOf<String>()
-        val standLines = mutableListOf<String>()
+        val standLines = mutableListOf<ArmorStandExport>()
 
         val footprint = foundDefinition?.footprint
         val width = footprint?.width ?: 1
@@ -913,29 +918,12 @@ $matcherLine
                 entity.name.string.replace("\"", "\\\"")
             } else null
 
-            val hashMatcher = if (!hash.isNullOrBlank()) {
-                """
-        hashMatches = {
-            it == "$hash"
-        },
-        """.trimIndent()
-            } else ""
-
-            val nameMatcher = if (customName != null) {
-                """
-        customNameMatches = {
-            it == "$customName"
-        },
-        """.trimIndent()
-            } else ""
-
             standLines.add(
-                """
-        CropArmorStand(
-            offset = Vec3(${offset.x}, ${offset.y}, ${offset.z}),
-            $hashMatcher$nameMatcher
-        )
-        """.trimIndent()
+                ArmorStandExport(
+                    offset = offset,
+                    hash = hash,
+                    customName = customName
+                )
             )
         }
 
@@ -948,9 +936,117 @@ $matcherLine
         sb.appendLine("    ),")
 
         if (standLines.isNotEmpty()) {
-            sb.appendLine("    armorStands = listOf(")
-            sb.appendLine(standLines.joinToString(",\n") { "        $it" })
-            sb.appendLine("    ),")
+
+            val grouped = standLines.groupBy {
+                it.hash to it.customName
+            }
+
+            val singletons = grouped.values
+                .filter { it.size == 1 }
+                .map { it.first() }
+
+            val patterns = grouped.values
+                .filter { it.size > 1 }
+
+            sb.appendLine("    armorStands =")
+
+            val sections = mutableListOf<String>()
+
+            if (singletons.isNotEmpty()) {
+
+                val singletonsText = buildString {
+                    appendLine("listOf(")
+
+                    singletons.forEachIndexed { index, stand ->
+
+                        append(
+                            """
+    CropArmorStand(
+        offset = Vec3(${stand.offset.x}, ${stand.offset.y}, ${stand.offset.z}),
+""".trimIndent()
+                        )
+
+                        stand.hash?.let {
+                            append(
+                                """
+
+        hashMatches = {
+            it == "$it"
+        },
+""".trimIndent()
+                            )
+                        }
+
+                        stand.customName?.let {
+                            append(
+                                """
+
+        customNameMatches = {
+            it == "$it"
+        },
+""".trimIndent()
+                            )
+                        }
+
+                        append(
+                            """
+
+    )
+""".trimIndent()
+                        )
+
+                        if (index != singletons.lastIndex) {
+                            append(",")
+                        }
+
+                        appendLine()
+                    }
+
+                    append(")")
+                }
+
+                sections += singletonsText
+            }
+
+            patterns.forEach { group ->
+
+                val first = group.first()
+
+                val offsets = group.joinToString(",\n") {
+                    "        Vec3(${it.offset.x}, ${it.offset.y}, ${it.offset.z})"
+                }
+
+                val matcherParts = mutableListOf<String>()
+
+                first.hash?.let {
+                    matcherParts += """
+hashMatches = {
+    it == "$it"
+}
+            """.trimIndent()
+                }
+
+                first.customName?.let {
+                    matcherParts += """
+customNameMatches = {
+    it == "$it"
+}
+            """.trimIndent()
+                }
+
+                sections += """
+CropArmorStand.matcherPattern(
+    listOf(
+$offsets
+    ),
+    ${matcherParts.joinToString(",\n    ")}
+)
+        """.trimIndent()
+            }
+
+            sb.appendLine("        " + sections.joinToString("\n        +\n        "))
+            sb.appendLine(",")
+
         } else {
             sb.appendLine("    armorStands = null,")
         }
@@ -968,6 +1064,13 @@ $matcherLine
 
         ChatUtils.sendWithPrefix("Copied crop stage to clipboard (${result.length} chars)")
     }
+    //temp for exporting
+    data class ArmorStandExport(
+        val offset: Vec3,
+        val hash: String?,
+        val customName: String?
+    )
+
 
     sealed class UniqueCropKey {
 

@@ -101,91 +101,103 @@ open class CropStage(
         var score = 0
         val usedStands = mutableListOf<Entity>()
         val matchedBlocks = mutableMapOf<BlockPos, BlockState>()
-
-        this.blocks?.forEach { blockDef ->
-            val pos = origin.offset(blockDef.offset)
-            val state = level.getBlockState(pos)
-
-            if (!blockDef.matcher(state)) {
-                if (debug) {
-                    Common.LOGGER.info(
-                        "Block mismatch at $pos. State=${state.block}"
-                    )
-                }
-
-                return StageMatchResult(false, 0, emptyList(), emptyMap())
-            }
-
-            if (debug) {
-                Common.LOGGER.info("Matched block at $pos")
-            }
-
-            matchedBlocks[pos] = state
-            score += 1
+        if (debug){
+            Common.LOGGER.info("Trying to match stage: ${stageRange.first}, ${stageRange.last}")
         }
-        val center = Vec3(
-            origin.x + footprint.width / 2.0,
-            origin.y.toDouble(),
-            origin.z + footprint.height / 2.0
-        )
-        this.armorStands?.forEach { standDef ->
+        try {
+            this.blocks?.forEach { blockDef ->
+                val pos = origin.offset(blockDef.offset)
+                val state = level.getBlockState(pos)
 
-
-
-            val match = remainingStands
-                .map { entity ->
-
-                    val offset = entity.position().subtract(center)
-                    val head = entity.getItemBySlot(EquipmentSlot.HEAD)
-                    val hash = PlayerUtils.getSkinHash(head)
-                    val name = entity.customName?.string
-
-                    val offsetOk = matchesWithRotation(offset, standDef.offset, allowRotation)
-                    val hashOk = standDef.hashMatches?.invoke(hash) ?: true
-                    val nameOk = standDef.customNameMatches?.invoke(name) ?: true
-
+                if (!blockDef.matcher(state)) {
                     if (debug) {
                         Common.LOGGER.info(
-                            """
-                [ArmorStandMatch Debug]
-                entity=${entity.uuid}
-                offset=$offset expected=${standDef.offset} offsetOk=$offsetOk
-                hash=$hash hashOk=$hashOk
-                name=$name nameOk=$nameOk
-                FINAL=${offsetOk && hashOk && nameOk}
-                """.trimIndent()
+                            "Block mismatch at $pos. State=${state.block}"
                         )
                     }
 
-                    entity to (offsetOk && hashOk && nameOk)
+                    return StageMatchResult(false, 0, emptyList(), emptyMap())
                 }
-                .filter { it.second }
-                .map { it.first }
-                .firstOrNull()
 
-            if (match == null) {
+                if (debug) {
+                    Common.LOGGER.info("Matched block at $pos")
+                }
+
+                matchedBlocks[pos] = state
+                score += 1
+            }
+            val center = Vec3(
+                origin.x + footprint.width / 2.0,
+                origin.y.toDouble(),
+                origin.z + footprint.height / 2.0
+            )
+            this.armorStands?.forEach { standDef ->
+
+
+
+                val match = remainingStands
+                    .map { entity ->
+
+                        val offset = entity.position().subtract(center)
+                        val head = entity.getItemBySlot(EquipmentSlot.HEAD)
+                        val hash = PlayerUtils.getSkinHash(head)
+                        val name = entity.customName?.string
+
+                        val offsetOk = matchesWithRotation(offset, standDef.offset, allowRotation)
+                        val hashOk = standDef.hashMatches?.invoke(hash) ?: true
+                        val nameOk = standDef.customNameMatches?.invoke(name) ?: true
+
+                        if (debug) {
+                            Common.LOGGER.info(
+                                """
+                    [ArmorStandMatch Debug]
+                    entity=${entity.uuid}
+                    offset=$offset expected=${standDef.offset} offsetOk=$offsetOk
+                    hash=$hash hashOk=$hashOk
+                    name=$name nameOk=$nameOk
+                    FINAL=${offsetOk && hashOk && nameOk}
+                    """.trimIndent()
+                            )
+                        }
+
+                        entity to (offsetOk && hashOk && nameOk)
+                    }
+                    .filter { it.second }
+                    .map { it.first }
+                    .firstOrNull()
+
+                if (match == null) {
+                    if (debug) {
+                        Common.LOGGER.info(
+                            "Failed to find matching armor stand for expected offset ${standDef.offset}"
+                        )
+                    }
+
+                    return StageMatchResult(false, 0, emptyList(), emptyMap())
+                }
+
                 if (debug) {
                     Common.LOGGER.info(
-                        "Failed to find matching armor stand for expected offset ${standDef.offset}"
+                        "Matched armor stand at ${match.position()}"
                     )
                 }
 
-                return StageMatchResult(false, 0, emptyList(), emptyMap())
+                usedStands.add(match)
+                score += 2
             }
 
             if (debug) {
                 Common.LOGGER.info(
-                    "Matched armor stand at ${match.position()}"
+                    "Stage matched successfully. Score=$score"
                 )
             }
-
-            usedStands.add(match)
-            score += 2
-        }
-
-        if (debug) {
-            Common.LOGGER.info(
-                "Stage matched successfully. Score=$score"
+        } catch (e: NoSuchMethodException) {
+            ChatUtils.sendWithPrefix("Caught NoSuchMethodException in matchesStage. for $e")
+            return StageMatchResult(
+                matched = false,
+                score = 0,
+                usedStands = emptyList(),
+                matchedBlocks = emptyMap()
             )
         }
 

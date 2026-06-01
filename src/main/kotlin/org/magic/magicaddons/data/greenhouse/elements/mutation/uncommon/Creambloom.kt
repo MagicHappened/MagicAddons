@@ -18,6 +18,21 @@ object Creambloom : CropDefinitionProvider {
         stageDefs = listOf(
             CropStage(
                 blocks = listOf(
+                ),
+                armorStands =
+                    listOf(
+                        CropArmorStand(
+                            offset = Vec3(0.0, -0.65625, 0.0),
+                            hashMatches = {
+                                it == "c777c2f2d01bd8d93f8694d63e1fcbee74aef4664625720e9062c6c7675f35a"
+                            },
+                        )
+                    )
+                ,
+                1..1
+            ),
+            CropStage(
+                blocks = listOf(
                     CropBlockState(
                         offset = BlockPos(0, 1, 0),
                         matcher = {

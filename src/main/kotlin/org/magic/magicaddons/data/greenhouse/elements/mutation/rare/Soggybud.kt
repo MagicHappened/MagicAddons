@@ -138,6 +138,27 @@ object Soggybud : CropDefinitionProvider {
             CropStage(
                 blocks = listOf(
                     CropBlockState(
+                        offset = BlockPos(0,1,0),
+                        matcher = {
+                            it.isBlock("minecraft:melon_stem") &&
+                                    it.getIntProperty("age") == 4
+                        }
+                    )
+                ),
+                armorStands =
+                    listOf(
+                        CropArmorStand(
+                            offset = Vec3(0.0, -0.09375, 0.0),
+                            hashMatches = {
+                                it == "b4bdf477d2f417f75798ad6377b131aca787be9bc05a2fddc1972d81d40c7356"
+                            },
+                        )
+                    ),
+                9..9
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
                         offset = BlockPos(0, 1, 0),
                         matcher = {
                             it.isBlock("minecraft:melon_stem") &&

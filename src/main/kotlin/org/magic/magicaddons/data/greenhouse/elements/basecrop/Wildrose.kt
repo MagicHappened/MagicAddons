@@ -161,6 +161,27 @@ object Wildrose : CropDefinitionProvider {
                         }
                     )
                 ),
+                armorStands =
+                    listOf(
+                        CropArmorStand(
+                            offset = Vec3(0.0, -0.125, 0.0),
+                            hashMatches = {
+                                it == "4a99a01317a01f65f7a7610122bea792c22a771e7a48ce1a5b352bccc8335074"
+                            },
+                        )
+                    )
+                ,
+                8..8
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0,1,0),
+                        matcher = {
+                            it.isBlock("minecraft:short_grass")
+                        }
+                    )
+                ),
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, 0.09375, 0.0),
