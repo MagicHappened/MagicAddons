@@ -108,11 +108,29 @@ object Thornshade : CropDefinitionProvider {
                     )
                 ),
                 7..7
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0,1,0),
+                        matcher = {
+                            it.isBlock("minecraft:melon_stem") &&
+                                    it.getIntProperty("age") == 7
+                        }
+                    )
+                ),
+                armorStands =
+                    listOf(
+                        CropArmorStand(
+                            offset = Vec3(0.0, 0.15625, 0.0),
+                            hashMatches = {
+                                it == "dcc9a4a7aadb373adc3be05242924c8985e2f993dd8e4d96f20721052ff7e7a8"
+                            },
+                        )
+                    )
+                ,
+                8..8
             )
-
-
-
-
         ),
         maxStage = 8,
         isMutation = true

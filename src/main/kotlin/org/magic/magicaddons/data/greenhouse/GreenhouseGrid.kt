@@ -2,10 +2,13 @@ package org.magic.magicaddons.data.greenhouse
 
 import net.minecraft.client.Minecraft
 import net.minecraft.core.BlockPos
+import net.minecraft.network.chat.Component
 import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.decoration.ArmorStand
 import net.minecraft.world.level.block.state.BlockState
+import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
+import org.magic.magicaddons.data.greenhouse.elements.mutation.rare.Fleshtrap
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData.elementsBySoil
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData.getBuildableArea
 import org.magic.magicaddons.util.ChatUtils
@@ -177,7 +180,6 @@ class GreenhouseGrid(
             val state = level.getBlockState(pos)
             val soil = state.block
             val candidates = elementsBySoil[soil] ?: return null
-
             var bestDef: CropDefinition? = null
             var bestGrowth: GrowthStageInfo? = null
             var bestScore = -1
@@ -193,8 +195,9 @@ class GreenhouseGrid(
                         is CropStage -> listOf(it)
                     }
                 }
+
                 for (stage in stages) {
-                    val result = stage.matchesStage(pos, remainingStands, candidate.footprint, candidate.name == "Snoozling")
+                    val result = stage.matchesStage(pos, remainingStands, candidate.footprint, candidate.name == "Do-not-eat-shroom")
                     if (!result.matched) continue
                     if (result.score <= bestScore) {
                         continue
@@ -214,6 +217,40 @@ class GreenhouseGrid(
                 }
             }
             if (bestDef != null) {
+
+                var elementStands = bestUsedStands
+                val originVec = Vec3(pos.x.toDouble(), pos.y.toDouble(), pos.z.toDouble())
+                val addedVec = originVec.add(
+                    Vec3(
+                        bestDef.footprint.width.toDouble(),
+                        5.0, //see if this needs more
+                        bestDef.footprint.height.toDouble()
+                    )
+                )
+                val footprintBox = AABB(originVec, addedVec)
+                when (bestDef.name) {
+                    "Fleshtrap" -> {
+                        val possibleStands = remainingStands.filter { footprintBox.contains(it.position()) }
+
+                        val bonusValueStand = possibleStands.find { it.customName?.contains(
+                            Component.literal("Bonus")
+                        ) ?: false }
+                        ChatUtils.sendWithPrefix("Bonus stand: ${bonusValueStand?.customName}")
+
+                        val hungerStand = possibleStands.find { it.customName?.contains(
+                            Component.literal("||||||||||||||||||||")
+                        ) ?: false }
+
+                        ChatUtils.sendWithPrefix("hunger stand: ${hungerStand?.customName}")
+
+                        possibleStands.forEach {
+                            if (it.hasCustomName()){
+                                ChatUtils.sendWithPrefix(it.customName!!) //hopefully good
+                            }
+                        }
+                    }
+                }
+
                 val instance = GreenhouseElementInstance(
                     bestDef.skyblockId?.id ?: bestDef.name,
                     slot = GreenhouseSlot(
@@ -226,7 +263,7 @@ class GreenhouseGrid(
                 val runtime = ElementRuntimeState(
                     cropDef = bestDef,
                     instance = instance,
-                    standEntities = bestUsedStands,
+                    standEntities = elementStands,
                     blocksMap = bestBlocks
                 )
 
@@ -261,6 +298,8 @@ class GreenhouseGrid(
                 }
             }
 
+
+
             for (stage in stages) {
                 val result = stage.matchesStage(origin, remainingStands, candidate.footprint)
 
@@ -280,8 +319,36 @@ class GreenhouseGrid(
                 }
             }
         }
-
         if (bestDef != null) {
+            var elementStands = bestUsedStands
+            val originVec = Vec3(origin.x.toDouble(), origin.y.toDouble(), origin.z.toDouble())
+            val addedVec = originVec.add(
+                Vec3(
+                    bestDef.footprint.width.toDouble(),
+                    5.0, //see if this needs more
+                    bestDef.footprint.height.toDouble()
+                )
+            )
+            val footprintBox = AABB(originVec, addedVec)
+            when (bestDef.name) {
+                "Fleshtrap" -> {
+                    val possibleStands = remainingStands.filter { footprintBox.contains(it.position()) }
+
+                    val bonusValueStand = possibleStands.find { it.customName?.contains(
+                        Component.literal("Bonus")
+                    ) ?: false }
+                    ChatUtils.sendWithPrefix("Bonus stand: ${bonusValueStand?.customName}")
+
+                    val hungerStand = possibleStands.find { it.customName?.contains(
+                        Component.literal("||||||||||||||||||||")
+                    ) ?: false }
+
+                    ChatUtils.sendWithPrefix("hunger stand: ${hungerStand?.customName}")
+                }
+            }
+
+
+
             val instance = GreenhouseElementInstance(
                 bestDef.skyblockId?.id ?: bestDef.name,
                 slot = slot,
@@ -292,7 +359,7 @@ class GreenhouseGrid(
             val runtime = ElementRuntimeState(
                 cropDef = bestDef,
                 instance = instance,
-                standEntities = bestUsedStands,
+                standEntities = elementStands,
                 blocksMap = bestBlocks
             )
 

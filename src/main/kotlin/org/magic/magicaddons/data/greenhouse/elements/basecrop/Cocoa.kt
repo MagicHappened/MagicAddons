@@ -24,42 +24,9 @@ object Cocoa : CropDefinitionProvider {
                         hashMatches = {
                             it == "e1f5cb495ba97bf9c05c15b8c9cc866c14c1fe14807fed5802a0bf68deec8912"
                         }
-                    ),
-                    CropArmorStand(
-                        Vec3(0.0, 1.472, 0.0),
-                        hashMatches = {
-                            it == "e1f5cb495ba97bf9c05c15b8c9cc866c14c1fe14807fed5802a0bf68deec8912"
-                        }
-                    ),
-                    CropArmorStand(
-                        Vec3(0.0, 1.842, 0.0),
-                        hashMatches = {
-                            it == "e1f5cb495ba97bf9c05c15b8c9cc866c14c1fe14807fed5802a0bf68deec8912"
-                        }
                     )
                 ),
                 stageRange = 1..1,
-                allowRotation = true
-            ),
-            CropStage(
-                blocks = listOf(
-                    CropBlockState(
-                        offset = BlockPos(0, 1, 0),
-                        matcher = {
-                            it.isBlock("minecraft:melon_stem") &&
-                                    it.getIntProperty("age") == 2 //dont trust
-                        }
-                    )
-                ),
-                armorStands = listOf(
-                    CropArmorStand(
-                        offset = Vec3(0.0, 0.34375, 0.0),
-                        hashMatches = {
-                            it == "e1f5cb495ba97bf9c05c15b8c9cc866c14c1fe14807fed5802a0bf68deec8912"
-                        }
-                    )
-                ),
-                2..2,
                 allowRotation = true
             ),
             CropStage(

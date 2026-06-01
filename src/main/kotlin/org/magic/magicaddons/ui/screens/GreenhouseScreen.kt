@@ -13,7 +13,6 @@ import org.magic.magicaddons.data.greenhouse.GreenhouseGrid
 import org.magic.magicaddons.data.greenhouse.GreenhouseLayout
 import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData
-import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData.greenhousesInitialized
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData.toReadableDuration
 import org.magic.magicaddons.ui.HoverableContainer
 import org.magic.magicaddons.ui.OverlayContext
@@ -98,7 +97,7 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         values = greenhouseGridWidgets.map { it.layout },
         currentValue = displayedGridWidget?.layout,
         onRightClickValue = { widget, event ->
-            openGridWidgetContext(widget, event) },
+            openLayoutWidgetContext(widget, event) },
         valueChanged = { gridWidgetChanged(it) },
         overlayContext = this
     )
@@ -115,6 +114,9 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         },
         onAddPreset = {
             addPresetLayout(it)
+        },
+        onRemovePreset = {
+            removePresetLayout()
         }
     )
 
@@ -208,8 +210,7 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
             displayedGridWidget = greenhouseGridWidgets.firstOrNull()
         }
         if (displayedGridWidget == null) {
-            //todo maybe add an auto switch to preset mode if not available.
-            // if ended up here means either we dont have any data, or player doesnt have any greenhouses
+            ChatUtils.sendWithPrefix("Unable to find your greenhouses.")
             return
         }
 
@@ -272,7 +273,7 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
     }
 
     fun initDynamicName(){
-        //todo make the icon width to variable
+        val iconWidth = 18
         val widgetWidth = font.width(displayedName) + 10 //padding = 4 border size 1 x2 (from multiline box centered)
         val widgetHeight = font.lineHeight + 10
         val screenWidth = width
@@ -281,7 +282,7 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         dynamicNameDisplay = ClickableButtonWidget(
             (screenWidth-widgetWidth) / 2,
             9,
-            widgetWidth + 1 + 18, //icon padding + icon width
+            widgetWidth + iconWidth + 1, //icon padding + icon width
             widgetHeight,
             {
                 it.drawMultilineBoxCentered(
@@ -296,7 +297,7 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
                     Identifier.fromNamespaceAndPath("minecraft", "icon/unseen_notification"),
                     ((screenWidth + widgetWidth) / 2) + 1,
                     9,
-                    18,
+                    iconWidth,
                     19, // why 19? idk height is randomly +1
                 )
                 }
@@ -446,7 +447,6 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         }
 
         dynamicNameDisplay?.mouseMoved(mouseX, mouseY)
-        //todo add a check for if the grid is unupdated.
         hoverWarning = dynamicNameDisplay?.isMouseOver(mouseX, mouseY) ?: false && shouldWarn
         hoveredElement?.isFocused = true
     }
@@ -474,9 +474,9 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         return super.keyPressed(keyEvent)
     }
 
-    fun openGridWidgetContext(layout: GreenhouseLayout?, buttonEvent: MouseButtonEvent) {
+    fun openLayoutWidgetContext(layout: GreenhouseLayout?, buttonEvent: MouseButtonEvent) {
         if (layout == null) return
-        if (layout !in greenhouseGridWidgets.map { it.layout } && layout !in presetGridWidgets.map { it.layout }) return //todo implement preset handling as well
+        if (layout !in greenhouseGridWidgets.map { it.layout } && layout !in presetGridWidgets.map { it.layout }) return
         val menu = EditLayoutContextMenu(
             buttonEvent.x.toInt(),
             buttonEvent.y.toInt(),
@@ -517,9 +517,25 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
     }
 
     fun addPresetLayout(layout: GreenhouseLayout){
-        ChatUtils.sendWithPrefix("layout size: ${layout.elementInstances.size}")
         GreenhouseData.presetGrids.add(layout)
         currentPresetLayout = layout
+        initPresetLayout()
+    }
+
+    fun removePresetLayout(){
+        val layoutNum = currentPresetLayout?.id?.removePrefix("preset_")?.toIntOrNull() ?: run {
+            ChatUtils.sendWithPrefix("No preset to remove.")
+            return
+        }
+
+        currentPresetLayout?.let {
+            GreenhouseData.presetGrids.remove(it)
+
+            currentPresetLayout = GreenhouseData.presetGrids.find { preset ->
+                preset.id.removePrefix("preset_").toIntOrNull() == layoutNum + 1 ||
+                        preset.id.removePrefix("preset_").toIntOrNull() == layoutNum - 1
+            }
+        }
         initPresetLayout()
     }
 }

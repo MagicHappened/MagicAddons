@@ -10,7 +10,6 @@ import net.minecraft.network.chat.Style
 import java.time.Instant
 
 object ChatUtils {
-    //todo add warning system instead of send and add cooldown
     var lastWarningTime: Instant? = null
 
     fun sendWithPrefix(message: String) {
@@ -91,9 +90,11 @@ object ChatUtils {
         }
     }
 
-    //todo remember that needs to send 3 warnings at a time.
     fun sendWarningWithCommand(message: String, command: String) {
-
+        if (cooldownReady()) {
+            lastWarningTime = Instant.now()
+            sendWithCommand(message,command)
+        }
     }
 
 }

@@ -27,7 +27,8 @@ class GreenhousePresetUI(
     val overlayContext: OverlayContext,
     val selectedPreset: GreenhouseLayout?,
     val onAssignedLayout: (assignedLayout: GreenhouseLayout?, selectedGrid: GreenhouseGrid) -> Unit,
-    val onAddPreset: (GreenhouseLayout) -> Unit
+    val onAddPreset: (GreenhouseLayout) -> Unit,
+    val onRemovePreset: () -> Unit,
 ) : Renderable, GuiEventListener, HoverableContainer {
 
     override var hoveredElement: GuiEventListener? = null
@@ -38,7 +39,7 @@ class GreenhousePresetUI(
     private val importButton = ClickableButtonWidget(
         0,
         0,
-        60,
+        50,
         26,
         Component.literal("Import")
     )
@@ -46,7 +47,7 @@ class GreenhousePresetUI(
     private val exportButton = ClickableButtonWidget(
         0,
         0,
-        60,
+        50,
         26,
         Component.literal("Export")
     )
@@ -54,9 +55,17 @@ class GreenhousePresetUI(
     val applyToButton = ClickableButtonWidget(
         0,
         0,
-        60,
+        50,
         26,
-        Component.literal("Apply To:")
+        Component.literal("Apply")
+    )
+
+    val deleteButton = ClickableButtonWidget(
+        0,
+        0,
+        50,
+        26,
+        Component.literal("Delete")
     )
 
 
@@ -69,6 +78,9 @@ class GreenhousePresetUI(
 
         applyToButton.x = exportButton.x + exportButton.width + 10
         applyToButton.y = y + 10
+
+        deleteButton.x = applyToButton.x + applyToButton.width + 10
+        deleteButton.y = y + 10
     }
 
 
@@ -78,7 +90,7 @@ class GreenhousePresetUI(
         mouseY: Int,
         delta: Float
     ) {
-
+        deleteButton.render(graphics, mouseX, mouseY, delta)
         importButton.render(graphics, mouseX, mouseY, delta)
         exportButton.render(graphics, mouseX, mouseY, delta)
         applyToButton.render(graphics, mouseX, mouseY, delta)
@@ -116,10 +128,13 @@ class GreenhousePresetUI(
             )
             context.init()
             overlayContext.addContext(context)
-
-
             return true
         }
+        if (deleteButton.mouseClicked(mouseButtonEvent, doubled)) {
+            onRemovePreset()
+            return true
+        }
+
         return false
     }
 
@@ -187,20 +202,27 @@ class GreenhousePresetUI(
 
                     val entry = element.asJsonArray
 
-                    val x = entry[0].asInt
-                    val y = entry[1].asInt
+                    val row = entry[0].asInt
+                    val column = entry[1].asInt
                     var cropName = entry[2].asString
 
                     // a SEED is not a CROP skymutations smh
-                    if (cropName == "Melon Seeds")
-                        cropName = "Melon"
-                    if (cropName == "Pumpkin Seeds")
-                        cropName = "Pumpkin"
-                    if (cropName == "Wheat Seeds")
-                        cropName = "Wheat"
+                    when (cropName) {
+                        "Wheat Seeds" -> {
+                            cropName = "Wheat"
+                        }
+                        "Melon Seeds" -> {
+                            cropName = "Melon"
+                        }
+                        "Pumpkin Seeds" -> {
+                            cropName = "Pumpkin"
+                        }
+
+
+                    }
 
                     val markingOrdinal = entry[3].asInt
-                    if (occupiedPositions[y][x]) {
+                    if (occupiedPositions[row][column]) {
                         return@forEach
                     }
 
@@ -227,11 +249,11 @@ class GreenhousePresetUI(
                     for (offsetX in 0 until cropWidth) {
                         for (offsetY in 0 until cropHeight) {
                             try {
-                                occupiedPositions[y + offsetY][x + offsetX] = true
+                                occupiedPositions[row + offsetY][column + offsetX] = true
                             } catch (e: IndexOutOfBoundsException) {
                                 ChatUtils.sendWithPrefix("Malformed data for plant $cropName")
                             }
-                            val slot = layout.getSlot(x+offsetX, y+offsetY)
+                            val slot = layout.getSlot(column+offsetX, row+offsetY)
                             slot?.placedBlock = cropDefinition.requiredSoil.firstOrNull()?.defaultBlockState()
                             slot?.slotMark = marking
                             if (offsetX == 0 && offsetY == 0) {

@@ -29,7 +29,32 @@ object Noctilume : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Noctilume",
         skyblockId = SkyBlockItemId.item("NOCTILUME"),
-        stageDefs = listOf(),
+        stageDefs = listOf(
+            CropStage(
+                blocks = CropBlockState.matcherPattern(
+                    wheatPositions,
+                    matcher = {
+                        it.isBlock("minecraft:wheat") &&
+                                it.getIntProperty("age") == 6
+                    }
+                ),
+                armorStands = CropArmorStand.matcherPattern(
+                    offsets = listOf(
+                        Vec3(-0.21875, -0.0625, 0.15625),
+                        Vec3(0.375, 0.09375, -0.3125),
+                        Vec3(0.28125, 0.03125, 0.125),
+                        Vec3(-0.125, -0.03125, -0.40625)
+                    ),
+                    hashMatches = {
+                            it == "b1b18493d50ff8972f7ef359893d9063fdc54cb822c679002957c294fc8b0005"
+                        }
+                ),
+                4..4,
+                allowRotation = true,
+                NoctilumeInfo.Night
+            )
+
+        ),
         maxStage = 4,
         footprint = Footprint(2,2),
         isMutation = true

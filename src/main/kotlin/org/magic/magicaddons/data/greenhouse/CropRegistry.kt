@@ -21,6 +21,10 @@ object CropRegistry {
     }
 
     init {
+        loadCrops()
+    }
+
+    private fun loadCrops(){
         register(FireElement)
         register(DeadPlant)
         register(DevourerRoots)
@@ -95,6 +99,5 @@ object CropRegistry {
         register(Fermento)
         register(Helianthus)
         register(Squash)
-
     }
 }
