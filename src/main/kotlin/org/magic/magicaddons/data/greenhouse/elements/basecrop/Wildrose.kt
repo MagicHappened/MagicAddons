@@ -1,6 +1,7 @@
 package org.magic.magicaddons.data.greenhouse.elements.basecrop
 
 import net.minecraft.core.BlockPos
+import net.minecraft.core.Rotations
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.*
 import org.magic.magicaddons.util.BlockUtils.getIntProperty
@@ -239,28 +240,33 @@ object Wildrose : CropDefinitionProvider {
             CropStage(
                 blocks = listOf(
                     CropBlockState(
-                        offset = BlockPos(0, 1, 0),
+                        offset = BlockPos(0,1,0),
                         matcher = {
                             it.isBlock("minecraft:rose_bush")
                         }
                     ),
                     CropBlockState(
-                        offset = BlockPos(0, 2, 0),
+                        offset = BlockPos(0,2,0),
                         matcher = {
                             it.isBlock("minecraft:rose_bush")
                         }
                     )
                 ),
-                armorStands = listOf(
-                    CropArmorStand(
-                        offset = Vec3(0.0, 1.09375, 0.0),
-                        hashMatches = {
-                            it == "61a37adb8bcad712663771235feeb136ebe0f5c4d593070a5410ccb6f6706aa0"
-                        }
+                armorStands =
+                    listOf(
+                        CropArmorStand(
+                            offset = Vec3(0.0, 1.09375, 0.0),
+                            headRotation = Rotations(0.0f, 0.0f, 0.0f),
+                            hashMatches = {
+                                it == "61a37adb8bcad712663771235feeb136ebe0f5c4d593070a5410ccb6f6706aa0"
+                            },
+                        )
                     )
-                ),
-                15..15
+                ,
+                15..15,
+                allowRotation = true
             )
+
 
 
         ),

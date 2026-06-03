@@ -79,8 +79,6 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
     private var displayedGridWidget: GreenhouseGridWidget? = null
     private val greenhouseGridWidgets: MutableList<GreenhouseGridWidget> = mutableListOf()
     private val presetGridWidgets: MutableList<GreenhouseGridWidget> = mutableListOf()
-    private var currentGridIndex: Int = 0
-    private var currentPresetLayout: GreenhouseLayout? = null
     private val currentDisplayToggle = ClickableButtonWidget(
         0,
         0,
@@ -108,7 +106,6 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         400,
         400,
         this,
-        selectedPreset = currentPresetLayout,
         onAssignedLayout = { assignedLayout, selectedGrid ->
             assignPresetLayout(assignedLayout, selectedGrid)
         },
@@ -201,11 +198,10 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
                 init()
             }
             if ("plot_${PlotAPI.getCurrentPlot()?.id}" == grid.layout.id)
-                currentGridIndex = index
+                GreenhouseData.currentGridIndex = index
             greenhouseGridWidgets.add(gridWidget)
         }
-        displayedGridWidget = greenhouseGridWidgets.getOrNull(currentGridIndex)
-
+        displayedGridWidget = greenhouseGridWidgets.getOrNull(GreenhouseData.currentGridIndex)
         if (displayedGridWidget == null) {
             displayedGridWidget = greenhouseGridWidgets.firstOrNull()
         }
@@ -252,7 +248,10 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
             }
             presetGridWidgets.add(gridWidget)
         }
-        displayedGridWidget = presetGridWidgets.find { currentPresetLayout == it.layout  }
+        if (GreenhouseData.currentPreset == null){
+            GreenhouseData.currentPreset = GreenhouseData.presetGrids.firstOrNull()
+        }
+        displayedGridWidget = presetGridWidgets.find { GreenhouseData.currentPreset == it.layout  }
         displayedGridWidget = displayedGridWidget ?: presetGridWidgets.firstOrNull()
 
         displayedName = displayedGridWidget?.layout?.name
@@ -277,7 +276,12 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         val widgetWidth = font.width(displayedName) + 10 //padding = 4 border size 1 x2 (from multiline box centered)
         val widgetHeight = font.lineHeight + 10
         val screenWidth = width
-        shouldWarn = currentDisplay == CurrentDisplay.Greenhouses && (GreenhouseData.greenhouseGrids[currentGridIndex].state.pendingGrowthTicks ?: 1) > 0
+        val currentGridOutdated =
+            GreenhouseData.greenhouseGrids.getOrNull(GreenhouseData.currentGridIndex)?.let {
+                (it.state.pendingGrowthTicks ?: 1) > 0
+            } ?: false
+
+        shouldWarn = currentDisplay == CurrentDisplay.Greenhouses && currentGridOutdated
 
         dynamicNameDisplay = ClickableButtonWidget(
             (screenWidth-widgetWidth) / 2,
@@ -497,7 +501,7 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
             return
         }
 
-        currentGridIndex = greenhouseGridWidgets.indexOf(widget)
+        GreenhouseData.currentGridIndex = greenhouseGridWidgets.indexOf(widget)
         displayedGridWidget = widget
         displayedName = displayedGridWidget?.layout?.name
             ?: displayedGridWidget?.layout?.id
@@ -518,20 +522,20 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
 
     fun addPresetLayout(layout: GreenhouseLayout){
         GreenhouseData.presetGrids.add(layout)
-        currentPresetLayout = layout
+        GreenhouseData.currentPreset = layout
         initPresetLayout()
     }
 
     fun removePresetLayout(){
-        val layoutNum = currentPresetLayout?.id?.removePrefix("preset_")?.toIntOrNull() ?: run {
+        val layoutNum = GreenhouseData.currentPreset?.id?.removePrefix("preset_")?.toIntOrNull() ?: run {
             ChatUtils.sendWithPrefix("No preset to remove.")
             return
         }
 
-        currentPresetLayout?.let {
+        GreenhouseData.currentPreset?.let {
             GreenhouseData.presetGrids.remove(it)
 
-            currentPresetLayout = GreenhouseData.presetGrids.find { preset ->
+            GreenhouseData.currentPreset = GreenhouseData.presetGrids.find { preset ->
                 preset.id.removePrefix("preset_").toIntOrNull() == layoutNum + 1 ||
                         preset.id.removePrefix("preset_").toIntOrNull() == layoutNum - 1
             }

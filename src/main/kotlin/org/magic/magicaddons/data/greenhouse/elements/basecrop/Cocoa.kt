@@ -1,6 +1,7 @@
 package org.magic.magicaddons.data.greenhouse.elements.basecrop
 
 import net.minecraft.core.BlockPos
+import net.minecraft.core.Rotations
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
 import org.magic.magicaddons.data.greenhouse.CropArmorStand
@@ -87,23 +88,25 @@ object Cocoa : CropDefinitionProvider {
                         }
                     )
                 ),
-                armorStands = listOf(
-                    CropArmorStand(
-                        offset = Vec3(0.0, 0.09375, 0.0),
-                        hashMatches = {
-                            it == "44d72eed58354ce14bfc497138a13564070fb4653898aeb3e66c73082ae1f993"
-                        }
-                    ),
-                    CropArmorStand(
-                        offset = Vec3(0.0625, 0.65625, 0.125),
+                armorStands =
+                    CropArmorStand.matcherPattern(
+                        listOf(
+                            Vec3(0.0, 0.09375, 0.0),
+                            Vec3(-0.0625, 0.65625, -0.125)
+                        ),
+                        listOf(
+                            Rotations(0.0f, 22.5f, 22.5f),
+                            Rotations(0.0f, -22.5f, -22.5f)
+                        ),
                         hashMatches = {
                             it == "44d72eed58354ce14bfc497138a13564070fb4653898aeb3e66c73082ae1f993"
                         }
                     )
-                ),
+                ,
                 6..6,
                 allowRotation = true
             )
+
         ),
         maxStage = 6,
         needsWater = false,

@@ -10,7 +10,10 @@
     "MinecraftMixin",
     "LevelRendererMixin",
     "ClientLevelMixin",
-    "ScreenMixin"
+    "ScreenMixin",
+    "EntityRenderStateMixin",
+    "LivingEntityRendererMixin",
+    "ArmorStandRendererMixin"
   ],
   "injectors": {
     "defaultRequire": 1

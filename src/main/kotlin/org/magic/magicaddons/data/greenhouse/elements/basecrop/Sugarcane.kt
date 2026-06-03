@@ -57,112 +57,70 @@ object Sugarcane : CropDefinitionProvider {
                 2..2
             ),
             CropStage(
-                blocks = listOf(
-                    CropBlockState(
-                        offset = BlockPos(0,1,0),
-                        matcher = {
-                            it.isBlock("minecraft:sugar_cane") &&
-                                    it.getIntProperty("age") == 0
-                        }
+                blocks = CropBlockState.matcherPattern(
+                    positions = listOf(
+                        BlockPos(0,1,0),
+                        BlockPos(0,2,0)
                     ),
-                    CropBlockState(
-                        offset = BlockPos(0,2,0),
-                        matcher = {
-                            it.isBlock("minecraft:sugar_cane") &&
-                                    it.getIntProperty("age") == 0
-                        }
-                    ),
+                    matcher = {
+                        it.isBlock("minecraft:sugar_cane") &&
+                                it.getIntProperty("age") == 0
+                    }
+                ) +
                     CropBlockState(
                         offset = BlockPos(0,3,0),
                         matcher = {
                             it.isBlock("minecraft:wheat") &&
                                     it.getIntProperty("age") == 1
                         }
-                    )
-                ),
+                    ),
                 armorStands = listOf(
                 ),
                 3..3
             ),
             CropStage(
-                blocks = listOf(
-                    CropBlockState(
-                        offset = BlockPos(0,1,0),
-                        matcher = {
-                            it.isBlock("minecraft:sugar_cane") &&
-                                    it.getIntProperty("age") == 0
-                        }
+                blocks = CropBlockState.matcherPattern(
+                    positions = listOf(
+                        BlockPos(0,1,0),
+                        BlockPos(0,2,0),
+                        BlockPos(0,3,0),
+                        BlockPos(0,4,0)
                     ),
-                    CropBlockState(
-                        offset = BlockPos(0,2,0),
-                        matcher = {
-                            it.isBlock("minecraft:sugar_cane") &&
-                                    it.getIntProperty("age") == 0
-                        }
-                    ),
-                    CropBlockState(
-                        offset = BlockPos(0,3,0),
-                        matcher = {
-                            it.isBlock("minecraft:sugar_cane") &&
-                                    it.getIntProperty("age") == 0
-                        }
-                    ),
-                    CropBlockState(
-                        offset = BlockPos(0,4,0),
-                        matcher = {
-                            it.isBlock("minecraft:sugar_cane") &&
-                                    it.getIntProperty("age") == 0
-                        }
-                    ),
+                    matcher = {
+                        it.isBlock("minecraft:sugar_cane") &&
+                                it.getIntProperty("age") == 0
+                    }
+                ) +
                     CropBlockState(
                         offset = BlockPos(0,5,0),
                         matcher = {
                             it.isBlock("minecraft:wheat") &&
                                     it.getIntProperty("age") == 1
                         }
-                    )
-                ),
+                    ),
                 armorStands = null,
                 7..7
             ),
             CropStage(
-                blocks = listOf(
-                    CropBlockState(
-                        offset = BlockPos(0,1,0),
-                        matcher = {
-                            it.isBlock("minecraft:sugar_cane") &&
-                                    it.getIntProperty("age") == 0
-                        }
+                blocks = CropBlockState.matcherPattern(
+                    positions = listOf(
+                        BlockPos(0,1,0),
+                        BlockPos(0,2,0),
+                        BlockPos(0,3,0),
+                        BlockPos(0,4,0)
                     ),
-                    CropBlockState(
-                        offset = BlockPos(0,2,0),
-                        matcher = {
-                            it.isBlock("minecraft:sugar_cane") &&
-                                    it.getIntProperty("age") == 0
-                        }
-                    ),
-                    CropBlockState(
-                        offset = BlockPos(0,3,0),
-                        matcher = {
-                            it.isBlock("minecraft:sugar_cane") &&
-                                    it.getIntProperty("age") == 0
-                        }
-                    ),
-                    CropBlockState(
-                        offset = BlockPos(0,4,0),
-                        matcher = {
-                            it.isBlock("minecraft:sugar_cane") &&
-                                    it.getIntProperty("age") == 0
-                        }
-                    ),
+                    matcher = {
+                        it.isBlock("minecraft:sugar_cane") &&
+                                it.getIntProperty("age") == 0
+                    }
+                ) +
                     CropBlockState(
                         offset = BlockPos(0,5,0),
                         matcher = {
                             it.isBlock("minecraft:wheat") &&
                                     it.getIntProperty("age") == 5
                         }
-                    )
-                ),
+                    ),
                 armorStands = null,
                 8..8
             )

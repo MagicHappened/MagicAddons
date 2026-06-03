@@ -11,25 +11,33 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.culling.Frustum;
+import net.minecraft.client.renderer.entity.DisplayRenderer;
 import net.minecraft.client.renderer.entity.EntityRenderDispatcher;
 import net.minecraft.client.renderer.entity.EntityRenderer;
-import net.minecraft.client.renderer.entity.LivingEntityRenderer;
+import net.minecraft.client.renderer.entity.state.EntityRenderState;
+import net.minecraft.client.renderer.entity.state.ItemDisplayEntityRenderState;
 import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
-import net.minecraft.client.renderer.state.CameraRenderState;
 import net.minecraft.client.renderer.state.LevelRenderState;
+import net.minecraft.network.chat.Component;
 import net.minecraft.util.profiling.ProfilerFiller;
+import net.minecraft.world.entity.Display;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.animal.pig.Pig;
+import net.minecraft.world.entity.decoration.ArmorStand;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix4f;
 import org.joml.Vector4f;
 import org.jspecify.annotations.Nullable;
+import org.magic.magicaddons.features.farming.greenhousePresets.GreenhousePresets;
+import org.magic.magicaddons.util.ChatUtils;
 import org.magic.magicaddons.util.EntityUtils;
+import org.magic.misc.EntityRenderModifier;
+import org.magic.misc.FakeEntityState;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
@@ -48,6 +56,7 @@ public abstract class LevelRendererMixin {
 
     @Shadow
     public abstract void initOutline();
+
 
 
     @Shadow
@@ -75,53 +84,110 @@ public abstract class LevelRendererMixin {
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null) return;
 
+        // todo add pass here to submit holograms.
         for (Map.Entry<Entity, EntityUtils.HighlightSource> entry : EntityUtils.getResolvedMap().entrySet()) {
             Entity entity = entry.getKey();
             EntityUtils.HighlightSource source = entry.getValue();
 
             if (!(entity instanceof LivingEntity living)) continue;
-            if (living instanceof Player){
+
+            if (living instanceof Player) {
                 living.setCustomNameVisible(false);
             }
+            renderFakeEntity(
+                    living,
+                    poseStack,
+                    levelRenderState,
+                    submitNodeCollector,
+                    (ent, state) -> {
 
-            EntityRenderer<? super LivingEntity, ?> baseRenderer = entityRenderDispatcher.getRenderer(living);
-            if (!(baseRenderer instanceof LivingEntityRenderer<?, ?, ?> rawRenderer)) continue;
+                        // highlight-specific logic
+                        state.outlineColor = source.getHighlightColor();
+                        state.isInvisible = true;
+                    }
+            );
+        }
 
-            @SuppressWarnings("unchecked")
-            LivingEntityRenderer<LivingEntity, LivingEntityRenderState, ?> renderer =
-                    (LivingEntityRenderer<LivingEntity, LivingEntityRenderState, ?>) rawRenderer;
+        for (ArmorStand stand : GreenhousePresets.standsToRender) {
+            renderFakeEntity(
+                    stand,
+                    poseStack,
+                    levelRenderState,
+                    submitNodeCollector,
+                    (ent, state) -> {
+                        ((FakeEntityState)state).magicaddons$setFakeEntity(true);
+                    }
+            );
+        }
 
-            float partialTicks = mc.getDeltaTracker().getGameTimeDeltaPartialTick(false);
 
-            LivingEntityRenderState state = renderer.createRenderState(living, partialTicks);
-            renderer.extractRenderState(living, state, partialTicks);
+    }
 
+    @Unique
+    private void renderFakeEntity(
+            Entity entity,
+            PoseStack poseStack,
+            LevelRenderState levelRenderState,
+            SubmitNodeCollector submitNodeCollector,
+            EntityRenderModifier modifier
+    ) {
+        float partialTicks = Minecraft.getInstance()
+                .getDeltaTracker()
+                .getGameTimeDeltaPartialTick(false);
+
+        DisplayRenderer.ItemDisplayRenderer displayRenderer;
+        if (entity instanceof Display.ItemDisplay display){
+            displayRenderer = (DisplayRenderer.ItemDisplayRenderer) entityRenderDispatcher.getRenderer(display);
+            ItemDisplayEntityRenderState state = displayRenderer.createRenderState();
+            displayRenderer.extractRenderState(display, state, partialTicks);
             poseStack.pushPose();
 
             Vec3 cam = levelRenderState.cameraRenderState.pos;
 
             poseStack.translate(
-                    living.getX() - cam.x,
-                    living.getY() - cam.y,
-                    living.getZ() - cam.z
+                    entity.getX() - cam.x,
+                    entity.getY() - cam.y,
+                    entity.getZ() - cam.z
             );
 
-            poseStack.scale(state.scale, state.scale, state.scale);
-            poseStack.translate(0.0F, 0.0F, 0.0F);
-
-            state.outlineColor = source.getHighlightColor();
-            state.isInvisible = true;
-            state.isInvisibleToPlayer = true;
-
-
-
-            levelRenderState.haveGlowingEntities = true;
-
-            renderer.submit(state, poseStack, submitNodeCollector, levelRenderState.cameraRenderState);
+            displayRenderer.submit(
+                    state,
+                    poseStack,
+                    submitNodeCollector,
+                    levelRenderState.cameraRenderState
+            );
 
             poseStack.popPose();
+            return;
         }
-    }
 
+        EntityRenderer<? super Entity, ?> baseRenderer =
+                entityRenderDispatcher.getRenderer(entity);
+
+        @SuppressWarnings("unchecked")
+        EntityRenderer<Entity, EntityRenderState> renderer =
+                (EntityRenderer<Entity, EntityRenderState>) baseRenderer;
+
+
+        EntityRenderState state = renderer.createRenderState(entity, partialTicks);
+        renderer.extractRenderState(entity, state, partialTicks);
+
+        modifier.modify(entity,state);
+
+        poseStack.pushPose();
+
+        Vec3 cam = levelRenderState.cameraRenderState.pos;
+
+        poseStack.translate(
+                entity.getX() - cam.x,
+                entity.getY() - cam.y,
+                entity.getZ() - cam.z
+        );
+
+        levelRenderState.haveGlowingEntities = true;
+
+        renderer.submit(state, poseStack, submitNodeCollector, levelRenderState.cameraRenderState);
+        poseStack.popPose();
+    }
 
 }

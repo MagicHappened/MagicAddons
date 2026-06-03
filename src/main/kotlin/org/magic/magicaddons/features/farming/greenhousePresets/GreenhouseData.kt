@@ -2,6 +2,7 @@ package org.magic.magicaddons.features.farming.greenhousePresets
 
 import net.minecraft.client.Minecraft
 import net.minecraft.core.BlockPos
+import net.minecraft.core.Rotations
 import net.minecraft.network.chat.Component
 import net.minecraft.world.entity.EquipmentSlot
 import net.minecraft.world.entity.decoration.ArmorStand
@@ -11,6 +12,7 @@ import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
+import org.magic.magicaddons.Common
 import org.magic.magicaddons.commands.debug.FarmingDebug
 import org.magic.magicaddons.data.greenhouse.*
 import org.magic.magicaddons.data.greenhouse.elements.FireElement
@@ -70,6 +72,10 @@ object GreenhouseData {
     var greenhouseGrids = mutableListOf<GreenhouseGrid>()
     var presetGrids = mutableListOf<GreenhouseLayout>()
     var miscInfo = MiscGreenhouseInfo()
+    var lastGridLayouts = mutableListOf<GreenhouseLayout>()
+
+    var currentPreset: GreenhouseLayout? = null
+    var currentGridIndex: Int = 0
 
     var lastCheckTime: Instant? = null
     var lastServerTick: Long? = null
@@ -136,6 +142,10 @@ object GreenhouseData {
 
         //gather in world data
         //todo not only need to change this to find diffs
+        if ((grid.state.pendingGrowthTicks ?: -1) > 0) {
+
+        }
+
         grid.createSlotData()
         grid.setPlantData()
 
@@ -279,8 +289,13 @@ object GreenhouseData {
         val passedGrowthTicks = (overdueMs / growthTickMs)
 
         if (passedGrowthTicks <= 0) return
-
+        Common.LOGGER.info("Overdue ms $overdueMs")
+        Common.LOGGER.info("Overdue growth ticks $passedGrowthTicks")
         val nextTickAdvance = (passedGrowthTicks + 1) * growthTickMs
+        Common.LOGGER.info("Next tick advance ms $nextTickAdvance")
+        Common.LOGGER.info("Previous tick ${miscInfo.nextTickTime}")
+        Common.LOGGER.info("Next tick ${miscInfo.nextTickTime!!.plusMillis((nextTickAdvance))}")
+        Common.LOGGER.info("Now $now")
         miscInfo.nextTickTime =
             miscInfo.nextTickTime!!.plusMillis(
                 nextTickAdvance
@@ -318,6 +333,7 @@ object GreenhouseData {
         }
 
         checkForUpdate()
+
     }
 
     @Subscription
@@ -341,7 +357,7 @@ object GreenhouseData {
     fun onInventory(event: ContainerInitializedEvent) {
         val realItems = event.containerItems.filter { !it.isSkyblockFiller() }
         if (event.title == "Crop Diagnostics") {
-            sendDiagnosesData(realItems)
+            getDiagnosesData(realItems)
             plantDiagnosticListeningElement = null
             plantDiagnosticHitBaseBlock = null
             return
@@ -589,7 +605,7 @@ object GreenhouseData {
         plantDiagnosticListeningElement = hitElement
     }
 
-    fun sendDiagnosesData(realItems: List<ItemStack>) {
+    fun getDiagnosesData(realItems: List<ItemStack>) {
         if (!baseSetting.value) return
         val identifyStack = realItems.firstOrNull() ?: return
 
@@ -642,6 +658,7 @@ object GreenhouseData {
                             return@let 1
                         return@let null
                     }
+
                     else -> raw.toIntOrNull()
                 }
             }
@@ -655,6 +672,7 @@ object GreenhouseData {
         if (nextStage?.contains(Regex("\\d")) ?: false) {
             if (!LocationAPI.isGuest) {
                 miscInfo.nextTickTime = Instant.now().plusMillis(nextStage.parseDurationToMs())
+                lastCheckTime = Instant.now()
             }
         }
 
@@ -696,11 +714,11 @@ object GreenhouseData {
         }
 
         val isSelf = UUID.fromString("eef58b9d-39e1-4062-8a1a-2f921f14a46d") == Minecraft.getInstance().player?.uuid
-        val override = false
+        val override = true
         if (matchingStage == null || override) {
             ChatUtils.sendWithPrefix("No matching stage for ${def.name} please send the copied output")
             plantDiagnosticHitBaseBlock?.let {
-                copyCropStageData(it, stageRaw, def, !isSelf)
+                copyCropStageData(it, stageRaw == def.maxStage,stageRaw, def, !isSelf)
             }
             return
         }
@@ -819,8 +837,11 @@ object GreenhouseData {
         return (seconds * 1000.0).toLong()
     }
 
+
+
     fun copyCropStageData(
         basePos: BlockPos,
+        needsRotation: Boolean = false,
         stageNum: Int? = null,
         foundDefinition: CropDefinition? = null,
         discordFormat: Boolean = false
@@ -913,7 +934,7 @@ $matcherLine
 
             val head = entity.getItemBySlot(EquipmentSlot.HEAD)
             val hash = PlayerUtils.getSkinHash(head)
-
+            val headRotations = entity.headPose
             val customName = if (entity.hasCustomName()) {
                 entity.name.string.replace("\"", "\\\"")
             } else null
@@ -921,6 +942,7 @@ $matcherLine
             standLines.add(
                 ArmorStandExport(
                     offset = offset,
+                    rotation = headRotations,
                     hash = hash,
                     customName = customName
                 )
@@ -963,9 +985,12 @@ $matcherLine
                             """
     CropArmorStand(
         offset = Vec3(${stand.offset.x}, ${stand.offset.y}, ${stand.offset.z}),
+
 """.trimIndent()
                         )
-
+                        append(
+                            "headRotation = Rotations(${stand.rotation.x}f, ${stand.rotation.y}f, ${stand.rotation.z}f),".trimIndent()
+                        )
                         stand.hash?.let {
                             append(
                                 """
@@ -1015,7 +1040,9 @@ $matcherLine
                 val offsets = group.joinToString(",\n") {
                     "        Vec3(${it.offset.x}, ${it.offset.y}, ${it.offset.z})"
                 }
-
+                val rotations = group.joinToString(",\n"){
+                    "        Rotations(${it.rotation.x}f, ${it.rotation.y}f, ${it.rotation.z}f)"
+                }
                 val matcherParts = mutableListOf<String>()
 
                 first.hash?.let {
@@ -1033,8 +1060,20 @@ customNameMatches = {
 }
             """.trimIndent()
                 }
-
+if (needsRotation){
                 sections += """
+CropArmorStand.matcherPattern(
+    listOf(
+$offsets
+    ),
+    listOf(
+$rotations
+    ),
+    ${matcherParts.joinToString(",\n    ")}
+)
+        """.trimIndent()
+} else {
+    sections += """
 CropArmorStand.matcherPattern(
     listOf(
 $offsets
@@ -1042,6 +1081,7 @@ $offsets
     ${matcherParts.joinToString(",\n    ")}
 )
         """.trimIndent()
+}
             }
 
             sb.appendLine("        " + sections.joinToString("\n        +\n        "))
@@ -1064,9 +1104,11 @@ $offsets
 
         ChatUtils.sendWithPrefix("Copied crop stage to clipboard (${result.length} chars)")
     }
+
     //temp for exporting
     data class ArmorStandExport(
         val offset: Vec3,
+        val rotation: Rotations,
         val hash: String?,
         val customName: String?
     )

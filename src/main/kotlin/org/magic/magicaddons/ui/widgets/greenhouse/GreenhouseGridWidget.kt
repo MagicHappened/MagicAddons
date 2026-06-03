@@ -80,10 +80,6 @@ class GreenhouseGridWidget(
     }
 
     override fun render(graphics: GuiGraphics, mouseX: Int, mouseY: Int, delta: Float) {
-        // draw slots
-        slotWidgets.forEach {
-            it.render(graphics, mouseX, mouseY, delta)
-        }
 
         // draw grid lines
         for (i in 1 until layout.size) {
@@ -94,7 +90,7 @@ class GreenhouseGridWidget(
                 widgetX + i * slotSize + i,
                 widgetY + layout.size * slotSize + layout.size,
                 1,
-                0xFF0683c1.toInt()
+                0x800683c1.toInt()
             )
 
             // horizontal
@@ -104,9 +100,17 @@ class GreenhouseGridWidget(
                 widgetX + layout.size * slotSize + layout.size,
                 widgetY + i * slotSize + i,
                 1,
-                0xFF0683c1.toInt()
+                0x800683c1.toInt()
             )
         }
+
+
+        // draw slots
+        slotWidgets.forEach {
+            it.render(graphics, mouseX, mouseY, delta)
+        }
+
+
         elementWidgets.forEach {
             it.render(graphics, mouseX, mouseY, delta)
         }
