@@ -1,6 +1,7 @@
 package org.magic.magicaddons.data.greenhouse.elements.basecrop
 
 import net.minecraft.core.BlockPos
+import net.minecraft.core.Rotations
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
 import org.magic.magicaddons.data.greenhouse.CropArmorStand
@@ -180,17 +181,20 @@ object Sunflower : CropDefinitionProvider {
                         }
                     )
                 ),
-                armorStands = listOf(
-                    CropArmorStand(
-                        offset = Vec3(0.0, 0.5625, 0.1875),
-                        hashMatches = {
-                            it == "f2c4a75b5b6478087b6565edf7643c2b868a5e3eccec1250cdfaa371adfc0754"
-                        }
-                    )
-                ),
-                15..15,
-                allowRotation = true
+                armorStands =
+                    listOf(
+                        CropArmorStand(
+                            offset = Vec3(0.0, 0.5625, 0.1875),
+                            headRotation = Rotations(-22.5f, 0.0f, 0.0f),
+                            hashMatches = {
+                                it == "f2c4a75b5b6478087b6565edf7643c2b868a5e3eccec1250cdfaa371adfc0754"
+                            },
+                        )
+                    ),
+                15..15
             )
+
+
 
 
 

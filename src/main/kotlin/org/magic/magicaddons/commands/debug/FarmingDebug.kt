@@ -6,6 +6,7 @@ import com.mojang.brigadier.builder.RequiredArgumentBuilder
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource
 import org.magic.magicaddons.commands.AbstractCommand
 import org.magic.magicaddons.data.greenhouse.Footprint
+import org.magic.magicaddons.features.farming.greenhousePresets.GreenhousePresets
 import org.magic.magicaddons.util.ChatUtils
 
 object FarmingDebug : AbstractCommand() {
@@ -16,8 +17,7 @@ object FarmingDebug : AbstractCommand() {
     override fun build(): LiteralArgumentBuilder<FabricClientCommandSource> {
         return LiteralArgumentBuilder.literal<FabricClientCommandSource>(argument)
             .executes {
-                ChatUtils.sendWithPrefix("nothing")
-
+                GreenhousePresets.generateStands()
                 return@executes 1
             }.then(
                 RequiredArgumentBuilder.argument<FabricClientCommandSource, String>("footprint", StringArgumentType.word())

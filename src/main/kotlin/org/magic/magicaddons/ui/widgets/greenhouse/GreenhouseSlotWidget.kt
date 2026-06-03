@@ -13,6 +13,7 @@ import org.magic.magicaddons.Common
 import org.magic.magicaddons.data.greenhouse.GreenhouseSlot
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.ScreenUtil
+import org.magic.magicaddons.util.ScreenUtil.drawBorder
 
 class GreenhouseSlotWidget(
     val slot: GreenhouseSlot
@@ -46,13 +47,13 @@ class GreenhouseSlotWidget(
 
         markingColor = when (slot.slotMark){
             GreenhouseSlot.Marking.Target -> {
-                0x262dbcf6
+                0xFF2dbcf6.toInt()
             }
             GreenhouseSlot.Marking.Ingredient -> {
-                0x26e49906
+                0xFF89F336.toInt()
             }
             GreenhouseSlot.Marking.UniqueCrop -> {
-                0x26bb00bb
+                0xFFbb00bb.toInt()
             }
             else -> {null}
         }
@@ -70,16 +71,18 @@ class GreenhouseSlotWidget(
             widgetHeight
         )
 
-        //todo figure out why this is a mess of color
-//        markingColor?.let {
-//            graphics.fill(
-//                widgetX,
-//                widgetY,
-//                widgetWidth,
-//                widgetHeight,
-//                it
-//            )
-//        }
+
+
+        markingColor?.let {
+            graphics.drawBorder(
+                widgetX + 1,
+                widgetY + 1,
+                widgetX + widgetWidth - 1,
+                widgetY + widgetHeight - 1,
+                1,
+                it
+            )
+        }
     }
 
     override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {

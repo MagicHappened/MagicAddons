@@ -16,6 +16,7 @@ import org.magic.magicaddons.data.greenhouse.GreenhouseSlot
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData
 import org.magic.magicaddons.ui.HoverableContainer
 import org.magic.magicaddons.ui.OverlayContext
+import org.magic.magicaddons.ui.screens.GreenhouseScreen
 import org.magic.magicaddons.ui.widgets.config.ClickableButtonWidget
 import org.magic.magicaddons.util.ChatUtils
 
@@ -25,7 +26,6 @@ class GreenhousePresetUI(
     var width: Int,
     var height: Int,
     val overlayContext: OverlayContext,
-    val selectedPreset: GreenhouseLayout?,
     val onAssignedLayout: (assignedLayout: GreenhouseLayout?, selectedGrid: GreenhouseGrid) -> Unit,
     val onAddPreset: (GreenhouseLayout) -> Unit,
     val onRemovePreset: () -> Unit,
@@ -123,7 +123,7 @@ class GreenhousePresetUI(
             val context = ApplyToContext(
                 mouseButtonEvent.x.toInt(),
                 mouseButtonEvent.y.toInt(),
-                { onAssignedLayout.invoke(selectedPreset, it) }
+                { onAssignedLayout.invoke(GreenhouseData.currentPreset, it) }
 
             )
             context.init()
@@ -143,6 +143,7 @@ class GreenhousePresetUI(
         importButton.mouseMoved(mouseX, mouseY)
         exportButton.mouseMoved(mouseX, mouseY)
         applyToButton.mouseMoved(mouseX, mouseY)
+        deleteButton.mouseMoved(mouseX, mouseY)
         if (hoveredElement == null) {
             if (importButton.isMouseOver(mouseX, mouseY)) {
                 hoveredElement = importButton
@@ -158,6 +159,11 @@ class GreenhousePresetUI(
                 hoveredElement = applyToButton
             }
         }
+        if (hoveredElement == null) {
+            if (deleteButton.isMouseOver(mouseX, mouseY)) {
+                hoveredElement = deleteButton
+            }
+        }
     }
 
     override fun setFocused(focused: Boolean) {
@@ -168,7 +174,6 @@ class GreenhousePresetUI(
 
     fun importPreset(type: ImportExportFormatContext.LayoutFormatType) {
         when (type) {
-            //todo why tf is it rotated lol
             ImportExportFormatContext.LayoutFormatType.SkyMutations -> {
                 val client = Minecraft.getInstance()
                 val clipboard = client.keyboardHandler.clipboard
@@ -286,7 +291,7 @@ class GreenhousePresetUI(
     }
 
     fun exportPreset(type: ImportExportFormatContext.LayoutFormatType) {
-        if (selectedPreset == null) {
+        if (GreenhouseData.currentPreset == null) {
             ChatUtils.sendWithPrefix("No Preset Selected")
             return
         }

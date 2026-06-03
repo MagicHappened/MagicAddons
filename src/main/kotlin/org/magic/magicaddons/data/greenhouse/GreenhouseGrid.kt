@@ -119,12 +119,8 @@ class GreenhouseGrid(
     }
 
     //todo need to make this also set plant specific data, aka if candidate "Fleshtrap" was found
-    // (prob like another interface with extra conditions?)
-    // get the armor stand that represents its hunger status bonus status etc
-    // same with snoozling sleeping (the right click to wake up stand)
-    //todo NOT TO MENTION noctilume being 2 different definitions, 1 possible to split into 2 crops
-    // but that will be a headache afterwards managing them without skyblock id and such so
-    // probably change the matchesStage thing to handle it better
+    // already handling it need to see the when statement working for fleshtrap once someone grows some
+    // (or me)
     fun setPlantData() {
         val visitedSlots = Array(width) { BooleanArray(height) }
 

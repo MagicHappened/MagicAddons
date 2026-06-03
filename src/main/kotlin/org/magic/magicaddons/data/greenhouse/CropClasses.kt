@@ -2,6 +2,7 @@ package org.magic.magicaddons.data.greenhouse
 
 import net.minecraft.client.Minecraft
 import net.minecraft.core.BlockPos
+import net.minecraft.core.Rotations
 import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.EquipmentSlot
 import net.minecraft.world.entity.decoration.ArmorStand
@@ -29,20 +30,23 @@ data class Footprint(val width: Int, val height: Int)
 
 data class CropArmorStand(
     val offset: Vec3, //offset is defined from the soil top left block
+    val headRotation: Rotations? = null,
     val hashMatches: ((String?) -> Boolean)? = null,
     val customNameMatches: ((String?) -> Boolean)? = null,
 ) {
     companion object {
         fun matcherPattern(
             offsets: List<Vec3>,
+            rotations: List<Rotations>? = null,
             hashMatches: ((String?) -> Boolean)? = null,
             customNameMatches: ((String?) -> Boolean)? = null
         ): List<CropArmorStand> {
             val result = mutableListOf<CropArmorStand>()
-            offsets.forEach {
+            offsets.forEachIndexed { i, offset ->
                 result.add(
                     CropArmorStand(
-                        it,
+                        offset,
+                        rotations?.getOrNull(i),
                         hashMatches,
                         customNameMatches
                     )

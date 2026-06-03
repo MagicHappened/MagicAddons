@@ -1,6 +1,7 @@
 package org.magic.magicaddons.data.greenhouse.elements.basecrop
 
 import net.minecraft.core.BlockPos
+import net.minecraft.core.Rotations
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
 import org.magic.magicaddons.data.greenhouse.CropArmorStand
@@ -222,23 +223,25 @@ object Pumpkin : CropDefinitionProvider {
                         }
                     )
                 ),
-                armorStands = listOf(
-                    CropArmorStand(
-                        offset = Vec3(-0.0625, -0.46875, 0.0),
-                        hashMatches = {
-                            it == "1839c3565f36c9d6e52d55a1760b11c2060953143ffe4ffe9c8b606ee4e3648f"
-                        }
-                    ),
-                    CropArmorStand(
-                        offset = Vec3(0.09375, -0.625, 0.09375),
+                armorStands =
+                    CropArmorStand.matcherPattern(
+                        listOf(
+                            Vec3(-0.0625, -0.46875, 0.0),
+                            Vec3(0.09375, -0.625, 0.09375)
+                        ),
+                        listOf(
+                            Rotations(0.0f, 0.0f, -22.5f),
+                            Rotations(22.5f, 0.0f, 22.5f)
+                        ),
                         hashMatches = {
                             it == "1839c3565f36c9d6e52d55a1760b11c2060953143ffe4ffe9c8b606ee4e3648f"
                         }
                     )
-                ),
+                ,
                 11..11,
                 allowRotation = true
             )
+
 
 
         ),
