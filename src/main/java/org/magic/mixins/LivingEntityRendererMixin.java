@@ -14,7 +14,7 @@ public class LivingEntityRendererMixin {
     private void onGetModelTint(LivingEntityRenderState state, CallbackInfoReturnable<Integer> cir){
         if (state instanceof FakeEntityState fakeState){
             if (fakeState.magicaddons$isFakeEntity()){
-                cir.setReturnValue(0x40FF0000);
+                cir.setReturnValue(0x40FFFFFF);
             }
         }
     }

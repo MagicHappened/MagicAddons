@@ -1,22 +1,15 @@
 package org.magic.magicaddons.features.farming.greenhousePresets
 
-import com.mojang.math.Transformation
 import net.minecraft.client.Minecraft
-import net.minecraft.client.renderer.entity.ItemRenderer
 import net.minecraft.core.BlockPos
-import net.minecraft.world.entity.Display
-import net.minecraft.world.entity.EntityType
+import net.minecraft.world.entity.EquipmentSlot
 import net.minecraft.world.entity.decoration.ArmorStand
-import net.minecraft.world.item.ItemDisplayContext
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
 import net.minecraft.world.level.block.state.BlockState
-import org.joml.Quaternionf
-import org.joml.Vector3f
 import org.magic.magicaddons.data.config.BooleanSetting
 import org.magic.magicaddons.data.greenhouse.CropRegistry
 import org.magic.magicaddons.features.Feature
-import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.PlayerUtils
 import tech.thatgravyboat.skyblockapi.api.SkyBlockAPI
 import tech.thatgravyboat.skyblockapi.api.events.base.Subscription
@@ -69,6 +62,8 @@ object GreenhousePresets : Feature() {
             player.y,
             player.z + 3
         )
+        stand.setItemSlot(EquipmentSlot.HEAD, stack)
+        stand.isInvisible = true
         standsToRender = listOf(
             stand
         )

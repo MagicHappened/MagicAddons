@@ -15,12 +15,8 @@ import net.minecraft.client.renderer.entity.DisplayRenderer;
 import net.minecraft.client.renderer.entity.EntityRenderDispatcher;
 import net.minecraft.client.renderer.entity.EntityRenderer;
 import net.minecraft.client.renderer.entity.state.EntityRenderState;
-import net.minecraft.client.renderer.entity.state.ItemDisplayEntityRenderState;
-import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
 import net.minecraft.client.renderer.state.LevelRenderState;
-import net.minecraft.network.chat.Component;
 import net.minecraft.util.profiling.ProfilerFiller;
-import net.minecraft.world.entity.Display;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.decoration.ArmorStand;
@@ -30,7 +26,6 @@ import org.joml.Matrix4f;
 import org.joml.Vector4f;
 import org.jspecify.annotations.Nullable;
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhousePresets;
-import org.magic.magicaddons.util.ChatUtils;
 import org.magic.magicaddons.util.EntityUtils;
 import org.magic.misc.EntityRenderModifier;
 import org.magic.misc.FakeEntityState;
@@ -122,6 +117,8 @@ public abstract class LevelRendererMixin {
 
 
     }
+    @Unique
+    boolean once = true;
 
     @Unique
     private void renderFakeEntity(
@@ -135,31 +132,6 @@ public abstract class LevelRendererMixin {
                 .getDeltaTracker()
                 .getGameTimeDeltaPartialTick(false);
 
-        DisplayRenderer.ItemDisplayRenderer displayRenderer;
-        if (entity instanceof Display.ItemDisplay display){
-            displayRenderer = (DisplayRenderer.ItemDisplayRenderer) entityRenderDispatcher.getRenderer(display);
-            ItemDisplayEntityRenderState state = displayRenderer.createRenderState();
-            displayRenderer.extractRenderState(display, state, partialTicks);
-            poseStack.pushPose();
-
-            Vec3 cam = levelRenderState.cameraRenderState.pos;
-
-            poseStack.translate(
-                    entity.getX() - cam.x,
-                    entity.getY() - cam.y,
-                    entity.getZ() - cam.z
-            );
-
-            displayRenderer.submit(
-                    state,
-                    poseStack,
-                    submitNodeCollector,
-                    levelRenderState.cameraRenderState
-            );
-
-            poseStack.popPose();
-            return;
-        }
 
         EntityRenderer<? super Entity, ?> baseRenderer =
                 entityRenderDispatcher.getRenderer(entity);
