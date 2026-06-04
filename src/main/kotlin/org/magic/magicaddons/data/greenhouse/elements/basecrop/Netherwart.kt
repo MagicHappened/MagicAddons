@@ -6,8 +6,7 @@ import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
 import org.magic.magicaddons.data.greenhouse.CropBlockState
 import org.magic.magicaddons.data.greenhouse.CropDefinition
 import org.magic.magicaddons.data.greenhouse.CropStage
-import org.magic.magicaddons.util.BlockUtils.getIntProperty
-import org.magic.magicaddons.util.BlockUtils.isBlock
+import org.magic.magicaddons.data.greenhouse.CropStates.netherwartState
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
 object Netherwart : CropDefinitionProvider {
@@ -19,10 +18,7 @@ object Netherwart : CropDefinitionProvider {
                 blocks = listOf(
                     CropBlockState(
                         offset = BlockPos(0,1,0),
-                        matcher = {
-                            it.isBlock("minecraft:nether_wart") &&
-                                    it.getIntProperty("age") == 0
-                        }
+                        blockState = netherwartState(0)
                     )
                 ),
                 armorStands = null,
@@ -32,10 +28,7 @@ object Netherwart : CropDefinitionProvider {
                 blocks = listOf(
                     CropBlockState(
                         offset = BlockPos(0,1,0),
-                        matcher = {
-                            it.isBlock("minecraft:nether_wart") &&
-                                    it.getIntProperty("age") == 1
-                        }
+                        blockState = netherwartState(1)
                     )
                 ),
                 armorStands = listOf(
@@ -46,10 +39,7 @@ object Netherwart : CropDefinitionProvider {
                 blocks = listOf(
                     CropBlockState(
                         offset = BlockPos(0,1,0),
-                        matcher = {
-                            it.isBlock("minecraft:nether_wart") &&
-                                    it.getIntProperty("age") == 2
-                        }
+                        blockState = netherwartState(2)
                     )
                 ),
                 armorStands = null,
@@ -59,10 +49,7 @@ object Netherwart : CropDefinitionProvider {
                 blocks = listOf(
                     CropBlockState(
                         offset = BlockPos(0,1,0),
-                        matcher = {
-                            it.isBlock("minecraft:nether_wart") &&
-                                    it.getIntProperty("age") == 3
-                        }
+                        blockState = netherwartState(3)
                     )
                 ),
                 armorStands = null,

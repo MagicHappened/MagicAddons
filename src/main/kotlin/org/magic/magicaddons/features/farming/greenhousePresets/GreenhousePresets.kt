@@ -6,6 +6,7 @@ import net.minecraft.world.entity.EquipmentSlot
 import net.minecraft.world.entity.decoration.ArmorStand
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
+import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.level.block.state.BlockState
 import org.magic.magicaddons.data.config.BooleanSetting
 import org.magic.magicaddons.data.greenhouse.CropRegistry
@@ -50,7 +51,7 @@ object GreenhousePresets : Feature() {
 
     }
 
-    fun generateStands(){
+    fun generatePrototype(){
         standsToRender = listOf()
         val stack = PlayerUtils.getItemFromHash("44d72eed58354ce14bfc497138a13564070fb4653898aeb3e66c73082ae1f993")
         val testStack = ItemStack(Items.DIRT)
@@ -64,6 +65,9 @@ object GreenhousePresets : Feature() {
         )
         stand.setItemSlot(EquipmentSlot.HEAD, stack)
         stand.isInvisible = true
+        val testWheat = Blocks.WHEAT
+
+
         standsToRender = listOf(
             stand
         )

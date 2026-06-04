@@ -8,8 +8,7 @@ import org.magic.magicaddons.data.greenhouse.CropBlockState
 import org.magic.magicaddons.data.greenhouse.CropDefinition
 import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
 import org.magic.magicaddons.data.greenhouse.CropStage
-import org.magic.magicaddons.util.BlockUtils.getIntProperty
-import org.magic.magicaddons.util.BlockUtils.isBlock
+import org.magic.magicaddons.data.greenhouse.CropStates.wheatState
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
 object Ashwreath : CropDefinitionProvider {
@@ -21,18 +20,13 @@ object Ashwreath : CropDefinitionProvider {
                 blocks = listOf(
                     CropBlockState(
                         offset = BlockPos(0, 1, 0),
-                        matcher = {
-                            it.isBlock("minecraft:wheat") &&
-                                    it.getIntProperty("age") == 6
-                        }
+                        blockState = wheatState(6)
                     )
                 ),
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.375, 0.0),
-                        hashMatches = {
-                            it == "5890f50780fdecedaa85aa40bf3399e9439ee68594c6d022688165608171681d"
-                        }
+                        hashString = "5890f50780fdecedaa85aa40bf3399e9439ee68594c6d022688165608171681d"
                     )
                 ),
                 1..1

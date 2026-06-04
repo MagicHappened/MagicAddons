@@ -5,8 +5,7 @@ import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
 import org.magic.magicaddons.data.greenhouse.CropBlockState
 import org.magic.magicaddons.data.greenhouse.CropDefinition
 import org.magic.magicaddons.data.greenhouse.CropStage
-import org.magic.magicaddons.util.BlockUtils.getIntProperty
-import org.magic.magicaddons.util.BlockUtils.isBlock
+import org.magic.magicaddons.data.greenhouse.CropStates.carrotState
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
 object Carrot : CropDefinitionProvider {
@@ -18,10 +17,7 @@ object Carrot : CropDefinitionProvider {
                 blocks = listOf(
                     CropBlockState(
                         offset = BlockPos(0,1,0),
-                        matcher = {
-                            it.isBlock("minecraft:carrots") &&
-                                    it.getIntProperty("age") == 0
-                        }
+                        blockState = carrotState(0)
                     )
                 ),
                 armorStands = null,
@@ -31,10 +27,7 @@ object Carrot : CropDefinitionProvider {
                 blocks = listOf(
                     CropBlockState(
                         offset = BlockPos(0,1,0),
-                        matcher = {
-                            it.isBlock("minecraft:carrots") &&
-                                    it.getIntProperty("age") == 1
-                        }
+                        blockState = carrotState(1)
                     )
                 ),
                 armorStands = null,
@@ -44,10 +37,7 @@ object Carrot : CropDefinitionProvider {
                 blocks = listOf(
                     CropBlockState(
                         offset = BlockPos(0,1,0),
-                        matcher = {
-                            it.isBlock("minecraft:carrots") &&
-                                    it.getIntProperty("age") == 2
-                        }
+                        blockState = carrotState(2)
                     )
                 ),
                 armorStands = listOf(
@@ -58,10 +48,7 @@ object Carrot : CropDefinitionProvider {
                 blocks = listOf(
                     CropBlockState(
                         offset = BlockPos(0,1,0),
-                        matcher = {
-                            it.isBlock("minecraft:carrots") &&
-                                    it.getIntProperty("age") == 3
-                        }
+                        blockState = carrotState(3)
                     )
                 ),
                 armorStands = listOf(
@@ -72,10 +59,7 @@ object Carrot : CropDefinitionProvider {
                 blocks = listOf(
                     CropBlockState(
                         offset = BlockPos(0,1,0),
-                        matcher = {
-                            it.isBlock("minecraft:carrots") &&
-                                    it.getIntProperty("age") == 4
-                        }
+                        blockState = carrotState(4)
                     )
                 ),
                 armorStands = null,
@@ -85,10 +69,7 @@ object Carrot : CropDefinitionProvider {
                 blocks = listOf(
                     CropBlockState(
                         offset = BlockPos(0,1,0),
-                        matcher = {
-                            it.isBlock("minecraft:carrots") &&
-                                    it.getIntProperty("age") == 6
-                        }
+                        blockState = carrotState(6)
                     )
                 ),
                 armorStands = null,
@@ -98,10 +79,7 @@ object Carrot : CropDefinitionProvider {
                 blocks = listOf(
                     CropBlockState(
                         offset = BlockPos(0,1,0),
-                        matcher = {
-                            it.isBlock("minecraft:carrots") &&
-                                    it.getIntProperty("age") == 7
-                        }
+                        blockState = carrotState(7)
                     )
                 ),
                 armorStands = null,

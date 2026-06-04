@@ -18,9 +18,7 @@ object Thunderling : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, 0.09375, 0.0),
-                        hashMatches = {
-                            it == "b35914deb539a1fde1b1c473f8e05cacca257b959e7270d444c1dc5ad2bf7cc8"
-                        }
+                        hashString = "b35914deb539a1fde1b1c473f8e05cacca257b959e7270d444c1dc5ad2bf7cc8"
                     )
                 ),
                 2..2
@@ -31,21 +29,15 @@ object Thunderling : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.15625, -0.5, 0.21875),
-                        hashMatches = {
-                            it == "3724327576a20876fc95f41bb37fd0e2f2c79014455f19262f185ce88b155385"
-                        }
+                        hashString = "3724327576a20876fc95f41bb37fd0e2f2c79014455f19262f185ce88b155385"
                     ),
                     CropArmorStand(
                         offset = Vec3(0.0625, -0.625, -0.25),
-                        hashMatches = {
-                            it == "3724327576a20876fc95f41bb37fd0e2f2c79014455f19262f185ce88b155385"
-                        }
+                        hashString = "3724327576a20876fc95f41bb37fd0e2f2c79014455f19262f185ce88b155385"
                     ),
                     CropArmorStand(
                         offset = Vec3(-0.21875, -0.5, 0.03125),
-                        hashMatches = {
-                            it == "3724327576a20876fc95f41bb37fd0e2f2c79014455f19262f185ce88b155385"
-                        }
+                        hashString = "3724327576a20876fc95f41bb37fd0e2f2c79014455f19262f185ce88b155385"
                     )
                 ),
                 16..16,

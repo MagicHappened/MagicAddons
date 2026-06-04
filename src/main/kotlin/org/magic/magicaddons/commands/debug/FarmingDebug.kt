@@ -17,7 +17,7 @@ object FarmingDebug : AbstractCommand() {
     override fun build(): LiteralArgumentBuilder<FabricClientCommandSource> {
         return LiteralArgumentBuilder.literal<FabricClientCommandSource>(argument)
             .executes {
-                GreenhousePresets.generateStands()
+                GreenhousePresets.generatePrototype()
                 return@executes 1
             }.then(
                 RequiredArgumentBuilder.argument<FabricClientCommandSource, String>("footprint", StringArgumentType.word())

@@ -18,9 +18,7 @@ object Shellfruit : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.46875, 0.0),
-                        hashMatches = {
-                            it == "72d802cd207f1971a2eb826f1a7477740833c920db00cd5c992176c67672dbf5"
-                        }
+                        hashString = "72d802cd207f1971a2eb826f1a7477740833c920db00cd5c992176c67672dbf5"
                     )
                 ),
                 1..1

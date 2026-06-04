@@ -17,9 +17,7 @@ object Fermento : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.4, 0.0),
-                        hashMatches = {
-                            it == "cb41daeb57d2ae62c66e58eb6debb2a7d446e34541a771350728c9db15beafba"
-                        }
+                        hashString = "cb41daeb57d2ae62c66e58eb6debb2a7d446e34541a771350728c9db15beafba"
                     )
                 ),
                 1..1

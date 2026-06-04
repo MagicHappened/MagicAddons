@@ -12,9 +12,7 @@
     "ClientLevelMixin",
     "ScreenMixin",
     "EntityRenderStateMixin",
-    "LivingEntityRendererMixin",
-    "ArmorStandRendererMixin",
-    "ModelFeatureRendererMixin"
+    "CustomHeadLayerMixin"
   ],
   "injectors": {
     "defaultRequire": 1

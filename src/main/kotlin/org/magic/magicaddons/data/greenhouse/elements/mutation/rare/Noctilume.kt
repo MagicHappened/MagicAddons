@@ -2,15 +2,8 @@ package org.magic.magicaddons.data.greenhouse.elements.mutation.rare
 
 import net.minecraft.core.BlockPos
 import net.minecraft.world.phys.Vec3
-import org.magic.magicaddons.data.greenhouse.CropExtraInfo
-import org.magic.magicaddons.data.greenhouse.CropArmorStand
-import org.magic.magicaddons.data.greenhouse.CropBlockState
-import org.magic.magicaddons.data.greenhouse.CropDefinition
-import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
-import org.magic.magicaddons.data.greenhouse.CropStage
-import org.magic.magicaddons.data.greenhouse.Footprint
-import org.magic.magicaddons.util.BlockUtils.getIntProperty
-import org.magic.magicaddons.util.BlockUtils.isBlock
+import org.magic.magicaddons.data.greenhouse.*
+import org.magic.magicaddons.data.greenhouse.CropStates.wheatState
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
 object Noctilume : CropDefinitionProvider {
@@ -31,12 +24,9 @@ object Noctilume : CropDefinitionProvider {
         skyblockId = SkyBlockItemId.item("NOCTILUME"),
         stageDefs = listOf(
             CropStage(
-                blocks = CropBlockState.matcherPattern(
+                blocks = CropBlockState.blockStatePattern(
                     wheatPositions,
-                    matcher = {
-                        it.isBlock("minecraft:wheat") &&
-                                it.getIntProperty("age") == 6
-                    }
+                    blockState = wheatState(6)
                 ),
                 armorStands = CropArmorStand.matcherPattern(
                     offsets = listOf(
@@ -45,9 +35,7 @@ object Noctilume : CropDefinitionProvider {
                         Vec3(0.28125, 0.03125, 0.125),
                         Vec3(-0.125, -0.03125, -0.40625)
                     ),
-                    hashMatches = {
-                            it == "b1b18493d50ff8972f7ef359893d9063fdc54cb822c679002957c294fc8b0005"
-                        }
+                    hashString = "b1b18493d50ff8972f7ef359893d9063fdc54cb822c679002957c294fc8b0005"
                 ),
                 4..4,
                 allowRotation = true,

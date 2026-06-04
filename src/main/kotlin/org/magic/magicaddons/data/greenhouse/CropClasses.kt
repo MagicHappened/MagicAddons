@@ -31,14 +31,14 @@ data class Footprint(val width: Int, val height: Int)
 data class CropArmorStand(
     val offset: Vec3, //offset is defined from the soil top left block
     val headRotation: Rotations? = null,
-    val hashMatches: ((String?) -> Boolean)? = null,
+    val hashString: String? = null,
     val customNameMatches: ((String?) -> Boolean)? = null,
 ) {
     companion object {
         fun matcherPattern(
             offsets: List<Vec3>,
             rotations: List<Rotations>? = null,
-            hashMatches: ((String?) -> Boolean)? = null,
+            hashString: String? = null,
             customNameMatches: ((String?) -> Boolean)? = null
         ): List<CropArmorStand> {
             val result = mutableListOf<CropArmorStand>()
@@ -47,7 +47,7 @@ data class CropArmorStand(
                     CropArmorStand(
                         offset,
                         rotations?.getOrNull(i),
-                        hashMatches,
+                        hashString,
                         customNameMatches
                     )
                 )
@@ -58,19 +58,20 @@ data class CropArmorStand(
 }
 data class CropBlockState(
     val offset: BlockPos,
-    val matcher: (BlockState) -> Boolean){
+    val blockState: BlockState
+){
 
     companion object {
-        fun matcherPattern(
+        fun blockStatePattern(
             positions: List<BlockPos>,
-            matcher: (BlockState) -> Boolean
+            blockState: BlockState
         ): List<CropBlockState> {
             val result = mutableListOf<CropBlockState>()
             positions.forEach {
                 result.add(
                     CropBlockState(
                         it,
-                        matcher
+                        blockState
                     )
                 )
             }
@@ -113,7 +114,7 @@ open class CropStage(
                 val pos = origin.offset(blockDef.offset)
                 val state = level.getBlockState(pos)
 
-                if (!blockDef.matcher(state)) {
+                if (state != blockDef.blockState) {
                     if (debug) {
                         Common.LOGGER.info(
                             "Block mismatch at $pos. State=${state.block}"
@@ -148,7 +149,7 @@ open class CropStage(
                         val name = entity.customName?.string
 
                         val offsetOk = matchesWithRotation(offset, standDef.offset, allowRotation)
-                        val hashOk = standDef.hashMatches?.invoke(hash) ?: true
+                        val hashOk = standDef.hashString?.let { it == hash } ?: true
                         val nameOk = standDef.customNameMatches?.invoke(name) ?: true
 
                         if (debug) {
@@ -275,7 +276,7 @@ class CropStagePattern(
 
                 CropArmorStand(
                     offset = offset,
-                    hashMatches = stand.hashMatches
+                    hashString = stand.hashString
                 )
             }
 

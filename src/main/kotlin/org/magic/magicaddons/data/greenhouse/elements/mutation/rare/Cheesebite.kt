@@ -2,13 +2,10 @@ package org.magic.magicaddons.data.greenhouse.elements.mutation.rare
 
 import net.minecraft.core.BlockPos
 import net.minecraft.world.phys.Vec3
-import org.magic.magicaddons.data.greenhouse.CropArmorStand
-import org.magic.magicaddons.data.greenhouse.CropBlockState
-import org.magic.magicaddons.data.greenhouse.CropDefinition
-import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
-import org.magic.magicaddons.data.greenhouse.CropStage
-import org.magic.magicaddons.util.BlockUtils.getIntProperty
-import org.magic.magicaddons.util.BlockUtils.isBlock
+import org.magic.magicaddons.data.greenhouse.*
+import org.magic.magicaddons.data.greenhouse.CropStates.melonStemState
+import org.magic.magicaddons.data.greenhouse.CropStates.sunflowerState
+import org.magic.magicaddons.data.greenhouse.CropStates.wheatState
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
 object Cheesebite : CropDefinitionProvider {
@@ -20,18 +17,13 @@ object Cheesebite : CropDefinitionProvider {
                 blocks = listOf(
                     CropBlockState(
                         offset = BlockPos(0,1,0),
-                        matcher = {
-                            it.isBlock("minecraft:wheat") &&
-                                    it.getIntProperty("age") == 1
-                        }
+                        blockState = wheatState(1)
                     )
                 ),
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.9375, 0.0),
-                        hashMatches = {
-                            it == "411f19c783959807338e2bf7080b1e34abb8c452464c0dce5bdf434cdc250717"
-                        }
+                        hashString = "411f19c783959807338e2bf7080b1e34abb8c452464c0dce5bdf434cdc250717"
                     )
                 ),
                 1..1
@@ -40,18 +32,13 @@ object Cheesebite : CropDefinitionProvider {
                 blocks = listOf(
                     CropBlockState(
                         offset = BlockPos(0,1,0),
-                        matcher = {
-                            it.isBlock("minecraft:wheat") &&
-                                    it.getIntProperty("age") == 1
-                        }
+                        blockState = wheatState(1)
                     )
                 ),
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.75, 0.0),
-                        hashMatches = {
-                            it == "411f19c783959807338e2bf7080b1e34abb8c452464c0dce5bdf434cdc250717"
-                        }
+                        hashString = "411f19c783959807338e2bf7080b1e34abb8c452464c0dce5bdf434cdc250717"
                     )
                 ),
                 2..2
@@ -60,18 +47,13 @@ object Cheesebite : CropDefinitionProvider {
                 blocks = listOf(
                     CropBlockState(
                         offset = BlockPos(0,1,0),
-                        matcher = {
-                            it.isBlock("minecraft:wheat") &&
-                                    it.getIntProperty("age") == 2
-                        }
+                        blockState = wheatState(2)
                     )
                 ),
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.65625, 0.0),
-                        hashMatches = {
-                            it == "411f19c783959807338e2bf7080b1e34abb8c452464c0dce5bdf434cdc250717"
-                        }
+                        hashString = "411f19c783959807338e2bf7080b1e34abb8c452464c0dce5bdf434cdc250717"
                     )
                 ),
                 3..3
@@ -80,18 +62,13 @@ object Cheesebite : CropDefinitionProvider {
                 blocks = listOf(
                     CropBlockState(
                         offset = BlockPos(0,1,0),
-                        matcher = {
-                            it.isBlock("minecraft:wheat") &&
-                                    it.getIntProperty("age") == 3
-                        }
+                        blockState = wheatState(3)
                     )
                 ),
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.65625, 0.0),
-                        hashMatches = {
-                            it == "411f19c783959807338e2bf7080b1e34abb8c452464c0dce5bdf434cdc250717"
-                        },
+                        hashString = "411f19c783959807338e2bf7080b1e34abb8c452464c0dce5bdf434cdc250717",
                     )
                 ),
                 4..4 //todo figure out rats thing
@@ -100,19 +77,14 @@ object Cheesebite : CropDefinitionProvider {
                 blocks = listOf(
                     CropBlockState(
                         offset = BlockPos(0,1,0),
-                        matcher = {
-                            it.isBlock("minecraft:wheat") &&
-                                    it.getIntProperty("age") == 4
-                        }
+                        blockState = wheatState(4)
                     )
                 ),
                 armorStands =
                     listOf(
                         CropArmorStand(
                             offset = Vec3(0.0, -0.4375, 0.0),
-                            hashMatches = {
-                                it == "411f19c783959807338e2bf7080b1e34abb8c452464c0dce5bdf434cdc250717"
-                            },
+                            hashString = "411f19c783959807338e2bf7080b1e34abb8c452464c0dce5bdf434cdc250717",
                         )
                     )
                 ,
@@ -122,18 +94,13 @@ object Cheesebite : CropDefinitionProvider {
                 blocks = listOf(
                     CropBlockState(
                         offset = BlockPos(0,1,0),
-                        matcher = {
-                            it.isBlock("minecraft:melon_stem") &&
-                                    it.getIntProperty("age") == 3
-                        }
+                        blockState = melonStemState(3)
                     )
                 ),
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.15625, 0.0),
-                        hashMatches = {
-                            it == "411f19c783959807338e2bf7080b1e34abb8c452464c0dce5bdf434cdc250717"
-                        }
+                        hashString = "411f19c783959807338e2bf7080b1e34abb8c452464c0dce5bdf434cdc250717"
                     )
                 ),
                 8..8
@@ -142,17 +109,13 @@ object Cheesebite : CropDefinitionProvider {
                 blocks = listOf(
                     CropBlockState(
                         offset = BlockPos(0,1,0),
-                        matcher = {
-                            it.isBlock("minecraft:sunflower")
-                        }
+                        blockState = sunflowerState()
                     )
                 ),
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, 0.15625, 0.0),
-                        hashMatches = {
-                            it == "411f19c783959807338e2bf7080b1e34abb8c452464c0dce5bdf434cdc250717"
-                        }
+                        hashString = "411f19c783959807338e2bf7080b1e34abb8c452464c0dce5bdf434cdc250717"
                     )
                 ),
                 9..9
@@ -161,17 +124,13 @@ object Cheesebite : CropDefinitionProvider {
                 blocks = listOf(
                     CropBlockState(
                         offset = BlockPos(0, 1, 0),
-                        matcher = {
-                            it.isBlock("minecraft:sunflower")
-                        }
+                        blockState = sunflowerState()
                     )
                 ),
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, 0.34375, 0.0),
-                        hashMatches = {
-                            it == "411f19c783959807338e2bf7080b1e34abb8c452464c0dce5bdf434cdc250717"
-                        }
+                        hashString = "411f19c783959807338e2bf7080b1e34abb8c452464c0dce5bdf434cdc250717"
                     )
                 ),
                 10..10

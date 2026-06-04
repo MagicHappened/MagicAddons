@@ -3,13 +3,8 @@ package org.magic.magicaddons.data.greenhouse.elements.mutation.legendary
 import net.minecraft.core.BlockPos
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.phys.Vec3
-import org.magic.magicaddons.data.greenhouse.CropArmorStand
-import org.magic.magicaddons.data.greenhouse.CropBlockState
-import org.magic.magicaddons.data.greenhouse.CropDefinition
-import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
-import org.magic.magicaddons.data.greenhouse.CropStage
-import org.magic.magicaddons.util.BlockUtils.getIntProperty
-import org.magic.magicaddons.util.BlockUtils.isBlock
+import org.magic.magicaddons.data.greenhouse.*
+import org.magic.magicaddons.data.greenhouse.CropStates.melonStemState
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
 object Timestalk : CropDefinitionProvider {
@@ -21,25 +16,17 @@ object Timestalk : CropDefinitionProvider {
                 blocks = listOf(
                     CropBlockState(
                         offset = BlockPos(0, 1, 0),
-                        matcher = {
-                            it.isBlock("minecraft:melon_stem") &&
-                                    it.getIntProperty("age") == 5
-                        }
+                        blockState = melonStemState(5)
                     ),
                     CropBlockState(
                         offset = BlockPos(0, 2, 0),
-                        matcher = {
-                            it.isBlock("minecraft:melon_stem") &&
-                                    it.getIntProperty("age") == 7
-                        }
+                        blockState = melonStemState(7)
                     )
                 ),
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.40625, 0.0),
-                        hashMatches = {
-                            it == "d2306f4c5946990204517a73bbfa8281fd7d9a294f908b0286e708c51f79a063"
-                        }
+                        hashString = "d2306f4c5946990204517a73bbfa8281fd7d9a294f908b0286e708c51f79a063"
                     )
                 ),
                 11..11

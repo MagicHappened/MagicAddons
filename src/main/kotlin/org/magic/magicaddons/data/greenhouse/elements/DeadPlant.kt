@@ -6,6 +6,7 @@ import org.magic.magicaddons.data.greenhouse.CropBlockState
 import org.magic.magicaddons.data.greenhouse.CropDefinition
 import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
 import org.magic.magicaddons.data.greenhouse.CropStage
+import org.magic.magicaddons.data.greenhouse.CropStates.deadBushState
 import org.magic.magicaddons.util.BlockUtils.isBlock
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
@@ -18,9 +19,7 @@ object DeadPlant : CropDefinitionProvider {
                 blocks = listOf(
                     CropBlockState(
                         offset = BlockPos(0, 1, 0),
-                        matcher = {
-                            it.isBlock("minecraft:dead_bush")
-                        }
+                        blockState = deadBushState()
                     )
                 ),
                 armorStands = null,

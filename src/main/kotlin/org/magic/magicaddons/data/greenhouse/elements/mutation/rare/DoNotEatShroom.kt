@@ -19,9 +19,7 @@ object DoNotEatShroom : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, 0.125, 0.0),
-                        hashMatches = {
-                            it == "77a99b274b5e21a3537469b2ae717bb4cedcacca76df7525092a99bc08ea8c9"
-                        }
+                        hashString = "77a99b274b5e21a3537469b2ae717bb4cedcacca76df7525092a99bc08ea8c9"
                     )
                 ),
                 1..1
@@ -31,9 +29,7 @@ object DoNotEatShroom : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.6875, 0.0),
-                        hashMatches = {
-                            it == "77a99b274b5e21a3537469b2ae717bb4cedcacca76df7525092a99bc08ea8c9"
-                        }
+                        hashString = "77a99b274b5e21a3537469b2ae717bb4cedcacca76df7525092a99bc08ea8c9"
                     )
                 ),
                 stageRange = 2..3,
@@ -48,9 +44,7 @@ object DoNotEatShroom : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.59375, 0.0),
-                        hashMatches = {
-                            it == "1772fa43e9f41925f681690167db25d5488a7fa4b428ec4e95a4b683f15dbb4"
-                        }
+                        hashString = "1772fa43e9f41925f681690167db25d5488a7fa4b428ec4e95a4b683f15dbb4"
                     )
                 ),
                 stageRange = 4..5,
@@ -66,9 +60,7 @@ object DoNotEatShroom : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.5, 0.0),
-                        hashMatches = {
-                            it == "6a7ae95a8bb1fcdbf71385fe663c5647e0a5c32004db8c0313c2d45c94e3d1ad"
-                        }
+                        hashString = "6a7ae95a8bb1fcdbf71385fe663c5647e0a5c32004db8c0313c2d45c94e3d1ad"
                     )
                 ),
                 stageRange = 6..7,
@@ -84,9 +76,7 @@ object DoNotEatShroom : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.4375, 0.0),
-                        hashMatches = {
-                            it == "3f22178e2e72d6929a6ef9199795a93cfbad999bbee0aba235b277d0b18e0e94"
-                        }
+                        hashString = "3f22178e2e72d6929a6ef9199795a93cfbad999bbee0aba235b277d0b18e0e94"
                     )
                 ),
                 8..8

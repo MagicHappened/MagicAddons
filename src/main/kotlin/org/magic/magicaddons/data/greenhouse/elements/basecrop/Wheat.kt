@@ -5,8 +5,7 @@ import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
 import org.magic.magicaddons.data.greenhouse.CropBlockState
 import org.magic.magicaddons.data.greenhouse.CropDefinition
 import org.magic.magicaddons.data.greenhouse.CropStage
-import org.magic.magicaddons.util.BlockUtils.getIntProperty
-import org.magic.magicaddons.util.BlockUtils.isBlock
+import org.magic.magicaddons.data.greenhouse.CropStates.wheatState
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
 object Wheat : CropDefinitionProvider {
@@ -21,10 +20,7 @@ object Wheat : CropDefinitionProvider {
                 blocks = listOf(
                     CropBlockState(
                         offset = BlockPos(0,1,0),
-                        matcher = {
-                            it.isBlock("minecraft:wheat") &&
-                                    it.getIntProperty("age") == 0
-                        }
+                        blockState = wheatState(0)
                     )
                 ),
                 armorStands = null,
@@ -34,10 +30,7 @@ object Wheat : CropDefinitionProvider {
                 blocks = listOf(
                     CropBlockState(
                         offset = BlockPos(0,1,0),
-                        matcher = {
-                            it.isBlock("minecraft:wheat") &&
-                                    it.getIntProperty("age") == 1
-                        }
+                        blockState = wheatState(1)
                     )
                 ),
                 armorStands = null,
@@ -47,10 +40,7 @@ object Wheat : CropDefinitionProvider {
                 blocks = listOf(
                     CropBlockState(
                         offset = BlockPos(0,1,0),
-                        matcher = {
-                            it.isBlock("minecraft:wheat") &&
-                                    it.getIntProperty("age") == 2
-                        }
+                        blockState = wheatState(2)
                     )
                 ),
                 armorStands = null,
@@ -60,10 +50,7 @@ object Wheat : CropDefinitionProvider {
                 blocks = listOf(
                     CropBlockState(
                         offset = BlockPos(0,1,0),
-                        matcher = {
-                            it.isBlock("minecraft:wheat") &&
-                                    it.getIntProperty("age") == 3
-                        }
+                        blockState = wheatState(3)
                     )
                 ),
                 armorStands = null,
@@ -73,10 +60,7 @@ object Wheat : CropDefinitionProvider {
                 blocks = listOf(
                     CropBlockState(
                         offset = BlockPos(0,1,0),
-                        matcher = {
-                            it.isBlock("minecraft:wheat") &&
-                                    it.getIntProperty("age") == 4
-                        }
+                        blockState = wheatState(4)
                     )
                 ),
                 armorStands = null,
@@ -86,10 +70,7 @@ object Wheat : CropDefinitionProvider {
                 blocks = listOf(
                     CropBlockState(
                         offset = BlockPos(0,1,0),
-                        matcher = {
-                            it.isBlock("minecraft:wheat") &&
-                                    it.getIntProperty("age") == 6
-                        }
+                        blockState = wheatState(6)
                     )
                 ),
                 armorStands = null,
@@ -99,10 +80,7 @@ object Wheat : CropDefinitionProvider {
                 blocks = listOf(
                     CropBlockState(
                         offset = BlockPos(0,1,0),
-                        matcher = {
-                            it.isBlock("minecraft:wheat") &&
-                                    it.getIntProperty("age") == 7
-                        }
+                        blockState = wheatState(7)
                     )
                 ),
                 armorStands = null,

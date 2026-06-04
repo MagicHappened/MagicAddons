@@ -8,8 +8,7 @@ import org.magic.magicaddons.data.greenhouse.CropBlockState
 import org.magic.magicaddons.data.greenhouse.CropDefinition
 import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
 import org.magic.magicaddons.data.greenhouse.CropStage
-import org.magic.magicaddons.util.BlockUtils.getIntProperty
-import org.magic.magicaddons.util.BlockUtils.isBlock
+import org.magic.magicaddons.data.greenhouse.CropStates.pumpkinStemState
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
 object Choconut : CropDefinitionProvider {
@@ -21,19 +20,14 @@ object Choconut : CropDefinitionProvider {
                 blocks = listOf(
                     CropBlockState(
                         offset = BlockPos(0, 1, 0),
-                        matcher = {
-                            it.isBlock("minecraft:pumpkin_stem") &&
-                                    it.getIntProperty("age") == 7
-                        }
+                        blockState = pumpkinStemState(7)
                     )
                 ),
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(-0.15625, 0.28125, 0.15625),
                         headRotation = Rotations(45.0F, 0.0F, 45.0F),
-                        hashMatches = {
-                            it == "2a8d74b77a0e510d058c544c7292a8844e70b9293880caffc562ce5ab5a49ad8"
-                        }
+                        hashString = "2a8d74b77a0e510d058c544c7292a8844e70b9293880caffc562ce5ab5a49ad8"
                     )
                 ),
                 1..1,
