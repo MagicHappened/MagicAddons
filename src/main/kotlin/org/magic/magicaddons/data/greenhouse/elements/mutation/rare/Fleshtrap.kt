@@ -2,13 +2,8 @@ package org.magic.magicaddons.data.greenhouse.elements.mutation.rare
 
 import net.minecraft.core.BlockPos
 import net.minecraft.world.phys.Vec3
-import org.magic.magicaddons.data.greenhouse.CropArmorStand
-import org.magic.magicaddons.data.greenhouse.CropBlockState
-import org.magic.magicaddons.data.greenhouse.CropDefinition
-import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
-import org.magic.magicaddons.data.greenhouse.CropStage
-import org.magic.magicaddons.util.BlockUtils.getIntProperty
-import org.magic.magicaddons.util.BlockUtils.isBlock
+import org.magic.magicaddons.data.greenhouse.*
+import org.magic.magicaddons.data.greenhouse.CropStates.melonStemState
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
 object Fleshtrap : CropDefinitionProvider {
@@ -20,18 +15,13 @@ object Fleshtrap : CropDefinitionProvider {
                 blocks = listOf(
                     CropBlockState(
                         offset = BlockPos(0, 1, 0),
-                        matcher = {
-                            it.isBlock("minecraft:melon_stem") &&
-                                    it.getIntProperty("age") == 3
-                        }
+                        blockState = melonStemState(3)
                     )
                 ),
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.15625, 0.0),
-                        hashMatches = {
-                            it == "c7f45f6cb2e4bbf45c5537c4dc3055a323021d62db7d91cc60beb02956401fb9"
-                        }
+                        hashString = "c7f45f6cb2e4bbf45c5537c4dc3055a323021d62db7d91cc60beb02956401fb9"
                     ),
                     CropArmorStand(
                         offset = Vec3(0.0, 2.612, 0.0),

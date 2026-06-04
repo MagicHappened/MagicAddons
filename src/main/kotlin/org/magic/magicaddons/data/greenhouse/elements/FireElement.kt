@@ -26,9 +26,7 @@ object FireElement : CropDefinitionProvider {
                 blocks = listOf(
                     CropBlockState(
                         offset = BlockPos(0,1,0),
-                        matcher = {
-                            it.isBlock("minecraft:fire")
-                        }
+                        blockState = Blocks.FIRE.defaultBlockState()
                     )
                 ),
                 stageRange = 1..1

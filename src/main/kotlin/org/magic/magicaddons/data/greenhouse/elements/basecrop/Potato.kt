@@ -5,9 +5,7 @@ import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
 import org.magic.magicaddons.data.greenhouse.CropBlockState
 import org.magic.magicaddons.data.greenhouse.CropDefinition
 import org.magic.magicaddons.data.greenhouse.CropStage
-import org.magic.magicaddons.util.BlockUtils.getIntProperty
-import org.magic.magicaddons.util.BlockUtils.isBlock
-import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockId
+import org.magic.magicaddons.data.greenhouse.CropStates.potatoesState
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
 object Potato : CropDefinitionProvider {
@@ -19,10 +17,7 @@ object Potato : CropDefinitionProvider {
                 blocks = listOf(
                     CropBlockState(
                         offset = BlockPos(0,1,0),
-                        matcher = {
-                            it.isBlock("minecraft:potatoes") &&
-                                    it.getIntProperty("age") == 0
-                        }
+                        blockState = potatoesState(0)
                     )
                 ),
                 armorStands = null,
@@ -32,10 +27,7 @@ object Potato : CropDefinitionProvider {
                 blocks = listOf(
                     CropBlockState(
                         offset = BlockPos(0,1,0),
-                        matcher = {
-                            it.isBlock("minecraft:potatoes") &&
-                                    it.getIntProperty("age") == 1
-                        }
+                        blockState = potatoesState(1)
                     )
                 ),
                 armorStands = null,
@@ -45,10 +37,7 @@ object Potato : CropDefinitionProvider {
                 blocks = listOf(
                     CropBlockState(
                         offset = BlockPos(0,1,0),
-                        matcher = {
-                            it.isBlock("minecraft:potatoes") &&
-                                    it.getIntProperty("age") == 2
-                        }
+                        blockState = potatoesState(2)
                     )
                 ),
                 armorStands = null,
@@ -58,10 +47,7 @@ object Potato : CropDefinitionProvider {
                 blocks = listOf(
                     CropBlockState(
                         offset = BlockPos(0,1,0),
-                        matcher = {
-                            it.isBlock("minecraft:potatoes") &&
-                                    it.getIntProperty("age") == 3
-                        }
+                        blockState = potatoesState(3)
                     )
                 ),
                 armorStands = null,
@@ -71,10 +57,7 @@ object Potato : CropDefinitionProvider {
                 blocks = listOf(
                     CropBlockState(
                         offset = BlockPos(0,1,0),
-                        matcher = {
-                            it.isBlock("minecraft:potatoes") &&
-                                    it.getIntProperty("age") == 4
-                        }
+                        blockState = potatoesState(4)
                     )
                 ),
                 armorStands = null,
@@ -84,10 +67,7 @@ object Potato : CropDefinitionProvider {
                 blocks = listOf(
                     CropBlockState(
                         offset = BlockPos(0,1,0),
-                        matcher = {
-                            it.isBlock("minecraft:potatoes") &&
-                                    it.getIntProperty("age") == 6
-                        }
+                        blockState = potatoesState(6)
                     )
                 ),
                 armorStands = null,
@@ -97,10 +77,7 @@ object Potato : CropDefinitionProvider {
                 blocks = listOf(
                     CropBlockState(
                         offset = BlockPos(0,1,0),
-                        matcher = {
-                            it.isBlock("minecraft:potatoes") &&
-                                    it.getIntProperty("age") == 7
-                        }
+                        blockState = potatoesState(7)
                     )
                 ),
                 armorStands = null,

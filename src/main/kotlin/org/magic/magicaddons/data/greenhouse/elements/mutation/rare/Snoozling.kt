@@ -3,8 +3,7 @@ package org.magic.magicaddons.data.greenhouse.elements.mutation.rare
 import net.minecraft.core.BlockPos
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.*
-import org.magic.magicaddons.util.BlockUtils.getIntProperty
-import org.magic.magicaddons.util.BlockUtils.isBlock
+import org.magic.magicaddons.data.greenhouse.CropStates.wheatState
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
 object Snoozling : CropDefinitionProvider {
@@ -24,45 +23,33 @@ object Snoozling : CropDefinitionProvider {
         skyblockId = SkyBlockItemId.item("SNOOZLING"),
         stageDefs = listOf(
             CropStage(
-                blocks = CropBlockState.matcherPattern(
+                blocks = CropBlockState.blockStatePattern(
                     positions = wheatPositions,
-                    matcher = {
-                        it.isBlock("minecraft:wheat") &&
-                                it.getIntProperty("age") == 0
-                    }
+                    blockState = wheatState(0),
                 ),
                 armorStands =
                     listOf(
                         CropArmorStand(
                             offset = Vec3(-0.03125, 0.15625, 0.0),
-                            hashMatches = {
-                                it == "b82d442528456547474dd88166a97818f057ecc4b3ed350ef9a5e4dbd27f98d7"
-                            },
+                            hashString = "b82d442528456547474dd88166a97818f057ecc4b3ed350ef9a5e4dbd27f98d7",
                         ),
                         CropArmorStand(
                             offset = Vec3(-0.5625, -0.46875, 0.0),
-                            hashMatches = {
-                                it == "77bb86dedeb827f2489aa0103d58d0e12e64a8152d5a0f5b1d4d208a3cb55999"
-                            },
+                            hashString = "77bb86dedeb827f2489aa0103d58d0e12e64a8152d5a0f5b1d4d208a3cb55999",
                         )
                     ),
                 1..1
             ),
             CropStage(
-                blocks = CropBlockState.matcherPattern(
+                blocks = CropBlockState.blockStatePattern(
                     positions = wheatPositions,
-                    matcher = {
-                        it.isBlock("minecraft:wheat") &&
-                                it.getIntProperty("age") == 0
-                    }
+                    blockState = wheatState(0)
                 ),
                 armorStands =
                     listOf(
                         CropArmorStand(
                             offset = Vec3(-0.53125, -0.0625, 0.0625),
-                            hashMatches = {
-                                it == "77bb86dedeb827f2489aa0103d58d0e12e64a8152d5a0f5b1d4d208a3cb55999"
-                            },
+                            hashString = "77bb86dedeb827f2489aa0103d58d0e12e64a8152d5a0f5b1d4d208a3cb55999",
                         )
                     )
                             +
@@ -73,28 +60,21 @@ object Snoozling : CropDefinitionProvider {
                                     Vec3(0.21875, 0.25, -0.5),
                                     Vec3(0.40625, 0.1875, 0.0)
                                 ),
-                                hashMatches = {
-                                    it == "b82d442528456547474dd88166a97818f057ecc4b3ed350ef9a5e4dbd27f98d7"
-                                }
+                                hashString = "b82d442528456547474dd88166a97818f057ecc4b3ed350ef9a5e4dbd27f98d7"
                             ),
                 3..4,
                 allowRotation = true
             ),
             CropStage(
-                blocks = CropBlockState.matcherPattern(
+                blocks = CropBlockState.blockStatePattern(
                     positions = wheatPositions,
-                    matcher = {
-                        it.isBlock("minecraft:wheat") &&
-                                it.getIntProperty("age") == 0
-                    }
+                    blockState = wheatState(0)
                 ),
                 armorStands =
                     listOf(
                         CropArmorStand(
                             offset = Vec3(-0.53125, -0.0625, 0.0625),
-                            hashMatches = {
-                                it == "2c856bec39e5f5fc04fc4c7d90f7d404cee2c628d911c7a756ef5b72f2b876f4"
-                            },
+                            hashString = "2c856bec39e5f5fc04fc4c7d90f7d404cee2c628d911c7a756ef5b72f2b876f4",
                         )
                     )
                             +
@@ -105,29 +85,22 @@ object Snoozling : CropDefinitionProvider {
                                     Vec3(0.40625, 0.1875, 0.0),
                                     Vec3(-0.03125, -0.46875, 0.0)
                                 ),
-                                hashMatches = {
-                                    it == "885c448a847959a7ea71f79686516886692e2c80b5464725dde847d5ae5a7215"
-                                }
+                                hashString = "885c448a847959a7ea71f79686516886692e2c80b5464725dde847d5ae5a7215"
                             ),
                 5..5,
                 allowRotation = true,
                 extraInfo = SnoozlingInfo.Sleeping
             ),
             CropStage(
-                blocks = CropBlockState.matcherPattern(
+                blocks = CropBlockState.blockStatePattern(
                     wheatPositions,
-                    matcher = {
-                        it.isBlock("minecraft:wheat") &&
-                                it.getIntProperty("age") == 5
-                    }
+                    blockState = wheatState(0)
                 ),
                 armorStands =
                     listOf(
                         CropArmorStand(
                             offset = Vec3(0.0, 0.0, 0.84375),
-                            hashMatches = {
-                                it == "24c64afa58bef69ff567b012a2b1638cf475c5bdb050d382308399ffa0b06a8d"
-                            }
+                            hashString = "24c64afa58bef69ff567b012a2b1638cf475c5bdb050d382308399ffa0b06a8d"
                         )
                     ) +
                             CropArmorStand.matcherPattern(
@@ -139,9 +112,7 @@ object Snoozling : CropDefinitionProvider {
                                     Vec3(0.5, -0.65625, -0.375),
                                     Vec3(-0.46875, -0.59375, -0.375)
                                 ),
-                                hashMatches = {
-                                    it == "b82d442528456547474dd88166a97818f057ecc4b3ed350ef9a5e4dbd27f98d7"
-                                }
+                                hashString = "b82d442528456547474dd88166a97818f057ecc4b3ed350ef9a5e4dbd27f98d7"
                             ),
                 20..20,
                 allowRotation = true

@@ -7,8 +7,7 @@ import org.magic.magicaddons.data.greenhouse.CropBlockState
 import org.magic.magicaddons.data.greenhouse.CropDefinition
 import org.magic.magicaddons.data.greenhouse.CropStage
 import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
-import org.magic.magicaddons.util.BlockUtils.getIntProperty
-import org.magic.magicaddons.util.BlockUtils.isBlock
+import org.magic.magicaddons.data.greenhouse.CropStates.wheatState
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
 object Gloomgourd : CropDefinitionProvider {
@@ -20,24 +19,17 @@ object Gloomgourd : CropDefinitionProvider {
                 blocks = listOf(
                     CropBlockState(
                         offset = BlockPos(0, 1, 0),
-                        matcher = {
-                            it.isBlock("minecraft:wheat") &&
-                                    it.getIntProperty("age") == 6
-                        }
+                        blockState = wheatState(6)
                     )
                 ),
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, 0.78125, 0.0),
-                        hashMatches = {
-                            it == "7f693e42ba3b763292e7de26fd2b0a08fcee3bec2e017075dc66dfc4a932aa64"
-                        }
+                        hashString = "7f693e42ba3b763292e7de26fd2b0a08fcee3bec2e017075dc66dfc4a932aa64"
                     ),
                     CropArmorStand(
                         offset = Vec3(0.0, -0.40625, 0.0),
-                        hashMatches = {
-                            it == "7f693e42ba3b763292e7de26fd2b0a08fcee3bec2e017075dc66dfc4a932aa64"
-                        }
+                        hashString = "7f693e42ba3b763292e7de26fd2b0a08fcee3bec2e017075dc66dfc4a932aa64"
                     )
                 ),
                 1..1

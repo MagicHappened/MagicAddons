@@ -79,7 +79,6 @@ public abstract class LevelRendererMixin {
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null) return;
 
-        // todo add pass here to submit holograms.
         for (Map.Entry<Entity, EntityUtils.HighlightSource> entry : EntityUtils.getResolvedMap().entrySet()) {
             Entity entity = entry.getKey();
             EntityUtils.HighlightSource source = entry.getValue();

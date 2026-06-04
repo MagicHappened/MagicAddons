@@ -4,8 +4,9 @@ import net.minecraft.core.BlockPos
 import net.minecraft.core.Rotations
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.*
-import org.magic.magicaddons.util.BlockUtils.getIntProperty
-import org.magic.magicaddons.util.BlockUtils.isBlock
+import org.magic.magicaddons.data.greenhouse.CropStates.roseBushState
+import org.magic.magicaddons.data.greenhouse.CropStates.shortGrassState
+import org.magic.magicaddons.data.greenhouse.CropStates.wheatState
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
 object Wildrose : CropDefinitionProvider {
@@ -17,18 +18,13 @@ object Wildrose : CropDefinitionProvider {
                 blocks = listOf(
                     CropBlockState(
                         offset = BlockPos(0, 1, 0),
-                        matcher = {
-                            it.isBlock("minecraft:wheat") &&
-                                    it.getIntProperty("age") == 0
-                        }
+                        blockState = wheatState(0)
                     )
                 ),
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, 0.0625, 0.0),
-                        hashMatches = {
-                            it == "f341905af17c74a1c6181a56c88d8f91853f2cff0a9a33aaa16c0d835fdceece"
-                        }
+                        hashString = "f341905af17c74a1c6181a56c88d8f91853f2cff0a9a33aaa16c0d835fdceece"
                     )
                 ),
                 1..1
@@ -37,18 +33,13 @@ object Wildrose : CropDefinitionProvider {
                 blocks = listOf(
                     CropBlockState(
                         offset = BlockPos(0, 1, 0),
-                        matcher = {
-                            it.isBlock("minecraft:wheat") &&
-                                    it.getIntProperty("age") == 1
-                        }
+                        blockState = wheatState(1)
                     )
                 ),
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, 0.0625, 0.0),
-                        hashMatches = {
-                            it == "f341905af17c74a1c6181a56c88d8f91853f2cff0a9a33aaa16c0d835fdceece"
-                        }
+                        hashString = "f341905af17c74a1c6181a56c88d8f91853f2cff0a9a33aaa16c0d835fdceece"
                     )
                 ),
                 2..2
@@ -57,18 +48,13 @@ object Wildrose : CropDefinitionProvider {
                 blocks = listOf(
                     CropBlockState(
                         offset = BlockPos(0, 1, 0),
-                        matcher = {
-                            it.isBlock("minecraft:wheat") &&
-                                    it.getIntProperty("age") == 1
-                        }
+                        blockState = wheatState(1)
                     )
                 ),
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.71875, 0.0),
-                        hashMatches = {
-                            it == "f341905af17c74a1c6181a56c88d8f91853f2cff0a9a33aaa16c0d835fdceece"
-                        }
+                        hashString = "f341905af17c74a1c6181a56c88d8f91853f2cff0a9a33aaa16c0d835fdceece"
                     )
                 ),
                 3..3
@@ -77,18 +63,13 @@ object Wildrose : CropDefinitionProvider {
                 blocks = listOf(
                     CropBlockState(
                         offset = BlockPos(0, 1, 0),
-                        matcher = {
-                            it.isBlock("minecraft:wheat") &&
-                                    it.getIntProperty("age") == 2
-                        }
+                        blockState = wheatState(2)
                     )
                 ),
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.625, 0.0),
-                        hashMatches = {
-                            it == "f341905af17c74a1c6181a56c88d8f91853f2cff0a9a33aaa16c0d835fdceece"
-                        }
+                        hashString = "f341905af17c74a1c6181a56c88d8f91853f2cff0a9a33aaa16c0d835fdceece"
                     )
                 ),
                 4..4
@@ -97,18 +78,13 @@ object Wildrose : CropDefinitionProvider {
                 blocks = listOf(
                     CropBlockState(
                         offset = BlockPos(0,1,0),
-                        matcher = {
-                            it.isBlock("minecraft:wheat") &&
-                                    it.getIntProperty("age") == 3
-                        }
+                        blockState = wheatState(3)
                     )
                 ),
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.625, 0.0),
-                        hashMatches = {
-                            it == "816176a32c70d53e5aaade1f16e7d4ab6f5750e37d55b3e9e99977cbd5fa9f19"
-                        },
+                        hashString = "816176a32c70d53e5aaade1f16e7d4ab6f5750e37d55b3e9e99977cbd5fa9f19",
                     )
                 ),
                 5..5
@@ -117,18 +93,13 @@ object Wildrose : CropDefinitionProvider {
                 blocks = listOf(
                     CropBlockState(
                         offset = BlockPos(0,1,0),
-                        matcher = {
-                            it.isBlock("minecraft:wheat") &&
-                                    it.getIntProperty("age") == 3
-                        }
+                        blockState = wheatState(3)
                     )
                 ),
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.53125, 0.0),
-                        hashMatches = {
-                            it == "816176a32c70d53e5aaade1f16e7d4ab6f5750e37d55b3e9e99977cbd5fa9f19"
-                        }
+                        hashString = "816176a32c70d53e5aaade1f16e7d4ab6f5750e37d55b3e9e99977cbd5fa9f19"
                     )
                 ),
                 6..6
@@ -137,18 +108,13 @@ object Wildrose : CropDefinitionProvider {
                 blocks = listOf(
                     CropBlockState(
                         offset = BlockPos(0,1,0),
-                        matcher = {
-                            it.isBlock("minecraft:wheat") &&
-                                    it.getIntProperty("age") == 4
-                        }
+                        blockState = wheatState(4)
                     )
                 ),
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.34375, 0.0),
-                        hashMatches = {
-                            it == "4a99a01317a01f65f7a7610122bea792c22a771e7a48ce1a5b352bccc8335074"
-                        }
+                        hashString = "4a99a01317a01f65f7a7610122bea792c22a771e7a48ce1a5b352bccc8335074"
                     )
                 ),
                 7..7
@@ -157,18 +123,14 @@ object Wildrose : CropDefinitionProvider {
                 blocks = listOf(
                     CropBlockState(
                         offset = BlockPos(0,1,0),
-                        matcher = {
-                            it.isBlock("minecraft:short_grass")
-                        }
+                        blockState = shortGrassState()
                     )
                 ),
                 armorStands =
                     listOf(
                         CropArmorStand(
                             offset = Vec3(0.0, -0.125, 0.0),
-                            hashMatches = {
-                                it == "4a99a01317a01f65f7a7610122bea792c22a771e7a48ce1a5b352bccc8335074"
-                            },
+                            hashString = "4a99a01317a01f65f7a7610122bea792c22a771e7a48ce1a5b352bccc8335074",
                         )
                     )
                 ,
@@ -178,17 +140,13 @@ object Wildrose : CropDefinitionProvider {
                 blocks = listOf(
                     CropBlockState(
                         offset = BlockPos(0,1,0),
-                        matcher = {
-                            it.isBlock("minecraft:short_grass")
-                        }
+                        blockState = shortGrassState()
                     )
                 ),
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, 0.09375, 0.0),
-                        hashMatches = {
-                            it == "4a99a01317a01f65f7a7610122bea792c22a771e7a48ce1a5b352bccc8335074"
-                        }
+                        hashString = "4a99a01317a01f65f7a7610122bea792c22a771e7a48ce1a5b352bccc8335074"
                     )
                 ),
                 9..9
@@ -197,69 +155,47 @@ object Wildrose : CropDefinitionProvider {
                 blocks = listOf(
                     CropBlockState(
                         offset = BlockPos(0,1,0),
-                        matcher = {
-                            it.isBlock("minecraft:rose_bush")
-                        }
+                        blockState = roseBushState()
                     )
                 ),
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, 0.5, 0.0),
-                        hashMatches = {
-                            it == "4a99a01317a01f65f7a7610122bea792c22a771e7a48ce1a5b352bccc8335074"
-                        }
+                        hashString = "4a99a01317a01f65f7a7610122bea792c22a771e7a48ce1a5b352bccc8335074"
                     )
                 ),
                 12..13
             ),
             CropStage(
-                blocks = listOf(
-                    CropBlockState(
-                        offset = BlockPos(0,1,0),
-                        matcher = {
-                            it.isBlock("minecraft:rose_bush")
-                        }
+                blocks = CropBlockState.blockStatePattern(
+                    positions = listOf(
+                        BlockPos(0,1,0),
+                        BlockPos(0,2,0)
                     ),
-                    CropBlockState(
-                        offset = BlockPos(0,2,0),
-                        matcher = {
-                            it.isBlock("minecraft:rose_bush")
-                        }
-                    )
+                    blockState = roseBushState()
                 ),
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, 0.78125, 0.0),
-                        hashMatches = {
-                            it == "4a99a01317a01f65f7a7610122bea792c22a771e7a48ce1a5b352bccc8335074"
-                        }
+                        hashString = "4a99a01317a01f65f7a7610122bea792c22a771e7a48ce1a5b352bccc8335074"
                     )
                 ),
                 14..14
             ),
             CropStage(
-                blocks = listOf(
-                    CropBlockState(
-                        offset = BlockPos(0,1,0),
-                        matcher = {
-                            it.isBlock("minecraft:rose_bush")
-                        }
+                blocks = CropBlockState.blockStatePattern(
+                    positions = listOf(
+                        BlockPos(0,1,0),
+                        BlockPos(0,2,0)
                     ),
-                    CropBlockState(
-                        offset = BlockPos(0,2,0),
-                        matcher = {
-                            it.isBlock("minecraft:rose_bush")
-                        }
-                    )
+                    blockState = roseBushState()
                 ),
                 armorStands =
                     listOf(
                         CropArmorStand(
                             offset = Vec3(0.0, 1.09375, 0.0),
                             headRotation = Rotations(0.0f, 0.0f, 0.0f),
-                            hashMatches = {
-                                it == "61a37adb8bcad712663771235feeb136ebe0f5c4d593070a5410ccb6f6706aa0"
-                            },
+                            hashString = "61a37adb8bcad712663771235feeb136ebe0f5c4d593070a5410ccb6f6706aa0",
                         )
                     )
                 ,

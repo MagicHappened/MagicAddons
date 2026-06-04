@@ -3,8 +3,8 @@ package org.magic.magicaddons.data.greenhouse.elements.mutation.legendary
 import net.minecraft.core.BlockPos
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.*
-import org.magic.magicaddons.util.BlockUtils.getIntProperty
-import org.magic.magicaddons.util.BlockUtils.isBlock
+import org.magic.magicaddons.data.greenhouse.CropStates.melonStemState
+import org.magic.magicaddons.data.greenhouse.CropStates.wheatState
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
 object Godseed : CropDefinitionProvider {
@@ -27,26 +27,18 @@ object Godseed : CropDefinitionProvider {
                 blocks = listOf(
                     CropBlockState(
                         offset = BlockPos(1, 1, 1),
-                        matcher = {
-                            it.isBlock("minecraft:melon_stem") &&
-                                    it.getIntProperty("age") == 7
-                        }
+                        blockState = melonStemState(7)
                     )
                 )
-                        + CropBlockState.matcherPattern(
+                        + CropBlockState.blockStatePattern(
                     positions = surroundWheatPositions,
-                    matcher = {
-                        it.isBlock("minecraft:wheat") &&
-                                it.getIntProperty("age") == 6
-                    }
+                    blockState = wheatState(6)
                 ),
                 armorStands =
                     listOf(
                         CropArmorStand(
                             offset = Vec3(0.0, 0.34375, 0.0),
-                            hashMatches = {
-                                it == "9bc7d71431dcdcfa432e8ef9fdb6aa4c4683786ac657e7ece038fb94f71e42be"
-                            },
+                            hashString = "9bc7d71431dcdcfa432e8ef9fdb6aa4c4683786ac657e7ece038fb94f71e42be",
                         )
                     )
                             +
@@ -65,9 +57,7 @@ object Godseed : CropDefinitionProvider {
                                     Vec3(1.0, -0.15625, 0.0),
                                     Vec3(1.0, -0.5625, 1.0)
                                 ),
-                                hashMatches = {
-                                    it == "a0cc95bd6b1e5c007cf0d2b8c613a33a7ad3500b27638947c0b6b1db8fcb4887"
-                                }
+                                hashString = "a0cc95bd6b1e5c007cf0d2b8c613a33a7ad3500b27638947c0b6b1db8fcb4887"
                             )
                 ,
                 32..32
@@ -76,26 +66,18 @@ object Godseed : CropDefinitionProvider {
                 blocks = listOf(
                     CropBlockState(
                         offset = BlockPos(1, 1, 1),
-                        matcher = {
-                            it.isBlock("minecraft:melon_stem") &&
-                                    it.getIntProperty("age") == 7
-                        }
+                        blockState = melonStemState(7)
                     )
                 )
-                        + CropBlockState.matcherPattern(
+                        + CropBlockState.blockStatePattern(
                     positions = surroundWheatPositions,
-                    matcher = {
-                        it.isBlock("minecraft:wheat") &&
-                                it.getIntProperty("age") == 6
-                    }
+                    blockState = wheatState(6)
                 ),
                 armorStands =
                     listOf(
                         CropArmorStand(
                             offset = Vec3(0.0, 0.4375, 0.0),
-                            hashMatches = {
-                                it == "9bc7d71431dcdcfa432e8ef9fdb6aa4c4683786ac657e7ece038fb94f71e42be"
-                            },
+                            hashString = "9bc7d71431dcdcfa432e8ef9fdb6aa4c4683786ac657e7ece038fb94f71e42be",
                         )
                     )
                             +
@@ -114,9 +96,7 @@ object Godseed : CropDefinitionProvider {
                                     Vec3(1.0, -0.4375, -1.0),
                                     Vec3(1.0, 0.65625, -1.0)
                                 ),
-                                hashMatches = {
-                                    it == "a0cc95bd6b1e5c007cf0d2b8c613a33a7ad3500b27638947c0b6b1db8fcb4887"
-                                }
+                                hashString = "a0cc95bd6b1e5c007cf0d2b8c613a33a7ad3500b27638947c0b6b1db8fcb4887"
                             ),
                 37..37
             )
