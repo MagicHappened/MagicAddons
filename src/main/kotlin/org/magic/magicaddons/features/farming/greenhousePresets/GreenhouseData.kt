@@ -10,11 +10,13 @@ import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.Blocks
+import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.Common
 import org.magic.magicaddons.commands.debug.FarmingDebug
 import org.magic.magicaddons.data.greenhouse.*
+import org.magic.magicaddons.data.greenhouse.CropStates.toFunctionString
 import org.magic.magicaddons.data.greenhouse.elements.FireElement
 import org.magic.magicaddons.data.handlers.DataHandler
 import org.magic.magicaddons.events.EventBus
@@ -22,8 +24,6 @@ import org.magic.magicaddons.events.EventHandler
 import org.magic.magicaddons.events.interact.*
 import org.magic.magicaddons.events.world.OnEntityAdded
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhousePresets.baseSetting
-import org.magic.magicaddons.util.BlockUtils.getId
-import org.magic.magicaddons.util.BlockUtils.getIntProperty
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.PlayerUtils
 import org.magic.magicaddons.util.ServerUtils
@@ -288,7 +288,7 @@ object GreenhouseData {
         if (overdueMs <= 0) return
         val passedGrowthTicks = (overdueMs / growthTickMs)
 
-        if (passedGrowthTicks <= 0) return
+        if (passedGrowthTicks <= 0 && !nextTick.isBefore(now)) return
         Common.LOGGER.info("Overdue ms $overdueMs")
         Common.LOGGER.info("Overdue growth ticks $passedGrowthTicks")
         val nextTickAdvance = (passedGrowthTicks + 1) * growthTickMs
@@ -679,6 +679,9 @@ object GreenhouseData {
         def ?: return
         val matchingStage = def.stageDefs.find { stageDef ->
             stageRaw in stageDef.stageRange
+                    && stageDef.armorStands?.any {
+                        it.headRotation != null
+            } ?: true //for now add a rotation check as well to copier
         }
         stageRaw ?: return
         plantDiagnosticListeningElement?.let {
@@ -714,11 +717,11 @@ object GreenhouseData {
         }
 
         val isSelf = UUID.fromString("eef58b9d-39e1-4062-8a1a-2f921f14a46d") == Minecraft.getInstance().player?.uuid
-        val override = true
+        val override = false
         if (matchingStage == null || override) {
             ChatUtils.sendWithPrefix("No matching stage for ${def.name} please send the copied output")
             plantDiagnosticHitBaseBlock?.let {
-                copyCropStageData(it, stageRaw == def.maxStage,stageRaw, def, !isSelf)
+                copyCropStageData(it,stageRaw, def, !isSelf)
             }
             return
         }
@@ -841,7 +844,6 @@ object GreenhouseData {
 
     fun copyCropStageData(
         basePos: BlockPos,
-        needsRotation: Boolean = false,
         stageNum: Int? = null,
         foundDefinition: CropDefinition? = null,
         discordFormat: Boolean = false
@@ -849,8 +851,8 @@ object GreenhouseData {
         val world = Minecraft.getInstance().level ?: return
         val sb = StringBuilder(2048)
 
-        val blockLines = mutableListOf<String>()
-        val standLines = mutableListOf<ArmorStandExport>()
+        val blockData = mutableListOf<CropBlockExport>()
+        val standData = mutableListOf<ArmorStandExport>()
 
         val footprint = foundDefinition?.footprint
         val width = footprint?.width ?: 1
@@ -865,8 +867,7 @@ object GreenhouseData {
 
                 var y = basePos.y + 1
 
-                while (true) {
-
+                while (true) { //for multi height crops
                     val checkPos = BlockPos(
                         basePos.x + dx,
                         y,
@@ -878,37 +879,18 @@ object GreenhouseData {
                     if (checkState.isAir) break
 
                     val offsetY = y - basePos.y
-                    val blockId = checkState.getId()
 
-                    val hasAge = checkState.getIntProperty("age") != null
-
-                    val matcherLine = if (hasAge) {
-                        """
-                    it.isBlock("$blockId") &&
-                            it.getIntProperty("age") == ${checkState.getIntProperty("age")}
-                    """.trimIndent()
-                    } else {
-                        """
-                    it.isBlock("$blockId")
-                    """.trimIndent()
-                    }
-
-                    blockLines.add(
-                        """
-        CropBlockState(
-            offset = BlockPos($dx,$offsetY,$dz),
-            matcher = {
-$matcherLine
-            }
-        )
-                    """.trimIndent()
+                    blockData.add(
+                        CropBlockExport(
+                            offset = BlockPos(dx,offsetY,dz),
+                            blockState = checkState
+                        )
                     )
-
                     y++
                 }
             }
         }
-
+        // capture maximum stands (false positives on players but thats fine)
         val box = AABB(
             basePos.x.toDouble(),
             basePos.y.toDouble() - 2,
@@ -921,8 +903,8 @@ $matcherLine
         val stands = world.getEntities(null, box)
 
         val originVec = Vec3(
-            basePos.x.toDouble() + width / 2.0,
-            basePos.y.toDouble(),
+            basePos.x.toDouble() + width / 2.0, //get center of footprint
+            basePos.y.toDouble(),               // has to be center for mirroring to work properly.
             basePos.z.toDouble() + width / 2.0
         )
 
@@ -939,7 +921,7 @@ $matcherLine
                 entity.name.string.replace("\"", "\\\"")
             } else null
 
-            standLines.add(
+            standData.add(
                 ArmorStandExport(
                     offset = offset,
                     rotation = headRotations,
@@ -953,14 +935,10 @@ $matcherLine
 
         sb.appendLine("CropStage(")
 
-        sb.appendLine("    blocks = listOf(")
-        if (blockLines.isNotEmpty()) sb.appendLine(blockLines.joinToString(",\n"))
-        sb.appendLine("    ),")
-
-        if (standLines.isNotEmpty()) {
-
-            val grouped = standLines.groupBy {
-                it.hash to it.customName
+        var finalBlockString = ""
+        if (blockData.isNotEmpty()){
+            val grouped = blockData.groupBy {
+                it.blockState
             }
 
             val singletons = grouped.values
@@ -970,98 +948,105 @@ $matcherLine
             val patterns = grouped.values
                 .filter { it.size > 1 }
 
-            sb.appendLine("    armorStands =")
+            val parts = mutableListOf<String>()
 
-            val sections = mutableListOf<String>()
+            if (patterns.isNotEmpty()) {
+                patterns.forEach {
 
-            if (singletons.isNotEmpty()) {
-
-                val singletonsText = buildString {
-                    appendLine("listOf(")
-
-                    singletons.forEachIndexed { index, stand ->
-
-                        append(
-                            """
-    CropArmorStand(
-        offset = Vec3(${stand.offset.x}, ${stand.offset.y}, ${stand.offset.z}),
-
-""".trimIndent()
-                        )
-                        append(
-                            "headRotation = Rotations(${stand.rotation.x}f, ${stand.rotation.y}f, ${stand.rotation.z}f),".trimIndent()
-                        )
-                        stand.hash?.let {
-                            append(
-                                """
-
-        hashMatches = {
-            it == "$it"
-        },
-""".trimIndent()
-                            )
-                        }
-
-                        stand.customName?.let {
-                            append(
-                                """
-
-        customNameMatches = {
-            it == "$it"
-        },
-""".trimIndent()
-                            )
-                        }
-
-                        append(
-                            """
-
-    )
-""".trimIndent()
-                        )
-
-                        if (index != singletons.lastIndex) {
-                            append(",")
-                        }
-
-                        appendLine()
+                    val posList = it.joinToString(",\n") { b ->
+                        "BlockPos(${b.offset.x}, ${b.offset.y}, ${b.offset.z})"
                     }
 
-                    append(")")
+                    parts += """
+            CropBlockState.blockStatePattern(
+                listOf(
+                    $posList
+                ),
+                blockState = ${toFunctionString(it.first().blockState)}
+            )
+        """.trimIndent()
                 }
-
-                sections += singletonsText
             }
 
-            patterns.forEach { group ->
-
-                val first = group.first()
-
-                val offsets = group.joinToString(",\n") {
-                    "        Vec3(${it.offset.x}, ${it.offset.y}, ${it.offset.z})"
-                }
-                val rotations = group.joinToString(",\n"){
-                    "        Rotations(${it.rotation.x}f, ${it.rotation.y}f, ${it.rotation.z}f)"
-                }
-                val matcherParts = mutableListOf<String>()
-
-                first.hash?.let {
-                    matcherParts += """
-hashMatches = {
-    it == "$it"
-}
-            """.trimIndent()
+            if (parts.isNotEmpty()){
+                var appendedString = "    blocks = " + parts.removeFirst()
+                parts.forEach {
+                    appendedString += " + $it"
                 }
 
-                first.customName?.let {
-                    matcherParts += """
-customNameMatches = {
-    it == "$it"
-}
-            """.trimIndent()
+                finalBlockString = appendedString
+                parts.clear()
+            }
+
+
+            if (singletons.isNotEmpty()) {
+                val singletonPart = singletons.joinToString(",\n") { block ->
+                    """
+    CropBlockState(
+        offset = BlockPos(${block.offset.x}, ${block.offset.y}, ${block.offset.z}),
+        blockState = ${toFunctionString(block.blockState)}
+    )
+    """.trimIndent()
                 }
-if (needsRotation){
-                sections += """
+
+                parts += singletonPart
+            }
+
+            if (parts.isNotEmpty()){
+                if (finalBlockString.isBlank()){ //no patterns only singletons
+                    finalBlockString = "    blocks = listOf(\n" +
+                            parts.joinToString(",\n") +
+                            "\n)"
+
+                } else { //patterns AND blocks
+                    val combined = finalBlockString +
+                            " + listOf(\n" +
+                            parts.joinToString(",\n") +
+                            "\n)"
+
+                    finalBlockString = combined
+                }
+            }
+
+            if (finalBlockString.isNotBlank()) {
+                sb.appendLine("$finalBlockString,")
+            }
+        }
+        else {
+            sb.appendLine("    blocks = listOf(),")
+        }
+
+        if (standData.isNotEmpty()) {
+
+            val grouped = standData.groupBy {
+                it.hash
+            }
+
+            val singletons = grouped.values
+                .filter { it.size == 1 }
+                .map { it.first() }
+
+            val patterns = grouped.values
+                .filter { it.size > 1 }
+
+            val patternSections = mutableListOf<String>()
+            val singletonSections = mutableListOf<String>()
+
+            if (patterns.isNotEmpty()) {
+                patterns.forEach { group ->
+
+                    val offsets = group.joinToString(",\n") {
+                        "        Vec3(${it.offset.x}, ${it.offset.y}, ${it.offset.z})"
+                    }
+
+                    val rotations = group.joinToString(",\n") {
+                        "        Rotations(${it.rotation.x}f, ${it.rotation.y}f, ${it.rotation.z}f)"
+                    }
+
+                    val hash = group.first().hash
+                    val name = group.first().customName
+
+                    patternSections += """
 CropArmorStand.matcherPattern(
     listOf(
 $offsets
@@ -1069,26 +1054,81 @@ $offsets
     listOf(
 $rotations
     ),
-    ${matcherParts.joinToString(",\n    ")}
+    hashString = "$hash"${
+                        name?.let {
+                            ",\n    customName = \"$it\""
+                        } ?: ""
+                    }
 )
         """.trimIndent()
-} else {
-    sections += """
-CropArmorStand.matcherPattern(
-    listOf(
-$offsets
-    ),
-    ${matcherParts.joinToString(",\n    ")}
-)
-        """.trimIndent()
-}
+                }
+
             }
 
-            sb.appendLine("        " + sections.joinToString("\n        +\n        "))
-            sb.appendLine(",")
 
+            if (singletons.isNotEmpty()) {
+
+                val singletonText = singletons.joinToString(",\n") { stand ->
+                    buildString {
+                        append(
+                            """
+CropArmorStand(
+    offset = Vec3(${stand.offset.x}, ${stand.offset.y}, ${stand.offset.z}),
+    headRotation = Rotations(${stand.rotation.x}f, ${stand.rotation.y}f, ${stand.rotation.z}f),
+""".trimIndent()
+                        )
+
+                        stand.hash?.let {
+                            append(
+                                """
+                                    
+    hashString = "$it"${if (stand.customName != null) "," else ""}
+""".trimIndent()
+                            )
+                        }
+
+                        stand.customName?.let {
+                            append(
+                                """
+    containsCustomName = "$it"
+""".trimIndent()
+                            )
+                        }
+
+                        append(
+                            """
+                                
+)
+""".trimIndent()
+                        )
+                    }
+                }
+
+                singletonSections += singletonText
+
+            }
+
+
+            val final = when {
+                patterns.isNotEmpty() && singletons.isNotEmpty() ->
+                    patternSections.joinToString(" + ") +
+                            " + listOf(" +
+                            singletonSections.joinToString(",\n") +
+                            "\n)"
+
+                patterns.isNotEmpty() ->
+                    patternSections.joinToString(" + ")
+
+                singletons.isNotEmpty() ->
+                    "listOf(\n" +
+                            singletonSections.joinToString(",\n") +
+                            "\n)"
+
+                else -> " listOf()"
+            }
+            sb.appendLine("    armorStands = $final,")
         } else {
-            sb.appendLine("    armorStands = null,")
+            sb.appendLine("    armorStands = listOf(),")
         }
 
         sb.appendLine("    ${stageNum ?: 1}..${stageNum ?: 1}")
@@ -1111,6 +1151,11 @@ $offsets
         val rotation: Rotations,
         val hash: String?,
         val customName: String?
+    )
+
+    data class CropBlockExport(
+        val offset: BlockPos,
+        val blockState: BlockState
     )
 
 

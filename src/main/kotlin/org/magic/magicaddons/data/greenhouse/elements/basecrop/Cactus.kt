@@ -115,8 +115,7 @@ object Cactus : CropDefinitionProvider {
                     ),
                     blockState = cactusState()
                 ),
-                armorStands =
-                    CropArmorStand.matcherPattern(
+                armorStands = CropArmorStand.matcherPattern(
                         listOf(
                             Vec3(0.0, 1.0, 0.3125),
                             Vec3(0.03125, 2.0, -0.28125)

@@ -21,7 +21,7 @@ object Netherwart : CropDefinitionProvider {
                         blockState = netherwartState(0)
                     )
                 ),
-                armorStands = null,
+                armorStands = listOf(),
                 1..3
             ),
             CropStage(
@@ -31,8 +31,7 @@ object Netherwart : CropDefinitionProvider {
                         blockState = netherwartState(1)
                     )
                 ),
-                armorStands = listOf(
-                ),
+                armorStands = listOf(),
                 4..5
             ),
             CropStage(
@@ -42,7 +41,7 @@ object Netherwart : CropDefinitionProvider {
                         blockState = netherwartState(2)
                     )
                 ),
-                armorStands = null,
+                armorStands = listOf(),
                 6..7
             ),
             CropStage(
@@ -52,7 +51,7 @@ object Netherwart : CropDefinitionProvider {
                         blockState = netherwartState(3)
                     )
                 ),
-                armorStands = null,
+                armorStands = listOf(),
                 8..8
             )
         ),

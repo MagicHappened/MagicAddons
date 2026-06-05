@@ -25,21 +25,15 @@ object Fleshtrap : CropDefinitionProvider {
                     ),
                     CropArmorStand(
                         offset = Vec3(0.0, 2.612, 0.0),
-                        customNameMatches = {
-                            it?.contains("Bonus") ?: false
-                        }
+                        containsCustomName = "Bonus"
                     ),
                     CropArmorStand(
                         offset = Vec3(0.0, 2.242, 0.0),
-                        customNameMatches = {
-                            it == "Hunger"
-                        }
+                        containsCustomName = "Hunger"
                     ),
                     CropArmorStand(
                         offset = Vec3(0.0, 1.872, 0.0),
-                        customNameMatches = {
-                            it == "||||||||||||||||||||"
-                        }
+                        containsCustomName = "||||||||||||||||||||"
                     )
                 ),
                 4..4

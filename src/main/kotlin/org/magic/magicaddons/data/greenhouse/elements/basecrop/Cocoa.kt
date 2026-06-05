@@ -70,8 +70,7 @@ object Cocoa : CropDefinitionProvider {
                         blockState = melonStemState(7)
                     )
                 ),
-                armorStands =
-                    CropArmorStand.matcherPattern(
+                armorStands = CropArmorStand.matcherPattern(
                         listOf(
                             Vec3(0.0, 0.09375, 0.0),
                             Vec3(-0.0625, 0.65625, -0.125)
@@ -81,8 +80,7 @@ object Cocoa : CropDefinitionProvider {
                             Rotations(0.0f, -22.5f, -22.5f)
                         ),
                         hashString = "44d72eed58354ce14bfc497138a13564070fb4653898aeb3e66c73082ae1f993"
-                    )
-                ,
+                ),
                 6..6,
                 allowRotation = true
             )
