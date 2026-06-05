@@ -104,7 +104,7 @@ object MagicJellybean : CropDefinitionProvider {
                 blocks = listOf(
                     CropBlockState(
                         offset = BlockPos(0, 1, 0),
-                        blockState = sugarcaneState(0)
+                        blockState = sugarcaneState()
                     ),
                     CropBlockState(
                         offset = BlockPos(0, 2, 0),
@@ -135,7 +135,7 @@ object MagicJellybean : CropDefinitionProvider {
                         BlockPos(0, 6, 0),
                         BlockPos(0, 7, 0)
                     ),
-                    blockState = sugarcaneState(0)
+                    blockState = sugarcaneState()
                 ) +
                         CropBlockState(
                             offset = BlockPos(0, 8, 0),
@@ -174,7 +174,7 @@ object MagicJellybean : CropDefinitionProvider {
                         BlockPos(0, 6, 0),
                         BlockPos(0, 7, 0)
                     ),
-                    blockState = sugarcaneState(0)
+                    blockState = sugarcaneState()
                 ) +
                         CropBlockState(
                             offset = BlockPos(0, 8, 0),
@@ -213,7 +213,7 @@ object MagicJellybean : CropDefinitionProvider {
                         BlockPos(0, 6, 0),
                         BlockPos(0, 7, 0)
                     ),
-                    blockState = sugarcaneState(0)
+                    blockState = sugarcaneState()
                 ) +
                         CropBlockState(
                             offset = BlockPos(0, 8, 0),
@@ -247,7 +247,7 @@ object MagicJellybean : CropDefinitionProvider {
                         BlockPos(0, 7, 0),
                         BlockPos(0, 8, 0)
                     ),
-                    blockState = sugarcaneState(0)
+                    blockState = sugarcaneState()
                 ) +
                         CropBlockState(
                             offset = BlockPos(0, 9, 0),
@@ -284,7 +284,7 @@ object MagicJellybean : CropDefinitionProvider {
                             BlockPos(0, 9, 0),
                             BlockPos(0, 10, 0)
                         ),
-                        blockState = sugarcaneState(0)
+                        blockState = sugarcaneState()
                     ),
                 armorStands = listOf(
                     CropArmorStand(

@@ -32,14 +32,14 @@ data class CropArmorStand(
     val offset: Vec3, //offset is defined from the soil top left block
     val headRotation: Rotations? = null,
     val hashString: String? = null,
-    val customNameMatches: ((String?) -> Boolean)? = null,
+    val containsCustomName: String? = null,
 ) {
     companion object {
         fun matcherPattern(
             offsets: List<Vec3>,
             rotations: List<Rotations>? = null,
             hashString: String? = null,
-            customNameMatches: ((String?) -> Boolean)? = null
+            customName: String? = null
         ): List<CropArmorStand> {
             val result = mutableListOf<CropArmorStand>()
             offsets.forEachIndexed { i, offset ->
@@ -48,7 +48,7 @@ data class CropArmorStand(
                         offset,
                         rotations?.getOrNull(i),
                         hashString,
-                        customNameMatches
+                        customName
                     )
                 )
             }
@@ -150,17 +150,14 @@ open class CropStage(
 
                         val offsetOk = matchesWithRotation(offset, standDef.offset, allowRotation)
                         val hashOk = standDef.hashString?.let { it == hash } ?: true
-                        val nameOk = standDef.customNameMatches?.invoke(name) ?: true
+                        val nameOk = standDef.containsCustomName?.let { name?.contains(it) ?: return@let false } ?: true
 
                         if (debug) {
                             Common.LOGGER.info(
                                 """
                     [ArmorStandMatch Debug]
-                    entity=${entity.uuid}
-                    offset=$offset expected=${standDef.offset} offsetOk=$offsetOk
-                    hash=$hash hashOk=$hashOk
-                    name=$name nameOk=$nameOk
-                    FINAL=${offsetOk && hashOk && nameOk}
+                    offset=$offset expected=${standDef.offset}
+                    hash=$hash expectedHash=${standDef.hashString}${standDef.containsCustomName?.let { "\nname: $name needs to contain: ${standDef.containsCustomName}" } ?: ""} 
                     """.trimIndent()
                             )
                         }
