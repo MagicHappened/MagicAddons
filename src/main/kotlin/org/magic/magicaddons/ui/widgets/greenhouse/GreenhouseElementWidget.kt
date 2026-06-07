@@ -14,12 +14,12 @@ import net.minecraft.network.chat.Component
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.block.Blocks
 import org.magic.magicaddons.data.greenhouse.CropDefinition
-import org.magic.magicaddons.data.greenhouse.CropRegistry
 import org.magic.magicaddons.data.greenhouse.GreenhouseElementInstance
+import org.magic.magicaddons.data.greenhouse.GreenhouseSlot
 import org.magic.magicaddons.data.greenhouse.GrowthStageInfo
-import org.magic.magicaddons.ui.screens.GreenhouseScreen
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.ScreenUtil
+import org.magic.magicaddons.util.ScreenUtil.drawBorder
 import org.magic.magicaddons.util.ScreenUtil.renderFakeItem
 
 class GreenhouseElementWidget(val instance: GreenhouseElementInstance,val definition: CropDefinition) : Renderable, GuiEventListener {
@@ -30,11 +30,36 @@ class GreenhouseElementWidget(val instance: GreenhouseElementInstance,val defini
     var height = 50
     var sprite: TextureAtlasSprite? = ScreenUtil.getSpriteForState(Blocks.FIRE.defaultBlockState(),Direction.NORTH)
     var renderedStack: ItemStack = ItemStack.EMPTY
-
+    var markingColor: Int = -1
     @JvmField
     var isFocused: Boolean = false
 
+    fun init(){
+        markingColor = when (instance.slot.slotMark){
+            GreenhouseSlot.Marking.Target -> {
+                0xFF2dbcf6.toInt()
+            }
+            GreenhouseSlot.Marking.Ingredient -> {
+                0xFF89F336.toInt()
+            }
+            GreenhouseSlot.Marking.UniqueCrop -> {
+                0xFFbb00bb.toInt()
+            }
+            else -> {-1}
+        }
+    }
+
     override fun render(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, deltaTick: Float) {
+        markingColor.let {
+            guiGraphics.drawBorder(
+                widgetX + 1,
+                widgetY + 1,
+                widgetX + width - 1,
+                widgetY + height - 1,
+                1,
+                it
+            )
+        }
         if (instance.elementId == "Fire") {
             renderFire(guiGraphics, mouseX, mouseY, deltaTick)
             return
