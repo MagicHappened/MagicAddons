@@ -2,6 +2,7 @@ package org.magic.magicaddons.data.greenhouse.elements.basecrop
 
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Rotations
+import net.minecraft.world.level.block.state.properties.DoubleBlockHalf
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.*
 import org.magic.magicaddons.data.greenhouse.CropStates.roseBushState
@@ -155,40 +156,49 @@ object Wildrose : CropDefinitionProvider {
                 blocks = listOf(
                     CropBlockState(
                         offset = BlockPos(0,1,0),
-                        blockState = roseBushState()
+                        blockState = roseBushState(DoubleBlockHalf.LOWER)
                     )
                 ),
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, 0.5, 0.0),
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
                         hashString = "4a99a01317a01f65f7a7610122bea792c22a771e7a48ce1a5b352bccc8335074"
                     )
                 ),
                 12..13
             ),
             CropStage(
-                blocks = CropBlockState.blockStatePattern(
-                    positions = listOf(
-                        BlockPos(0,1,0),
-                        BlockPos(0,2,0)
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = roseBushState(DoubleBlockHalf.LOWER)
                     ),
-                    blockState = roseBushState()
+                    CropBlockState(
+                        offset = BlockPos(0, 2, 0),
+                        blockState = roseBushState(DoubleBlockHalf.UPPER)
+                    )
                 ),
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, 0.78125, 0.0),
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
                         hashString = "4a99a01317a01f65f7a7610122bea792c22a771e7a48ce1a5b352bccc8335074"
                     )
                 ),
                 14..14
-            ),
+            )
+            ,
             CropStage(
-                blocks = CropBlockState.blockStatePattern(
-                    positions = listOf(
-                        BlockPos(0,1,0),
-                        BlockPos(0,2,0)
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0,1,0),
+                        blockState = roseBushState(DoubleBlockHalf.LOWER)
                     ),
-                    blockState = roseBushState()
+                    CropBlockState(
+                        offset = BlockPos(0,2,0),
+                        blockState = roseBushState(DoubleBlockHalf.UPPER)
+                    )
                 ),
                 armorStands =
                     listOf(

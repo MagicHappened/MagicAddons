@@ -17,14 +17,36 @@ object Cocoa : CropDefinitionProvider {
         skyblockId = SkyBlockItemId.item("INK_SACK-3"),
         stageDefs = listOf(
             CropStage(
-                blocks = null,
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = melonStemState(2)
+                    )
+                ),
                 armorStands = listOf(
                     CropArmorStand(
-                        Vec3(0.0, 0.34375, 0.0),
+                        offset = Vec3(0.0, 0.34375, 0.0),
+                        headRotation = Rotations(0.0f, 22.5f, 22.5f),
                         hashString = "e1f5cb495ba97bf9c05c15b8c9cc866c14c1fe14807fed5802a0bf68deec8912"
                     )
                 ),
-                stageRange = 1..1,
+                1..1
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = melonStemState(5)
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, -0.25, 0.0),
+                        headRotation = Rotations(0.0f, 22.5f, 22.5f),
+                        hashString = "e1f5cb495ba97bf9c05c15b8c9cc866c14c1fe14807fed5802a0bf68deec8912"
+                    )
+                ),
+                2..2,
                 allowRotation = true
             ),
             CropStage(

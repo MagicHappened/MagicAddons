@@ -193,7 +193,7 @@ class GreenhouseGrid(
                 }
 
                 for (stage in stages) {
-                    val result = stage.matchesStage(pos, remainingStands, candidate.footprint, candidate.name == "Do-not-eat-shroom")
+                    val result = stage.matchesStage(pos, remainingStands, candidate.footprint)
                     if (!result.matched) continue
                     if (result.score <= bestScore) {
                         continue

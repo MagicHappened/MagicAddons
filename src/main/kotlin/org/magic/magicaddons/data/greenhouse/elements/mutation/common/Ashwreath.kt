@@ -1,6 +1,7 @@
 package org.magic.magicaddons.data.greenhouse.elements.mutation.common
 
 import net.minecraft.core.BlockPos
+import net.minecraft.core.Rotations
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.CropArmorStand
@@ -26,11 +27,13 @@ object Ashwreath : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.375, 0.0),
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
                         hashString = "5890f50780fdecedaa85aa40bf3399e9439ee68594c6d022688165608171681d"
                     )
                 ),
                 1..1
             )
+
         ),
         requiredSoil = setOf(Blocks.SOUL_SAND),
         needsWater = false,

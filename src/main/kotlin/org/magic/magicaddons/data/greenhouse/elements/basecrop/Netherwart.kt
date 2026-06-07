@@ -47,13 +47,14 @@ object Netherwart : CropDefinitionProvider {
             CropStage(
                 blocks = listOf(
                     CropBlockState(
-                        offset = BlockPos(0,1,0),
+                        offset = BlockPos(0, 1, 0),
                         blockState = netherwartState(3)
                     )
                 ),
                 armorStands = listOf(),
                 8..8
             )
+
         ),
         maxStage = 8,
         requiredSoil = setOf(Blocks.SOUL_SAND),
