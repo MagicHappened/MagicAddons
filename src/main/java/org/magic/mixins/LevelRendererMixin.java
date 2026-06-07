@@ -98,7 +98,8 @@ public abstract class LevelRendererMixin {
                         // highlight-specific logic
                         state.outlineColor = source.getHighlightColor();
                         state.isInvisible = true;
-                    }
+                    },
+                    true
             );
         }
 
@@ -110,7 +111,8 @@ public abstract class LevelRendererMixin {
                     submitNodeCollector,
                     (ent, state) -> {
                         ((FakeEntityState)state).magicaddons$setFakeEntity(true);
-                    }
+                    },
+                    false
             );
         }
 
@@ -125,11 +127,12 @@ public abstract class LevelRendererMixin {
             PoseStack poseStack,
             LevelRenderState levelRenderState,
             SubmitNodeCollector submitNodeCollector,
-            EntityRenderModifier modifier
+            EntityRenderModifier modifier,
+            Boolean shouldPartialTick
     ) {
-        float partialTicks = Minecraft.getInstance()
+        float partialTicks = shouldPartialTick ? Minecraft.getInstance()
                 .getDeltaTracker()
-                .getGameTimeDeltaPartialTick(false);
+                .getGameTimeDeltaPartialTick(false) : 1.0f;
 
 
         EntityRenderer<? super Entity, ?> baseRenderer =
@@ -141,9 +144,10 @@ public abstract class LevelRendererMixin {
 
 
         EntityRenderState state = renderer.createRenderState(entity, partialTicks);
+        modifier.modify(entity,state);
         renderer.extractRenderState(entity, state, partialTicks);
 
-        modifier.modify(entity,state);
+
 
         poseStack.pushPose();
 

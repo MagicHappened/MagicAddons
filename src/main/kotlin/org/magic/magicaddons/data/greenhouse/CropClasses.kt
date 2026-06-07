@@ -1,11 +1,13 @@
 package org.magic.magicaddons.data.greenhouse
 
 import net.minecraft.client.Minecraft
+import net.minecraft.client.multiplayer.ClientLevel
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Rotations
 import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.EquipmentSlot
 import net.minecraft.world.entity.decoration.ArmorStand
+import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.level.block.state.BlockState
@@ -31,6 +33,8 @@ data class Footprint(val width: Int, val height: Int)
 data class CropArmorStand(
     val offset: Vec3, //offset is defined from the soil top left block
     val headRotation: Rotations? = null,
+    val xRotation: Float? = null,
+    val yRotation: Float? = null,
     val hashString: String? = null,
     val containsCustomName: String? = null,
 ) {
@@ -38,6 +42,8 @@ data class CropArmorStand(
         fun matcherPattern(
             offsets: List<Vec3>,
             rotations: List<Rotations>? = null,
+            xRotations: List<Float>? = null,
+            yRotations: List<Float>? = null,
             hashString: String? = null,
             customName: String? = null
         ): List<CropArmorStand> {
@@ -47,6 +53,8 @@ data class CropArmorStand(
                     CropArmorStand(
                         offset,
                         rotations?.getOrNull(i),
+                        xRotations?.getOrNull(i),
+                        yRotations?.getOrNull(i),
                         hashString,
                         customName
                     )
@@ -238,6 +246,48 @@ open class CropStage(
                 abs(a.y - b.y) < epsilon &&
                 abs(a.z - b.z) < epsilon
     }
+
+    fun toRenderData(level: Level, baseBlock: BlockPos, footprint: Footprint): RenderData{
+        val renderStands = mutableListOf<ArmorStand>()
+        val blockMap = mutableMapOf<BlockPos, BlockState>()
+        val center = Vec3(
+            baseBlock.x + footprint.width / 2.0,
+            baseBlock.y.toDouble(),
+            baseBlock.z + footprint.height / 2.0
+        )
+
+        blocks?.forEach { blockDef ->
+            val worldPos = baseBlock.offset(blockDef.offset)
+            val state = blockDef.blockState
+            blockMap[worldPos] = state
+        }
+        armorStands?.forEach { standDef ->
+            standDef.hashString ?: return@forEach
+            val stand = ArmorStand(
+                level,
+                center.x + standDef.offset.x,
+                center.y + standDef.offset.y,
+                center.z + standDef.offset.z
+            )
+            stand.isInvisible = true
+            standDef.headRotation?.let { stand.headPose = it }
+            val stack = PlayerUtils.getItemFromHash(standDef.hashString)
+            stand.setItemSlot(EquipmentSlot.HEAD, stack)
+            renderStands.add(stand)
+        }
+        return RenderData(
+            renderStands.toList(),
+            blockMap.toMap()
+        )
+    }
+
+
+    data class RenderData(
+        val stands: List<ArmorStand>,
+        val blockMap: Map<BlockPos, BlockState>
+    )
+
+
 }
 
 
