@@ -67,12 +67,14 @@ class GreenhouseGridWidget(
             widget.widgetX = widgetX + originX * slotSize + originX
             widget.widgetY = widgetY + originY * slotSize + originY
             //hopefully work?
-            val widgetWidth = slotSize * def.footprint.width
-            val widgetHeight = slotSize * def.footprint.height
+
+            val bordersSize = (def.footprint.width - 1) * 1
+            val widgetWidth = slotSize * def.footprint.width + bordersSize
+            val widgetHeight = slotSize * def.footprint.height + bordersSize
 
             widget.width = widgetWidth
             widget.height = widgetHeight
-
+            widget.init()
             widget.renderedStack = def.skyblockId?.toItem() ?: ItemStack(Items.BARRIER)
             elementWidgets.add(widget)
         }

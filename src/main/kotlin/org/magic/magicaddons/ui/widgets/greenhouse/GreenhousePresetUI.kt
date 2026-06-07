@@ -283,8 +283,7 @@ class GreenhousePresetUI(
                 onAddPreset.invoke(layout)
             }
             ImportExportFormatContext.LayoutFormatType.MagicAddons -> {
-
-
+                ChatUtils.sendWithPrefix("Not Yet Implemented")
             }
         }
 

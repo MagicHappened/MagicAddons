@@ -168,7 +168,7 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
     fun initGreenhouseLayout(){
         displayedGridWidget = null
         greenhouseGridWidgets.clear()
-
+        currentDisplayToggle.message = Component.literal("Plots")
         val amountInitialized = GreenhouseData.greenhouseGrids.count { it.state.lastUpdateTimestamp != null }
         if (PlotAPI.plots.any { it.data == null }) {
             if (!GreenhouseData.miscInfo.shouldIgnoreWarning) {
@@ -215,7 +215,7 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
             ?: "Unknown Plot"
 
 
-        initDynamicName()
+
 
         gridSelector.currentValue = displayedGridWidget!!.layout
         gridSelector.values = greenhouseGridWidgets.map { it.layout }
@@ -225,7 +225,8 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         }
 
         gridSelector.width = maxWidth + 12
-        currentDisplayToggle.message = Component.literal("Plots")
+
+        initDynamicName()
     }
 
     fun initPresetLayout(){

@@ -45,18 +45,7 @@ class GreenhouseSlotWidget(
         }
         sprite = ScreenUtil.getSpriteForState(slot.placedBlock!!, Direction.UP)
 
-        markingColor = when (slot.slotMark){
-            GreenhouseSlot.Marking.Target -> {
-                0xFF2dbcf6.toInt()
-            }
-            GreenhouseSlot.Marking.Ingredient -> {
-                0xFF89F336.toInt()
-            }
-            GreenhouseSlot.Marking.UniqueCrop -> {
-                0xFFbb00bb.toInt()
-            }
-            else -> {null}
-        }
+
     }
 
     override fun render(graphics: GuiGraphics, mouseY: Int, j: Int, deltaTicks: Float) {
@@ -73,16 +62,7 @@ class GreenhouseSlotWidget(
 
 
 
-        markingColor?.let {
-            graphics.drawBorder(
-                widgetX + 1,
-                widgetY + 1,
-                widgetX + widgetWidth - 1,
-                widgetY + widgetHeight - 1,
-                1,
-                it
-            )
-        }
+
     }
 
     override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {

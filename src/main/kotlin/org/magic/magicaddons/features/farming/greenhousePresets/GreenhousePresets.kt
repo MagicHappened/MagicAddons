@@ -71,10 +71,8 @@ object GreenhousePresets : Feature() {
 
         val level = Minecraft.getInstance().level ?: return
         val player = Minecraft.getInstance().player ?: return
-        val block = BlockPos(player.x.toInt(),player.y.toInt(),player.z.toInt()+3)
-
-        val melon = Melon.definition.stageDefs.last().toRenderData(level, block, Melon.definition.footprint)
-
+        val blockBelow = player.blockPosition().below()
+        val melon = Melon.definition.stageDefs.last().toRenderData(level,blockBelow , Melon.definition.footprint)
         blockMapRenderStates = melon.blockMap
 
         standsToRender = melon.stands
