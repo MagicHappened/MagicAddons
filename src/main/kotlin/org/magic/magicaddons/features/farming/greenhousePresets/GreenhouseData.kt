@@ -303,8 +303,9 @@ object GreenhouseData {
 
         greenhouseGrids.forEach { grid ->
             if (onlineTickTracking && !grid.hasRuntime()) return@forEach
+            val pendingTicks = grid.state.pendingGrowthTicks ?: return@forEach
 
-            grid.state.pendingGrowthTicks = passedGrowthTicks.toInt()
+            grid.state.pendingGrowthTicks = pendingTicks + passedGrowthTicks.toInt()
             grid.state.needsUpdate = true
         }
     }

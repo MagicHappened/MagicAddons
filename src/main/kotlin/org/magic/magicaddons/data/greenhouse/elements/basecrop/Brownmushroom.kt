@@ -1,6 +1,7 @@
 package org.magic.magicaddons.data.greenhouse.elements.basecrop
 
 import net.minecraft.core.BlockPos
+import net.minecraft.core.Rotations
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
@@ -36,18 +37,20 @@ object Brownmushroom : CropDefinitionProvider {
             CropStage(
                 blocks = listOf(
                     CropBlockState(
-                        offset = BlockPos(0,1,0),
+                        offset = BlockPos(0, 1, 0),
                         blockState = brownMushroomState()
                     )
                 ),
                 armorStands = listOf(
                     CropArmorStand(
-                        offset = Vec3(0.0, -0.45, 0.0),
+                        offset = Vec3(0.0, -0.45000000000000284, 0.0),
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
                         hashString = "578897b83f51fb96b59ba418ff0868cef7bdf661e315ba5dbac51d876d1d15d"
                     )
                 ),
                 6..6
             )
+
         ),
         maxStage = 6,
         requiredSoil = setOf(Blocks.MYCELIUM),

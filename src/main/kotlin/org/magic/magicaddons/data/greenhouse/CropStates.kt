@@ -2,9 +2,11 @@ package org.magic.magicaddons.data.greenhouse
 
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.level.block.CropBlock
+import net.minecraft.world.level.block.DoublePlantBlock
 import net.minecraft.world.level.block.NetherWartBlock
 import net.minecraft.world.level.block.StemBlock
 import net.minecraft.world.level.block.state.BlockState
+import net.minecraft.world.level.block.state.properties.DoubleBlockHalf
 
 object CropStates {
 
@@ -88,6 +90,8 @@ object CropStates {
     fun cactusState(): BlockState = Blocks.CACTUS.defaultBlockState()
     fun sunflowerState(): BlockState = Blocks.SUNFLOWER.defaultBlockState()
     fun shortGrassState(): BlockState = Blocks.SHORT_GRASS.defaultBlockState()
-    fun roseBushState(): BlockState = Blocks.ROSE_BUSH.defaultBlockState()
+    fun roseBushState(half: DoubleBlockHalf): BlockState =
+        Blocks.ROSE_BUSH.defaultBlockState()
+            .setValue(DoublePlantBlock.HALF, half)
     fun deadBushState(): BlockState = Blocks.DEAD_BUSH.defaultBlockState()
 }
