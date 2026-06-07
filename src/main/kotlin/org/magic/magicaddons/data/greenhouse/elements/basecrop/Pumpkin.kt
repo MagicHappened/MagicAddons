@@ -147,26 +147,32 @@ object Pumpkin : CropDefinitionProvider {
             CropStage(
                 blocks = listOf(
                     CropBlockState(
-                        offset = BlockPos(0,1,0),
+                        offset = BlockPos(0, 1, 0),
                         blockState = melonStemState(7)
                     )
                 ),
-                armorStands =
-                    CropArmorStand.matcherPattern(
-                        listOf(
-                            Vec3(-0.0625, -0.46875, 0.0),
-                            Vec3(0.09375, -0.625, 0.09375)
-                        ),
-                        listOf(
-                            Rotations(0.0f, 0.0f, -22.5f),
-                            Rotations(22.5f, 0.0f, 22.5f)
-                        ),
-                        hashString = "1839c3565f36c9d6e52d55a1760b11c2060953143ffe4ffe9c8b606ee4e3648f"
-                    )
-                ,
-                11..11,
-                allowRotation = true
+                armorStands = CropArmorStand.matcherPattern(
+                    offsets = listOf(
+                        Vec3(0.0625, -0.46875, 0.0),
+                        Vec3(-0.09375, -0.625, -0.09375)
+                    ),
+                    rotations = listOf(
+                        Rotations(0.0f, 0.0f, -22.5f),
+                        Rotations(22.5f, 0.0f, 22.5f)
+                    ),
+                    xRotations = listOf(
+                        0.0f,
+                        0.0f
+                    ),
+                    yRotations = listOf(
+                        -180.0f,
+                        -180.0f
+                    ),
+                    hashString = "1839c3565f36c9d6e52d55a1760b11c2060953143ffe4ffe9c8b606ee4e3648f"
+                ),
+                11..11
             )
+
 
 
 

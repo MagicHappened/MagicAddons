@@ -119,12 +119,17 @@ object Moonflower : CropDefinitionProvider {
                     CropArmorStand(
                         offset = Vec3(-0.1875, 0.5625, 0.0),
                         headRotation = Rotations(-22.5f, 0.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = 90.0f,
                         hashString = "bd1001840c85349f87c6e20478317f4026b588514d8b1e78241a849d93f9cd94"
                     )
                 ),
                 15..15,
                 allowRotation = true
             )
+
+
+
 
 
 

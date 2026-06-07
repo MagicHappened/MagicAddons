@@ -164,6 +164,14 @@ object GreenhouseData {
         return greenhouseGrids.find { it.layout.id == "plot_$plotId" }
     }
 
+    fun Float.isCardinalYaw(): Boolean {
+        val normalized = ((this % 360f) + 360f) % 360f
+
+        return abs(normalized - 0f) < 0.1f ||
+                abs(normalized - 90f) < 0.1f ||
+                abs(normalized - 180f) < 0.1f ||
+                abs(normalized - 270f) < 0.1f
+    }
 
     fun String.parseDurationToMs(): Long {
         var totalMs = 0L
@@ -680,9 +688,6 @@ object GreenhouseData {
         def ?: return
         val matchingStage = def.stageDefs.find { stageDef ->
             stageRaw in stageDef.stageRange
-                    && stageDef.armorStands?.any {
-                        it.headRotation != null
-            } ?: true //for now add a rotation check as well to copier
         }
         stageRaw ?: return
         plantDiagnosticListeningElement?.let {
@@ -691,7 +696,7 @@ object GreenhouseData {
             it.instance.waterLevel = waterLevel
         }
         val level = Minecraft.getInstance().level ?: return
-
+        var abnormalRotationFound = false
         val element = plantDiagnosticHitBaseBlock?.let { block ->
             val minX = block.x.toDouble()
             val minY = block.y.toDouble()
@@ -707,26 +712,50 @@ object GreenhouseData {
             )
 
             val armorStands = level.getEntitiesOfClass(ArmorStand::class.java, box)
-
+            abnormalRotationFound = armorStands.any {
+                ((it.headPose.x != 0.0f || it.headPose.y != 0.0f || it.headPose.z != 0.0f) ||
+                        (!it.xRot.isCardinalYaw() || !it.yRot.isCardinalYaw()))
+                        && PlayerUtils.getSkinHash(it.getItemBySlot(EquipmentSlot.HEAD)) != null
+            }
             GreenhouseGrid.findElementAtBasePos(
                 block,
                 armorStands
             )
         }
+
         element?.let {
             ChatUtils.sendWithPrefix("Successfully matched element ${it.instance.elementId} : ${it.instance.growthStage} to block $plantDiagnosticHitBaseBlock")
         }
 
         val isSelf = UUID.fromString("eef58b9d-39e1-4062-8a1a-2f921f14a46d") == Minecraft.getInstance().player?.uuid
         val override = false
-        if (matchingStage == null || override) {
+        if (matchingStage != null){
+            if (matchingStage.needsRotationData(abnormalRotationFound)){
+                ChatUtils.sendWithPrefix("No rotation data for ${def.name}")
+                plantDiagnosticHitBaseBlock?.let {
+                    copyCropStageData(it,stageRaw, def, !isSelf)
+                }
+            }
+            else if (override){
+                ChatUtils.sendWithPrefix("Overridden ${def.name}")
+                plantDiagnosticHitBaseBlock?.let {
+                    copyCropStageData(it,stageRaw, def, !isSelf)
+                }
+            }
+        }
+        else {
             ChatUtils.sendWithPrefix("No matching stage for ${def.name} please send the copied output")
             plantDiagnosticHitBaseBlock?.let {
                 copyCropStageData(it,stageRaw, def, !isSelf)
             }
-            return
         }
     }
+    fun CropStage.needsRotationData(abnormalRotation: Boolean): Boolean =
+        abnormalRotation && this.armorStands?.let { stands ->
+            stands.isNotEmpty() && !stands.any {
+                it.headRotation != null && it.xRotation != null && it.yRotation != null
+            }
+        } ?: true
 
     fun updateCropGrowth(realItems: List<ItemStack>) {
         val sunflower = realItems.firstOrNull {
@@ -926,6 +955,8 @@ object GreenhouseData {
                 ArmorStandExport(
                     offset = offset,
                     rotation = headRotations,
+                    xRotation = entity.xRot,
+                    yRotation = entity.yRot,
                     hash = hash,
                     customName = customName
                 )
@@ -1044,17 +1075,40 @@ object GreenhouseData {
                         "        Rotations(${it.rotation.x}f, ${it.rotation.y}f, ${it.rotation.z}f)"
                     }
 
+                    val xRotations = group.joinToString(",\n") {
+                        "        ${it.xRotation}f"
+                    }
+
+                    val yRotations = group.joinToString(",\n") {
+                        "        ${it.yRotation}f"
+                    }
+
+                    val anyAbnormalRotations = group.any { it.rotation.x != 0f || it.rotation.y != 0f || it.rotation.z != 0f }
+                    val anyAbnormalXRotations = group.any { !it.xRotation.isCardinalYaw() }
+                    val anyAbnormalYRotations = group.any { !it.yRotation.isCardinalYaw() }
+
+
                     val hash = group.first().hash
                     val name = group.first().customName
 
-                    patternSections += """
-CropArmorStand.matcherPattern(
-    listOf(
-$offsets
-    ),
-    listOf(
+                    val rotationsSection = """
+    rotations = listOf(
 $rotations
     ),
+    xRotations = listOf(
+$xRotations
+    ),
+    yRotations = listOf(
+$yRotations
+    ),
+""".trimIndent()
+
+                    patternSections += """
+CropArmorStand.matcherPattern(
+    offsets = listOf(
+$offsets
+    ),
+    ${if (anyAbnormalRotations || anyAbnormalXRotations || anyAbnormalYRotations) rotationsSection else ""}
     hashString = "$hash"${
                         name?.let {
                             ",\n    customName = \"$it\""
@@ -1071,34 +1125,25 @@ $rotations
 
                 val singletonText = singletons.joinToString(",\n") { stand ->
                     buildString {
+
+                        val fields = mutableListOf<String>()
+                        fields.add("offset = Vec3(${stand.offset.x}, ${stand.offset.y}, ${stand.offset.z})")
+                        if (stand.rotation.x != 0f || stand.rotation.y != 0f || stand.rotation.z != 0f) {
+                            fields.add("headRotation = Rotations(${stand.rotation.x}f, ${stand.rotation.y}f, ${stand.rotation.z}f)")
+                            fields.add("xRotation = ${stand.xRotation}f")
+                            fields.add("yRotation = ${stand.yRotation}f")
+                        }
+                        if (stand.hash != null){
+                            fields.add("hashString = \"${stand.hash}\"")
+                        }
+                        if (stand.customName != null){
+                            fields.add("containsCustomName = \"${stand.customName}\"")
+                        }
+
                         append(
                             """
 CropArmorStand(
-    offset = Vec3(${stand.offset.x}, ${stand.offset.y}, ${stand.offset.z}),
-    headRotation = Rotations(${stand.rotation.x}f, ${stand.rotation.y}f, ${stand.rotation.z}f),
-""".trimIndent()
-                        )
-
-                        stand.hash?.let {
-                            append(
-                                """
-                                    
-    hashString = "$it"${if (stand.customName != null) "," else ""}
-""".trimIndent()
-                            )
-                        }
-
-                        stand.customName?.let {
-                            append(
-                                """
-    containsCustomName = "$it"
-""".trimIndent()
-                            )
-                        }
-
-                        append(
-                            """
-                                
+    ${fields.joinToString(",\n" )}
 )
 """.trimIndent()
                         )
@@ -1150,6 +1195,8 @@ CropArmorStand(
     data class ArmorStandExport(
         val offset: Vec3,
         val rotation: Rotations,
+        val xRotation: Float,
+        val yRotation: Float,
         val hash: String?,
         val customName: String?
     )
