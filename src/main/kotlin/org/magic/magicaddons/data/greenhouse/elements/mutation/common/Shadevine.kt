@@ -19,13 +19,17 @@ object Shadevine : CropDefinitionProvider {
                 blocks = listOf(),
                 armorStands = listOf(
                     CropArmorStand(
-                        offset = Vec3(0.0, -0.75, 0.1875),
+                        offset = Vec3(0.0, -0.75, -0.1875),
                         headRotation = Rotations(-45.0f, 0.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
                         hashString = "c3c6d9dcb8fbd73de6171a2c2155314d097a9c99d09c9fce9cba068d7e5aedf7"
                     )
                 ),
-                1..1
+                1..1,
+                allowRotation = true
             )
+
         ),
         requiredSoil = setOf(Blocks.FARMLAND, Blocks.SAND),
         needsWater = false,

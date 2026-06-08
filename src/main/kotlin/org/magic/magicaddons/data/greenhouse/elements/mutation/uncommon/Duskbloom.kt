@@ -27,6 +27,21 @@ object Duskbloom : CropDefinitionProvider {
                 blocks = listOf(
                     CropBlockState(
                         offset = BlockPos(0, 1, 0),
+                        blockState = wheatState(1)
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                    offset = Vec3(0.0, -0.65625, 0.0),
+                    hashString = "b9410dd823e984f98c0572e48d3c07641dd89411ba2e4fc66bee4212c6b65f02"
+                    )
+                ),
+                2..2
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0, 1, 0),
                         blockState = wheatState(2)
                     )
                 ),
@@ -64,7 +79,22 @@ object Duskbloom : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.4375, 0.0),
-                        hashString = "b9410dd823e984f98c0572e48d3c07641dd89411ba2e4fc66bee4212c6b65f02",
+                        hashString = "b9410dd823e984f98c0572e48d3c07641dd89411ba2e4fc66bee4212c6b65f02"
+                    )
+                ),
+                5..5
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = wheatState(4)
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, -0.4375, 0.0),
+                        hashString = "b9410dd823e984f98c0572e48d3c07641dd89411ba2e4fc66bee4212c6b65f02"
                     )
                 ),
                 7..7
@@ -73,7 +103,7 @@ object Duskbloom : CropDefinitionProvider {
                 blocks = listOf(
                     CropBlockState(
                         offset = BlockPos(0, 1, 0),
-                        blockState = wheatState(2)
+                        blockState = wheatState(4)
                     )
                 ),
                 armorStands = listOf(
@@ -82,9 +112,9 @@ object Duskbloom : CropDefinitionProvider {
                         hashString = "7dca7951b36f5f749e883758b379c8008ca55f245987e4ef0c3788cf0c903d5"
                     )
                 ),
-                8..8,
-                allowRotation = true
+                8..8
             )
+
 
         ),
         maxStage = 8,
