@@ -1,5 +1,6 @@
 package org.magic.magicaddons.ui.screens
 
+import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.gui.components.events.GuiEventListener
 import net.minecraft.client.gui.screens.Screen
@@ -9,6 +10,7 @@ import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.client.renderer.RenderPipelines
 import net.minecraft.network.chat.Component
 import net.minecraft.resources.Identifier
+import org.magic.magicaddons.commands.features.farming.GreenhouseScreenCommand
 import org.magic.magicaddons.data.greenhouse.GreenhouseGrid
 import org.magic.magicaddons.data.greenhouse.GreenhouseLayout
 import org.magic.magicaddons.events.EventBus
@@ -122,8 +124,6 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
     var displayedName: String = "Error loading name."
 
     var slotSize: Int = 20
-    var savedWidth: Int? = null
-    var savedHeight: Int? = null
 
 
     override fun init() {
@@ -131,9 +131,6 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         initBaseLayout()
     }
     fun initBaseLayout(){
-
-        savedWidth = width
-        savedHeight = height
 
         paddingY = height/10
 
@@ -462,9 +459,6 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         return super.isMouseOver(mouseX, mouseY)
     }
 
-
-
-
     override fun charTyped(characterEvent: CharacterEvent): Boolean {
         overlays.forEach {
             it.charTyped(characterEvent)
@@ -477,6 +471,10 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
             it.keyPressed(keyEvent)
         }
         return super.keyPressed(keyEvent)
+    }
+
+    override fun removed() {
+        Minecraft.getInstance().options.guiScale().set(GreenhouseScreenCommand.tempGuiScale!!)
     }
 
     fun openLayoutWidgetContext(layout: GreenhouseLayout?, buttonEvent: MouseButtonEvent) {

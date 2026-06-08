@@ -12,7 +12,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(Screen.class)
 public class ScreenMixin {
 
-    @Inject(method = "removed", at = @At("TAIL"))
+    @Inject(method = "removed", at = @At("HEAD"))
     private void onRemoveScreen(CallbackInfo ci) {
         Screen self = (Screen)(Object)this;
         if (!(self instanceof InventoryScreen)) return;
