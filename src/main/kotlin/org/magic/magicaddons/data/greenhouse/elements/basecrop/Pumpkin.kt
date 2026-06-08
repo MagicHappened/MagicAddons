@@ -170,7 +170,8 @@ object Pumpkin : CropDefinitionProvider {
                     ),
                     hashString = "1839c3565f36c9d6e52d55a1760b11c2060953143ffe4ffe9c8b606ee4e3648f"
                 ),
-                11..11
+                11..11,
+                allowRotation = true
             )
 
 
