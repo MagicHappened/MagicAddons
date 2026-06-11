@@ -8,7 +8,7 @@ import net.minecraft.client.renderer.Sheets
 import net.minecraft.client.renderer.block.BlockRenderDispatcher
 import net.minecraft.client.renderer.block.model.BakedQuad
 import net.minecraft.client.renderer.block.model.BlockStateModel
-import net.minecraft.client.renderer.texture.OverlayTexture
+import net.minecraft.client.renderer.rendertype.RenderTypes
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
 import net.minecraft.util.Mth
@@ -22,8 +22,7 @@ object RenderExtensions {
         blockRenderer: BlockRenderDispatcher,
         blockPos: BlockPos,
         blockState: BlockState,
-        overlay: Int,
-        alpha: Float
+        tintColor: Int
     ){
         val pose = PoseStack()
         pose.pushPose()
@@ -34,21 +33,33 @@ object RenderExtensions {
             blockPos.z - camPos.z
         )
         val model = blockRenderer.getBlockModel(blockState)
-        val renderType = Sheets.translucentBlockItemSheet()
+        val renderType = RenderTypes.translucentMovingBlock()
         val buffer = this.buffer.getBuffer(renderType)
         val blockColors = Minecraft.getInstance().blockColors
-        val color = blockColors.getColor(blockState, null, blockPos, 0)
+        val base = blockColors.getColor(blockState, null, blockPos, 0)
 
-        val r = (color shr 16 and 255) / 255f
-        val g = (color shr 8 and 255) / 255f
-        val b = (color and 255) / 255f
+        val br = ((base shr 16) and 255) / 255f
+        val bg = ((base shr 8) and 255) / 255f
+        val bb = (base and 255) / 255f
+
+        val tr = ((tintColor shr 16) and 255) / 255f
+        val tg = ((tintColor shr 8) and 255) / 255f
+        val tb = (tintColor and 255) / 255f
+
+        val strength = 0.35f
+
+        val r = br + (tr - br) * strength
+        val g = bg + (tg - bg) * strength
+        val b = bb + (tb - bb) * strength
+
+        val alpha = ((tintColor shr 24) and 0xFF) / 255f
         renderBlockModelWithAlpha(
             pose.last(),
             buffer,
             model,
             r,g,b,
             LightTexture.FULL_BRIGHT,
-            overlay,
+            tintColor,
             alpha
         )
         pose.popPose()
@@ -101,7 +112,7 @@ object RenderExtensions {
                 m = 1.0f
             }
 
-            vertexConsumer.putBulkData(pose, bakedQuad, k, l, m, alpha, i, j)
+            vertexConsumer.putBulkData(pose, bakedQuad, f, g, h, alpha, i, j)
         }
     }
 }

@@ -88,6 +88,7 @@ object Carrot : CropDefinitionProvider {
 
         ),
         maxStage = 8,
+        decayTimeMs = -1,
         isBaseCrop = true
 
     )

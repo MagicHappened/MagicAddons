@@ -56,6 +56,7 @@ object Redmushroom : CropDefinitionProvider {
 
         ),
         maxStage = 6,
+        decayTimeMs = -1,
         requiredSoil = setOf(Blocks.MYCELIUM),
         needsWater = false,
         isBaseCrop = true

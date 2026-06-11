@@ -1,6 +1,7 @@
 package org.magic.magicaddons.data.greenhouse.elements.mutation.epic
 
 import net.minecraft.core.BlockPos
+import net.minecraft.core.Rotations
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.*
 import org.magic.magicaddons.data.greenhouse.CropStates.melonStemState
@@ -24,8 +25,7 @@ object StoplightPetal : CropDefinitionProvider {
                         hashString = "57f6c922e742b5c571b1cf091d6d4bc06360f4f03443d79c5174097b0b373d7e",
                     )
                 ),
-                1..1,
-                allowRotation = true
+                1..1
             ),
             CropStage(
                 blocks = listOf(
@@ -40,8 +40,7 @@ object StoplightPetal : CropDefinitionProvider {
                         hashString = "57f6c922e742b5c571b1cf091d6d4bc06360f4f03443d79c5174097b0b373d7e",
                     )
                 ),
-                2..2,
-                allowRotation = true
+                2..2
             ),
             CropStage(
                 blocks = listOf(
@@ -99,29 +98,27 @@ object StoplightPetal : CropDefinitionProvider {
                         hashString = "f15bd3a726eee1f2f8ffd3a92ae95c44a2f37f6b0345a795b44e0360564c67fe"
                     )
                 ),
-                5..5,
-                allowRotation = true
+                5..5
             ),
             CropStage(
-                blocks = CropBlockState.blockStatePattern(
-                    positions = listOf(
-                        BlockPos(0,1,0),
-                        BlockPos(0,2,0),
+                blocks =             CropBlockState.blockStatePattern(
+                    listOf(
+                        BlockPos(0, 1, 0),
+                        BlockPos(0, 2, 0)
                     ),
                     blockState = melonStemState(5)
                 ),
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.4375, 0.0),
-                        hashString = "57f6c922e742b5c571b1cf091d6d4bc06360f4f03443d79c5174097b0b373d7e",
+                        hashString = "57f6c922e742b5c571b1cf091d6d4bc06360f4f03443d79c5174097b0b373d7e"
                     ),
                     CropArmorStand(
                         offset = Vec3(0.0, 0.15625, 0.0),
-                        hashString = "f15bd3a726eee1f2f8ffd3a92ae95c44a2f37f6b0345a795b44e0360564c67fe",
+                        hashString = "f15bd3a726eee1f2f8ffd3a92ae95c44a2f37f6b0345a795b44e0360564c67fe"
                     )
                 ),
-                6..6,
-                allowRotation = true
+                6..6
             ),
             CropStage(
                 blocks = CropBlockState.blockStatePattern(
@@ -198,15 +195,14 @@ object StoplightPetal : CropDefinitionProvider {
                         hashString = "57f6c922e742b5c571b1cf091d6d4bc06360f4f03443d79c5174097b0b373d7e"
                     )
                 ),
-                10..10,
-                allowRotation = true
+                10..10
             ),
             CropStage(
-                blocks = CropBlockState.blockStatePattern(
-                    positions = listOf(
-                        BlockPos(0,1,0),
-                        BlockPos(0,2,0),
-                        BlockPos(0,3,0)
+                blocks =             CropBlockState.blockStatePattern(
+                    listOf(
+                        BlockPos(0, 1, 0),
+                        BlockPos(0, 2, 0),
+                        BlockPos(0, 3, 0)
                     ),
                     blockState = melonStemState(5)
                 ),
@@ -224,13 +220,16 @@ object StoplightPetal : CropDefinitionProvider {
                         hashString = "f15bd3a726eee1f2f8ffd3a92ae95c44a2f37f6b0345a795b44e0360564c67fe"
                     ),
                     CropArmorStand(
-                        offset = Vec3(-0.03125, 2.125, 0.21875),
+                        offset = Vec3(0.03125, 2.125, -0.21875),
+                        headRotation = Rotations(90.0f, 0.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
                         hashString = "57f6c922e742b5c571b1cf091d6d4bc06360f4f03443d79c5174097b0b373d7e"
                     )
                 ),
-                12..12,
-                allowRotation = true
+                12..12
             )
+
 
 
 

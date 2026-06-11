@@ -5,6 +5,7 @@ import com.mojang.blaze3d.framegraph.FrameGraphBuilder;
 import com.mojang.blaze3d.pipeline.RenderTarget;
 import com.mojang.blaze3d.resource.GraphicsResourceAllocator;
 import com.mojang.blaze3d.vertex.PoseStack;
+import kotlin.Pair;
 import net.minecraft.client.Camera;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
@@ -22,6 +23,7 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.decoration.ArmorStand;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.Vec3;
+import org.jetbrains.annotations.NotNull;
 import org.joml.Matrix4f;
 import org.joml.Vector4f;
 import org.jspecify.annotations.Nullable;
@@ -103,14 +105,17 @@ public abstract class LevelRendererMixin {
             );
         }
 
-        for (ArmorStand stand : GreenhousePresets.standsToRender) {
+        for (Pair<? extends ArmorStand, Integer> pair : GreenhousePresets.standsToRender) {
             renderFakeEntity(
-                    stand,
+                    pair.getFirst(),
                     poseStack,
                     levelRenderState,
                     submitNodeCollector,
                     (ent, state) -> {
-                        ((FakeEntityState)state).magicaddons$setFakeEntity(true);
+                        FakeEntityState fakeState = (FakeEntityState) state;
+                        fakeState.magicaddons$setFakeEntity(true);
+                        fakeState.magicaddons$setFakeEntityTintColor(pair.getSecond());
+
                     },
                     false
             );

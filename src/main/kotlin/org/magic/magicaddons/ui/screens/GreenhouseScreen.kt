@@ -22,9 +22,9 @@ import org.magic.magicaddons.ui.OverlayRenderable
 import org.magic.magicaddons.ui.widgets.greenhouse.EditLayoutContextMenu
 import org.magic.magicaddons.ui.widgets.EnumWidget
 import org.magic.magicaddons.ui.widgets.config.ClickableButtonWidget
-import org.magic.magicaddons.ui.widgets.greenhouse.GreenhouseElementWidget
-import org.magic.magicaddons.ui.widgets.greenhouse.GreenhouseGridWidget
-import org.magic.magicaddons.ui.widgets.greenhouse.GreenhousePresetUI
+import org.magic.magicaddons.ui.widgets.greenhouse.ElementWidget
+import org.magic.magicaddons.ui.widgets.greenhouse.GridWidget
+import org.magic.magicaddons.ui.widgets.greenhouse.PresetUI
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.ScreenUtil.drawMultilineBoxCentered
 import org.magic.magicaddons.util.ScreenUtil.drawSimpleTooltip
@@ -78,12 +78,10 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
     override var hoveredElement: GuiEventListener? = null
 
     override val overlays = mutableListOf<OverlayRenderable>()
-    private var displayedGridWidget: GreenhouseGridWidget? = null
-    private val greenhouseGridWidgets: MutableList<GreenhouseGridWidget> = mutableListOf()
-    private val presetGridWidgets: MutableList<GreenhouseGridWidget> = mutableListOf()
+    private var displayedGridWidget: GridWidget? = null
+    private val greenhouseGridWidgets: MutableList<GridWidget> = mutableListOf()
+    private val presetGridWidgets: MutableList<GridWidget> = mutableListOf()
     private val currentDisplayToggle = ClickableButtonWidget(
-        0,
-        0,
         60,
         26,
         Component.literal("Plots")
@@ -102,9 +100,7 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         overlayContext = this
     )
 
-    private val presetUI = GreenhousePresetUI(
-        0,
-        0,
+    private val presetUI = PresetUI(
         400,
         400,
         this,
@@ -187,7 +183,7 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
 
         GreenhouseData.greenhouseGrids.forEachIndexed { index, grid ->
             if (grid.state.lastUpdateTimestamp == null) return@forEachIndexed
-            val gridWidget = GreenhouseGridWidget(grid.layout, slotSize).apply {
+            val gridWidget = GridWidget(grid.layout, slotSize).apply {
                 widgetX = startX
                 widgetY = startY
                 widgetWidth = containerSize
@@ -235,9 +231,8 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         presetUI.y = currentDisplayToggle.y + currentDisplayToggle.height + 10
         presetUI.init()
 
-
         GreenhouseData.presetGrids.forEach { layout ->
-            val gridWidget = GreenhouseGridWidget(layout, slotSize).apply {
+            val gridWidget = GridWidget(layout, slotSize).apply {
                 widgetX = startX
                 widgetY = startY
                 widgetWidth = containerSize
@@ -282,8 +277,6 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         shouldWarn = currentDisplay == CurrentDisplay.Greenhouses && currentGridOutdated
 
         dynamicNameDisplay = ClickableButtonWidget(
-            (screenWidth-widgetWidth) / 2,
-            9,
             widgetWidth + iconWidth + 1, //icon padding + icon width
             widgetHeight,
             {
@@ -306,6 +299,8 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
             },
             false
         )
+        dynamicNameDisplay?.x = (screenWidth-widgetWidth) / 2
+        dynamicNameDisplay?.y = 9
     }
 
     override fun render(graphics: GuiGraphics, mouseX: Int, mouseY: Int, delta: Float) {
@@ -355,7 +350,7 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
             it.renderOverlay(graphics, mouseX, mouseY, delta)
         }
         val hovered = hoveredElement
-        if (hovered !is GreenhouseElementWidget) return
+        if (hovered !is ElementWidget) return
         hovered.renderTooltip(
             graphics,
             startX + containerSize,
@@ -515,8 +510,8 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
             ChatUtils.sendWithPrefix("Cannot assign a non existing layout to grid: ${grid.layout.name ?: grid.layout.id}")
             return
         }
-        ChatUtils.sendWithPrefix("(WIP) Assigned ${layout.name ?: layout.id} to grid: ${grid.layout.name ?: grid.layout.id}")
         grid.state.assignedLayout = layout
+        ChatUtils.sendWithPrefix("Assigned ${layout.displayName()} to: ${grid.layout.displayName()}")
     }
 
     fun addPresetLayout(layout: GreenhouseLayout){

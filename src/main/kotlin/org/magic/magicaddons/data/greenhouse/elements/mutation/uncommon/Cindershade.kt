@@ -14,6 +14,37 @@ object Cindershade : CropDefinitionProvider {
         skyblockId = SkyBlockItemId.item("CINDERSHADE"),
         stageDefs = listOf(
             CropStage(
+                blocks = listOf(),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, -0.71875, 0.0),
+                        headRotation = Rotations(0.0f, 45.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = -90.0f,
+                        hashString = "7bd5a39c3f9b1f513ecc299afaa5f90040fdb7424a5cd592e9ff31de7a3aafb3"
+                    )
+                ),
+                2..2
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = netherwartState(0)
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, -0.625, 0.0),
+                        headRotation = Rotations(0.0f, 45.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = 90.0f,
+                        hashString = "7bd5a39c3f9b1f513ecc299afaa5f90040fdb7424a5cd592e9ff31de7a3aafb3"
+                    )
+                ),
+                3..3
+            ),
+            CropStage(
                 blocks = listOf(
                     CropBlockState(
                         offset = BlockPos(0, 1, 0),
@@ -24,6 +55,8 @@ object Cindershade : CropDefinitionProvider {
                     CropArmorStand(
                         offset = Vec3(0.0, -0.40625, 0.0),
                         headRotation = Rotations(0.0f, 45.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = -90.0f,
                         hashString = "7bd5a39c3f9b1f513ecc299afaa5f90040fdb7424a5cd592e9ff31de7a3aafb3"
                     )
                 ),
@@ -40,16 +73,18 @@ object Cindershade : CropDefinitionProvider {
                     CropArmorStand(
                         offset = Vec3(0.0, -0.25, 0.0),
                         headRotation = Rotations(0.0f, 45.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = -180.0f,
                         hashString = "7bd5a39c3f9b1f513ecc299afaa5f90040fdb7424a5cd592e9ff31de7a3aafb3"
                     ),
                     CropArmorStand(
                         offset = Vec3(0.0, -0.8125, 0.0),
-                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
                         hashString = "66aa7b369efc0186937373242fe406e196281f0caf76899a4661c960b47fb74c"
                     )
                 ),
                 5..5
-            ),
+            )
+            ,
             CropStage(
                 blocks = listOf(
                     CropBlockState(
@@ -60,12 +95,13 @@ object Cindershade : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.71875, 0.0),
-                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
                         hashString = "66aa7b369efc0186937373242fe406e196281f0caf76899a4661c960b47fb74c"
                     ),
                     CropArmorStand(
                         offset = Vec3(0.03125, -0.15625, -0.03125),
                         headRotation = Rotations(0.0f, 45.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = -90.0f,
                         hashString = "7bd5a39c3f9b1f513ecc299afaa5f90040fdb7424a5cd592e9ff31de7a3aafb3"
                     )
                 ),
@@ -81,17 +117,19 @@ object Cindershade : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.625, 0.0),
-                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
                         hashString = "66aa7b369efc0186937373242fe406e196281f0caf76899a4661c960b47fb74c"
                     ),
                     CropArmorStand(
                         offset = Vec3(-0.03125, -0.03125, 0.03125),
                         headRotation = Rotations(0.0f, 45.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = 90.0f,
                         hashString = "7bd5a39c3f9b1f513ecc299afaa5f90040fdb7424a5cd592e9ff31de7a3aafb3"
                     )
                 ),
                 7..7
-            ),
+            )
+            ,
             CropStage(
                 blocks = listOf(
                     CropBlockState(

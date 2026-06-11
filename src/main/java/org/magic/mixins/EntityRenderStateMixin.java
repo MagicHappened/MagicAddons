@@ -11,9 +11,22 @@ public class EntityRenderStateMixin implements FakeEntityState {
     @Unique
     public boolean magicaddons$isFakeEntity;
 
+    @Unique
+    public int magicaddons$fakeEntityTintColor;
+
+    @Override
+    public int magicaddons$fakeEntityTintColor() {
+        return  magicaddons$fakeEntityTintColor;
+    }
+
     @Override
     public boolean magicaddons$isFakeEntity() {
         return magicaddons$isFakeEntity;
+    }
+
+    @Override
+    public void magicaddons$setFakeEntityTintColor(int color){
+        magicaddons$fakeEntityTintColor = color;
     }
 
     @Override

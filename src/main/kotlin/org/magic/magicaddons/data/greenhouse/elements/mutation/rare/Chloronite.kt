@@ -1,9 +1,11 @@
 package org.magic.magicaddons.data.greenhouse.elements.mutation.rare
 
 import net.minecraft.core.BlockPos
+import net.minecraft.core.Rotations
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.*
+import org.magic.magicaddons.data.greenhouse.CropStates.wheatState
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
 object Chloronite : CropDefinitionProvider {
@@ -12,6 +14,42 @@ object Chloronite : CropDefinitionProvider {
         skyblockId = SkyBlockItemId.item("CHLORONITE"),
         stageDefs = listOf(
             CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = wheatState(1)
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, -0.84375, 0.0),
+                        headRotation = Rotations(0.0f, 45.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
+                        hashString = "4696299926a2fd000f519f6b4690670914004e634c8c6546ca5b69f028e43c40"
+                    )
+                ),
+                1..1
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = wheatState(2)
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                    offset = Vec3(0.0, -0.84375, 0.0),
+                    headRotation = Rotations(0.0f, 45.0f, 0.0f),
+                    xRotation = 0.0f,
+                    yRotation = 90.0f,
+                    hashString = "4696299926a2fd000f519f6b4690670914004e634c8c6546ca5b69f028e43c40"
+                    )
+                ),
+                2..2
+            ),
+                    CropStage(
                 blocks = listOf(
                     CropBlockState(
                         offset = BlockPos(0, 1, 0),

@@ -218,9 +218,9 @@ object Zombud : CropDefinitionProvider {
                         hashString = "b2c4994b7a1c45231b623b8245c117382b267c8856c57cffa2d808c241027a51"
                     )
                 ),
-                16..16,
-                allowRotation = true
+                16..16
             )
+
 
         ),
         maxStage = 16,

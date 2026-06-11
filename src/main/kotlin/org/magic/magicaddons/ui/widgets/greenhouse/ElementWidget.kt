@@ -13,16 +13,15 @@ import net.minecraft.core.Direction
 import net.minecraft.network.chat.Component
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.block.Blocks
-import org.magic.magicaddons.data.greenhouse.CropDefinition
 import org.magic.magicaddons.data.greenhouse.GreenhouseElementInstance
-import org.magic.magicaddons.data.greenhouse.GreenhouseSlot
+import org.magic.magicaddons.data.greenhouse.LayoutSlot
 import org.magic.magicaddons.data.greenhouse.GrowthStageInfo
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.ScreenUtil
 import org.magic.magicaddons.util.ScreenUtil.drawBorder
 import org.magic.magicaddons.util.ScreenUtil.renderFakeItem
 
-class GreenhouseElementWidget(val instance: GreenhouseElementInstance,val definition: CropDefinition) : Renderable, GuiEventListener {
+class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, GuiEventListener {
     var widgetX: Int = 0
     var widgetY: Int = 0
     var padding: Int = 0
@@ -30,28 +29,35 @@ class GreenhouseElementWidget(val instance: GreenhouseElementInstance,val defini
     var height = 50
     var sprite: TextureAtlasSprite? = ScreenUtil.getSpriteForState(Blocks.FIRE.defaultBlockState(),Direction.NORTH)
     var renderedStack: ItemStack = ItemStack.EMPTY
-    var markingColor: Int = -1
+    var markingColor: Int? = null
     @JvmField
     var isFocused: Boolean = false
 
+    enum class HoverInfo {
+        GrowthStage,
+        WaterLevel,
+        DecayTime,
+
+    }
+
     fun init(){
         markingColor = when (instance.slot.slotMark){
-            GreenhouseSlot.Marking.Target -> {
+            LayoutSlot.Marking.Target -> {
                 0xFF2dbcf6.toInt()
             }
-            GreenhouseSlot.Marking.Ingredient -> {
+            LayoutSlot.Marking.Ingredient -> {
                 0xFF89F336.toInt()
             }
-            GreenhouseSlot.Marking.UniqueCrop -> {
+            LayoutSlot.Marking.UniqueCrop -> {
                 0xFFbb00bb.toInt()
             }
-            else -> {-1}
+            else -> {null}
         }
     }
 
-    override fun render(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, deltaTick: Float) {
-        markingColor.let {
-            guiGraphics.drawBorder(
+    override fun render(graphics: GuiGraphics, mouseX: Int, mouseY: Int, deltaTick: Float) {
+        markingColor?.let {
+            graphics.drawBorder(
                 widgetX + 1,
                 widgetY + 1,
                 widgetX + width - 1,
@@ -61,10 +67,10 @@ class GreenhouseElementWidget(val instance: GreenhouseElementInstance,val defini
             )
         }
         if (instance.elementId == "Fire") {
-            renderFire(guiGraphics, mouseX, mouseY, deltaTick)
+            renderFire(graphics, mouseX, mouseY, deltaTick)
             return
         }
-        guiGraphics.renderFakeItem(
+        graphics.renderFakeItem(
             renderedStack,
             widgetX + padding,
             widgetY + padding,
@@ -73,10 +79,10 @@ class GreenhouseElementWidget(val instance: GreenhouseElementInstance,val defini
         )
     }
 
-    fun renderFire(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, deltaTick: Float){
+    fun renderFire(graphics: GuiGraphics, mouseX: Int, mouseY: Int, deltaTick: Float){
         val sprite = sprite
         sprite ?: return
-        guiGraphics.blitSprite(
+        graphics.blitSprite(
             RenderPipelines.GUI_TEXTURED,
             sprite,
             widgetX,
@@ -84,6 +90,15 @@ class GreenhouseElementWidget(val instance: GreenhouseElementInstance,val defini
             width,
             height
         )
+    }
+
+    //todo add render info and such
+    fun renderHoverButtonInfo(graphics: GuiGraphics, mouseX: Int, mouseY: Int, deltaTick: Float){
+
+    }
+
+    fun renderSideTooltip(graphics: GuiGraphics, mouseX: Int, mouseY: Int, deltaTick: Float){
+
     }
 
     override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, bl: Boolean): Boolean {
@@ -105,7 +120,7 @@ class GreenhouseElementWidget(val instance: GreenhouseElementInstance,val defini
         val font = Minecraft.getInstance().font
 
         val lines = buildList {
-            add(Component.literal(definition.name))
+            add(Component.literal(instance.cropDef.name))
 
             val growthText = when (val stage = instance.growthStage) {
                 is GrowthStageInfo.Known ->

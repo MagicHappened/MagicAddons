@@ -1,7 +1,6 @@
 package org.magic.magicaddons.data.greenhouse
 
 import net.minecraft.client.Minecraft
-import net.minecraft.client.multiplayer.ClientLevel
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Rotations
 import net.minecraft.world.entity.Entity
@@ -349,6 +348,7 @@ data class CropDefinition(
     val aliases: List<SkyBlockId>? = null,
     val stageDefs: List<CropStage>,
     val maxStage: Int = 1,
+    val decayTimeMs: Long? = null,
     val footprint: Footprint = Footprint(1,1),
     val requiredSoil: Set<Block> = setOf(Blocks.FARMLAND),
     val needsWater: Boolean = true,
@@ -374,12 +374,21 @@ data class StageMatchResult(
 
 
 data class ElementRuntimeState(
-    val cropDef: CropDefinition,
     val instance: GreenhouseElementInstance,
     val standEntities: List<Entity>?,
     val blocksMap: Map<BlockPos,BlockState>?, // todo add handling of water level
     //todo add here an extra info thing (maybe use the original one?)
 )
+
+data class GreenhouseElementInstance(
+    val elementId: String, //just the skyblock id or name
+    val slot: LayoutSlot,
+    var waterLevel: Int? = null,
+    var growthStage: GrowthStageInfo? = null,
+    var age: Long? = null,
+    val cropDef: CropDefinition,
+)
+
 
 interface CropDefinitionProvider {
     val definition: CropDefinition

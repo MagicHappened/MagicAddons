@@ -107,31 +107,40 @@ object Cactus : CropDefinitionProvider {
                 allowRotation = true
             ),
             CropStage(
-                blocks = CropBlockState.blockStatePattern(
-                    positions = listOf(
-                        BlockPos(0,1,0),
-                        BlockPos(0,2,0),
-                        BlockPos(0,3,0)
+                blocks =             CropBlockState.blockStatePattern(
+                    listOf(
+                        BlockPos(0, 1, 0),
+                        BlockPos(0, 2, 0),
+                        BlockPos(0, 3, 0)
                     ),
                     blockState = cactusState()
                 ),
                 armorStands = CropArmorStand.matcherPattern(
-                        listOf(
-                            Vec3(0.0, 1.0, 0.3125),
-                            Vec3(0.03125, 2.0, -0.28125)
-                        ),
-                        listOf(
-                            Rotations(0.0f, 0.0f, 67.5f),
-                            Rotations(0.0f, 0.0f, -67.5f)
-                        ),
-                        hashString = "d4b3ea5cb6b6f046e326621ca11ffb7d6aec22d66c0d81e5039b19ee4400309f"
+                    offsets = listOf(
+                        Vec3(0.3125, 1.0, 0.0),
+                        Vec3(-0.28125, 2.0, -0.03125)
                     ),
-                8..8,
-                allowRotation = true
+                    rotations = listOf(
+                        Rotations(0.0f, 0.0f, 67.5f),
+                        Rotations(0.0f, 0.0f, -67.5f)
+                    ),
+                    xRotations = listOf(
+                        0.0f,
+                        0.0f
+                    ),
+                    yRotations = listOf(
+                        0.0f,
+                        0.0f
+                    ),
+                    hashString = "d4b3ea5cb6b6f046e326621ca11ffb7d6aec22d66c0d81e5039b19ee4400309f"
+                ),
+                8..8
             )
+
 
         ),
         maxStage = 8,
+        decayTimeMs = -1,
         requiredSoil = setOf(Blocks.SAND),
         needsWater = false,
         isBaseCrop = true

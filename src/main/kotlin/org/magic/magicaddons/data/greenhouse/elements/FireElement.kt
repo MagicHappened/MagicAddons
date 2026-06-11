@@ -1,19 +1,16 @@
 package org.magic.magicaddons.data.greenhouse.elements
 
-import net.minecraft.client.renderer.RenderPipelines
 import net.minecraft.core.BlockPos
-import net.minecraft.core.Direction
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.level.block.state.BlockState
 import org.magic.magicaddons.data.greenhouse.CropBlockState
 import org.magic.magicaddons.data.greenhouse.CropDefinition
 import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
+import org.magic.magicaddons.data.greenhouse.CropRegistry
 import org.magic.magicaddons.data.greenhouse.CropStage
 import org.magic.magicaddons.data.greenhouse.ElementRuntimeState
 import org.magic.magicaddons.data.greenhouse.GreenhouseElementInstance
-import org.magic.magicaddons.data.greenhouse.GreenhouseSlot
-import org.magic.magicaddons.util.BlockUtils.isBlock
-import org.magic.magicaddons.util.ScreenUtil
+import org.magic.magicaddons.data.greenhouse.LayoutSlot
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
 object FireElement : CropDefinitionProvider {
@@ -36,16 +33,16 @@ object FireElement : CropDefinitionProvider {
         requiredSoil = setOf(Blocks.SOUL_SAND, Blocks.NETHERRACK)
 
     )
-    fun getFireAtSlot(slot: GreenhouseSlot, fireBlockMap: Map<BlockPos, BlockState>): ElementRuntimeState {
+    fun getFireAtSlot(slot: LayoutSlot, fireBlockMap: Map<BlockPos, BlockState>): ElementRuntimeState {
         val instance = GreenhouseElementInstance(
             elementId = "Fire",
             slot = slot,
             waterLevel = null,
-            growthStage = null
+            growthStage = null,
+            cropDef = CropRegistry.get("Fire") ?: throw IllegalStateException("Can't find \"Fire\" Crop Definition")
         )
 
         return ElementRuntimeState(
-            cropDef = definition,
             instance = instance,
             standEntities = null,
             blocksMap = fireBlockMap
