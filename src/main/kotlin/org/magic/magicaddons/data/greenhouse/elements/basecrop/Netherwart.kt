@@ -57,6 +57,7 @@ object Netherwart : CropDefinitionProvider {
 
         ),
         maxStage = 8,
+        decayTimeMs = -1,
         requiredSoil = setOf(Blocks.SOUL_SAND),
         needsWater = false,
         isBaseCrop = true

@@ -43,7 +43,7 @@ public class CustomHeadLayerMixin {
         if (state instanceof FakeEntityState fakeState
                 && fakeState.magicaddons$isFakeEntity()) {
 
-            int tintColor = 0x40FFFFFF;
+            int tintColor = fakeState.magicaddons$fakeEntityTintColor();
 
             submitSkullWithTint(
                     direction,

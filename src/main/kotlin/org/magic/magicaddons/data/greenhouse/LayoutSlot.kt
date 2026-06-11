@@ -2,7 +2,7 @@ package org.magic.magicaddons.data.greenhouse
 
 import net.minecraft.world.level.block.state.BlockState
 
-class GreenhouseSlot(
+class LayoutSlot(
     val x: Int,
     val y: Int,
     var placedBlock: BlockState?,

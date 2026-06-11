@@ -1,7 +1,5 @@
 package org.magic.magicaddons.data.greenhouse
 
-import net.minecraft.client.renderer.texture.TextureAtlasSprite
-import net.minecraft.resources.Identifier
 import org.magic.magicaddons.data.greenhouse.elements.DeadPlant
 import org.magic.magicaddons.data.greenhouse.elements.DevourerRoots
 import org.magic.magicaddons.data.greenhouse.elements.FireElement
@@ -19,6 +17,9 @@ object CropRegistry {
     private fun register(provider: CropDefinitionProvider) {
         all.add(provider.definition)
     }
+
+    fun get(idOrName: String): CropDefinition? = all.find { it.skyblockId?.id == idOrName || it.name == idOrName }
+
 
     init {
         loadCrops()

@@ -1,6 +1,7 @@
 package org.magic.magicaddons.data.greenhouse.elements.mutation.rare
 
 import net.minecraft.core.BlockPos
+import net.minecraft.core.Rotations
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.*
 import org.magic.magicaddons.data.greenhouse.CropStates.wheatState
@@ -93,30 +94,55 @@ object Snoozling : CropDefinitionProvider {
             ),
             CropStage(
                 blocks = CropBlockState.blockStatePattern(
-                    wheatPositions,
-                    blockState = wheatState(0)
+                    positions = wheatPositions,
+                    blockState = wheatState(5)
                 ),
-                armorStands =
-                    listOf(
-                        CropArmorStand(
-                            offset = Vec3(0.0, 0.0, 0.84375),
-                            hashString = "24c64afa58bef69ff567b012a2b1638cf475c5bdb050d382308399ffa0b06a8d"
-                        )
-                    ) +
-                            CropArmorStand.matcherPattern(
-                                listOf(
-                                    Vec3(0.0, -0.25, -0.625),
-                                    Vec3(0.0, 0.9375, -0.90625),
-                                    Vec3(0.0, 0.4375, 0.40625),
-                                    Vec3(0.0, -0.5625, 0.0),
-                                    Vec3(0.5, -0.65625, -0.375),
-                                    Vec3(-0.46875, -0.59375, -0.375)
-                                ),
-                                hashString = "b82d442528456547474dd88166a97818f057ecc4b3ed350ef9a5e4dbd27f98d7"
-                            ),
+                armorStands = CropArmorStand.matcherPattern(
+                    offsets = listOf(
+                        Vec3(0.0, -0.25, -0.625),
+                        Vec3(0.0, 0.9375, -0.90625),
+                        Vec3(0.0, 0.4375, 0.40625),
+                        Vec3(0.0, -0.5625, 0.0),
+                        Vec3(0.5, -0.65625, -0.375),
+                        Vec3(-0.46875, -0.59375, -0.375)
+                    ),
+                    rotations = listOf(
+                        Rotations(22.5f, 0.0f, 0.0f),
+                        Rotations(45.0f, 0.0f, 0.0f),
+                        Rotations(22.5f, 0.0f, 0.0f),
+                        Rotations(0.0f, 0.0f, 0.0f),
+                        Rotations(0.0f, 0.0f, 22.5f),
+                        Rotations(0.0f, 0.0f, -22.5f)
+                    ),
+                    xRotations = listOf(
+                        0.0f,
+                        0.0f,
+                        0.0f,
+                        0.0f,
+                        0.0f,
+                        0.0f
+                    ),
+                    yRotations = listOf(
+                        -180.0f,
+                        -180.0f,
+                        0.0f,
+                        -180.0f,
+                        0.0f,
+                        0.0f
+                    ),
+                    hashString = "b82d442528456547474dd88166a97818f057ecc4b3ed350ef9a5e4dbd27f98d7"
+                ) + listOf(CropArmorStand(
+                    offset = Vec3(-1.01171875, 4.701741536458329, -1.071044921875)
+                ),
+                    CropArmorStand(
+                        offset = Vec3(0.0, 0.0, 0.84375),
+                        hashString = "24c64afa58bef69ff567b012a2b1638cf475c5bdb050d382308399ffa0b06a8d"
+                    )
+                ),
                 20..20,
                 allowRotation = true
             )
+
 
         ),
         maxStage = 20,

@@ -88,27 +88,37 @@ object Cocoa : CropDefinitionProvider {
             CropStage(
                 blocks = listOf(
                     CropBlockState(
-                        offset = BlockPos(0,1,0),
+                        offset = BlockPos(0, 1, 0),
                         blockState = melonStemState(7)
                     )
                 ),
                 armorStands = CropArmorStand.matcherPattern(
-                        listOf(
-                            Vec3(0.0, 0.09375, 0.0),
-                            Vec3(-0.0625, 0.65625, -0.125)
-                        ),
-                        listOf(
-                            Rotations(0.0f, 22.5f, 22.5f),
-                            Rotations(0.0f, -22.5f, -22.5f)
-                        ),
-                        hashString = "44d72eed58354ce14bfc497138a13564070fb4653898aeb3e66c73082ae1f993"
+                    offsets = listOf(
+                        Vec3(0.0, 0.09375, 0.0),
+                        Vec3(0.0625, 0.65625, 0.125)
+                    ),
+                    rotations = listOf(
+                        Rotations(0.0f, 22.5f, 22.5f),
+                        Rotations(0.0f, -22.5f, -22.5f)
+                    ),
+                    xRotations = listOf(
+                        0.0f,
+                        0.0f
+                    ),
+                    yRotations = listOf(
+                        -90.0f,
+                        -90.0f
+                    ),
+                    hashString = "44d72eed58354ce14bfc497138a13564070fb4653898aeb3e66c73082ae1f993"
                 ),
                 6..6,
                 allowRotation = true
             )
 
+
         ),
         maxStage = 6,
+        decayTimeMs = -1,
         needsWater = false,
         isBaseCrop = true
 

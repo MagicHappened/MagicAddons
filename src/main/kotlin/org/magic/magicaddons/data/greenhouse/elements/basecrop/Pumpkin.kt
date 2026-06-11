@@ -179,6 +179,7 @@ object Pumpkin : CropDefinitionProvider {
 
         ),
         maxStage = 11,
+        decayTimeMs = -1,
         isBaseCrop = true
     )
 }

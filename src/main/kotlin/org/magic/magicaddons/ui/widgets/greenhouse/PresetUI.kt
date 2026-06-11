@@ -12,17 +12,14 @@ import org.magic.magicaddons.data.greenhouse.CropRegistry
 import org.magic.magicaddons.data.greenhouse.GreenhouseElementInstance
 import org.magic.magicaddons.data.greenhouse.GreenhouseGrid
 import org.magic.magicaddons.data.greenhouse.GreenhouseLayout
-import org.magic.magicaddons.data.greenhouse.GreenhouseSlot
+import org.magic.magicaddons.data.greenhouse.LayoutSlot
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData
 import org.magic.magicaddons.ui.HoverableContainer
 import org.magic.magicaddons.ui.OverlayContext
-import org.magic.magicaddons.ui.screens.GreenhouseScreen
 import org.magic.magicaddons.ui.widgets.config.ClickableButtonWidget
 import org.magic.magicaddons.util.ChatUtils
 
-class GreenhousePresetUI(
-    var x: Int,
-    var y: Int,
+class PresetUI(
     var width: Int,
     var height: Int,
     val overlayContext: OverlayContext,
@@ -31,38 +28,33 @@ class GreenhousePresetUI(
     val onRemovePreset: () -> Unit,
 ) : Renderable, GuiEventListener, HoverableContainer {
 
+    var x: Int = 0
+    var y: Int = 0
+
     override var hoveredElement: GuiEventListener? = null
 
     @JvmField
     var isFocused: Boolean = false
 
     private val importButton = ClickableButtonWidget(
-        0,
-        0,
         50,
         26,
         Component.literal("Import")
     )
 
     private val exportButton = ClickableButtonWidget(
-        0,
-        0,
         50,
         26,
         Component.literal("Export")
     )
 
     val applyToButton = ClickableButtonWidget(
-        0,
-        0,
         50,
         26,
         Component.literal("Apply")
     )
 
     val deleteButton = ClickableButtonWidget(
-        0,
-        0,
         50,
         26,
         Component.literal("Delete")
@@ -231,7 +223,7 @@ class GreenhousePresetUI(
                         return@forEach
                     }
 
-                    val marking = GreenhouseSlot.Marking.entries.getOrNull(markingOrdinal)
+                    val marking = LayoutSlot.Marking.entries.getOrNull(markingOrdinal)
 
                     if (marking == null) {
                         ChatUtils.sendWithPrefix("Unknown marking ordinal: $markingOrdinal")
@@ -250,7 +242,7 @@ class GreenhousePresetUI(
                     val cropWidth = cropDefinition.footprint.width
                     val cropHeight = cropDefinition.footprint.height
 
-                    var topLeftSlot: GreenhouseSlot? = null
+                    var topLeftSlot: LayoutSlot? = null
                     for (offsetX in 0 until cropWidth) {
                         for (offsetY in 0 until cropHeight) {
                             try {
@@ -272,7 +264,8 @@ class GreenhousePresetUI(
                             cropDefinition.skyblockId?.id ?: cropDefinition.name,
                             topLeftSlot ?: throw IllegalStateException("Top left slot was null for $cropName"),
                             null,
-                            null
+                            null,
+                            cropDef = cropDefinition
                         )
                     )
                 }

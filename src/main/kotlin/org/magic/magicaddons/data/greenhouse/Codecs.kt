@@ -86,7 +86,8 @@ object Codecs {
                     elementId = id,
                     slot = slot.orElse(null),
                     waterLevel = waterOpt.orElse(null),
-                    growthStage = growthOpt.orElse(null)
+                    growthStage = growthOpt.orElse(null),
+                    cropDef = CropRegistry.get(id) ?: throw IllegalStateException("Unable to find crop for id $id")
                 )
             }
         }
@@ -112,7 +113,7 @@ object Codecs {
         }
     }
 
-    val GREENHOUSE_SLOT_CODEC: Codec<GreenhouseSlot> by lazy {
+    val GREENHOUSE_SLOT_CODEC: Codec<LayoutSlot> by lazy {
         RecordCodecBuilder.create { instance ->
             instance.group(
                 Codec.INT.fieldOf("x").forGetter { it.x },
@@ -124,11 +125,11 @@ object Codecs {
                 Codec.INT.optionalFieldOf("slot_marking")
                     .forGetter { Optional.ofNullable(it.slotMark?.ordinal) }
             ).apply(instance) { x, y, block, marking ->
-                GreenhouseSlot(
+                LayoutSlot(
                     x,
                     y,
                     block.orElse(null),
-                    marking.orElse(null)?.let { GreenhouseSlot.Marking.entries[it] }
+                    marking.orElse(null)?.let { LayoutSlot.Marking.entries[it] }
                 )
             }
         }

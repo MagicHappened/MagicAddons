@@ -16,6 +16,25 @@ object Timestalk : CropDefinitionProvider {
                 blocks = listOf(
                     CropBlockState(
                         offset = BlockPos(0, 1, 0),
+                        blockState = melonStemState(6)
+                    ),
+                    CropBlockState(
+                        offset = BlockPos(0, 2, 0),
+                        blockState = melonStemState(7)
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                    offset = Vec3(0.0, -0.40625, 0.0),
+                    hashString = "d2306f4c5946990204517a73bbfa8281fd7d9a294f908b0286e708c51f79a063"
+                    )
+                ),
+                10..10
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0, 1, 0),
                         blockState = melonStemState(5)
                     ),
                     CropBlockState(

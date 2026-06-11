@@ -41,6 +41,7 @@ object Fleshtrap : CropDefinitionProvider {
 
         ),
         maxStage = 14,
+        decayTimeMs = -1,
         isMutation = true
     )
 }

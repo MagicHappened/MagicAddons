@@ -174,31 +174,38 @@ object ChorusFruit : CropDefinitionProvider {
             CropStage(
                 blocks = listOf(),
                 armorStands = CropArmorStand.matcherPattern(
-                    listOf(
+                    offsets = listOf(
                         Vec3(0.0, -0.46875, 0.0),
                         Vec3(0.0, 0.125, 0.0)
                     ),
-                    listOf(
-                        Rotations(0.0f, 0.0f, 0.0f),
-                        Rotations(0.0f, 0.0f, 0.0f)
-                    ),
+
                     hashString = "c5214cc92140cdf9b402b3e7ed1fa0bac7fb4b39e39b46d11b06301caf0f9c3d"
                 ) + CropArmorStand.matcherPattern(
-                    listOf(
-                        Vec3(-0.1875, 0.53125, -0.21875),
-                        Vec3(0.09375, 0.25, 0.21875),
+                    offsets = listOf(
+                        Vec3(0.1875, 0.53125, 0.21875),
+                        Vec3(-0.09375, 0.25, -0.21875),
                         Vec3(0.0, 0.6875, 0.0)
                     ),
-                    listOf(
+                    rotations = listOf(
                         Rotations(45.0f, 0.0f, 45.0f),
                         Rotations(-45.0f, 0.0f, -45.0f),
                         Rotations(0.0f, 0.0f, 0.0f)
                     ),
+                    xRotations = listOf(
+                        0.0f,
+                        0.0f,
+                        0.0f
+                    ),
+                    yRotations = listOf(
+                        0.0f,
+                        0.0f,
+                        0.0f
+                    ),
                     hashString = "e044238503102f64f30f4d58f0843b215d8dd54fc9f1f70cc17d8dd891bb3e5e"
                 ),
-                12..12,
-                allowRotation = true
+                12..12
             )
+
 
 
         ),

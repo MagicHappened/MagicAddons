@@ -35,6 +35,7 @@ object Ashwreath : CropDefinitionProvider {
             )
 
         ),
+        decayTimeMs = 259200000,
         requiredSoil = setOf(Blocks.SOUL_SAND),
         needsWater = false,
         isMutation = true

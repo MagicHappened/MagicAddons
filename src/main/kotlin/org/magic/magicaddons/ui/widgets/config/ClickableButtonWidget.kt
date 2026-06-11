@@ -9,26 +9,44 @@ import net.minecraft.network.chat.Component
 import net.minecraft.resources.Identifier
 
 class ClickableButtonWidget(
-    var x: Int,
-    var y: Int,
     var width: Int,
     var height: Int,
     val renderContent: ClickableButtonWidget.(GuiGraphics) -> Unit,
     val shouldRenderButton: Boolean = true
 ) : GuiEventListener {
-    @JvmField
-    var isFocused = false
+    var x: Int = 0
+    var y: Int = 0
 
-    var message: Component? = null
     constructor(
         x: Int,
         y: Int,
         width: Int,
         height: Int,
-        message: Component
+        renderContent: ClickableButtonWidget.(GuiGraphics) -> Unit,
+        shouldRenderButton: Boolean = true
+    ) : this(width, height, renderContent, shouldRenderButton){
+        this.x = x
+        this.y = y
+    }
+
+    constructor(
+        x: Int,
+        y: Int,
+        width: Int,
+        height: Int,
+        message: Component,
+        shouldRenderButton: Boolean = true
+    ) : this(width, height, message, shouldRenderButton){
+        this.x = x
+        this.y = y
+    }
+
+    constructor(
+        width: Int,
+        height: Int,
+        message: Component,
+        shouldRenderButton: Boolean = true
     ) : this(
-        x,
-        y,
         width,
         height,
         { graphics ->
@@ -48,6 +66,12 @@ class ClickableButtonWidget(
     ){
         this.message = message
     }
+
+    @JvmField
+    var isFocused = false
+
+    var message: Component? = null
+
 
     val BUTTON = Identifier.fromNamespaceAndPath("minecraft", "widget/button")
     val BUTTON_HOVERED = Identifier.fromNamespaceAndPath("minecraft", "widget/button_highlighted")

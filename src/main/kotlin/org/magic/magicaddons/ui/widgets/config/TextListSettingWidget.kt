@@ -51,8 +51,6 @@ class TextListSettingWidget(
     )
 
     private val submitButton = ClickableButtonWidget(
-        x = x,
-        y = y,
         width = 18,
         height = 20,
         { graphics ->

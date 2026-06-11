@@ -10,13 +10,12 @@ import net.minecraft.client.renderer.texture.TextureAtlasSprite
 import net.minecraft.core.Direction
 import net.minecraft.world.level.block.Blocks
 import org.magic.magicaddons.Common
-import org.magic.magicaddons.data.greenhouse.GreenhouseSlot
+import org.magic.magicaddons.data.greenhouse.LayoutSlot
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.ScreenUtil
-import org.magic.magicaddons.util.ScreenUtil.drawBorder
 
-class GreenhouseSlotWidget(
-    val slot: GreenhouseSlot
+class SlotWidget(
+    val slot: LayoutSlot
 ) : Renderable, GuiEventListener {
 
     var sprite: TextureAtlasSprite? = null

@@ -32,6 +32,7 @@ object Dustgrain : CropDefinitionProvider {
             )
 
         ),
+        decayTimeMs = 259200000,
         needsWater = false,
         isMutation = true
     )

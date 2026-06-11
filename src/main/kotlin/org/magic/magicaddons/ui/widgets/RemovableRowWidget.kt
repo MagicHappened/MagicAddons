@@ -21,8 +21,6 @@ open class RemovableRowWidget<T>(
     private val removeWidth = 20
 
     private val removeButton = ClickableButtonWidget(
-        x = 0,
-        y = 0,
         width = removeWidth,
         height = 20,
         { graphics ->

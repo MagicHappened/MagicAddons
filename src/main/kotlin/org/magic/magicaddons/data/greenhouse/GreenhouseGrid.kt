@@ -8,7 +8,6 @@ import net.minecraft.world.entity.decoration.ArmorStand
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
-import org.magic.magicaddons.data.greenhouse.elements.mutation.rare.Fleshtrap
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData.elementsBySoil
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData.getBuildableArea
 import org.magic.magicaddons.util.ChatUtils
@@ -37,7 +36,7 @@ class GreenhouseGrid(
         return state.hasRuntimeReferences
     }
 
-    fun getPosForSlot(slot: GreenhouseSlot): BlockPos? {
+    fun getPosForSlot(slot: LayoutSlot): BlockPos? {
         val box = plot?.getBuildableArea() ?: return null
 
         val minX = box.minX.toInt()
@@ -50,7 +49,7 @@ class GreenhouseGrid(
     }
 
 
-    fun getSlotAt(blockPos: BlockPos, matchY: Boolean = true): GreenhouseSlot? {
+    fun getSlotAt(blockPos: BlockPos, matchY: Boolean = true): LayoutSlot? {
         val buildArea = plot?.getBuildableArea() ?: return null
 
         if (!buildArea.contains(Vec3.atCenterOf(blockPos))) return null
@@ -88,7 +87,7 @@ class GreenhouseGrid(
         }
     }
 
-    fun createSlotData(): List<GreenhouseSlot>? {
+    fun createSlotData(): List<LayoutSlot>? {
         val world = Minecraft.getInstance().level ?: return null
         val plot = PlotAPI.getCurrentPlot() ?: return null
         if (plot != this.plot) return null
@@ -110,7 +109,7 @@ class GreenhouseGrid(
                 BlockPos(worldX, 73, worldZ)
             )
 
-            GreenhouseSlot(
+            LayoutSlot(
                 gridX,
                 gridY,
                 state
@@ -145,7 +144,7 @@ class GreenhouseGrid(
                 // catching of hunger and bonus data.
                 // fuck i forgot it needs to be saved to disk fucking fleshtrap grr
 
-                val def = runtime.cropDef
+                val def = runtime.instance.cropDef
 
                 remainingStands.removeAll((runtime.standEntities ?: emptyList()).toSet())
 
@@ -249,15 +248,14 @@ class GreenhouseGrid(
 
                 val instance = GreenhouseElementInstance(
                     bestDef.skyblockId?.id ?: bestDef.name,
-                    slot = GreenhouseSlot(
+                    slot = LayoutSlot(
                         0, 0, state
                     ),
-                    growthStage = bestGrowth
-
+                    growthStage = bestGrowth,
+                    cropDef = bestDef
                 )
 
                 val runtime = ElementRuntimeState(
-                    cropDef = bestDef,
                     instance = instance,
                     standEntities = elementStands,
                     blocksMap = bestBlocks
@@ -271,7 +269,7 @@ class GreenhouseGrid(
     }
 
     fun findElementAtSlot(
-        slot: GreenhouseSlot,
+        slot: LayoutSlot,
         remainingStands: MutableList<ArmorStand>
     ): ElementRuntimeState? {
 
@@ -348,12 +346,12 @@ class GreenhouseGrid(
             val instance = GreenhouseElementInstance(
                 bestDef.skyblockId?.id ?: bestDef.name,
                 slot = slot,
-                growthStage = bestGrowth
+                growthStage = bestGrowth,
+                cropDef = bestDef
 
             )
 
             val runtime = ElementRuntimeState(
-                cropDef = bestDef,
                 instance = instance,
                 standEntities = elementStands,
                 blocksMap = bestBlocks

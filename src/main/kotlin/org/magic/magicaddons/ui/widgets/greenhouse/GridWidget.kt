@@ -13,13 +13,13 @@ import org.magic.magicaddons.data.greenhouse.GreenhouseLayout
 import org.magic.magicaddons.ui.HoverableContainer
 import org.magic.magicaddons.util.ScreenUtil.drawLine
 
-class GreenhouseGridWidget(
+class GridWidget(
     val layout: GreenhouseLayout,
     val slotSize: Int
 ) : Renderable, GuiEventListener, NarratableEntry, HoverableContainer {
 
-    private val slotWidgets = mutableListOf<GreenhouseSlotWidget>()
-    private val elementWidgets = mutableListOf<GreenhouseElementWidget>()
+    private val slotWidgets = mutableListOf<SlotWidget>()
+    private val elementWidgets = mutableListOf<ElementWidget>()
 
     var widgetX: Int = 0
     var widgetY: Int = 0
@@ -41,7 +41,7 @@ class GreenhouseGridWidget(
 
                 val slot = layout.getSlot(x, y) ?: continue
 
-                val widget = GreenhouseSlotWidget(slot)
+                val widget = SlotWidget(slot)
 
                 widget.widgetWidth = slotSize
                 widget.widgetHeight = slotSize
@@ -56,8 +56,7 @@ class GreenhouseGridWidget(
         }
 
         layout.elementInstances.forEach { instance ->
-            val def = CropRegistry.all.find { instance.elementId == (it.skyblockId?.id ?: it.name) } ?: return@forEach
-            val widget = GreenhouseElementWidget(instance,def)
+            val widget = ElementWidget(instance)
 
             widget.padding = slotSize / 10
 
@@ -68,14 +67,14 @@ class GreenhouseGridWidget(
             widget.widgetY = widgetY + originY * slotSize + originY
             //hopefully work?
 
-            val bordersSize = (def.footprint.width - 1) * 1
-            val widgetWidth = slotSize * def.footprint.width + bordersSize
-            val widgetHeight = slotSize * def.footprint.height + bordersSize
+            val bordersSize = (instance.cropDef.footprint.width - 1) * 1
+            val widgetWidth = slotSize * instance.cropDef.footprint.width + bordersSize
+            val widgetHeight = slotSize * instance.cropDef.footprint.height + bordersSize
 
             widget.width = widgetWidth
             widget.height = widgetHeight
             widget.init()
-            widget.renderedStack = def.skyblockId?.toItem() ?: ItemStack(Items.BARRIER)
+            widget.renderedStack = instance.cropDef.skyblockId?.toItem() ?: ItemStack(Items.BARRIER)
             elementWidgets.add(widget)
         }
 

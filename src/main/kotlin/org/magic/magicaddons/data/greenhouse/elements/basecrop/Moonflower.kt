@@ -151,22 +151,9 @@ object Moonflower : CropDefinitionProvider {
                 15..15,
                 allowRotation = true
             )
-
-
-
-
-
-
-
-
-
-
-
-
-
-
         ),
         maxStage = 15,
+        decayTimeMs = -1,
         isBaseCrop = true
 
 

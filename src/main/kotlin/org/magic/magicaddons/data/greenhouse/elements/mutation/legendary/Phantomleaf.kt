@@ -1,10 +1,12 @@
 package org.magic.magicaddons.data.greenhouse.elements.mutation.legendary
 
 import net.minecraft.core.BlockPos
+import net.minecraft.core.Rotations
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.*
 import org.magic.magicaddons.data.greenhouse.CropStates.melonStemState
+import org.magic.magicaddons.data.greenhouse.CropStates.wheatState
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
 object Phantomleaf : CropDefinitionProvider {
@@ -31,6 +33,23 @@ object Phantomleaf : CropDefinitionProvider {
                     )
                 ),
                 5..5 //todo check for rotation
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = wheatState(3)
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                    offset = Vec3(-0.125, -0.375, 0.0),
+                    headRotation = Rotations(20.0f, 0.0f, 0.0f),
+                    xRotation = 0.0f,
+                    yRotation = -90.0f,
+                    hashString = "92fb1e0e18cadb45a4d96721a9ee9c1d2c36d99826b3c23c19ee18801f721dd3")
+                ),
+                10..10
             )
 
         ),

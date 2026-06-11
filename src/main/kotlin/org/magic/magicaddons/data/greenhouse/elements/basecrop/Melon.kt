@@ -188,13 +188,9 @@ object Melon : CropDefinitionProvider {
                 11..11,
                 allowRotation = true
             )
-
-
-
-
-
         ),
         maxStage = 11,
+        decayTimeMs = -1,
         isBaseCrop = true
 
     )

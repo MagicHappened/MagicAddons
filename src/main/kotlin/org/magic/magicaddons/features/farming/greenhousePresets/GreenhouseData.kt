@@ -463,7 +463,7 @@ object GreenhouseData {
 
                 if (event.packet.blockState.block == Blocks.FIRE) {
                     val alreadyHasFire = grid.elements.any {
-                        it.instance.slot == slot && it.cropDef.name == "Fire"
+                        it.instance.slot == slot && it.instance.cropDef.name == "Fire"
                     }
                     if (!alreadyHasFire) {
                         val fireRuntime = FireElement.getFireAtSlot(
@@ -516,7 +516,7 @@ object GreenhouseData {
         if (!grid.hasRuntime()) return
         val mainHandId = event.player.mainHandItem.getSkyBlockId() ?: return
 
-        val foundCrop = CropRegistry.all.firstOrNull { it.matchesId(mainHandId) }
+        val foundCrop = CropRegistry.get(mainHandId.id)
 
         if (mainHandId.id == "item:plant_diagnostics_tool") {
             setDiagnosesListeningElement(event.hit.blockPos, null, grid)
@@ -577,7 +577,7 @@ object GreenhouseData {
         val slot = grid.getSlotAt(placedCrop!!.second, false) ?: return
         val runtime = grid.findElementAtSlot(slot, availableStands)
         runtime ?: return
-        if (runtime.cropDef.needsWater) {
+        if (runtime.instance.cropDef.needsWater) {
             runtime.instance.waterLevel = 0
         }
         grid.addElement(runtime, System.currentTimeMillis())
@@ -625,14 +625,10 @@ object GreenhouseData {
 
         if (useNameFallback) {
             if (identifyStack.getLore().any { it.string.contains("Base Crop") }) {
-                def = CropRegistry.all.find {
-                    it.name == (identifyStack.customName?.string ?: identifyStack.itemName.string)
-                }
+                def = CropRegistry.get(identifyStack.customName?.string ?: identifyStack.itemName.string)
             }
         } else {
-            def = CropRegistry.all.find {
-                it.skyblockId == stackId
-            }
+            def = CropRegistry.get(stackId.id)
         }
 
         val beaconStack = realItems.firstOrNull { it.item == Items.BEACON }
@@ -820,14 +816,8 @@ object GreenhouseData {
 
         greenhouseGrids.forEach { grid ->
             grid.layout.elementInstances.forEach { instance ->
-
-                val cropDef = CropRegistry.all.find { def ->
-                    (def.skyblockId?.id ?: def.name) == instance.elementId
-                } ?: return@forEach
-
-                if (!cropDef.isBaseCrop) return@forEach
-
-                foundUniques.add(UniqueCropKey.from(cropDef))
+                if (!instance.cropDef.isBaseCrop) return@forEach
+                foundUniques.add(UniqueCropKey.from(instance.cropDef))
             }
         }
 
