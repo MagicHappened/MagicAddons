@@ -1,7 +1,7 @@
 package org.magic.magicaddons.ui.widgets.config
 
 import net.minecraft.client.Minecraft
-import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.components.Renderable
 import net.minecraft.client.gui.components.events.GuiEventListener
 import net.minecraft.client.gui.narration.NarratableEntry
@@ -11,7 +11,6 @@ import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
 import org.magic.magicaddons.data.config.SettingNode
 import org.magic.magicaddons.ui.screens.FeatureEditScreen
-import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.ScreenUtil.drawSimpleTooltip
 
 abstract class SettingWidget<T>(
@@ -79,16 +78,16 @@ abstract class SettingWidget<T>(
         return currentY + child.getTotalHeight() + childPadding
     }
 
-    abstract override fun render(graphics: GuiGraphics, mouseX: Int, mouseY: Int, delta: Float)
+    abstract override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float)
 
-    protected fun renderChildren(graphics: GuiGraphics, mouseX: Int, mouseY: Int, delta: Float) {
+    protected fun extractChildrenRenderStates(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
         if (!childrenExpanded) return
         childrenWidgets.forEach {
-            it.render(graphics, mouseX, mouseY, delta)
+            it.extractRenderState(graphics, mouseX, mouseY, delta)
         }
     }
 
-     fun renderTooltip(graphics: GuiGraphics, mouseX: Int, mouseY: Int) {
+     fun renderTooltip(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int) {
         if (hovered && node.tooltip.isNotBlank()) {
             graphics.drawSimpleTooltip(node.tooltip, mouseX + 8, mouseY + 8)
         }

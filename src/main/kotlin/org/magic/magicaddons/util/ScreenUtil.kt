@@ -2,14 +2,14 @@ package org.magic.magicaddons.util
 
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.minecraft.client.Minecraft
-import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.render.TextureSetup
-import net.minecraft.client.gui.render.state.ColoredRectangleRenderState
-import net.minecraft.client.gui.render.state.GuiTextRenderState
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.gui.screens.inventory.tooltip.ClientTooltipComponent
 import net.minecraft.client.gui.screens.inventory.tooltip.DefaultTooltipPositioner
 import net.minecraft.client.renderer.RenderPipelines
+import net.minecraft.client.renderer.state.gui.ColoredRectangleRenderState
+import net.minecraft.client.renderer.state.gui.GuiTextRenderState
 import net.minecraft.network.chat.Component
 import org.joml.Matrix3x2f
 
@@ -65,7 +65,7 @@ object ScreenUtil {
         }
     }
 
-    fun GuiGraphics.drawBorder(x1: Int, y1: Int, x2: Int, y2: Int, thickness: Int, color: Int) {
+    fun GuiGraphicsExtractor.drawBorder(x1: Int, y1: Int, x2: Int, y2: Int, thickness: Int, color: Int) {
         drawBorder(
             x1.toFloat(),
             y1.toFloat(),
@@ -77,7 +77,7 @@ object ScreenUtil {
     }
 
 
-    fun GuiGraphics.drawBorder(
+    fun GuiGraphicsExtractor.drawBorder(
         x1: Float, y1: Float,
         x2: Float, y2: Float,
         thickness: Float,
@@ -96,7 +96,7 @@ object ScreenUtil {
         drawLine(x2, y1, x2, y2, thickness, color)
     }
 
-    fun GuiGraphics.drawSquareBorder(
+    fun GuiGraphicsExtractor.drawSquareBorder(
         x: Float,
         y: Float,
         size: Float,
@@ -113,7 +113,7 @@ object ScreenUtil {
         )
     }
 
-    fun GuiGraphics.drawLine(
+    fun GuiGraphicsExtractor.drawLine(
         x1: Int,
         y1: Int,
         x2: Int,
@@ -131,7 +131,7 @@ object ScreenUtil {
         )
     }
 
-    fun GuiGraphics.drawLine(
+    fun GuiGraphicsExtractor.drawLine(
         x1: Float,
         y1: Float,
         x2: Float,
@@ -151,7 +151,7 @@ object ScreenUtil {
 
         val half = thickness / 2f
 
-        this.guiRenderState.submitGuiElement(
+        this.guiRenderState.addGuiElement(
             ColoredRectangleRenderState(
                 RenderPipelines.GUI,
                 TextureSetup.noTexture(),
@@ -167,7 +167,7 @@ object ScreenUtil {
         )
     }
 
-    fun GuiGraphics.drawSimpleTooltip(text: String, mouseX: Int, mouseY: Int) {
+    fun GuiGraphicsExtractor.drawSimpleTooltip(text: String, mouseX: Int, mouseY: Int) {
         val client = Minecraft.getInstance()
         val lines = listOf(
             ClientTooltipComponent.create(
@@ -175,7 +175,7 @@ object ScreenUtil {
             )
         )
 
-        this.renderTooltip(
+        this.tooltip(
             client.font,
             lines,
             mouseX,
@@ -185,7 +185,7 @@ object ScreenUtil {
         )
     }
 
-    fun GuiGraphics.drawMultilineBoxCentered(
+    fun GuiGraphicsExtractor.drawMultilineBoxCentered(
         text: String,
         centerX: Int,
         centerY: Int
@@ -199,7 +199,7 @@ object ScreenUtil {
     }
 
 
-    fun GuiGraphics.drawMultilineBox(
+    fun GuiGraphicsExtractor.drawMultilineBox(
         text: String,
         x: Int,
         y: Int,
@@ -212,7 +212,7 @@ object ScreenUtil {
     }
 
 
-    fun GuiGraphics.drawMultilineBox(
+    fun GuiGraphicsExtractor.drawMultilineBox(
         text: String,
         x: Float,
         y: Float
@@ -238,7 +238,7 @@ object ScreenUtil {
             val seq = Component.literal(line).visualOrderText
             val centeredX = x + (layout.boxWidth - font.width(line)) / 2f
 
-            guiRenderState.submitText(
+            guiRenderState.addText(
                 GuiTextRenderState(
                     font,
                     seq,

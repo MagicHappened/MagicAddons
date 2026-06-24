@@ -6,7 +6,7 @@ import net.minecraft.network.chat.Component
 
 object ChatUtils {
     fun sendWithPrefix(message: String) {
-        Minecraft.getInstance().player?.displayClientMessage(Component.literal("[MagicAddons] $message"), false) ?: return
+        Minecraft.getInstance().player?.sendSystemMessage(Component.literal("[MagicAddons] $message")) ?: return
     }
     fun buildWithPrefix(message: String?): Component {
         message?.takeIf { it.isNotBlank() }?.let {
@@ -16,7 +16,7 @@ object ChatUtils {
     }
     fun sendWithPrefix(message: Component) {
         val prefixed = buildWithPrefix(message)
-        Minecraft.getInstance().player?.displayClientMessage(prefixed, false)
+        Minecraft.getInstance().player?.sendSystemMessage(prefixed)
     }
     fun buildWithPrefix(message: Component?): Component {
         val prefix = Component.literal("[MagicAddons] ")

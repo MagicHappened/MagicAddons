@@ -1,6 +1,6 @@
 package org.magic.magicaddons.commands
 
-import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager.literal
+import net.fabricmc.fabric.api.client.command.v2.ClientCommands.literal
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback
 import net.minecraft.network.chat.Component
 import org.magic.magicaddons.Common

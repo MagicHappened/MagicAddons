@@ -1,7 +1,7 @@
 package org.magic.magicaddons.ui.widgets.config
 
 import net.minecraft.client.Minecraft
-import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.network.chat.Component
 import org.magic.magicaddons.data.config.EnumSetting
@@ -63,7 +63,7 @@ class EnumSettingWidget<T : Enum<T>>(
         }
     }
 
-    override fun render(graphics: GuiGraphics, mouseX: Int, mouseY: Int, delta: Float) {
+    override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
         val font = Minecraft.getInstance().font
         val halfHeight = height / 2
 
@@ -82,7 +82,7 @@ class EnumSettingWidget<T : Enum<T>>(
             borderColor
         )
 
-        graphics.drawString(
+        graphics.text(
             font,
             Component.literal("${setting.displayName}:"),
             x + textXPad,
@@ -91,7 +91,7 @@ class EnumSettingWidget<T : Enum<T>>(
             false
         )
 
-        graphics.drawString(
+        graphics.text(
             font,
             Component.literal(setting.value.toString()),
             x + textXPad,
@@ -100,7 +100,7 @@ class EnumSettingWidget<T : Enum<T>>(
             false
         )
 
-        graphics.drawString(
+        graphics.text(
             font,
             Component.literal("↓"),
             x + width - font.width("↓") - 4,
@@ -109,10 +109,10 @@ class EnumSettingWidget<T : Enum<T>>(
             false
         )
 
-        renderChildren(graphics, mouseX, mouseY, delta)
+        extractChildrenRenderStates(graphics, mouseX, mouseY, delta)
 
         if (selectionMenuExpanded) {
-            selectionOptions.forEach { it.render(graphics, mouseX, mouseY) }
+            selectionOptions.forEach { it.extractRenderState(graphics, mouseX, mouseY) }
         }
     }
 

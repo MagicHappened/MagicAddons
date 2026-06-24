@@ -1,7 +1,7 @@
 package org.magic.magicaddons.ui.widgets.config
 
 import net.minecraft.client.Minecraft
-import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.components.Renderable
 import net.minecraft.client.gui.components.events.GuiEventListener
 import net.minecraft.client.gui.narration.NarratableEntry
@@ -58,10 +58,10 @@ class ConfigCategoryWidget(
         height = currentY - y
     }
 
-    override fun render(graphics: GuiGraphics, mouseX: Int, mouseY: Int, delta: Float) {
+    override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
 
         val font = Minecraft.getInstance().font
-        graphics.drawString(
+        graphics.text(
             font,
             categoryName,
             x + (width - font.width(categoryName)) / 2,
@@ -71,7 +71,7 @@ class ConfigCategoryWidget(
         )
 
         categoryFeatureWidgets.forEach {
-            it.render(graphics, mouseX, mouseY, delta)
+            it.extractRenderState(graphics, mouseX, mouseY, delta)
         }
     }
 

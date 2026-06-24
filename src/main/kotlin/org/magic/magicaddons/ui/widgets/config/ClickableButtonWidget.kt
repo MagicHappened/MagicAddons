@@ -1,6 +1,6 @@
 package org.magic.magicaddons.ui.widgets.config
 
-import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.client.renderer.RenderPipelines
 import net.minecraft.resources.Identifier
@@ -10,7 +10,7 @@ class ClickableButtonWidget(
     var y: Int,
     var width: Int,
     var height: Int,
-    val renderContent: ClickableButtonWidget.(GuiGraphics) -> Unit
+    val renderContent: ClickableButtonWidget.(GuiGraphicsExtractor) -> Unit
 ) {
 
     val BUTTON = Identifier.fromNamespaceAndPath("minecraft", "widget/button")
@@ -18,7 +18,7 @@ class ClickableButtonWidget(
 
     var hovered = false
 
-    fun render(graphics: GuiGraphics, mouseX: Int, mouseY: Int, delta: Float) {
+    fun render(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
 
         val sprite = if (hovered)
             BUTTON_HOVERED
