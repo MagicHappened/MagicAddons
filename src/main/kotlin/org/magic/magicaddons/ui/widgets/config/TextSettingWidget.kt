@@ -1,7 +1,7 @@
 package org.magic.magicaddons.ui.widgets.config
 
 import net.minecraft.client.Minecraft
-import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.components.EditBox
 import net.minecraft.client.input.CharacterEvent
 import net.minecraft.client.input.KeyEvent
@@ -94,15 +94,15 @@ class TextSettingWidget(
     }
 
 
-    override fun render(graphics: GuiGraphics, mouseX: Int, mouseY: Int, delta: Float) {
+    override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
         graphics.fill(x, y, x + width, y + height, backgroundColor)
 
 
         graphics.drawBorder(x, y, x + width, y + height, borderSize, borderColor)
 
-        textWidget.render(graphics, mouseX, mouseY, delta)
+        textWidget.extractRenderState(graphics, mouseX, mouseY, delta)
 
-        graphics.drawString(
+        graphics.text(
             Minecraft.getInstance().font,
             Component.literal("${setting.displayName}: "),
             x + textXPad + borderSize,
@@ -113,7 +113,7 @@ class TextSettingWidget(
 
         if (shouldRenderHistory) {
             historyWidgets.forEach {
-                it.render(graphics, mouseX, mouseY)
+                it.extractRenderState(graphics, mouseX, mouseY)
             }
         }
     }

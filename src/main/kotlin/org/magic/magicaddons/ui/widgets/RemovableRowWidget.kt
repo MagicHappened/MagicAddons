@@ -1,6 +1,6 @@
 package org.magic.magicaddons.ui.widgets
 
-import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.resources.Identifier
 import org.magic.magicaddons.ui.widgets.config.ClickableButtonWidget
@@ -59,8 +59,8 @@ open class RemovableRowWidget<T>(
         return super.getRightReservedWidth() + removeWidth
     }
 
-    override fun render(graphics: GuiGraphics, mouseX: Int, mouseY: Int) {
-        super.render(graphics, mouseX, mouseY)
+    override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int) {
+        super.extractRenderState(graphics, mouseX, mouseY)
 
         if (onRemove != null) {
             removeButton.x = x + width - removeWidth

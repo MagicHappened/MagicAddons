@@ -1,6 +1,6 @@
 package org.magic.magicaddons.ui.widgets.config
 
-import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.resources.Identifier
 import org.magic.magicaddons.ui.widgets.CheckboxWidget
@@ -26,16 +26,16 @@ open class ToggleRowWidget<T>(
         return height + padding
     }
     override fun getSprite(): Identifier {
-        return if (isFocused) BUTTON_HOVERED else super.getSprite()
+        return if (hovered) BUTTON_HOVERED else super.getSprite()
     }
 
-    override fun render(graphics: GuiGraphics, mouseX: Int, mouseY: Int) {
+    override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int) {
 
         checkbox.size = height - padding
         checkbox.x = x + padding
         checkbox.y = y + padding
 
-        super.render(graphics, mouseX, mouseY)
+        super.extractRenderState(graphics, mouseX, mouseY)
         checkbox.render(graphics)
     }
 

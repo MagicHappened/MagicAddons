@@ -7,8 +7,6 @@ import net.minecraft.network.chat.Component
 import org.magic.magicaddons.ui.screens.ConfigScreen
 
 class MagicAddonsModMenuCompat : ModMenuApi {
-
-
     override fun getModConfigScreenFactory(): ConfigScreenFactory<Screen> {
         return ConfigScreenFactory { parent: Screen ->
             ConfigScreen(Component.literal("Magic Addons Config"), parent)

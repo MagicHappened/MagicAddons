@@ -2,14 +2,14 @@ package org.magic.magicaddons.ui.screens
 
 
 import net.minecraft.client.Minecraft
-import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.network.chat.Component
 import org.magic.magicaddons.config.MagicAddonsConfigJsonHandler
+import org.magic.magicaddons.ui.widgets.config.ConfigCategoryWidget
 import org.magic.magicaddons.features.Feature
 import org.magic.magicaddons.features.FeatureManager
-import org.magic.magicaddons.ui.widgets.config.ConfigCategoryWidget
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.ScreenUtil.drawMultilineBoxCentered
 
@@ -58,18 +58,18 @@ class ConfigScreen(title: Component, val parent: Screen?) : Screen(title) {
         }
     }
 
-    override fun render(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, delta: Float) {
-        super.render(guiGraphics, mouseX, mouseY, delta)
+    override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, deltaTick: Float) {
+        super.extractRenderState(graphics, mouseX, mouseY, deltaTick)
 
-        guiGraphics.drawMultilineBoxCentered(helpText, width/2, 35)
+        graphics.drawMultilineBoxCentered(helpText, width/2, 35)
     }
 
-    override fun renderBackground(guiGraphics: GuiGraphics, i: Int, j: Int, f: Float) {
+    override fun extractBackground(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, deltaTick: Float) {
         if (this.minecraft.level == null) {
-            this.renderPanorama(guiGraphics, f)
+            this.extractBackground(graphics, mouseX, mouseY, deltaTick)
         }
-        this.renderMenuBackground(guiGraphics)
-        this.minecraft.gui.renderDeferredSubtitles()
+        this.extractMenuBackground(graphics)
+        this.minecraft.gui.extractDeferredSubtitles()
     }
 
     override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {

@@ -1,7 +1,7 @@
 package org.magic.magicaddons.ui.widgets.config
 
 import net.minecraft.client.Minecraft
-import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.network.chat.Component
 import org.magic.magicaddons.data.config.BooleanSetting
@@ -27,7 +27,7 @@ class BooleanSettingWidget(
         checkbox.checked = setting.value
     }
 
-    override fun render(graphics: GuiGraphics, mouseX: Int, mouseY: Int, delta: Float) {
+    override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
         val font = Minecraft.getInstance().font
 
         graphics.fill(x, y, x + width, y + height, backgroundColor)
@@ -37,7 +37,7 @@ class BooleanSettingWidget(
 
         graphics.drawBorder(x, y, x + width, y + height, borderSize, borderColor)
 
-        graphics.drawString(
+        graphics.text(
             font,
             Component.literal(setting.displayName),
             x + checkbox.size + textXPad,
@@ -46,7 +46,7 @@ class BooleanSettingWidget(
             false
         )
 
-        renderChildren(graphics, mouseX, mouseY, delta)
+        extractChildrenRenderStates(graphics, mouseX, mouseY, delta)
     }
 
     override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {

@@ -12,8 +12,6 @@ import org.magic.magicaddons.util.ServerUtils
 
 class MagicAddons : ClientModInitializer {
 
-
-
     override fun onInitializeClient() {
 
         EntityUtils
@@ -26,8 +24,6 @@ class MagicAddons : ClientModInitializer {
         if (!MagicAddonsConfigJsonHandler.load()){
             MagicAddonsConfigJsonHandler.save()
         }
-
-
 
     }
 }
