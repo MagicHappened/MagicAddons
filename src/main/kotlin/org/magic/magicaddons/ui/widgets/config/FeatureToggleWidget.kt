@@ -1,7 +1,7 @@
 package org.magic.magicaddons.ui.widgets.config
 
 import net.minecraft.client.Minecraft
-import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.components.Renderable
 import net.minecraft.client.gui.components.events.GuiEventListener
 import net.minecraft.client.input.MouseButtonEvent
@@ -38,7 +38,7 @@ class FeatureToggleWidget(
 
     }
 
-    override fun render(guiGraphics: GuiGraphics, mouseY: Int, j: Int, delta: Float) {
+    override fun extractRenderState(guiGraphics: GuiGraphicsExtractor, mouseY: Int, j: Int, delta: Float) {
         checkbox.render(guiGraphics)
 
         guiGraphics.drawBorder(x, y, x + width, y + height, borderSize, borderColor)
@@ -46,7 +46,7 @@ class FeatureToggleWidget(
         val font = Minecraft.getInstance().font
         val textY = y + (height - font.lineHeight) / 2
 
-        guiGraphics.drawString(
+        guiGraphics.text(
             font,
             feature.displayName,
             x + checkbox.size + textXPad,

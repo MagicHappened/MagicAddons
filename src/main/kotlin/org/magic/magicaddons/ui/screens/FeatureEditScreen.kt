@@ -1,7 +1,7 @@
 package org.magic.magicaddons.ui.screens
 
 import net.minecraft.client.Minecraft
-import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.input.CharacterEvent
 import net.minecraft.client.input.KeyEvent
@@ -65,24 +65,24 @@ class FeatureEditScreen(
         }
     }
 
-    override fun render(guiGraphics: GuiGraphics, mouseX: Int, mouseY: Int, delta: Float) {
-        super.render(guiGraphics, mouseX, mouseY, delta)
+    override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, a: Float) {
+        super.extractRenderState(graphics, mouseX, mouseY, a)
 
-        guiGraphics.drawMultilineBoxCentered(
+        graphics.drawMultilineBoxCentered(
             screenDisplayTitle,
             width / 2,
             20
         )
 
-        hoveredWidget?.renderTooltip(guiGraphics, mouseX, mouseY)
+        hoveredWidget?.renderTooltip(graphics, mouseX, mouseY)
     }
 
-    override fun renderBackground(guiGraphics: GuiGraphics, i: Int, j: Int, f: Float) {
+    override fun extractBackground(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, deltaTick: Float) {
         if (this.minecraft.level == null) {
-            this.renderPanorama(guiGraphics, f)
+            this.extractPanorama(graphics, deltaTick)
         }
-        this.renderMenuBackground(guiGraphics)
-        this.minecraft.gui.renderDeferredSubtitles()
+        this.extractMenuBackground(graphics)
+        this.minecraft.gui.extractDeferredSubtitles()
     }
 
     override fun charTyped(characterEvent: CharacterEvent): Boolean {

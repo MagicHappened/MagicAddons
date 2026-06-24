@@ -2,8 +2,8 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
-    kotlin("jvm") version "2.3.10"
-    id("fabric-loom") version "1.15-SNAPSHOT"
+    kotlin("jvm") version "2.4.0"
+    id("net.fabricmc.fabric-loom") version "1.17-SNAPSHOT"
     id("maven-publish")
 }
 
@@ -14,7 +14,7 @@ base {
     archivesName.set(project.property("archives_base_name") as String)
 }
 
-val targetJavaVersion = 21
+val targetJavaVersion = 25
 
 
 java {
@@ -45,6 +45,7 @@ repositories {
     // See https://docs.gradle.org/current/userguide/declaring_repositories.html
     // for more information about repositories.
     mavenCentral()
+    maven { url = uri("https://api.modrinth.com/maven") }
     maven { url = uri("https://maven.terraformersmc.com/releases/") }
     maven { url = uri("https://maven.teamresourceful.com/repository/maven-public/") }
     maven { url = uri("https://pkgs.dev.azure.com/djtheredstoner/DevAuth/_packaging/public/maven/v1")}
@@ -53,20 +54,16 @@ repositories {
 
 
 dependencies {
-    // To change the versions see the gradle.properties file
-    minecraft("com.mojang:minecraft:${project.property("minecraft_version")}")
-    mappings(loom.officialMojangMappings())
-    modImplementation("net.fabricmc:fabric-loader:${project.property("loader_version")}")
-    modImplementation("net.fabricmc:fabric-language-kotlin:${project.property("kotlin_loader_version")}")
-    modImplementation("net.fabricmc.fabric-api:fabric-api:${project.property("fabric_version")}")
 
-    modApi("com.terraformersmc:modmenu:${project.property("modmenu_version")}")
+    minecraft("com.mojang:minecraft:${project.property("minecraft_version")}")
+    implementation("net.fabricmc:fabric-loader:${project.property("loader_version")}")
+    implementation("net.fabricmc:fabric-language-kotlin:${project.property("kotlin_loader_version")}")
+    implementation("net.fabricmc.fabric-api:fabric-api:${project.property("fabric_version")}")
+
+    api("com.terraformersmc:modmenu:${project.property("modmenu_version")}")
 
     api("tech.thatgravyboat:skyblock-api:${project.property("skyblock_api_version")}") {
-        capabilities { requireCapability("tech.thatgravyboat:skyblock-api-${project.property("minecraft_version")}") }
-    }
-    include("tech.thatgravyboat:skyblock-api:${project.property("skyblock_api_version")}") {
-        capabilities { requireCapability("tech.thatgravyboat:skyblock-api-${project.property("minecraft_version")}-remapped") }
+        capabilities { requireCapability("tech.thatgravyboat:skyblock-api-26.1") }
     }
 }
 

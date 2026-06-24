@@ -1,9 +1,8 @@
 package org.magic.magicaddons.ui.widgets
 
-import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.components.events.GuiEventListener
 import net.minecraft.client.input.MouseButtonEvent
-import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.ScreenUtil.drawLine
 import kotlin.math.sqrt
 
@@ -21,7 +20,7 @@ class CheckboxWidget(
     val checkColor = 0xFF00FF00.toInt()
 
 
-    fun render(graphics: GuiGraphics) {
+    fun render(graphics: GuiGraphicsExtractor) {
 
         graphics.fill(x, y, x + size, y + size, bgColor)
 
@@ -31,7 +30,7 @@ class CheckboxWidget(
     }
 
 
-    private fun drawCheckmark(graphics: GuiGraphics) {
+    private fun drawCheckmark(graphics: GuiGraphicsExtractor) {
 
         fun sx(px: Float) = x + (px / baseSize * size)
         fun sy(py: Float) = y + (py / baseSize * size)
