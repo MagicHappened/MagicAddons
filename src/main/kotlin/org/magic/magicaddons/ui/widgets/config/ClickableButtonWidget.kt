@@ -1,11 +1,7 @@
 package org.magic.magicaddons.ui.widgets.config
 
-import net.minecraft.client.Minecraft
-import net.minecraft.client.gui.GuiGraphics
-import net.minecraft.client.gui.components.events.GuiEventListener
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.client.renderer.RenderPipelines
-import net.minecraft.network.chat.Component
 import net.minecraft.resources.Identifier
 
 class ClickableButtonWidget(
@@ -76,7 +72,7 @@ class ClickableButtonWidget(
     val BUTTON = Identifier.fromNamespaceAndPath("minecraft", "widget/button")
     val BUTTON_HOVERED = Identifier.fromNamespaceAndPath("minecraft", "widget/button_highlighted")
 
-    fun render(graphics: GuiGraphics, mouseX: Int, mouseY: Int, delta: Float) {
+    fun render(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
 
         val sprite = if (isFocused)
             BUTTON_HOVERED

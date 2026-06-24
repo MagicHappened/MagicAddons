@@ -1,20 +1,17 @@
 package org.magic.magicaddons.ui.widgets.config
 
 import net.minecraft.client.Minecraft
-import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.components.EditBox
 import net.minecraft.client.input.CharacterEvent
 import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.network.chat.Component
-import net.minecraft.network.chat.Style
 import org.magic.magicaddons.data.config.ToggleListSetting
-import org.magic.magicaddons.ui.widgets.BaseRowWidget
 import org.magic.magicaddons.data.ListEntry
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.ScreenUtil.drawBorder
 import org.magic.magicaddons.util.ScreenUtil.drawLine
-import tech.thatgravyboat.skyblockapi.utils.text.TextStyle.style
 
 class TextListSettingWidget(
     val listSetting: ToggleListSetting
@@ -58,7 +55,7 @@ class TextListSettingWidget(
             val font = Minecraft.getInstance().font
             val text = "+"
 
-            graphics.drawString(
+            graphics.text(
                 font,
                 Component.literal(text),
                 x + (width - font.width(text)) / 2,
@@ -127,12 +124,12 @@ class TextListSettingWidget(
         height = currentY - y
     }
 
-    override fun render(graphics: GuiGraphics, mouseX: Int, mouseY: Int, delta: Float) {
+    override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
         val font = Minecraft.getInstance().font
 
         graphics.fill(x, y, x + width, y + height, backgroundColor)
 
-        graphics.drawString(
+        graphics.text(
             font,
             Component.literal(listSetting.displayName),
             x + textXPad,
@@ -146,7 +143,7 @@ class TextListSettingWidget(
             2,
             borderColor)
 
-        rows.forEach { it.render(graphics, mouseX, mouseY) }
+        rows.forEach { it.extractRenderState(graphics, mouseX, mouseY) }
 
         seperatorYs.forEach {
             graphics.drawLine(
@@ -162,7 +159,7 @@ class TextListSettingWidget(
             2,
             borderColor)
 
-        graphics.drawString(
+        graphics.text(
             font,
             Component.literal("Add new entry:"),
             x + textXPad,
@@ -171,12 +168,13 @@ class TextListSettingWidget(
             false
         )
 
-        nameInputField.render(graphics, mouseX, mouseY, delta)
-        valueInputField.render(graphics, mouseX, mouseY, delta)
+        nameInputField.extractRenderState(graphics, mouseX, mouseY, delta)
+        valueInputField.extractRenderState(graphics, mouseX, mouseY, delta)
         submitButton.render(graphics, mouseX, mouseY, delta)
 
         graphics.drawBorder(x, y, x + width, y + height, borderSize, borderColor)
 
+        renderTooltip(ctx, mouseX, mouseY)
     }
 
     private fun toggleEntry(entry: ListEntry) {

@@ -1,8 +1,7 @@
 package org.magic.magicaddons.ui.widgets
 
 import net.minecraft.client.Minecraft
-import net.minecraft.client.gui.GuiGraphics
-import net.minecraft.client.gui.components.events.GuiEventListener
+import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.renderer.RenderPipelines
 import net.minecraft.network.chat.Component
 import net.minecraft.resources.Identifier
@@ -14,6 +13,8 @@ open class BaseRowWidget<T>(
 
     val BUTTON = Identifier.fromNamespaceAndPath("minecraft", "widget/button")
 
+
+    var hovered = false
     var width: Int = 200
     var height: Int = 20
 
@@ -32,7 +33,7 @@ open class BaseRowWidget<T>(
         return BUTTON
     }
 
-    open fun render(graphics: GuiGraphics, mouseX: Int, mouseY: Int) {
+    open fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int) {
         val font = Minecraft.getInstance().font
         val usableWidth = width - getRightReservedWidth() - getLeftReservedWidth()
         graphics.blitSprite(
@@ -46,7 +47,7 @@ open class BaseRowWidget<T>(
 
         val text = font.plainSubstrByWidth(value.toString(), usableWidth)
 
-        graphics.drawString(
+        graphics.text(
             font,
             Component.literal(text),
             x + textLeftPadding + getLeftReservedWidth(),
@@ -56,7 +57,7 @@ open class BaseRowWidget<T>(
         )
 
     }
-    override fun isMouseOver(mouseX: Double, mouseY: Double): Boolean {
+    fun isMouseOver(mouseX: Double, mouseY: Double): Boolean {
         return (mouseX.toInt() in x..x+width && mouseY.toInt() in y..y+height)
     }
 
@@ -71,8 +72,8 @@ open class BaseRowWidget<T>(
         return (mouseX.toInt() in x+getLeftReservedWidth()..x+width-getRightReservedWidth() && mouseY.toInt() in y..y+height)
     }
 
-    override fun mouseMoved(mouseX: Double, mouseY: Double) {
-
+    open fun mouseMoved(mouseX: Double, mouseY: Double) {
+        hovered = isMouseOverRow(mouseX, mouseY)
     }
 
 

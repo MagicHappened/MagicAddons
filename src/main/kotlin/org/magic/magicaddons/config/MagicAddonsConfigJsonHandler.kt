@@ -2,14 +2,16 @@ package org.magic.magicaddons.config
 
 import com.google.common.reflect.TypeToken
 import com.google.gson.GsonBuilder
+import org.magic.magicaddons.Common
 import org.magic.magicaddons.events.ConfigChangedEvent
 import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.features.FeatureManager
+import org.magic.magicaddons.util.ChatUtils
 import java.io.File
 
 object MagicAddonsConfigJsonHandler {
 
-    private const val CONFIG_VERSION_NUM = "1.0.0"
+    private const val CONFIG_VERSION_NUM = "1.0.1"
 
     private val gson = GsonBuilder().setPrettyPrinting().create()
     private val file = File("config/magicaddons/magicaddons.json")
@@ -45,6 +47,7 @@ object MagicAddonsConfigJsonHandler {
         configMap = gson.fromJson(gson.toJson(configSection), type) ?: mutableMapOf()
 
         FeatureManager.syncFromConfigJson()
+        Common.LOGGER.info("Successfully loaded config")
         return true
     }
 
@@ -60,6 +63,7 @@ object MagicAddonsConfigJsonHandler {
         file.writeText(gson.toJson(wrapped))
 
         EventBus.post(ConfigChangedEvent())
+        Common.LOGGER.info("Successfully saved config")
         return true
     }
 

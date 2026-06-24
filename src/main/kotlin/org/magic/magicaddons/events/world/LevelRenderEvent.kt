@@ -4,7 +4,7 @@ import com.mojang.blaze3d.vertex.PoseStack
 import net.minecraft.client.DeltaTracker
 import net.minecraft.client.renderer.SubmitNodeCollector
 import net.minecraft.client.renderer.SubmitNodeStorage
-import net.minecraft.client.renderer.state.LevelRenderState
+import net.minecraft.client.renderer.state.level.LevelRenderState
 
 class LevelRenderEvent (
     val poseStack: PoseStack,

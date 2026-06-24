@@ -14,7 +14,7 @@ object ChatUtils {
 
     fun sendWithPrefix(message: String) {
         val prefixed = buildWithPrefix(message)
-        Minecraft.getInstance().player?.displayClientMessage(prefixed, false)
+        Minecraft.getInstance().player?.sendSystemMessage(prefixed)
     }
 
     fun buildWithPrefix(message: String): Component {
@@ -23,7 +23,7 @@ object ChatUtils {
 
     fun sendWithPrefix(message: Component) {
         val prefixed = buildWithPrefix(message)
-        Minecraft.getInstance().player?.displayClientMessage(prefixed, false)
+        Minecraft.getInstance().player?.sendSystemMessage(prefixed)
     }
 
     fun buildWithPrefix(message: Component): Component {
@@ -34,7 +34,7 @@ object ChatUtils {
     }
     fun sendWithCommand(message: String, command: String) {
         val component = buildWithCommand(message, command)
-        Minecraft.getInstance().player?.displayClientMessage(component, false)
+        Minecraft.getInstance().player?.sendSystemMessage(prefixed)
     }
 
     fun buildWithCommand(message: String, command: String): Component {
