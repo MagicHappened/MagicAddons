@@ -1,7 +1,7 @@
 package org.magic.magicaddons.ui.widgets.greenhouse
 
 
-import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.components.Renderable
 import net.minecraft.client.gui.components.events.GuiEventListener
 import net.minecraft.client.input.MouseButtonEvent
@@ -47,9 +47,8 @@ class SlotWidget(
 
     }
 
-    override fun render(graphics: GuiGraphics, mouseY: Int, j: Int, deltaTicks: Float) {
+    override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
         val sprite = sprite ?: return
-
         graphics.blitSprite(
             RenderPipelines.GUI_TEXTURED,
             sprite,
@@ -58,9 +57,6 @@ class SlotWidget(
             widgetWidth,
             widgetHeight
         )
-
-
-
 
     }
 

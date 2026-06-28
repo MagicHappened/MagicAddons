@@ -2,6 +2,7 @@ package org.magic.magicaddons.ui.widgets
 
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
+import net.minecraft.client.gui.components.events.GuiEventListener
 import net.minecraft.client.renderer.RenderPipelines
 import net.minecraft.network.chat.Component
 import net.minecraft.resources.Identifier
@@ -57,7 +58,7 @@ open class BaseRowWidget<T>(
         )
 
     }
-    fun isMouseOver(mouseX: Double, mouseY: Double): Boolean {
+    override fun isMouseOver(mouseX: Double, mouseY: Double): Boolean {
         return (mouseX.toInt() in x..x+width && mouseY.toInt() in y..y+height)
     }
 
@@ -72,7 +73,7 @@ open class BaseRowWidget<T>(
         return (mouseX.toInt() in x+getLeftReservedWidth()..x+width-getRightReservedWidth() && mouseY.toInt() in y..y+height)
     }
 
-    open fun mouseMoved(mouseX: Double, mouseY: Double) {
+    override fun mouseMoved(mouseX: Double, mouseY: Double) {
         hovered = isMouseOverRow(mouseX, mouseY)
     }
 

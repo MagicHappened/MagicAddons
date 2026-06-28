@@ -1,7 +1,7 @@
 package org.magic.magicaddons.ui.screens
 
 import net.minecraft.client.Minecraft
-import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.components.events.GuiEventListener
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.input.CharacterEvent
@@ -303,7 +303,7 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         dynamicNameDisplay?.y = 9
     }
 
-    override fun render(graphics: GuiGraphics, mouseX: Int, mouseY: Int, delta: Float) {
+    override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
         // background
         graphics.blitSprite(
             RenderPipelines.GUI_TEXTURED,
@@ -314,7 +314,7 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
             containerSize + borderPadding * 2,
         )
 
-        dynamicNameDisplay?.render(graphics,mouseX,mouseY,delta)
+        dynamicNameDisplay?.extractRenderState(graphics,mouseX,mouseY,delta)
 
         val timeText = GreenhouseData.miscInfo.nextTickTime?.toReadableDuration() ?: "Unknown Time"
         val timeWidth = font.width(timeText)
@@ -323,16 +323,16 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
             timeText,
             10 + timeWidth/2, 18)
 
-        displayedGridWidget?.render(graphics, mouseX, mouseY, delta)
-        gridSelector.render(graphics, mouseX, mouseY, delta)
-        currentDisplayToggle.render(graphics, mouseX, mouseY, delta)
+        displayedGridWidget?.extractRenderState(graphics, mouseX, mouseY, delta)
+        gridSelector.extractRenderState(graphics, mouseX, mouseY, delta)
+        currentDisplayToggle.extractRenderState(graphics, mouseX, mouseY, delta)
 
         when (currentDisplay) {
             CurrentDisplay.Greenhouses -> {
 
             }
             CurrentDisplay.Presets -> {
-                presetUI.render(graphics, mouseX, mouseY, delta)
+                presetUI.extractRenderState(graphics, mouseX, mouseY, delta)
             }
         }
         if (hoverWarning) {
@@ -359,12 +359,12 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
     }
 
 
-    override fun renderBackground(guiGraphics: GuiGraphics, i: Int, j: Int, f: Float) {
+    override fun extractBackground(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, a: Float) {
         if (this.minecraft.level == null) {
-            this.renderPanorama(guiGraphics, f)
+            this.extractPanorama(graphics, a)
         }
-        this.renderMenuBackground(guiGraphics)
-        this.minecraft.gui.renderDeferredSubtitles()
+        this.extractMenuBackground(graphics)
+        this.minecraft.gui.extractDeferredSubtitles()
     }
 
     override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {

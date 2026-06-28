@@ -2,29 +2,20 @@ package org.magic.magicaddons.util
 
 import com.mojang.blaze3d.pipeline.RenderPipeline
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
-import net.minecraft.client.Minecraft
-import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.gui.render.TextureSetup
-import net.minecraft.client.gui.render.state.ColoredRectangleRenderState
-import net.minecraft.client.gui.render.state.GuiTextRenderState
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.gui.screens.inventory.tooltip.ClientTooltipComponent
 import net.minecraft.client.gui.screens.inventory.tooltip.DefaultTooltipPositioner
 import net.minecraft.client.renderer.RenderPipelines
 import net.minecraft.client.renderer.texture.TextureAtlasSprite
 import net.minecraft.core.Direction
-import net.minecraft.network.chat.Component
 import net.minecraft.resources.Identifier
 import net.minecraft.util.RandomSource
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
-import net.minecraft.client.gui.render.TextureSetup
-import net.minecraft.client.gui.screens.Screen
-import net.minecraft.client.gui.screens.inventory.tooltip.ClientTooltipComponent
-import net.minecraft.client.gui.screens.inventory.tooltip.DefaultTooltipPositioner
-import net.minecraft.client.renderer.RenderPipelines
+import net.minecraft.client.renderer.block.dispatch.BlockStateModelPart
 import net.minecraft.client.renderer.state.gui.ColoredRectangleRenderState
 import net.minecraft.client.renderer.state.gui.GuiTextRenderState
 import net.minecraft.network.chat.Component
@@ -99,7 +90,7 @@ object ScreenUtil {
         x1: Float, y1: Float,
         x2: Float, y2: Float,
         thickness: Float,
-        color: Int
+        color: Int? = null
     ) {
         // top
         drawLine(x1, y1, x2, y1, thickness, color)
@@ -155,7 +146,7 @@ object ScreenUtil {
         x2: Float,
         y2: Float,
         thickness: Float,
-        color: Int
+        color: Int? = null
     ) {
         val dx = x2 - x1
         val dy = y2 - y1
@@ -191,11 +182,12 @@ object ScreenUtil {
 
     fun GuiGraphicsExtractor.drawSimpleTooltip(text: String, mouseX: Int, mouseY: Int) {
         val client = Minecraft.getInstance()
-        val lines = listOf(
+
+        val lines = text.split("\n").map {
             ClientTooltipComponent.create(
-                Component.literal(text).visualOrderText
+                Component.literal(it).visualOrderText
             )
-        )
+        }
 
         this.tooltip(
             client.font,
@@ -210,14 +202,15 @@ object ScreenUtil {
     fun GuiGraphicsExtractor.drawMultilineBoxCentered(
         text: String,
         centerX: Int,
-        centerY: Int
+        centerY: Int,
+        color: Int? = null
     ) {
         val layout = computeLayout(text)
 
         val x = centerX - layout.boxWidth / 2
         val y = centerY - layout.boxHeight / 2
 
-        drawMultilineBox(text, x, y)
+        drawMultilineBox(text, x, y, color)
     }
 
 
@@ -225,6 +218,7 @@ object ScreenUtil {
         text: String,
         x: Int,
         y: Int,
+        color: Int? = null
     ){
         drawMultilineBox(
             text,
@@ -237,7 +231,8 @@ object ScreenUtil {
     fun GuiGraphicsExtractor.drawMultilineBox(
         text: String,
         x: Float,
-        y: Float
+        y: Float,
+        color: Int? = null
     ) {
         val font = Minecraft.getInstance().font
         val padding = 4f
@@ -251,7 +246,7 @@ object ScreenUtil {
 
         fill(x1.toInt(), y1.toInt(), x2.toInt(), y2.toInt(), 0x88000000.toInt())
 
-        drawBorder(x1, y1, x2, y2, 1f, 0xFFFFFFFF.toInt())
+        drawBorder(x1, y1, x2, y2, 1f, color)
 
         // text
         var currentY = y + padding
@@ -279,7 +274,7 @@ object ScreenUtil {
         }
     }
 
-    fun GuiGraphics.blitStretched(
+    fun GuiGraphicsExtractor.blitStretched(
         pipeline: RenderPipeline,
         texture: Identifier,
         x: Int,
@@ -319,7 +314,7 @@ object ScreenUtil {
         pose.popMatrix()
     }
 
-    fun GuiGraphics.renderFakeItem(
+    fun GuiGraphicsExtractor.renderFakeItem(
         stack: ItemStack,
         x: Int,
         y: Int,
@@ -344,10 +339,10 @@ object ScreenUtil {
 
             pose.scale(scale, scale)
 
-            this.renderItem(stack, 0, 0)
+            this.item(stack, 0, 0)
 
             if (renderDecorations) {
-                this.renderItemDecorations(mc.font, stack, 0, 0)
+                this.itemDecorations(mc.font, stack, 0, 0)
             }
 
         } finally {
@@ -361,25 +356,24 @@ object ScreenUtil {
     fun getSpriteForState(state: BlockState, direction: Direction): TextureAtlasSprite {
 
         val client = Minecraft.getInstance()
-        val model = client.blockRenderer.blockModelShaper.getBlockModel(state)
+        val model = client.modelManager.blockStateModelSet.get(state)
 
         val random = RandomSource.create(0)
 
-        val parts = model.collectParts(random)
+        val parts: MutableList<BlockStateModelPart> = mutableListOf()
+
+        model.collectParts(random, parts)
+
 
         for (part in parts) {
-            val quads = part.getQuads(direction)
-            if (quads.isNotEmpty()) {
-                return quads[0].sprite
-            }
+
+            var directionalMaterial = part
+
+
+            return part.particleMaterial().sprite
         }
 
-        for (part in parts) {
-            val quads = part.getQuads(null)
-            if (quads.isNotEmpty()) {
-                return quads[0].sprite
-            }
-        }
+
         throw IllegalStateException("No sprite for state $state")
     }
 

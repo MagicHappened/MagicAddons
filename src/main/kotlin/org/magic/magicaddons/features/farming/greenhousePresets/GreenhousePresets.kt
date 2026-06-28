@@ -10,7 +10,6 @@ import org.magic.magicaddons.data.greenhouse.CropRegistry
 import org.magic.magicaddons.features.Feature
 import org.magic.magicaddons.features.farming.greenhousePresets.LayoutRenderState.NO_TINT
 import org.magic.magicaddons.features.farming.greenhousePresets.LayoutRenderState.RED_TINT
-import org.magic.magicaddons.render.RenderExtensions.renderSingleBlock
 import org.magic.magicaddons.util.ChatUtils
 import tech.thatgravyboat.skyblockapi.api.SkyBlockAPI
 import tech.thatgravyboat.skyblockapi.api.events.base.Subscription
@@ -57,15 +56,16 @@ object GreenhousePresets : Feature() {
     // will render what to place
     @Subscription
     private fun onRenderWorld(event: RenderWorldEvent.AfterTranslucent){
-        val dispatcher = Minecraft.getInstance().blockRenderer
+        val dispatcher = Minecraft.getInstance().blockModelResolver
 
         blockMapRenderStates.forEach { (pos, pair) ->
-            event.renderSingleBlock(
-                blockRenderer = dispatcher,
-                pos,
-                pair.first,
-                pair.second
-            )
+//            event.renderSingleBlock(
+//                blockRenderer = dispatcher,
+//                pos,
+//                pair.first,
+//                pair.second
+//            )
+            //todo need to find another method
         }
     }
 

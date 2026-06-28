@@ -3,7 +3,7 @@ package org.magic.magicaddons.ui.widgets.greenhouse
 import blazing.chain.LZSEncoding
 import com.google.gson.JsonParser
 import net.minecraft.client.Minecraft
-import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.components.Renderable
 import net.minecraft.client.gui.components.events.GuiEventListener
 import net.minecraft.client.input.MouseButtonEvent
@@ -76,16 +76,12 @@ class PresetUI(
     }
 
 
-    override fun render(
-        graphics: GuiGraphics,
-        mouseX: Int,
-        mouseY: Int,
-        delta: Float
-    ) {
-        deleteButton.render(graphics, mouseX, mouseY, delta)
-        importButton.render(graphics, mouseX, mouseY, delta)
-        exportButton.render(graphics, mouseX, mouseY, delta)
-        applyToButton.render(graphics, mouseX, mouseY, delta)
+    override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
+
+        deleteButton.extractRenderState(graphics, mouseX, mouseY, delta)
+        importButton.extractRenderState(graphics, mouseX, mouseY, delta)
+        exportButton.extractRenderState(graphics, mouseX, mouseY, delta)
+        applyToButton.extractRenderState(graphics, mouseX, mouseY, delta)
     }
 
     override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {

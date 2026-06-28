@@ -1,7 +1,7 @@
 package org.magic.magicaddons.ui.widgets.greenhouse
 
 import net.minecraft.client.Minecraft
-import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.components.Renderable
 import net.minecraft.client.gui.components.events.GuiEventListener
 import net.minecraft.client.gui.screens.inventory.tooltip.ClientTooltipComponent
@@ -55,7 +55,7 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, GuiEv
         }
     }
 
-    override fun render(graphics: GuiGraphics, mouseX: Int, mouseY: Int, deltaTick: Float) {
+    override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, deltaTick: Float) {
         markingColor?.let {
             graphics.drawBorder(
                 widgetX + 1,
@@ -79,7 +79,7 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, GuiEv
         )
     }
 
-    fun renderFire(graphics: GuiGraphics, mouseX: Int, mouseY: Int, deltaTick: Float){
+    fun renderFire(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, deltaTick: Float){
         val sprite = sprite
         sprite ?: return
         graphics.blitSprite(
@@ -93,11 +93,11 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, GuiEv
     }
 
     //todo add render info and such
-    fun renderHoverButtonInfo(graphics: GuiGraphics, mouseX: Int, mouseY: Int, deltaTick: Float){
+    fun renderHoverButtonInfo(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, deltaTick: Float){
 
     }
 
-    fun renderSideTooltip(graphics: GuiGraphics, mouseX: Int, mouseY: Int, deltaTick: Float){
+    fun renderSideTooltip(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, deltaTick: Float){
 
     }
 
@@ -116,7 +116,8 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, GuiEv
 
     override fun mouseMoved(mouseX: Double, mouseY: Double) {
     }
-    fun renderTooltip(graphics: GuiGraphics, mouseX: Int, mouseY: Int) {
+    //todo make this better with more info
+    fun renderTooltip(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int) {
         val font = Minecraft.getInstance().font
 
         val lines = buildList {
@@ -139,7 +140,7 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, GuiEv
 
         val components = lines.map { ClientTooltipComponent.create(it.visualOrderText) }
 
-        graphics.renderTooltip(
+        graphics.tooltip(
             font,
             components,
             mouseX,

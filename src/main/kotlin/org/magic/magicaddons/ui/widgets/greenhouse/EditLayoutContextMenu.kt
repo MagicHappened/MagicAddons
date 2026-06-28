@@ -1,7 +1,7 @@
 package org.magic.magicaddons.ui.widgets.greenhouse
 
 import net.minecraft.client.Minecraft
-import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.components.EditBox
 import net.minecraft.client.gui.components.events.GuiEventListener
 import net.minecraft.client.input.CharacterEvent
@@ -57,7 +57,7 @@ class EditLayoutContextMenu(
 
 
     override fun renderOverlay(
-        graphics: GuiGraphics,
+        graphics: GuiGraphicsExtractor,
         mouseX: Int,
         mouseY: Int,
         delta: Float
@@ -79,17 +79,17 @@ class EditLayoutContextMenu(
             Common.UI.BORDER_COLOR
         )
 
-        graphics.drawString(
+        graphics.text(
             font,
             "Editing ${layout.id}:",
             overlayX + 10,
             overlayY + 10,
             0xFFFFFFFF.toInt()
         )
-        textField.render(graphics, mouseX, mouseY, delta)
+        textField.extractRenderState(graphics, mouseX, mouseY, delta)
 
-        submitButton.render(graphics, mouseX, mouseY, delta)
-        cancelButton.render(graphics, mouseX, mouseY, delta)
+        submitButton.extractRenderState(graphics, mouseX, mouseY, delta)
+        cancelButton.extractRenderState(graphics, mouseX, mouseY, delta)
     }
 
     override fun charTyped(characterEvent: CharacterEvent): Boolean {

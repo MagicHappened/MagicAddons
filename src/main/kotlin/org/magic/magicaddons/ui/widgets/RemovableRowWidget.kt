@@ -67,7 +67,7 @@ open class RemovableRowWidget<T>(
             removeButton.y = y
             removeButton.height = height
 
-            removeButton.render(graphics, mouseX, mouseY, 0f)
+            removeButton.extractRenderState(graphics, mouseX, mouseY, 0f)
         }
     }
 

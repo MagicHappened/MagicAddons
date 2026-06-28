@@ -1,13 +1,17 @@
 package org.magic.magicaddons.ui.widgets.config
 
+import net.minecraft.client.Minecraft
+import net.minecraft.client.gui.GuiGraphicsExtractor
+import net.minecraft.client.gui.components.events.GuiEventListener
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.client.renderer.RenderPipelines
+import net.minecraft.network.chat.Component
 import net.minecraft.resources.Identifier
 
 class ClickableButtonWidget(
     var width: Int,
     var height: Int,
-    val renderContent: ClickableButtonWidget.(GuiGraphics) -> Unit,
+    val renderContent: ClickableButtonWidget.(GuiGraphicsExtractor) -> Unit,
     val shouldRenderButton: Boolean = true
 ) : GuiEventListener {
     var x: Int = 0
@@ -18,7 +22,7 @@ class ClickableButtonWidget(
         y: Int,
         width: Int,
         height: Int,
-        renderContent: ClickableButtonWidget.(GuiGraphics) -> Unit,
+        renderContent: ClickableButtonWidget.(GuiGraphicsExtractor) -> Unit,
         shouldRenderButton: Boolean = true
     ) : this(width, height, renderContent, shouldRenderButton){
         this.x = x
@@ -48,7 +52,7 @@ class ClickableButtonWidget(
         { graphics ->
             val font = Minecraft.getInstance().font
             this.message?.let {
-                graphics.drawString(
+                graphics.text(
                     font,
                     it,
                     this.x + (width - font.width(it)) / 2,
@@ -72,14 +76,13 @@ class ClickableButtonWidget(
     val BUTTON = Identifier.fromNamespaceAndPath("minecraft", "widget/button")
     val BUTTON_HOVERED = Identifier.fromNamespaceAndPath("minecraft", "widget/button_highlighted")
 
-    fun render(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
-
-        val sprite = if (isFocused)
-            BUTTON_HOVERED
-        else
-            BUTTON
-
+    fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
         if (shouldRenderButton) {
+            val sprite = if (isFocused)
+                BUTTON_HOVERED
+            else
+                BUTTON
+
             graphics.blitSprite(
                 RenderPipelines.GUI_TEXTURED,
                 sprite,
