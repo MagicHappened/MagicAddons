@@ -18,12 +18,14 @@ object Moonflower : CropDefinitionProvider {
         skyblockId = SkyBlockItemId.item("MOONFLOWER"),
         stageDefs = listOf(
             CropStage(
-                blocks = listOf(
-                ),
+                blocks = listOf(),
                 armorStands = listOf(
                     CropArmorStand(
-                        offset = Vec3(-0.1875, 0.25, 0.0),
-                        hashString = "10ba39f5a3bdb0f3ed6547e6e688fc43d64fabc056f3418b2bbbdfedd7248ba9"
+                    offset = Vec3(0.1875, 0.25, 0.0),
+                    headRotation = Rotations(-45.0f, 0.0f, 0.0f),
+                    xRotation = 0.0f,
+                    yRotation = -90.0f,
+                    hashString = "10ba39f5a3bdb0f3ed6547e6e688fc43d64fabc056f3418b2bbbdfedd7248ba9"
                     )
                 ),
                 1..1,

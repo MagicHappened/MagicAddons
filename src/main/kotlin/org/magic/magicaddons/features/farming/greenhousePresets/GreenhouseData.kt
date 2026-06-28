@@ -21,6 +21,7 @@ import org.magic.magicaddons.data.greenhouse.elements.FireElement
 import org.magic.magicaddons.data.handlers.DataHandler
 import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.events.EventHandler
+import org.magic.magicaddons.events.greenhouse.PlotChangedEvent
 import org.magic.magicaddons.events.interact.*
 import org.magic.magicaddons.events.world.OnEntityAdded
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhousePresets.baseSetting
@@ -66,6 +67,8 @@ object GreenhouseData {
         "AQUAMASTER_X",
         "AQUAMASTER_HYDROMAX"
     )
+
+    var lastPlot: Plot? = null
 
     var checkGreenhouses = false
     var greenhousesInitialized = false
@@ -339,10 +342,10 @@ object GreenhouseData {
             greenhouseGrids.forEach {
                 it.state.hasRuntimeReferences = false
             }
+            EventBus.post(PlotChangedEvent(lastPlot,null))
+            lastPlot = null
         }
-
         checkForUpdate()
-
     }
 
     @Subscription
@@ -355,11 +358,26 @@ object GreenhouseData {
     @OnlyNonGuest
     @OnlyIn(SkyBlockIsland.GARDEN)
     fun onScoreboardUpdate(event: ScoreboardUpdateEvent) {
+        if (lastPlot != PlotAPI.getCurrentPlot()) {
+            EventBus.post(PlotChangedEvent(lastPlot,PlotAPI.getCurrentPlot()))
+            lastPlot = PlotAPI.getCurrentPlot()
+        }
+    }
+
+    @EventHandler
+    fun onPlotChanged(event: PlotChangedEvent) {
         if (!baseSetting.value) return
         initKnownIds()
         scanGridData()
-
+        regenRender()
     }
+
+    fun regenRender(){
+        val grid = getCurrentGrid() ?: return
+        val layout = grid.state.assignedLayout ?: return
+        LayoutRenderState.generateRenderData(layout, grid)
+    }
+
 
     @Subscription
     @OnlyIn(SkyBlockIsland.GARDEN)
@@ -387,6 +405,8 @@ object GreenhouseData {
 
     @EventHandler
     fun onBlockBreak(event: OnBlockDestroyedEvent) {
+        regenRender()
+
         val grid = getCurrentGrid() ?: return
         if (!grid.hasRuntime()) return
 
@@ -406,20 +426,9 @@ object GreenhouseData {
     }
 
     @EventHandler
-    fun onAttackEntity(event: OnAttackEntityEvent) {
-        val grid = getCurrentGrid() ?: return
-        if (!grid.hasRuntime()) return
-
-        if (event.target !is ArmorStand) return
-        // for now just remove the element later add cancellation with layouts
-
-
-        val removed = grid.removeMatchingEntity(event.target)
-        removedElementByAttack = removed
-    }
-
-    @EventHandler
     fun onBlockPlaced(event: OnBlockPlacedEvent) {
+        regenRender()
+
         val grid = getCurrentGrid() ?: return
         if (!grid.hasRuntime()) return
 

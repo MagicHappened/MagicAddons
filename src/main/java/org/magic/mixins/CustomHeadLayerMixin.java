@@ -12,7 +12,7 @@ import net.minecraft.client.renderer.feature.ModelFeatureRenderer;
 import net.minecraft.client.renderer.rendertype.RenderType;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.core.Direction;
-import org.magic.misc.FakeEntityState;
+import org.magic.misc.WrappedEntityRenderState;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
@@ -24,64 +24,57 @@ public class CustomHeadLayerMixin {
             method = "submit(Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/SubmitNodeCollector;ILnet/minecraft/client/renderer/entity/state/LivingEntityRenderState;FF)V",
             at = @At(
                     value = "INVOKE",
-                    target = "Lnet/minecraft/client/renderer/blockentity/SkullBlockRenderer;submitSkull(Lnet/minecraft/core/Direction;FFLcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/SubmitNodeCollector;ILnet/minecraft/client/model/object/skull/SkullModelBase;Lnet/minecraft/client/renderer/rendertype/RenderType;ILnet/minecraft/client/renderer/feature/ModelFeatureRenderer$CrumblingOverlay;)V"
+                    target = "Lnet/minecraft/client/renderer/blockentity/SkullBlockRenderer;submitSkull(FLcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/SubmitNodeCollector;ILnet/minecraft/client/model/object/skull/SkullModelBase;Lnet/minecraft/client/renderer/rendertype/RenderType;ILnet/minecraft/client/renderer/feature/ModelFeatureRenderer$CrumblingOverlay;)V"
             )
     )
     private void onSubmitSkull(
-            Direction direction,
-            float yaw, float anim,
+            float animationValue,
             PoseStack poseStack,
             SubmitNodeCollector submitNodeCollector,
-            int light,
-            SkullModelBase skullModelBase,
+            int lightCoords,
+            SkullModelBase model,
             RenderType renderType,
             int outlineColor,
-            ModelFeatureRenderer.CrumblingOverlay crumblingOverlay,
+            ModelFeatureRenderer.CrumblingOverlay breakProgress,
             Operation<Void> original,
-            @Local(argsOnly = true) LivingEntityRenderState state
+            @Local(argsOnly = true, name = "state") LivingEntityRenderState state
             ){
-        if (state instanceof FakeEntityState fakeState
-                && fakeState.magicaddons$isFakeEntity()) {
+        if (state instanceof WrappedEntityRenderState fakeState
+                && fakeState.magicaddons$isWrappedEntity()) {
 
-            int tintColor = fakeState.magicaddons$fakeEntityTintColor();
+            int tintColor = fakeState.magicaddons$entityTintColor();
 
             submitSkullWithTint(
-                    direction,
-                    yaw,
-                    anim,
+                    animationValue,
                     poseStack,
                     submitNodeCollector,
-                    light,
-                    skullModelBase,
+                    lightCoords,
+                    model,
                     renderType,
                     tintColor,
                     outlineColor,
-                    crumblingOverlay
+                    breakProgress
             );
             return;
         }
 
         original.call(
-                direction,
-                yaw,
-                anim,
-                poseStack,
-                submitNodeCollector,
-                light,
-                skullModelBase,
-                renderType,
-                outlineColor,
-                crumblingOverlay
+        animationValue,
+        poseStack,
+        submitNodeCollector,
+        lightCoords,
+        model,
+        renderType,
+        outlineColor,
+        breakProgress
         );
     }
 
     @Unique
     private static void submitSkullWithTint(
-            Direction direction,
-            float yaw,
-            float anim,
+            float animationValue,
             PoseStack poseStack,
-            SubmitNodeCollector collector,
+            SubmitNodeCollector submitNodeCollector,
             int light,
             SkullModelBase model,
             RenderType renderType,
@@ -89,21 +82,10 @@ public class CustomHeadLayerMixin {
             int outlineColor,
             ModelFeatureRenderer.CrumblingOverlay overlay
     ) {
-        poseStack.pushPose();
-
-        if (direction == null) {
-            poseStack.translate(0.5F, 0.0F, 0.5F);
-        } else {
-            poseStack.translate(0.5F - (float)direction.getStepX() * 0.25F, 0.25F, 0.5F - (float)direction.getStepZ() * 0.25F);
-        }
-
-        poseStack.scale(-1.0F, -1.0F, 1.0F);
-
         SkullModelBase.State state = new SkullModelBase.State();
-        state.animationPos = anim;
-        state.yRot = yaw;
+        state.animationPos = animationValue;
 
-        collector.submitModel(
+        submitNodeCollector.submitModel(
                 model,
                 state,
                 poseStack,

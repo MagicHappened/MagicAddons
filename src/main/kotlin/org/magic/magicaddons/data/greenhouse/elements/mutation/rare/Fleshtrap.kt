@@ -1,6 +1,7 @@
 package org.magic.magicaddons.data.greenhouse.elements.mutation.rare
 
 import net.minecraft.core.BlockPos
+import net.minecraft.core.Rotations
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.*
 import org.magic.magicaddons.data.greenhouse.CropStates.melonStemState
@@ -22,22 +23,30 @@ object Fleshtrap : CropDefinitionProvider {
                     CropArmorStand(
                         offset = Vec3(0.0, -0.15625, 0.0),
                         hashString = "c7f45f6cb2e4bbf45c5537c4dc3055a323021d62db7d91cc60beb02956401fb9"
-                    ),
-                    CropArmorStand(
-                        offset = Vec3(0.0, 2.612, 0.0),
-                        containsCustomName = "Bonus"
-                    ),
-                    CropArmorStand(
-                        offset = Vec3(0.0, 2.242, 0.0),
-                        containsCustomName = "Hunger"
-                    ),
-                    CropArmorStand(
-                        offset = Vec3(0.0, 1.872, 0.0),
-                        containsCustomName = "||||||||||||||||||||"
                     )
                 ),
                 4..4
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = melonStemState(7)
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, 0.34375, 0.125),
+                        headRotation = Rotations(45.0f, 0.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = -180.0f,
+                        hashString = "c7f45f6cb2e4bbf45c5537c4dc3055a323021d62db7d91cc60beb02956401fb9"
+                    )
+                ),
+                13..13,
+                allowRotation = true
             )
+
 
         ),
         maxStage = 14,

@@ -1,11 +1,12 @@
 package org.magic.mixins;
 
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.mojang.blaze3d.buffers.GpuBufferSlice;
 import com.mojang.blaze3d.framegraph.FrameGraphBuilder;
 import com.mojang.blaze3d.pipeline.RenderTarget;
 import com.mojang.blaze3d.resource.GraphicsResourceAllocator;
 import com.mojang.blaze3d.vertex.PoseStack;
-import kotlin.Pair;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.LevelRenderer;
@@ -26,10 +27,10 @@ import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix4fc;
 import org.joml.Vector4f;
 import org.jspecify.annotations.Nullable;
-import org.magic.magicaddons.features.farming.greenhousePresets.GreenhousePresets;
+import org.magic.magicaddons.features.farming.greenhousePresets.LayoutRenderState;
 import org.magic.magicaddons.util.EntityUtils;
 import org.magic.misc.EntityRenderModifier;
-import org.magic.misc.FakeEntityState;
+import org.magic.misc.WrappedEntityRenderState;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -69,6 +70,28 @@ public abstract class LevelRendererMixin {
         }
     }
 
+    @WrapOperation(
+            method = "extractVisibleEntities",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/client/renderer/LevelRenderer;extractEntity(Lnet/minecraft/world/entity/Entity;F)Lnet/minecraft/client/renderer/entity/state/EntityRenderState;")
+    )
+    private EntityRenderState wrapExtractEntity(
+            LevelRenderer instance,
+            Entity entity,
+            float partialTickTime,
+            Operation<EntityRenderState> original
+    ) {
+        EntityRenderState state = original.call(instance, entity, partialTickTime);
+
+        if (LayoutRenderState.INSTANCE.getBadStandsUUID().contains(entity.getUUID())){
+            ((WrappedEntityRenderState)state).magicaddons$setWrappedEntity(true);
+            ((WrappedEntityRenderState)state).magicaddons$setWrappedEntityTintColor(LayoutRenderState.RED_TINT);
+        }
+        return state;
+    }
+
+
     @Inject(
             method = "submitEntities",
             at = @At(
@@ -84,7 +107,8 @@ public abstract class LevelRendererMixin {
             EntityUtils.HighlightSource source = entry.getValue();
 
             if (!(entity instanceof LivingEntity living)) continue;
-            if (living instanceof Player){
+
+            if (living instanceof Player) {
                 living.setCustomNameVisible(false);
             }
             renderFakeEntity(
@@ -102,20 +126,22 @@ public abstract class LevelRendererMixin {
             );
         }
 
-        for (Pair<? extends ArmorStand, Integer> pair : GreenhousePresets.standsToRender) {
-            renderFakeEntity(
-                    pair.getFirst(),
-                    poseStack,
-                    levelRenderState,
-                    submitNodeCollector,
-                    (ent, state) -> {
-                        FakeEntityState fakeState = (FakeEntityState) state;
-                        fakeState.magicaddons$setFakeEntity(true);
-                        fakeState.magicaddons$setFakeEntityTintColor(pair.getSecond());
+        for (LayoutRenderState.CropRenderGroup group : LayoutRenderState.INSTANCE.getCropRenders()) {
+            for (ArmorStand stand : group.getStands()){
+                renderFakeEntity(
+                        stand,
+                        poseStack,
+                        levelRenderState,
+                        submitNodeCollector,
+                        (ent, state) -> {
+                            WrappedEntityRenderState fakeState = (WrappedEntityRenderState) state;
+                            fakeState.magicaddons$setWrappedEntity(true);
+                            fakeState.magicaddons$setWrappedEntityTintColor(group.getTint());
 
-                    },
-                    false
-            );
+                        },
+                        false
+                );
+            }
         }
 
 
