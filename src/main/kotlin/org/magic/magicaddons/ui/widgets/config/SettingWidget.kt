@@ -9,6 +9,7 @@ import net.minecraft.client.gui.narration.NarrationElementOutput
 import net.minecraft.client.input.CharacterEvent
 import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
+import org.magic.magicaddons.Common
 import org.magic.magicaddons.data.config.SettingNode
 import org.magic.magicaddons.ui.screens.FeatureEditScreen
 import org.magic.magicaddons.util.ScreenUtil.drawSimpleTooltip

@@ -1,6 +1,6 @@
 package org.magic.magicaddons.ui.widgets.greenhouse
 
-import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.components.Renderable
 import net.minecraft.client.gui.components.events.GuiEventListener
 import org.magic.magicaddons.ui.HoverableContainer
@@ -20,13 +20,8 @@ class HoverControls() : Renderable, GuiEventListener, HoverableContainer {
     @JvmField
     var isFocused: Boolean = false
 
-    override fun render(
-        guiGraphics: GuiGraphics,
-        i: Int,
-        j: Int,
-        f: Float
-    ) {
-        TODO("Not yet implemented")
+    override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
+
     }
 
     override fun setFocused(focused: Boolean) {

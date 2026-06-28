@@ -1,6 +1,6 @@
 package org.magic.magicaddons.ui
 
-import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.components.events.GuiEventListener
 import net.minecraft.client.input.CharacterEvent
 import net.minecraft.client.input.KeyEvent
@@ -16,7 +16,7 @@ interface OverlayRenderable : GuiEventListener, HoverableContainer {
     val overlayHeight: Int
 
     fun renderOverlay(
-        graphics: GuiGraphics,
+        graphics: GuiGraphicsExtractor,
         mouseX: Int,
         mouseY: Int,
         delta: Float
@@ -65,10 +65,4 @@ interface OverlayContext {
     fun removeOverlay(overlay: OverlayRenderable) {
         overlays.remove(overlay)
     }
-}
-
-
-sealed class OverlayEvent {
-    data class Open(val overlay: OverlayRenderable) : OverlayEvent()
-    data class Close(val overlay: OverlayRenderable) : OverlayEvent()
 }

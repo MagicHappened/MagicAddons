@@ -1,7 +1,7 @@
 package org.magic.magicaddons.ui.widgets.greenhouse
 
 import net.minecraft.client.Minecraft
-import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.input.MouseButtonEvent
 import org.magic.magicaddons.Common
 import org.magic.magicaddons.data.greenhouse.GreenhouseGrid
@@ -38,7 +38,7 @@ class ApplyToContext(
         gridSelected(value)
     }
 
-    override fun renderOverlay(graphics: GuiGraphics, mouseX: Int, mouseY: Int, delta: Float) {
+    override fun renderOverlay(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
         graphics.fill(
             overlayX,
             overlayY,
@@ -55,7 +55,7 @@ class ApplyToContext(
             2,
             Common.UI.BORDER_COLOR
         )
-        graphics.drawString(
+        graphics.text(
             font,
             title,
             overlayX + Common.UI.TEXT_X_PAD,
@@ -63,7 +63,7 @@ class ApplyToContext(
             0xFFFFFFFF.toInt()
         )
 
-        valueWidgets.forEach { it.render(graphics, mouseX, mouseY) }
+        valueWidgets.forEach { it.extractRenderState(graphics, mouseX, mouseY) }
     }
 
     override fun mouseMoved(mouseX: Double, mouseY: Double) {

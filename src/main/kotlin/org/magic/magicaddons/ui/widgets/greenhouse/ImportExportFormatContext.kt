@@ -1,11 +1,10 @@
 package org.magic.magicaddons.ui.widgets.greenhouse
 
 import net.minecraft.client.Minecraft
-import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.components.events.GuiEventListener
 import net.minecraft.client.input.MouseButtonEvent
 import org.magic.magicaddons.Common
-import org.magic.magicaddons.ui.widgets.AbstractContextMenu
 import org.magic.magicaddons.ui.widgets.AbstractSelectorContextMenu
 import org.magic.magicaddons.ui.widgets.ClickableRowWidget
 import org.magic.magicaddons.util.ScreenUtil.drawBorder
@@ -49,7 +48,7 @@ class ImportExportFormatContext(
     override val valueWidgets: MutableList<ClickableRowWidget<LayoutFormatType>> = mutableListOf()
 
 
-    override fun renderOverlay(graphics: GuiGraphics, mouseX: Int, mouseY: Int, delta: Float) {
+    override fun renderOverlay(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
         graphics.fill(
             overlayX,
             overlayY,
@@ -66,7 +65,7 @@ class ImportExportFormatContext(
             2,
             Common.UI.BORDER_COLOR
         )
-        graphics.drawString(
+        graphics.text(
             font,
             title,
             overlayX + Common.UI.TEXT_X_PAD,
@@ -74,7 +73,7 @@ class ImportExportFormatContext(
             0xFFFFFFFF.toInt()
         )
         valueWidgets.forEach {
-            it.render(graphics, mouseX, mouseY)
+            it.extractRenderState(graphics, mouseX, mouseY)
         }
     }
 

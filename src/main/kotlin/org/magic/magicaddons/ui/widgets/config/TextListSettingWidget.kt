@@ -170,11 +170,11 @@ class TextListSettingWidget(
 
         nameInputField.extractRenderState(graphics, mouseX, mouseY, delta)
         valueInputField.extractRenderState(graphics, mouseX, mouseY, delta)
-        submitButton.render(graphics, mouseX, mouseY, delta)
+        submitButton.extractRenderState(graphics, mouseX, mouseY, delta)
 
         graphics.drawBorder(x, y, x + width, y + height, borderSize, borderColor)
 
-        renderTooltip(ctx, mouseX, mouseY)
+        renderTooltip(graphics, mouseX, mouseY)
     }
 
     private fun toggleEntry(entry: ListEntry) {

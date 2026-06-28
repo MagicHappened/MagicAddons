@@ -1,6 +1,6 @@
 package org.magic.magicaddons.ui.widgets.greenhouse
 
-import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.components.Renderable
 import net.minecraft.client.gui.components.events.GuiEventListener
 import net.minecraft.client.gui.narration.NarratableEntry
@@ -8,7 +8,6 @@ import net.minecraft.client.gui.narration.NarrationElementOutput
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
-import org.magic.magicaddons.data.greenhouse.CropRegistry
 import org.magic.magicaddons.data.greenhouse.GreenhouseLayout
 import org.magic.magicaddons.ui.HoverableContainer
 import org.magic.magicaddons.util.ScreenUtil.drawLine
@@ -80,8 +79,7 @@ class GridWidget(
 
     }
 
-    override fun render(graphics: GuiGraphics, mouseX: Int, mouseY: Int, delta: Float) {
-
+    override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
         // draw grid lines
         for (i in 1 until layout.size) {
             // vertical
@@ -105,15 +103,12 @@ class GridWidget(
             )
         }
 
-
-        // draw slots
         slotWidgets.forEach {
-            it.render(graphics, mouseX, mouseY, delta)
+            it.extractRenderState(graphics, mouseX, mouseY, delta)
         }
 
-
         elementWidgets.forEach {
-            it.render(graphics, mouseX, mouseY, delta)
+            it.extractRenderState(graphics, mouseX, mouseY, delta)
         }
     }
 

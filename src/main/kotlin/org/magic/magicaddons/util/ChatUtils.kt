@@ -34,7 +34,7 @@ object ChatUtils {
     }
     fun sendWithCommand(message: String, command: String) {
         val component = buildWithCommand(message, command)
-        Minecraft.getInstance().player?.sendSystemMessage(prefixed)
+        Minecraft.getInstance().player?.sendSystemMessage(component)
     }
 
     fun buildWithCommand(message: String, command: String): Component {

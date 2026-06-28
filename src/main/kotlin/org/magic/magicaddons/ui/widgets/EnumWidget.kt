@@ -1,7 +1,7 @@
 package org.magic.magicaddons.ui.widgets
 
 import net.minecraft.client.Minecraft
-import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.components.Renderable
 import net.minecraft.client.gui.components.events.GuiEventListener
 import net.minecraft.client.input.MouseButtonEvent
@@ -39,16 +39,11 @@ class EnumWidget<T>(
     }
 
 
-    override fun render(
-        graphics: GuiGraphics,
-        mouseX: Int,
-        mouseY: Int,
-        deltaTick: Float
-    ) {
+    override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, a: Float) {
         graphics.fill(x, y, x + width, y + height, Common.UI.BACKGROUND_COLOR)
         graphics.drawBorder(x, y, x + width, y + height, Common.UI.BORDER_SIZE, Common.UI.BORDER_COLOR)
 
-        graphics.drawString(
+        graphics.text(
             font,
             Component.literal(currentValue.toString()),
             x + Common.UI.TEXT_X_PAD,
@@ -57,7 +52,7 @@ class EnumWidget<T>(
             false
         )
 
-        graphics.drawString(
+        graphics.text(
             font,
             Component.literal("↓"),
             x + width - font.width("↓") - 4,
@@ -148,12 +143,12 @@ class EnumWidget<T>(
         }
 
         override fun renderOverlay(
-            graphics: GuiGraphics,
+            graphics: GuiGraphicsExtractor,
             mouseX: Int,
             mouseY: Int,
             delta: Float
         ) {
-            valueWidgets.forEach { it.render(graphics, mouseX, mouseY) }
+            valueWidgets.forEach { it.extractRenderState(graphics, mouseX, mouseY) }
         }
 
         override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
