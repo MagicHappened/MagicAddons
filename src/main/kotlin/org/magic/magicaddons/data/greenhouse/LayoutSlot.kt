@@ -8,6 +8,10 @@ class LayoutSlot(
     var placedBlock: BlockState?,
     var slotMark: Marking? = null
 ) {
+    fun isCoordsEqual(other: LayoutSlot): Boolean {
+        return x == other.x && y == other.y
+    }
+
     enum class Marking {
         Target,
         Ingredient,

@@ -35,6 +35,9 @@ class GreenhouseGrid(
     fun hasRuntime(): Boolean {
         return state.hasRuntimeReferences
     }
+    fun slotEquals(slot: LayoutSlot): Boolean {
+        return layout.getSlot(slot.x,slot.y)?.placedBlock == slot.placedBlock
+    }
 
     fun getPosForSlot(slot: LayoutSlot): BlockPos? {
         val box = plot?.getBuildableArea() ?: return null
@@ -48,6 +51,12 @@ class GreenhouseGrid(
         return BlockPos(worldX, 73, worldZ)
     }
 
+    fun getPosForSlotCoords(x: Int, y: Int): BlockPos? {
+        layout.getSlot(x,y)?.let {
+            return getPosForSlot(it)
+        }
+        return null
+    }
 
     fun getSlotAt(blockPos: BlockPos, matchY: Boolean = true): LayoutSlot? {
         val buildArea = plot?.getBuildableArea() ?: return null
