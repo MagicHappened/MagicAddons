@@ -63,7 +63,7 @@ dependencies {
     api("com.terraformersmc:modmenu:${project.property("modmenu_version")}")
 
     api("tech.thatgravyboat:skyblock-api:${project.property("skyblock_api_version")}") {
-        capabilities { requireCapability("tech.thatgravyboat:skyblock-api-26.1") }
+        capabilities { requireCapability("tech.thatgravyboat:skyblock-api-26.2") }
     }
 }
 
