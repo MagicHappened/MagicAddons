@@ -83,7 +83,7 @@ class FeatureEditScreen(
             this.extractPanorama(graphics, deltaTick)
         }
         this.extractMenuBackground(graphics)
-        this.minecraft.gui.extractDeferredSubtitles()
+        this.minecraft.gui.hud.extractDeferredSubtitles()
     }
 
     override fun charTyped(characterEvent: CharacterEvent): Boolean {
@@ -118,7 +118,8 @@ class FeatureEditScreen(
     }
 
     override fun onClose() {
-        Minecraft.getInstance().setScreen(parent)
+        parent ?: return
+        Minecraft.getInstance().setScreenAndShow(parent)
     }
 
     override fun removed() {
