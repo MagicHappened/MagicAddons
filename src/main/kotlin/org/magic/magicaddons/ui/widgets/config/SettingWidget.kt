@@ -130,7 +130,7 @@ abstract class SettingWidget<T>(
 
     override fun mouseMoved(mouseX: Double, mouseY: Double) {
         hovered = isMouseOver(mouseX, mouseY)
-        val currentScreen = Minecraft.getInstance().screen
+        val currentScreen = Minecraft.getInstance().gui.screen()
         if (currentScreen is FeatureEditScreen && hovered) {
             currentScreen.hoveredWidget = this
         }

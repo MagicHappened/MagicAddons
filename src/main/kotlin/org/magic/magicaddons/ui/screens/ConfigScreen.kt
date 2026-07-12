@@ -69,7 +69,7 @@ class ConfigScreen(title: Component, val parent: Screen?) : Screen(title) {
             this.extractBackground(graphics, mouseX, mouseY, deltaTick)
         }
         this.extractMenuBackground(graphics)
-        this.minecraft.gui.extractDeferredSubtitles()
+        this.minecraft.gui.hud.extractDeferredSubtitles()
     }
 
     override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
@@ -80,11 +80,15 @@ class ConfigScreen(title: Component, val parent: Screen?) : Screen(title) {
     }
 
     override fun onClose() {
-        Minecraft.getInstance().setScreen(parent)
+        if (parent != null) {
+        Minecraft.getInstance().gui.setScreen(parent)
+        }
+        super.onClose()
     }
 
     override fun removed() {
         MagicAddonsConfigJsonHandler.save()
+        super.removed()
     }
 
 }

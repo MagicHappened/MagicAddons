@@ -16,6 +16,7 @@ import net.minecraft.client.renderer.entity.EntityRenderDispatcher;
 import net.minecraft.client.renderer.entity.EntityRenderer;
 import net.minecraft.client.renderer.entity.LivingEntityRenderer;
 import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
+import net.minecraft.client.renderer.feature.FeatureRenderDispatcher;
 import net.minecraft.client.renderer.state.level.CameraRenderState;
 import net.minecraft.client.renderer.state.level.LevelRenderState;
 import net.minecraft.util.profiling.ProfilerFiller;
@@ -48,24 +49,21 @@ public abstract class LevelRendererMixin {
     @Shadow
     public abstract void doEntityOutline();
 
-    @Shadow
-    public abstract void initOutline();
-
 
     @Shadow
     private @Nullable RenderTarget entityOutlineTarget;
 
     @Inject(method = "addMainPass", at = @At("HEAD"))
-    private void enableGlow(FrameGraphBuilder frame, Frustum frustum, Matrix4fc modelViewMatrix, GpuBufferSlice terrainFog, boolean renderOutline, LevelRenderState levelRenderState, DeltaTracker deltaTracker, ProfilerFiller profiler, ChunkSectionsToRender chunkSectionsToRender, CallbackInfo ci) {
-        levelRenderState.haveGlowingEntities = true;
+    private void enableGlow(FrameGraphBuilder frame, FeatureRenderDispatcher.PreparedFrame featureFrame, GpuBufferSlice terrainFog, LevelRenderState levelRenderState, ProfilerFiller profiler, ChunkSectionsToRender chunkSectionsToRender, CallbackInfo ci) {
+        levelRenderState.shouldShowEntityOutlines = true;
     }
 
-    @Inject(method = "renderLevel", at = @At("HEAD"))
-    private void initOutlineIfNeeded(GraphicsResourceAllocator resourceAllocator, DeltaTracker deltaTracker, boolean renderOutline, CameraRenderState cameraState, Matrix4fc modelViewMatrix, GpuBufferSlice terrainFog, Vector4f fogColor, boolean shouldRenderSky, ChunkSectionsToRender chunkSectionsToRender, CallbackInfo ci) {
-        if (this.entityOutlineTarget == null) {
-            this.initOutline();
-        }
-    }
+//    @Inject(method = "render", at = @At("HEAD"))
+//    private void initOutlineIfNeeded(GraphicsResourceAllocator resourceAllocator, DeltaTracker deltaTracker, boolean renderOutline, CameraRenderState cameraState, Matrix4fc modelViewMatrix, GpuBufferSlice terrainFog, Vector4f fogColor, boolean shouldRenderSky, CallbackInfo ci) {
+//        if (this.entityOutlineTarget == null) {
+//            this.doEntityOutline();
+//        }
+//    } maybe not needed
 
     @Inject(
             method = "submitEntities",
@@ -117,7 +115,7 @@ public abstract class LevelRendererMixin {
 
 
 
-            levelRenderState.haveGlowingEntities = true;
+            levelRenderState.shouldShowEntityOutlines = true;
 
             renderer.submit(state, poseStack, submitNodeCollector, levelRenderState.cameraRenderState);
 
