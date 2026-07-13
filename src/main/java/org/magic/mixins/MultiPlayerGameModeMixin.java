@@ -66,7 +66,7 @@ public abstract class MultiPlayerGameModeMixin {
     }
 
     @Inject(
-            method = "interactAt",
+            method = "interact",
             at = @At(
                     value = "INVOKE",
                     target = "Lnet/minecraft/client/multiplayer/ClientPacketListener;send(Lnet/minecraft/network/protocol/Packet;)V",

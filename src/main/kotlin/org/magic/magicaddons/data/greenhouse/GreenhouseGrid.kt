@@ -126,6 +126,34 @@ class GreenhouseGrid(
         }
     }
 
+    fun createSlotDataForGrid() {
+        val world = Minecraft.getInstance().level ?: return
+        val plot = PlotAPI.getCurrentPlot() ?: return
+        if (plot != this.plot) return
+
+        val buildArea = plot.getBuildableArea()
+
+        val minX = buildArea.minX.toInt()
+        val minZ = buildArea.minZ.toInt()
+
+        for (index in 0 until (width * height)) {
+            val gridX = index % width
+            val gridY = index / width
+
+            val worldX = minX + gridX
+            val worldZ = minZ + gridY
+
+            val state = world.getBlockState(
+                BlockPos(worldX, 73, worldZ)
+            )
+
+            layout.getSlot(gridX, gridY)?.let {
+                it.placedBlock = state
+            }
+        }
+    }
+
+
     //todo need to make this also set plant specific data, aka if candidate "Fleshtrap" was found
     // already handling it need to see the when statement working for fleshtrap once someone grows some
     // (or me)

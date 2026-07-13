@@ -149,7 +149,7 @@ object GreenhouseData {
 
         }
 
-        grid.createSlotData()
+        grid.createSlotDataForGrid()
         grid.setPlantData()
 
         // after grid update
@@ -165,6 +165,9 @@ object GreenhouseData {
     fun getCurrentGrid(): GreenhouseGrid? {
         val plotId = PlotAPI.getCurrentPlot()?.id ?: return null
         return greenhouseGrids.find { it.layout.id == "plot_$plotId" }
+    }
+    fun BlockPos.center(): Vec3 {
+        return Vec3(x + 0.5, y + 0.5, z + 0.5)
     }
 
     fun Float.isCardinalYaw(): Boolean {
@@ -300,13 +303,13 @@ object GreenhouseData {
         val passedGrowthTicks = (overdueMs / growthTickMs)
 
         if (passedGrowthTicks <= 0 && !nextTick.isBefore(now)) return
-        Common.LOGGER.info("Overdue ms $overdueMs")
-        Common.LOGGER.info("Overdue growth ticks $passedGrowthTicks")
+//        Common.LOGGER.info("Overdue ms $overdueMs")
+//        Common.LOGGER.info("Overdue growth ticks $passedGrowthTicks")
         val nextTickAdvance = (passedGrowthTicks + 1) * growthTickMs
-        Common.LOGGER.info("Next tick advance ms $nextTickAdvance")
-        Common.LOGGER.info("Previous tick ${miscInfo.nextTickTime}")
-        Common.LOGGER.info("Next tick ${miscInfo.nextTickTime!!.plusMillis((nextTickAdvance))}")
-        Common.LOGGER.info("Now $now")
+//        Common.LOGGER.info("Next tick advance ms $nextTickAdvance")
+//        Common.LOGGER.info("Previous tick ${miscInfo.nextTickTime}")
+//        Common.LOGGER.info("Next tick ${miscInfo.nextTickTime!!.plusMillis((nextTickAdvance))}")
+//        Common.LOGGER.info("Now $now") //hopefully dont need anymore
         miscInfo.nextTickTime =
             miscInfo.nextTickTime!!.plusMillis(
                 nextTickAdvance
@@ -464,10 +467,10 @@ object GreenhouseData {
         if (!grid.hasRuntime()) return
 
         val gridArea = grid.plot?.getBuildableArea() ?: return
-        if (!gridArea.contains(event.packet.pos.center)) return
+        if (!gridArea.contains(event.packet.pos.center())) return
         val slot = grid.getSlotAt(event.packet.pos, false) ?: return
 
-        if (gridArea.contains(event.packet.pos.center)) {
+        if (gridArea.contains(event.packet.pos.center())) {
             if (event.packet.pos.y == 74) {
 
                 if (event.packet.blockState.block == Blocks.FIRE) {

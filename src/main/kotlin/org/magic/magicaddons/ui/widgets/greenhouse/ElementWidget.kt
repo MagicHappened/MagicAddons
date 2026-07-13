@@ -20,6 +20,7 @@ import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.ScreenUtil
 import org.magic.magicaddons.util.ScreenUtil.drawBorder
 import org.magic.magicaddons.util.ScreenUtil.renderFakeItem
+import org.magic.magicaddons.util.ScreenUtil.renderScaledItem
 
 class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, GuiEventListener {
     var widgetX: Int = 0
@@ -70,12 +71,11 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, GuiEv
             renderFire(graphics, mouseX, mouseY, deltaTick)
             return
         }
-        graphics.renderFakeItem(
+        graphics.renderScaledItem(
             renderedStack,
             widgetX + padding,
             widgetY + padding,
-            width - padding * 2,
-            height - padding * 2
+            width/16f
         )
     }
 

@@ -1,6 +1,3 @@
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
-
 plugins {
     kotlin("jvm") version "2.4.0"
     id("net.fabricmc.fabric-loom") version "1.17-SNAPSHOT"
@@ -19,12 +16,11 @@ val targetJavaVersion = 25
 
 java {
     toolchain.languageVersion = JavaLanguageVersion.of(targetJavaVersion)
-    // Loom will automatically attach sourcesJar to a RemapSourcesJar task and to the "build" task
-    // if it is present.
-    // If you remove this line, sources will not be generated.
+    withSourcesJar()
 }
 
 loom {
+    accessWidenerPath.set(file("src/main/resources/magicaddons.accesswidener"))
     mods {
         register("magicaddons") {
             sourceSet(sourceSets.main.get())
@@ -93,8 +89,8 @@ tasks.withType<JavaCompile>().configureEach {
     options.release.set(targetJavaVersion)
 }
 
-tasks.withType<KotlinCompile>().configureEach {
-    compilerOptions.jvmTarget.set(JvmTarget.fromTarget(targetJavaVersion.toString()))
+kotlin {
+    jvmToolchain(targetJavaVersion)
 }
 
 tasks.jar {

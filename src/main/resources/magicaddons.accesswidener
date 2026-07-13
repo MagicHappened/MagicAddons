@@ -1,0 +1,5 @@
+accessWidener v1 official
+
+accessible field net/minecraft/client/renderer/item/ItemStackRenderState activeLayerCount I
+accessible field net/minecraft/client/renderer/item/ItemStackRenderState layers [Lnet/minecraft/client/renderer/item/ItemStackRenderState$LayerRenderState;
+accessible field net/minecraft/client/renderer/item/ItemStackRenderState$LayerRenderState localTransform Lorg/joml/Matrix4f;

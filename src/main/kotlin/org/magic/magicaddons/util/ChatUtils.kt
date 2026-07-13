@@ -12,6 +12,13 @@ import java.time.Instant
 object ChatUtils {
     var lastWarningTime: Instant? = null
 
+    fun send(message: String){
+        send(Component.literal(message))
+    }
+    fun send(message: Component){
+        Minecraft.getInstance().player?.sendSystemMessage(message)
+    }
+
     fun sendWithPrefix(message: String) {
         val prefixed = buildWithPrefix(message)
         Minecraft.getInstance().player?.sendSystemMessage(prefixed)
@@ -85,7 +92,7 @@ object ChatUtils {
         if (cooldownReady()) {
             lastWarningTime = Instant.now()
             messages.forEach {
-                sendWithPrefix(it)
+                send(it)
             }
         }
     }

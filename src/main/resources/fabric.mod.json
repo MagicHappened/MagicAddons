@@ -17,6 +17,7 @@
       "org.magic.magicaddons.config.MagicAddonsModMenuCompat"
     ]
   },
+  "accessWidener": "magicaddons.accesswidener",
   "mixins": [
     "magicaddons.mixins.json"
   ],
