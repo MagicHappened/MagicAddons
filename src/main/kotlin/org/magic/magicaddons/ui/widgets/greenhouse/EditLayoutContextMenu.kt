@@ -118,7 +118,7 @@ class EditLayoutContextMenu(
 
     override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
         if (!isMouseOver(mouseButtonEvent.x.toInt(), mouseButtonEvent.y.toInt())) return false
-        val screen: GreenhouseScreen = Minecraft.getInstance().screen as? GreenhouseScreen ?: return false
+        val screen: GreenhouseScreen = Minecraft.getInstance().gui.screen() as? GreenhouseScreen ?: return false
         if (textField.mouseClicked(mouseButtonEvent,doubled)){
             textField.isFocused = true
             return true

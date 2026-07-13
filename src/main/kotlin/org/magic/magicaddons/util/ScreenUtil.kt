@@ -16,10 +16,13 @@ import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.renderer.block.dispatch.BlockStateModelPart
+import net.minecraft.client.renderer.item.ItemStackRenderState
 import net.minecraft.client.renderer.state.gui.ColoredRectangleRenderState
 import net.minecraft.client.renderer.state.gui.GuiTextRenderState
 import net.minecraft.network.chat.Component
+import net.minecraft.world.item.ItemDisplayContext
 import org.joml.Matrix3x2f
+import org.joml.Matrix4f
 
 object ScreenUtil {
 
@@ -350,12 +353,44 @@ object ScreenUtil {
         }
     }
 
+    fun GuiGraphicsExtractor.renderScaledItem(
+        stack: ItemStack,
+        x: Int,
+        y: Int,
+        scale: Float
+    ){
+        if (stack.isEmpty) return
+        val minecraft = Minecraft.getInstance()
+        val resolver = minecraft.itemModelResolver
+        val renderState = ItemStackRenderState()
+        resolver.updateForTopItem(
+            renderState,
+            stack,
+            ItemDisplayContext.GUI,
+            minecraft.level,
+            minecraft.player,
+            0
+
+        )
+        applyScaleToState(renderState,scale)
+
+    }
+
+    private fun applyScaleToState(renderState: ItemStackRenderState, scale: Float){
+        if (scale == 1.0f) return
+        val scaleMatrix = Matrix4f().scale(scale, scale, 1.0f)
+        renderState.layers.forEach {
+            it.setLocalTransform(it.localTransform.mul(scaleMatrix))
+        }
+    }
+
 
 
 
     fun getSpriteForState(state: BlockState, direction: Direction): TextureAtlasSprite {
 
         val client = Minecraft.getInstance()
+
         val model = client.modelManager.blockStateModelSet.get(state)
 
         val random = RandomSource.create(0)
@@ -364,13 +399,23 @@ object ScreenUtil {
 
         model.collectParts(random, parts)
 
+        parts.forEach { part ->
+            val quads = part.getQuads(direction)
+            if (quads.isNotEmpty()) {
+                return quads.first().materialInfo.sprite
+            }
+        }
 
-        for (part in parts) {
-
-            var directionalMaterial = part
-
-
-            return part.particleMaterial().sprite
+        parts.forEach { part ->
+            val quads = part.getQuads(null)
+            if (quads.size == 1){
+                return quads[0].materialInfo.sprite
+            }
+            quads.forEach { quad ->
+                if (quad.direction == direction) {
+                    return quad.materialInfo.sprite
+                }
+            }
         }
 
 

@@ -12,7 +12,8 @@
     "ClientLevelMixin",
     "ScreenMixin",
     "EntityRenderStateMixin",
-    "CustomHeadLayerMixin"
+    "CustomHeadLayerMixin",
+    "LevelExtractorMixin"
   ],
   "injectors": {
     "defaultRequire": 1

@@ -1,5 +1,7 @@
 package org.magic.mixins;
 
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.mojang.blaze3d.buffers.GpuBufferSlice;
 import com.mojang.blaze3d.framegraph.FrameGraphBuilder;
 import com.mojang.blaze3d.pipeline.RenderTarget;
@@ -15,23 +17,30 @@ import net.minecraft.client.renderer.culling.Frustum;
 import net.minecraft.client.renderer.entity.EntityRenderDispatcher;
 import net.minecraft.client.renderer.entity.EntityRenderer;
 import net.minecraft.client.renderer.entity.LivingEntityRenderer;
+import net.minecraft.client.renderer.entity.state.EntityRenderState;
 import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
+import net.minecraft.client.renderer.feature.FeatureRenderDispatcher;
 import net.minecraft.client.renderer.state.level.CameraRenderState;
 import net.minecraft.client.renderer.state.level.LevelRenderState;
 import net.minecraft.util.profiling.ProfilerFiller;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.animal.pig.Pig;
+import net.minecraft.world.entity.decoration.ArmorStand;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix4f;
 import org.joml.Matrix4fc;
 import org.joml.Vector4f;
 import org.jspecify.annotations.Nullable;
+import org.magic.magicaddons.features.farming.greenhousePresets.LayoutRenderState;
 import org.magic.magicaddons.util.EntityUtils;
+import org.magic.misc.EntityRenderModifier;
+import org.magic.misc.WrappedEntityRenderState;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
@@ -45,44 +54,9 @@ public abstract class LevelRendererMixin {
     @Final
     private EntityRenderDispatcher entityRenderDispatcher;
 
-    @Shadow
-    public abstract void doEntityOutline();
-
-
-    @Shadow
-    private @Nullable RenderTarget entityOutlineTarget;
-
     @Inject(method = "addMainPass", at = @At("HEAD"))
     private void enableGlow(FrameGraphBuilder frame, FeatureRenderDispatcher.PreparedFrame featureFrame, GpuBufferSlice terrainFog, LevelRenderState levelRenderState, ProfilerFiller profiler, ChunkSectionsToRender chunkSectionsToRender, CallbackInfo ci) {
         levelRenderState.shouldShowEntityOutlines = true;
-    }
-
-//    @Inject(method = "render", at = @At("HEAD"))
-//    private void initOutlineIfNeeded(GraphicsResourceAllocator resourceAllocator, DeltaTracker deltaTracker, boolean renderOutline, CameraRenderState cameraState, Matrix4fc modelViewMatrix, GpuBufferSlice terrainFog, Vector4f fogColor, boolean shouldRenderSky, CallbackInfo ci) {
-//        if (this.entityOutlineTarget == null) {
-//            this.doEntityOutline();
-//        }
-//    } maybe not needed
-
-    @WrapOperation(
-            method = "extractVisibleEntities",
-            at = @At(
-                    value = "INVOKE",
-                    target = "Lnet/minecraft/client/renderer/LevelRenderer;extractEntity(Lnet/minecraft/world/entity/Entity;F)Lnet/minecraft/client/renderer/entity/state/EntityRenderState;")
-    )
-    private EntityRenderState wrapExtractEntity(
-            LevelRenderer instance,
-            Entity entity,
-            float partialTickTime,
-            Operation<EntityRenderState> original
-    ) {
-        EntityRenderState state = original.call(instance, entity, partialTickTime);
-
-        if (LayoutRenderState.INSTANCE.getBadStandsUUID().contains(entity.getUUID())){
-            ((WrappedEntityRenderState)state).magicaddons$setWrappedEntity(true);
-            ((WrappedEntityRenderState)state).magicaddons$setWrappedEntityTintColor(LayoutRenderState.RED_TINT);
-        }
-        return state;
     }
 
 
