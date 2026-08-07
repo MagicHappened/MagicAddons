@@ -15,6 +15,7 @@ import net.minecraft.client.renderer.culling.Frustum;
 import net.minecraft.client.renderer.entity.EntityRenderDispatcher;
 import net.minecraft.client.renderer.entity.EntityRenderer;
 import net.minecraft.client.renderer.entity.LivingEntityRenderer;
+import net.minecraft.client.renderer.entity.state.EntityRenderState;
 import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
 import net.minecraft.client.renderer.state.level.CameraRenderState;
 import net.minecraft.client.renderer.state.level.LevelRenderState;
@@ -81,39 +82,36 @@ public abstract class LevelRendererMixin {
             Entity entity = entry.getKey();
             EntityUtils.HighlightSource source = entry.getValue();
 
-            if (!(entity instanceof LivingEntity living)) continue;
-            if (living instanceof Player){
-                living.setCustomNameVisible(false);
+            if (entity instanceof Player){
+                entity.setCustomNameVisible(false);
             }
 
-            EntityRenderer<? super LivingEntity, ?> baseRenderer = entityRenderDispatcher.getRenderer(living);
-            if (!(baseRenderer instanceof LivingEntityRenderer<?, ?, ?> rawRenderer)) continue;
+            EntityRenderer<? super Entity, ?> baseRenderer = entityRenderDispatcher.getRenderer(entity);
 
             @SuppressWarnings("unchecked")
-            LivingEntityRenderer<LivingEntity, LivingEntityRenderState, ?> renderer =
-                    (LivingEntityRenderer<LivingEntity, LivingEntityRenderState, ?>) rawRenderer;
+            EntityRenderer<Entity, EntityRenderState> renderer =
+                    (EntityRenderer<Entity, EntityRenderState>) baseRenderer;
 
             float partialTicks = mc.getDeltaTracker().getGameTimeDeltaPartialTick(false);
 
-            LivingEntityRenderState state = renderer.createRenderState(living, partialTicks);
-            renderer.extractRenderState(living, state, partialTicks);
+            EntityRenderState state = renderer.createRenderState(entity, partialTicks);
+            renderer.extractRenderState(entity, state, partialTicks);
 
             poseStack.pushPose();
 
             Vec3 cam = levelRenderState.cameraRenderState.pos;
 
             poseStack.translate(
-                    living.getX() - cam.x,
-                    living.getY() - cam.y,
-                    living.getZ() - cam.z
+                    entity.getX() - cam.x,
+                    entity.getY() - cam.y,
+                    entity.getZ() - cam.z
             );
 
-            poseStack.scale(state.scale, state.scale, state.scale);
-            poseStack.translate(0.0F, 0.0F, 0.0F);
+            //poseStack.scale(state.scale, state.scale, state.scale);
+            //poseStack.translate(0.0F, 0.0F, 0.0F);
 
             state.outlineColor = source.getHighlightColor();
             state.isInvisible = true;
-            state.isInvisibleToPlayer = true;
 
 
 
