@@ -22,6 +22,7 @@ import org.magic.magicaddons.events.EventHandler
 import org.magic.magicaddons.events.world.OnEntityAdded
 import org.magic.magicaddons.events.world.OnEntityRemoved
 import org.magic.magicaddons.events.world.OnEntityUpdated
+import org.magic.magicaddons.events.world.OnWorldTickEvent
 import org.magic.magicaddons.features.Feature
 import org.magic.magicaddons.util.PlayerUtils
 import org.magic.magicaddons.util.EntityUtils
@@ -48,6 +49,26 @@ object HighlightMobs : Feature(), EntityUtils.HighlightSource {
     override val displayName: String = "Mob Highlight"
     override val tooltipMessage: String = "Highlights specific mobs of your choosing"
     override val category: String = "combat"
+
+    var safariZone: String = ""
+
+    @EventHandler
+    fun onWorldTick(event: OnWorldTickEvent){
+        if (LocationAPI.island != SkyBlockIsland.SAFARI) return
+        val playerPos = Minecraft.getInstance().player?.position() ?: return
+        val isPositiveX = playerPos.x >= -47.0
+        val isPositiveZ = playerPos.z >= 0.0
+        val safariValue = when {
+            !isPositiveZ && isPositiveX -> "haunted"
+            !isPositiveZ && !isPositiveX -> "icy"
+            isPositiveZ && !isPositiveX -> "cavern"
+            else -> "forest"
+        }
+        if (safariValue != safariZone){
+            safariZone = safariValue
+            invalidateMobs()
+        }
+    }
 
     val entityTypePlayerSkinHashList = ToggleListSetting(
         key = "EntityTypePlayerSkinHash",
@@ -80,7 +101,15 @@ object HighlightMobs : Feature(), EntityUtils.HighlightSource {
                         key = "PresetsForagingTreasure",
                         displayName = "Foraging Treasure",
                         tooltip = "Preset to highlight the grass containing treasure (or shards) inside foraging islands",
-                        value = false
+                        value = false,
+                        children = listOf(
+                            BooleanSetting(
+                                key = "ForagingTreasureSafariCondition",
+                                displayName = "Safari Restriction",
+                                tooltip = "Restricts the treasure highlight to the current safari zone.",
+                                value = false
+                            )
+                        )
                     ),
                     BooleanSetting(
                         key = "SafariPreset",
@@ -166,10 +195,7 @@ object HighlightMobs : Feature(), EntityUtils.HighlightSource {
             )
         )
     )
-
-
-    @EventHandler
-    fun onConfigChanged(event: ConfigChangedEvent) {
+    fun invalidateMobs(){
         EntityUtils.removeAllForSource(this)
 
         EntityUtils.entityInfoList?.forEach {
@@ -177,6 +203,11 @@ object HighlightMobs : Feature(), EntityUtils.HighlightSource {
                 EntityUtils.add(it.entity, this)
             }
         }
+    }
+
+    @EventHandler
+    fun onConfigChanged(event: ConfigChangedEvent) {
+        invalidateMobs()
     }
 
     @EventHandler
@@ -221,6 +252,19 @@ object HighlightMobs : Feature(), EntityUtils.HighlightSource {
         val dirtTreasurePresetEnabled = presetsEnabled.getChild<BooleanSetting>("PresetsForagingTreasure")
         if (dirtTreasurePresetEnabled?.value ?: false){
             if (info.entity is Display.ItemDisplay && info.entity.itemStack.item == Items.STRING){
+                val safariConditionEnabled = dirtTreasurePresetEnabled.getChild<BooleanSetting>("ForagingTreasureSafariCondition")
+                if (safariConditionEnabled?.value ?: false){
+                    val mobPos = info.entity.position()
+                    val isPositiveXMob = mobPos.x >= -47.0
+                    val isPositiveZMob = mobPos .z >= 0.0
+                    val mobRegion = when {
+                        !isPositiveZMob && isPositiveXMob -> "haunted"
+                        !isPositiveZMob && !isPositiveXMob -> "icy"
+                        isPositiveZMob && !isPositiveXMob -> "cavern"
+                        else -> "forest"
+                    }
+                    return mobRegion == safariZone
+                }
                 return true
             }
         }
@@ -234,6 +278,7 @@ object HighlightMobs : Feature(), EntityUtils.HighlightSource {
 
         return false
     }
+
 
     fun shouldHighlight(info: EntityInfo): Boolean {
         if (shouldHighlightPreset(info)) return true
@@ -360,19 +405,10 @@ object HighlightMobs : Feature(), EntityUtils.HighlightSource {
 
     fun matchesSafariConditions(info: EntityInfo): Boolean {
         if (LocationAPI.island != SkyBlockIsland.SAFARI) return false
-        val pos = Minecraft.getInstance().player?.position() ?: return false
-        val isPositiveX = pos.x >= -47.0
-        val isPositiveZ = pos.z >= 0.0
-        val region = when {
-            !isPositiveZ && isPositiveX -> "haunted"
-            !isPositiveZ && !isPositiveX -> "icy"
-            isPositiveZ && !isPositiveX -> "cavern"
-            else -> "forest"
-        }
         val entity = info.entity
         val entityPath = entity.type.toString()
 
-        return when (region) {
+        return when (safariZone) {
             "haunted" -> {
                 val hauntedMobs = listOf(
                     "entity.minecraft.silverfish",
