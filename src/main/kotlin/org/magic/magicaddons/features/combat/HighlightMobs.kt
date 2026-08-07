@@ -458,7 +458,9 @@ object HighlightMobs : Feature(), EntityUtils.HighlightSource {
                     "entity.minecraft.frog",
                     "entity.minecraft.panda",
                     "entity.minecraft.bee",
-                    "entity.minecraft.creaking"
+                    "entity.minecraft.creaking",
+                    "entity.minecraft.shulker",
+                    "entity.minecraft.parrot"
                 )
                 forestMobs.contains(entityPath)
             }
