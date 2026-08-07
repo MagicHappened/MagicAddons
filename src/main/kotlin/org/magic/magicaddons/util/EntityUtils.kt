@@ -2,6 +2,7 @@ package org.magic.magicaddons.util
 
 import net.minecraft.client.Minecraft
 import net.minecraft.client.multiplayer.ClientLevel
+import net.minecraft.client.player.LocalPlayer
 import net.minecraft.core.component.DataComponents
 import net.minecraft.world.entity.Display
 import net.minecraft.world.entity.Entity
@@ -167,7 +168,7 @@ object EntityUtils {
     }
 
     private fun isNearMeaningfulEntity(world: ClientLevel, entity: Entity, nearby: List<Entity>): Boolean {
-        val box = entity.boundingBox.inflate(2.0)
+        val box = entity.boundingBox.inflate(1.0)
 
         return world.getEntities(
             entity,
@@ -176,6 +177,7 @@ object EntityUtils {
             when (entity) {
                 is ArmorStand -> false
                 is Display -> false
+                is LocalPlayer -> false
                 is LivingEntity -> true
                 else -> false
             }
