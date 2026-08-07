@@ -62,6 +62,10 @@ dependencies {
 
     api("com.terraformersmc:modmenu:${project.property("modmenu_version")}")
 
+    include("tech.thatgravyboat:skyblock-api:${project.property("skyblock_api_version")}") {
+        capabilities { requireCapability("tech.thatgravyboat:skyblock-api-26.1") }
+    }
+
     api("tech.thatgravyboat:skyblock-api:${project.property("skyblock_api_version")}") {
         capabilities { requireCapability("tech.thatgravyboat:skyblock-api-26.1") }
     }
