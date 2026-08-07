@@ -444,11 +444,14 @@ object HighlightMobs : Feature(), EntityUtils.HighlightSource {
                     "entity.minecraft.slime",
                     "entity.minecraft.sniffer"
                 )
-
-                val displayHash = "a89a76deedd42b410344100df2fa79b6eeac7e6f287745d656179368340ffade"
+                val displayHashes = listOf(
+                    "5dbaab74d1acd0abe9d04abe9928725de5d4495fcb63b647228caf6944c20800",
+                    "a89a76deedd42b410344100df2fa79b6eeac7e6f287745d656179368340ffade"
+                )
 
                 val playerHash = "eacd215ccde2f677c7c144e2b698ff33ea06a87aaf468d05d1f0dc5ec2bdbfe8"
-                (entity is Bat && info.informationEntities?.any { it is Display.ItemDisplay && PlayerUtils.getSkinHash(it.itemStack) == displayHash } ?: false ) ||
+                (entity is Bat && info.informationEntities?.any { it is Display.ItemDisplay && displayHashes.contains(PlayerUtils.getSkinHash(it.itemStack)) } ?: false ) ||
+                        (entity is Display.ItemDisplay && displayHashes.contains(PlayerUtils.getSkinHash(entity.itemStack))) ||
                         (entity is Player && PlayerUtils.getSkinHash(entity) == playerHash) ||
                         (cavernMobs.contains(entityPath))
             }
