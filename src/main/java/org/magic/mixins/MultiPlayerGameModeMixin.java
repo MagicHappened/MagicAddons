@@ -15,8 +15,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(MultiPlayerGameMode.class)
-public class ClientPlayerInteractionManagerMixin {
-
+public class MultiPlayerGameModeMixin {
 
 
     @Inject(method = "attack", at = @At("HEAD") , cancellable = true)

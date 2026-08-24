@@ -1,12 +1,10 @@
 package org.magic.magicaddons.features.combat
 
-import net.minecraft.advancements.criterion.PlayerHurtEntityTrigger
-import net.minecraft.client.Minecraft
 import net.minecraft.client.player.LocalPlayer
 import net.minecraft.world.entity.Display
+import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.EquipmentSlot
 import net.minecraft.world.entity.LivingEntity
-import net.minecraft.world.entity.ambient.Bat
 import net.minecraft.world.entity.decoration.ArmorStand
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.item.ItemStack
@@ -22,18 +20,14 @@ import org.magic.magicaddons.events.EventHandler
 import org.magic.magicaddons.events.world.OnEntityAdded
 import org.magic.magicaddons.events.world.OnEntityRemoved
 import org.magic.magicaddons.events.world.OnEntityUpdated
-import org.magic.magicaddons.events.world.OnWorldTickEvent
-import org.magic.magicaddons.features.Feature
+import org.magic.magicaddons.features.HighlightFeature
 import org.magic.magicaddons.util.PlayerUtils
-import org.magic.magicaddons.util.EntityUtils
 import tech.thatgravyboat.skyblockapi.api.SkyBlockAPI
-import tech.thatgravyboat.skyblockapi.api.location.LocationAPI
-import tech.thatgravyboat.skyblockapi.api.location.SkyBlockIsland
 
 
-object HighlightMobs : Feature(), EntityUtils.HighlightSource {
+object HighlightMobs : HighlightFeature() {
     override val highlightPriority: Int = 0
-    override val highlightColor: Int = 0xFFFFFFFF.toInt()
+    override fun highlightColor(entity: Entity): Int = 0xFFFFFFFF.toInt()
 
     init {
         EventBus.register(this)
@@ -49,26 +43,6 @@ object HighlightMobs : Feature(), EntityUtils.HighlightSource {
     override val displayName: String = "Mob Highlight"
     override val tooltipMessage: String = "Highlights specific mobs of your choosing"
     override val category: String = "combat"
-
-    var safariZone: String = ""
-
-    @EventHandler
-    fun onWorldTick(event: OnWorldTickEvent){
-        if (LocationAPI.island != SkyBlockIsland.SAFARI) return
-        val playerPos = Minecraft.getInstance().player?.position() ?: return
-        val isPositiveX = playerPos.x >= -47.0
-        val isPositiveZ = playerPos.z >= 0.0
-        val safariValue = when {
-            !isPositiveZ && isPositiveX -> "haunted"
-            !isPositiveZ && !isPositiveX -> "icy"
-            isPositiveZ && !isPositiveX -> "cavern"
-            else -> "forest"
-        }
-        if (safariValue != safariZone){
-            safariZone = safariValue
-            invalidateMobs()
-        }
-    }
 
     val entityTypePlayerSkinHashList = ToggleListSetting(
         key = "EntityTypePlayerSkinHash",
@@ -101,20 +75,6 @@ object HighlightMobs : Feature(), EntityUtils.HighlightSource {
                         key = "PresetsForagingTreasure",
                         displayName = "Foraging Treasure",
                         tooltip = "Preset to highlight the grass containing treasure (or shards) inside foraging islands",
-                        value = false,
-                        children = listOf(
-                            BooleanSetting(
-                                key = "ForagingTreasureSafariCondition",
-                                displayName = "Safari Restriction",
-                                tooltip = "Restricts the treasure highlight to the current safari zone.",
-                                value = false
-                            )
-                        )
-                    ),
-                    BooleanSetting(
-                        key = "SafariPreset",
-                        displayName = "Safari Mobs",
-                        tooltip = "Conditionally display safari mobs depending on the area.",
                         value = false
                     )
                 )
@@ -195,53 +155,24 @@ object HighlightMobs : Feature(), EntityUtils.HighlightSource {
             )
         )
     )
-    fun invalidateMobs(){
-        EntityUtils.removeAllForSource(this)
-
-        EntityUtils.entityInfoList?.forEach {
-            if (shouldHighlight(it)) {
-                EntityUtils.add(it.entity, this)
-            }
-        }
-    }
-
     @EventHandler
     fun onConfigChanged(event: ConfigChangedEvent) {
-        invalidateMobs()
+        invalidateHighlights()
     }
 
     @EventHandler
     fun onEntityAdded(event: OnEntityAdded) {
-        if (!baseSetting.value) return
-
-        event.addedEntityList.forEach {
-            if (shouldHighlight(it))
-                EntityUtils.add(it.entity,this)
-        }
+        handleEntitiesAdded(event.addedEntityList)
     }
 
     @EventHandler
     fun onEntityRemoved(event: OnEntityRemoved) {
-        if (!baseSetting.value) return
-
-        event.removedEntityList.forEach {
-            EntityUtils.remove(it.entity,this)
-        }
+        handleEntitiesRemoved(event.removedEntityList)
     }
 
     @EventHandler
     fun onEntityUpdated(event: OnEntityUpdated) {
-        if (!baseSetting.value) return
-
-        event.updatedEntityList.forEach { info ->
-            val should = shouldHighlight(info)
-            val has = EntityUtils.hasSource(info.entity, this)
-
-            when {
-                should && !has -> EntityUtils.add(info.entity, this)
-                !should && has -> EntityUtils.remove(info.entity, this)
-            }
-        }
+        handleEntitiesUpdated(event.updatedEntityList)
     }
 
     fun shouldHighlightPreset(info: EntityInfo): Boolean {
@@ -252,26 +183,6 @@ object HighlightMobs : Feature(), EntityUtils.HighlightSource {
         val dirtTreasurePresetEnabled = presetsEnabled.getChild<BooleanSetting>("PresetsForagingTreasure")
         if (dirtTreasurePresetEnabled?.value ?: false){
             if (info.entity is Display.ItemDisplay && info.entity.itemStack.item == Items.STRING){
-                val safariConditionEnabled = dirtTreasurePresetEnabled.getChild<BooleanSetting>("ForagingTreasureSafariCondition")
-                if (safariConditionEnabled?.value ?: false){
-                    val mobPos = info.entity.position()
-                    val isPositiveXMob = mobPos.x >= -47.0
-                    val isPositiveZMob = mobPos .z >= 0.0
-                    val mobRegion = when {
-                        !isPositiveZMob && isPositiveXMob -> "haunted"
-                        !isPositiveZMob && !isPositiveXMob -> "icy"
-                        isPositiveZMob && !isPositiveXMob -> "cavern"
-                        else -> "forest"
-                    }
-                    return mobRegion == safariZone
-                }
-                return true
-            }
-        }
-
-        val safariPresetEnabled = presetsEnabled.getChild<BooleanSetting>("SafariPreset")
-        if (safariPresetEnabled?.value ?: false){
-            if (matchesSafariConditions(info)){
                 return true
             }
         }
@@ -280,11 +191,11 @@ object HighlightMobs : Feature(), EntityUtils.HighlightSource {
     }
 
 
-    fun shouldHighlight(info: EntityInfo): Boolean {
+    override fun shouldHighlight(info: EntityInfo): Boolean {
+        if (!baseSetting.value) return false
+
         if (shouldHighlightPreset(info)) return true
         val entity = info.entity
-
-        if (!baseSetting.value) return false
 
         var matches = false
         var hasAnyFilter = false
@@ -401,91 +312,4 @@ object HighlightMobs : Feature(), EntityUtils.HighlightSource {
 
         return matches
     }
-
-
-    fun matchesSafariConditions(info: EntityInfo): Boolean {
-        if (LocationAPI.island != SkyBlockIsland.SAFARI) return false
-        val entity = info.entity
-        val entityPath = entity.type.toString()
-
-        return when (safariZone) {
-            "haunted" -> {
-                val hauntedMobs = listOf(
-                    "entity.minecraft.silverfish",
-                    "entity.minecraft.endermite",
-                    "entity.minecraft.bat",
-                    "entity.minecraft.phantom",
-                    "entity.minecraft.cave_spider"
-                )
-
-                val playerHash = "3504f1f2327a5110e643bb8667082512815fa434a29ed37f4ca83bb16d2db533"
-                (entity is Player && PlayerUtils.getSkinHash(entity) == playerHash) ||
-                        (hauntedMobs.contains(entityPath))
-            }
-            "icy" -> {
-                val icyMobs = listOf(
-                    "entity.minecraft.dolphin",
-                    "entity.minecraft.snow_golem",
-                    "entity.minecraft.goat",
-                    "entity.minecraft.polar_bear",
-                    "entity.minecraft.tropical_fish",
-                    "entity.minecraft.glow_squid",
-                )
-
-                // mantis shrimp
-                val displayHash = "9924c105aa431dabd47952dc1dddd6f751f883423f4db1487d9bacc2cfe99c7a"
-                (entity is Display.ItemDisplay && PlayerUtils.getSkinHash(entity.itemStack) == displayHash) ||
-                        (icyMobs.contains(entityPath))
-            }
-            "cavern" -> {
-                val cavernMobs = listOf(
-                    "entity.minecraft.silverfish",
-                    "entity.minecraft.tropical_fish",
-                    "entity.minecraft.slime",
-                    "entity.minecraft.sniffer"
-                )
-                val displayHashes = listOf(
-                    "5dbaab74d1acd0abe9d04abe9928725de5d4495fcb63b647228caf6944c20800",
-                    "a89a76deedd42b410344100df2fa79b6eeac7e6f287745d656179368340ffade"
-                )
-
-                val playerHash = "eacd215ccde2f677c7c144e2b698ff33ea06a87aaf468d05d1f0dc5ec2bdbfe8"
-                (entity is Bat && info.informationEntities?.any { it is Display.ItemDisplay && displayHashes.contains(PlayerUtils.getSkinHash(it.itemStack)) } ?: false ) ||
-                        (entity is Display.ItemDisplay && displayHashes.contains(PlayerUtils.getSkinHash(entity.itemStack))) ||
-                        (entity is Player && PlayerUtils.getSkinHash(entity) == playerHash) ||
-                        (cavernMobs.contains(entityPath))
-            }
-            "forest" -> {
-                val forestMobs = listOf(
-                    "entity.minecraft.fox",
-                    "entity.minecraft.frog",
-                    "entity.minecraft.panda",
-                    "entity.minecraft.bee",
-                    "entity.minecraft.creaking",
-                    "entity.minecraft.shulker",
-                    "entity.minecraft.parrot",
-                    "entity.minecraft.silverfish"
-                )
-                forestMobs.contains(entityPath)
-            }
-            else -> false
-        }
-
-    }
-    // -47 65 0
-    // haunted negative z positive x
-    // icy negative z negative x
-    // cavern positive z negative x
-    // forest positive z positive x
-
-    // haunt silverfish, bat, phantom, cave spider, player (need hash)
-    // icy dolphin, snowman, goat, polar bear, mantis shrimp (need info), fish?
-    // cavern silverfish,tropical fish, slime, player (eacd215ccde2f677c7c144e2b698ff33ea06a87aaf468d05d1f0dc5ec2bdbfe8) item display (a89a76deedd42b410344100df2fa79b6eeac7e6f287745d656179368340ffade) sniffer
-    // forest fox, frog, panda, bee, creaking
-
-
-
-
-
-
 }
