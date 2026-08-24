@@ -51,7 +51,9 @@ object SafariHelper : HighlightFeature() {
 
     private val catchPatterns = listOf(
         // "§a§lCAPTURE! §7You caught a §aTreefrog§7 and gained 2x §aTreefrog Shard§7!"
-        Regex("You caught an? (.+?) and gained"),
+        // sparklings say "received" instead, their extra reward comes before the shards
+        // "§a§lCAPTURE! §7You caught a §6SPARKLING §aWoodchucker§7 and received a §5Rainbow Feather§7 and 20x §aWoodchucker Shard§7!"
+        Regex("You caught an? (.+?) and (?:gained|received)"),
         // "§e§lLOOT SHARE! §7You received a §aPolaris Shard§7 from §bAceMech§7 catching a §aPolaris§7!"
         Regex("catching an? (.+?)!"),
         // hideyho is found instead of caught, it has its own wording for both messages
@@ -268,7 +270,7 @@ object SafariHelper : HighlightFeature() {
             pattern.find(event.text)?.groupValues?.get(1)
         } ?: return
 
-        if (!caughtUniques.add(caught.lowercase())) return
+        if (!caughtUniques.add(normalizeCaught(caught))) return
 
         // that mob just stopped being interesting, drop the highlights it no longer deserves
         if (mobHighlight.value && onlyUncaught.value) {
@@ -356,6 +358,13 @@ object SafariHelper : HighlightFeature() {
 
     private fun isCaught(mobName: String): Boolean = mobName.lowercase() in caughtUniques
 
+    /**
+     * The key a caught mob is remembered under. Catch messages name a sparkling as "SPARKLING
+     * Woodchucker", which still is the woodchucker of the zone being caught.
+     */
+    private fun normalizeCaught(mobName: String): String =
+        mobName.lowercase().removePrefix("$SPARKLING_TAG ")
+
     private fun hudLines(zone: SafariZone): List<Component> {
         val remaining = remainingIn(zone)
 
@@ -385,9 +394,10 @@ object SafariHelper : HighlightFeature() {
     }
 
     override fun shouldHighlight(info: EntityInfo): Boolean {
-        val highlight = matchesHighlight(info)
+        val sparkling = isSparkling(info)
+        val highlight = matchesHighlight(info, sparkling)
 
-        if (highlight && isSparkling(info)) {
+        if (highlight && sparkling) {
             sparklingEntities.add(info.entity)
         } else {
             sparklingEntities.remove(info.entity)
@@ -396,7 +406,7 @@ object SafariHelper : HighlightFeature() {
         return highlight
     }
 
-    private fun matchesHighlight(info: EntityInfo): Boolean {
+    private fun matchesHighlight(info: EntityInfo, sparkling: Boolean): Boolean {
         if (!baseSetting.value) return false
         if (!mobHighlight.value) return false
 
@@ -410,7 +420,8 @@ object SafariHelper : HighlightFeature() {
 
         val mob = zone.mobMatching(info) ?: return false
 
-        return !onlyUncaught.value || !isCaught(mob.displayName)
+        // a sparkling stays worth catching after its unique is done, it is far rarer than the unique
+        return sparkling || !onlyUncaught.value || !isCaught(mob.displayName)
     }
 
     private fun isSparkling(info: EntityInfo): Boolean =
@@ -437,4 +448,5 @@ Catches, all of them can repeat with a " (2)" suffix when the same message is se
 [CHAT] §e§lLOOT SHARE! §7You received 2x §aPolaris Shard§7 from §bAceMech§7 catching a §aPolaris§7!
 [CHAT] §a§lCAPTURE! §7You found the §9Hideyho§7, and as a reward it gave you 3x §9Hideyho Shard§7!
 [CHAT] §e§lLOOT SHARE! §7You received 3x §9Hideyho Shard§7 from §bMeowMeowLynn§7 finding the §9Hideyho§7!
+[CHAT] §a§lCAPTURE! §7You caught a §6SPARKLING §aWoodchucker§7 and received a §5Rainbow Feather§7 and 20x §aWoodchucker Shard§7!
  */
