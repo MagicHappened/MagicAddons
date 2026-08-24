@@ -86,6 +86,13 @@ object SafariHelper : HighlightFeature() {
         )
     )
 
+    private val sendToPartyChat = BooleanSetting(
+        key = "SendToPartyChat",
+        displayName = "Send To Party Chat",
+        tooltip = "Sends the done message to the party chat instead of only to yourself.",
+        value = false
+    )
+
     private val ignoreMacaw = BooleanSetting(
         key = "IgnoreMacaw",
         displayName = "Ignore Macaw",
@@ -99,6 +106,7 @@ object SafariHelper : HighlightFeature() {
         tooltip = "Sends a message when all unique critters have been caught.",
         value = false,
         children = listOf(
+            sendToPartyChat,
             ignoreMacaw
         )
     )
@@ -225,9 +233,7 @@ object SafariHelper : HighlightFeature() {
 
             if (!doneMessageSent) {
                 doneMessageSent = true
-                ChatUtils.sendWithPrefix(
-                    Component.literal("All safari uniques caught").withStyle(ChatFormatting.GREEN)
-                )
+                announceDone("All safari uniques caught")
             }
             return
         }
@@ -236,10 +242,17 @@ object SafariHelper : HighlightFeature() {
         if (remaining.any { !it.equals(MACAW, ignoreCase = true) }) return
 
         doneWithoutMacawMessageSent = true
-        ChatUtils.sendWithPrefix(
-            Component.literal("All safari uniques caught except the $MACAW")
-                .withStyle(ChatFormatting.GREEN)
-        )
+        announceDone("All safari uniques caught except the $MACAW")
+    }
+
+    private fun announceDone(message: String) {
+        // the party has to be told by the server, the mod prefix has no business in their chat
+        if (sendToPartyChat.value) {
+            ChatUtils.sendCommand("pc $message")
+            return
+        }
+
+        ChatUtils.sendWithPrefix(Component.literal(message).withStyle(ChatFormatting.GREEN))
     }
 
     @EventHandler
