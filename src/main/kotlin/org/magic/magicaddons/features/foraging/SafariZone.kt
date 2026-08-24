@@ -87,14 +87,14 @@ enum class SafariZone(val displayName: String, val uniqueMobs: List<SafariMob>) 
             SafariMob("Chuckwalla") { hasSkull(it, "fc63cd0d480971a7beae5fd503e5d51658cd906330843cbad92018f5b98b4fe5") },
             SafariMob("Driftling") { hasSkull(it, "f4c4f8e5fce1ec2d299cb8a395792ecddc497a1d8af86faaa5e20373016c7225") },
             SafariMob("Flitter") { hasSkull(it, "a89a76deedd42b410344100df2fa79b6eeac7e6f287745d656179368340ffade") },
-            SafariMob("Gwemzie") { isType(it, "vex") },
+            SafariMob("Gemzie") { isType(it, "vex") },
             // an item display while it is still in stage one, a silverfish once it hatches
             SafariMob("Rockmite") {
                 hasSkull(it, "5dbaab74d1acd0abe9d04abe9928725de5d4495fcb63b647228caf6944c20800") || isType(it, "silverfish")
             },
             SafariMob("Scrappy") { isType(it, "armadillo") },
             SafariMob("Shyworm") { isType(it, "slime") },
-            SafariMob("Snoozel") { isType(it, "sniffer") }
+            SafariMob("Snoozle") { isType(it, "sniffer") }
         )
     );
 
