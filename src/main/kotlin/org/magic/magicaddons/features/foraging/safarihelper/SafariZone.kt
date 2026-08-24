@@ -1,4 +1,4 @@
-package org.magic.magicaddons.features.foraging
+package org.magic.magicaddons.features.foraging.safarihelper
 
 import net.minecraft.world.entity.Display
 import net.minecraft.world.entity.Entity
