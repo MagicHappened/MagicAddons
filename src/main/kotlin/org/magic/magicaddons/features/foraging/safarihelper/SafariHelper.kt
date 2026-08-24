@@ -1,4 +1,4 @@
-package org.magic.magicaddons.features.foraging
+package org.magic.magicaddons.features.foraging.safarihelper
 
 import net.minecraft.ChatFormatting
 import net.minecraft.client.Minecraft
@@ -100,6 +100,24 @@ object SafariHelper : HighlightFeature() {
         value = false
     )
 
+    private val ownZoneOnly = BooleanSetting(
+        key = "OwnZoneOnly",
+        displayName = "Only Own Zone",
+        tooltip = "Only sends the zone done message for your own zone, the one you had spent the " +
+                "most time in when the first zone was finished.",
+        value = false
+    )
+
+    private val zoneMessages = BooleanSetting(
+        key = "ZoneMessages",
+        displayName = "Zone Specific Messages",
+        tooltip = "Adds a done message for every safari zone that is finished before the last one.",
+        value = false,
+        children = listOf(
+            ownZoneOnly
+        )
+    )
+
     private val doneMessage = BooleanSetting(
         key = "DoneMessage",
         displayName = "Done Message",
@@ -107,7 +125,8 @@ object SafariHelper : HighlightFeature() {
         value = false,
         children = listOf(
             sendToPartyChat,
-            ignoreMacaw
+            ignoreMacaw,
+            zoneMessages
         )
     )
 
@@ -141,9 +160,40 @@ object SafariHelper : HighlightFeature() {
      */
     private val caughtUniques = mutableSetOf<String>()
 
-    /** Both done messages are worth sending once per safari visit. */
-    private var doneMessageSent: Boolean = false
-    private var doneWithoutMacawMessageSent: Boolean = false
+    /**
+     * The two done messages of one scope, either the whole safari or a single zone. Both are worth
+     * sending once per safari visit.
+     */
+    private class DoneMessages(val done: String, val doneWithoutMacaw: String) {
+        var doneSent: Boolean = false
+        var doneWithoutMacawSent: Boolean = false
+
+        fun reset() {
+            doneSent = false
+            doneWithoutMacawSent = false
+        }
+    }
+
+    private val safariDone = DoneMessages(
+        done = "All unique critters caught",
+        doneWithoutMacaw = "All unique critters caught (no macaw)"
+    )
+
+    private val zoneDone: Map<SafariZone, DoneMessages> = SafariZone.entries.associateWith { zone ->
+        DoneMessages(
+            done = "All uniques caught in ${zone.displayName}",
+            doneWithoutMacaw = "All uniques caught in ${zone.displayName} (no macaw)"
+        )
+    }
+
+    /** Client ticks spent in each zone during this safari visit. */
+    private val zoneTicks = mutableMapOf<SafariZone, Long>()
+
+    /**
+     * The zone the player was sent to. Nothing announces it, so it is guessed from where the player
+     * had spent the most time by the time the first zone was finished, and stays fixed after that.
+     */
+    private var designatedZone: SafariZone? = null
 
     /**
      * Highlighted entities that the name tag next to them marks as sparkling. The renderer only hands
@@ -168,6 +218,10 @@ object SafariHelper : HighlightFeature() {
         if (zone != currentZone) {
             currentZone = zone
             invalidateHighlights()
+        }
+
+        if (zone != null) {
+            zoneTicks[zone] = (zoneTicks[zone] ?: 0L) + 1L
         }
     }
 
@@ -197,8 +251,10 @@ object SafariHelper : HighlightFeature() {
         // a fresh visit starts with nothing caught, leaving drops the state we can no longer trust
         if (event.new == SkyBlockIsland.SAFARI || event.old == SkyBlockIsland.SAFARI) {
             caughtUniques.clear()
-            doneMessageSent = false
-            doneWithoutMacawMessageSent = false
+            safariDone.reset()
+            zoneDone.values.forEach { it.reset() }
+            zoneTicks.clear()
+            designatedZone = null
         }
     }
 
@@ -225,24 +281,46 @@ object SafariHelper : HighlightFeature() {
     private fun sendDoneMessages() {
         if (!uniqueTracking.value || !doneMessage.value) return
 
-        val remaining = SafariZone.entries.flatMap { remainingIn(it) }
+        val safariMessage = claim(safariDone, SafariZone.entries.flatMap { remainingIn(it) })
+        safariMessage?.let { announceDone(it) }
 
+        SafariZone.entries.forEach { zone ->
+            // claimed even when it is not sent, a zone that finished while muted has missed its moment
+            val message = claim(zoneDone.getValue(zone), remainingIn(zone)) ?: return@forEach
+
+            // the first zone to finish is the moment the player has settled into a zone of their own
+            if (designatedZone == null) {
+                designatedZone = zoneTicks.maxByOrNull { it.value }?.key ?: currentZone
+            }
+
+            // the safari wide message already speaks for the zone that finished the run
+            if (safariMessage != null || !zoneMessages.value) return@forEach
+            if (ownZoneOnly.value && zone != designatedZone) return@forEach
+
+            announceDone(message)
+        }
+    }
+
+    /**
+     * Takes whichever of the [messages] the scope has earned by being down to [remaining], marking it
+     * as said so it cannot be said again, or null when the scope owes nothing.
+     */
+    private fun claim(messages: DoneMessages, remaining: List<String>): String? {
         if (remaining.isEmpty()) {
             // catching everything says more than having caught everything but the macaw
-            doneWithoutMacawMessageSent = true
+            messages.doneWithoutMacawSent = true
 
-            if (!doneMessageSent) {
-                doneMessageSent = true
-                announceDone("All safari uniques caught")
-            }
-            return
+            if (messages.doneSent) return null
+
+            messages.doneSent = true
+            return messages.done
         }
 
-        if (!ignoreMacaw.value || doneWithoutMacawMessageSent) return
-        if (remaining.any { !it.equals(MACAW, ignoreCase = true) }) return
+        if (!ignoreMacaw.value || messages.doneWithoutMacawSent) return null
+        if (remaining.any { !it.equals(MACAW, ignoreCase = true) }) return null
 
-        doneWithoutMacawMessageSent = true
-        announceDone("All safari uniques caught except the $MACAW")
+        messages.doneWithoutMacawSent = true
+        return messages.doneWithoutMacaw
     }
 
     private fun announceDone(message: String) {

@@ -6,8 +6,8 @@ import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource
 import net.minecraft.ChatFormatting
 import net.minecraft.network.chat.Component
 import org.magic.magicaddons.commands.AbstractCommand
-import org.magic.magicaddons.features.foraging.SafariHelper
-import org.magic.magicaddons.features.foraging.SafariZone
+import org.magic.magicaddons.features.foraging.safarihelper.SafariHelper
+import org.magic.magicaddons.features.foraging.safarihelper.SafariZone
 import org.magic.magicaddons.util.ChatUtils
 
 object SafariHelperCommand : AbstractCommand() {
