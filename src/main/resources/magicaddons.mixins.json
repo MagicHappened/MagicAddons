@@ -5,10 +5,11 @@
   "compatibilityLevel": "JAVA_21",
   "mixins": [
     "ClientPacketListenerMixin",
-    "ClientPlayerInteractionManagerMixin",
+    "MultiPlayerGameModeMixin",
     "LivingEntityMixin",
     "MinecraftMixin",
-    "LevelRendererMixin"
+    "LevelRendererMixin",
+    "GuiMixin"
   ],
   "injectors": {
     "defaultRequire": 1

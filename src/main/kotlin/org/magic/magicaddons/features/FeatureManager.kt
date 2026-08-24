@@ -3,6 +3,7 @@ package org.magic.magicaddons.features
 import org.magic.magicaddons.config.MagicAddonsConfigJsonHandler.configMap
 import org.magic.magicaddons.features.combat.HighlightMobs
 import org.magic.magicaddons.features.debug.MobHitDebugInfo
+import org.magic.magicaddons.features.foraging.SafariHelper
 import org.magic.magicaddons.features.kuudra.CustomRendSound
 import org.magic.magicaddons.features.mining.HidePowderCoatingParticles
 
@@ -10,6 +11,7 @@ object FeatureManager {
     val features = mutableListOf(
         HidePowderCoatingParticles,
         HighlightMobs,
+        SafariHelper,
         CustomRendSound,
         MobHitDebugInfo
     ) // need to call objects somehow for initialization
@@ -40,7 +42,7 @@ object FeatureManager {
         features.forEach { feature ->
             val categoryMap = configMap[feature.category] ?: return@forEach
             val settingsMap = categoryMap[feature.id] ?: return@forEach
-            feature.deserializeSettings(settingsMap.toMutableMap())
+            feature.deserializeSettings(settingsMap)
         }
     }
 

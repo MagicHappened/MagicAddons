@@ -1,5 +1,7 @@
 package org.magic.magicaddons.config
 
+import org.magic.magicaddons.features.FeatureManager
+
 object OldConfigHandler {
 
     private const val INFO_KEY = "info"
@@ -26,10 +28,13 @@ object OldConfigHandler {
         targetVersion: String
     ): MutableMap<String, Any> {
 
-        return mutableMapOf(
-            INFO_KEY to mapOf(VERSION_KEY to targetVersion),
+        // a file from before versioning existed is a 1.0.0 file, so it still has to walk the chain
+        val wrapped = mutableMapOf<String, Any>(
+            INFO_KEY to mutableMapOf<String, Any>(VERSION_KEY to "1.0.0"),
             CONFIG_KEY to oldConfig
         )
+
+        return migrate(wrapped, "1.0.0", targetVersion)
     }
 
 
@@ -40,9 +45,22 @@ object OldConfigHandler {
     ): MutableMap<String, Any> {
 
         var updated = raw
+        var version = oldVersion
 
-        if (oldVersion == "1.0.0") {
+        // each step upgrades one version, so an old config walks the whole chain
+        if (version == "1.0.0") {
             updated = update_to_1_0_1(updated)
+            version = "1.0.1"
+        }
+
+        if (version == "1.0.1") {
+            updated = update_to_1_0_2(updated)
+            version = "1.0.2"
+        }
+
+        if (version == "1.0.2") {
+            updated = update_to_1_0_3(updated)
+            version = "1.0.3"
         }
 
         // always update version at the end
@@ -81,6 +99,49 @@ object OldConfigHandler {
         highlightMobs.remove("EntityTypePlayerOtherEnum")
         mapToUpdate["config"] = configMap
         return mapToUpdate
+    }
+
+    // change 1_0_1 -> 1_0_2 the safari mob preset and the safari restricted treasure highlight
+    // left combat/HighlightMobs and became foraging/SafariHelper "Mob Highlight"
+    fun update_to_1_0_2(raw: MutableMap<String, Any>): MutableMap<String, Any> {
+        val configMap = raw[CONFIG_KEY] as? MutableMap<String, Any> ?: return raw
+        val combat = configMap["combat"] as? MutableMap<String, Any> ?: return raw
+        val highlightMobs = combat["HighlightMobs"] as? MutableMap<String, Any> ?: return raw
+
+        val usedSafariPreset = highlightMobs.remove("SafariPreset") == true
+        val usedSafariTreasure = highlightMobs.remove("ForagingTreasureSafariCondition") == true
+
+        if (!usedSafariPreset && !usedSafariTreasure) return raw
+
+        val foraging = configMap.getOrPut("foraging") { mutableMapOf<String, Any>() }
+                as? MutableMap<String, Any> ?: return raw
+
+        foraging["SafariHelper"] = mutableMapOf<String, Any>(
+            "enabled" to true,
+            "MobHighlight" to true
+        )
+
+        return raw
+    }
+
+    // change 1_0_2 -> 1_0_3 settings are stored under their nested path ("Parent.Child") instead of
+    // a bare key, so the value of every setting below the top level has to be moved over
+    fun update_to_1_0_3(raw: MutableMap<String, Any>): MutableMap<String, Any> {
+        val configMap = raw[CONFIG_KEY] as? MutableMap<String, Any> ?: return raw
+
+        FeatureManager.features.forEach { feature ->
+            val category = configMap[feature.category] as? MutableMap<String, Any> ?: return@forEach
+            val stored = category[feature.id] as? MutableMap<String, Any> ?: return@forEach
+
+            feature.settingPaths().forEach { (key, path) ->
+                if (key == path) return@forEach
+
+                val storedValue = stored.remove(key) ?: return@forEach
+                stored[path] = storedValue
+            }
+        }
+
+        return raw
     }
 
 

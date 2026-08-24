@@ -110,7 +110,7 @@ public abstract class LevelRendererMixin {
             //poseStack.scale(state.scale, state.scale, state.scale);
             //poseStack.translate(0.0F, 0.0F, 0.0F);
 
-            state.outlineColor = source.getHighlightColor();
+            state.outlineColor = source.highlightColor(entity);
             state.isInvisible = true;
 
 

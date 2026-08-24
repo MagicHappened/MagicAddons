@@ -4,7 +4,9 @@ package org.magic.mixins;
 
 import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.network.protocol.game.ClientboundLevelParticlesPacket;
+import net.minecraft.network.protocol.game.ClientboundSystemChatPacket;
 import org.magic.magicaddons.events.EventBus;
+import org.magic.magicaddons.events.chat.OnSystemChatEvent;
 import org.magic.magicaddons.events.world.AddParticleEvent;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -30,6 +32,18 @@ public class ClientPacketListenerMixin {
         if (event.getCanceled()) {
             ci.cancel();
         }
+    }
+
+    @Inject(
+            method = "handleSystemChat(Lnet/minecraft/network/protocol/game/ClientboundSystemChatPacket;)V",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/network/protocol/PacketUtils;ensureRunningOnSameThread(Lnet/minecraft/network/protocol/Packet;Lnet/minecraft/network/PacketListener;Lnet/minecraft/network/PacketProcessor;)V",
+                    shift = At.Shift.AFTER
+            )
+    )
+    private void onSystemChat(ClientboundSystemChatPacket packet, CallbackInfo ci) {
+        EventBus.post(new OnSystemChatEvent(packet.content(), packet.overlay()));
     }
 
 }

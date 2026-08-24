@@ -12,13 +12,24 @@ sealed class SettingNode<T>(
 ) {
     open val children: List<SettingNode<*>>? = null
 
-    open fun serializeSettings(): MutableMap<String, Any>{
+    /**
+     * The key this node is stored under, namespaced by the path of its parent ("Parent.Child").
+     * Keys only have to be unique among siblings, so renaming or moving a branch cannot collide with
+     * an unrelated setting somewhere else in the tree.
+     */
+    fun pathIn(parentPath: String): String = if (parentPath.isEmpty()) key else "$parentPath.$key"
+
+    open fun serializeSettings(parentPath: String = ""): MutableMap<String, Any>{
         val result = mutableMapOf<String, Any>()
-        result[key] = value as Any
+        result[pathIn(parentPath)] = value as Any
         return result
     }
-    open fun updateSettings(settings: MutableMap<String, Any>) {
-        val newValue = settings[key] ?: return
+    open fun updateSettings(settings: Map<String, Any>, parentPath: String = "") {
+        updateOwnValue(settings, parentPath)
+    }
+
+    protected fun updateOwnValue(settings: Map<String, Any>, parentPath: String) {
+        val newValue = settings[pathIn(parentPath)] ?: return
         try {
             value = parseValue(newValue)
         } catch (_: Exception) {
@@ -68,9 +79,9 @@ class ToggleListSetting(
         }.toMutableList()
     }
 
-    override fun serializeSettings(): MutableMap<String, Any> {
+    override fun serializeSettings(parentPath: String): MutableMap<String, Any> {
         return mutableMapOf(
-            key to value.map { entry ->
+            pathIn(parentPath) to value.map { entry ->
                 mapOf(
                     "name" to entry.name,
                     "value" to entry.value,
@@ -89,20 +100,41 @@ class BooleanSetting(
     override var children: List<SettingNode<*>>? = null
 ) : SettingNode<Boolean>(key, displayName, tooltip, value) {
 
-    override fun serializeSettings(): MutableMap<String, Any> {
-        val map = super.serializeSettings()
+    override fun serializeSettings(parentPath: String): MutableMap<String, Any> {
+        val map = super.serializeSettings(parentPath)
+        val childPath = pathIn(parentPath)
+        children?.forEach { child ->
+            map.putAll(child.serializeSettings(childPath))
+        }
+        return map
+    }
+    override fun updateSettings(settings: Map<String, Any>, parentPath: String) {
+        super.updateSettings(settings, parentPath)
+        val childPath = pathIn(parentPath)
+        children?.forEach { child ->
+            child.updateSettings(settings, childPath)
+        }
+    }
+    override fun parseValue(value: Any): Boolean = value as Boolean
+
+    /**
+     * A feature toggle is the root of its tree: it is stored under its own key while its children
+     * start at the top level, so no stored key carries a redundant "enabled." prefix.
+     */
+    fun serializeAsFeatureRoot(): MutableMap<String, Any> {
+        val map = mutableMapOf<String, Any>(key to value)
         children?.forEach { child ->
             map.putAll(child.serializeSettings())
         }
         return map
     }
-    override fun updateSettings(settings: MutableMap<String, Any>) {
-        super.updateSettings(settings)
+
+    fun updateAsFeatureRoot(settings: Map<String, Any>) {
+        updateOwnValue(settings, "")
         children?.forEach { child ->
             child.updateSettings(settings)
         }
     }
-    override fun parseValue(value: Any): Boolean = value as Boolean
 }
 
 class TextSetting(
@@ -116,17 +148,17 @@ class TextSetting(
 
     override fun parseValue(value: Any): String = value.toString()
 
-    override fun serializeSettings(): MutableMap<String, Any> {
+    override fun serializeSettings(parentPath: String): MutableMap<String, Any> {
         return mutableMapOf(
-            key to mutableMapOf(
+            pathIn(parentPath) to mutableMapOf(
                 "current_value" to value,
                 "history" to history
             )
         )
     }
 
-    override fun updateSettings(settings: MutableMap<String, Any>) {
-        val nested = settings[key] as? Map<*, *> ?: return
+    override fun updateSettings(settings: Map<String, Any>, parentPath: String) {
+        val nested = settings[pathIn(parentPath)] as? Map<*, *> ?: return
 
         val current = nested["current_value"]
         if (current != null) {
@@ -167,18 +199,20 @@ class EnumSetting<T : Enum<T>>(
             activeChildren = childrenProvider?.invoke(newValue)
         }
 
-    override fun serializeSettings(): MutableMap<String, Any> {
-        val map = super.serializeSettings()
+    override fun serializeSettings(parentPath: String): MutableMap<String, Any> {
+        val map = super.serializeSettings(parentPath)
+        val childPath = pathIn(parentPath)
         children?.forEach { child ->
-            map.putAll(child.serializeSettings())
+            map.putAll(child.serializeSettings(childPath))
         }
         return map
     }
 
-    override fun updateSettings(settings: MutableMap<String, Any>) {
-        super.updateSettings(settings)
+    override fun updateSettings(settings: Map<String, Any>, parentPath: String) {
+        super.updateSettings(settings, parentPath)
+        val childPath = pathIn(parentPath)
         children?.forEach { child ->
-            child.updateSettings(settings)
+            child.updateSettings(settings, childPath)
         }
     }
 
