@@ -18,6 +18,7 @@ import org.magic.magicaddons.events.world.OnEntityRemoved
 import org.magic.magicaddons.events.world.OnEntityUpdated
 import org.magic.magicaddons.events.world.OnWorldTickEvent
 import org.magic.magicaddons.features.HighlightFeature
+import org.magic.magicaddons.util.ChatUtils
 import tech.thatgravyboat.skyblockapi.api.SkyBlockAPI
 import tech.thatgravyboat.skyblockapi.api.events.base.Subscription
 import tech.thatgravyboat.skyblockapi.api.events.location.IslandChangeEvent
@@ -44,6 +45,9 @@ object SafariHelper : HighlightFeature() {
 
     /** Marks the rarer version of a mob, written on the name tag standing next to it. */
     private const val SPARKLING_TAG: String = "sparkling"
+
+    /** The one unique that is worth reporting a run as done without. */
+    private const val MACAW: String = "Macaw"
 
     private val catchPatterns = listOf(
         // "§a§lCAPTURE! §7You caught a §aTreefrog§7 and gained 2x §aTreefrog Shard§7!"
@@ -82,11 +86,31 @@ object SafariHelper : HighlightFeature() {
         )
     )
 
+    private val ignoreMacaw = BooleanSetting(
+        key = "IgnoreMacaw",
+        displayName = "Ignore Macaw",
+        tooltip = "Adds a second done message for having caught everything except the macaw.",
+        value = false
+    )
+
+    private val doneMessage = BooleanSetting(
+        key = "DoneMessage",
+        displayName = "Done Message",
+        tooltip = "Sends a message when all unique critters have been caught.",
+        value = false,
+        children = listOf(
+            ignoreMacaw
+        )
+    )
+
     private val uniqueTracking = BooleanSetting(
         key = "UniqueTracking",
         displayName = "Unique Tracking",
         tooltip = "Shows which unique mobs are still left to catch in the safari zone you are in.",
-        value = false
+        value = false,
+        children = listOf(
+            doneMessage
+        )
     )
 
     override val baseSetting: BooleanSetting = BooleanSetting(
@@ -108,6 +132,10 @@ object SafariHelper : HighlightFeature() {
      * caught before we arrived, so this starts empty every time the island is entered.
      */
     private val caughtUniques = mutableSetOf<String>()
+
+    /** Both done messages are worth sending once per safari visit. */
+    private var doneMessageSent: Boolean = false
+    private var doneWithoutMacawMessageSent: Boolean = false
 
     /**
      * Highlighted entities that the name tag next to them marks as sparkling. The renderer only hands
@@ -161,6 +189,8 @@ object SafariHelper : HighlightFeature() {
         // a fresh visit starts with nothing caught, leaving drops the state we can no longer trust
         if (event.new == SkyBlockIsland.SAFARI || event.old == SkyBlockIsland.SAFARI) {
             caughtUniques.clear()
+            doneMessageSent = false
+            doneWithoutMacawMessageSent = false
         }
     }
 
@@ -180,6 +210,36 @@ object SafariHelper : HighlightFeature() {
         if (mobHighlight.value && onlyUncaught.value) {
             invalidateHighlights()
         }
+
+        sendDoneMessages()
+    }
+
+    private fun sendDoneMessages() {
+        if (!uniqueTracking.value || !doneMessage.value) return
+
+        val remaining = SafariZone.entries.flatMap { remainingIn(it) }
+
+        if (remaining.isEmpty()) {
+            // catching everything says more than having caught everything but the macaw
+            doneWithoutMacawMessageSent = true
+
+            if (!doneMessageSent) {
+                doneMessageSent = true
+                ChatUtils.sendWithPrefix(
+                    Component.literal("All safari uniques caught").withStyle(ChatFormatting.GREEN)
+                )
+            }
+            return
+        }
+
+        if (!ignoreMacaw.value || doneWithoutMacawMessageSent) return
+        if (remaining.any { !it.equals(MACAW, ignoreCase = true) }) return
+
+        doneWithoutMacawMessageSent = true
+        ChatUtils.sendWithPrefix(
+            Component.literal("All safari uniques caught except the $MACAW")
+                .withStyle(ChatFormatting.GREEN)
+        )
     }
 
     @EventHandler
