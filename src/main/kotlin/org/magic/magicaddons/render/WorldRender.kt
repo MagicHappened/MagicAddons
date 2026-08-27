@@ -12,6 +12,7 @@ import net.minecraft.util.RandomSource
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
+import net.minecraft.world.phys.shapes.Shapes
 import net.minecraft.world.phys.shapes.VoxelShape
 
 /**
@@ -74,8 +75,17 @@ object WorldRender {
                 boxes.forEach { consumer.fillBox(transform, it, ARGB.color(fillAlpha, color)) }
             }
 
-            collector.submitCustomGeometry(pose, RenderTypes.LINES) { transform, consumer ->
-                boxes.forEach { consumer.outlineBox(transform, it, color) }
+            // one call per box, so two marked blocks side by side stay two boxes rather than
+            // merging into one long one the way a single combined shape would
+            boxes.forEach { box ->
+                collector.submitShapeOutline(
+                    pose,
+                    Shapes.create(box),
+                    RenderTypes.LINES,
+                    color,
+                    OUTLINE_WIDTH,
+                    false
+                )
             }
         }
     }
@@ -165,31 +175,6 @@ object WorldRender {
         face(pose, color, x1, y2, z1, x1, y2, z2, x2, y2, z2, x2, y2, z1)
     }
 
-    /** The twelve edges of [box], as its own box rather than joined to whatever sits beside it. */
-    private fun VertexConsumer.outlineBox(pose: PoseStack.Pose, box: AABB, color: Int) {
-        val x1 = box.minX.toFloat()
-        val y1 = box.minY.toFloat()
-        val z1 = box.minZ.toFloat()
-        val x2 = box.maxX.toFloat()
-        val y2 = box.maxY.toFloat()
-        val z2 = box.maxZ.toFloat()
-
-        edge(pose, color, x1, y1, z1, x2, y1, z1)
-        edge(pose, color, x2, y1, z1, x2, y1, z2)
-        edge(pose, color, x2, y1, z2, x1, y1, z2)
-        edge(pose, color, x1, y1, z2, x1, y1, z1)
-
-        edge(pose, color, x1, y2, z1, x2, y2, z1)
-        edge(pose, color, x2, y2, z1, x2, y2, z2)
-        edge(pose, color, x2, y2, z2, x1, y2, z2)
-        edge(pose, color, x1, y2, z2, x1, y2, z1)
-
-        edge(pose, color, x1, y1, z1, x1, y2, z1)
-        edge(pose, color, x2, y1, z1, x2, y2, z1)
-        edge(pose, color, x2, y1, z2, x2, y2, z2)
-        edge(pose, color, x1, y1, z2, x1, y2, z2)
-    }
-
     private fun VertexConsumer.face(
         pose: PoseStack.Pose,
         color: Int,
@@ -204,18 +189,4 @@ object WorldRender {
         addVertex(pose, dx, dy, dz).setColor(color)
     }
 
-    private fun VertexConsumer.edge(
-        pose: PoseStack.Pose,
-        color: Int,
-        ax: Float, ay: Float, az: Float,
-        bx: Float, by: Float, bz: Float
-    ) {
-        val dx = bx - ax
-        val dy = by - ay
-        val dz = bz - az
-        val length = Math.sqrt((dx * dx + dy * dy + dz * dz).toDouble()).toFloat()
-
-        addVertex(pose, ax, ay, az).setColor(color).setNormal(pose, dx / length, dy / length, dz / length)
-        addVertex(pose, bx, by, bz).setColor(color).setNormal(pose, dx / length, dy / length, dz / length)
-    }
 }
