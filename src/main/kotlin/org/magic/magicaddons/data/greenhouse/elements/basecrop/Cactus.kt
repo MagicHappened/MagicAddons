@@ -140,7 +140,7 @@ object Cactus : CropDefinitionProvider {
 
         ),
         maxStage = 8,
-        decayTimeMs = -1,
+        decayTimeMs = DECAY_TIME_MS,
         requiredSoil = setOf(Blocks.SAND),
         needsWater = false,
         isBaseCrop = true

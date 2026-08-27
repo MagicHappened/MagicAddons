@@ -3,6 +3,7 @@ package org.magic.magicaddons.features.farming.greenhousePresets
 import net.minecraft.client.Minecraft
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Rotations
+import net.minecraft.network.chat.TextColor
 import net.minecraft.network.chat.Component
 import net.minecraft.world.entity.EquipmentSlot
 import net.minecraft.world.entity.decoration.ArmorStand
@@ -23,6 +24,7 @@ import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.events.EventHandler
 import org.magic.magicaddons.events.greenhouse.PlotChangedEvent
 import org.magic.magicaddons.events.interact.*
+import org.magic.magicaddons.events.world.OnWorldTickEvent
 import org.magic.magicaddons.events.world.OnEntityAdded
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhousePresets.baseSetting
 import org.magic.magicaddons.util.ChatUtils
@@ -73,6 +75,10 @@ object GreenhouseData {
 
     /** The character skyblock builds its bars out of, one per notch of the level. */
     private const val BAR_CHAR: Char = '|'
+
+    /** The notches of a water bar: filled ones are blue, the empty ones behind them white. */
+    private val BAR_FILLED_COLOR: Int = TextColor.BLUE.value
+    private val BAR_EMPTY_COLOR: Int = TextColor.WHITE.value
 
     /**
      * How long after a watering the stands are worth looking for. The water bar is not a permanent
@@ -467,8 +473,6 @@ object GreenhouseData {
 
         val gridArea = grid.plot?.getBuildableArea() ?: return
 
-        readWaterStands(event.addedEntityList.mapNotNull { it.entity as? ArmorStand })
-
         if (event.addedEntityList.any {
                 !gridArea.contains(it.entity.position())
             }) return
@@ -630,7 +634,20 @@ object GreenhouseData {
      * batch of entities that appears while a watering is expected, since the bars spawn a moment
      * after the spray and take themselves away again.
      */
-    private fun readWaterStands(stands: List<ArmorStand>) {
+    @EventHandler
+    fun onWorldTick(event: OnWorldTickEvent) {
+        readWaterStands()
+    }
+
+    /**
+     * Takes the water level off any bar standing over a plant of the current grid, for as long as a
+     * watering is expected.
+     *
+     * Polled rather than driven by an entity event: the game reuses a bar it already has above a
+     * plant, and a stand whose name changed is neither added nor counted as updated, since an update
+     * only means the entities standing beside a plant changed.
+     */
+    private fun readWaterStands() {
         val until = wateringUntil ?: return
 
         if (Instant.now().isAfter(until)) {
@@ -639,37 +656,56 @@ object GreenhouseData {
         }
 
         val grid = getCurrentGrid() ?: return
+        if (!grid.hasRuntime()) return
 
-        stands.forEach { stand ->
-            val level = stand.customName?.let { parseBar(it) } ?: return@forEach
+        val area = grid.plot?.getBuildableArea() ?: return
+        val level = Minecraft.getInstance().level ?: return
+
+        level.getEntitiesOfClass(ArmorStand::class.java, area).forEach { stand ->
+            val waterLevel = stand.customName?.let { parseBar(it) } ?: return@forEach
             val slot = grid.getSlotAt(stand.blockPosition(), matchY = false) ?: return@forEach
             val element = grid.elementCovering(slot) ?: return@forEach
 
             if (!element.instance.cropDef.needsWater) return@forEach
 
-            element.instance.waterLevel = level
+            element.instance.waterLevel = waterLevel
         }
     }
 
     /**
-     * Reads a bar such as "||||||||||||||||||||" as the percentage of it that is filled. The filled
-     * part is the run of bars at the front sharing the colour of the very first one, the rest are
-     * the empty notches drawn in a duller colour behind it.
+     * Reads a water bar as the percentage of it that is filled.
+     *
+     * The bar is one character per notch, the filled ones drawn in blue at the front and the empty
+     * ones in white behind them, so "blue x11 then white x5" is a plant eleven sixteenths watered.
+     * Counting the blue rather than taking the leading run matters at both ends: an untouched plant
+     * shows a bar of nothing but white, which a leading run would have read as completely full.
+     *
+     * A bar drawn in any other colour is not a water bar. Several plants hang a bar of the same
+     * character over themselves, the fleshtrap hunger bar among them, and reading one of those as
+     * a water level would be worse than reading nothing.
      */
     private fun parseBar(name: Component): Int? {
-        val runs = mutableListOf<Pair<Int?, Int>>()
+        var filled = 0
+        var total = 0
+        var foreign = false
 
         name.visit({ style, text ->
-            val bars = text.count { it == BAR_CHAR }
-            if (bars > 0) runs.add(style.color?.value to bars)
+            val notches = text.count { it == BAR_CHAR }
+
+            if (notches > 0) {
+                when (style.color?.value) {
+                    BAR_FILLED_COLOR -> filled += notches
+                    BAR_EMPTY_COLOR -> Unit
+                    else -> foreign = true
+                }
+
+                total += notches
+            }
+
             Optional.empty<Unit>()
         }, Style.EMPTY)
 
-        val total = runs.sumOf { it.second }
-        if (total == 0) return null
-
-        val filledColor = runs.first().first
-        val filled = runs.takeWhile { it.first == filledColor }.sumOf { it.second }
+        if (foreign || total == 0) return null
 
         return filled * 100 / total
     }

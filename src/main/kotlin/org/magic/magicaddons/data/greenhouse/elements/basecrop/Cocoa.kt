@@ -4,6 +4,7 @@ import net.minecraft.core.BlockPos
 import net.minecraft.core.Rotations
 import net.minecraft.world.item.Items
 import net.minecraft.world.phys.Vec3
+import org.magic.magicaddons.data.greenhouse.DECAY_TIME_MS
 import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
 import org.magic.magicaddons.data.greenhouse.CropArmorStand
 import org.magic.magicaddons.data.greenhouse.CropBlockState
@@ -125,7 +126,7 @@ object Cocoa : CropDefinitionProvider {
 
         ),
         maxStage = 6,
-        decayTimeMs = -1,
+        decayTimeMs = DECAY_TIME_MS,
         needsWater = false,
         isBaseCrop = true
 

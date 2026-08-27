@@ -217,7 +217,7 @@ object Wildrose : CropDefinitionProvider {
 
         ),
         maxStage = 15,
-        decayTimeMs = -1,
+        decayTimeMs = DECAY_TIME_MS,
         isBaseCrop = true
     )
 }
