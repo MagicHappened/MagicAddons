@@ -164,6 +164,9 @@ object GreenhouseData {
 
         claimPlantedCrop(grid)
 
+        // the plan on screen is read off the plot, so it is only right until the plot changes
+        LayoutRenderState.refresh()
+
         if (result.changed) {
             ChatUtils.sendWithPrefix(
                 "Greenhouse changed: ${result.added} new, ${result.removed} gone, ${result.replaced} different"
@@ -368,8 +371,14 @@ object GreenhouseData {
 
     fun regenRender(){
         val grid = getCurrentGrid() ?: return
-        val layout = grid.state.assignedLayout ?: return
-        LayoutRenderState.generateRenderData(layout, grid)
+        val layout = grid.state.assignedLayout
+
+        if (layout == null) {
+            LayoutRenderState.hide()
+            return
+        }
+
+        LayoutRenderState.show(layout)
     }
 
 

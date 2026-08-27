@@ -567,6 +567,7 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
             return
         }
         grid.state.assignedLayout = layout
+        GreenhouseData.regenRender()
         ChatUtils.sendWithPrefix("Assigned ${layout.displayName()} to: ${grid.layout.displayName()}")
     }
 
