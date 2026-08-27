@@ -30,6 +30,9 @@ class GridWidget(
 
     override var hoveredElement: GuiEventListener? = null
 
+    /** The fact pinned on the hover controls, written over every plant while it is set. */
+    var pinnedInfo: ElementWidget.HoverInfo? = null
+
     fun init() {
         slotWidgets.clear()
         elementWidgets.clear()
@@ -109,6 +112,11 @@ class GridWidget(
 
         elementWidgets.forEach {
             it.extractRenderState(graphics, mouseX, mouseY, delta)
+        }
+
+        // drawn after every plant so the text of one never ends up under the plant next to it
+        pinnedInfo?.let { info ->
+            elementWidgets.forEach { it.renderHoverButtonInfo(graphics, info) }
         }
     }
 

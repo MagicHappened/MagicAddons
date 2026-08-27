@@ -8,7 +8,9 @@ import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.network.chat.Component
 import org.magic.magicaddons.config.MagicAddonsConfigJsonHandler
+import net.minecraft.client.gui.components.events.GuiEventListener
 import org.magic.magicaddons.data.config.SettingNode
+import org.magic.magicaddons.ui.HoverableContainer
 import org.magic.magicaddons.ui.widgets.config.SettingWidget
 import org.magic.magicaddons.ui.widgets.config.SettingWidgetFactory
 import org.magic.magicaddons.features.Feature
@@ -17,9 +19,9 @@ import org.magic.magicaddons.util.ScreenUtil.drawMultilineBoxCentered
 class FeatureEditScreen(
     val feature: Feature,
     val parent: Screen?
-) : Screen(Component.literal(feature.displayName)) {
-    //todo implement this better with GuiEventListener instead and isFocused
-    var hoveredWidget: SettingWidget<*>? = null
+) : Screen(Component.literal(feature.displayName)), HoverableContainer {
+
+    override var hoveredElement: GuiEventListener? = null
 
     var needsRelayout = false
 
@@ -75,7 +77,7 @@ class FeatureEditScreen(
             20
         )
 
-        hoveredWidget?.renderTooltip(graphics, mouseX, mouseY)
+        (hoveredElement as? SettingWidget<*>)?.renderTooltip(graphics, mouseX, mouseY)
     }
 
     override fun extractBackground(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, deltaTick: Float) {
@@ -87,32 +89,33 @@ class FeatureEditScreen(
     }
 
     override fun charTyped(characterEvent: CharacterEvent): Boolean {
-        baseChildrenWidgets.forEach {
-            it.charTyped(characterEvent)
-        }
+        if ((focused as? SettingWidget<*>)?.charTyped(characterEvent) == true) return true
         return super.charTyped(characterEvent)
     }
 
     override fun keyPressed(keyEvent: KeyEvent): Boolean {
-        baseChildrenWidgets.forEach {
-            it.keyPressed(keyEvent)
-        }
+        if ((focused as? SettingWidget<*>)?.keyPressed(keyEvent) == true) return true
         return super.keyPressed(keyEvent)
     }
 
     override fun mouseMoved(mouseX: Double, mouseY: Double) {
-        hoveredWidget = null
         baseChildrenWidgets.forEach {
             it.mouseMoved(mouseX, mouseY)
         }
+        hoveredElement = baseChildrenWidgets.firstNotNullOfOrNull { it.hoveredWidget() }
     }
 
 
     override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
         var handled = false
+
+        // every widget still sees the click so the previously focused one can let the keyboard go,
+        // the last one that took it keeps the focus
         baseChildrenWidgets.forEach {
-            if (it.mouseClicked(mouseButtonEvent, doubled))
+            if (it.mouseClicked(mouseButtonEvent, doubled)) {
+                setFocused(it)
                 handled = true
+            }
         }
         return handled
     }

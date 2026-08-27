@@ -1,6 +1,7 @@
 package org.magic.magicaddons.ui.widgets.greenhouse
 
 import blazing.chain.LZSEncoding
+import com.google.gson.JsonArray
 import com.google.gson.JsonParser
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
@@ -200,19 +201,9 @@ class PresetUI(
                     var cropName = entry[2].asString
 
                     // a SEED is not a CROP skymutations smh
-                    when (cropName) {
-                        "Wheat Seeds" -> {
-                            cropName = "Wheat"
-                        }
-                        "Melon Seeds" -> {
-                            cropName = "Melon"
-                        }
-                        "Pumpkin Seeds" -> {
-                            cropName = "Pumpkin"
-                        }
-
-
-                    }
+                    cropName = SKYMUTATIONS_NAMES.entries
+                        .firstOrNull { it.value == cropName }?.key
+                        ?: cropName
 
                     val markingOrdinal = entry[3].asInt
                     if (occupiedPositions[row][column]) {
@@ -279,11 +270,90 @@ class PresetUI(
     }
 
     fun exportPreset(type: ImportExportFormatContext.LayoutFormatType) {
-        if (GreenhouseData.currentPreset == null) {
+        val preset = GreenhouseData.currentPreset
+
+        if (preset == null) {
             ChatUtils.sendWithPrefix("No Preset Selected")
             return
         }
-        ChatUtils.sendWithPrefix("exporting?") //todo change this to form a new url with the encoded layout
+
+        when (type) {
+            ImportExportFormatContext.LayoutFormatType.SkyMutations -> {
+                val entries = JsonArray()
+                val unsupported = mutableSetOf<String>()
+
+                preset.elementInstances.forEach { instance ->
+                    val cropDefinition = instance.cropDef
+                    val exportName = SKYMUTATIONS_NAMES[cropDefinition.name] ?: cropDefinition.name
+
+                    // the site drops names it does not know, so a crop it never lists is left out of
+                    // the link instead of turning into a silently missing plant
+                    if (cropDefinition.name in NOT_ON_SKYMUTATIONS) {
+                        unsupported.add(cropDefinition.name)
+                        return@forEach
+                    }
+
+                    val slot = instance.slot
+                    val marking = slot.slotMark ?: LayoutSlot.Marking.Ingredient
+
+                    // skymutations stores one entry per covered cell, a bigger crop is the same name
+                    // repeated over its footprint
+                    for (offsetY in 0 until cropDefinition.footprint.height) {
+                        for (offsetX in 0 until cropDefinition.footprint.width) {
+                            val entry = JsonArray()
+                            entry.add(slot.y + offsetY)
+                            entry.add(slot.x + offsetX)
+                            entry.add(exportName)
+                            entry.add(marking.ordinal)
+                            entries.add(entry)
+                        }
+                    }
+                }
+
+                val encodedLayout = LZSEncoding.compressToEncodedURIComponent(entries.toString())
+                Minecraft.getInstance().keyboardHandler.clipboard = "$SKYMUTATIONS_URL$encodedLayout"
+
+                if (unsupported.isNotEmpty()) {
+                    ChatUtils.sendWithPrefix(
+                        "Left out of the link, skymutations has no ${unsupported.joinToString(", ")}"
+                    )
+                }
+
+                ChatUtils.sendWithPrefix(
+                    "Copied a skymutations link for ${preset.displayName()} to your clipboard"
+                )
+            }
+            ImportExportFormatContext.LayoutFormatType.MagicAddons -> {
+                ChatUtils.sendWithPrefix("Not Yet Implemented")
+            }
+        }
+    }
+
+    companion object {
+        /** Where a shared skymutations layout lives, the encoded layout is appended to it. */
+        private const val SKYMUTATIONS_URL: String = "https://skymutations.eu/greenhouse?layout="
+
+        /**
+         * Crops this mod names differently than skymutations does, keyed by the name used here.
+         * Skymutations names the three vanilla crops after the seed they are planted from.
+         */
+        private val SKYMUTATIONS_NAMES: Map<String, String> = mapOf(
+            "Wheat" to "Wheat Seeds",
+            "Melon" to "Melon Seeds",
+            "Pumpkin" to "Pumpkin Seeds",
+            "Dead Plant" to "Dead Plants"
+        )
+
+        /**
+         * Crops this mod knows that skymutations has no entry for at all. Helianthus is planted in
+         * the greenhouse but the site only lists the condensed version, which is a different item.
+         */
+        private val NOT_ON_SKYMUTATIONS: Set<String> = setOf(
+            "Cropie",
+            "Squash",
+            "Helianthus",
+            "DevourerRoots"
+        )
     }
 
 
