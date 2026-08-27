@@ -7,6 +7,7 @@ import net.minecraft.client.input.CharacterEvent
 import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.network.chat.Component
+import org.magic.magicaddons.Common
 import org.magic.magicaddons.data.config.TextSetting
 import org.magic.magicaddons.ui.widgets.RemovableRowWidget
 import org.magic.magicaddons.util.ScreenUtil.drawBorder
@@ -107,7 +108,7 @@ class TextSettingWidget(
             Component.literal("${setting.displayName}: "),
             x + textXPad + borderSize,
             y + textXPad + borderSize,
-            0xFFCCCCCC.toInt(),
+            Common.UI.TEXT_DIM_COLOR,
             false
         )
 

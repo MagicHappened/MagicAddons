@@ -24,6 +24,13 @@ object EventBus {
         }
     }
 
+    /** Drops every handler of [instance], for listeners that do not live as long as the game. */
+    fun unregister(instance: Any) {
+        listeners.values.forEach { registered ->
+            registered.removeIf { it.owner === instance }
+        }
+    }
+
     @JvmStatic
     fun post(event: Any) {
         val eventListeners = listeners[event::class.java] ?: return

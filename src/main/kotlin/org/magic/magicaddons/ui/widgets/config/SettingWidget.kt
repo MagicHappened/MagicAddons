@@ -166,8 +166,8 @@ abstract class SettingWidget<T>(
     }
 
     override fun isMouseOver(mouseX: Double, mouseY: Double): Boolean {
-        return mouseX.toInt() in x..(x + width) &&
-                mouseY.toInt() in y..(y + height)
+        return mouseX.toInt() in x until (x + width) &&
+                mouseY.toInt() in y until (y + height)
     }
 
     open fun getTotalHeight(): Int {

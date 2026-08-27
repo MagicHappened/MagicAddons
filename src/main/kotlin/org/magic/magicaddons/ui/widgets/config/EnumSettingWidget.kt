@@ -4,6 +4,7 @@ import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.network.chat.Component
+import org.magic.magicaddons.Common
 import org.magic.magicaddons.data.config.EnumSetting
 import org.magic.magicaddons.ui.widgets.RemovableRowWidget
 import org.magic.magicaddons.util.ScreenUtil.drawBorder
@@ -87,7 +88,7 @@ class EnumSettingWidget<T : Enum<T>>(
             Component.literal("${setting.displayName}:"),
             x + textXPad,
             titleY,
-            0xFFFFFFFF.toInt(),
+            Common.UI.TEXT_COLOR,
             false
         )
 
@@ -96,7 +97,7 @@ class EnumSettingWidget<T : Enum<T>>(
             Component.literal(setting.value.toString()),
             x + textXPad,
             valueY,
-            0xFFFFFFFF.toInt(),
+            Common.UI.TEXT_COLOR,
             false
         )
 
@@ -105,7 +106,7 @@ class EnumSettingWidget<T : Enum<T>>(
             Component.literal("↓"),
             x + width - font.width("↓") - 4,
             valueY,
-            0xFFFFFFFF.toInt(),
+            Common.UI.TEXT_COLOR,
             false
         )
 

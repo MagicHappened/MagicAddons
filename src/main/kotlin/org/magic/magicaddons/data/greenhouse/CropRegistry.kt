@@ -18,7 +18,11 @@ object CropRegistry {
         all.add(provider.definition)
     }
 
-    fun get(idOrName: String): CropDefinition? = all.find { it.skyblockId?.id == idOrName || it.name == idOrName }
+    fun get(idOrName: String): CropDefinition? = all.find { definition ->
+        definition.skyblockId?.id == idOrName ||
+                definition.aliases?.any { it.id == idOrName } == true ||
+                definition.name == idOrName
+    }
 
 
     init {

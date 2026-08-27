@@ -5,6 +5,7 @@ import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.components.Renderable
 import net.minecraft.client.gui.components.events.GuiEventListener
 import net.minecraft.client.input.MouseButtonEvent
+import org.magic.magicaddons.Common
 import org.magic.magicaddons.ui.Focusable
 import org.magic.magicaddons.ui.widgets.CheckboxWidget
 import org.magic.magicaddons.ui.screens.ConfigScreen
@@ -33,7 +34,7 @@ class FeatureToggleWidget(
 
 
 
-    val borderColor: Int = 0xFF000000.toInt()
+    val borderColor: Int = Common.UI.BORDER_COLOR
 
     val checkbox = CheckboxWidget(checked = feature.baseSetting.value)
 
@@ -55,7 +56,7 @@ class FeatureToggleWidget(
             feature.displayName,
             x + checkbox.size + textXPad,
             textY,
-            0xFFFFFFFF.toInt(),
+            Common.UI.TEXT_COLOR,
             false
         )
     }

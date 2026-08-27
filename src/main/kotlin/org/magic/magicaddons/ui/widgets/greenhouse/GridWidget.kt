@@ -8,6 +8,7 @@ import net.minecraft.client.gui.narration.NarrationElementOutput
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
+import org.magic.magicaddons.Common
 import org.magic.magicaddons.ui.Focusable
 import org.magic.magicaddons.data.greenhouse.GreenhouseLayout
 import org.magic.magicaddons.ui.HoverableContainer
@@ -97,7 +98,7 @@ class GridWidget(
                 widgetX + i * slotSize + i,
                 widgetY + layout.size * slotSize + layout.size,
                 1,
-                0x800683c1.toInt()
+                Common.UI.GRID_LINE_COLOR
             )
 
             // horizontal
@@ -107,7 +108,7 @@ class GridWidget(
                 widgetX + layout.size * slotSize + layout.size,
                 widgetY + i * slotSize + i,
                 1,
-                0x800683c1.toInt()
+                Common.UI.GRID_LINE_COLOR
             )
         }
 

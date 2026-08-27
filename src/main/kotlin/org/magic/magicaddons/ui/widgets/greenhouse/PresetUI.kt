@@ -90,6 +90,7 @@ class PresetUI(
             val context = ImportExportFormatContext(
                 mouseButtonEvent.x.toInt(),
                 mouseButtonEvent.y.toInt(),
+                overlayContext,
                 {
                     importPreset(it)
                 }
@@ -102,6 +103,7 @@ class PresetUI(
             val context = ImportExportFormatContext(
                 mouseButtonEvent.x.toInt(),
                 mouseButtonEvent.y.toInt(),
+                overlayContext,
                 { exportPreset(it)}
             )
             context.init()
@@ -112,8 +114,8 @@ class PresetUI(
             val context = ApplyToContext(
                 mouseButtonEvent.x.toInt(),
                 mouseButtonEvent.y.toInt(),
+                overlayContext,
                 { onAssignedLayout.invoke(GreenhouseData.currentPreset, it) }
-
             )
             context.init()
             overlayContext.addContext(context)

@@ -3,6 +3,7 @@ package org.magic.magicaddons.ui.widgets
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.resources.Identifier
+import org.magic.magicaddons.Common
 import org.magic.magicaddons.ui.widgets.config.ClickableButtonWidget
 import org.magic.magicaddons.util.ScreenUtil.drawLine
 
@@ -41,7 +42,7 @@ open class RemovableRowWidget<T>(
                 endX,
                 endY,
                 2,
-                0xFFFF0000.toInt()
+                Common.UI.DANGER_COLOR
             )
 
             graphics.drawLine(
@@ -50,7 +51,7 @@ open class RemovableRowWidget<T>(
                 startX,
                 endY,
                 2,
-                0xFFFF0000.toInt()
+                Common.UI.DANGER_COLOR
             )
         }
     )

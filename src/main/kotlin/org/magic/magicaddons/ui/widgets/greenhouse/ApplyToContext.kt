@@ -3,6 +3,7 @@ package org.magic.magicaddons.ui.widgets.greenhouse
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.input.MouseButtonEvent
+import org.magic.magicaddons.ui.OverlayContext
 import org.magic.magicaddons.Common
 import org.magic.magicaddons.data.greenhouse.GreenhouseGrid
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData
@@ -14,6 +15,7 @@ import kotlin.math.max
 class ApplyToContext(
     override var overlayX: Int,
     override var overlayY: Int,
+    private val overlayContext: OverlayContext,
     val gridSelected: (grid: GreenhouseGrid) -> Unit
 ) : AbstractSelectorContextMenu<GreenhouseGrid>(GreenhouseData.greenhouseGrids) {
 
@@ -35,6 +37,7 @@ class ApplyToContext(
 
 
     override fun onValueSelected(value: GreenhouseGrid) {
+        overlayContext.removeOverlay(this)
         gridSelected(value)
     }
 
@@ -60,14 +63,10 @@ class ApplyToContext(
             title,
             overlayX + Common.UI.TEXT_X_PAD,
             overlayY + yPadding,
-            0xFFFFFFFF.toInt()
+            Common.UI.TEXT_COLOR
         )
 
         valueWidgets.forEach { it.extractRenderState(graphics, mouseX, mouseY) }
-    }
-
-    override fun mouseMoved(mouseX: Double, mouseY: Double) {
-        super.mouseMoved(mouseX, mouseY)
     }
 
     override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {

@@ -10,7 +10,7 @@ import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.network.chat.Component
 import org.magic.magicaddons.Common
 import org.magic.magicaddons.data.greenhouse.GreenhouseLayout
-import org.magic.magicaddons.ui.screens.GreenhouseScreen
+import org.magic.magicaddons.ui.OverlayContext
 import org.magic.magicaddons.ui.widgets.AbstractContextMenu
 import org.magic.magicaddons.ui.widgets.config.ClickableButtonWidget
 import org.magic.magicaddons.util.ChatUtils
@@ -19,11 +19,14 @@ import org.magic.magicaddons.util.ScreenUtil.drawBorder
 class EditLayoutContextMenu(
     override val overlayX: Int,
     override val overlayY: Int,
-    var layout: GreenhouseLayout
+    var layout: GreenhouseLayout,
+    private val overlayContext: OverlayContext,
+    /** The owner has a header and a selector sized from the old name, both need rebuilding. */
+    private val onLayoutRenamed: (GreenhouseLayout) -> Unit
 ) : AbstractContextMenu() {
     val font = Minecraft.getInstance().font
-    override val overlayWidth: Int = 200
-    override val overlayHeight: Int = 100
+    override val overlayWidth: Int = WIDTH
+    override val overlayHeight: Int = HEIGHT
 
 
     override var hoveredElement: GuiEventListener? = null
@@ -82,7 +85,7 @@ class EditLayoutContextMenu(
             "Editing ${layout.id}:",
             overlayX + 10,
             overlayY + 10,
-            0xFFFFFFFF.toInt()
+            Common.UI.TEXT_COLOR
         )
         textField.extractRenderState(graphics, mouseX, mouseY, delta)
 
@@ -112,7 +115,6 @@ class EditLayoutContextMenu(
 
     override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
         if (!isMouseOver(mouseButtonEvent.x.toInt(), mouseButtonEvent.y.toInt())) return false
-        val screen: GreenhouseScreen = Minecraft.getInstance().gui.screen() as? GreenhouseScreen ?: return false
         if (textField.mouseClicked(mouseButtonEvent,doubled)){
             textField.isFocused = true
             return true
@@ -124,11 +126,12 @@ class EditLayoutContextMenu(
                 return true
             }
             layout.name = textField.value.trim()
-            screen.overlays.remove(this)
+            onLayoutRenamed(layout)
+            overlayContext.removeOverlay(this)
             return true
         }
         if (cancelButton.mouseClicked(mouseButtonEvent, doubled)) {
-            screen.overlays.remove(this)
+            overlayContext.removeOverlay(this)
             return true
         }
         return true
@@ -150,6 +153,11 @@ class EditLayoutContextMenu(
             }
         }
 
+    }
+
+    companion object {
+        const val WIDTH: Int = 200
+        const val HEIGHT: Int = 100
     }
 
 }

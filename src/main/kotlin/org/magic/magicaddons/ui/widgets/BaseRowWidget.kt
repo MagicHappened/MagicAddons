@@ -1,5 +1,6 @@
 package org.magic.magicaddons.ui.widgets
 
+import org.magic.magicaddons.Common
 import org.magic.magicaddons.ui.Focusable
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
@@ -53,7 +54,7 @@ open class BaseRowWidget<T>(
             Component.literal(text),
             x + textLeftPadding + getLeftReservedWidth(),
             y + (height - font.lineHeight) / 2,
-            0xFFFFFFFF.toInt(),
+            Common.UI.TEXT_COLOR,
             false
         )
 

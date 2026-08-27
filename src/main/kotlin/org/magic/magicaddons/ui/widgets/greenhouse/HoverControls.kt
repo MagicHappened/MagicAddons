@@ -33,7 +33,7 @@ class HoverControls : Renderable, Focusable, HoverableContainer {
 
     /** Sits the swatches against the right edge of a grid of [gridHeight] starting at [gridRight]. */
     fun layoutAgainstGrid(gridRight: Int, gridTop: Int, gridHeight: Int) {
-        x = gridRight + GRID_PADDING
+        x = gridRight + Common.UI.SPACING_LARGE
         y = gridTop
         width = SWATCH_WIDTH
         height = gridHeight
@@ -65,7 +65,7 @@ class HoverControls : Renderable, Focusable, HoverableContainer {
     }
 
     override fun isMouseOver(mouseX: Double, mouseY: Double): Boolean =
-        mouseX.toInt() in x..(x + width) && mouseY.toInt() in y..(y + height)
+        mouseX.toInt() in x until (x + width) && mouseY.toInt() in y until (y + height)
 
     /** Walks the swatches top to bottom, handing out the vertical span each one covers. */
     private inline fun forEachSwatch(action: (ElementWidget.HoverInfo, top: Int, bottom: Int) -> Unit) {
@@ -85,7 +85,9 @@ class HoverControls : Renderable, Focusable, HoverableContainer {
 
     companion object {
         private const val SWATCH_WIDTH: Int = 10
-        private const val SWATCH_SPACING: Int = 2
-        private const val GRID_PADDING: Int = 6
+        private const val SWATCH_SPACING: Int = Common.UI.SPACING_SMALL
+
+        /** What the swatches take up beside the grid, gap included. */
+        const val TOTAL_WIDTH: Int = SWATCH_WIDTH + Common.UI.SPACING_LARGE
     }
 }

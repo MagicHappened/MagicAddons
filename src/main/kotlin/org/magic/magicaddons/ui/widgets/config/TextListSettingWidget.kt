@@ -7,6 +7,7 @@ import net.minecraft.client.input.CharacterEvent
 import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.network.chat.Component
+import org.magic.magicaddons.Common
 import org.magic.magicaddons.data.config.ToggleListSetting
 import org.magic.magicaddons.data.ListEntry
 import org.magic.magicaddons.util.ChatUtils
@@ -60,7 +61,7 @@ class TextListSettingWidget(
                 Component.literal(text),
                 x + (width - font.width(text)) / 2,
                 y + (height - font.lineHeight) / 2,
-                0xFF00FF00.toInt(),
+                Common.UI.SUCCESS_COLOR,
                 false
             )
         }
@@ -134,7 +135,7 @@ class TextListSettingWidget(
             Component.literal(listSetting.displayName),
             x + textXPad,
             y + borderSize + (titleHeight - font.lineHeight) / 2,
-            0xFFFFFFFF.toInt(),
+            Common.UI.TEXT_COLOR,
             false
         )
 
@@ -164,7 +165,7 @@ class TextListSettingWidget(
             Component.literal("Add new entry:"),
             x + textXPad,
             addLabelY + inputYPadding,
-            0xFFFFFFFF.toInt(),
+            Common.UI.TEXT_COLOR,
             false
         )
 
