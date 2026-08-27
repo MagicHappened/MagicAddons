@@ -21,6 +21,7 @@ import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.Common
 import org.magic.magicaddons.commands.debug.FarmingDebug
+import org.magic.magicaddons.data.greenhouse.GREENHOUSE_SOIL_Y
 import org.magic.magicaddons.data.greenhouse.*
 import org.magic.magicaddons.data.greenhouse.CropStates.toFunctionString
 import org.magic.magicaddons.data.greenhouse.elements.FireElement
@@ -87,6 +88,10 @@ object GreenhouseData {
 
     var removedElementByAttack: ElementRuntimeState? = null
     private var placedCrop: Pair<CropDefinition, BlockPos>? = null
+    private var placedCropAt: Instant? = null
+
+    /** How long a placement the server never confirmed is still worth waiting for. */
+    private val PLACE_WINDOW: Duration = Duration.ofSeconds(5)
 
 
     val elementsBySoil: Map<Block, List<CropDefinition>> =
@@ -100,6 +105,12 @@ object GreenhouseData {
                 keySelector = { it.first },
                 valueTransform = { it.second }
             )
+
+    /** How long the plot has to be still before it is read again. */
+    private val RECONCILE_QUIET: Duration = Duration.ofMillis(500)
+
+    /** How long a steady stream of changes may put a read off for. */
+    private val RECONCILE_CEILING: Duration = Duration.ofSeconds(2)
 
     private var plantDiagnosticHitBaseBlock: BlockPos? = null
     private var plantDiagnosticListeningElement: ElementRuntimeState? = null
@@ -145,14 +156,19 @@ object GreenhouseData {
 
         grid.plot = plot
 
-        //gather in world data
-        //todo not only need to change this to find diffs
-        if ((grid.state.pendingGrowthTicks ?: -1) > 0) {
-
-        }
-
         grid.createSlotDataForGrid()
-        grid.setPlantData()
+
+        // a merge, so whatever the plot cannot say for a plant that is still there is carried over,
+        // and any stage predicted while away is corrected by what is actually standing
+        val result = grid.setPlantData()
+
+        claimPlantedCrop(grid)
+
+        if (result.changed) {
+            ChatUtils.sendWithPrefix(
+                "Greenhouse changed: ${result.added} new, ${result.removed} gone, ${result.replaced} different"
+            )
+        }
 
         // after grid update
         grid.state.hasRuntimeReferences = true
@@ -163,6 +179,45 @@ object GreenhouseData {
         ChatUtils.sendWithPrefix("Successfully scanned data for ${plot.id}")
     }
 
+
+    /**
+     * When the plot the player is standing in should be read again.
+     *
+     * Every change in the plot pushes this back, so a burst of them settles into one read, and
+     * [reconcileDeadline] stops a steady stream of changes from putting it off forever.
+     */
+    private var reconcileDueAt: Instant? = null
+    private var reconcileDeadline: Instant? = null
+
+    /** Something in the plot changed, so what is stored for it can no longer be trusted. */
+    fun requestReconcile() {
+        val now = Instant.now()
+
+        reconcileDueAt = now.plus(RECONCILE_QUIET)
+
+        if (reconcileDeadline == null) {
+            reconcileDeadline = now.plus(RECONCILE_CEILING)
+        }
+    }
+
+    /** Runs a reconcile once the plot has gone quiet, or once it has been put off long enough. */
+    private fun runDueReconcile() {
+        val dueAt = reconcileDueAt ?: return
+        val now = Instant.now()
+
+        if (now.isBefore(dueAt) && now.isBefore(reconcileDeadline ?: dueAt)) return
+
+        reconcileDueAt = null
+        reconcileDeadline = null
+
+        getCurrentGrid()?.state?.needsUpdate = true
+        scanGridData()
+    }
+
+    @EventHandler
+    fun onWorldTick(event: OnWorldTickEvent) {
+        runDueReconcile()
+    }
 
     fun getCurrentGrid(): GreenhouseGrid? {
         val plotId = PlotAPI.getCurrentPlot()?.id ?: return null
@@ -254,6 +309,9 @@ object GreenhouseData {
 
             grid.state.pendingGrowthTicks = pendingTicks + passedGrowthTicks.toInt()
             grid.state.needsUpdate = true
+
+            // nobody is looking at this greenhouse, so the clock is all we have to go on
+            grid.predictGrowth(passedGrowthTicks.toInt(), growthTickMs)
         }
     }
 
@@ -353,12 +411,13 @@ object GreenhouseData {
         if (grid.plot?.aabb?.contains(blockCenter) != true) return
 
         val slot = grid.getSlotAt(pos, false) ?: return
-        if (event.pos.y == 73) {
+        if (event.pos.y == GREENHOUSE_SOIL_Y) {
             slot.placedBlock = Blocks.AIR.defaultBlockState()
-            return
+        } else {
+            grid.removeMatchingBlock(pos)
         }
 
-        grid.removeMatchingBlock(pos)
+        requestReconcile()
     }
 
     @EventHandler
@@ -371,10 +430,7 @@ object GreenhouseData {
         val blockVec3 = Vec3.atCenterOf(event.pos)
         if (grid.plot?.aabb?.contains(blockVec3) != true) return
 
-        if (placedCrop == null) return
-        cropPlanted()
-
-        placedCrop = null
+        requestReconcile()
     }
 
     @EventHandler
@@ -384,14 +440,11 @@ object GreenhouseData {
 
         val gridArea = grid.plot?.getBuildableArea() ?: return
 
-        if (event.addedEntityList.any {
-                !gridArea.contains(it.entity.position())
-            }) return
+        // entities are reported for the whole world at once, so what matters is whether any of
+        // them turned up in this plot, not whether all of them did
+        if (event.addedEntityList.none { gridArea.contains(it.entity.position()) }) return
 
-        if (placedCrop == null) return
-        cropPlanted()
-
-        placedCrop = null
+        requestReconcile()
     }
 
     @EventHandler
@@ -422,8 +475,10 @@ object GreenhouseData {
             }
         }
 
-        if (event.packet.pos.y != 73) return
+        if (event.packet.pos.y != GREENHOUSE_SOIL_Y) return
         slot.placedBlock = event.packet.blockState
+
+        requestReconcile()
     }
 
 
@@ -471,6 +526,8 @@ object GreenhouseData {
             val pos = event.hit.blockPos.relative(event.hit.direction)
 
             placedCrop = Pair(foundCrop, pos)
+            placedCropAt = Instant.now()
+            requestReconcile()
 
             return
         }
@@ -508,18 +565,38 @@ object GreenhouseData {
         return warnings.isNotEmpty()
     }
 
-    fun cropPlanted() {
-        if (placedCrop == null) return
-        val grid = getCurrentGrid() ?: return
+    /**
+     * Marks a plant the player just put down as new.
+     *
+     * The server decides whether a placement happened at all, so nothing is added here: the read
+     * that follows finds the plant, or it does not because the server refused. All this supplies is
+     * what a read cannot know, that this particular plant went in just now and so is at no age and
+     * holds no water. A crop the read never found, or found as something else, is simply forgotten
+     * once the window passes.
+     */
+    private fun claimPlantedCrop(grid: GreenhouseGrid) {
+        val (definition, pos) = placedCrop ?: return
+        val placedAt = placedCropAt
 
-        val availableStands = grid.getUnassignedArmorStands()?.toMutableList() ?: return
-        val slot = grid.getSlotAt(placedCrop!!.second, false) ?: return
-        val runtime = grid.findElementAtSlot(slot, availableStands)
-        runtime ?: return
-        if (runtime.instance.cropDef.needsWater) {
-            runtime.instance.waterLevel = 0
+        if (placedAt == null || Instant.now().isAfter(placedAt.plus(PLACE_WINDOW))) {
+            forgetPlacedCrop()
+            return
         }
-        grid.addElement(runtime, System.currentTimeMillis())
+
+        val slot = grid.getSlotAt(pos, false) ?: return
+        val element = grid.elementCovering(slot) ?: return
+
+        if (element.instance.cropDef != definition) return
+
+        element.instance.age = 0L
+        if (definition.needsWater) element.instance.waterLevel = 0
+
+        forgetPlacedCrop()
+    }
+
+    private fun forgetPlacedCrop() {
+        placedCrop = null
+        placedCropAt = null
     }
 
     fun setDiagnosesListeningElement(hitBlock: BlockPos? = null, hitEntity: ArmorStand? = null, grid: GreenhouseGrid) {

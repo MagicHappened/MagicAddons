@@ -172,17 +172,29 @@ class GreenhouseGrid(
     //todo need to make this also set plant specific data, aka if candidate "Fleshtrap" was found
     // already handling it need to see the when statement working for fleshtrap once someone grows some
     // (or me)
-    fun setPlantData() {
+    /**
+     * Reads the plot and brings [elements] into line with it.
+     *
+     * A merge rather than a rebuild: a plant the world still shows in the same slot keeps the
+     * instance already held for it, so the age it was planted at, the water level read off its bar
+     * and a growth stage a plant diagnostic confirmed all survive. Only what the world disagrees
+     * about is written over. Reading the plot is the only way to learn that a plant was removed,
+     * replaced or grown, and none of those should cost the plants around them their history.
+     *
+     * Returns what changed, for a caller that wants to say so.
+     */
+    fun setPlantData(): ReconcileResult {
         val visitedSlots = Array(width) { BooleanArray(height) }
 
-        val level = Minecraft.getInstance().level ?: return
-        val buildableArea = plot?.getBuildableArea() ?: return
+        val level = Minecraft.getInstance().level ?: return ReconcileResult()
+        val buildableArea = plot?.getBuildableArea() ?: return ReconcileResult()
 
         val stands = level.getEntitiesOfClass(ArmorStand::class.java, buildableArea)
         val remainingStands = stands.toMutableList()
 
-        layout.elementInstances.clear()
-        elements.clear()
+        val previous = elements.associateBy { it.instance.slot.x to it.instance.slot.y }
+        val reconciled = mutableListOf<ElementRuntimeState>()
+        val result = ReconcileResult()
 
         for (x in 0 until width) {
             for (y in 0 until height) {
@@ -190,15 +202,15 @@ class GreenhouseGrid(
 
                 val slot = layout.getSlot(x, y) ?: continue
 
-                val runtime = findElementAtSlot(slot, remainingStands) ?: continue
+                val found = findElementAtSlot(slot, remainingStands) ?: continue
                 //todo insert code here that catches certain types of mutations:
                 // aka Fleshtraps and other stuff that might arise, and add
                 // catching of hunger and bonus data.
                 // fuck i forgot it needs to be saved to disk fucking fleshtrap grr
 
-                val def = runtime.instance.cropDef
+                val def = found.instance.cropDef
 
-                remainingStands.removeAll((runtime.standEntities ?: emptyList()).toSet())
+                remainingStands.removeAll((found.standEntities ?: emptyList()).toSet())
 
                 if (x + def.footprint.width > width ||
                     y + def.footprint.height > height
@@ -210,11 +222,98 @@ class GreenhouseGrid(
                     }
                 }
 
+                val standing = previous[x to y]
+                val runtime = if (standing != null && standing.instance.elementId == found.instance.elementId) {
+                    result.kept++
+                    carryOver(standing, found)
+                } else {
+                    if (standing != null) result.replaced++ else result.added++
+                    found
+                }
 
-                layout.elementInstances.add(runtime.instance)
-                elements.add(runtime)
+                reconciled.add(runtime)
             }
         }
+
+        result.removed = previous.count { (key, _) ->
+            reconciled.none { it.instance.slot.x to it.instance.slot.y == key }
+        }
+
+        elements.clear()
+        elements.addAll(reconciled)
+
+        layout.elementInstances.clear()
+        layout.elementInstances.addAll(reconciled.map { it.instance })
+
+        return result
+    }
+
+    /**
+     * The plant the world just described, wearing what was already known about the one standing
+     * there. The world is right about which crop it is, where its blocks and stands are, and how
+     * grown it looks; it says nothing about when it was planted or how much water it holds.
+     */
+    private fun carryOver(
+        standing: ElementRuntimeState,
+        found: ElementRuntimeState
+    ): ElementRuntimeState {
+        found.instance.age = standing.instance.age
+        found.instance.waterLevel = standing.instance.waterLevel
+
+        // a diagnostic pins a stage down to one number, a scan often cannot, so a reading already
+        // taken is not thrown away for a guess that covers it
+        val standingStage = standing.instance.growthStage
+        val foundStage = found.instance.growthStage
+
+        if (standingStage is GrowthStageInfo.Known && foundStage is GrowthStageInfo.Estimated &&
+            standingStage.stage in foundStage.range
+        ) {
+            found.instance.growthStage = standingStage
+        }
+
+        return found
+    }
+
+    /**
+     * Moves every plant on by [ticks] growth ticks, for a greenhouse nobody is standing in.
+     *
+     * The result is always an estimate, even for a plant whose stage was known: nothing has been
+     * looked at, this is only what the clock says should have happened. A plant already at its last
+     * stage stays there. [tickMs] is how long one growth tick takes, so a plant also ages by the
+     * time that passed and its decay keeps counting down.
+     *
+     * Water is deliberately left alone. How fast a plant dries out depends on buffs we do not read
+     * yet, and a made up water level is worse than the last one actually seen.
+     */
+    fun predictGrowth(ticks: Int, tickMs: Long) {
+        if (ticks <= 0) return
+
+        elements.forEach { element ->
+            val instance = element.instance
+            val maxStage = instance.cropDef.maxStage
+
+            instance.age = instance.age?.plus(ticks * tickMs)
+
+            val range = when (val stage = instance.growthStage) {
+                is GrowthStageInfo.Known -> stage.stage..stage.stage
+                is GrowthStageInfo.Estimated -> stage.range
+                null -> return@forEach
+            }
+
+            instance.growthStage = GrowthStageInfo.Estimated(
+                (range.first + ticks).coerceAtMost(maxStage)..(range.last + ticks).coerceAtMost(maxStage)
+            )
+        }
+    }
+
+    /** What one reconcile did, counted by what happened to each plant. */
+    data class ReconcileResult(
+        var added: Int = 0,
+        var removed: Int = 0,
+        var replaced: Int = 0,
+        var kept: Int = 0
+    ) {
+        val changed: Boolean get() = added > 0 || removed > 0 || replaced > 0
     }
 
     // temp for testing
