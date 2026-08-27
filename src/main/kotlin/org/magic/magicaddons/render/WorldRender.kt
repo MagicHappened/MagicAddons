@@ -4,11 +4,9 @@ import com.mojang.blaze3d.vertex.PoseStack
 import com.mojang.blaze3d.vertex.VertexConsumer
 import net.minecraft.client.Minecraft
 import net.minecraft.client.renderer.SubmitNodeCollector
-import net.minecraft.client.renderer.block.dispatch.BlockStateModelPart
 import net.minecraft.client.renderer.rendertype.RenderTypes
 import net.minecraft.core.BlockPos
 import net.minecraft.util.ARGB
-import net.minecraft.util.RandomSource
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
@@ -31,11 +29,6 @@ import net.minecraft.world.phys.shapes.VoxelShape
  */
 object WorldRender {
 
-    /** Full brightness: these are hints laid over the world, not blocks lit by it. */
-    private const val FULL_BRIGHT: Int = 0xF000F0
-
-    private const val NO_OVERLAY: Int = 0xA0000
-
     /** Thick enough to read from across a plot without hiding what it surrounds. */
     private const val OUTLINE_WIDTH: Float = 3f
 
@@ -55,8 +48,6 @@ object WorldRender {
      * drawn inside it is simply behind them, which is why an inset fill never appeared at all.
      */
     private const val FILL_EXPAND: Double = 0.002
-
-    private val RANDOM: RandomSource = RandomSource.create(0)
 
     /**
      * Marks whatever stands at [pos]: the boxes of its shape filled in [color] at [fillAlpha], and
@@ -101,11 +92,12 @@ object WorldRender {
     }
 
     /**
-     * Draws [state] at [pos] as it would look if it were there, see through and tinted, so a plan
-     * reads as a plan. The box it would occupy is marked around it as well.
+     * Marks [pos] as somewhere [state] belongs and is not.
      *
-     * The parts of a block model are collected the same way the world collects them, so a ghost has
-     * the shape the real block would have.
+     * Drawn as the box the block would fill rather than as the block itself. A block model carries
+     * its own colours, and the tint handed to one only reaches quads that ask to be tinted, which
+     * ordinary ground never does, so a ghost drawn as a model comes out fully opaque and reads as a
+     * block that is really there. A see through box cannot be mistaken for one.
      */
     fun ghost(
         poseStack: PoseStack,
@@ -116,27 +108,6 @@ object WorldRender {
         color: Int,
         fillAlpha: Int
     ) {
-        val parts = mutableListOf<BlockStateModelPart>()
-
-        Minecraft.getInstance().modelManager.blockStateModelSet.get(state)
-            .collectParts(RANDOM, parts)
-
-        val tint = ARGB.color(fillAlpha, color)
-
-        if (parts.isNotEmpty()) {
-            atBlock(poseStack, cameraPos, pos) { pose ->
-                collector.submitBlockModel(
-                    pose,
-                    RenderTypes.translucentMovingBlock(),
-                    parts,
-                    intArrayOf(tint),
-                    FULL_BRIGHT,
-                    NO_OVERLAY,
-                    tint
-                )
-            }
-        }
-
         val level = Minecraft.getInstance().level ?: return
 
         mark(poseStack, collector, cameraPos, pos, state.getShape(level, pos), color, fillAlpha)
