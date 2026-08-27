@@ -1,6 +1,12 @@
 package org.magic.magicaddons.features.farming.greenhousePresets
 
 import java.util.UUID
+import com.mojang.blaze3d.vertex.PoseStack
+import net.minecraft.world.phys.Vec3
+import net.minecraft.world.level.block.Blocks
+import net.minecraft.world.level.block.Block
+import net.minecraft.world.level.Level
+import net.minecraft.client.renderer.SubmitNodeCollector
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.entity.decoration.ArmorStand
 import net.minecraft.client.Minecraft
@@ -13,12 +19,8 @@ import org.magic.magicaddons.data.greenhouse.CropStagePattern
 import org.magic.magicaddons.data.greenhouse.GreenhouseGrid
 import org.magic.magicaddons.data.greenhouse.GreenhouseLayout
 import org.magic.magicaddons.events.EventBus
-import org.magic.magicaddons.render.WorldRender.ghostBlock
-import org.magic.magicaddons.render.WorldRender.markBlock
+import org.magic.magicaddons.render.WorldRender
 import org.magic.magicaddons.util.ChatUtils
-import tech.thatgravyboat.skyblockapi.api.SkyBlockAPI
-import tech.thatgravyboat.skyblockapi.api.events.base.Subscription
-import tech.thatgravyboat.skyblockapi.api.events.render.RenderWorldEvent
 
 /**
  * Shows the player how to build a layout, one job at a time.
@@ -33,21 +35,44 @@ import tech.thatgravyboat.skyblockapi.api.events.render.RenderWorldEvent
  */
 object LayoutRenderState {
     init {
-        SkyBlockAPI.eventBus.register(this)
         EventBus.register(this)
     }
 
-    /** A block standing where something else belongs, drawn solid on its edges. */
-    private const val BLOCKED_COLOR: Int = 0xFFFF3333.toInt()
+    /**
+     * What a marked block is being told to do, which is the whole message: red is the wrong block
+     * and has to be swapped, orange is the right sort of block in the wrong state and only needs
+     * working on, purple is a block that should not be there at all, and blue is a block that
+     * should be there and is not.
+     */
+    private enum class Mark(val color: Int) {
+        Wrong(0xFFFF3333.toInt()),
+        Adjust(0xFFFF9922.toInt()),
+        Remove(0xFFAA44EE.toInt()),
+        Missing(0xFF3399FF.toInt())
+    }
 
-    /** How much of that red fills the block itself, enough to read through. */
-    private const val BLOCKED_FILL_ALPHA: Int = 0x60
+    /** Enough colour to read the mark through, little enough to see the block under it. */
+    private const val FILL_ALPHA: Int = 0x55
+
+    /** The blue of a missing block, worn by the armor stands a ghosted crop is made of. */
+    const val GHOST_STAND_TINT: Int = 0x553399FF
+
+    /**
+     * Ground a hoe turns into other ground. A dirt where farmland belongs is not the wrong block,
+     * it is the right one left untilled, and saying so in red would send the player digging.
+     */
+    private val TILLABLE: Set<Block> = setOf(
+        Blocks.DIRT,
+        Blocks.GRASS_BLOCK,
+        Blocks.COARSE_DIRT,
+        Blocks.ROOTED_DIRT,
+        Blocks.DIRT_PATH,
+        Blocks.FARMLAND
+    )
 
     /** The same warning worn by an entity, which is tinted rather than outlined. */
     const val RED_TINT: Int = 0x90FF0000.toInt()
 
-    /** A block that should be placed, drawn as it would look but see through. */
-    const val GHOST_TINT: Int = 0x70FFFFFF
 
     /** Which half of the job the player is on. */
     enum class Phase {
@@ -59,9 +84,9 @@ object LayoutRenderState {
     var phase: Phase = Phase.Soil
         private set
 
-    /** Blocks that have to go, by the shape they occupy, which every block has however thin it is. */
+    /** Blocks to be dealt with, by the shape they occupy and what is wrong with them. */
     @Volatile
-    private var blocked: Map<BlockPos, VoxelShape> = emptyMap()
+    private var marks: Map<BlockPos, Pair<VoxelShape, Mark>> = emptyMap()
 
     /** Blocks that have to be placed, as they would look once they are. */
     @Volatile
@@ -87,13 +112,22 @@ object LayoutRenderState {
     /** Crops with no first stage described yet, so each is only ever mentioned once. */
     private val reportedMissingStage = mutableSetOf<String>()
 
-    @Subscription
-    private fun onRenderWorld(event: RenderWorldEvent.AfterTranslucent) {
-        val blocked = this.blocked
-        val ghosts = this.ghosts
+    /**
+     * Draws the plan, from the frame's own render pass so the camera it is placed against is the
+     * one the frame is actually drawn with.
+     */
+    fun submit(poseStack: PoseStack, collector: SubmitNodeCollector, cameraPos: Vec3) {
+        marks.forEach { (pos, mark) ->
+            WorldRender.mark(
+                poseStack, collector, cameraPos, pos, mark.first, mark.second.color, FILL_ALPHA
+            )
+        }
 
-        blocked.forEach { (pos, shape) -> event.markBlock(pos, shape, BLOCKED_COLOR, BLOCKED_FILL_ALPHA) }
-        ghosts.forEach { (pos, state) -> event.ghostBlock(pos, state, GHOST_TINT) }
+        ghosts.forEach { (pos, state) ->
+            WorldRender.ghost(
+                poseStack, collector, cameraPos, pos, state, Mark.Missing.color, FILL_ALPHA
+            )
+        }
     }
 
     /** Starts showing [layout], from the soil up. */
@@ -107,7 +141,7 @@ object LayoutRenderState {
 
     fun hide() {
         target = null
-        blocked = emptyMap()
+        marks = emptyMap()
         ghosts = emptyMap()
         badStandsUUID = emptySet()
         ghostStands = emptyList()
@@ -123,7 +157,7 @@ object LayoutRenderState {
         val grid = GreenhouseData.getCurrentGrid() ?: return
         val level = Minecraft.getInstance().level ?: return
 
-        val blocked = mutableMapOf<BlockPos, VoxelShape>()
+        val marks = mutableMapOf<BlockPos, Pair<VoxelShape, Mark>>()
         val ghosts = mutableMapOf<BlockPos, BlockState>()
         val badStands = mutableSetOf<UUID>()
         val ghostStands = mutableListOf<ArmorStand>()
@@ -132,27 +166,9 @@ object LayoutRenderState {
 
         layout.slots.forEach { slot ->
             val wanted = slot.placedBlock ?: return@forEach
-            if (wanted.isAir) return@forEach
-
             val pos = grid.getPosForSlotCoords(slot.x, slot.y) ?: return@forEach
-            val standing = level.getBlockState(pos)
 
-            when {
-                // already right, so there is nothing to say about it
-                standing.block == wanted.block -> Unit
-
-                // free ground, so show what goes here
-                standing.isAir -> {
-                    ghosts[pos] = wanted
-                    soilComplete = false
-                }
-
-                // something else is in the way and has to go before anything can be planted
-                else -> {
-                    blocked[pos] = standing.getShape(level, pos)
-                    soilComplete = false
-                }
-            }
+            if (!compare(level, pos, wanted, marks, ghosts)) soilComplete = false
         }
 
         phase = if (soilComplete) Phase.Crops else Phase.Soil
@@ -166,13 +182,7 @@ object LayoutRenderState {
                 val render = stage.toRenderData(level, soil, instance.cropDef.footprint)
 
                 render.blockMap.forEach { (pos, state) ->
-                    val standing = level.getBlockState(pos)
-
-                    when {
-                        standing.block == state.block -> Unit
-                        standing.isAir -> ghosts[pos] = state
-                        else -> blocked[pos] = standing.getShape(level, pos)
-                    }
+                    compare(level, pos, state, marks, ghosts)
                 }
 
                 ghostStands.addAll(render.stands)
@@ -191,10 +201,47 @@ object LayoutRenderState {
             }
         }
 
-        this.blocked = blocked
+        this.marks = marks
         this.ghosts = ghosts
         this.badStandsUUID = badStands
         this.ghostStands = ghostStands
+    }
+
+    /**
+     * Says what is wrong at [pos] given that [wanted] belongs there, filing it under the mark that
+     * tells the player what to do about it. Returns whether the spot is already as it should be.
+     */
+    private fun compare(
+        level: Level,
+        pos: BlockPos,
+        wanted: BlockState,
+        marks: MutableMap<BlockPos, Pair<VoxelShape, Mark>>,
+        ghosts: MutableMap<BlockPos, BlockState>
+    ): Boolean {
+        val standing = level.getBlockState(pos)
+
+        if (standing == wanted) return true
+
+        // nothing belongs here, so anything standing here is in the way
+        if (wanted.isAir) {
+            if (standing.isAir) return true
+
+            marks[pos] = standing.getShape(level, pos) to Mark.Remove
+            return false
+        }
+
+        if (standing.isAir) {
+            ghosts[pos] = wanted
+            return false
+        }
+
+        // the same block in the wrong state, or ground that only wants working on, is not a block
+        // to dig out and replace
+        val adjustable = standing.block == wanted.block ||
+                (standing.block in TILLABLE && wanted.block in TILLABLE)
+
+        marks[pos] = standing.getShape(level, pos) to if (adjustable) Mark.Adjust else Mark.Wrong
+        return false
     }
 
     /**

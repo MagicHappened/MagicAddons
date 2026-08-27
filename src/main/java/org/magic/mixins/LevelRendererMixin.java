@@ -94,6 +94,14 @@ public abstract class LevelRendererMixin {
             );
         }
 
+        // the layout plan, drawn from this pass so it is placed against the camera the frame is
+        // actually drawn with rather than one read at some other moment
+        LayoutRenderState.INSTANCE.submit(
+                poseStack,
+                submitNodeCollector,
+                levelRenderState.cameraRenderState.pos
+        );
+
         // the stands a ghosted crop is made of, drawn alongside its blocks
         for (ArmorStand stand : LayoutRenderState.INSTANCE.getGhostStands()) {
             renderFakeEntity(
@@ -104,7 +112,7 @@ public abstract class LevelRendererMixin {
                     (ent, state) -> {
                         WrappedEntityRenderState fakeState = (WrappedEntityRenderState) state;
                         fakeState.magicaddons$setWrappedEntity(true);
-                        fakeState.magicaddons$setWrappedEntityTintColor(LayoutRenderState.GHOST_TINT);
+                        fakeState.magicaddons$setWrappedEntityTintColor(LayoutRenderState.GHOST_STAND_TINT);
                     },
                     false
             );
