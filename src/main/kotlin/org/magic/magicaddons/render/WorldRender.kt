@@ -2,6 +2,10 @@ package org.magic.magicaddons.render
 
 import com.mojang.blaze3d.vertex.PoseStack
 import com.mojang.blaze3d.vertex.VertexConsumer
+import com.mojang.blaze3d.vertex.QuadInstance
+import net.minecraft.util.RandomSource
+import net.minecraft.core.Direction
+import net.minecraft.client.renderer.block.dispatch.BlockStateModelPart
 import net.minecraft.client.Minecraft
 import net.minecraft.client.renderer.SubmitNodeCollector
 import net.minecraft.client.renderer.rendertype.RenderTypes
@@ -31,6 +35,16 @@ object WorldRender {
 
     /** Thick enough to read from across a plot without hiding what it surrounds. */
     private const val OUTLINE_WIDTH: Float = 3f
+
+    /** Full brightness: a plan is a hint laid over the world, not a block lit by it. */
+    private const val FULL_BRIGHT: Int = 0xF000F0
+
+    private const val NO_OVERLAY: Int = 0xA0000
+
+    private val RANDOM: RandomSource = RandomSource.create(0)
+
+    /** Every side a model files its quads under, the unculled ones included. */
+    private val QUAD_SIDES: List<Direction?> = Direction.entries + null
 
     /**
      * Pulls an outlined box in off its faces a little.
@@ -75,10 +89,26 @@ object WorldRender {
                     consumer.fillBox(transform, it.grow(FILL_EXPAND), ARGB.color(fillAlpha, color))
                 }
             }
+        }
 
+        outline(poseStack, collector, cameraPos, pos, shape, color)
+    }
+
+    /** The edges of [shape], each of its boxes drawn as its own box. */
+    fun outline(
+        poseStack: PoseStack,
+        collector: SubmitNodeCollector,
+        cameraPos: Vec3,
+        pos: BlockPos,
+        shape: VoxelShape,
+        color: Int
+    ) {
+        if (shape.isEmpty) return
+
+        atBlock(poseStack, cameraPos, pos) { pose ->
             // one call per box, so two marked blocks side by side stay two boxes rather than
             // merging into one long one the way a single combined shape would
-            boxes.forEach { box ->
+            shape.toAabbs().forEach { box ->
                 collector.submitShapeOutline(
                     pose,
                     Shapes.create(box.grow(-OUTLINE_INSET)),
@@ -92,12 +122,13 @@ object WorldRender {
     }
 
     /**
-     * Marks [pos] as somewhere [state] belongs and is not.
+     * Draws [state] at [pos] as it would look if it were there, see through and tinted [color], so
+     * the player can see which block to put down rather than only that one is missing.
      *
-     * Drawn as the box the block would fill rather than as the block itself. A block model carries
-     * its own colours, and the tint handed to one only reaches quads that ask to be tinted, which
-     * ordinary ground never does, so a ghost drawn as a model comes out fully opaque and reads as a
-     * block that is really there. A see through box cannot be mistaken for one.
+     * The model's own quads are handed to the game to write, with a colour set straight onto each
+     * one. Going through the tint array instead does nothing to ordinary ground: a tint only
+     * reaches quads that ask to be tinted, which is how grass and leaves take a biome colour, and
+     * dirt never asks. Writing the colour onto the quad reaches every one of them.
      */
     fun ghost(
         poseStack: PoseStack,
@@ -108,9 +139,40 @@ object WorldRender {
         color: Int,
         fillAlpha: Int
     ) {
+        val parts = mutableListOf<BlockStateModelPart>()
+
+        Minecraft.getInstance().modelManager.blockStateModelSet.get(state)
+            .collectParts(RANDOM, parts)
+
+        val tint = ARGB.color(fillAlpha, color)
+
+        if (parts.isNotEmpty()) {
+            atBlock(poseStack, cameraPos, pos) { pose ->
+                collector.submitCustomGeometry(
+                    pose,
+                    RenderTypes.translucentMovingBlock()
+                ) { transform, consumer ->
+                    val quadInstance = QuadInstance()
+
+                    parts.forEach { part ->
+                        QUAD_SIDES.forEach { side ->
+                            part.getQuads(side).forEach { quad ->
+                                quadInstance.setColor(tint)
+                                quadInstance.setLightCoords(FULL_BRIGHT)
+                                quadInstance.setOverlayCoords(NO_OVERLAY)
+
+                                consumer.putBakedQuad(transform, quad, quadInstance)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // the box around it says this is a plan rather than something already standing there
         val level = Minecraft.getInstance().level ?: return
 
-        mark(poseStack, collector, cameraPos, pos, state.getShape(level, pos), color, fillAlpha)
+        outline(poseStack, collector, cameraPos, pos, state.getShape(level, pos), color)
     }
 
     /** Runs [action] with the pose stack sitting at [pos], as the game sets up its own outline. */
