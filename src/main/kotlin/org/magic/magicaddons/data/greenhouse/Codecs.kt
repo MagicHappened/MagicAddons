@@ -80,13 +80,17 @@ object Codecs {
                     .forGetter { Optional.ofNullable(it.waterLevel) },
 
                 GROWTH_STAGE_INFO_CODEC.optionalFieldOf("growthStage")
-                    .forGetter { Optional.ofNullable(it.growthStage) }
-            ).apply(instance) { id, slot, waterOpt, growthOpt ->
+                    .forGetter { Optional.ofNullable(it.growthStage) },
+
+                Codec.LONG.optionalFieldOf("age")
+                    .forGetter { Optional.ofNullable(it.age) }
+            ).apply(instance) { id, slot, waterOpt, growthOpt, ageOpt ->
                 GreenhouseElementInstance(
                     elementId = id,
                     slot = slot.orElse(null),
                     waterLevel = waterOpt.orElse(null),
                     growthStage = growthOpt.orElse(null),
+                    age = ageOpt.orElse(null),
                     cropDef = CropRegistry.get(id) ?: throw IllegalStateException("Unable to find crop for id $id")
                 )
             }

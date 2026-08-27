@@ -18,11 +18,21 @@ object CropRegistry {
         all.add(provider.definition)
     }
 
-    fun get(idOrName: String): CropDefinition? = all.find { definition ->
-        definition.skyblockId?.id == idOrName ||
-                definition.aliases?.any { it.id == idOrName } == true ||
-                definition.name == idOrName
+    /**
+     * Every name a definition answers to, built once. Lookups happen per block update, which is
+     * far too often to walk the whole registry for.
+     */
+    private val byKey: Map<String, CropDefinition> by lazy {
+        buildMap {
+            all.forEach { definition ->
+                definition.skyblockId?.id?.let { putIfAbsent(it, definition) }
+                definition.aliases?.forEach { putIfAbsent(it.id, definition) }
+                putIfAbsent(definition.name, definition)
+            }
+        }
     }
+
+    fun get(idOrName: String): CropDefinition? = byKey[idOrName]
 
 
     init {

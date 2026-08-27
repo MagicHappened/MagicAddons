@@ -76,8 +76,12 @@ object GreenhouseData {
     /** The character skyblock builds its bars out of, one per notch of the level. */
     private const val BAR_CHAR: Char = '|'
 
-    /** The notches of a water bar: filled ones are blue, the empty ones behind them white. */
+    /**
+     * The notches of a water bar. Blue is water the plant holds and red is water it owes, both
+     * measured against the white notches that make up the rest of the bar.
+     */
     private val BAR_FILLED_COLOR: Int = TextColor.BLUE.value
+    private val BAR_DEBT_COLOR: Int = TextColor.RED.value
     private val BAR_EMPTY_COLOR: Int = TextColor.WHITE.value
 
     /**
@@ -673,19 +677,24 @@ object GreenhouseData {
     }
 
     /**
-     * Reads a water bar as the percentage of it that is filled.
+     * Reads a water bar as the level it stands for, between -100 and 100.
      *
-     * The bar is one character per notch, the filled ones drawn in blue at the front and the empty
-     * ones in white behind them, so "blue x11 then white x5" is a plant eleven sixteenths watered.
-     * Counting the blue rather than taking the leading run matters at both ends: an untouched plant
-     * shows a bar of nothing but white, which a leading run would have read as completely full.
+     * The bar is one character per notch and always full length, what changes is the colouring. A
+     * watered plant fills from the front in blue with white behind it, so eleven blue of sixteen is
+     * 68. A plant in debt is white from the front with red behind it, and the red is the debt, so a
+     * quarter red is -25 and a half red is -50.
      *
-     * A bar drawn in any other colour is not a water bar. Several plants hang a bar of the same
-     * character over themselves, the fleshtrap hunger bar among them, and reading one of those as
-     * a water level would be worse than reading nothing.
+     * Counting the coloured notches rather than taking the leading run matters at both ends: a
+     * plant sitting on exactly zero shows a bar of nothing but white, which a leading run would
+     * have read as completely full.
+     *
+     * A bar in any other colour is not a water bar and is refused. Several plants hang a bar of the
+     * same character over themselves, the fleshtrap hunger bar among them, and reading one of those
+     * as a water level would be worse than reading nothing.
      */
     private fun parseBar(name: Component): Int? {
         var filled = 0
+        var debt = 0
         var total = 0
         var foreign = false
 
@@ -695,6 +704,7 @@ object GreenhouseData {
             if (notches > 0) {
                 when (style.color?.value) {
                     BAR_FILLED_COLOR -> filled += notches
+                    BAR_DEBT_COLOR -> debt += notches
                     BAR_EMPTY_COLOR -> Unit
                     else -> foreign = true
                 }
@@ -706,6 +716,9 @@ object GreenhouseData {
         }, Style.EMPTY)
 
         if (foreign || total == 0) return null
+
+        // a bar cannot hold water and owe it at once, and owing is the half worth believing
+        if (debt > 0) return -(debt * 100 / total)
 
         return filled * 100 / total
     }

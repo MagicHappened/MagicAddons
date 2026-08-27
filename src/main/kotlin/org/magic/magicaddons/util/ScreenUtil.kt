@@ -109,6 +109,23 @@ object ScreenUtil {
         drawLine(x2, y1, x2, y2, thickness, color)
     }
 
+    /**
+     * A filled rectangle with its corners taken off, which reads as rounded at the sizes this ui
+     * draws at. Three bands: the full height middle, and the top and bottom inset by [radius].
+     */
+    fun GuiGraphicsExtractor.fillRounded(x1: Int, y1: Int, x2: Int, y2: Int, radius: Int, color: Int) {
+        if (x2 <= x1 || y2 <= y1) return
+
+        val corner = radius.coerceAtMost(minOf(x2 - x1, y2 - y1) / 2)
+
+        fill(x1, y1 + corner, x2, y2 - corner, color)
+
+        if (corner <= 0) return
+
+        fill(x1 + corner, y1, x2 - corner, y1 + corner, color)
+        fill(x1 + corner, y2 - corner, x2 - corner, y2, color)
+    }
+
     fun GuiGraphicsExtractor.drawLine(
         x1: Int,
         y1: Int,

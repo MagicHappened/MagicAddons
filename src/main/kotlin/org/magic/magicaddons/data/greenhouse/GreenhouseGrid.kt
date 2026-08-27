@@ -15,6 +15,9 @@ import tech.thatgravyboat.skyblockapi.api.profile.garden.Plot
 import tech.thatgravyboat.skyblockapi.api.profile.garden.PlotAPI
 import java.time.Instant
 
+/** The y every greenhouse plants on, the grid is a single flat row of soil. */
+const val GREENHOUSE_SOIL_Y: Int = 73
+
 class GreenhouseGrid(
     var state: GridState,
     var layout: GreenhouseLayout
@@ -48,7 +51,7 @@ class GreenhouseGrid(
         val worldX = minX + slot.x
         val worldZ = minZ + slot.y
 
-        return BlockPos(worldX, 73, worldZ)
+        return BlockPos(worldX, GREENHOUSE_SOIL_Y, worldZ)
     }
 
     fun getPosForSlotCoords(x: Int, y: Int): BlockPos? {
@@ -63,7 +66,7 @@ class GreenhouseGrid(
 
         if (!buildArea.contains(Vec3.atCenterOf(blockPos))) return null
 
-        if (matchY && blockPos.y != 73) return null
+        if (matchY && blockPos.y != GREENHOUSE_SOIL_Y) return null
 
         val minX = buildArea.minX.toInt()
         val minZ = buildArea.minZ.toInt()

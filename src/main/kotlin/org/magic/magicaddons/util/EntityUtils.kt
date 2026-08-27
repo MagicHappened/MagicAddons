@@ -147,10 +147,9 @@ object EntityUtils {
         newMap.forEach { (uuid, newInfo) ->
             val oldInfo = entityMapCurr[uuid] ?: return@forEach
 
-            val oldTags = oldInfo.informationEntities?.toSet()
-            val newTags = newInfo.informationEntities?.toSet()
-
-            if (oldTags != newTags) {
+            // by name as well as by identity: skyblock reuses a name tag it already hung rather
+            // than replacing it, so a tag whose text changed is the same entity in both sets
+            if (oldInfo.tagSignature() != newInfo.tagSignature()) {
                 updatedEntities += newInfo
             }
         }
@@ -171,6 +170,10 @@ object EntityUtils {
         entityMapPrev = entityMapCurr
         entityMapCurr = newMap
     }
+
+    /** What the tags around an entity say, so a tag that was rewritten counts as a change. */
+    private fun EntityInfo.tagSignature(): List<String> =
+        informationEntities.orEmpty().map { "${it.id}:${it.customName?.string}" }
 
     private fun isNearMeaningfulEntity(world: ClientLevel, entity: Entity, nearby: List<Entity>): Boolean {
         val box = entity.boundingBox.inflate(1.0)
