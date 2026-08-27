@@ -283,7 +283,17 @@ class GreenhouseGrid(
      * time that passed and its decay keeps counting down.
      *
      * Water is deliberately left alone. How fast a plant dries out depends on buffs we do not read
-     * yet, and a made up water level is worse than the last one actually seen.
+     * yet, and a made up water level is worse than the last one actually seen. The wiki puts it as:
+     *
+     * > After each growth stage, a crop loses between 2-3 Water Level, which can be mitigated by
+     * > the +50% Water Retain and +100% Improved Water Retain effects, and amplified by the -30%
+     * > Water Drain negative effect respectively.
+     * >
+     * > If a crop has negative Water Level during a Growth Stage, it has a chance not to advance to
+     * > the next stage.
+     *
+     * So even unbuffed the loss is a range rather than a number, and a plant in debt may not have
+     * advanced at all, which is why the stage this writes is only ever an estimate.
      */
     fun predictGrowth(ticks: Int, tickMs: Long) {
         if (ticks <= 0) return

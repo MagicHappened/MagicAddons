@@ -94,22 +94,20 @@ public abstract class LevelRendererMixin {
             );
         }
 
-        for (LayoutRenderState.CropRenderGroup group : LayoutRenderState.INSTANCE.getCropRenders()) {
-            for (ArmorStand stand : group.getStands()){
-                renderFakeEntity(
-                        stand,
-                        poseStack,
-                        levelRenderState,
-                        submitNodeCollector,
-                        (ent, state) -> {
-                            WrappedEntityRenderState fakeState = (WrappedEntityRenderState) state;
-                            fakeState.magicaddons$setWrappedEntity(true);
-                            fakeState.magicaddons$setWrappedEntityTintColor(group.getTint());
-
-                        },
-                        false
-                );
-            }
+        // the stands a ghosted crop is made of, drawn alongside its blocks
+        for (ArmorStand stand : LayoutRenderState.INSTANCE.getGhostStands()) {
+            renderFakeEntity(
+                    stand,
+                    poseStack,
+                    levelRenderState,
+                    submitNodeCollector,
+                    (ent, state) -> {
+                        WrappedEntityRenderState fakeState = (WrappedEntityRenderState) state;
+                        fakeState.magicaddons$setWrappedEntity(true);
+                        fakeState.magicaddons$setWrappedEntityTintColor(LayoutRenderState.GHOST_TINT);
+                    },
+                    false
+            );
         }
 
 

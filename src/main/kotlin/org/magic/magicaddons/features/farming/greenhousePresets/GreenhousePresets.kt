@@ -8,8 +8,6 @@ import net.minecraft.world.level.block.state.BlockState
 import org.magic.magicaddons.data.config.BooleanSetting
 import org.magic.magicaddons.data.greenhouse.CropRegistry
 import org.magic.magicaddons.features.Feature
-import org.magic.magicaddons.features.farming.greenhousePresets.LayoutRenderState.NO_TINT
-import org.magic.magicaddons.features.farming.greenhousePresets.LayoutRenderState.RED_TINT
 import org.magic.magicaddons.util.ChatUtils
 import tech.thatgravyboat.skyblockapi.api.SkyBlockAPI
 import tech.thatgravyboat.skyblockapi.api.events.base.Subscription
