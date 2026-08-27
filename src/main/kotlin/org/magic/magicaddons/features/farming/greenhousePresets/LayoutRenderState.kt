@@ -14,7 +14,7 @@ import org.magic.magicaddons.data.greenhouse.GreenhouseGrid
 import org.magic.magicaddons.data.greenhouse.GreenhouseLayout
 import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.render.WorldRender.ghostBlock
-import org.magic.magicaddons.render.WorldRender.outlineBlock
+import org.magic.magicaddons.render.WorldRender.markBlock
 import org.magic.magicaddons.util.ChatUtils
 import tech.thatgravyboat.skyblockapi.api.SkyBlockAPI
 import tech.thatgravyboat.skyblockapi.api.events.base.Subscription
@@ -37,14 +37,17 @@ object LayoutRenderState {
         EventBus.register(this)
     }
 
-    /** A block standing where something else belongs. */
+    /** A block standing where something else belongs, drawn solid on its edges. */
     private const val BLOCKED_COLOR: Int = 0xFFFF3333.toInt()
+
+    /** How much of that red fills the block itself, enough to read through. */
+    private const val BLOCKED_FILL_ALPHA: Int = 0x60
 
     /** The same warning worn by an entity, which is tinted rather than outlined. */
     const val RED_TINT: Int = 0x90FF0000.toInt()
 
-    /** A block that should be placed, drawn as it would look. */
-    const val GHOST_TINT: Int = 0x80FFFFFF.toInt()
+    /** A block that should be placed, drawn as it would look but see through. */
+    const val GHOST_TINT: Int = 0x70FFFFFF
 
     /** Which half of the job the player is on. */
     enum class Phase {
@@ -89,7 +92,7 @@ object LayoutRenderState {
         val blocked = this.blocked
         val ghosts = this.ghosts
 
-        blocked.forEach { (pos, shape) -> event.outlineBlock(pos, shape, BLOCKED_COLOR) }
+        blocked.forEach { (pos, shape) -> event.markBlock(pos, shape, BLOCKED_COLOR, BLOCKED_FILL_ALPHA) }
         ghosts.forEach { (pos, state) -> event.ghostBlock(pos, state, GHOST_TINT) }
     }
 
