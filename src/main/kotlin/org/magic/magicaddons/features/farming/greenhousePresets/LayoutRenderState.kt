@@ -63,8 +63,15 @@ object LayoutRenderState {
      */
     private const val GHOST_ALPHA: Int = 0xC0
 
+    /**
+     * The wash over a ghosted block. Pale on purpose: the colour multiplies the block's texture, so
+     * a saturated blue would hold its red and green near zero and drain the block of its own colour
+     * rather than tinting it, leaving dirt as a dark smear instead of recognisably dirt.
+     */
+    private const val GHOST_TINT: Int = 0xFFB8CCFF.toInt()
+
     /** The blue of a missing block, worn by the armor stands a ghosted crop is made of. */
-    const val GHOST_STAND_TINT: Int = 0xC03399FF.toInt()
+    const val GHOST_STAND_TINT: Int = 0xC0B8CCFF.toInt()
 
     /**
      * Ground a hoe turns into other ground. A dirt where farmland belongs is not the wrong block,
@@ -134,7 +141,8 @@ object LayoutRenderState {
 
         ghosts.forEach { (pos, state) ->
             WorldRender.ghost(
-                poseStack, collector, cameraPos, pos, state, Mark.Missing.color, GHOST_ALPHA
+                poseStack, collector, cameraPos, pos, state,
+                GHOST_TINT, Mark.Missing.color, GHOST_ALPHA
             )
         }
     }

@@ -122,13 +122,18 @@ object WorldRender {
     }
 
     /**
-     * Draws [state] at [pos] as it would look if it were there, see through and tinted [color], so
-     * the player can see which block to put down rather than only that one is missing.
+     * Draws [state] at [pos] as it would look if it were there, washed with [tint] and see through,
+     * so the player can see which block to put down rather than only that one is missing. The box
+     * around it is drawn in [outlineColor].
      *
      * The model's own quads are handed to the game to write, with a colour set straight onto each
      * one. Going through the tint array instead does nothing to ordinary ground: a tint only
      * reaches quads that ask to be tinted, which is how grass and leaves take a biome colour, and
      * dirt never asks. Writing the colour onto the quad reaches every one of them.
+     *
+     * That colour multiplies the texture rather than replacing it, so [tint] wants to be pale. A
+     * saturated one holds the channels it lacks near zero, which drains the block of its own colour
+     * instead of washing over it, and a brown block ends up unrecognisably dark.
      */
     fun ghost(
         poseStack: PoseStack,
@@ -136,15 +141,16 @@ object WorldRender {
         cameraPos: Vec3,
         pos: BlockPos,
         state: BlockState,
-        color: Int,
-        fillAlpha: Int
+        tint: Int,
+        outlineColor: Int,
+        alpha: Int
     ) {
         val parts = mutableListOf<BlockStateModelPart>()
 
         Minecraft.getInstance().modelManager.blockStateModelSet.get(state)
             .collectParts(RANDOM, parts)
 
-        val tint = ARGB.color(fillAlpha, color)
+        val quadColor = ARGB.color(alpha, tint)
 
         if (parts.isNotEmpty()) {
             atBlock(poseStack, cameraPos, pos) { pose ->
@@ -157,7 +163,7 @@ object WorldRender {
                     parts.forEach { part ->
                         QUAD_SIDES.forEach { side ->
                             part.getQuads(side).forEach { quad ->
-                                quadInstance.setColor(tint)
+                                quadInstance.setColor(quadColor)
                                 quadInstance.setLightCoords(FULL_BRIGHT)
                                 quadInstance.setOverlayCoords(NO_OVERLAY)
 
@@ -172,7 +178,7 @@ object WorldRender {
         // the box around it says this is a plan rather than something already standing there
         val level = Minecraft.getInstance().level ?: return
 
-        outline(poseStack, collector, cameraPos, pos, state.getShape(level, pos), color)
+        outline(poseStack, collector, cameraPos, pos, state.getShape(level, pos), outlineColor)
     }
 
     /** Runs [action] with the pose stack sitting at [pos], as the game sets up its own outline. */
