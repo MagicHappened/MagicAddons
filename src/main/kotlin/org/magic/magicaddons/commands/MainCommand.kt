@@ -6,6 +6,7 @@ import net.minecraft.network.chat.Component
 import org.magic.magicaddons.Common
 import org.magic.magicaddons.commands.debug.MainDebug
 import org.magic.magicaddons.commands.features.EditFeature
+import org.magic.magicaddons.commands.foraging.SafariHelperCommand
 import org.magic.magicaddons.commands.misc.PlaySound
 import org.magic.magicaddons.commands.features.ToggleFeature
 import org.magic.magicaddons.commands.features.farming.GreenhouseScreenCommand
@@ -21,7 +22,8 @@ object MainCommand {
         ToggleFeature,
         EditFeature,
         MainDebug,
-        PlaySound
+        PlaySound,
+        SafariHelperCommand
     )
 
     init {

@@ -2,11 +2,13 @@ package org.magic.magicaddons.features.combat
 
 import net.minecraft.client.player.LocalPlayer
 import net.minecraft.world.entity.Display
+import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.EquipmentSlot
 import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.decoration.ArmorStand
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.item.ItemStack
+import net.minecraft.world.item.Items
 import org.magic.magicaddons.data.EntityInfo
 import org.magic.magicaddons.data.ListEntry
 import org.magic.magicaddons.data.config.BooleanSetting
@@ -19,15 +21,14 @@ import org.magic.magicaddons.events.EventHandler
 import org.magic.magicaddons.events.world.OnEntityAdded
 import org.magic.magicaddons.events.world.OnEntityRemoved
 import org.magic.magicaddons.events.world.OnEntityUpdated
-import org.magic.magicaddons.features.Feature
+import org.magic.magicaddons.features.HighlightFeature
 import org.magic.magicaddons.util.PlayerUtils
-import org.magic.magicaddons.util.EntityUtils
 import tech.thatgravyboat.skyblockapi.api.SkyBlockAPI
 
 
-object HighlightMobs : Feature(), EntityUtils.HighlightSource {
+object HighlightMobs : HighlightFeature() {
     override val highlightPriority: Int = 0
-    override val highlightColor: Int = 0xFFFFFFFF.toInt()
+    override fun highlightColor(entity: Entity): Int = 0xFFFFFFFF.toInt()
 
     init {
         EventBus.register(this)
@@ -66,6 +67,20 @@ object HighlightMobs : Feature(), EntityUtils.HighlightSource {
         tooltip = tooltipMessage,
         value = false,
         children = listOf(
+            BooleanSetting(
+                key = "PresetsEnabled",
+                displayName = "Mob Presets",
+                tooltip = "Preselected Mobs to add to the highlight list.",
+                value = false,
+                children = listOf(
+                    BooleanSetting(
+                        key = "PresetsForagingTreasure",
+                        displayName = "Foraging Treasure",
+                        tooltip = "Preset to highlight the grass containing treasure (or shards) inside foraging islands",
+                        value = false
+                    )
+                )
+            ),
             BooleanSetting(
                 key = "EntityTypeEnabled",
                 displayName = "Entity Type",
@@ -142,59 +157,47 @@ object HighlightMobs : Feature(), EntityUtils.HighlightSource {
             )
         )
     )
-
-
     @EventHandler
     fun onConfigChanged(event: ConfigChangedEvent) {
-        EntityUtils.removeAllForSource(this)
-
-        EntityUtils.entityInfoList?.forEach {
-            if (shouldHighlight(it)) {
-                EntityUtils.add(it.entity, this)
-            }
-        }
+        invalidateHighlights()
     }
 
     @EventHandler
     fun onEntityAdded(event: OnEntityAdded) {
-        if (!baseSetting.value) return
-
-        event.addedEntityList.forEach {
-            if (shouldHighlight(it))
-                EntityUtils.add(it.entity,this)
-        }
+        handleEntitiesAdded(event.addedEntityList)
     }
 
     @EventHandler
     fun onEntityRemoved(event: OnEntityRemoved) {
-        if (!baseSetting.value) return
-
-        event.removedEntityList.forEach {
-            EntityUtils.remove(it.entity,this)
-        }
+        handleEntitiesRemoved(event.removedEntityList)
     }
 
     @EventHandler
     fun onEntityUpdated(event: OnEntityUpdated) {
-        if (!baseSetting.value) return
+        handleEntitiesUpdated(event.updatedEntityList)
+    }
 
-        event.updatedEntityList.forEach { info ->
-            val should = shouldHighlight(info)
-            val has = EntityUtils.hasSource(info.entity, this)
+    fun shouldHighlightPreset(info: EntityInfo): Boolean {
+        val presetsEnabled = baseSetting.getChild<BooleanSetting>("PresetsEnabled")
+        presetsEnabled ?: return false
+        if (!presetsEnabled.value) return false
 
-            when {
-                should && !has -> EntityUtils.add(info.entity, this)
-                !should && has -> EntityUtils.remove(info.entity, this)
+        val dirtTreasurePresetEnabled = presetsEnabled.getChild<BooleanSetting>("PresetsForagingTreasure")
+        if (dirtTreasurePresetEnabled?.value ?: false){
+            if (info.entity is Display.ItemDisplay && info.entity.itemStack.item == Items.STRING){
+                return true
             }
         }
+
+        return false
     }
 
 
-
-    fun shouldHighlight(info: EntityInfo): Boolean {
-        val entity = info.entity
-
+    override fun shouldHighlight(info: EntityInfo): Boolean {
         if (!baseSetting.value) return false
+
+        if (shouldHighlightPreset(info)) return true
+        val entity = info.entity
 
         var matches = false
         var hasAnyFilter = false
@@ -311,8 +314,4 @@ object HighlightMobs : Feature(), EntityUtils.HighlightSource {
 
         return matches
     }
-
-
-
-
 }

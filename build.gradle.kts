@@ -1,5 +1,5 @@
 plugins {
-    kotlin("jvm") version "2.4.0"
+    kotlin("jvm") version "2.4.10"
     id("net.fabricmc.fabric-loom") version "1.17-SNAPSHOT"
     id("maven-publish")
 }
@@ -60,6 +60,10 @@ dependencies {
     include("com.github.tommyettinger:blazingchain:${project.property("blazing_chain_version")}")
     
     api("com.terraformersmc:modmenu:${project.property("modmenu_version")}")
+
+    include("tech.thatgravyboat:skyblock-api:${project.property("skyblock_api_version")}") {
+        capabilities { requireCapability("tech.thatgravyboat:skyblock-api-26.2") }
+    }
 
     api("tech.thatgravyboat:skyblock-api:${project.property("skyblock_api_version")}") {
         capabilities { requireCapability("tech.thatgravyboat:skyblock-api-26.2") }
