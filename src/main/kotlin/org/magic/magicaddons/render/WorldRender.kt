@@ -1,22 +1,30 @@
 package org.magic.magicaddons.render
 
+import com.mojang.blaze3d.vertex.PoseStack
+import com.mojang.blaze3d.vertex.VertexConsumer
 import net.minecraft.client.Minecraft
 import net.minecraft.client.renderer.block.dispatch.BlockStateModelPart
 import net.minecraft.client.renderer.rendertype.RenderTypes
 import net.minecraft.core.BlockPos
+import net.minecraft.util.ARGB
 import net.minecraft.util.RandomSource
 import net.minecraft.world.level.block.state.BlockState
+import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.shapes.VoxelShape
 import tech.thatgravyboat.skyblockapi.api.events.render.RenderWorldEvent
 
 /**
  * Drawing single blocks into the world, for showing a player what a plot should look like.
  *
- * The world's own blocks are baked into chunk meshes, so nothing here tries to reach into one and
- * recolour it. A block that is in the way is instead outlined from its [VoxelShape], which is a
- * shape the game already keeps for every block and which exists whether the model is a full cube or
- * a paper thin stalk of sugar cane. A block that is missing is drawn as a model of its own, on top
- * of the world rather than inside it.
+ * Everything here is positioned the way the game positions its own block outline: the pose stack of
+ * a world render is already relative to the camera, so a block is drawn at its position minus the
+ * camera's. Doing it any other way leaves the drawing hanging off the camera and sliding as the
+ * player moves.
+ *
+ * A block that is in the way is drawn from its [VoxelShape] rather than from its model. Every block
+ * has a shape, whether its model is a full cube or a paper thin stalk of sugar cane, and the shape
+ * matches what the block actually occupies, so farmland is called out as the low slab it is. The
+ * model itself is never drawn a second time, which is what made the paper thin cases fail.
  */
 object WorldRender {
 
@@ -31,33 +39,44 @@ object WorldRender {
     private val RANDOM: RandomSource = RandomSource.create(0)
 
     /**
-     * Outlines the shape of whatever stands at [pos] in [color].
+     * Marks whatever stands at [pos]: its shape filled in [color] at [fillAlpha] of it, and the
+     * edges of that same shape drawn solid on top.
      *
-     * Drawn without depth testing, so a block behind another one still reads, which is the point
-     * when the player is being told to go and remove it.
+     * Neither is depth tested, so a block behind another one still reads, which is the point when
+     * the player is being told to go and remove it.
      */
-    fun RenderWorldEvent.outlineBlock(pos: BlockPos, shape: VoxelShape, color: Int) {
+    fun RenderWorldEvent.markBlock(
+        pos: BlockPos,
+        shape: VoxelShape,
+        color: Int,
+        fillAlpha: Int
+    ) {
         if (shape.isEmpty) return
 
-        atCamera {
-            pushPose()
-            translate(pos.x.toDouble(), pos.y.toDouble(), pos.z.toDouble())
+        val boxes = shape.toAabbs()
+
+        atBlock(pos) { pose ->
+            submitNodeCollector.submitCustomGeometry(
+                pose,
+                RenderTypes.debugFilledBox()
+            ) { transform, consumer ->
+                boxes.forEach { box -> consumer.fillBox(transform, box, ARGB.color(fillAlpha, color)) }
+            }
 
             submitNodeCollector.submitShapeOutline(
-                this,
+                pose,
                 shape,
-                RenderTypes.LINES_TRANSLUCENT,
+                RenderTypes.LINES,
                 color,
                 OUTLINE_WIDTH,
                 false
             )
-
-            popPose()
         }
     }
 
     /**
-     * Draws [state] at [pos] as it would look if it were there, tinted by [tint].
+     * Draws [state] at [pos] as it would look if it were there, see through so the player can tell
+     * a plan from a plant.
      *
      * The parts of a block model are collected the same way the world collects them, so a crop
      * drawn this way has the shape the real one would have.
@@ -70,12 +89,9 @@ object WorldRender {
 
         if (parts.isEmpty()) return
 
-        atCamera {
-            pushPose()
-            translate(pos.x.toDouble(), pos.y.toDouble(), pos.z.toDouble())
-
+        atBlock(pos) { pose ->
             submitNodeCollector.submitBlockModel(
-                this,
+                pose,
                 RenderTypes.translucentMovingBlock(),
                 parts,
                 intArrayOf(tint),
@@ -83,8 +99,55 @@ object WorldRender {
                 NO_OVERLAY,
                 tint
             )
-
-            popPose()
         }
+    }
+
+    /** Runs [action] with the pose stack sitting at [pos], as the game sets up its own outline. */
+    private inline fun RenderWorldEvent.atBlock(pos: BlockPos, action: (PoseStack) -> Unit) {
+        val pose = poseStack
+
+        pose.pushPose()
+        pose.translate(
+            pos.x - cameraPosition.x,
+            pos.y - cameraPosition.y,
+            pos.z - cameraPosition.z
+        )
+
+        try {
+            action(pose)
+        } finally {
+            pose.popPose()
+        }
+    }
+
+    /** The six faces of [box], wound so the fill is visible from any side. */
+    private fun VertexConsumer.fillBox(pose: PoseStack.Pose, box: AABB, color: Int) {
+        val x1 = box.minX.toFloat()
+        val y1 = box.minY.toFloat()
+        val z1 = box.minZ.toFloat()
+        val x2 = box.maxX.toFloat()
+        val y2 = box.maxY.toFloat()
+        val z2 = box.maxZ.toFloat()
+
+        face(pose, color, x1, y1, z1, x1, y2, z1, x2, y2, z1, x2, y1, z1)
+        face(pose, color, x2, y1, z2, x2, y2, z2, x1, y2, z2, x1, y1, z2)
+        face(pose, color, x1, y1, z2, x1, y2, z2, x1, y2, z1, x1, y1, z1)
+        face(pose, color, x2, y1, z1, x2, y2, z1, x2, y2, z2, x2, y1, z2)
+        face(pose, color, x1, y1, z2, x1, y1, z1, x2, y1, z1, x2, y1, z2)
+        face(pose, color, x1, y2, z1, x1, y2, z2, x2, y2, z2, x2, y2, z1)
+    }
+
+    private fun VertexConsumer.face(
+        pose: PoseStack.Pose,
+        color: Int,
+        ax: Float, ay: Float, az: Float,
+        bx: Float, by: Float, bz: Float,
+        cx: Float, cy: Float, cz: Float,
+        dx: Float, dy: Float, dz: Float
+    ) {
+        addVertex(pose, ax, ay, az).setColor(color)
+        addVertex(pose, bx, by, bz).setColor(color)
+        addVertex(pose, cx, cy, cz).setColor(color)
+        addVertex(pose, dx, dy, dz).setColor(color)
     }
 }
