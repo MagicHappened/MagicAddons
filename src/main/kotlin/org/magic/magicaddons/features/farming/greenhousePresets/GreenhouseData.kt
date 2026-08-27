@@ -1,5 +1,10 @@
 package org.magic.magicaddons.features.farming.greenhousePresets
 
+import org.magic.magicaddons.commands.debug.CropStageExporter
+import org.magic.magicaddons.util.getBuildableArea
+import org.magic.magicaddons.util.parseDurationToMs
+import org.magic.magicaddons.util.isCardinalYaw
+import org.magic.magicaddons.util.center
 import net.minecraft.client.Minecraft
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Rotations
@@ -64,35 +69,6 @@ object GreenhouseData {
 
     private const val BUILD_OFFSET = 43
     private const val GRID_SIZE = 10
-
-    private val waterCanIds = setOf(
-        "HYDRO_CAN_1000",
-        "HYDRO_CAN_TURBO_2000",
-        "HYDRO_CAN_ULTRA_3000",
-        "AQUAMASTER_X",
-        "AQUAMASTER_HYDROMAX"
-    )
-
-    /** The character skyblock builds its bars out of, one per notch of the level. */
-    private const val BAR_CHAR: Char = '|'
-
-    /**
-     * The notches of a water bar. Blue is water the plant holds and red is water it owes, both
-     * measured against the white notches that make up the rest of the bar.
-     */
-    private val BAR_FILLED_COLOR: Int = TextColor.BLUE.value
-    private val BAR_DEBT_COLOR: Int = TextColor.RED.value
-    private val BAR_EMPTY_COLOR: Int = TextColor.WHITE.value
-
-    /**
-     * How long after a watering the stands are worth looking for. The water bar is not a permanent
-     * part of a plant like the fleshtrap hunger bar is, it appears when the level changes and takes
-     * itself away again a few seconds later.
-     */
-    private val WATERING_WINDOW: Duration = Duration.ofSeconds(10)
-
-    /** When the stands spawned by the last watering stop being expected. */
-    private var wateringUntil: Instant? = null
 
     var lastPlot: Plot? = null
 
@@ -192,75 +168,6 @@ object GreenhouseData {
         val plotId = PlotAPI.getCurrentPlot()?.id ?: return null
         return greenhouseGrids.find { it.layout.id == "plot_$plotId" }
     }
-    fun BlockPos.center(): Vec3 {
-        return Vec3(x + 0.5, y + 0.5, z + 0.5)
-    }
-
-    fun Float.isCardinalYaw(): Boolean {
-        val normalized = ((this % 360f) + 360f) % 360f
-
-        return abs(normalized - 0f) < 0.1f ||
-                abs(normalized - 90f) < 0.1f ||
-                abs(normalized - 180f) < 0.1f ||
-                abs(normalized - 270f) < 0.1f
-    }
-
-    fun String.parseDurationToMs(): Long {
-        var totalMs = 0L
-
-        val regex = Regex("(\\d+)([dhms])")
-
-        regex.findAll(this).forEach { match ->
-            val value = match.groupValues[1].toLong()
-            val unit = match.groupValues[2]
-
-            totalMs += when (unit) {
-                "d" -> value * 24 * 60 * 60 * 1000
-                "h" -> value * 60 * 60 * 1000
-                "m" -> value * 60 * 1000
-                "s" -> value * 1000
-                else -> 0L
-            }
-        }
-
-        return totalMs
-    }
-
-    fun Instant.toReadableDuration(from: Instant = Instant.now()): String {
-        var seconds = abs(Duration.between(this, from).seconds)
-
-        val days = seconds / 86400
-        seconds %= 86400
-
-        val hours = seconds / 3600
-        seconds %= 3600
-
-        val minutes = seconds / 60
-        seconds %= 60
-
-        val parts = mutableListOf<String>()
-
-        if (days > 0) parts += "${days}d"
-        if (hours > 0) parts += "${hours}h"
-        if (minutes > 0) parts += "${minutes}m"
-        if (seconds > 0 || parts.isEmpty()) parts += "${seconds}s"
-
-        return parts.joinToString(" ")
-    }
-
-    fun Plot.getBuildableArea(): AABB {
-        val box = this.aabb
-        val minX = box.minX + BUILD_OFFSET
-        val minZ = box.minZ + BUILD_OFFSET
-
-        return AABB(
-            minX, box.minY,
-            minZ,
-            minX + GRID_SIZE, box.maxY,
-            minZ + GRID_SIZE
-        )
-    }
-
     fun computeNextAvailableId(): Int {
         val usedIds = presetGrids
             .mapNotNull {
@@ -541,10 +448,7 @@ object GreenhouseData {
         if (!grid.hasRuntime()) return
         val mainHandId = event.player.mainHandItem.getSkyBlockId() ?: return
 
-        if (isWaterCan(mainHandId)) {
-            tryGetWaterCanData()
-            return
-        }
+        if (GreenhouseWatering.startWateringWindow(mainHandId)) return
     }
 
     @EventHandler
@@ -561,10 +465,7 @@ object GreenhouseData {
 
             return
         }
-        if (isWaterCan(mainHandId)) {
-            tryGetWaterCanData()
-            return
-        }
+        if (GreenhouseWatering.startWateringWindow(mainHandId)) return
 
         if (foundCrop != null) {
             val pos = event.hit.blockPos.relative(event.hit.direction)
@@ -619,108 +520,6 @@ object GreenhouseData {
             runtime.instance.waterLevel = 0
         }
         grid.addElement(runtime, System.currentTimeMillis())
-    }
-
-    /** Every tier of the watering can, matched past the prefix and casing of a skyblock id. */
-    private fun isWaterCan(id: SkyBlockId): Boolean =
-        id.id.substringAfter("item:").uppercase() in waterCanIds
-
-    /**
-     * The spray of a watering can does not reach the plants on the same tick the can is used, so a
-     * use only says the water bars are about to appear. [readWaterStands] does the reading.
-     */
-    fun tryGetWaterCanData() {
-        wateringUntil = Instant.now().plus(WATERING_WINDOW)
-    }
-
-    /**
-     * Takes the water level off any bar standing over a plant of the current grid. Called for every
-     * batch of entities that appears while a watering is expected, since the bars spawn a moment
-     * after the spray and take themselves away again.
-     */
-    @EventHandler
-    fun onWorldTick(event: OnWorldTickEvent) {
-        readWaterStands()
-    }
-
-    /**
-     * Takes the water level off any bar standing over a plant of the current grid, for as long as a
-     * watering is expected.
-     *
-     * Polled rather than driven by an entity event: the game reuses a bar it already has above a
-     * plant, and a stand whose name changed is neither added nor counted as updated, since an update
-     * only means the entities standing beside a plant changed.
-     */
-    private fun readWaterStands() {
-        val until = wateringUntil ?: return
-
-        if (Instant.now().isAfter(until)) {
-            wateringUntil = null
-            return
-        }
-
-        val grid = getCurrentGrid() ?: return
-        if (!grid.hasRuntime()) return
-
-        val area = grid.plot?.getBuildableArea() ?: return
-        val level = Minecraft.getInstance().level ?: return
-
-        level.getEntitiesOfClass(ArmorStand::class.java, area).forEach { stand ->
-            val waterLevel = stand.customName?.let { parseBar(it) } ?: return@forEach
-            val slot = grid.getSlotAt(stand.blockPosition(), matchY = false) ?: return@forEach
-            val element = grid.elementCovering(slot) ?: return@forEach
-
-            if (!element.instance.cropDef.needsWater) return@forEach
-
-            element.instance.waterLevel = waterLevel
-        }
-    }
-
-    /**
-     * Reads a water bar as the level it stands for, between -100 and 100.
-     *
-     * The bar is one character per notch and always full length, what changes is the colouring. A
-     * watered plant fills from the front in blue with white behind it, so eleven blue of sixteen is
-     * 68. A plant in debt is white from the front with red behind it, and the red is the debt, so a
-     * quarter red is -25 and a half red is -50.
-     *
-     * Counting the coloured notches rather than taking the leading run matters at both ends: a
-     * plant sitting on exactly zero shows a bar of nothing but white, which a leading run would
-     * have read as completely full.
-     *
-     * A bar in any other colour is not a water bar and is refused. Several plants hang a bar of the
-     * same character over themselves, the fleshtrap hunger bar among them, and reading one of those
-     * as a water level would be worse than reading nothing.
-     */
-    private fun parseBar(name: Component): Int? {
-        var filled = 0
-        var debt = 0
-        var total = 0
-        var foreign = false
-
-        name.visit({ style, text ->
-            val notches = text.count { it == BAR_CHAR }
-
-            if (notches > 0) {
-                when (style.color?.value) {
-                    BAR_FILLED_COLOR -> filled += notches
-                    BAR_DEBT_COLOR -> debt += notches
-                    BAR_EMPTY_COLOR -> Unit
-                    else -> foreign = true
-                }
-
-                total += notches
-            }
-
-            Optional.empty<Unit>()
-        }, Style.EMPTY)
-
-        if (foreign || total == 0) return null
-
-        // a bar cannot hold water and owe it at once, and owing is the half worth believing
-        if (debt > 0) return -(debt * 100 / total)
-
-        return filled * 100 / total
     }
 
     fun setDiagnosesListeningElement(hitBlock: BlockPos? = null, hitEntity: ArmorStand? = null, grid: GreenhouseGrid) {
@@ -858,20 +657,20 @@ object GreenhouseData {
             if (matchingStage.needsRotationData(abnormalRotationFound)){
                 ChatUtils.sendWithPrefix("No rotation data for ${def.name}")
                 plantDiagnosticHitBaseBlock?.let {
-                    copyCropStageData(it,stageRaw, def, !isSelf)
+                    CropStageExporter.copyCropStageData(it,stageRaw, def, !isSelf)
                 }
             }
             else if (override){
                 ChatUtils.sendWithPrefix("Overridden ${def.name}")
                 plantDiagnosticHitBaseBlock?.let {
-                    copyCropStageData(it,stageRaw, def, !isSelf)
+                    CropStageExporter.copyCropStageData(it,stageRaw, def, !isSelf)
                 }
             }
         }
         else {
             ChatUtils.sendWithPrefix("No matching stage for ${def.name} please send the copied output")
             plantDiagnosticHitBaseBlock?.let {
-                copyCropStageData(it,stageRaw, def, !isSelf)
+                CropStageExporter.copyCropStageData(it,stageRaw, def, !isSelf)
             }
         }
     }
@@ -991,340 +790,6 @@ object GreenhouseData {
 
 
 
-    fun copyCropStageData(
-        basePos: BlockPos,
-        stageNum: Int? = null,
-        foundDefinition: CropDefinition? = null,
-        discordFormat: Boolean = false
-    ) {
-        val world = Minecraft.getInstance().level ?: return
-        val sb = StringBuilder(2048)
-
-        val blockData = mutableListOf<CropBlockExport>()
-        val standData = mutableListOf<ArmorStandExport>()
-
-        val footprint = foundDefinition?.footprint
-        val width = footprint?.width ?: 1
-        val height = footprint?.height ?: 1
-
-        if (discordFormat) {
-            sb.appendLine("```")
-        }
-
-        for (dx in 0 until width) {
-            for (dz in 0 until height) {
-
-                var y = basePos.y + 1
-
-                while (true) { //for multi height crops
-                    val checkPos = BlockPos(
-                        basePos.x + dx,
-                        y,
-                        basePos.z + dz
-                    )
-
-                    val checkState = world.getBlockState(checkPos)
-
-                    if (checkState.isAir) break
-
-                    val offsetY = y - basePos.y
-
-                    blockData.add(
-                        CropBlockExport(
-                            offset = BlockPos(dx,offsetY,dz),
-                            blockState = checkState
-                        )
-                    )
-                    y++
-                }
-            }
-        }
-        // capture maximum stands (false positives on players but thats fine)
-        val box = AABB(
-            basePos.x.toDouble(),
-            basePos.y.toDouble() - 2,
-            basePos.z.toDouble(),
-            basePos.x + width.toDouble(),
-            basePos.y.toDouble() + 14,
-            basePos.z + height.toDouble()
-        )
-
-        val stands = world.getEntities(null, box)
-
-        val originVec = Vec3(
-            basePos.x.toDouble() + width / 2.0, //get center of footprint
-            basePos.y.toDouble(),               // has to be center for mirroring to work properly.
-            basePos.z.toDouble() + width / 2.0
-        )
-
-
-        for (entity in stands) {
-            if (entity !is ArmorStand) continue
-
-            val offset = entity.position().subtract(originVec)
-
-            val head = entity.getItemBySlot(EquipmentSlot.HEAD)
-            val hash = PlayerUtils.getSkinHash(head)
-            val headRotations = entity.headPose
-            val customName = if (entity.hasCustomName()) {
-                entity.name.string.replace("\"", "\\\"")
-            } else null
-
-            standData.add(
-                ArmorStandExport(
-                    offset = offset,
-                    rotation = headRotations,
-                    xRotation = entity.xRot,
-                    yRotation = entity.yRot,
-                    hash = hash,
-                    customName = customName
-                )
-            )
-        }
-
-
-
-        sb.appendLine("CropStage(")
-
-        var finalBlockString = ""
-        if (blockData.isNotEmpty()){
-            val grouped = blockData.groupBy {
-                it.blockState
-            }
-
-            val singletons = grouped.values
-                .filter { it.size == 1 }
-                .map { it.first() }
-
-            val patterns = grouped.values
-                .filter { it.size > 1 }
-
-            val parts = mutableListOf<String>()
-
-            if (patterns.isNotEmpty()) {
-                patterns.forEach {
-
-                    val posList = it.joinToString(",\n") { b ->
-                        "BlockPos(${b.offset.x}, ${b.offset.y}, ${b.offset.z})"
-                    }
-
-                    parts += """
-            CropBlockState.blockStatePattern(
-                listOf(
-                    $posList
-                ),
-                blockState = ${toFunctionString(it.first().blockState)}
-            )
-        """.trimIndent()
-                }
-            }
-
-            if (parts.isNotEmpty()){
-                var appendedString = "    blocks = " + parts.removeFirst()
-                parts.forEach {
-                    appendedString += " + $it"
-                }
-
-                finalBlockString = appendedString
-                parts.clear()
-            }
-
-
-            if (singletons.isNotEmpty()) {
-                val singletonPart = singletons.joinToString(",\n") { block ->
-                    """
-    CropBlockState(
-        offset = BlockPos(${block.offset.x}, ${block.offset.y}, ${block.offset.z}),
-        blockState = ${toFunctionString(block.blockState)}
-    )
-    """.trimIndent()
-                }
-
-                parts += singletonPart
-            }
-
-            if (parts.isNotEmpty()){
-                if (finalBlockString.isBlank()){ //no patterns only singletons
-                    finalBlockString = "    blocks = listOf(\n" +
-                            parts.joinToString(",\n") +
-                            "\n)"
-
-                } else { //patterns AND blocks
-                    val combined = finalBlockString +
-                            " + listOf(\n" +
-                            parts.joinToString(",\n") +
-                            "\n)"
-
-                    finalBlockString = combined
-                }
-            }
-
-            if (finalBlockString.isNotBlank()) {
-                sb.appendLine("$finalBlockString,")
-            }
-        }
-        else {
-            sb.appendLine("    blocks = listOf(),")
-        }
-
-        if (standData.isNotEmpty()) {
-
-            val grouped = standData.groupBy {
-                it.hash
-            }
-
-            val singletons = grouped.values
-                .filter { it.size == 1 }
-                .map { it.first() }
-
-            val patterns = grouped.values
-                .filter { it.size > 1 }
-
-            val patternSections = mutableListOf<String>()
-            val singletonSections = mutableListOf<String>()
-
-            if (patterns.isNotEmpty()) {
-                patterns.forEach { group ->
-
-                    val offsets = group.joinToString(",\n") {
-                        "        Vec3(${it.offset.x}, ${it.offset.y}, ${it.offset.z})"
-                    }
-
-                    val rotations = group.joinToString(",\n") {
-                        "        Rotations(${it.rotation.x}f, ${it.rotation.y}f, ${it.rotation.z}f)"
-                    }
-
-                    val xRotations = group.joinToString(",\n") {
-                        "        ${it.xRotation}f"
-                    }
-
-                    val yRotations = group.joinToString(",\n") {
-                        "        ${it.yRotation}f"
-                    }
-
-                    val anyAbnormalRotations = group.any { it.rotation.x != 0f || it.rotation.y != 0f || it.rotation.z != 0f }
-                    val anyAbnormalXRotations = group.any { !it.xRotation.isCardinalYaw() }
-                    val anyAbnormalYRotations = group.any { !it.yRotation.isCardinalYaw() }
-
-
-                    val hash = group.first().hash
-                    val name = group.first().customName
-
-                    val rotationsSection = """
-    rotations = listOf(
-$rotations
-    ),
-    xRotations = listOf(
-$xRotations
-    ),
-    yRotations = listOf(
-$yRotations
-    ),
-""".trimIndent()
-
-                    patternSections += """
-CropArmorStand.matcherPattern(
-    offsets = listOf(
-$offsets
-    ),
-    ${if (anyAbnormalRotations || anyAbnormalXRotations || anyAbnormalYRotations) rotationsSection else ""}
-    hashString = "$hash"${
-                        name?.let {
-                            ",\n    customName = \"$it\""
-                        } ?: ""
-                    }
-)
-        """.trimIndent()
-                }
-
-            }
-
-
-            if (singletons.isNotEmpty()) {
-
-                val singletonText = singletons.joinToString(",\n") { stand ->
-                    buildString {
-
-                        val fields = mutableListOf<String>()
-                        fields.add("offset = Vec3(${stand.offset.x}, ${stand.offset.y}, ${stand.offset.z})")
-                        if (stand.rotation.x != 0f || stand.rotation.y != 0f || stand.rotation.z != 0f) {
-                            fields.add("headRotation = Rotations(${stand.rotation.x}f, ${stand.rotation.y}f, ${stand.rotation.z}f)")
-                            fields.add("xRotation = ${stand.xRotation}f")
-                            fields.add("yRotation = ${stand.yRotation}f")
-                        }
-                        if (stand.hash != null){
-                            fields.add("hashString = \"${stand.hash}\"")
-                        }
-                        if (stand.customName != null){
-                            fields.add("containsCustomName = \"${stand.customName}\"")
-                        }
-
-                        append(
-                            """
-CropArmorStand(
-    ${fields.joinToString(",\n" )}
-)
-""".trimIndent()
-                        )
-                    }
-                }
-
-                singletonSections += singletonText
-
-            }
-
-
-            val final = when {
-                patterns.isNotEmpty() && singletons.isNotEmpty() ->
-                    patternSections.joinToString(" + ") +
-                            " + listOf(" +
-                            singletonSections.joinToString(",\n") +
-                            "\n)"
-
-                patterns.isNotEmpty() ->
-                    patternSections.joinToString(" + ")
-
-                singletons.isNotEmpty() ->
-                    "listOf(\n" +
-                            singletonSections.joinToString(",\n") +
-                            "\n)"
-
-                else -> " listOf()"
-            }
-            sb.appendLine("    armorStands = $final,")
-        } else {
-            sb.appendLine("    armorStands = listOf(),")
-        }
-
-        sb.appendLine("    ${stageNum ?: 1}..${stageNum ?: 1}")
-        sb.appendLine(")")
-
-        if (discordFormat) {
-            sb.appendLine("```")
-            sb.appendLine("Crop found: ${foundDefinition?.name} stageNum=$stageNum")
-        }
-
-        val result = sb.toString()
-        Minecraft.getInstance().keyboardHandler.clipboard = result
-
-        ChatUtils.sendWithPrefix("Copied crop stage to clipboard (${result.length} chars)")
-    }
-
-    //temp for exporting
-    data class ArmorStandExport(
-        val offset: Vec3,
-        val rotation: Rotations,
-        val xRotation: Float,
-        val yRotation: Float,
-        val hash: String?,
-        val customName: String?
-    )
-
-    data class CropBlockExport(
-        val offset: BlockPos,
-        val blockState: BlockState
-    )
-
 
     sealed class UniqueCropKey {
 
@@ -1342,4 +807,5 @@ CropArmorStand(
             }
         }
     }
+
 }

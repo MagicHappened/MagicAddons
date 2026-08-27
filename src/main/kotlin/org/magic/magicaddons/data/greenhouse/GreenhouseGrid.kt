@@ -1,5 +1,6 @@
 package org.magic.magicaddons.data.greenhouse
 
+import org.magic.magicaddons.util.getBuildableArea
 import net.minecraft.client.Minecraft
 import net.minecraft.core.BlockPos
 import net.minecraft.network.chat.Component
@@ -9,7 +10,6 @@ import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData.elementsBySoil
-import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData.getBuildableArea
 import org.magic.magicaddons.util.ChatUtils
 import tech.thatgravyboat.skyblockapi.api.profile.garden.Plot
 import tech.thatgravyboat.skyblockapi.api.profile.garden.PlotAPI
