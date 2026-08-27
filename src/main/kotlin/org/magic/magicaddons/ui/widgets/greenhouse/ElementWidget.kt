@@ -2,6 +2,7 @@ package org.magic.magicaddons.ui.widgets.greenhouse
 
 import net.minecraft.ChatFormatting
 import net.minecraft.client.Minecraft
+import org.magic.magicaddons.Common
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.components.Renderable
 import net.minecraft.client.gui.components.events.GuiEventListener
@@ -14,6 +15,7 @@ import net.minecraft.core.Direction
 import net.minecraft.network.chat.Component
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.block.Blocks
+import org.magic.magicaddons.ui.Focusable
 import org.magic.magicaddons.data.greenhouse.GreenhouseElementInstance
 import org.magic.magicaddons.data.greenhouse.LayoutSlot
 import org.magic.magicaddons.data.greenhouse.GrowthStageInfo
@@ -22,7 +24,7 @@ import org.magic.magicaddons.util.ScreenUtil
 import org.magic.magicaddons.util.ScreenUtil.drawBorder
 import org.magic.magicaddons.util.ScreenUtil.renderFakeItem
 
-class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, GuiEventListener {
+class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, Focusable {
     var widgetX: Int = 0
     var widgetY: Int = 0
     var padding: Int = 0
@@ -31,8 +33,7 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, GuiEv
     var sprite: TextureAtlasSprite? = ScreenUtil.getSpriteForState(Blocks.FIRE.defaultBlockState(),Direction.NORTH)
     var renderedStack: ItemStack = ItemStack.EMPTY
     var markingColor: Int? = null
-    @JvmField
-    var isFocused: Boolean = false
+    override var focusedState: Boolean = false
 
     /**
      * A single fact about a plant, small enough to write over the plant itself. [color] is how the
@@ -57,18 +58,7 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, GuiEv
     }
 
     fun init(){
-        markingColor = when (instance.slot.slotMark){
-            LayoutSlot.Marking.Target -> {
-                0xFF2dbcf6.toInt()
-            }
-            LayoutSlot.Marking.Ingredient -> {
-                0xFF89F336.toInt()
-            }
-            LayoutSlot.Marking.UniqueCrop -> {
-                0xFFbb00bb.toInt()
-            }
-            else -> {null}
-        }
+        markingColor = instance.slot.slotMark?.color
     }
 
     override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, deltaTick: Float) {
@@ -128,7 +118,7 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, GuiEv
             (textY - 1f).toInt(),
             (textX + textWidth + 1f).toInt(),
             (textY + textHeight).toInt(),
-            INFO_BACKGROUND_COLOR
+            Common.UI.OVERLAY_BACKGROUND_COLOR
         )
 
         val pose = graphics.pose()
@@ -137,14 +127,10 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, GuiEv
         try {
             pose.translate(textX, textY)
             pose.scale(INFO_TEXT_SCALE, INFO_TEXT_SCALE)
-            graphics.text(font, text, 0, 0, INFO_TEXT_COLOR, false)
+            graphics.text(font, text, 0, 0, Common.UI.OVERLAY_TEXT_COLOR, false)
         } finally {
             pose.popMatrix()
         }
-    }
-
-    fun renderSideTooltip(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, deltaTick: Float){
-
     }
 
     override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, bl: Boolean): Boolean {
@@ -211,16 +197,11 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, GuiEv
     }
 
 
-    override fun setFocused(focused: Boolean) {
-        isFocused = focused
-    }
 
-    override fun isFocused(): Boolean = isFocused
 
     companion object {
-        private const val INFO_TEXT_COLOR: Int = 0xFFFFFFFF.toInt()
-        private const val INFO_TEXT_SCALE: Float = 0.5f
-        private const val INFO_BACKGROUND_COLOR: Int = 0xB0000000.toInt()
+        /** A slot is small, but the numbers still have to be legible from across the grid. */
+        private const val INFO_TEXT_SCALE: Float = 0.75f
 
         private fun labelled(label: String, value: String): Component =
             Component.literal("$label: ").withStyle(ChatFormatting.GRAY)

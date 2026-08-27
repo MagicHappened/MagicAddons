@@ -11,12 +11,16 @@ import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
 import org.magic.magicaddons.Common
 import org.magic.magicaddons.data.config.SettingNode
+import org.magic.magicaddons.ui.Focusable
 import org.magic.magicaddons.util.ScreenUtil.drawSimpleTooltip
 
 abstract class SettingWidget<T>(
     protected val node: SettingNode<T>,
     var requestRelayout: (() -> Unit)? = null
-) : Renderable, GuiEventListener, NarratableEntry {
+) : Renderable, Focusable, NarratableEntry {
+
+    override var focusedState: Boolean = false
+
 
     var x: Int = 0
     var y: Int = 0
@@ -24,9 +28,6 @@ abstract class SettingWidget<T>(
     open var height: Int = 40
 
     protected val childPadding: Int = 4
-
-    /** Backs the [GuiEventListener] focus contract, the screen hands the keyboard to this widget. */
-    private var focused: Boolean = false
 
     var baseWidget = false
     open var hovered: Boolean = false
@@ -162,12 +163,6 @@ abstract class SettingWidget<T>(
             if (it.keyPressed(keyEvent)) return true
         }
         return false
-    }
-
-    override fun isFocused(): Boolean = focused
-
-    override fun setFocused(focused: Boolean) {
-        this.focused = focused
     }
 
     override fun isMouseOver(mouseX: Double, mouseY: Double): Boolean {

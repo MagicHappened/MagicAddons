@@ -1,8 +1,12 @@
 package org.magic.magicaddons.ui.widgets
 
+import org.magic.magicaddons.ui.Focusable
 import org.magic.magicaddons.ui.OverlayRenderable
 
-abstract class AbstractContextMenu : OverlayRenderable {
+abstract class AbstractContextMenu : OverlayRenderable, Focusable {
+
+    override var focusedState: Boolean = false
+
     abstract override val overlayX: Int
     abstract override val overlayY: Int
 

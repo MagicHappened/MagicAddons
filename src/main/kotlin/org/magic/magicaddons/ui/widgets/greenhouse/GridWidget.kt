@@ -8,6 +8,7 @@ import net.minecraft.client.gui.narration.NarrationElementOutput
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
+import org.magic.magicaddons.ui.Focusable
 import org.magic.magicaddons.data.greenhouse.GreenhouseLayout
 import org.magic.magicaddons.ui.HoverableContainer
 import org.magic.magicaddons.util.ScreenUtil.drawLine
@@ -15,7 +16,7 @@ import org.magic.magicaddons.util.ScreenUtil.drawLine
 class GridWidget(
     val layout: GreenhouseLayout,
     val slotSize: Int
-) : Renderable, GuiEventListener, NarratableEntry, HoverableContainer {
+) : Renderable, Focusable, NarratableEntry, HoverableContainer {
 
     private val slotWidgets = mutableListOf<SlotWidget>()
     private val elementWidgets = mutableListOf<ElementWidget>()
@@ -25,8 +26,7 @@ class GridWidget(
     var widgetWidth: Int = 300
     var widgetHeight: Int = 300
 
-    @JvmField
-    var isFocused: Boolean = false
+    override var focusedState: Boolean = false
 
     override var hoveredElement: GuiEventListener? = null
 
@@ -69,16 +69,18 @@ class GridWidget(
             widget.widgetY = widgetY + originY * slotSize + originY
             //hopefully work?
 
-            val bordersSize = (instance.cropDef.footprint.width - 1) * 1
-            val widgetWidth = slotSize * instance.cropDef.footprint.width + bordersSize
-            val widgetHeight = slotSize * instance.cropDef.footprint.height + bordersSize
+            // each axis swallows the grid lines between the slots it covers, and a crop is not
+            // always square, so the two axes cannot share one border count
+            val footprint = instance.cropDef.footprint
+            val widgetWidth = slotSize * footprint.width + (footprint.width - 1)
+            val widgetHeight = slotSize * footprint.height + (footprint.height - 1)
 
             widget.width = widgetWidth
             widget.height = widgetHeight
             widget.init()
             // an id skyblock has no item for resolves to an empty stack, which draws nothing at all
-            widget.renderedStack = instance.cropDef.skyblockId?.toItem()?.takeUnless { it.isEmpty }
-                ?: instance.cropDef.displayItem?.let { ItemStack(it) }
+            widget.renderedStack = instance.cropDef.displayItem?.let { ItemStack(it) }
+                ?: instance.cropDef.skyblockId?.toItem()?.takeUnless { it.isEmpty }
                 ?: ItemStack(Items.BARRIER)
             elementWidgets.add(widget)
         }
@@ -145,22 +147,11 @@ class GridWidget(
     }
 
     override fun mouseMoved(mouseX: Double, mouseY: Double) {
-        hoveredElement = null
-        elementWidgets.forEach {
-            it.mouseMoved(mouseX, mouseY)
-            if (hoveredElement != null) return@forEach
-            if (it.isMouseOver(mouseX, mouseY)){
-                hoveredElement = it
-            }
-        }
-
+        elementWidgets.forEach { it.mouseMoved(mouseX, mouseY) }
+        hoveredElement = elementWidgets.firstOrNull { it.isMouseOver(mouseX, mouseY) }
     }
 
-    override fun isFocused(): Boolean = isFocused
 
-    override fun setFocused(focused: Boolean) {
-        isFocused = focused
-    }
 
     override fun narrationPriority(): NarratableEntry.NarrationPriority {
         return NarratableEntry.NarrationPriority.NONE

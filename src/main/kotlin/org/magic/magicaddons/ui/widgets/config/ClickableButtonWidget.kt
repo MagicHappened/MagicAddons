@@ -1,5 +1,6 @@
 package org.magic.magicaddons.ui.widgets.config
 
+import org.magic.magicaddons.ui.Focusable
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.components.events.GuiEventListener
@@ -13,7 +14,7 @@ class ClickableButtonWidget(
     var height: Int,
     val renderContent: ClickableButtonWidget.(GuiGraphicsExtractor) -> Unit,
     val shouldRenderButton: Boolean = true
-) : GuiEventListener {
+) : Focusable {
     var x: Int = 0
     var y: Int = 0
 
@@ -67,8 +68,10 @@ class ClickableButtonWidget(
         this.message = message
     }
 
-    @JvmField
-    var isFocused = false
+    override var focusedState: Boolean = false
+
+    /** Set from [mouseMoved], so the button lights up under the mouse like a vanilla one. */
+    var hovered: Boolean = false
 
     var message: Component? = null
 
@@ -78,7 +81,7 @@ class ClickableButtonWidget(
 
     fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
         if (shouldRenderButton) {
-            val sprite = if (isFocused)
+            val sprite = if (hovered || isFocused)
                 BUTTON_HOVERED
             else
                 BUTTON
@@ -100,14 +103,14 @@ class ClickableButtonWidget(
         return isMouseOver(mouseButtonEvent.x, mouseButtonEvent.y)
     }
 
+    override fun mouseMoved(mouseX: Double, mouseY: Double) {
+        hovered = isMouseOver(mouseX, mouseY)
+    }
+
     override fun isMouseOver(mouseX: Double, mouseY: Double): Boolean {
         return mouseX.toInt() in x..(x + width) &&
                 mouseY.toInt() in y..(y + height)
     }
 
-    override fun setFocused(focused: Boolean) {
-        this.isFocused = focused
-    }
 
-    override fun isFocused(): Boolean = this.isFocused
 }

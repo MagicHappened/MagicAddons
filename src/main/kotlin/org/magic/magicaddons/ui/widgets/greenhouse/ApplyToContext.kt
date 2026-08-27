@@ -79,12 +79,6 @@ class ApplyToContext(
         return true
     }
 
-    @JvmField
-    var isFocused = false
 
-    override fun setFocused(focused: Boolean) {
-        isFocused = focused
-    }
 
-    override fun isFocused(): Boolean = isFocused
 }
