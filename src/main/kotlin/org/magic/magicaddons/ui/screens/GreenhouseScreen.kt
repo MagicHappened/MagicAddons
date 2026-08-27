@@ -10,6 +10,7 @@ import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.client.renderer.RenderPipelines
 import net.minecraft.network.chat.Component
 import net.minecraft.resources.Identifier
+import org.magic.magicaddons.Common
 import org.magic.magicaddons.commands.features.farming.GreenhouseScreenCommand
 import org.magic.magicaddons.data.greenhouse.GreenhouseGrid
 import org.magic.magicaddons.data.greenhouse.GreenhouseLayout
@@ -365,9 +366,10 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         }
         val hovered = hoveredElement
         if (hovered !is ElementWidget) return
+        // clears the swatches sitting against the right edge of the grid rather than covering them
         hovered.renderTooltip(
             graphics,
-            startX + containerSize,
+            hoverControls.x + hoverControls.width + Common.UI.SPACING_LARGE,
             startY + borderPadding *2)
 
     }
