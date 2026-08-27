@@ -10,6 +10,11 @@ abstract class AbstractSelectorContextMenu<T>(
 
     override var hoveredElement: GuiEventListener? = null
 
+    /** Rows are rebuilt from scratch, a second init would otherwise list everything twice. */
+    protected fun clearWidgets() {
+        valueWidgets.clear()
+    }
+
 
     protected open fun getMaxRowWidth(): Int {
         val font = Minecraft.getInstance().font
@@ -43,6 +48,8 @@ abstract class AbstractSelectorContextMenu<T>(
     protected abstract val valueWidgets: MutableList<ClickableRowWidget<T>>
 
     protected open fun buildWidgets(){
+        clearWidgets()
+
         values.forEach {
             valueWidgets.add(createRow(it))
         }

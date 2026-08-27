@@ -1,5 +1,6 @@
 package org.magic.magicaddons.ui
 
+import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.components.events.GuiEventListener
 import net.minecraft.client.input.CharacterEvent
@@ -8,6 +9,8 @@ import net.minecraft.client.input.MouseButtonEvent
 import org.magic.magicaddons.ui.widgets.AbstractContextMenu
 
 interface OverlayRenderable : GuiEventListener, HoverableContainer {
+
+    /** Higher wins: a higher priority overlay draws on top and is offered input first. */
     val renderPriority: Int
 
     val overlayX: Int
@@ -31,8 +34,27 @@ interface OverlayRenderable : GuiEventListener, HoverableContainer {
     override fun mouseMoved(mouseX: Double, mouseY: Double)  {
     }
     fun isMouseOver(mouseX: Int, mouseY: Int): Boolean {
-        return mouseX in overlayX..overlayX+overlayWidth &&
-                mouseY in overlayY..overlayY+overlayHeight
+        return mouseX in overlayX until overlayX + overlayWidth &&
+                mouseY in overlayY until overlayY + overlayHeight
+    }
+
+    /** Told when the overlay is taken off screen, so it can stop believing it is open. */
+    fun onClosed() {
+    }
+
+    companion object {
+        /**
+         * Where a menu of [menuWidth] by [menuHeight] should sit if opened at [x], [y]: at the
+         * cursor when it fits, folded back over it when the screen runs out.
+         */
+        fun placeOnScreen(x: Int, y: Int, menuWidth: Int, menuHeight: Int): Pair<Int, Int> {
+            val window = Minecraft.getInstance().gui
+            val screenWidth = window.screen()?.width ?: return x to y
+            val screenHeight = window.screen()?.height ?: return x to y
+
+            return (if (x + menuWidth > screenWidth) x - menuWidth else x).coerceAtLeast(0) to
+                    (if (y + menuHeight > screenHeight) y - menuHeight else y).coerceAtLeast(0)
+        }
     }
 
     override fun charTyped(characterEvent: CharacterEvent): Boolean {
@@ -49,20 +71,31 @@ interface OverlayContext {
     val overlays: MutableList<OverlayRenderable>
 
     fun addContext(context: AbstractContextMenu) {
-
-        overlays.removeIf { it::class == context::class }
+        overlays.filter { it::class == context::class }.forEach { removeOverlay(it) }
 
         addOverlay(context)
     }
 
-
-
     fun addOverlay(overlay: OverlayRenderable) {
+        // an overlay registered twice, which init does on every resize, would render and take input
+        // once per copy
+        overlays.remove(overlay)
+
         overlays.add(overlay)
-        overlays.sortBy { it.renderPriority }
+        overlays.sortByDescending { it.renderPriority }
     }
 
     fun removeOverlay(overlay: OverlayRenderable) {
-        overlays.remove(overlay)
+        if (overlays.remove(overlay)) {
+            overlay.onClosed()
+        }
+    }
+
+    /** Takes every overlay off screen, telling each one so it does not stay half open. */
+    fun closeOverlays() {
+        val closing = overlays.toList()
+
+        overlays.clear()
+        closing.forEach { it.onClosed() }
     }
 }

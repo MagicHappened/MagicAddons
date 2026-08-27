@@ -7,6 +7,7 @@ import net.minecraft.client.gui.components.events.GuiEventListener
 import net.minecraft.client.gui.narration.NarratableEntry
 import net.minecraft.client.gui.narration.NarrationElementOutput
 import net.minecraft.client.input.MouseButtonEvent
+import org.magic.magicaddons.Common
 import org.magic.magicaddons.ui.Focusable
 import org.magic.magicaddons.features.Feature
 
@@ -70,7 +71,7 @@ class ConfigCategoryWidget(
             categoryName,
             x + (width - font.width(categoryName)) / 2,
             y + (font.lineHeight) / 2,
-            0xFFFFFFFF.toInt(),
+            Common.UI.TEXT_COLOR,
             false
         )
 

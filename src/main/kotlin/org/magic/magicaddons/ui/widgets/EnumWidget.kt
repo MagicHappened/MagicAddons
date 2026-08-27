@@ -48,7 +48,7 @@ class EnumWidget<T>(
             Component.literal(currentValue.toString()),
             x + Common.UI.TEXT_X_PAD,
             y + (height - font.lineHeight) / 2,
-            0xFFFFFFFF.toInt(),
+            Common.UI.TEXT_COLOR,
             false
         )
 
@@ -57,7 +57,7 @@ class EnumWidget<T>(
             Component.literal("↓"),
             x + width - font.width("↓") - 4,
             y + (height - font.lineHeight) / 2,
-            0xFFFFFFFF.toInt(),
+            Common.UI.TEXT_COLOR,
             false
         )
 
@@ -86,7 +86,9 @@ class EnumWidget<T>(
                 onLeftClickValue?.invoke(currentValue, mouseButtonEvent)
                 return true
             } else if (mouseButtonEvent.button() == 1) {
-                onRightClickValue?.invoke(currentValue, mouseButtonEvent)
+                val handler = onRightClickValue ?: return false
+
+                handler.invoke(currentValue, mouseButtonEvent)
             }
             return true
         }
@@ -94,13 +96,20 @@ class EnumWidget<T>(
     }
 
     override fun isMouseOver(mouseX: Double, mouseY: Double): Boolean {
-        return (mouseX.toInt() in x..x + width &&
-                mouseY.toInt() in y..y + height)
+        return mouseX.toInt() in x until x + width &&
+                mouseY.toInt() in y until y + height
     }
 
 
 
     inner class EnumOverlay(override val renderPriority: Int) : OverlayRenderable, Focusable {
+
+        // closing the overlay any other way, such as a click landing outside it, would otherwise
+        // leave the widget believing it is still open and swallow the next click on it
+        override fun onClosed() {
+            overlayOpen = false
+        }
+
         override var focusedState: Boolean = false
 
         override var hoveredElement: GuiEventListener? = null

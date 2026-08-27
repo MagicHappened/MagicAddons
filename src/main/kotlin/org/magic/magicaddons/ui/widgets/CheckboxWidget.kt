@@ -3,6 +3,7 @@ package org.magic.magicaddons.ui.widgets
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.components.events.GuiEventListener
 import net.minecraft.client.input.MouseButtonEvent
+import org.magic.magicaddons.Common
 import org.magic.magicaddons.ui.Focusable
 import org.magic.magicaddons.util.ScreenUtil.drawLine
 import kotlin.math.sqrt
@@ -21,7 +22,7 @@ class CheckboxWidget(
     val baseSize = 48f
 
     val bgColor = 0xFFC6C6C6.toInt()
-    val checkColor = 0xFF00FF00.toInt()
+    val checkColor = Common.UI.SUCCESS_COLOR
 
 
     fun render(graphics: GuiGraphicsExtractor) {

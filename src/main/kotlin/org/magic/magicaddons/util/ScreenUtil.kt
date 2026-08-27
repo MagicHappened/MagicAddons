@@ -1,5 +1,6 @@
 package org.magic.magicaddons.util
 
+import org.magic.magicaddons.Common
 import com.mojang.blaze3d.pipeline.RenderPipeline
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.minecraft.client.gui.render.TextureSetup
@@ -108,23 +109,6 @@ object ScreenUtil {
         drawLine(x2, y1, x2, y2, thickness, color)
     }
 
-    fun GuiGraphicsExtractor.drawSquareBorder(
-        x: Float,
-        y: Float,
-        size: Float,
-        thickness: Float,
-        color: Int
-    ) {
-        drawBorder(
-            x,
-            y,
-            x + size,
-            y + size,
-            thickness,
-            color
-        )
-    }
-
     fun GuiGraphicsExtractor.drawLine(
         x1: Int,
         y1: Int,
@@ -165,7 +149,7 @@ object ScreenUtil {
         val y0 = kotlin.math.floor(-half).toInt()
         val y1 = kotlin.math.ceil(half).toInt()
 
-        val actualColor = color ?: 0xFFFFFFFF.toInt()
+        val actualColor = color ?: Common.UI.TEXT_COLOR
 
         this.guiRenderState.addGuiElement(
             ColoredRectangleRenderState(
@@ -227,6 +211,7 @@ object ScreenUtil {
             text,
             x.toFloat(),
             y.toFloat(),
+            color
         )
     }
 
@@ -247,7 +232,7 @@ object ScreenUtil {
         val x2 = x + layout.boxWidth
         val y2 = y + layout.boxHeight
 
-        fill(x1.toInt(), y1.toInt(), x2.toInt(), y2.toInt(), 0x88000000.toInt())
+        fill(x1.toInt(), y1.toInt(), x2.toInt(), y2.toInt(), Common.UI.OVERLAY_BACKGROUND_COLOR)
 
         drawBorder(x1, y1, x2, y2, 1f, color)
 
@@ -265,7 +250,7 @@ object ScreenUtil {
                     Matrix3x2f(pose()),
                     centeredX.toInt(),
                     currentY.toInt(),
-                    0xFFFFFFFF.toInt(),
+                    Common.UI.TEXT_COLOR,
                     0,
                     false,
                     false,
@@ -275,46 +260,6 @@ object ScreenUtil {
 
             currentY += layout.lineHeight
         }
-    }
-
-    fun GuiGraphicsExtractor.blitStretched(
-        pipeline: RenderPipeline,
-        texture: Identifier,
-        x: Int,
-        y: Int,
-        u: Float,
-        v: Float,
-        width: Int,
-        height: Int,
-        textureWidth: Int,
-        textureHeight: Int
-    ){
-
-        val pose = this.pose()
-
-        val scaleTextureX = width.toFloat() / textureWidth.toFloat()
-        val scaleTextureY = height.toFloat() / textureHeight.toFloat()
-
-        pose.pushMatrix()
-
-        pose.scale(scaleTextureX , scaleTextureY )
-
-        pose.translate(x.toFloat() / scaleTextureX, y.toFloat() / scaleTextureY)
-
-        this.blit(
-            pipeline,
-            texture,
-            0,
-            0,
-            u,
-            v,
-            textureWidth,
-            textureHeight,
-            textureWidth,
-            textureHeight
-        )
-
-        pose.popMatrix()
     }
 
     fun GuiGraphicsExtractor.renderFakeItem(

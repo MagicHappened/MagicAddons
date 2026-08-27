@@ -1,5 +1,6 @@
 package org.magic.magicaddons.ui.widgets.config
 
+import org.magic.magicaddons.Common
 import org.magic.magicaddons.ui.Focusable
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
@@ -58,7 +59,7 @@ class ClickableButtonWidget(
                     it,
                     this.x + (width - font.width(it)) / 2,
                     this.y + (height - font.lineHeight) / 2,
-                    (it.style.color?.value ?: 0xFFFFFFFF.toInt()) or 0xFF000000.toInt(),
+                    (it.style.color?.value ?: Common.UI.TEXT_COLOR) or Common.UI.BORDER_COLOR,
                     false
                 )
             }
@@ -108,8 +109,8 @@ class ClickableButtonWidget(
     }
 
     override fun isMouseOver(mouseX: Double, mouseY: Double): Boolean {
-        return mouseX.toInt() in x..(x + width) &&
-                mouseY.toInt() in y..(y + height)
+        return mouseX.toInt() in x until (x + width) &&
+                mouseY.toInt() in y until (y + height)
     }
 
 

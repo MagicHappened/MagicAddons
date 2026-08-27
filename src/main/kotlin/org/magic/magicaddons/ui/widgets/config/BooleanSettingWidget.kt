@@ -4,6 +4,7 @@ import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.network.chat.Component
+import org.magic.magicaddons.Common
 import org.magic.magicaddons.data.config.BooleanSetting
 import org.magic.magicaddons.ui.widgets.CheckboxWidget
 import org.magic.magicaddons.util.ScreenUtil.drawBorder
@@ -42,7 +43,7 @@ class BooleanSettingWidget(
             Component.literal(setting.displayName),
             x + checkbox.size + textXPad,
             y + (height - font.lineHeight) / 2,
-            0xFFFFFFFF.toInt(),
+            Common.UI.TEXT_COLOR,
             false
         )
 

@@ -14,7 +14,6 @@ import org.magic.magicaddons.Common
 import org.magic.magicaddons.commands.features.farming.GreenhouseScreenCommand
 import org.magic.magicaddons.data.greenhouse.GreenhouseGrid
 import org.magic.magicaddons.data.greenhouse.GreenhouseLayout
-import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData.toReadableDuration
 import org.magic.magicaddons.ui.HoverableContainer
@@ -33,10 +32,6 @@ import org.magic.magicaddons.util.ScreenUtil.drawSimpleTooltip
 import tech.thatgravyboat.skyblockapi.api.profile.garden.PlotAPI
 
 class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, OverlayContext {
-
-    init {
-        EventBus.register(this)
-    }
 
     enum class CurrentDisplay {
         Greenhouses,
@@ -75,6 +70,15 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
     // informing the user that the crop definition has not been added for this crop and to send the debug to me
 
     var currentDisplay = CurrentDisplay.Greenhouses
+
+    /**
+     * Whether the greenhouse on screen is running on guessed growth. Read while drawing rather than
+     * stored, since the tick that makes it stale can land while the screen is open.
+     */
+    private val shouldWarn: Boolean
+        get() = currentDisplay == CurrentDisplay.Greenhouses &&
+                (GreenhouseData.greenhouseGrids.getOrNull(GreenhouseData.currentGridIndex)
+                    ?.state?.pendingGrowthTicks ?: 1) > 0
     var borderPadding: Int = 6
 
     override var hoveredElement: GuiEventListener? = null
@@ -91,7 +95,6 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
 
     private var dynamicNameDisplay: ClickableButtonWidget? = null
     private var hoverWarning = false
-    private var shouldWarn = false
 
     private val gridSelector = EnumWidget(
         values = greenhouseGridWidgets.map { it.layout },
@@ -132,19 +135,26 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
     }
     fun initBaseLayout(){
 
-        paddingY = height/10
+        paddingY = height / 10
 
-        slotSize = (height - paddingY * 2 - borderPadding * 2) / gridSize
+        // the toolbar down the left and the swatches plus a tooltip down the right have to fit
+        // beside the grid, so the grid takes whichever of the two axes runs out first
+        val sideRoom = TOOLBAR_WIDTH + HoverControls.TOTAL_WIDTH + Common.UI.SPACING_LARGE * 2
+        val heightRoom = height - paddingY * 2 - borderPadding * 2
+        val widthRoom = width - sideRoom - borderPadding * 2
+
+        slotSize = (minOf(heightRoom, widthRoom) / gridSize).coerceAtLeast(MIN_SLOT_SIZE)
         containerSize = (slotSize + 1) * gridSize
 
-        startX = (width - containerSize) / 2
+        // never left of the toolbar, however narrow the window gets
+        startX = ((width - containerSize) / 2).coerceAtLeast(TOOLBAR_WIDTH + Common.UI.SPACING_LARGE)
         startY = paddingY
 
-        currentDisplayToggle.x = 10
-        currentDisplayToggle.y = startY + borderPadding *2
+        currentDisplayToggle.x = Common.UI.SPACING_LARGE
+        currentDisplayToggle.y = startY + borderPadding * 2
 
-        gridSelector.x = currentDisplayToggle.x + currentDisplayToggle.width + 10
-        gridSelector.y = startY + borderPadding *2
+        gridSelector.x = currentDisplayToggle.x + currentDisplayToggle.width + Common.UI.SPACING_LARGE
+        gridSelector.y = startY + borderPadding * 2
         gridSelector.width = 100
         gridSelector.height = currentDisplayToggle.height
         addOverlay(gridSelector.overlay)
@@ -166,6 +176,7 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
 
     fun initGreenhouseLayout(){
         displayedGridWidget = null
+        hoveredElement = null
         greenhouseGridWidgets.clear()
         currentDisplayToggle.message = Component.literal("Plots")
         val amountInitialized = GreenhouseData.greenhouseGrids.count { it.state.lastUpdateTimestamp != null }
@@ -200,10 +211,13 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
                 GreenhouseData.currentGridIndex = index
             greenhouseGridWidgets.add(gridWidget)
         }
-        displayedGridWidget = greenhouseGridWidgets.getOrNull(GreenhouseData.currentGridIndex)
-        if (displayedGridWidget == null) {
-            displayedGridWidget = greenhouseGridWidgets.firstOrNull()
-        }
+        // currentGridIndex counts greenhouses, the widget list skips the ones never scanned, so the
+        // index has to go through the grid it names rather than straight into the widgets
+        val currentLayout = GreenhouseData.greenhouseGrids
+            .getOrNull(GreenhouseData.currentGridIndex)?.layout
+
+        displayedGridWidget = greenhouseGridWidgets.find { it.layout === currentLayout }
+            ?: greenhouseGridWidgets.firstOrNull()
         if (displayedGridWidget == null) {
             ChatUtils.sendWithPrefix("Unable to find your greenhouses.")
             return
@@ -219,11 +233,7 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         gridSelector.currentValue = displayedGridWidget!!.layout
         gridSelector.values = greenhouseGridWidgets.map { it.layout }
 
-        val maxWidth = greenhouseGridWidgets.maxOf {
-            font.width(it.layout.toString())
-        }
-
-        gridSelector.width = maxWidth + 12
+        relayoutSelector()
 
         initDynamicName()
     }
@@ -231,10 +241,11 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
     fun initPresetLayout(){
         presetGridWidgets.clear()
         displayedGridWidget = null
+        hoveredElement = null
 
 
         presetUI.x = currentDisplayToggle.x
-        presetUI.y = currentDisplayToggle.y + currentDisplayToggle.height + 10
+        presetUI.y = currentDisplayToggle.y + currentDisplayToggle.height + Common.UI.SPACING_LARGE
         presetUI.init()
 
         GreenhouseData.presetGrids.forEach { layout ->
@@ -259,10 +270,7 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         
         gridSelector.currentValue = displayedGridWidget?.layout
         gridSelector.values = presetGridWidgets.map { it.layout }
-        val maxWidth = presetGridWidgets.maxOfOrNull {
-            font.width(it.layout.toString())
-        }
-        gridSelector.width = (maxWidth ?: font.width("null")) + 20
+        relayoutSelector()
         currentDisplayToggle.message = Component.literal("Presets")
 
 
@@ -270,18 +278,19 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
 
     }
 
+    /** Sizes the selector to whatever it currently lists, which changes when a layout is renamed. */
+    private fun relayoutSelector() {
+        val maxWidth = gridSelector.values.maxOfOrNull { font.width(it.toString()) }
+            ?: font.width("null")
+
+        gridSelector.width = maxWidth + SELECTOR_TEXT_PADDING
+    }
+
     fun initDynamicName(){
         val iconWidth = 18
         val widgetWidth = font.width(displayedName) + 10 //padding = 4 border size 1 x2 (from multiline box centered)
         val widgetHeight = font.lineHeight + 10
         val screenWidth = width
-        val currentGridOutdated =
-            GreenhouseData.greenhouseGrids.getOrNull(GreenhouseData.currentGridIndex)?.let {
-                (it.state.pendingGrowthTicks ?: 1) > 0
-            } ?: false
-
-        shouldWarn = currentDisplay == CurrentDisplay.Greenhouses && currentGridOutdated
-
         dynamicNameDisplay = ClickableButtonWidget(
             widgetWidth + iconWidth + 1, //icon padding + icon width
             widgetHeight,
@@ -290,7 +299,7 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
                     displayedName,
                     screenWidth / 2,
                     18,
-                    if (shouldWarn) 0xFFAA0000.toInt() else null
+                    if (shouldWarn) Common.UI.WARNING_COLOR else null
                 )
                 if (shouldWarn){
                 it.blitSprite(
@@ -331,12 +340,9 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
 
         // presets are a plan rather than a greenhouse that exists, no plant in one has a stage,
         // a water level or an age to report
-        val showHoverControls = currentDisplay == CurrentDisplay.Greenhouses
-
-        displayedGridWidget?.pinnedInfo = if (showHoverControls) hoverControls.hoveredInfo else null
         displayedGridWidget?.extractRenderState(graphics, mouseX, mouseY, delta)
 
-        if (showHoverControls) {
+        if (currentDisplay == CurrentDisplay.Greenhouses) {
             hoverControls.extractRenderState(graphics, mouseX, mouseY, delta)
         }
         gridSelector.extractRenderState(graphics, mouseX, mouseY, delta)
@@ -384,13 +390,15 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
     }
 
     override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
-        overlays.forEach {
+        // a handler may open or close an overlay, so the list being walked is a copy of it
+        overlays.toList().forEach {
             if (it.mouseClicked(mouseButtonEvent, doubled)) {
                 return true
             }
         }
 
-        overlays.clear()
+        // the click landed outside every overlay, which is what closes them
+        closeOverlays()
 
         if (currentDisplayToggle.mouseClicked(mouseButtonEvent,doubled)) {
             when (currentDisplay) {
@@ -408,7 +416,11 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         if (displayedGridWidget?.mouseClicked(mouseButtonEvent, doubled) == true) {
             return true
         }
-        if (presetUI.mouseClicked(mouseButtonEvent, doubled)) {
+        // the preset ui is only laid out in preset mode, off screen its buttons still sit at 0,0
+        // and would take clicks meant for the corner of the screen
+        if (currentDisplay == CurrentDisplay.Presets &&
+            presetUI.mouseClicked(mouseButtonEvent, doubled)
+        ) {
             return true
         }
         if (gridSelector.mouseClicked(mouseButtonEvent, doubled)) {
@@ -422,7 +434,7 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         hoveredElement?.isFocused = false
         hoveredElement = null
 
-        overlays.forEach {
+        overlays.toList().forEach {
             it.mouseMoved(mouseX, mouseY)
             if (hoveredElement == null && it.hoveredElement != null) {
                 hoveredElement = it.hoveredElement
@@ -435,6 +447,9 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         if (currentDisplay == CurrentDisplay.Greenhouses) {
             hoverControls.mouseMoved(mouseX, mouseY)
         }
+
+        displayedGridWidget?.pinnedInfo =
+            hoverControls.hoveredInfo.takeIf { currentDisplay == CurrentDisplay.Greenhouses }
 
         displayedGridWidget?.mouseMoved(mouseX, mouseY)
 
@@ -450,16 +465,11 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
                 hoveredElement = currentDisplayToggle
             }
         }
-        presetUI.mouseMoved(mouseX, mouseY)
+        if (currentDisplay == CurrentDisplay.Presets) {
+            presetUI.mouseMoved(mouseX, mouseY)
 
-        if (hoveredElement == null) {
-            if (presetUI.hoveredElement != null) {
+            if (hoveredElement == null) {
                 hoveredElement = presetUI.hoveredElement
-            }
-            else {
-                if (presetUI.isMouseOver(mouseX, mouseY)) {
-                    hoveredElement = presetUI
-                }
             }
         }
 
@@ -470,35 +480,53 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
 
 
 
-    override fun isMouseOver(mouseX: Double, mouseY: Double): Boolean {
-        return super.isMouseOver(mouseX, mouseY)
-    }
-
     override fun charTyped(characterEvent: CharacterEvent): Boolean {
-        overlays.forEach {
-            it.charTyped(characterEvent)
+        overlays.toList().forEach {
+            if (it.charTyped(characterEvent)) return true
         }
         return super.charTyped(characterEvent)
     }
 
     override fun keyPressed(keyEvent: KeyEvent): Boolean {
-        overlays.forEach {
-            it.keyPressed(keyEvent)
+        overlays.toList().forEach {
+            if (it.keyPressed(keyEvent)) return true
         }
         return super.keyPressed(keyEvent)
     }
 
     override fun removed() {
-        Minecraft.getInstance().options.guiScale().set(GreenhouseScreenCommand.tempGuiScale!!)
+        super.removed()
+
+        // only the command changes the scale, opening the screen any other way leaves it alone
+        GreenhouseScreenCommand.tempGuiScale?.let {
+            Minecraft.getInstance().options.guiScale().set(it)
+            GreenhouseScreenCommand.tempGuiScale = null
+        }
     }
 
     fun openLayoutWidgetContext(layout: GreenhouseLayout?, buttonEvent: MouseButtonEvent) {
         if (layout == null) return
         if (layout !in greenhouseGridWidgets.map { it.layout } && layout !in presetGridWidgets.map { it.layout }) return
-        val menu = EditLayoutContextMenu(
+        val (menuX, menuY) = OverlayRenderable.placeOnScreen(
             buttonEvent.x.toInt(),
             buttonEvent.y.toInt(),
-            layout
+            EditLayoutContextMenu.WIDTH,
+            EditLayoutContextMenu.HEIGHT
+        )
+
+        val menu = EditLayoutContextMenu(
+            menuX,
+            menuY,
+            layout,
+            this,
+            onLayoutRenamed = { renamed ->
+                if (displayedGridWidget?.layout === renamed) {
+                    displayedName = renamed.displayName()
+                }
+                // the selector was sized to fit the old names
+                relayoutSelector()
+                initDynamicName()
+            }
         )
         addContext(menu)
     }
@@ -515,7 +543,15 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
             return
         }
 
-        GreenhouseData.currentGridIndex = greenhouseGridWidgets.indexOf(widget)
+        GreenhouseData.greenhouseGrids
+            .indexOfFirst { it.layout === widget.layout }
+            .takeIf { it >= 0 }
+            ?.let { GreenhouseData.currentGridIndex = it }
+
+        // apply, export and delete all read currentPreset, so selecting one has to move it
+        GreenhouseData.currentPreset =
+            widget.layout.takeIf { currentDisplay == CurrentDisplay.Presets }
+
         displayedGridWidget = widget
         displayedName = displayedGridWidget?.layout?.name
             ?: displayedGridWidget?.layout?.id
@@ -556,4 +592,15 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         }
         initPresetLayout()
     }
+    companion object {
+        /** Room either side of the widest name the selector lists. */
+        private const val SELECTOR_TEXT_PADDING: Int = 12
+
+        /** What the toolbar down the left of the grid needs, so the grid never sits on top of it. */
+        private const val TOOLBAR_WIDTH: Int = 180
+
+        /** Below this the item art rounds away to nothing, so the grid stops shrinking instead. */
+        private const val MIN_SLOT_SIZE: Int = 8
+    }
+
 }

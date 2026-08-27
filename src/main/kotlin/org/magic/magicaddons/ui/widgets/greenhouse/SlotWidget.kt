@@ -3,7 +3,6 @@ package org.magic.magicaddons.ui.widgets.greenhouse
 
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.components.Renderable
-import net.minecraft.client.gui.components.events.GuiEventListener
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.client.renderer.RenderPipelines
 import net.minecraft.client.renderer.texture.TextureAtlasSprite
@@ -29,7 +28,6 @@ class SlotWidget(
     var widgetWidth: Int = 25
     var widgetHeight: Int = 25
 
-    var markingColor: Int? = null
 
     override var focusedState: Boolean = false
     
@@ -61,14 +59,15 @@ class SlotWidget(
     }
 
     override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
-        if (isMouseOver(mouseButtonEvent.x, mouseButtonEvent.y)){
-            ChatUtils.sendWithPrefix("Click at slot ${slot.x} , ${slot.y} on ${slot.placedBlock}")
-        }
-        return false
+        if (!isMouseOver(mouseButtonEvent.x, mouseButtonEvent.y)) return false
+
+        ChatUtils.sendWithPrefix("Click at slot ${slot.x} , ${slot.y} on ${slot.placedBlock}")
+        return true
     }
 
     override fun isMouseOver(mouseX: Double, mouseY: Double): Boolean {
-        return (mouseX.toInt() in widgetX..widgetX + widgetWidth && mouseY.toInt() in widgetY .. widgetY + widgetHeight)
+        return mouseX.toInt() in widgetX until widgetX + widgetWidth &&
+                mouseY.toInt() in widgetY until widgetY + widgetHeight
     }
 
 

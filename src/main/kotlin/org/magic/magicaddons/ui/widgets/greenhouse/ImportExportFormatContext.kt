@@ -4,6 +4,7 @@ import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.components.events.GuiEventListener
 import net.minecraft.client.input.MouseButtonEvent
+import org.magic.magicaddons.ui.OverlayContext
 import org.magic.magicaddons.Common
 import org.magic.magicaddons.ui.widgets.AbstractSelectorContextMenu
 import org.magic.magicaddons.ui.widgets.ClickableRowWidget
@@ -13,6 +14,7 @@ import kotlin.math.max
 class ImportExportFormatContext(
     override val overlayX: Int,
     override val overlayY: Int,
+    private val overlayContext: OverlayContext,
     val formatSelected: (LayoutFormatType) -> Unit
 ) : AbstractSelectorContextMenu<ImportExportFormatContext.LayoutFormatType>(LayoutFormatType.entries) {
 
@@ -37,6 +39,8 @@ class ImportExportFormatContext(
 
 
     override fun onValueSelected(value: LayoutFormatType) {
+        // the format has been picked, the list has nothing left to say
+        overlayContext.removeOverlay(this)
         formatSelected(value)
     }
 
@@ -68,7 +72,7 @@ class ImportExportFormatContext(
             title,
             overlayX + Common.UI.TEXT_X_PAD,
             overlayY + yPadding,
-            0xFFFFFFFF.toInt()
+            Common.UI.TEXT_COLOR
         )
         valueWidgets.forEach {
             it.extractRenderState(graphics, mouseX, mouseY)

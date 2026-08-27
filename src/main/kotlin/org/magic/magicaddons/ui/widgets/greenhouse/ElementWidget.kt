@@ -30,7 +30,12 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, Focus
     var padding: Int = 0
     var width = 50
     var height = 50
-    var sprite: TextureAtlasSprite? = ScreenUtil.getSpriteForState(Blocks.FIRE.defaultBlockState(),Direction.NORTH)
+    /** Resolved on demand: only the fire element draws one, and resolving can throw. */
+    val sprite: TextureAtlasSprite? by lazy {
+        runCatching {
+            ScreenUtil.getSpriteForState(Blocks.FIRE.defaultBlockState(), Direction.NORTH)
+        }.getOrNull()
+    }
     var renderedStack: ItemStack = ItemStack.EMPTY
     var markingColor: Int? = null
     override var focusedState: Boolean = false
@@ -73,7 +78,7 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, Focus
             )
         }
         if (instance.elementId == "Fire") {
-            renderFire(graphics, mouseX, mouseY, deltaTick)
+            renderFire(graphics)
             return
         }
         graphics.renderFakeItem(
@@ -85,9 +90,8 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, Focus
         )
     }
 
-    fun renderFire(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, deltaTick: Float){
-        val sprite = sprite
-        sprite ?: return
+    fun renderFire(graphics: GuiGraphicsExtractor){
+        val sprite = sprite ?: return
         graphics.blitSprite(
             RenderPipelines.GUI_TEXTURED,
             sprite,
@@ -142,12 +146,10 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, Focus
     }
 
     override fun isMouseOver(mouseX: Double, mouseY: Double): Boolean {
-        return (mouseX.toInt() in widgetX..widgetX+width
-                && mouseY.toInt() in widgetY..widgetY + height)
+        return mouseX.toInt() in widgetX until widgetX + width &&
+                mouseY.toInt() in widgetY until widgetY + height
     }
 
-    override fun mouseMoved(mouseX: Double, mouseY: Double) {
-    }
     fun renderTooltip(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int) {
         val font = Minecraft.getInstance().font
         val cropDefinition = instance.cropDef

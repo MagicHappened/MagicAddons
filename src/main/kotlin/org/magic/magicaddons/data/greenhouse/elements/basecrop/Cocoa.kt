@@ -16,6 +16,8 @@ object Cocoa : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Cocoa Beans",
         skyblockId = SkyBlockItemId.item("INK_SACK-3"),
+        // the same item written the other way round, so whichever separator the game hands us matches
+        aliases = listOf(SkyBlockItemId.item("INK_SACK:3")),
         displayItem = Items.COCOA_BEANS,
         stageDefs = listOf(
             CropStage(
