@@ -54,8 +54,17 @@ object LayoutRenderState {
     /** Enough colour to read the mark through, little enough to see the block under it. */
     private const val FILL_ALPHA: Int = 0x4D
 
+    /**
+     * How solid a ghosted block is drawn.
+     *
+     * Far more than a mark's fill, because the two fade differently: a fill is one flat colour laid
+     * over a block, while a ghost is the block's own texture multiplied by the tint and then faded,
+     * so the same figure that reads clearly as a fill leaves a model barely there.
+     */
+    private const val GHOST_ALPHA: Int = 0xC0
+
     /** The blue of a missing block, worn by the armor stands a ghosted crop is made of. */
-    const val GHOST_STAND_TINT: Int = 0x4D3399FF
+    const val GHOST_STAND_TINT: Int = 0xC03399FF.toInt()
 
     /**
      * Ground a hoe turns into other ground. A dirt where farmland belongs is not the wrong block,
@@ -125,7 +134,7 @@ object LayoutRenderState {
 
         ghosts.forEach { (pos, state) ->
             WorldRender.ghost(
-                poseStack, collector, cameraPos, pos, state, Mark.Missing.color, FILL_ALPHA
+                poseStack, collector, cameraPos, pos, state, Mark.Missing.color, GHOST_ALPHA
             )
         }
     }
