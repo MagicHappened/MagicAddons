@@ -21,7 +21,6 @@ import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.ScreenUtil
 import org.magic.magicaddons.util.ScreenUtil.drawBorder
 import org.magic.magicaddons.util.ScreenUtil.renderFakeItem
-import org.magic.magicaddons.util.ScreenUtil.renderScaledItem
 
 class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, GuiEventListener {
     var widgetX: Int = 0
@@ -35,11 +34,14 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, GuiEv
     @JvmField
     var isFocused: Boolean = false
 
-    /** A single fact about a plant, small enough to write over the plant itself. */
-    enum class HoverInfo(val label: String) {
-        GrowthStage("Stage"),
-        WaterLevel("Water"),
-        DecayTime("Decay");
+    /**
+     * A single fact about a plant, small enough to write over the plant itself. [color] is how the
+     * hover controls stand for this fact, the swatches carry no text of their own.
+     */
+    enum class HoverInfo(val color: Int) {
+        GrowthStage(0xFF3FBF3F.toInt()),
+        WaterLevel(0xFF3F7FDF.toInt()),
+        DecayTime(0xFFCC3333.toInt());
 
         /** This fact about [instance], or null while the game has not told us the value yet. */
         fun valueFor(instance: GreenhouseElementInstance): String? = when (this) {
@@ -84,11 +86,12 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, GuiEv
             renderFire(graphics, mouseX, mouseY, deltaTick)
             return
         }
-        graphics.renderScaledItem(
+        graphics.renderFakeItem(
             renderedStack,
             widgetX + padding,
             widgetY + padding,
-            width/16f
+            width - padding * 2,
+            height - padding * 2
         )
     }
 
@@ -113,20 +116,31 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, GuiEv
         val text = info.valueFor(instance) ?: return
         val font = Minecraft.getInstance().font
 
-        val textWidth = font.width(text)
-        val textX = widgetX + (width - textWidth) / 2
-        val textY = widgetY + height - font.lineHeight - 1
+        // a hundred slots share the grid, full size text would not fit inside one of them
+        val textWidth = font.width(text) * INFO_TEXT_SCALE
+        val textHeight = font.lineHeight * INFO_TEXT_SCALE
+        val textX = widgetX + (width - textWidth) / 2f
+        val textY = widgetY + height - textHeight - 1f
 
         // the plant behind it is busy, the text needs its own ground to stay readable
         graphics.fill(
-            textX - 1,
-            textY - 1,
-            textX + textWidth + 1,
-            textY + font.lineHeight,
+            (textX - 1f).toInt(),
+            (textY - 1f).toInt(),
+            (textX + textWidth + 1f).toInt(),
+            (textY + textHeight).toInt(),
             INFO_BACKGROUND_COLOR
         )
 
-        graphics.text(font, text, textX, textY, INFO_TEXT_COLOR, false)
+        val pose = graphics.pose()
+        pose.pushMatrix()
+
+        try {
+            pose.translate(textX, textY)
+            pose.scale(INFO_TEXT_SCALE, INFO_TEXT_SCALE)
+            graphics.text(font, text, 0, 0, INFO_TEXT_COLOR, false)
+        } finally {
+            pose.popMatrix()
+        }
     }
 
     fun renderSideTooltip(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, deltaTick: Float){
@@ -205,6 +219,7 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, GuiEv
 
     companion object {
         private const val INFO_TEXT_COLOR: Int = 0xFFFFFFFF.toInt()
+        private const val INFO_TEXT_SCALE: Float = 0.5f
         private const val INFO_BACKGROUND_COLOR: Int = 0xB0000000.toInt()
 
         private fun labelled(label: String, value: String): Component =

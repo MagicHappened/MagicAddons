@@ -7,6 +7,7 @@ import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.EquipmentSlot
 import net.minecraft.world.entity.decoration.ArmorStand
 import net.minecraft.world.level.Level
+import net.minecraft.world.item.Item
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.level.block.state.BlockState
@@ -354,7 +355,9 @@ data class CropDefinition(
     val needsWater: Boolean = true,
     val isBaseCrop: Boolean = false,
     val isMutation: Boolean = false,
-    val isRareCrop: Boolean = false //todo buffs later
+    val isRareCrop: Boolean = false, //todo buffs later
+    /** Shown in the ui when skyblock has no item of its own for this crop, a dead plant has none. */
+    val displayItem: Item? = null
 ){
     fun matchesId(id: SkyBlockId): Boolean{
         return skyblockId == id || (aliases?.any { it == id } ?: false)

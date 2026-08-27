@@ -76,7 +76,10 @@ class GridWidget(
             widget.width = widgetWidth
             widget.height = widgetHeight
             widget.init()
-            widget.renderedStack = instance.cropDef.skyblockId?.toItem() ?: ItemStack(Items.BARRIER)
+            // an id skyblock has no item for resolves to an empty stack, which draws nothing at all
+            widget.renderedStack = instance.cropDef.skyblockId?.toItem()?.takeUnless { it.isEmpty }
+                ?: instance.cropDef.displayItem?.let { ItemStack(it) }
+                ?: ItemStack(Items.BARRIER)
             elementWidgets.add(widget)
         }
 
