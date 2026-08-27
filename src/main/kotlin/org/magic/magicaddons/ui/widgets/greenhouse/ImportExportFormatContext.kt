@@ -42,8 +42,6 @@ class ImportExportFormatContext(
 
     override var hoveredElement: GuiEventListener? = null
 
-    @JvmField
-    var isFocused = false
 
     override val valueWidgets: MutableList<ClickableRowWidget<LayoutFormatType>> = mutableListOf()
 
@@ -86,8 +84,4 @@ class ImportExportFormatContext(
         return true
     }
 
-    override fun isFocused(): Boolean = isFocused
-    override fun setFocused(focused: Boolean) {
-        isFocused = focused
-    }
 }

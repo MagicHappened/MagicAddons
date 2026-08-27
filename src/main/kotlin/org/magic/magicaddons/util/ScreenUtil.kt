@@ -353,40 +353,6 @@ object ScreenUtil {
         }
     }
 
-    fun GuiGraphicsExtractor.renderScaledItem(
-        stack: ItemStack,
-        x: Int,
-        y: Int,
-        scale: Float
-    ){
-        if (stack.isEmpty) return
-        val minecraft = Minecraft.getInstance()
-        val resolver = minecraft.itemModelResolver
-        val renderState = ItemStackRenderState()
-        resolver.updateForTopItem(
-            renderState,
-            stack,
-            ItemDisplayContext.GUI,
-            minecraft.level,
-            minecraft.player,
-            0
-
-        )
-        applyScaleToState(renderState,scale)
-
-    }
-
-    private fun applyScaleToState(renderState: ItemStackRenderState, scale: Float){
-        if (scale == 1.0f) return
-        val scaleMatrix = Matrix4f().scale(scale, scale, 1.0f)
-        renderState.layers.forEach {
-            it.setLocalTransform(it.localTransform.mul(scaleMatrix))
-        }
-    }
-
-
-
-
     fun getSpriteForState(state: BlockState, direction: Direction): TextureAtlasSprite {
 
         val client = Minecraft.getInstance()

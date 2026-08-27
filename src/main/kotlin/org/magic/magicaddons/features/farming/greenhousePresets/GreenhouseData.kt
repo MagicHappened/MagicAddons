@@ -45,6 +45,9 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockId.Companion.getSky
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 import tech.thatgravyboat.skyblockapi.utils.extentions.getLore
 import tech.thatgravyboat.skyblockapi.utils.extentions.isSkyblockFiller
+import net.minecraft.network.chat.Style
+import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockId
+import java.util.Optional
 import java.time.Duration
 import java.time.Instant
 import java.util.*
@@ -67,6 +70,19 @@ object GreenhouseData {
         "AQUAMASTER_X",
         "AQUAMASTER_HYDROMAX"
     )
+
+    /** The character skyblock builds its bars out of, one per notch of the level. */
+    private const val BAR_CHAR: Char = '|'
+
+    /**
+     * How long after a watering the stands are worth looking for. The water bar is not a permanent
+     * part of a plant like the fleshtrap hunger bar is, it appears when the level changes and takes
+     * itself away again a few seconds later.
+     */
+    private val WATERING_WINDOW: Duration = Duration.ofSeconds(10)
+
+    /** When the stands spawned by the last watering stop being expected. */
+    private var wateringUntil: Instant? = null
 
     var lastPlot: Plot? = null
 
@@ -451,6 +467,8 @@ object GreenhouseData {
 
         val gridArea = grid.plot?.getBuildableArea() ?: return
 
+        readWaterStands(event.addedEntityList.mapNotNull { it.entity as? ArmorStand })
+
         if (event.addedEntityList.any {
                 !gridArea.contains(it.entity.position())
             }) return
@@ -515,7 +533,7 @@ object GreenhouseData {
         if (!grid.hasRuntime()) return
         val mainHandId = event.player.mainHandItem.getSkyBlockId() ?: return
 
-        if (("item:" + mainHandId.id) in waterCanIds) {
+        if (isWaterCan(mainHandId)) {
             tryGetWaterCanData()
             return
         }
@@ -535,7 +553,7 @@ object GreenhouseData {
 
             return
         }
-        if (("item:" + mainHandId.id) in waterCanIds) {
+        if (isWaterCan(mainHandId)) {
             tryGetWaterCanData()
             return
         }
@@ -595,15 +613,65 @@ object GreenhouseData {
         grid.addElement(runtime, System.currentTimeMillis())
     }
 
-    // "||||||||||||||||||||" this is the custom name of the armor to string we just need the formatting??
+    /** Every tier of the watering can, matched past the prefix and casing of a skyblock id. */
+    private fun isWaterCan(id: SkyBlockId): Boolean =
+        id.id.substringAfter("item:").uppercase() in waterCanIds
+
+    /**
+     * The spray of a watering can does not reach the plants on the same tick the can is used, so a
+     * use only says the water bars are about to appear. [readWaterStands] does the reading.
+     */
     fun tryGetWaterCanData() {
-        val buildableArea = getCurrentGrid()?.plot?.getBuildableArea() ?: return
-        val stands = Minecraft.getInstance().level?.getEntitiesOfClass(ArmorStand::class.java, buildableArea) ?: return
-        ChatUtils.sendWithPrefix("Stands size: ${stands.size}")
-        val filteredStands = stands.filter {
-            it.getItemBySlot(EquipmentSlot.HEAD) == ItemStack.EMPTY
+        wateringUntil = Instant.now().plus(WATERING_WINDOW)
+    }
+
+    /**
+     * Takes the water level off any bar standing over a plant of the current grid. Called for every
+     * batch of entities that appears while a watering is expected, since the bars spawn a moment
+     * after the spray and take themselves away again.
+     */
+    private fun readWaterStands(stands: List<ArmorStand>) {
+        val until = wateringUntil ?: return
+
+        if (Instant.now().isAfter(until)) {
+            wateringUntil = null
+            return
         }
-        ChatUtils.sendWithPrefix("Filtered stand size: ${filteredStands.size}")
+
+        val grid = getCurrentGrid() ?: return
+
+        stands.forEach { stand ->
+            val level = stand.customName?.let { parseBar(it) } ?: return@forEach
+            val slot = grid.getSlotAt(stand.blockPosition(), matchY = false) ?: return@forEach
+            val element = grid.elementCovering(slot) ?: return@forEach
+
+            if (!element.instance.cropDef.needsWater) return@forEach
+
+            element.instance.waterLevel = level
+        }
+    }
+
+    /**
+     * Reads a bar such as "||||||||||||||||||||" as the percentage of it that is filled. The filled
+     * part is the run of bars at the front sharing the colour of the very first one, the rest are
+     * the empty notches drawn in a duller colour behind it.
+     */
+    private fun parseBar(name: Component): Int? {
+        val runs = mutableListOf<Pair<Int?, Int>>()
+
+        name.visit({ style, text ->
+            val bars = text.count { it == BAR_CHAR }
+            if (bars > 0) runs.add(style.color?.value to bars)
+            Optional.empty<Unit>()
+        }, Style.EMPTY)
+
+        val total = runs.sumOf { it.second }
+        if (total == 0) return null
+
+        val filledColor = runs.first().first
+        val filled = runs.takeWhile { it.first == filledColor }.sumOf { it.second }
+
+        return filled * 100 / total
     }
 
     fun setDiagnosesListeningElement(hitBlock: BlockPos? = null, hitEntity: ArmorStand? = null, grid: GreenhouseGrid) {

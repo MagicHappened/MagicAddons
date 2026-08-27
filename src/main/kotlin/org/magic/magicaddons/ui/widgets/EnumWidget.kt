@@ -6,6 +6,7 @@ import net.minecraft.client.gui.components.Renderable
 import net.minecraft.client.gui.components.events.GuiEventListener
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.network.chat.Component
+import org.magic.magicaddons.ui.Focusable
 import org.magic.magicaddons.Common
 import org.magic.magicaddons.ui.OverlayContext
 import org.magic.magicaddons.ui.OverlayRenderable
@@ -23,13 +24,12 @@ class EnumWidget<T>(
     val onLeftClickValue: ((T?, MouseButtonEvent) -> Unit)? = null,
     val onRightClickValue: ((T?, MouseButtonEvent) -> Unit)? = null,
     val valueChanged: ((T) -> Unit)? = null,
-    ) : Renderable, GuiEventListener {
+    ) : Renderable, Focusable {
     val overlay = EnumOverlay(1)
     val font = Minecraft.getInstance().font
     var overlayOpen = false
 
-    @JvmField
-    var isFocused = false
+    override var focusedState: Boolean = false
 
     private fun valueChanged(newValue: T) {
         currentValue = newValue
@@ -98,15 +98,10 @@ class EnumWidget<T>(
                 mouseY.toInt() in y..y + height)
     }
 
-    override fun setFocused(focused: Boolean) {
-        isFocused = focused
-    }
 
-    override fun isFocused(): Boolean = isFocused
 
-    inner class EnumOverlay(override val renderPriority: Int) : OverlayRenderable, GuiEventListener {
-        @JvmField
-        var isFocused: Boolean = false
+    inner class EnumOverlay(override val renderPriority: Int) : OverlayRenderable, Focusable {
+        override var focusedState: Boolean = false
 
         override var hoveredElement: GuiEventListener? = null
 
@@ -182,11 +177,7 @@ class EnumWidget<T>(
             }
         }
 
-        override fun isFocused(): Boolean = isFocused
 
-        override fun setFocused(focused: Boolean) {
-            isFocused = focused
-        }
 
     }
 }

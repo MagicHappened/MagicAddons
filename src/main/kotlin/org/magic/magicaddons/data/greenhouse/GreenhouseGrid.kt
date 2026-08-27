@@ -75,6 +75,18 @@ class GreenhouseGrid(
     }
 
 
+    /**
+     * The element standing on [slot], including a crop bigger than one slot that covers it from its
+     * top left corner, which is the only slot such a crop is filed under.
+     */
+    fun elementCovering(slot: LayoutSlot): ElementRuntimeState? = elements.find { element ->
+        val origin = element.instance.slot
+        val footprint = element.instance.cropDef.footprint
+
+        slot.x in origin.x until origin.x + footprint.width &&
+                slot.y in origin.y until origin.y + footprint.height
+    }
+
     fun removeMatchingBlock(blockPos: BlockPos): ElementRuntimeState? {
         return elements.find { element ->
             element.blocksMap

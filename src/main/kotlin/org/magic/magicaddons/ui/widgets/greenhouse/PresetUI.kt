@@ -9,6 +9,7 @@ import net.minecraft.client.gui.components.Renderable
 import net.minecraft.client.gui.components.events.GuiEventListener
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.network.chat.Component
+import org.magic.magicaddons.ui.Focusable
 import org.magic.magicaddons.data.greenhouse.CropRegistry
 import org.magic.magicaddons.data.greenhouse.GreenhouseElementInstance
 import org.magic.magicaddons.data.greenhouse.GreenhouseGrid
@@ -27,15 +28,14 @@ class PresetUI(
     val onAssignedLayout: (assignedLayout: GreenhouseLayout?, selectedGrid: GreenhouseGrid) -> Unit,
     val onAddPreset: (GreenhouseLayout) -> Unit,
     val onRemovePreset: () -> Unit,
-) : Renderable, GuiEventListener, HoverableContainer {
+) : Renderable, Focusable, HoverableContainer {
 
     var x: Int = 0
     var y: Int = 0
 
     override var hoveredElement: GuiEventListener? = null
 
-    @JvmField
-    var isFocused: Boolean = false
+    override var focusedState: Boolean = false
 
     private val importButton = ClickableButtonWidget(
         50,
@@ -155,11 +155,7 @@ class PresetUI(
         }
     }
 
-    override fun setFocused(focused: Boolean) {
-        isFocused = focused
-    }
 
-    override fun isFocused(): Boolean = isFocused
 
     fun importPreset(type: ImportExportFormatContext.LayoutFormatType) {
         when (type) {
@@ -229,14 +225,17 @@ class PresetUI(
                     val cropWidth = cropDefinition.footprint.width
                     val cropHeight = cropDefinition.footprint.height
 
+                    // a crop hanging off the edge is one broken entry, not one broken entry per
+                    // cell, so the whole crop is dropped on the first cell that would miss
+                    if (row + cropHeight > layout.size || column + cropWidth > layout.size) {
+                        ChatUtils.sendWithPrefix("Malformed data for plant $cropName")
+                        return@forEach
+                    }
+
                     var topLeftSlot: LayoutSlot? = null
                     for (offsetX in 0 until cropWidth) {
                         for (offsetY in 0 until cropHeight) {
-                            try {
-                                occupiedPositions[row + offsetY][column + offsetX] = true
-                            } catch (e: IndexOutOfBoundsException) {
-                                ChatUtils.sendWithPrefix("Malformed data for plant $cropName")
-                            }
+                            occupiedPositions[row + offsetY][column + offsetX] = true
                             val slot = layout.getSlot(column+offsetX, row+offsetY)
                             slot?.placedBlock = cropDefinition.requiredSoil.firstOrNull()?.defaultBlockState()
                             slot?.slotMark = marking

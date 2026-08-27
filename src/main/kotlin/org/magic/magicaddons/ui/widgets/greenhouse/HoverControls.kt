@@ -3,6 +3,7 @@ package org.magic.magicaddons.ui.widgets.greenhouse
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.components.Renderable
 import net.minecraft.client.gui.components.events.GuiEventListener
+import org.magic.magicaddons.ui.Focusable
 import org.magic.magicaddons.Common
 import org.magic.magicaddons.ui.HoverableContainer
 import org.magic.magicaddons.util.ScreenUtil.drawBorder
@@ -15,7 +16,7 @@ import org.magic.magicaddons.util.ScreenUtil.drawBorder
  * Only one fact shows at a time because a plant is one slot wide and a second line of text over it
  * would cover the plant it is describing.
  */
-class HoverControls : Renderable, GuiEventListener, HoverableContainer {
+class HoverControls : Renderable, Focusable, HoverableContainer {
 
     override var hoveredElement: GuiEventListener? = null
 
@@ -24,8 +25,7 @@ class HoverControls : Renderable, GuiEventListener, HoverableContainer {
     var width: Int = SWATCH_WIDTH
     var height: Int = 0
 
-    @JvmField
-    var isFocused: Boolean = false
+    override var focusedState: Boolean = false
 
     /** The fact the mouse is asking for, or null while it is not over a swatch. */
     var hoveredInfo: ElementWidget.HoverInfo? = null
@@ -81,11 +81,7 @@ class HoverControls : Renderable, GuiEventListener, HoverableContainer {
         }
     }
 
-    override fun setFocused(focused: Boolean) {
-        isFocused = focused
-    }
 
-    override fun isFocused(): Boolean = isFocused
 
     companion object {
         private const val SWATCH_WIDTH: Int = 10

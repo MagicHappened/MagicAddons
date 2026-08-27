@@ -9,6 +9,7 @@ import net.minecraft.client.renderer.RenderPipelines
 import net.minecraft.client.renderer.texture.TextureAtlasSprite
 import net.minecraft.core.Direction
 import net.minecraft.world.level.block.Blocks
+import org.magic.magicaddons.ui.Focusable
 import org.magic.magicaddons.Common
 import org.magic.magicaddons.data.greenhouse.LayoutSlot
 import org.magic.magicaddons.util.ChatUtils
@@ -16,7 +17,7 @@ import org.magic.magicaddons.util.ScreenUtil
 
 class SlotWidget(
     val slot: LayoutSlot
-) : Renderable, GuiEventListener {
+) : Renderable, Focusable {
 
     var sprite: TextureAtlasSprite? = null
 
@@ -30,8 +31,7 @@ class SlotWidget(
 
     var markingColor: Int? = null
 
-    @JvmField
-    var isFocused: Boolean = false
+    override var focusedState: Boolean = false
     
     fun init(){
         if (slot.placedBlock == null){
@@ -72,9 +72,5 @@ class SlotWidget(
     }
 
 
-    override fun isFocused(): Boolean = isFocused
 
-    override fun setFocused(focused: Boolean) {
-        isFocused = focused
-    }
 }

@@ -1,5 +1,6 @@
 package org.magic.magicaddons.ui.widgets
 
+import org.magic.magicaddons.ui.Focusable
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.components.events.GuiEventListener
@@ -9,7 +10,7 @@ import net.minecraft.resources.Identifier
 
 open class BaseRowWidget<T>(
     val value: T
-) : GuiEventListener {
+) : Focusable {
 
 
     val BUTTON = Identifier.fromNamespaceAndPath("minecraft", "widget/button")
@@ -22,8 +23,7 @@ open class BaseRowWidget<T>(
     var x: Int = 0
     var y: Int = 0
 
-    @JvmField
-    var isFocused: Boolean = false
+    override var focusedState: Boolean = false
     open val textLeftPadding = 4
 
     open fun getRightReservedWidth(): Int = 0
@@ -62,11 +62,7 @@ open class BaseRowWidget<T>(
         return (mouseX.toInt() in x..x+width && mouseY.toInt() in y..y+height)
     }
 
-    override fun setFocused(focused: Boolean) {
-        isFocused = focused
-    }
 
-    override fun isFocused(): Boolean = isFocused
 
 
     open fun isMouseOverRow(mouseX: Double, mouseY: Double): Boolean {

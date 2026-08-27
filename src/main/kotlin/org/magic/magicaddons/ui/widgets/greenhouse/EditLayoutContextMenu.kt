@@ -25,8 +25,6 @@ class EditLayoutContextMenu(
     override val overlayWidth: Int = 200
     override val overlayHeight: Int = 100
 
-    @JvmField
-    var isFocused: Boolean = false
 
     override var hoveredElement: GuiEventListener? = null
 
@@ -100,11 +98,7 @@ class EditLayoutContextMenu(
         return super.charTyped(characterEvent)
     }
 
-    override fun setFocused(focused: Boolean) {
-        this.isFocused = focused
-    }
 
-    override fun isFocused(): Boolean = this.isFocused
 
     override fun keyPressed(keyEvent: KeyEvent): Boolean  {
         if (textField.isFocused){

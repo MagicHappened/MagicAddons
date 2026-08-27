@@ -1,17 +1,18 @@
 package org.magic.magicaddons.features.debug
 
+import net.minecraft.ChatFormatting
 import net.minecraft.client.Minecraft
 import net.minecraft.network.chat.ClickEvent
 import net.minecraft.network.chat.Component
+import net.minecraft.network.chat.HoverEvent
 import net.minecraft.network.chat.Style
 import net.minecraft.world.entity.Display
 import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.EquipmentSlot
-import net.minecraft.world.entity.Interaction
 import net.minecraft.world.entity.LivingEntity
-import net.minecraft.world.entity.animal.parrot.Parrot
 import net.minecraft.world.entity.decoration.ArmorStand
 import net.minecraft.world.entity.player.Player
+import net.minecraft.world.item.ItemStack
 import org.magic.magicaddons.data.config.BooleanSetting
 import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.events.EventHandler
@@ -21,6 +22,14 @@ import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.PlayerUtils
 import java.net.URI
 
+/**
+ * Prints what the client knows about whatever was hit, so the values the rest of the mod matches on
+ * can be read straight out of the game.
+ *
+ * Everything a matcher keys off is printed unconditionally, since a dump without it says nothing:
+ * the entity type, its custom name and its skin hash. The settings add the parts that are only
+ * sometimes wanted and are long enough to bury the rest of the chat.
+ */
 object MobHitDebugInfo : Feature() {
     init {
         EventBus.register(this)
@@ -31,11 +40,37 @@ object MobHitDebugInfo : Feature() {
     override val tooltipMessage: String = "On next mob hit will cancel the actual event and print debug information"
     override val category: String = "debug"
 
+    private val showEquipment = BooleanSetting(
+        key = "ShowEquipment",
+        displayName = "Equipment",
+        tooltip = "Adds every worn and held item, with the skin hash of each.",
+        value = false
+    )
+
+    private val showNearbyEntities = BooleanSetting(
+        key = "ShowNearbyEntities",
+        displayName = "Nearby Entities",
+        tooltip = "Adds the named armor stands and displays standing next to the target, which is " +
+                "where most mobs keep the only information they have.",
+        value = false
+    )
+
+    private val showPosition = BooleanSetting(
+        key = "ShowPosition",
+        displayName = "Position",
+        tooltip = "Adds the block position of the target, for matching against a fixed area.",
+        value = false
+    )
+
     override val baseSetting: BooleanSetting = BooleanSetting(
         displayName = displayName,
         tooltip = tooltipMessage,
-        value = false
-        //todo make all the components into boolean settings and togglable.
+        value = false,
+        children = listOf(
+            showEquipment,
+            showNearbyEntities,
+            showPosition
+        )
     )
 
     @EventHandler
@@ -43,84 +78,96 @@ object MobHitDebugInfo : Feature() {
         if (!baseSetting.value) return
         event.canceled = true
 
-        when (val target = event.target) {
-            is Player -> attackPlayerDebug(target)
-            is ArmorStand -> attackArmorStandDebug(target)
-            is LivingEntity -> attackMobDebug(target)
-            is Display -> attackDisplayDebug(target)
-            is Interaction -> attackInteractionDebug(target)
-            else -> attackUnknownDebug(target)
-        }
-    }
+        val target = event.target
 
-
-    fun attackPlayerDebug(player: Player) {
-        val url = PlayerUtils.getSkinUrl(player)
-        val hash = PlayerUtils.getSkinHash(player)
-
-        if (url == null || hash == null) {
-            ChatUtils.sendWithPrefix("No skin data")
-            return
-        }
-
-        val clickableText = Component.literal("Click for skin url").setStyle(
-            Style.EMPTY.withClickEvent(ClickEvent.OpenUrl(URI(url)))
+        ChatUtils.sendWithPrefix(
+            Component.literal(describeKind(target)).withStyle(ChatFormatting.GOLD)
         )
 
-        ChatUtils.sendWithPrefix("=== Player Debug ===")
-        ChatUtils.sendWithPrefix(clickableText)
-        ChatUtils.sendWithPrefix("Skin hash: $hash")
+        describe(target).forEach { ChatUtils.send(it) }
 
-        printNearbyInfoEntities(player)
+        if (showNearbyEntities.value) {
+            printNearbyInfoEntities(target)
+        }
     }
 
-    fun attackArmorStandDebug(stand: ArmorStand) {
-        ChatUtils.sendWithPrefix("=== Armor Stand Debug ===")
-
-        val name = stand.customName?.string ?: "No custom name"
-        ChatUtils.sendWithPrefix("Name: $name")
-
-        sendEntityDebug(stand)
-
+    /** The short word for what was hit, which is the first thing worth knowing about it. */
+    private fun describeKind(entity: Entity): String = when (entity) {
+        is Player -> "Player"
+        is ArmorStand -> "Armor Stand"
+        is Display.ItemDisplay -> "Item Display"
+        is Display -> "Display"
+        is LivingEntity -> "Mob"
+        else -> "Entity"
     }
 
-    fun attackMobDebug(mob: LivingEntity) {
-        ChatUtils.sendWithPrefix("=== Mob Debug ===")
+    /** Everything worth knowing about one entity, as the lines to print under its heading. */
+    private fun describe(entity: Entity): List<Component> = buildList {
+        add(field("type", entity.type.toString()))
 
-        val name = mob.customName?.string ?: mob.name.string
-        ChatUtils.sendWithPrefix("Name: $name")
+        entity.customName?.string?.let { add(field("name", it)) }
 
-        val type = mob.type.toString()
-        ChatUtils.sendWithPrefix("Type: $type")
-        sendEntityDebug(mob)
-
-        printNearbyInfoEntities(mob)
-    }
-    fun attackDisplayDebug(entity: Display){
-        when (entity) {
-            is Display.ItemDisplay -> {
-                val stack = entity.itemStack
-                if (stack.isEmpty) return
-                ChatUtils.sendWithPrefix("=== ItemDisplay ===")
-                ChatUtils.sendWithPrefix("  -> ITEM: ${stack.item}")
-                ChatUtils.sendWithPrefix(PlayerUtils.getSkinHash(stack) ?: "No skin hash")
+        if (entity is Player) {
+            PlayerUtils.getSkinHash(entity)?.let { add(hashField("skin", it)) }
+            PlayerUtils.getSkinUrl(entity)?.let { url ->
+                add(
+                    Component.literal("  skin url").withStyle(
+                        Style.EMPTY.withColor(ChatFormatting.AQUA)
+                            .withClickEvent(ClickEvent.OpenUrl(URI(url)))
+                    )
+                )
             }
-            else -> {
-                ChatUtils.sendWithPrefix("Class ${entity.type}")
+        }
+
+        if (entity is Display.ItemDisplay) {
+            addAll(describeStack("item", entity.itemStack))
+        }
+
+        if (showPosition.value) {
+            val pos = entity.blockPosition()
+            add(field("at", "${pos.x} ${pos.y} ${pos.z}"))
+        }
+
+        if (showEquipment.value && entity is LivingEntity) {
+            EQUIPMENT_SLOTS.forEach { slot ->
+                addAll(describeStack(slot.name.lowercase(), entity.getItemBySlot(slot)))
             }
         }
     }
 
-    fun attackInteractionDebug(entity: Interaction){
-        ChatUtils.sendWithPrefix("=== Interaction ===")
-        printNearbyInfoEntities(entity)
+    /** An item slot, skipped entirely when it is empty so empty slots do not fill the chat. */
+    private fun describeStack(label: String, stack: ItemStack): List<Component> {
+        if (stack.isEmpty) return emptyList()
+
+        return buildList {
+            add(field(label, stack.item.toString()))
+            PlayerUtils.getSkinHash(stack)?.let { add(hashField("$label hash", it)) }
+        }
     }
 
-    fun attackUnknownDebug(entity: Entity) {
-        ChatUtils.sendWithPrefix("=== Unknown Entity Debug ===")
-        ChatUtils.sendWithPrefix("Class: ${entity.type}")
-    }
+    private fun field(label: String, value: String): Component =
+        Component.literal("  $label: ").withStyle(ChatFormatting.DARK_GRAY)
+            .append(Component.literal(value).withStyle(ChatFormatting.WHITE))
 
+    /**
+     * A hash, which is the value most matchers are written against, so it is worth being able to
+     * take it out of the game without reading it off the screen character by character.
+     */
+    private fun hashField(label: String, hash: String): Component =
+        Component.literal("  $label: ").withStyle(ChatFormatting.DARK_GRAY)
+            .append(
+                Component.literal(hash).withStyle(
+                    Style.EMPTY
+                        .withColor(ChatFormatting.YELLOW)
+                        .withClickEvent(ClickEvent.CopyToClipboard(hash))
+                        .withHoverEvent(HoverEvent.ShowText(Component.literal("Click to copy")))
+                )
+            )
+
+    /**
+     * A lot of mobs are an item display with a name tag next to it and nothing else, so what stands
+     * around the target is often the only thing that identifies it.
+     */
     private fun printNearbyInfoEntities(entity: Entity, radius: Double = 0.5, height: Double = 2.0) {
         val level = Minecraft.getInstance().level ?: return
 
@@ -128,60 +175,29 @@ object MobHitDebugInfo : Feature() {
             null,
             entity.boundingBox.inflate(radius, height, radius)
         ).filter {
-            it !== entity && (
-                    (it is ArmorStand && it.hasCustomName()) ||
-                            it is Display
-                    )
+            it !== entity && ((it is ArmorStand && it.hasCustomName()) || it is Display)
         }
 
         if (entities.isEmpty()) return
 
-        ChatUtils.sendWithPrefix("=== Nearby Info Entities: ===")
+        ChatUtils.send(
+            Component.literal("  nearby (${entities.size}):").withStyle(ChatFormatting.GOLD)
+        )
 
-        entities.forEach {
-            val name = it.customName?.string ?: "No custom name"
-            ChatUtils.sendWithPrefix("Name: $name")
-            ChatUtils.sendWithPrefix("Type: ${it.type}")
-            sendEntityDebug(it)
+        entities.forEach { nearby ->
+            ChatUtils.send(
+                Component.literal("  - ${describeKind(nearby)}").withStyle(ChatFormatting.GRAY)
+            )
+            describe(nearby).forEach { ChatUtils.send(Component.literal("  ").append(it)) }
         }
     }
 
-
-    fun sendEntityDebug(entity: Entity) {
-
-        when (entity) {
-
-            is LivingEntity -> {
-                ChatUtils.sendWithPrefix("=== Equipment ===")
-
-                val slots = listOf(
-                    EquipmentSlot.MAINHAND,
-                    EquipmentSlot.OFFHAND,
-                    EquipmentSlot.FEET,
-                    EquipmentSlot.LEGS,
-                    EquipmentSlot.CHEST,
-                    EquipmentSlot.HEAD
-                )
-
-                for (slot in slots) {
-                    val stack = entity.getItemBySlot(slot)
-                    if (stack.isEmpty) continue
-
-                    ChatUtils.sendWithPrefix("  -> ITEM ($slot): ${stack.item}")
-                    ChatUtils.sendWithPrefix(PlayerUtils.getSkinHash(stack) ?: "No skin hash")
-                }
-            }
-
-            is Display.ItemDisplay -> {
-                val stack = entity.itemStack
-                if (stack.isEmpty) return
-
-                ChatUtils.sendWithPrefix("=== ItemDisplay ===")
-                ChatUtils.sendWithPrefix("  -> ITEM: ${stack.item}")
-                ChatUtils.sendWithPrefix(PlayerUtils.getSkinHash(stack) ?: "No skin hash")
-            }
-
-        }
-    }
-
+    private val EQUIPMENT_SLOTS = listOf(
+        EquipmentSlot.MAINHAND,
+        EquipmentSlot.OFFHAND,
+        EquipmentSlot.HEAD,
+        EquipmentSlot.CHEST,
+        EquipmentSlot.LEGS,
+        EquipmentSlot.FEET
+    )
 }

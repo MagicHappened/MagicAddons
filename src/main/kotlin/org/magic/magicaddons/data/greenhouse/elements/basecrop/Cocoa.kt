@@ -2,6 +2,7 @@ package org.magic.magicaddons.data.greenhouse.elements.basecrop
 
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Rotations
+import net.minecraft.world.item.Items
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
 import org.magic.magicaddons.data.greenhouse.CropArmorStand
@@ -15,6 +16,7 @@ object Cocoa : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Cocoa Beans",
         skyblockId = SkyBlockItemId.item("INK_SACK-3"),
+        displayItem = Items.COCOA_BEANS,
         stageDefs = listOf(
             CropStage(
                 blocks = listOf(
