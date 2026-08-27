@@ -29,6 +29,8 @@ jobs:
         - name: Upload Jar
           uses: actions/upload-artifact@v7
           with:
-            path: build/libs/*.jar
+            path: |
+              build/libs/*.jar
+              !build/libs/*-sources.jar
             archive: false
       

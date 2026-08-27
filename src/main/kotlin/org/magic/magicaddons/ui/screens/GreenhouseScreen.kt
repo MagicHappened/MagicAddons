@@ -24,6 +24,7 @@ import org.magic.magicaddons.ui.widgets.EnumWidget
 import org.magic.magicaddons.ui.widgets.config.ClickableButtonWidget
 import org.magic.magicaddons.ui.widgets.greenhouse.ElementWidget
 import org.magic.magicaddons.ui.widgets.greenhouse.GridWidget
+import org.magic.magicaddons.ui.widgets.greenhouse.HoverControls
 import org.magic.magicaddons.ui.widgets.greenhouse.PresetUI
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.ScreenUtil.drawMultilineBoxCentered
@@ -121,6 +122,8 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
 
     var slotSize: Int = 20
 
+    private val hoverControls = HoverControls()
+
 
     override fun init() {
         super.init()
@@ -144,6 +147,11 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         gridSelector.width = 100
         gridSelector.height = currentDisplayToggle.height
         addOverlay(gridSelector.overlay)
+
+        hoverControls.x = currentDisplayToggle.x
+        hoverControls.y = gridSelector.y + gridSelector.height + 10
+        hoverControls.width = gridSelector.x + gridSelector.width - currentDisplayToggle.x
+        hoverControls.layout()
         
         when (currentDisplay) {
             CurrentDisplay.Greenhouses -> {
@@ -323,7 +331,9 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
             timeText,
             10 + timeWidth/2, 18)
 
+        displayedGridWidget?.pinnedInfo = hoverControls.selected
         displayedGridWidget?.extractRenderState(graphics, mouseX, mouseY, delta)
+        hoverControls.extractRenderState(graphics, mouseX, mouseY, delta)
         gridSelector.extractRenderState(graphics, mouseX, mouseY, delta)
         currentDisplayToggle.extractRenderState(graphics, mouseX, mouseY, delta)
 
@@ -389,6 +399,9 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
             }
             return true
         }
+        if (hoverControls.mouseClicked(mouseButtonEvent, doubled)) {
+            return true
+        }
         if (displayedGridWidget?.mouseClicked(mouseButtonEvent, doubled) == true) {
             return true
         }
@@ -416,6 +429,11 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
                 hoveredElement = it
             }
         }
+        hoverControls.mouseMoved(mouseX, mouseY)
+        if (hoveredElement == null) {
+            hoveredElement = hoverControls.hoveredElement
+        }
+
         displayedGridWidget?.mouseMoved(mouseX, mouseY)
 
         if (hoveredElement == null) {

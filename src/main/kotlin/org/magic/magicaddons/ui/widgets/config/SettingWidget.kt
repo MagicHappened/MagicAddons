@@ -11,7 +11,6 @@ import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
 import org.magic.magicaddons.Common
 import org.magic.magicaddons.data.config.SettingNode
-import org.magic.magicaddons.ui.screens.FeatureEditScreen
 import org.magic.magicaddons.util.ScreenUtil.drawSimpleTooltip
 
 abstract class SettingWidget<T>(
@@ -25,6 +24,10 @@ abstract class SettingWidget<T>(
     open var height: Int = 40
 
     protected val childPadding: Int = 4
+
+    /** Backs the [GuiEventListener] focus contract, the screen hands the keyboard to this widget. */
+    private var focused: Boolean = false
+
     var baseWidget = false
     open var hovered: Boolean = false
     open var childrenExpanded: Boolean = false
@@ -131,14 +134,17 @@ abstract class SettingWidget<T>(
 
     override fun mouseMoved(mouseX: Double, mouseY: Double) {
         hovered = isMouseOver(mouseX, mouseY)
-        val currentScreen = Minecraft.getInstance().gui.screen()
-        if (currentScreen is FeatureEditScreen && hovered) {
-            currentScreen.hoveredWidget = this
-        }
         childrenWidgets.forEach {
             it.mouseMoved(mouseX, mouseY)
         }
     }
+
+    /**
+     * The deepest widget under the mouse, this one included, or null while the mouse is elsewhere.
+     * Children win over their parent because they are drawn on top of it.
+     */
+    open fun hoveredWidget(): SettingWidget<*>? =
+        childrenWidgets.firstNotNullOfOrNull { it.hoveredWidget() } ?: takeIf { hovered }
 
     override fun charTyped(characterEvent: CharacterEvent): Boolean {
         if (!childrenExpanded) return false
@@ -158,10 +164,10 @@ abstract class SettingWidget<T>(
         return false
     }
 
-    override fun isFocused(): Boolean = isFocused
+    override fun isFocused(): Boolean = focused
 
     override fun setFocused(focused: Boolean) {
-        this.isFocused = focused
+        this.focused = focused
     }
 
     override fun isMouseOver(mouseX: Double, mouseY: Double): Boolean {
