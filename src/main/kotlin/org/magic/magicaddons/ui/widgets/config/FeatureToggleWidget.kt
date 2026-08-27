@@ -5,6 +5,7 @@ import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.components.Renderable
 import net.minecraft.client.gui.components.events.GuiEventListener
 import net.minecraft.client.input.MouseButtonEvent
+import org.magic.magicaddons.ui.Focusable
 import org.magic.magicaddons.ui.widgets.CheckboxWidget
 import org.magic.magicaddons.ui.screens.ConfigScreen
 import org.magic.magicaddons.ui.screens.FeatureEditScreen
@@ -14,7 +15,10 @@ import org.magic.magicaddons.util.ScreenUtil.drawBorder
 
 class FeatureToggleWidget(
     val feature: Feature
-) : Renderable, GuiEventListener {
+) : Renderable, Focusable {
+
+    override var focusedState: Boolean = false
+
     var x: Int = 0
     var y: Int = 0
 
@@ -95,9 +99,5 @@ class FeatureToggleWidget(
     }
 
 
-    override fun setFocused(focused: Boolean) {
-        isFocused = focused
-    }
-    override fun isFocused(): Boolean = isFocused
 
 }

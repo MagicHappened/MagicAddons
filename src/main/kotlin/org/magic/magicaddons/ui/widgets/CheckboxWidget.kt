@@ -3,13 +3,17 @@ package org.magic.magicaddons.ui.widgets
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.components.events.GuiEventListener
 import net.minecraft.client.input.MouseButtonEvent
+import org.magic.magicaddons.ui.Focusable
 import org.magic.magicaddons.util.ScreenUtil.drawLine
 import kotlin.math.sqrt
 
 class CheckboxWidget(
     var size: Int = 24,
     var checked: Boolean = false
-) : GuiEventListener {
+) : Focusable {
+
+    override var focusedState: Boolean = false
+
 
     var x: Int = 0
     var y: Int = 0
@@ -77,9 +81,5 @@ class CheckboxWidget(
         return (mouseX.toInt() in x..x+size) && (mouseY.toInt() in y..y+size)
     }
 
-    override fun setFocused(focused: Boolean) {
-        isFocused = focused
-    }
 
-    override fun isFocused(): Boolean = isFocused
 }

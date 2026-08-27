@@ -7,12 +7,16 @@ import net.minecraft.client.gui.components.events.GuiEventListener
 import net.minecraft.client.gui.narration.NarratableEntry
 import net.minecraft.client.gui.narration.NarrationElementOutput
 import net.minecraft.client.input.MouseButtonEvent
+import org.magic.magicaddons.ui.Focusable
 import org.magic.magicaddons.features.Feature
 
 class ConfigCategoryWidget(
     val categoryName: String,
     categoryFeatures: List<Feature> // your featureMap
-) : Renderable, GuiEventListener, NarratableEntry {
+) : Renderable, Focusable, NarratableEntry {
+
+    override var focusedState: Boolean = false
+
 
     val categoryFeatureWidgets = mutableListOf<FeatureToggleWidget>()
 
@@ -82,11 +86,7 @@ class ConfigCategoryWidget(
         return false
     }
 
-    override fun setFocused(focused: Boolean) {
-        isFocused = focused
-    }
 
-    override fun isFocused(): Boolean = isFocused
     override fun narrationPriority(): NarratableEntry.NarrationPriority {
        return NarratableEntry.NarrationPriority.NONE
     }
