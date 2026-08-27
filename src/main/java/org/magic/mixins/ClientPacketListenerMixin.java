@@ -9,8 +9,10 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.network.protocol.game.ClientboundBlockUpdatePacket;
 import net.minecraft.network.protocol.game.ClientboundLevelParticlesPacket;
 import net.minecraft.network.protocol.game.ClientboundSetTimePacket;
+import net.minecraft.network.protocol.game.ClientboundSystemChatPacket;
 import net.minecraft.world.level.block.state.BlockState;
 import org.magic.magicaddons.events.EventBus;
+import org.magic.magicaddons.events.chat.OnSystemChatEvent;
 import org.magic.magicaddons.events.interact.OnBlockDestroyedEvent;
 import org.magic.magicaddons.events.interact.OnBlockPlacedEvent;
 import org.magic.magicaddons.events.interact.OnBlockChangedEvent;
@@ -114,6 +116,16 @@ public class ClientPacketListenerMixin {
         EventBus.post(new OnBlockChangedEvent(packet));
     }
 
-
+    @Inject(
+            method = "handleSystemChat(Lnet/minecraft/network/protocol/game/ClientboundSystemChatPacket;)V",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/network/protocol/PacketUtils;ensureRunningOnSameThread(Lnet/minecraft/network/protocol/Packet;Lnet/minecraft/network/PacketListener;Lnet/minecraft/network/PacketProcessor;)V",
+                    shift = At.Shift.AFTER
+            )
+    )
+    private void onSystemChat(ClientboundSystemChatPacket packet, CallbackInfo ci) {
+        EventBus.post(new OnSystemChatEvent(packet.content(), packet.overlay()));
+    }
 
 }

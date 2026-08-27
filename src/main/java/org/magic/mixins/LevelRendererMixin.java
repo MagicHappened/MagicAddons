@@ -74,20 +74,20 @@ public abstract class LevelRendererMixin {
             Entity entity = entry.getKey();
             EntityUtils.HighlightSource source = entry.getValue();
 
-            if (!(entity instanceof LivingEntity living)) continue;
-
-            if (living instanceof Player) {
-                living.setCustomNameVisible(false);
+            // any entity, not just living ones: the grass treasure and several safari uniques
+            // are item displays, and renderFakeEntity is generic over the renderer already
+            if (entity instanceof Player) {
+                entity.setCustomNameVisible(false);
             }
             renderFakeEntity(
-                    living,
+                    entity,
                     poseStack,
                     levelRenderState,
                     submitNodeCollector,
                     (ent, state) -> {
 
                         // highlight-specific logic
-                        state.outlineColor = source.getHighlightColor();
+                        state.outlineColor = source.highlightColor(ent);
                         state.isInvisible = true;
                     },
                     true

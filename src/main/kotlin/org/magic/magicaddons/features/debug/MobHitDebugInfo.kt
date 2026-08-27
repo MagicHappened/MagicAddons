@@ -7,7 +7,9 @@ import net.minecraft.network.chat.Style
 import net.minecraft.world.entity.Display
 import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.EquipmentSlot
+import net.minecraft.world.entity.Interaction
 import net.minecraft.world.entity.LivingEntity
+import net.minecraft.world.entity.animal.parrot.Parrot
 import net.minecraft.world.entity.decoration.ArmorStand
 import net.minecraft.world.entity.player.Player
 import org.magic.magicaddons.data.config.BooleanSetting
@@ -45,6 +47,8 @@ object MobHitDebugInfo : Feature() {
             is Player -> attackPlayerDebug(target)
             is ArmorStand -> attackArmorStandDebug(target)
             is LivingEntity -> attackMobDebug(target)
+            is Display -> attackDisplayDebug(target)
+            is Interaction -> attackInteractionDebug(target)
             else -> attackUnknownDebug(target)
         }
     }
@@ -92,10 +96,29 @@ object MobHitDebugInfo : Feature() {
 
         printNearbyInfoEntities(mob)
     }
+    fun attackDisplayDebug(entity: Display){
+        when (entity) {
+            is Display.ItemDisplay -> {
+                val stack = entity.itemStack
+                if (stack.isEmpty) return
+                ChatUtils.sendWithPrefix("=== ItemDisplay ===")
+                ChatUtils.sendWithPrefix("  -> ITEM: ${stack.item}")
+                ChatUtils.sendWithPrefix(PlayerUtils.getSkinHash(stack) ?: "No skin hash")
+            }
+            else -> {
+                ChatUtils.sendWithPrefix("Class ${entity.type}")
+            }
+        }
+    }
+
+    fun attackInteractionDebug(entity: Interaction){
+        ChatUtils.sendWithPrefix("=== Interaction ===")
+        printNearbyInfoEntities(entity)
+    }
 
     fun attackUnknownDebug(entity: Entity) {
         ChatUtils.sendWithPrefix("=== Unknown Entity Debug ===")
-        ChatUtils.sendWithPrefix("Class: ${entity::class.qualifiedName}")
+        ChatUtils.sendWithPrefix("Class: ${entity.type}")
     }
 
     private fun printNearbyInfoEntities(entity: Entity, radius: Double = 0.5, height: Double = 2.0) {

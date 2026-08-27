@@ -13,7 +13,8 @@
     "ScreenMixin",
     "EntityRenderStateMixin",
     "CustomHeadLayerMixin",
-    "LevelExtractorMixin"
+    "LevelExtractorMixin",
+    "GuiMixin"
   ],
   "injectors": {
     "defaultRequire": 1

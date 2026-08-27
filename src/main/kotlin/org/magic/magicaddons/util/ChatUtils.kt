@@ -33,6 +33,11 @@ object ChatUtils {
         Minecraft.getInstance().player?.sendSystemMessage(prefixed)
     }
 
+    /** Runs a command as if the player typed it, [command] is given without the leading slash. */
+    fun sendCommand(command: String) {
+        Minecraft.getInstance().player?.connection?.sendCommand(command)
+    }
+
     fun buildWithPrefix(message: Component): Component {
         val component = Component.literal("[MA] ")
             .withStyle(ChatFormatting.GOLD)

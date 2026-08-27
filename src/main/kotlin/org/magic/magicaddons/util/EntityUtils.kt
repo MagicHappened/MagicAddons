@@ -28,7 +28,13 @@ object EntityUtils {
 
     interface HighlightSource {
         val highlightPriority: Int
-        val highlightColor: Int
+
+        /**
+         * Color of the outline this source paints on [entity], as ARGB.
+         * Takes the entity so a single source can color the things it highlights differently
+         * (for example treasure versus mobs).
+         */
+        fun highlightColor(entity: Entity): Int
     }
 
 
@@ -110,15 +116,15 @@ object EntityUtils {
                 return@forEach
             }
 
-            val informationEntities = if (entity is LivingEntity) {
-                nearby
-                    .filter {
-                        it !== entity && (
-                                (it is ArmorStand && it.hasCustomName()) ||
-                                it is Display
-                                )
-                    }
-            } else null
+            // collected for every entity, not just mobs: a lot of entities are an item display with a
+            // name tag next to it and nothing else, and that name tag is all we know about them
+            val informationEntities = nearby
+                .filter {
+                    it !== entity && (
+                            (it is ArmorStand && it.hasCustomName()) ||
+                            it is Display
+                            )
+                }
 
             val distance = sqrt(entity.distanceToSqr(player))
 
@@ -167,7 +173,7 @@ object EntityUtils {
     }
 
     private fun isNearMeaningfulEntity(world: ClientLevel, entity: Entity, nearby: List<Entity>): Boolean {
-        val box = entity.boundingBox.inflate(2.0)
+        val box = entity.boundingBox.inflate(1.0)
 
         return world.getEntities(
             entity,

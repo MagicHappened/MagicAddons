@@ -11,7 +11,7 @@ import java.io.File
 
 object MagicAddonsConfigJsonHandler {
 
-    private const val CONFIG_VERSION_NUM = "1.0.1"
+    private const val CONFIG_VERSION_NUM = "1.0.3"
 
     private val gson = GsonBuilder().setPrettyPrinting().create()
     private val file = File("config/magicaddons/magicaddons.json")
@@ -32,8 +32,6 @@ object MagicAddonsConfigJsonHandler {
 
         if (version == null || version != CONFIG_VERSION_NUM) {
             raw = OldConfigHandler.updateConfig(raw, CONFIG_VERSION_NUM)
-
-            file.writeText(gson.toJson(raw))
         }
 
         @Suppress("UNCHECKED_CAST")
@@ -47,11 +45,24 @@ object MagicAddonsConfigJsonHandler {
         configMap = gson.fromJson(gson.toJson(configSection), type) ?: mutableMapOf()
 
         FeatureManager.syncFromConfigJson()
+
+        // written straight back from the live settings so migrated keys, keys of settings that no
+        // longer exist and keys of removed features never linger in the file
+        writeToDisk()
+
         Common.LOGGER.info("Successfully loaded config")
         return true
     }
 
     fun save(): Boolean {
+        writeToDisk()
+
+        EventBus.post(ConfigChangedEvent())
+        Common.LOGGER.info("Successfully saved config")
+        return true
+    }
+
+    private fun writeToDisk() {
         FeatureManager.syncToConfigJson()
 
         val wrapped = mutableMapOf<String, Any>(
@@ -61,10 +72,6 @@ object MagicAddonsConfigJsonHandler {
 
         file.parentFile.mkdirs()
         file.writeText(gson.toJson(wrapped))
-
-        EventBus.post(ConfigChangedEvent())
-        Common.LOGGER.info("Successfully saved config")
-        return true
     }
 
     private fun extractVersion(raw: Map<String, Any>): String? {
