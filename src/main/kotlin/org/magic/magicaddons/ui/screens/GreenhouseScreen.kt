@@ -148,10 +148,7 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         gridSelector.height = currentDisplayToggle.height
         addOverlay(gridSelector.overlay)
 
-        hoverControls.x = currentDisplayToggle.x
-        hoverControls.y = gridSelector.y + gridSelector.height + 10
-        hoverControls.width = gridSelector.x + gridSelector.width - currentDisplayToggle.x
-        hoverControls.layout()
+        hoverControls.layoutAgainstGrid(startX + containerSize, startY, containerSize)
         
         when (currentDisplay) {
             CurrentDisplay.Greenhouses -> {
@@ -331,9 +328,16 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
             timeText,
             10 + timeWidth/2, 18)
 
-        displayedGridWidget?.pinnedInfo = hoverControls.selected
+        // presets are a plan rather than a greenhouse that exists, no plant in one has a stage,
+        // a water level or an age to report
+        val showHoverControls = currentDisplay == CurrentDisplay.Greenhouses
+
+        displayedGridWidget?.pinnedInfo = if (showHoverControls) hoverControls.hoveredInfo else null
         displayedGridWidget?.extractRenderState(graphics, mouseX, mouseY, delta)
-        hoverControls.extractRenderState(graphics, mouseX, mouseY, delta)
+
+        if (showHoverControls) {
+            hoverControls.extractRenderState(graphics, mouseX, mouseY, delta)
+        }
         gridSelector.extractRenderState(graphics, mouseX, mouseY, delta)
         currentDisplayToggle.extractRenderState(graphics, mouseX, mouseY, delta)
 
@@ -399,9 +403,6 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
             }
             return true
         }
-        if (hoverControls.mouseClicked(mouseButtonEvent, doubled)) {
-            return true
-        }
         if (displayedGridWidget?.mouseClicked(mouseButtonEvent, doubled) == true) {
             return true
         }
@@ -429,9 +430,8 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
                 hoveredElement = it
             }
         }
-        hoverControls.mouseMoved(mouseX, mouseY)
-        if (hoveredElement == null) {
-            hoveredElement = hoverControls.hoveredElement
+        if (currentDisplay == CurrentDisplay.Greenhouses) {
+            hoverControls.mouseMoved(mouseX, mouseY)
         }
 
         displayedGridWidget?.mouseMoved(mouseX, mouseY)

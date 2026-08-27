@@ -1,6 +1,7 @@
 package org.magic.magicaddons.data.greenhouse.elements
 
 import net.minecraft.core.BlockPos
+import net.minecraft.world.item.Items
 import net.minecraft.world.level.block.Blocks
 import org.magic.magicaddons.data.greenhouse.CropBlockState
 import org.magic.magicaddons.data.greenhouse.CropDefinition
@@ -28,6 +29,7 @@ object DeadPlant : CropDefinitionProvider {
         ),
         requiredSoil = setOf(Blocks.SAND, Blocks.DIRT, Blocks.FARMLAND, Blocks.MYCELIUM, Blocks.SOUL_SAND, Blocks.END_STONE),
         needsWater = false,
-        isMutation = true // see if needed
+        isMutation = true, // see if needed
+        displayItem = Items.DEAD_BUSH
     )
 }
