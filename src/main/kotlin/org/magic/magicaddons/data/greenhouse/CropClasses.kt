@@ -269,6 +269,12 @@ open class CropStage(
                 center.y + standDef.offset.y,
                 center.z + standDef.offset.z
             )
+
+            // a stand built to be drawn and never put in the world has no id of its own, and
+            // rendering one holding an item asks for that id, which throws rather than returning
+            // nothing. Any id will do, so long as it is not one the world handed out.
+            stand.id = FAKE_ENTITY_ID
+
             stand.isInvisible = true
             standDef.headRotation?.let { stand.headPose = it }
             val stack = PlayerUtils.getItemFromHash(standDef.hashString)
@@ -286,6 +292,11 @@ open class CropStage(
         val stands: List<ArmorStand>,
         val blockMap: Map<BlockPos, BlockState>
     )
+
+    companion object {
+        /** Below every id the world assigns, so a stand of ours is never taken for a real one. */
+        private const val FAKE_ENTITY_ID: Int = -1
+    }
 
 
 }
