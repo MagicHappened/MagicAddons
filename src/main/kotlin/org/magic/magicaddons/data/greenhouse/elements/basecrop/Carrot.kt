@@ -1,6 +1,7 @@
 package org.magic.magicaddons.data.greenhouse.elements.basecrop
 
 import net.minecraft.core.BlockPos
+import org.magic.magicaddons.data.greenhouse.DECAY_TIME_MS
 import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
 import org.magic.magicaddons.data.greenhouse.CropBlockState
 import org.magic.magicaddons.data.greenhouse.CropDefinition
@@ -88,7 +89,7 @@ object Carrot : CropDefinitionProvider {
 
         ),
         maxStage = 8,
-        decayTimeMs = -1,
+        decayTimeMs = DECAY_TIME_MS,
         isBaseCrop = true
 
     )

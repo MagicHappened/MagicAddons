@@ -16,6 +16,7 @@ import net.minecraft.network.chat.Component
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.block.Blocks
 import org.magic.magicaddons.ui.Focusable
+import org.magic.magicaddons.data.greenhouse.DECAY_TIME_UNKNOWN
 import org.magic.magicaddons.data.greenhouse.GreenhouseElementInstance
 import org.magic.magicaddons.data.greenhouse.LayoutSlot
 import org.magic.magicaddons.data.greenhouse.GrowthStageInfo
@@ -57,7 +58,7 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, Focus
                 is GrowthStageInfo.Estimated -> "~${stage.range.first}-${stage.range.last}"
                 null -> null
             }
-            WaterLevel -> instance.waterLevel?.let { "$it" }
+            WaterLevel -> instance.waterLevel?.let { "$it%" }
             DecayTime -> decayRemainingMs(instance)?.let { readableDuration(it) }
         }
     }
@@ -175,7 +176,7 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, Focus
 
             // a plant that never drinks has no water level worth a line of its own
             if (cropDefinition.needsWater) {
-                add(labelled("Water", instance.waterLevel?.toString() ?: "Unknown"))
+                add(labelled("Water", instance.waterLevel?.let { "$it%" } ?: "Unknown"))
             }
 
             decayRemainingMs(instance)?.let { add(labelled("Decays in", readableDuration(it))) }
@@ -215,6 +216,8 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, Focus
          */
         private fun decayRemainingMs(instance: GreenhouseElementInstance): Long? {
             val decayTime = instance.cropDef.decayTimeMs ?: return null
+            if (decayTime == DECAY_TIME_UNKNOWN) return null
+
             val age = instance.age ?: return null
 
             return (decayTime - age).coerceAtLeast(0L)

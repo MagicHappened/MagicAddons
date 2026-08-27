@@ -343,6 +343,15 @@ class CropStagePattern(
 }
 interface CropExtraInfo
 
+/** Everything in a greenhouse that decays does so three days after it was planted. */
+const val DECAY_TIME_MS: Long = 3L * 24 * 60 * 60 * 1000
+
+/**
+ * [CropDefinition.decayTimeMs] for a plant whose decay we do not know or that has none. Nothing is
+ * shown for it, an unknown countdown says less than no countdown at all.
+ */
+const val DECAY_TIME_UNKNOWN: Long = -1L
+
 data class CropDefinition(
     val name: String,
     val skyblockId: SkyBlockId?,

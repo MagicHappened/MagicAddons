@@ -2,6 +2,7 @@ package org.magic.magicaddons.data.greenhouse.elements.basecrop
 
 import net.minecraft.core.BlockPos
 import net.minecraft.world.level.block.Blocks
+import org.magic.magicaddons.data.greenhouse.DECAY_TIME_MS
 import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
 import org.magic.magicaddons.data.greenhouse.CropBlockState
 import org.magic.magicaddons.data.greenhouse.CropDefinition
@@ -57,7 +58,7 @@ object Netherwart : CropDefinitionProvider {
 
         ),
         maxStage = 8,
-        decayTimeMs = -1,
+        decayTimeMs = DECAY_TIME_MS,
         requiredSoil = setOf(Blocks.SOUL_SAND),
         needsWater = false,
         isBaseCrop = true
