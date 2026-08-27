@@ -9,6 +9,7 @@ import net.minecraft.network.chat.Component
 import org.magic.magicaddons.ui.Focusable
 import org.magic.magicaddons.data.greenhouse.GreenhouseGrid
 import org.magic.magicaddons.data.greenhouse.transfer.LayoutFormat
+import org.magic.magicaddons.data.greenhouse.transfer.MagicAddonsFormat
 import org.magic.magicaddons.data.greenhouse.transfer.LayoutTransferResult
 import org.magic.magicaddons.data.greenhouse.transfer.SkyMutationsFormat
 import org.magic.magicaddons.data.greenhouse.GreenhouseLayout
@@ -158,7 +159,7 @@ class PresetUI(
 
 
     fun importPreset(type: ImportExportFormatContext.LayoutFormatType) {
-        val format = formatFor(type) ?: return
+        val format = formatFor(type)
         val clipboard = Minecraft.getInstance().keyboardHandler.clipboard
 
         if (!format.canImport(clipboard)) {
@@ -190,7 +191,7 @@ class PresetUI(
             return
         }
 
-        val format = formatFor(type) ?: return
+        val format = formatFor(type)
         val result = format.export(preset)
 
         result.notes.forEach { ChatUtils.sendWithPrefix(it) }
@@ -207,14 +208,11 @@ class PresetUI(
         }
     }
 
-    /** The format behind a menu entry, or null with a word to the player when there is none yet. */
-    private fun formatFor(type: ImportExportFormatContext.LayoutFormatType): LayoutFormat? =
+    /** The format behind a menu entry. */
+    private fun formatFor(type: ImportExportFormatContext.LayoutFormatType): LayoutFormat =
         when (type) {
             ImportExportFormatContext.LayoutFormatType.SkyMutations -> SkyMutationsFormat
-            ImportExportFormatContext.LayoutFormatType.MagicAddons -> {
-                ChatUtils.sendWithPrefix("Not Yet Implemented")
-                null
-            }
+            ImportExportFormatContext.LayoutFormatType.MagicAddons -> MagicAddonsFormat
         }
 
 }

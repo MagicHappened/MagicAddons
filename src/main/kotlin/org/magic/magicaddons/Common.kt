@@ -42,5 +42,10 @@ object Common {
 
         /** Something that removes or destroys, such as a delete cross. */
         const val DANGER_COLOR: Int = 0xFFFF0000.toInt()
+
+        /** The water meter: what a plant has, what it owes, and the track they sit in. */
+        const val WATER_FULL_COLOR: Int = 0xFF3F7FDF.toInt()
+        const val WATER_DEBT_COLOR: Int = 0xFFCC3333.toInt()
+        const val WATER_TRACK_COLOR: Int = 0xB0202020.toInt()
     }
 }

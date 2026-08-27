@@ -2,6 +2,7 @@ package org.magic.magicaddons.ui.widgets.greenhouse
 
 import net.minecraft.ChatFormatting
 import net.minecraft.client.Minecraft
+import kotlin.math.absoluteValue
 import org.magic.magicaddons.Common
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.components.Renderable
@@ -16,13 +17,14 @@ import net.minecraft.network.chat.Component
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.block.Blocks
 import org.magic.magicaddons.ui.Focusable
-import org.magic.magicaddons.data.greenhouse.DECAY_TIME_UNKNOWN
+import org.magic.magicaddons.data.greenhouse.NEVER_DECAYS
 import org.magic.magicaddons.data.greenhouse.GreenhouseElementInstance
 import org.magic.magicaddons.data.greenhouse.LayoutSlot
 import org.magic.magicaddons.data.greenhouse.GrowthStageInfo
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.ScreenUtil
 import org.magic.magicaddons.util.ScreenUtil.drawBorder
+import org.magic.magicaddons.util.ScreenUtil.fillRounded
 import org.magic.magicaddons.util.ScreenUtil.renderFakeItem
 
 class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, Focusable {
@@ -108,6 +110,12 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, Focus
      * Nothing is drawn while that fact is unknown, an empty backdrop says less than the plant does.
      */
     fun renderHoverButtonInfo(graphics: GuiGraphicsExtractor, info: HoverInfo) {
+        // water is a level rather than a reading, and a meter says that faster than a number does
+        if (info == HoverInfo.WaterLevel) {
+            instance.waterLevel?.let { renderWaterBar(graphics, it) }
+            return
+        }
+
         val text = info.valueFor(instance) ?: return
         val font = Minecraft.getInstance().font
 
@@ -135,6 +143,48 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, Focus
             graphics.text(font, text, 0, 0, Common.UI.OVERLAY_TEXT_COLOR, false)
         } finally {
             pose.popMatrix()
+        }
+    }
+
+    /**
+     * The water meter, drawn along the bottom of the plant.
+     *
+     * A plant holds between -100 and 100 water. What it has fills from the left in blue, what it
+     * owes fills from the right in red, which is the way the game words its own bar: watered plants
+     * fill up from the front, dry ones lose ground from the back.
+     */
+    private fun renderWaterBar(graphics: GuiGraphicsExtractor, waterLevel: Int) {
+        val barWidth = width - WATER_BAR_INSET * 2
+        if (barWidth < WATER_BAR_MIN_WIDTH) return
+
+        val left = widgetX + WATER_BAR_INSET
+        val right = left + barWidth
+        val bottom = widgetY + height - WATER_BAR_INSET
+        val top = bottom - WATER_BAR_HEIGHT
+
+        graphics.fillRounded(left, top, right, bottom, WATER_BAR_RADIUS, Common.UI.WATER_TRACK_COLOR)
+
+        val filled = barWidth * waterLevel.absoluteValue.coerceAtMost(100) / 100
+        if (filled <= 0) return
+
+        if (waterLevel >= 0) {
+            graphics.fillRounded(
+                left,
+                top,
+                left + filled,
+                bottom,
+                WATER_BAR_RADIUS,
+                Common.UI.WATER_FULL_COLOR
+            )
+        } else {
+            graphics.fillRounded(
+                right - filled,
+                top,
+                right,
+                bottom,
+                WATER_BAR_RADIUS,
+                Common.UI.WATER_DEBT_COLOR
+            )
         }
     }
 
@@ -206,6 +256,13 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, Focus
         /** A slot is small, but the numbers still have to be legible from across the grid. */
         private const val INFO_TEXT_SCALE: Float = 0.75f
 
+        private const val WATER_BAR_HEIGHT: Int = 4
+        private const val WATER_BAR_INSET: Int = 3
+        private const val WATER_BAR_RADIUS: Int = 1
+
+        /** Below this the meter is too short to read a level off, so nothing is drawn. */
+        private const val WATER_BAR_MIN_WIDTH: Int = 8
+
         private fun labelled(label: String, value: String): Component =
             Component.literal("$label: ").withStyle(ChatFormatting.GRAY)
                 .append(Component.literal(value).withStyle(ChatFormatting.WHITE))
@@ -216,7 +273,7 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, Focus
          */
         private fun decayRemainingMs(instance: GreenhouseElementInstance): Long? {
             val decayTime = instance.cropDef.decayTimeMs ?: return null
-            if (decayTime == DECAY_TIME_UNKNOWN) return null
+            if (decayTime == NEVER_DECAYS) return null
 
             val age = instance.age ?: return null
 
