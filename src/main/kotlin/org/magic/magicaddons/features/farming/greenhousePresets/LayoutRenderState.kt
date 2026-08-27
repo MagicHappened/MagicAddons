@@ -52,10 +52,10 @@ object LayoutRenderState {
     }
 
     /** Enough colour to read the mark through, little enough to see the block under it. */
-    private const val FILL_ALPHA: Int = 0x55
+    private const val FILL_ALPHA: Int = 0x4D
 
     /** The blue of a missing block, worn by the armor stands a ghosted crop is made of. */
-    const val GHOST_STAND_TINT: Int = 0x553399FF
+    const val GHOST_STAND_TINT: Int = 0x4D3399FF
 
     /**
      * Ground a hoe turns into other ground. A dirt where farmland belongs is not the wrong block,

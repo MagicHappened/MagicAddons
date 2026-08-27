@@ -40,13 +40,21 @@ object WorldRender {
     private const val OUTLINE_WIDTH: Float = 3f
 
     /**
-     * Pulls every box in off its faces a little.
+     * Pulls an outlined box in off its faces a little.
      *
      * Two marked blocks side by side share a face, and drawn flush their edges land on top of each
      * other and read as one long box rather than as two. A gap this small is invisible on its own
      * and enough to tell them apart.
      */
-    private const val BOX_INSET: Double = 0.012
+    private const val OUTLINE_INSET: Double = 0.012
+
+    /**
+     * Pushes a filled box out past the block it covers.
+     *
+     * Drawn flush the fill sits exactly on the block's own faces and fights them for depth, and
+     * drawn inside it is simply behind them, which is why an inset fill never appeared at all.
+     */
+    private const val FILL_EXPAND: Double = 0.002
 
     private val RANDOM: RandomSource = RandomSource.create(0)
 
@@ -68,11 +76,13 @@ object WorldRender {
     ) {
         if (shape.isEmpty) return
 
-        val boxes = shape.toAabbs().map { it.inset() }
+        val boxes = shape.toAabbs()
 
         atBlock(poseStack, cameraPos, pos) { pose ->
             collector.submitCustomGeometry(pose, RenderTypes.debugFilledBox()) { transform, consumer ->
-                boxes.forEach { consumer.fillBox(transform, it, ARGB.color(fillAlpha, color)) }
+                boxes.forEach {
+                    consumer.fillBox(transform, it.grow(FILL_EXPAND), ARGB.color(fillAlpha, color))
+                }
             }
 
             // one call per box, so two marked blocks side by side stay two boxes rather than
@@ -80,7 +90,7 @@ object WorldRender {
             boxes.forEach { box ->
                 collector.submitShapeOutline(
                     pose,
-                    Shapes.create(box),
+                    Shapes.create(box.grow(-OUTLINE_INSET)),
                     RenderTypes.LINES,
                     color,
                     OUTLINE_WIDTH,
@@ -153,12 +163,16 @@ object WorldRender {
         }
     }
 
-    private fun AABB.inset(): AABB = AABB(
-        minX + BOX_INSET, minY + BOX_INSET, minZ + BOX_INSET,
-        maxX - BOX_INSET, maxY - BOX_INSET, maxZ - BOX_INSET
+    /** [by] out on every face, or in when it is negative. */
+    private fun AABB.grow(by: Double): AABB = AABB(
+        minX - by, minY - by, minZ - by,
+        maxX + by, maxY + by, maxZ + by
     )
 
-    /** The six faces of [box], wound so the fill is visible from any side. */
+    /**
+     * The six faces of [box], each wound both ways so that whichever winding the pipeline decides
+     * to cull, the face is still there from the other side.
+     */
     private fun VertexConsumer.fillBox(pose: PoseStack.Pose, box: AABB, color: Int) {
         val x1 = box.minX.toFloat()
         val y1 = box.minY.toFloat()
@@ -167,12 +181,24 @@ object WorldRender {
         val y2 = box.maxY.toFloat()
         val z2 = box.maxZ.toFloat()
 
-        face(pose, color, x1, y1, z1, x1, y2, z1, x2, y2, z1, x2, y1, z1)
-        face(pose, color, x2, y1, z2, x2, y2, z2, x1, y2, z2, x1, y1, z2)
-        face(pose, color, x1, y1, z2, x1, y2, z2, x1, y2, z1, x1, y1, z1)
-        face(pose, color, x2, y1, z1, x2, y2, z1, x2, y2, z2, x2, y1, z2)
-        face(pose, color, x1, y1, z2, x1, y1, z1, x2, y1, z1, x2, y1, z2)
-        face(pose, color, x1, y2, z1, x1, y2, z2, x2, y2, z2, x2, y2, z1)
+        bothWays(pose, color, x1, y1, z1, x1, y2, z1, x2, y2, z1, x2, y1, z1)
+        bothWays(pose, color, x2, y1, z2, x2, y2, z2, x1, y2, z2, x1, y1, z2)
+        bothWays(pose, color, x1, y1, z2, x1, y2, z2, x1, y2, z1, x1, y1, z1)
+        bothWays(pose, color, x2, y1, z1, x2, y2, z1, x2, y2, z2, x2, y1, z2)
+        bothWays(pose, color, x1, y1, z2, x1, y1, z1, x2, y1, z1, x2, y1, z2)
+        bothWays(pose, color, x1, y2, z1, x1, y2, z2, x2, y2, z2, x2, y2, z1)
+    }
+
+    private fun VertexConsumer.bothWays(
+        pose: PoseStack.Pose,
+        color: Int,
+        ax: Float, ay: Float, az: Float,
+        bx: Float, by: Float, bz: Float,
+        cx: Float, cy: Float, cz: Float,
+        dx: Float, dy: Float, dz: Float
+    ) {
+        face(pose, color, ax, ay, az, bx, by, bz, cx, cy, cz, dx, dy, dz)
+        face(pose, color, dx, dy, dz, cx, cy, cz, bx, by, bz, ax, ay, az)
     }
 
     private fun VertexConsumer.face(
