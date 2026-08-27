@@ -42,7 +42,10 @@ object GreenhousePresets : Feature() {
     @OnlyNonGuest
     @OnlyIn(SkyBlockIsland.GARDEN)
     private fun onIslandChange(event: IslandChangeEvent){
-        GreenhouseData //for now for initialization
+        // an object only registers on the event bus once something touches it, and these three
+        // are only ever reached from their own handlers, so nothing else would wake them
+        GreenhouseData
+        GreenhouseWatering
         CropRegistry
 
 
