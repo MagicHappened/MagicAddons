@@ -111,7 +111,8 @@ object CropStageExporter {
                     xRotation = entity.xRot,
                     yRotation = entity.yRot,
                     hash = hash,
-                    customName = customName
+                    customName = customName,
+                    isSmall = entity.isSmall
                 )
             )
         }
@@ -292,6 +293,10 @@ $offsets
                         if (stand.customName != null){
                             fields.add("containsCustomName = \"${stand.customName}\"")
                         }
+                        // written only when it differs, since a definition takes small as read
+                        if (!stand.isSmall) {
+                            fields.add("isSmall = false")
+                        }
 
                         append(
                             """
@@ -351,7 +356,9 @@ CropArmorStand(
         val xRotation: Float,
         val yRotation: Float,
         val hash: String?,
-        val customName: String?
+        val customName: String?,
+        /** How the stand is built, which is what decides where the head it carries ends up. */
+        val isSmall: Boolean
     )
 
     data class CropBlockExport(

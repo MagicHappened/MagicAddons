@@ -37,6 +37,12 @@ data class CropArmorStand(
     val yRotation: Float? = null,
     val hashString: String? = null,
     val containsCustomName: String? = null,
+    /**
+     * How the stand is built, which decides where its head lands. A stand's position is its feet,
+     * so rebuilding a small one at full size puts the skull it carries well above where it belongs.
+     * Nearly every greenhouse stand is small, so that is the default and the odd one out says so.
+     */
+    val isSmall: Boolean = true,
 ) {
     companion object {
         fun matcherPattern(
@@ -269,6 +275,14 @@ open class CropStage(
                 center.y + standDef.offset.y,
                 center.z + standDef.offset.z
             )
+
+            // the flags ride in synched data rather than in setters, which are not ours to call
+            if (standDef.isSmall) {
+                stand.entityData.set(
+                    ArmorStand.DATA_CLIENT_FLAGS,
+                    ArmorStand.CLIENT_FLAG_SMALL.toByte()
+                )
+            }
 
             // a stand built to be drawn and never put in the world has no id of its own, and
             // rendering one holding an item asks for that id, which throws rather than returning

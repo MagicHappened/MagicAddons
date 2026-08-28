@@ -202,7 +202,7 @@ object LayoutRenderState {
                 val soil = grid.getPosForSlotCoords(instance.slot.x, instance.slot.y)
                     ?: return@forEach
 
-                val stage = firstStageOf(instance.cropDef) ?: return@forEach
+                val stage = ghostStageOf(instance.cropDef) ?: return@forEach
                 val render = stage.toRenderData(level, soil, instance.cropDef.footprint)
 
                 render.blockMap.forEach { (pos, state) ->
@@ -269,19 +269,32 @@ object LayoutRenderState {
     }
 
     /**
-     * The stage a crop is at the moment it goes in the ground.
+     * What a crop looks like the moment it is put down, which is not the same question for the two
+     * kinds of crop.
      *
-     * A crop nobody has described a first stage for is skipped and named once, since a plan that
+     * A base crop is planted as a seed and grows, so it starts at its first stage. A mutation is
+     * placed already grown and never grows further, so it looks like its last stage from the moment
+     * it goes in, and drawing it as a seedling would show the player something they will never see.
+     *
+     * A crop nobody has described that stage for is skipped and named once, since a plan that
      * silently leaves a plant out is worse than one that says which plant it could not draw.
      */
-    private fun firstStageOf(definition: CropDefinition): CropStage? {
-        val stage = definition.stageDefs
+    private fun ghostStageOf(definition: CropDefinition): CropStage? {
+        val stages = definition.stageDefs
             .flatMap { if (it is CropStagePattern) it.expand() else listOf(it) }
-            .filter { 1 in it.stageRange }
-            .minByOrNull { it.stageRange.first }
+
+        val stage = if (definition.isMutation) {
+            stages.filter { definition.maxStage in it.stageRange }
+                .maxByOrNull { it.stageRange.last }
+        } else {
+            stages.filter { 1 in it.stageRange }
+                .minByOrNull { it.stageRange.first }
+        }
 
         if (stage == null && reportedMissingStage.add(definition.name)) {
-            ChatUtils.sendWithPrefix("No first stage described for ${definition.name}, skipping it.")
+            val which = if (definition.isMutation) "last" else "first"
+
+            ChatUtils.sendWithPrefix("No $which stage described for ${definition.name}, skipping it.")
         }
 
         return stage
