@@ -19,6 +19,7 @@ import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.CropDefinition
 import org.magic.magicaddons.data.greenhouse.GREENHOUSE_SOIL_Y
 import org.magic.magicaddons.data.greenhouse.CropRegistry
+import org.magic.magicaddons.data.greenhouse.CropStagePattern
 import org.magic.magicaddons.data.greenhouse.GreenhouseGrid
 import org.magic.magicaddons.data.greenhouse.GrowthStageInfo
 import org.magic.magicaddons.data.greenhouse.LayoutSlot
@@ -617,11 +618,25 @@ object CropCollector : EntityUtils.HighlightSource {
             }
         }
 
+        // the diagnosis names the plant, but the definitions may already describe this very
+        // stage: a fresh entry is only unrecorded when nothing recorded matches what stands here
+        val recorded = def.stageDefs
+            .flatMap { if (it is CropStagePattern) it.expand() else listOf(it) }
+            .filter { stage in it.stageRange }
+            .map { it.matchesStage(standingOn, stands, def.footprint) }
+            .firstOrNull { it.matched }
+
+        val status = when {
+            recorded == null -> Status.Unrecorded
+            recorded.rotationLegacy -> Status.Legacy
+            else -> Status.Current
+        }
+
         addEntry(
             def = def,
             origin = standingOn,
             stands = stands,
-            status = Status.Unrecorded,
+            status = status,
             stageText = stage.toString(),
             stageNum = stage,
             names = stands.standNames()
