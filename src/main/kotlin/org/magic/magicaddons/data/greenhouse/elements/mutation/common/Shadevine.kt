@@ -25,7 +25,8 @@ object Shadevine : CropDefinitionProvider {
                 blocks = listOf(),
                 armorStands = listOf(
                     CropArmorStand(
-                        offset = Vec3(0.0, -0.75, -0.1875),
+                        isSmall = false,
+                        offset = Vec3(0.0, -0.75, 0.1875),
                         headRotation = Rotations(-45.0f, 0.0f, 0.0f),
                         xRotation = 0.0f,
                         yRotation = 0.0f,

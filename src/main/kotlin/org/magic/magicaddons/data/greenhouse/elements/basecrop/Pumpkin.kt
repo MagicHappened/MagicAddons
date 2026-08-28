@@ -154,8 +154,8 @@ object Pumpkin : CropDefinitionProvider {
                 ),
                 armorStands = CropArmorStand.matcherPattern(
                     offsets = listOf(
-                        Vec3(0.0625, -0.46875, 0.0),
-                        Vec3(-0.09375, -0.625, -0.09375)
+                        Vec3(-0.0625, -0.46875, 0.0),
+                        Vec3(0.09375, -0.625, 0.09375)
                     ),
                     rotations = listOf(
                         Rotations(0.0f, 0.0f, -22.5f),
@@ -166,8 +166,8 @@ object Pumpkin : CropDefinitionProvider {
                         0.0f
                     ),
                     yRotations = listOf(
-                        -180.0f,
-                        -180.0f
+                        0.0f,
+                        0.0f
                     ),
                     hashString = "1839c3565f36c9d6e52d55a1760b11c2060953143ffe4ffe9c8b606ee4e3648f",
                     isSmall = false

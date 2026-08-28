@@ -153,10 +153,14 @@ object CropStageExporter {
 
             standData.add(
                 ArmorStandExport(
-                    offset = WorldRotation.rotate(offset, unturn),
+                    // negative zero is zero wearing the sign the un-rotation left on it, and it
+                    // made byte-identical stages read as two different ones
+                    offset = WorldRotation.rotate(offset, unturn).let {
+                        Vec3(it.x + 0.0, it.y + 0.0, it.z + 0.0)
+                    },
                     rotation = headRotations,
                     xRotation = entity.xRot,
-                    yRotation = Mth.wrapDegrees(entity.yRot - 90f * worldStep),
+                    yRotation = Mth.wrapDegrees(entity.yRot - 90f * worldStep) + 0.0f,
                     hash = hash,
                     customName = customName,
                     isSmall = entity.isSmall
@@ -314,6 +318,10 @@ object CropStageExporter {
                     // word "null", which is a hash no head will ever have
                     if (hash != null) fields.add("hashString = \"$hash\"")
                     if (name != null) fields.add("customName = \"$name\"")
+
+                    // a fact the singleton branch always kept and this one silently dropped, so
+                    // full-size plants exported as small ones whenever their stands grouped
+                    if (group.any { !it.isSmall }) fields.add("isSmall = false")
 
                     patternSections += "CropArmorStand.matcherPattern(\n" +
                             indent(fields.joinToString(",\n")) +
