@@ -131,10 +131,18 @@ public abstract class LevelRendererMixin {
                         // and the outline was already carrying the message
                         state.outlineColor = LayoutRenderState.GHOST_OUTLINE_COLOR;
 
-                        // the stand is scaffolding for the head it holds. Drawn, it outlined its
-                        // own arms and legs around a crop that is only ever the skull, so it is
-                        // hidden and the layers, which is where the head is, still draw
+                        // the stand is scaffolding for the head it holds. Hiding it alone was
+                        // not enough: a hidden thing that glows is drawn as an outline of its
+                        // whole self, which is how the highlighted mobs are outlined and was the
+                        // stand outlining its own arms and legs. Hidden from the player as well
+                        // is the state a real greenhouse stand is already in, where the body
+                        // draws nothing at all and the layers, which is where the head is, still
+                        // draw. So the outline lands on the head alone
                         state.isInvisible = true;
+
+                        if (state instanceof LivingEntityRenderState living) {
+                            living.isInvisibleToPlayer = true;
+                        }
                     },
                     false
             );
