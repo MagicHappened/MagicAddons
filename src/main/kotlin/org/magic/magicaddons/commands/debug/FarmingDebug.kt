@@ -9,6 +9,7 @@ import com.mojang.blaze3d.vertex.PoseStack
 import net.minecraft.client.renderer.SubmitNodeCollector
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
+import tech.thatgravyboat.skyblockapi.api.profile.hunting.AttributeAPI
 import org.magic.magicaddons.render.WorldRender
 import java.time.Duration
 import java.time.Instant
@@ -177,6 +178,34 @@ object FarmingDebug : AbstractCommand() {
         ChatUtils.send(
             field("growth tick", tick?.let { exactDuration(it) } ?: "cannot be worked out yet")
         )
+
+        dumpAttributes()
+    }
+
+    /**
+     * Every attribute shard the player holds, by id and level.
+     *
+     * The greenhouse speed attribute is in here somewhere, but nothing in the api names it as such
+     * and its id cannot be guessed, so it has to be read off a player who has one. Whichever line
+     * below is the greenhouse one is the id to wire in.
+     */
+    private fun dumpAttributes() {
+        val owned = AttributeAPI.attributeMap.filterValues { it.level > 0 }
+
+        if (owned.isEmpty()) {
+            ChatUtils.send(field("attributes", "none held, or the attribute menu has not been opened"))
+            return
+        }
+
+        ChatUtils.sendWithPrefix(
+            Component.literal("Attributes held (${owned.size})").withStyle(ChatFormatting.GOLD)
+        )
+
+        owned.entries
+            .sortedByDescending { it.value.level }
+            .forEach { (id, data) ->
+                ChatUtils.send(copyable(id.id, "level ${data.level}, ${data.owned} owned"))
+            }
     }
 
     /** A duration to the second, for a figure being held against the game's own. */
