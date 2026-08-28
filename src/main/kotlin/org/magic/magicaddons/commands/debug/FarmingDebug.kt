@@ -22,6 +22,7 @@ import net.minecraft.network.chat.HoverEvent
 import net.minecraft.network.chat.Style
 import net.minecraft.world.entity.Display
 import net.minecraft.world.entity.Entity
+import net.minecraft.world.entity.Interaction
 import net.minecraft.world.entity.EquipmentSlot
 import net.minecraft.world.entity.decoration.ArmorStand
 import org.magic.magicaddons.commands.AbstractCommand
@@ -90,7 +91,7 @@ object FarmingDebug : AbstractCommand() {
                 return@executes 1
             }
             .then(
-                LiteralArgumentBuilder.literal<FabricClientCommandSource>("stands")
+                LiteralArgumentBuilder.literal<FabricClientCommandSource>("entities")
                     .executes {
                         dumpNearbyEntities(DEFAULT_RADIUS, false)
                         return@executes 1
@@ -235,12 +236,16 @@ object FarmingDebug : AbstractCommand() {
         val ours = if (holograms) emptySet() else LayoutRenderState.ghostStands.toSet()
 
         val entities = level.getEntities(player, player.boundingBox.inflate(radius))
-            .filter { (it is ArmorStand && true ) || it is Display } // replaced it.hasCustomName() temporarly
+            // everything a crop could be built out of, not only stands. A plant whose parts are
+            // displays is invisible to anything that asks for stands, which is exactly the case
+            // this listing exists to catch, so the net is cast by what an entity carries rather
+            // than by what class it happens to be
+            .filter { it is ArmorStand || it is Display || it is Interaction || it.hasCustomName() }
             .filterNot { it in ours }
             .sortedBy { it.distanceToSqr(player) }
 
         if (entities.isEmpty()) {
-            ChatUtils.sendWithPrefix("Nothing named within $radius blocks")
+            ChatUtils.sendWithPrefix("Nothing worth listing within $radius blocks")
             return
         }
 
