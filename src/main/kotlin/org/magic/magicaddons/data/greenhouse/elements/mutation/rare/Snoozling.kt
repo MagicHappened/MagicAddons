@@ -31,10 +31,12 @@ object Snoozling : CropDefinitionProvider {
                 armorStands =
                     listOf(
                         CropArmorStand(
+                        isSmall = false,
                             offset = Vec3(-0.03125, 0.15625, 0.0),
                             hashString = "b82d442528456547474dd88166a97818f057ecc4b3ed350ef9a5e4dbd27f98d7",
                         ),
                         CropArmorStand(
+                        isSmall = false,
                             offset = Vec3(-0.5625, -0.46875, 0.0),
                             hashString = "77bb86dedeb827f2489aa0103d58d0e12e64a8152d5a0f5b1d4d208a3cb55999",
                         )
@@ -49,6 +51,7 @@ object Snoozling : CropDefinitionProvider {
                 armorStands =
                     listOf(
                         CropArmorStand(
+                        isSmall = false,
                             offset = Vec3(-0.53125, -0.0625, 0.0625),
                             hashString = "77bb86dedeb827f2489aa0103d58d0e12e64a8152d5a0f5b1d4d208a3cb55999",
                         )
@@ -74,6 +77,7 @@ object Snoozling : CropDefinitionProvider {
                 armorStands =
                     listOf(
                         CropArmorStand(
+                        isSmall = false,
                             offset = Vec3(-0.53125, -0.0625, 0.0625),
                             hashString = "2c856bec39e5f5fc04fc4c7d90f7d404cee2c628d911c7a756ef5b72f2b876f4",
                         )
@@ -132,9 +136,11 @@ object Snoozling : CropDefinitionProvider {
                     ),
                     hashString = "b82d442528456547474dd88166a97818f057ecc4b3ed350ef9a5e4dbd27f98d7"
                 ) + listOf(CropArmorStand(
+                        isSmall = false,
                     offset = Vec3(-1.01171875, 4.701741536458329, -1.071044921875)
                 ),
                     CropArmorStand(
+                        isSmall = false,
                         offset = Vec3(0.0, 0.0, 0.84375),
                         hashString = "24c64afa58bef69ff567b012a2b1638cf475c5bdb050d382308399ffa0b06a8d"
                     )
