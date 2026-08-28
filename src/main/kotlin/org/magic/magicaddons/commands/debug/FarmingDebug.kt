@@ -287,49 +287,13 @@ object FarmingDebug : AbstractCommand() {
                 .withStyle(ChatFormatting.DARK_GRAY)
         )
 
-        entities.forEach { entity ->
-            val offset = entity.position().subtract(player.position())
-
-            val at = entity.position()
-
-            ChatUtils.send(
-                Component.literal("- ${entity.type.toString().substringAfterLast('.')} ")
-                    .withStyle(ChatFormatting.GRAY)
-                    // where it is, then where it is relative to you. The offset alone cannot be
-                    // matched against a crop, since it is measured from wherever you happened to
-                    // be standing, and every definition is written against the crop's own block
-                    .append(
-                        Component.literal(
-                            "%.4f %.4f %.4f".format(at.x, at.y, at.z)
-                        ).withStyle(ChatFormatting.DARK_GRAY)
-                    )
-                    .append(
-                        Component.literal(
-                            "  (you %+.4f %+.4f %+.4f)".format(offset.x, offset.y, offset.z)
-                        ).withStyle(ChatFormatting.DARK_GRAY)
-                    )
-            )
-
-            // how a stand is built decides where its head ends up, and a stand rebuilt at the right
-            // position but the wrong size puts its skull at the wrong height
-            if (entity is ArmorStand) {
-                ChatUtils.send(
-                    field(
-                        "stand",
-                        "small=${entity.isSmall} marker=${entity.isMarker} arms=${entity.showArms()}"
-                    )
-                )
-            }
-
-            entity.customName?.let { name ->
-                // the name as it draws, so a bar can be counted, and again as the runs of styling
-                // it is built from, which is the only way to tell a filled notch from an empty one
-                ChatUtils.send(field("name", name.string))
-                ChatUtils.send(copyable("runs", describeRuns(name)))
-            }
-
-            describeHeldItem(entity)?.let { ChatUtils.send(it) }
+        val text = entities.joinToString("\n") { entity ->
+            describeEntity(entity, entity.position().subtract(player.position()))
         }
+
+        client.keyboardHandler.clipboard = text
+
+        ChatUtils.send(clipboard(text, "${entities.size} entities"))
     }
 
     /**
@@ -400,11 +364,52 @@ object FarmingDebug : AbstractCommand() {
 
         client.keyboardHandler.clipboard = text
 
-        ChatUtils.sendWithPrefix(
-            Component.literal("${entities.size} entities, ${text.length} chars")
-                .withStyle(ChatFormatting.GOLD)
-        )
-        ChatUtils.send(copyable("dump", text))
+        ChatUtils.send(clipboard(text, "${entities.size} entities"))
+    }
+
+    /**
+     * One line the user clicks instead of a listing they have to scroll past.
+     *
+     * The text is already on the clipboard when this is sent, so the click is a second chance at
+     * it rather than the only one.
+     */
+    private fun clipboard(text: String, what: String): Component {
+        val lines = text.count { it == '\n' } + 1
+
+        return Component.literal("[MA] ").withStyle(ChatFormatting.GOLD)
+            .append(
+                Component.literal("Click to copy $lines lines ($what)").withStyle(
+                    Style.EMPTY
+                        .withColor(ChatFormatting.YELLOW)
+                        .withClickEvent(ClickEvent.CopyToClipboard(text))
+                        .withHoverEvent(HoverEvent.ShowText(Component.literal("Already copied")))
+                )
+            )
+    }
+
+    /** One entity written out, for a listing that goes to the clipboard rather than to chat. */
+    private fun describeEntity(entity: Entity, offset: Vec3): String = buildString {
+        appendLine("${entity.type.toString().substringAfterLast('.')} ${fmt(entity.position())}")
+        appendLine("  you ${fmt(offset)}")
+
+        if (entity is ArmorStand) {
+            appendLine("  stand small=${entity.isSmall} marker=${entity.isMarker}")
+        }
+
+        entity.customName?.let {
+            appendLine("  name=${it.string}")
+            appendLine("  runs=${describeRuns(it)}")
+        }
+
+        // every slot, since a crop's skull turns out not to always be worn on the head
+        if (entity is ArmorStand) {
+            EquipmentSlot.entries.forEach { slot ->
+                val stack = entity.getItemBySlot(slot)
+                if (!stack.isEmpty) appendLine("  $slot=${describeStack(stack)}")
+            }
+        }
+
+        if (entity is Display.ItemDisplay) appendLine("  item=${describeStack(entity.itemStack)}")
     }
 
     /** An item as everything that might tell us what it is, not only its skull. */
