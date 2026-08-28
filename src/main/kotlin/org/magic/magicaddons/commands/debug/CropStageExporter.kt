@@ -34,7 +34,28 @@ object CropStageExporter {
         foundDefinition: CropDefinition? = null,
         discordFormat: Boolean = false
     ) {
-        val world = Minecraft.getInstance().level ?: return
+        val result = buildCropStageData(basePos, stageNum, foundDefinition, discordFormat)
+            ?: return
+
+        Minecraft.getInstance().keyboardHandler.clipboard = result
+
+        ChatUtils.sendWithPrefix("Copied crop stage to clipboard (${result.length} chars)")
+    }
+
+    /**
+     * The stage as the kotlin its definition would be written in, or null without a world.
+     *
+     * [quiet] keeps the skipped-entity report out of chat, for a caller building many stages in
+     * one go rather than showing the player a single one.
+     */
+    fun buildCropStageData(
+        basePos: BlockPos,
+        stageNum: Int? = null,
+        foundDefinition: CropDefinition? = null,
+        discordFormat: Boolean = false,
+        quiet: Boolean = false
+    ): String? {
+        val world = Minecraft.getInstance().level ?: return null
         val sb = StringBuilder(2048)
 
         val blockData = mutableListOf<CropBlockExport>()
@@ -145,7 +166,7 @@ object CropStageExporter {
 
 
 
-        if (skipped.isNotEmpty()) {
+        if (skipped.isNotEmpty() && !quiet) {
             ChatUtils.sendWithPrefix(
                 Component.literal("${skipped.size} thing(s) near this crop were not exported")
                     .withStyle(ChatFormatting.YELLOW)
@@ -366,10 +387,7 @@ object CropStageExporter {
             sb.appendLine("Crop found: ${foundDefinition?.name} stageNum=$stageNum")
         }
 
-        val result = sb.toString()
-        Minecraft.getInstance().keyboardHandler.clipboard = result
-
-        ChatUtils.sendWithPrefix("Copied crop stage to clipboard (${result.length} chars)")
+        return sb.toString()
     }
 
     /** A position short enough to read in chat. */

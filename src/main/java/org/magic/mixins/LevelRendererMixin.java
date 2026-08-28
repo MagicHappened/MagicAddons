@@ -34,6 +34,7 @@ import org.joml.Matrix4fc;
 import org.joml.Vector4f;
 import org.jspecify.annotations.Nullable;
 import org.magic.magicaddons.commands.debug.FarmingDebug;
+import org.magic.magicaddons.commands.debug.CropCollector;
 import org.magic.magicaddons.features.farming.greenhousePresets.LayoutRenderState;
 import org.magic.magicaddons.util.EntityUtils;
 import org.magic.misc.EntityRenderModifier;
@@ -105,6 +106,13 @@ public abstract class LevelRendererMixin {
 
         // whatever the farming debug last listed, lit up so it can be counted by eye
         FarmingDebug.INSTANCE.submitHighlights(
+                poseStack,
+                submitNodeCollector,
+                levelRenderState.cameraRenderState.pos
+        );
+
+        // whatever the crop collector last grouped, held up for confirmation
+        CropCollector.INSTANCE.submitHighlights(
                 poseStack,
                 submitNodeCollector,
                 levelRenderState.cameraRenderState.pos

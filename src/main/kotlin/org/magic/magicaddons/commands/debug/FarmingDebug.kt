@@ -137,6 +137,20 @@ object FarmingDebug : AbstractCommand() {
                     )
             )
             .then(
+                LiteralArgumentBuilder.literal<FabricClientCommandSource>("collect")
+                    .executes {
+                        CropCollector.scan()
+                        return@executes 1
+                    }
+                    .then(
+                        LiteralArgumentBuilder.literal<FabricClientCommandSource>("finish")
+                            .executes {
+                                CropCollector.finish()
+                                return@executes 1
+                            }
+                    )
+            )
+            .then(
                 LiteralArgumentBuilder.literal<FabricClientCommandSource>("uniques")
                     .executes {
                         dumpGrowthState()
