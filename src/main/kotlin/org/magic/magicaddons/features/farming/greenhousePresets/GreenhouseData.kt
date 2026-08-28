@@ -841,7 +841,7 @@ object GreenhouseData {
             abnormalRotationFound = armorStands.any {
                 ((it.headPose.x != 0.0f || it.headPose.y != 0.0f || it.headPose.z != 0.0f) ||
                         (!it.xRot.isCardinalYaw() || !it.yRot.isCardinalYaw()))
-                        && PlayerUtils.getSkinHash(it.getItemBySlot(EquipmentSlot.HEAD)) != null
+                        && PlayerUtils.getSkullHash(it) != null
             }
             // the exporter only knows a position, so the soil is read from the world and the slot
             // is made up to file the result against

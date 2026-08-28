@@ -450,7 +450,8 @@ object FarmingDebug : AbstractCommand() {
     private fun describeHeldItem(entity: Entity): Component? {
         val stack = when (entity) {
             is Display.ItemDisplay -> entity.itemStack
-            is ArmorStand -> entity.getItemBySlot(EquipmentSlot.HEAD)
+            is ArmorStand -> EquipmentSlot.entries.map { entity.getItemBySlot(it) }
+                .firstOrNull { !it.isEmpty }
             else -> null
         } ?: return null
 

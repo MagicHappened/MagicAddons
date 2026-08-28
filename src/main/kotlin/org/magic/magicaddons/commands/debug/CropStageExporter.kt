@@ -109,8 +109,7 @@ object CropStageExporter {
 
             val offset = entity.position().subtract(originVec)
 
-            val head = entity.getItemBySlot(EquipmentSlot.HEAD)
-            val hash = PlayerUtils.getSkinHash(head)
+            val hash = PlayerUtils.getSkullHash(entity)
             val headRotations = entity.headPose
             val customName = if (entity.hasCustomName()) {
                 entity.name.string.replace("\"", "\\\"")
