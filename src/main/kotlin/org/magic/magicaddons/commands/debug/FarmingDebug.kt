@@ -274,12 +274,22 @@ object FarmingDebug : AbstractCommand() {
         entities.forEach { entity ->
             val offset = entity.position().subtract(player.position())
 
+            val at = entity.position()
+
             ChatUtils.send(
                 Component.literal("- ${entity.type.toString().substringAfterLast('.')} ")
                     .withStyle(ChatFormatting.GRAY)
+                    // where it is, then where it is relative to you. The offset alone cannot be
+                    // matched against a crop, since it is measured from wherever you happened to
+                    // be standing, and every definition is written against the crop's own block
                     .append(
                         Component.literal(
-                            "%.4f %.4f %.4f".format(offset.x, offset.y, offset.z)
+                            "%.4f %.4f %.4f".format(at.x, at.y, at.z)
+                        ).withStyle(ChatFormatting.DARK_GRAY)
+                    )
+                    .append(
+                        Component.literal(
+                            "  (you %+.4f %+.4f %+.4f)".format(offset.x, offset.y, offset.z)
                         ).withStyle(ChatFormatting.DARK_GRAY)
                     )
             )
