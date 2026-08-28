@@ -55,57 +55,73 @@ object MagicJellybean : CropDefinitionProvider {
     /**
      * The cycle, as far as it has been observed.
      *
-     * Read off exported stages 1, 9, 18, 90, 94, 95 and 96, which between them cover six of the
-     * twelve positions and agree with each other wherever two of them landed on the same one.
+     * Keyed by a run of positions rather than by one, because the plant does not change every
+     * stage. It spends the first three positions of every cycle looking exactly the same, so those
+     * three stages cannot be told apart by looking, and a stage that covers all three says so
+     * instead of claiming to be the first of them.
+     *
+     * Read off exported stages 1, 2, 9, 18, 90, 94, 95 and 96, which agree with each other wherever
+     * two of them landed on the same position.
      */
-    private val cycle: Map<Int, Top> = mapOf(
-        0 to Top(stemAge = 3),
-        1 to Top(stemAge = 3),
-        6 to Top(stemAge = 7, melonStandY = 0.59375),
-        9 to Top(stemAge = 6, melonStandY = 0.78125),
-        10 to Top(stemAge = 6, melonStandY = 0.78125),
-        11 to Top(stemAge = 6, extraCaneStand = true)
+    private val cycle: List<Pair<IntRange, Top>> = listOf(
+        0..2 to Top(stemAge = 3),
+        6..6 to Top(stemAge = 7, melonStandY = 0.59375),
+        9..10 to Top(stemAge = 6, melonStandY = 0.78125),
+        11..11 to Top(stemAge = 6, extraCaneStand = true)
     )
 
-    /** One stage per cycle position we know, at every height the plant reaches. */
-    private fun generateStages(): List<CropStage> = (1..MAX_STAGE).mapNotNull { stage ->
-        val caneHeight = (stage / CYCLE).coerceAtMost(MAX_CANE)
+    /**
+     * One stage per run of cycle positions we know, at every height the plant reaches.
+     *
+     * A run covers consecutive stages because a cycle is consecutive: position k of cycle c is
+     * always stage `c * 12 + k`, and the whole cycle shares one cane height.
+     */
+    private fun generateStages(): List<CropStage> = buildList {
+        for (cycleNumber in 0 until MAX_CANE) {
+            val caneHeight = cycleNumber
 
-        // the top of the plant at the very last stage is cane like all the rest of it, with no
-        // melon above it and so no row in the cycle to look up
-        if (stage == MAX_STAGE) return@mapNotNull topless(caneHeight)
+            for ((positions, top) in cycle) {
+                // stage zero is not a stage, and the top of the plant is its own stage
+                val first = (cycleNumber * CYCLE + positions.first).coerceAtLeast(1)
+                val last = (cycleNumber * CYCLE + positions.last).coerceAtMost(MAX_STAGE - 1)
 
-        val top = cycle[stage % CYCLE] ?: return@mapNotNull null
+                if (first > last) continue
 
-        val canes = (1..caneHeight).map {
-            CropBlockState(offset = BlockPos(0, it, 0), blockState = sugarcaneState())
+                val canes = (1..caneHeight).map {
+                    CropBlockState(offset = BlockPos(0, it, 0), blockState = sugarcaneState())
+                }
+
+                val standCount = if (top.extraCaneStand) caneHeight + 1 else caneHeight
+
+                val caneStands = (0 until standCount).map {
+                    CropArmorStand(
+                        offset = Vec3(0.0, CANE_STAND_Y + it, 0.0),
+                        hashString = CANE_HASH
+                    )
+                }
+
+                val melonStand = top.melonStandY?.let {
+                    CropArmorStand(
+                        offset = Vec3(0.0, caneHeight + it, 0.0),
+                        hashString = MELON_HASH
+                    )
+                }
+
+                add(
+                    CropStage(
+                        blocks = canes + CropBlockState(
+                            offset = BlockPos(0, caneHeight + 1, 0),
+                            blockState = melonStemState(top.stemAge)
+                        ),
+                        armorStands = caneStands + listOfNotNull(melonStand),
+                        stageRange = first..last,
+                        allowRotation = true
+                    )
+                )
+            }
         }
 
-        val standCount = if (top.extraCaneStand) caneHeight + 1 else caneHeight
-
-        val caneStands = (0 until standCount).map {
-            CropArmorStand(
-                offset = Vec3(0.0, CANE_STAND_Y + it, 0.0),
-                hashString = CANE_HASH
-            )
-        }
-
-        val melonStand = top.melonStandY?.let {
-            CropArmorStand(
-                offset = Vec3(0.0, caneHeight + it, 0.0),
-                hashString = MELON_HASH
-            )
-        }
-
-        CropStage(
-            blocks = canes + CropBlockState(
-                offset = BlockPos(0, caneHeight + 1, 0),
-                blockState = melonStemState(top.stemAge)
-            ),
-            armorStands = caneStands + listOfNotNull(melonStand),
-            stageRange = stage..stage,
-            allowRotation = true
-        )
+        add(topless(MAX_CANE))
     }
 
     /** The finished plant: cane the whole way up and nothing growing above it. */
