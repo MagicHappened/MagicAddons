@@ -111,6 +111,7 @@ object Duskbloom : CropDefinitionProvider {
                 ),
                 armorStands = listOf(
                     CropArmorStand(
+                        isSmall = false,
                         offset = Vec3(0.0, -0.4375, 0.0),
                         hashString = "7dca7951b36f5f749e883758b379c8008ca55f245987e4ef0c3788cf0c903d5"
                     )

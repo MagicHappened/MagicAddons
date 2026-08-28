@@ -51,7 +51,8 @@ data class CropArmorStand(
             xRotations: List<Float>? = null,
             yRotations: List<Float>? = null,
             hashString: String? = null,
-            customName: String? = null
+            customName: String? = null,
+            isSmall: Boolean = true
         ): List<CropArmorStand> {
             val result = mutableListOf<CropArmorStand>()
             offsets.forEachIndexed { i, offset ->
@@ -62,7 +63,8 @@ data class CropArmorStand(
                         xRotations?.getOrNull(i),
                         yRotations?.getOrNull(i),
                         hashString,
-                        customName
+                        customName,
+                        isSmall
                     )
                 )
             }

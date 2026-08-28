@@ -184,7 +184,8 @@ object Melon : CropDefinitionProvider {
                         90.0f,
                         90.0f
                     ),
-                    hashString = "fdfae4b11048bc1ce96ed150134e79f16e2bcaf12d43fa0ff0e27fb2e0852130"
+                    hashString = "fdfae4b11048bc1ce96ed150134e79f16e2bcaf12d43fa0ff0e27fb2e0852130",
+                    isSmall = false
                 ),
                 11..11,
                 allowRotation = true

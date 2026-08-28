@@ -24,6 +24,16 @@ object Coalroot : CropDefinitionProvider {
                 blocks = listOf(),
                 armorStands = listOf(
                     CropArmorStand(
+                        offset = Vec3(0.0, 0.0625, 0.0),
+                        hashString = "f946443fa0039354edd31a70c749c4f963464744dc20b79137bd9910356ee90"
+                    )
+                ),
+                1..1
+            ),
+            CropStage(
+                blocks = listOf(),
+                armorStands = listOf(
+                    CropArmorStand(
                         offset = Vec3(0.0, -0.8125, 0.0),
                         hashString = "f946443fa0039354edd31a70c749c4f963464744dc20b79137bd9910356ee90"
                     )

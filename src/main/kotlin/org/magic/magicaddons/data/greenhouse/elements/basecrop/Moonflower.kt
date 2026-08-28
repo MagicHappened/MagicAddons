@@ -144,6 +144,7 @@ object Moonflower : CropDefinitionProvider {
                 ),
                 armorStands = listOf(
                     CropArmorStand(
+                        isSmall = false,
                         offset = Vec3(-0.1875, 0.5625, 0.0),
                         headRotation = Rotations(-22.5f, 0.0f, 0.0f),
                         xRotation = 0.0f,

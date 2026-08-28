@@ -117,7 +117,8 @@ object Cocoa : CropDefinitionProvider {
                         -90.0f,
                         -90.0f
                     ),
-                    hashString = "44d72eed58354ce14bfc497138a13564070fb4653898aeb3e66c73082ae1f993"
+                    hashString = "44d72eed58354ce14bfc497138a13564070fb4653898aeb3e66c73082ae1f993",
+                    isSmall = false
                 ),
                 6..6,
                 allowRotation = true
