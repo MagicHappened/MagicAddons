@@ -121,6 +121,10 @@ public abstract class LevelRendererMixin {
                         WrappedEntityRenderState fakeState = (WrappedEntityRenderState) state;
                         fakeState.magicaddons$setWrappedEntity(true);
                         fakeState.magicaddons$setWrappedEntityTintColor(LayoutRenderState.GHOST_STAND_TINT);
+
+                        // the same glow the highlighted mobs wear, so the head a ghosted crop is
+                        // really made of reads as part of the plan rather than as a plant
+                        state.outlineColor = LayoutRenderState.GHOST_OUTLINE_COLOR;
                     },
                     false
             );
