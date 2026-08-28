@@ -3,6 +3,7 @@ package org.magic.magicaddons.data.greenhouse.elements.mutation.common
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Rotations
 import net.minecraft.world.phys.Vec3
+import org.magic.magicaddons.data.greenhouse.CropEffect
 import org.magic.magicaddons.data.greenhouse.DECAY_TIME_MS
 import org.magic.magicaddons.data.greenhouse.CropArmorStand
 import org.magic.magicaddons.data.greenhouse.CropBlockState
@@ -15,6 +16,9 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Choconut : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Choconut",
+        effects = setOf(
+            CropEffect.Immunity
+        ),
         skyblockId = SkyBlockItemId.item("CHOCONUT"),
         stageDefs = listOf(
             CropStage(

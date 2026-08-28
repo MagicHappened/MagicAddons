@@ -2,6 +2,7 @@ package org.magic.magicaddons.data.greenhouse.elements.mutation.epic
 
 import net.minecraft.core.BlockPos
 import net.minecraft.world.phys.Vec3
+import org.magic.magicaddons.data.greenhouse.CropEffect
 import org.magic.magicaddons.data.greenhouse.CropArmorStand
 import org.magic.magicaddons.data.greenhouse.CropBlockState
 import org.magic.magicaddons.data.greenhouse.CropDefinition
@@ -14,6 +15,11 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Startlevine : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Startlevine",
+        effects = setOf(
+            CropEffect.ImprovedWaterRetain,
+            CropEffect.ImprovedXpBoost,
+            CropEffect.HarvestLoss
+        ),
         skyblockId = SkyBlockItemId.item("STARTLEVINE"),
         stageDefs = listOf(
             CropStage(

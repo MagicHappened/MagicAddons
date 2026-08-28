@@ -11,6 +11,11 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Cindershade : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Cindershade",
+        effects = setOf(
+            CropEffect.EffectSpread,
+            CropEffect.ImprovedHarvestBoost,
+            CropEffect.XpLoss
+        ),
         skyblockId = SkyBlockItemId.item("CINDERSHADE"),
         stageDefs = listOf(
             CropStage(

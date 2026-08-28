@@ -2,6 +2,7 @@ package org.magic.magicaddons.data.greenhouse.elements.mutation.epic
 
 import net.minecraft.core.Rotations
 import net.minecraft.world.phys.Vec3
+import org.magic.magicaddons.data.greenhouse.CropEffect
 import org.magic.magicaddons.data.greenhouse.CropArmorStand
 import org.magic.magicaddons.data.greenhouse.CropDefinition
 import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
@@ -11,6 +12,9 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Thunderling : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Thunderling",
+        effects = setOf(
+            CropEffect.EffectSpread
+        ),
         skyblockId = SkyBlockItemId.item("THUNDERLING"),
         stageDefs = listOf(
             CropStage(

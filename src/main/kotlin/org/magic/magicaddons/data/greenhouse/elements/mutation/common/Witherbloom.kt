@@ -4,6 +4,7 @@ import net.minecraft.core.BlockPos
 import net.minecraft.core.Rotations
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.phys.Vec3
+import org.magic.magicaddons.data.greenhouse.CropEffect
 import org.magic.magicaddons.data.greenhouse.CropArmorStand
 import org.magic.magicaddons.data.greenhouse.CropBlockState
 import org.magic.magicaddons.data.greenhouse.CropDefinition
@@ -16,6 +17,9 @@ object Witherbloom : CropDefinitionProvider {
 
     override val definition = CropDefinition(
         name = "Witherbloom",
+        effects = setOf(
+            CropEffect.EffectSpread
+        ),
         skyblockId = SkyBlockItemId.item("WITHERBLOOM"),
         stageDefs = listOf(
             CropStage(

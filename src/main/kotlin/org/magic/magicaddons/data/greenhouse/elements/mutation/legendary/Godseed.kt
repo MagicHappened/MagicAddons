@@ -21,6 +21,14 @@ object Godseed : CropDefinitionProvider {
     )
     override val definition = CropDefinition(
         name = "Godseed",
+        effects = setOf(
+            CropEffect.ImprovedHarvestBoost,
+            CropEffect.ImprovedWaterRetain,
+            CropEffect.ImprovedXpBoost,
+            CropEffect.Immunity,
+            CropEffect.BonusDrops,
+            CropEffect.EffectSpread
+        ),
         skyblockId = SkyBlockItemId.item("GODSEED"),
         footprint = Footprint(3, 3),
         stageDefs = listOf(

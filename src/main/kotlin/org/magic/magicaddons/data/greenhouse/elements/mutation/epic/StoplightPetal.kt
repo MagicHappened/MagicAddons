@@ -10,6 +10,11 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object StoplightPetal : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Stoplight Petal",
+        effects = setOf(
+            CropEffect.EffectSpread,
+            CropEffect.ImprovedWaterRetain,
+            CropEffect.HarvestLoss
+        ),
         skyblockId = SkyBlockItemId.item("STOPLIGHT_PETAL"),
         stageDefs = listOf(
             CropStage(

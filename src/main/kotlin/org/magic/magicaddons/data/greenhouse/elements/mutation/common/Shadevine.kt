@@ -3,6 +3,7 @@ package org.magic.magicaddons.data.greenhouse.elements.mutation.common
 import net.minecraft.core.Rotations
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.phys.Vec3
+import org.magic.magicaddons.data.greenhouse.CropEffect
 import org.magic.magicaddons.data.greenhouse.CropArmorStand
 import org.magic.magicaddons.data.greenhouse.CropDefinition
 import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
@@ -13,6 +14,11 @@ object Shadevine : CropDefinitionProvider {
 
     override val definition = CropDefinition(
         name = "Shadevine",
+        effects = setOf(
+            CropEffect.ImprovedWaterRetain,
+            CropEffect.ImprovedXpBoost,
+            CropEffect.HarvestLoss
+        ),
         skyblockId = SkyBlockItemId.item("SHADEVINE"),
         stageDefs = listOf(
             CropStage(

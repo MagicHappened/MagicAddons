@@ -10,6 +10,10 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Zombud : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Zombud",
+        effects = setOf(
+            CropEffect.EffectSpread,
+            CropEffect.BonusDrops
+        ),
         skyblockId = SkyBlockItemId.item("ZOMBUD"),
         stageDefs = listOf(
             CropStage(

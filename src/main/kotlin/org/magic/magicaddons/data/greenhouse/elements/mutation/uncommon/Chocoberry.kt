@@ -9,6 +9,9 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Chocoberry : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Chocoberry",
+        effects = setOf(
+            CropEffect.WaterRetain
+        ),
         skyblockId = SkyBlockItemId.item("CHOCOBERRY"),
         stageDefs = listOf(
             CropStage(

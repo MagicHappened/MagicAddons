@@ -387,9 +387,11 @@ data class CropDefinition(
     val needsWater: Boolean = true,
     val isBaseCrop: Boolean = false,
     val isMutation: Boolean = false,
-    val isRareCrop: Boolean = false, //todo buffs later
+    val isRareCrop: Boolean = false,
     /** Shown in the ui when skyblock has no item of its own for this crop, a dead plant has none. */
-    val displayItem: Item? = null
+    val displayItem: Item? = null,
+    /** The buffs and debuffs this crop carries, which are what make a layout worth planning. */
+    val effects: Set<CropEffect> = emptySet()
 ){
     fun matchesId(id: SkyBlockId): Boolean{
         return skyblockId == id || (aliases?.any { it == id } ?: false)

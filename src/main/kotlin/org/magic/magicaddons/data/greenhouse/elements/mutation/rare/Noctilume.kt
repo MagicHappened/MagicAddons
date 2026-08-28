@@ -22,6 +22,11 @@ object Noctilume : CropDefinitionProvider {
 
     override val definition = CropDefinition(
         name = "Noctilume",
+        effects = setOf(
+            CropEffect.EffectSpread,
+            CropEffect.ImprovedWaterRetain,
+            CropEffect.HarvestLoss
+        ),
         skyblockId = SkyBlockItemId.item("NOCTILUME"),
         stageDefs = listOf(
             CropStage(

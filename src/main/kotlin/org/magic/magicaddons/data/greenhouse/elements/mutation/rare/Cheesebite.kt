@@ -11,6 +11,10 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Cheesebite : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Cheesebite",
+        effects = setOf(
+            CropEffect.ImprovedWaterRetain,
+            CropEffect.HarvestLoss
+        ),
         skyblockId = SkyBlockItemId.item("CHEESEBITE"),
         stageDefs = listOf(
             CropStage(

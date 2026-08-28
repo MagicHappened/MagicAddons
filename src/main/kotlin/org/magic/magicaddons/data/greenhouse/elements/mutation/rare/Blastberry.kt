@@ -9,6 +9,11 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Blastberry : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Blastberry",
+        effects = setOf(
+            CropEffect.Immunity,
+            CropEffect.ImprovedHarvestBoost,
+            CropEffect.XpLoss
+        ),
         skyblockId = SkyBlockItemId.item("BLASTBERRY"),
         stageDefs = listOf(
             CropStage(

@@ -10,6 +10,9 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Fleshtrap : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Fleshtrap",
+        effects = setOf(
+            CropEffect.BonusDrops
+        ),
         skyblockId = SkyBlockItemId.item("FLESHTRAP"),
         stageDefs = listOf(
             CropStage(

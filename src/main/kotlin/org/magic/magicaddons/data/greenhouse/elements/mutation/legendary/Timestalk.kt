@@ -10,6 +10,11 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Timestalk : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Timestalk",
+        effects = setOf(
+            CropEffect.ImprovedWaterRetain,
+            CropEffect.ImprovedXpBoost,
+            CropEffect.HarvestLoss
+        ),
         skyblockId = SkyBlockItemId.item("TIMESTALK"),
         stageDefs = listOf(
             CropStage(

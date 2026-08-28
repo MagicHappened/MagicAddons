@@ -1,6 +1,7 @@
 package org.magic.magicaddons.data.greenhouse.elements.mutation.rare
 
 import net.minecraft.world.phys.Vec3
+import org.magic.magicaddons.data.greenhouse.CropEffect
 import org.magic.magicaddons.data.greenhouse.CropArmorStand
 import org.magic.magicaddons.data.greenhouse.CropDefinition
 import org.magic.magicaddons.data.greenhouse.CropStage
@@ -11,6 +12,10 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object DoNotEatShroom : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Do-not-eat-shroom",
+        effects = setOf(
+            CropEffect.ImprovedHarvestBoost,
+            CropEffect.WaterDrain
+        ),
         skyblockId = SkyBlockItemId.item("DO_NOT_EAT_SHROOM"),
         stageDefs = listOf(
             CropStage(

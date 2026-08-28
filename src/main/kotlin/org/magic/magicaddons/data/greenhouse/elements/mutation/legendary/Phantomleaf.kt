@@ -12,6 +12,10 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Phantomleaf : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Phantomleaf",
+        effects = setOf(
+            CropEffect.XpBoost,
+            CropEffect.Immunity
+        ),
         skyblockId = SkyBlockItemId.item("PHANTOMLEAF"),
         stageDefs = listOf(
             CropStage(

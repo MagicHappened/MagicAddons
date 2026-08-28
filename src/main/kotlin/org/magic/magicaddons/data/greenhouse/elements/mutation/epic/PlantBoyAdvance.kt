@@ -10,6 +10,9 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object PlantBoyAdvance : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "PlantBoy Advance",
+        effects = setOf(
+            CropEffect.HarvestBoost
+        ),
         skyblockId = SkyBlockItemId.item("PLANTBOY_ADVANCE"),
         stageDefs = listOf(
             CropStage(
