@@ -39,6 +39,7 @@ import org.magic.magicaddons.features.farming.greenhousePresets.GreenhousePreset
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.PlayerUtils
 import org.magic.magicaddons.util.ServerUtils
+import tech.thatgravyboat.skyblockapi.api.profile.hunting.AttributeAPI
 import tech.thatgravyboat.skyblockapi.api.SkyBlockAPI
 import tech.thatgravyboat.skyblockapi.api.events.base.Subscription
 import tech.thatgravyboat.skyblockapi.api.events.base.predicates.OnlyIn
@@ -202,6 +203,9 @@ object GreenhouseData {
      */
     private const val MAX_TICK_ADJUSTMENT_MS: Long = 5_000
 
+    /** The hunting shard carrying greenhouse speed, a legendary one, twenty four syphons to max. */
+    const val GREENHOUSE_SPEED_ATTRIBUTE_ID: String = "attribute:l57"
+
     private var reconcileDueAt: Instant? = null
     private var reconcileDeadline: Instant? = null
 
@@ -268,7 +272,7 @@ object GreenhouseData {
             getCurrentUniques().size,
             miscInfo.cropGrowthValue!!,
             miscInfo.cropSpeedUpgradeValue!!,
-            miscInfo.greenhouseSpeedAttribute ?: 0
+            greenhouseSpeedAttribute() ?: 0
         )
 
         val now = Instant.now()
@@ -311,8 +315,12 @@ object GreenhouseData {
             val adjustmentDelta = (realMs - serverMs)
                 .coerceIn(-MAX_TICK_ADJUSTMENT_MS, MAX_TICK_ADJUSTMENT_MS)
 
+            // added, not taken off. The greenhouse counts in server ticks, so time the server
+            // spent behind the wall clock is time the tick has not yet served and the countdown
+            // still owes. Taking it off ran the screen a few seconds ahead of the game, which is
+            // how the direction was settled
             miscInfo.nextTickTime =
-                miscInfo.nextTickTime!!.minusMillis(adjustmentDelta)
+                miscInfo.nextTickTime!!.plusMillis(adjustmentDelta)
             lastCheckTime = now
 
             now.toEpochMilli() -
@@ -589,7 +597,7 @@ object GreenhouseData {
                 )
             )
         }
-        if (miscInfo.greenhouseSpeedAttribute == null) {
+        if (greenhouseSpeedAttribute() == null) {
             warnings.add(
                 ChatUtils.buildWithPrefix(
                     "Unknown Greenhouse Speed attribute, ticks are being timed as if it were zero"
@@ -1003,6 +1011,21 @@ object GreenhouseData {
      * How long one growth tick currently takes, or null while something the formula needs is not
      * known. Changes as uniques are planted, so it is worked out rather than remembered.
      */
+    /**
+     * The greenhouse speed attribute, worth half a percent a level.
+     *
+     * Read from the shard the player has syphoned, since attributes are shards and a level is what
+     * syphoning them buys. Falls back to a value entered by hand, for a player whose attribute
+     * menu has not been opened this session.
+     */
+    fun greenhouseSpeedAttribute(): Int? =
+        AttributeAPI.attributeMap.entries
+            .firstOrNull { it.key.id == GREENHOUSE_SPEED_ATTRIBUTE_ID }
+            ?.value
+            ?.level
+            ?.takeIf { it > 0 }
+            ?: miscInfo.greenhouseSpeedAttribute
+
     fun currentGrowthTickMs(): Long? {
         val cropGrowth = miscInfo.cropGrowthValue ?: return null
         val upgrade = miscInfo.cropSpeedUpgradeValue ?: return null
@@ -1011,7 +1034,7 @@ object GreenhouseData {
             getCurrentUniques().size,
             cropGrowth,
             upgrade,
-            miscInfo.greenhouseSpeedAttribute ?: 0
+            greenhouseSpeedAttribute() ?: 0
         )
     }
 
