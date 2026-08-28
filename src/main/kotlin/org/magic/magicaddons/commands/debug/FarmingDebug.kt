@@ -190,7 +190,9 @@ object FarmingDebug : AbstractCommand() {
      * below is the greenhouse one is the id to wire in.
      */
     private fun dumpAttributes() {
-        val owned = AttributeAPI.attributeMap.filterValues { it.level > 0 }
+        // anything the player has at all: a shard sitting in the box is owned but not yet syphoned,
+        // so it has no level, and filtering on level alone hides everything but the levelled ones
+        val owned = AttributeAPI.attributeMap.filterValues { it.level > 0 || it.owned > 0 }
 
         if (owned.isEmpty()) {
             ChatUtils.send(field("attributes", "none held, or the attribute menu has not been opened"))
@@ -204,7 +206,9 @@ object FarmingDebug : AbstractCommand() {
         owned.entries
             .sortedByDescending { it.value.level }
             .forEach { (id, data) ->
-                ChatUtils.send(copyable(id.id, "level ${data.level}, ${data.owned} owned"))
+                ChatUtils.send(
+                    copyable(id.id, "level ${data.level}, ${data.owned} owned, ${data.syphoned} syphoned")
+                )
             }
     }
 
