@@ -305,6 +305,16 @@ class GreenhouseGrid(
      * So even unbuffed the loss is a range rather than a number, and a plant in debt may not have
      * advanced at all, which is why the stage this writes is only ever an estimate.
      */
+    /**
+     * The garden clock as a craving value. The garden's customisable time reaches the client as
+     * ordinary world time, so day and night are the vanilla windows of it.
+     */
+    private fun timeOfDayNow(): Int {
+        val time = (Minecraft.getInstance().level?.overworldClockTime ?: 0L) % 24000L
+
+        return if (time in 13000L..22999L) CropStandReader.CRAVES_NIGHT else CropStandReader.CRAVES_DAY
+    }
+
     fun predictGrowth(ticks: Int, tickMs: Long) {
         if (ticks <= 0) return
 
@@ -312,9 +322,13 @@ class GreenhouseGrid(
             val instance = element.instance
             val maxStage = instance.cropDef.maxStage
 
-            // a snoozling that has dropped asleep stays where it is until someone wakes it, so the
-            // ticks pass it by. It still dries out, since sleeping is not the same as being spared
-            if (instance.isAsleep) {
+            // a snoozling that has dropped asleep stays where it is until someone wakes it, and a
+            // noctilume craving the other time of day is stuck the same way until the garden's
+            // clock comes around. The ticks pass both by, but both still dry out, since being
+            // stuck is not the same as being spared
+            val cravingUnfulfilled = instance.craving?.let { it != timeOfDayNow() } == true
+
+            if (instance.isAsleep || cravingUnfulfilled) {
                 if (instance.cropDef.needsWater) {
                     instance.waterLevel = instance.waterLevel?.let {
                         WaterModel.after(it, ticks, layout.waterEffectAt(instance.slot))
@@ -417,6 +431,11 @@ class GreenhouseGrid(
                 growthStage = bestGrowth,
                 cropDef = definition
             )
+
+            // what winning this stage implies about the plant, filed before the stand readings:
+            // a noctilume's craving is carried by which skull matched, not by anything a stand
+            // will say afterwards
+            bestStage?.traits?.let { instance.readings.putAll(it) }
 
             // read after matching, never during it, and from every stand around the plant rather
             // than only the ones the stage claimed: a hunger bar belongs to the plant without

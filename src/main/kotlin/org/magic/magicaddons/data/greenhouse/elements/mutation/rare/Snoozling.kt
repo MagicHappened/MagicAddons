@@ -15,15 +15,6 @@ object Snoozling : CropDefinitionProvider {
         BlockPos(2, 1, 2),
     )
 
-    /**
-     * Kept only so nothing else breaks while it is being removed. Sleeping is a reading now, see
-     * the stage below: it is something a snoozling is at a moment, not something that tells us the
-     * plant is a snoozling.
-     */
-    sealed interface SnoozlingInfo : CropExtraInfo {
-        data object Sleeping : SnoozlingInfo
-    }
-
     override val definition = CropDefinition(
         name = "Snoozling",
         effects = setOf(
