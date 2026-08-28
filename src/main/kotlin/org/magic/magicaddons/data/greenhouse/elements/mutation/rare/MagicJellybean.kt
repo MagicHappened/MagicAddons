@@ -83,6 +83,10 @@ object MagicJellybean : CropDefinitionProvider {
     }
     override val definition = CropDefinition(
         name = "Magic Jellybean",
+        effects = setOf(
+            CropEffect.ImprovedXpBoost,
+            CropEffect.HarvestLoss
+        ),
         skyblockId = SkyBlockItemId.item("MAGIC_JELLYBEAN"),
         stageDefs = listOf(
             CropStage(

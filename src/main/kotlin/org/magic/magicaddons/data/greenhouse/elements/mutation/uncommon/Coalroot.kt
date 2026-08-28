@@ -2,6 +2,7 @@ package org.magic.magicaddons.data.greenhouse.elements.mutation.uncommon
 
 import net.minecraft.core.BlockPos
 import net.minecraft.world.phys.Vec3
+import org.magic.magicaddons.data.greenhouse.CropEffect
 import org.magic.magicaddons.data.greenhouse.CropArmorStand
 import org.magic.magicaddons.data.greenhouse.CropBlockState
 import org.magic.magicaddons.data.greenhouse.CropDefinition
@@ -14,6 +15,9 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Coalroot : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Coalroot",
+        effects = setOf(
+            CropEffect.XpBoost
+        ),
         skyblockId = SkyBlockItemId.item("COALROOT"),
         stageDefs = listOf(
             CropStage(

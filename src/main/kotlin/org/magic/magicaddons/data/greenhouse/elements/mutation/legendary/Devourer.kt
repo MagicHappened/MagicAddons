@@ -11,6 +11,11 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Devourer : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Devourer",
+        effects = setOf(
+            CropEffect.BonusDrops,
+            CropEffect.ImprovedHarvestBoost,
+            CropEffect.WaterDrain
+        ),
         skyblockId = SkyBlockItemId.item("DEVOURER"),
         stageDefs = listOf(
             CropStage(

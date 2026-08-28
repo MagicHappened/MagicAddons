@@ -1,6 +1,7 @@
 package org.magic.magicaddons.data.greenhouse.elements.mutation.epic
 
 import net.minecraft.world.phys.Vec3
+import org.magic.magicaddons.data.greenhouse.CropEffect
 import org.magic.magicaddons.data.greenhouse.CropArmorStand
 import org.magic.magicaddons.data.greenhouse.CropDefinition
 import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
@@ -10,6 +11,10 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Shellfruit : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Shellfruit",
+        effects = setOf(
+            CropEffect.WaterRetain,
+            CropEffect.Immunity
+        ),
         skyblockId = SkyBlockItemId.item("SHELLFRUIT"),
         stageDefs = listOf(
             CropStage(

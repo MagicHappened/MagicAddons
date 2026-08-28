@@ -9,6 +9,9 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Thornshade : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Thornshade",
+        effects = setOf(
+            CropEffect.EffectSpread
+        ),
         skyblockId = SkyBlockItemId.item("THORNSHADE"),
         stageDefs = listOf(
             CropStage(

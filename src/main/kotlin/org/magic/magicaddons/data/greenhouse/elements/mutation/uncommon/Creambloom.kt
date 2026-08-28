@@ -9,6 +9,9 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Creambloom : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Creambloom",
+        effects = setOf(
+            CropEffect.Immunity
+        ),
         skyblockId = SkyBlockItemId.item("CREAMBLOOM"),
         stageDefs = listOf(
             CropStage(

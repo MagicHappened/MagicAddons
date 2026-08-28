@@ -21,6 +21,9 @@ object Snoozling : CropDefinitionProvider {
 
     override val definition = CropDefinition(
         name = "Snoozling",
+        effects = setOf(
+            CropEffect.BonusDrops
+        ),
         skyblockId = SkyBlockItemId.item("SNOOZLING"),
         stageDefs = listOf(
             CropStage(

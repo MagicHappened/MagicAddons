@@ -10,6 +10,9 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Soggybud : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Soggybud",
+        effects = setOf(
+            CropEffect.WaterRetain
+        ),
         skyblockId = SkyBlockItemId.item("SOGGYBUD"),
         maxStage = 10,
         stageDefs = listOf(

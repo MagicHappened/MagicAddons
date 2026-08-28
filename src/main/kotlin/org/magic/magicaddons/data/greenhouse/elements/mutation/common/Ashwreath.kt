@@ -4,6 +4,7 @@ import net.minecraft.core.BlockPos
 import net.minecraft.core.Rotations
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.phys.Vec3
+import org.magic.magicaddons.data.greenhouse.CropEffect
 import org.magic.magicaddons.data.greenhouse.DECAY_TIME_MS
 import org.magic.magicaddons.data.greenhouse.CropArmorStand
 import org.magic.magicaddons.data.greenhouse.CropBlockState
@@ -16,6 +17,10 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Ashwreath : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Ashwreath",
+        effects = setOf(
+            CropEffect.ImprovedHarvestBoost,
+            CropEffect.XpLoss
+        ),
         skyblockId = SkyBlockItemId.item("ASHWREATH"),
         stageDefs = listOf(
             CropStage(

@@ -3,6 +3,7 @@ package org.magic.magicaddons.data.greenhouse.elements.mutation.legendary
 import net.minecraft.core.BlockPos
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.phys.Vec3
+import org.magic.magicaddons.data.greenhouse.CropEffect
 import org.magic.magicaddons.data.greenhouse.CropArmorStand
 import org.magic.magicaddons.data.greenhouse.CropBlockState
 import org.magic.magicaddons.data.greenhouse.CropDefinition
@@ -17,6 +18,9 @@ object AllinAloe : CropDefinitionProvider {
 
     override val definition = CropDefinition(
         name = "All-in Aloe",
+        effects = setOf(
+            CropEffect.HarvestBoost
+        ),
         skyblockId = SkyBlockItemId.item("ALL_IN_ALOE"),
         stageDefs = listOf(
             CropStage(

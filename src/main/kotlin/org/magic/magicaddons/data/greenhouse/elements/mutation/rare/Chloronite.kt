@@ -11,6 +11,9 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Chloronite : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Chloronite",
+        effects = setOf(
+            CropEffect.Immunity
+        ),
         skyblockId = SkyBlockItemId.item("CHLORONITE"),
         stageDefs = listOf(
             CropStage(

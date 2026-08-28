@@ -2,6 +2,7 @@ package org.magic.magicaddons.data.greenhouse.elements.mutation.common
 
 import net.minecraft.core.Rotations
 import net.minecraft.world.phys.Vec3
+import org.magic.magicaddons.data.greenhouse.CropEffect
 import org.magic.magicaddons.data.greenhouse.CropArmorStand
 import org.magic.magicaddons.data.greenhouse.CropDefinition
 import org.magic.magicaddons.data.greenhouse.CropStage
@@ -11,6 +12,10 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Scourroot : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Scourroot",
+        effects = setOf(
+            CropEffect.XpBoost,
+            CropEffect.Immunity
+        ),
         skyblockId = SkyBlockItemId.item("SCOURROOT"),
         stageDefs = listOf(
             CropStage(

@@ -2,6 +2,7 @@ package org.magic.magicaddons.data.greenhouse.elements.mutation.common
 
 import net.minecraft.core.BlockPos
 import net.minecraft.world.phys.Vec3
+import org.magic.magicaddons.data.greenhouse.CropEffect
 import org.magic.magicaddons.data.greenhouse.CropArmorStand
 import org.magic.magicaddons.data.greenhouse.CropBlockState
 import org.magic.magicaddons.data.greenhouse.CropDefinition
@@ -14,6 +15,9 @@ object Lonelily : CropDefinitionProvider {
 
     override val definition = CropDefinition(
         name = "Lonelily",
+        effects = setOf(
+            CropEffect.BonusDrops
+        ),
         skyblockId = SkyBlockItemId.item("LONELILY"),
         stageDefs = listOf(
             CropStage(

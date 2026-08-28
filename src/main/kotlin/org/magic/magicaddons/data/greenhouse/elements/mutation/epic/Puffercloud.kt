@@ -10,6 +10,10 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Puffercloud : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Puffercloud",
+        effects = setOf(
+            CropEffect.ImprovedHarvestBoost,
+            CropEffect.WaterDrain
+        ),
         skyblockId = SkyBlockItemId.item("PUFFERCLOUD"),
         stageDefs = listOf(
             CropStage(

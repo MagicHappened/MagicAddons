@@ -3,6 +3,7 @@ package org.magic.magicaddons.data.greenhouse.elements.mutation.epic
 import net.minecraft.core.Rotations
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.phys.Vec3
+import org.magic.magicaddons.data.greenhouse.CropEffect
 import org.magic.magicaddons.data.greenhouse.CropArmorStand
 import org.magic.magicaddons.data.greenhouse.CropDefinition
 import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
@@ -12,6 +13,10 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object ChorusFruit : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Chorus Fruit",
+        effects = setOf(
+            CropEffect.ImprovedXpBoost,
+            CropEffect.HarvestLoss
+        ),
         skyblockId = SkyBlockItemId.item("CHORUS_FRUIT"),
         stageDefs = listOf(
             CropStage(
