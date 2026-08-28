@@ -59,7 +59,10 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, Focus
 
         /** This fact about [instance], or null while the game has not told us the value yet. */
         fun valueFor(instance: GreenhouseElementInstance): String? = when (this) {
-            GrowthStage -> when (val stage = instance.growthStage) {
+            // a plant with one stage never grows, so there is no progress to report on it. Fire,
+            // dead plants and the mutations placed by hand are all like this
+            GrowthStage -> if (instance.cropDef.maxStage <= 1) null else
+                when (val stage = instance.growthStage) {
                 is GrowthStageInfo.Known -> "${stage.stage}/${instance.cropDef.maxStage}"
                 // a guessed stage is worth showing, as long as it does not look measured
                 is GrowthStageInfo.Estimated -> "~${stage.range.first}-${stage.range.last}"
@@ -213,7 +216,10 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, Focus
             null -> null
         }
 
-        val ticksNeeded = stage?.let { instance.cropDef.maxStage - it }
+        // nothing to outlast when the plant is already at its only stage
+        val ticksNeeded = stage
+            ?.takeIf { instance.cropDef.maxStage > 1 }
+            ?.let { instance.cropDef.maxStage - it }
         val tickMs = GreenhouseData.currentGrowthTickMs()
 
         val text: String
