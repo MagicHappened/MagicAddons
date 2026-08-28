@@ -1,10 +1,13 @@
 package org.magic.magicaddons.commands.debug
 
+import net.minecraft.network.chat.Component
+import net.minecraft.ChatFormatting
 import net.minecraft.client.Minecraft
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Rotations
 import net.minecraft.world.entity.EquipmentSlot
 import net.minecraft.world.entity.decoration.ArmorStand
+import net.minecraft.world.entity.player.Player
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
@@ -92,8 +95,17 @@ object CropStageExporter {
         )
 
 
+        // what the export could not describe, so an empty armorStands list can be told apart from
+        // a plant whose parts are not stands at all
+        val skipped = mutableListOf<String>()
+
         for (entity in stands) {
-            if (entity !is ArmorStand) continue
+            if (entity !is ArmorStand) {
+                if (entity !is Player) {
+                    skipped += "${entity.type.description.string} at ${fmt(entity.position())}"
+                }
+                continue
+            }
 
             val offset = entity.position().subtract(originVec)
 
@@ -106,7 +118,10 @@ object CropStageExporter {
 
             // a stand with neither a head nor a name gives a definition nothing to match on, and
             // standing anywhere near a player puts their own nameplate stands inside the box
-            if (hash == null && customName == null) continue
+            if (hash == null && customName == null) {
+                skipped += "nameless empty-handed stand at ${fmt(entity.position())}"
+                continue
+            }
 
             standData.add(
                 ArmorStandExport(
@@ -122,6 +137,14 @@ object CropStageExporter {
         }
 
 
+
+        if (skipped.isNotEmpty()) {
+            ChatUtils.sendWithPrefix(
+                Component.literal("${skipped.size} thing(s) near this crop were not exported")
+                    .withStyle(ChatFormatting.YELLOW)
+            )
+            skipped.forEach { ChatUtils.send("  $it") }
+        }
 
         sb.appendLine("CropStage(")
 
@@ -341,6 +364,9 @@ object CropStageExporter {
 
         ChatUtils.sendWithPrefix("Copied crop stage to clipboard (${result.length} chars)")
     }
+
+    /** A position short enough to read in chat. */
+    private fun fmt(pos: Vec3): String = "%.4f %.4f %.4f".format(pos.x, pos.y, pos.z)
 
     /** Moves a block built at the left margin under whatever line it is being written into. */
     private fun indent(text: String, by: String = "    "): String =
