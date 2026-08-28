@@ -37,3 +37,6 @@ fabric-cache/
 *.orig
 remappedSrc/
 .run/
+
+# local only, the crop data backup is not worth carrying in history
+backup/
