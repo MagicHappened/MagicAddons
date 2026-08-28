@@ -71,9 +71,6 @@ object LayoutRenderState {
      */
     private const val GHOST_TINT: Int = 0xFFB8CCFF.toInt()
 
-    /** The blue of a missing block, worn by the armor stands a ghosted crop is made of. */
-    const val GHOST_STAND_TINT: Int = 0xC0B8CCFF.toInt()
-
     /**
      * The glow around a ghosted stand's head. Strong blue rather than the pale wash the model
      * takes, since an outline is drawn as itself rather than multiplied over a texture.
