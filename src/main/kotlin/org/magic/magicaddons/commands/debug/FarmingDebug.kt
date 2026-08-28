@@ -1,9 +1,17 @@
 package org.magic.magicaddons.commands.debug
 
+import com.mojang.brigadier.arguments.BoolArgumentType
 import com.mojang.brigadier.arguments.DoubleArgumentType
 import com.mojang.brigadier.arguments.StringArgumentType
 import com.mojang.brigadier.builder.LiteralArgumentBuilder
 import com.mojang.brigadier.builder.RequiredArgumentBuilder
+import com.mojang.blaze3d.vertex.PoseStack
+import net.minecraft.client.renderer.SubmitNodeCollector
+import net.minecraft.world.phys.AABB
+import net.minecraft.world.phys.Vec3
+import org.magic.magicaddons.render.WorldRender
+import java.time.Duration
+import java.time.Instant
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource
 import net.minecraft.ChatFormatting
 import net.minecraft.client.Minecraft
@@ -17,6 +25,7 @@ import net.minecraft.world.entity.EquipmentSlot
 import net.minecraft.world.entity.decoration.ArmorStand
 import org.magic.magicaddons.commands.AbstractCommand
 import org.magic.magicaddons.data.greenhouse.Footprint
+import org.magic.magicaddons.features.farming.greenhousePresets.LayoutRenderState
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.PlayerUtils
 
@@ -34,29 +43,78 @@ object FarmingDebug : AbstractCommand() {
 
     private const val DEFAULT_RADIUS: Double = 4.0
 
+    /** How long a dump leaves its stands lit up for. */
+    private val HIGHLIGHT_TIME: Duration = Duration.ofSeconds(30)
+
+    /**
+     * A stand tells you how it is built by the colour it is lit in, since what is on screen is one
+     * head and what is in the world may be several stands holding it up.
+     */
+    private const val SMALL_COLOR: Int = 0xFF33FF66.toInt()
+    private const val FULL_COLOR: Int = 0xFFFF9922.toInt()
+    private const val MARKER_COLOR: Int = 0xFFAA44EE.toInt()
+
+    private const val HIGHLIGHT_ALPHA: Int = 0x50
+
+    /** What the last dump found, lit up in the world so it can be counted by eye. */
+    @Volatile
+    private var highlighted: List<Pair<AABB, Int>> = emptyList()
+
+    @Volatile
+    private var highlightUntil: Instant? = null
+
+    /** Draws the boxes of whatever the last dump listed, from the frame's own render pass. */
+    fun submitHighlights(poseStack: PoseStack, collector: SubmitNodeCollector, cameraPos: Vec3) {
+        val until = highlightUntil ?: return
+
+        if (Instant.now().isAfter(until)) {
+            highlighted = emptyList()
+            highlightUntil = null
+            return
+        }
+
+        highlighted.forEach { (box, color) ->
+            WorldRender.markBox(poseStack, collector, cameraPos, box, color, HIGHLIGHT_ALPHA)
+        }
+    }
+
     override val argument: String = "farming"
     override val description: String = "returns data for greenhouse testing"
 
     override fun build(): LiteralArgumentBuilder<FabricClientCommandSource> {
         return LiteralArgumentBuilder.literal<FabricClientCommandSource>(argument)
             .executes {
-                dumpNearbyEntities(DEFAULT_RADIUS)
+                dumpNearbyEntities(DEFAULT_RADIUS, false)
                 return@executes 1
             }
             .then(
                 LiteralArgumentBuilder.literal<FabricClientCommandSource>("stands")
                     .executes {
-                        dumpNearbyEntities(DEFAULT_RADIUS)
+                        dumpNearbyEntities(DEFAULT_RADIUS, false)
                         return@executes 1
                     }
                     .then(
-                        RequiredArgumentBuilder.argument<FabricClientCommandSource, Double>(
-                            "radius",
-                            DoubleArgumentType.doubleArg(0.5, 32.0)
+                        RequiredArgumentBuilder.argument<FabricClientCommandSource, Boolean>(
+                            "holograms",
+                            BoolArgumentType.bool()
                         ).executes {
-                            dumpNearbyEntities(DoubleArgumentType.getDouble(it, "radius"))
+                            dumpNearbyEntities(
+                                DEFAULT_RADIUS,
+                                BoolArgumentType.getBool(it, "holograms")
+                            )
                             return@executes 1
-                        }
+                        }.then(
+                            RequiredArgumentBuilder.argument<FabricClientCommandSource, Double>(
+                                "radius",
+                                DoubleArgumentType.doubleArg(0.5, 32.0)
+                            ).executes {
+                                dumpNearbyEntities(
+                                    DoubleArgumentType.getDouble(it, "radius"),
+                                    BoolArgumentType.getBool(it, "holograms")
+                                )
+                                return@executes 1
+                            }
+                        )
                     )
             )
             .then(
@@ -82,14 +140,22 @@ object FarmingDebug : AbstractCommand() {
             )
     }
 
-    /** Every named stand and display within [radius] of the player, nearest first. */
-    private fun dumpNearbyEntities(radius: Double) {
+    /**
+     * Every stand and display within [radius] of the player, nearest first.
+     *
+     * The stands this mod draws for a plan are left out unless [holograms] asks for them, so what
+     * is listed is what the server actually put there.
+     */
+    private fun dumpNearbyEntities(radius: Double, holograms: Boolean) {
         val client = Minecraft.getInstance()
         val player = client.player ?: return
         val level = client.level ?: return
 
+        val ours = if (holograms) emptySet() else LayoutRenderState.ghostStands.toSet()
+
         val entities = level.getEntities(player, player.boundingBox.inflate(radius))
             .filter { (it is ArmorStand && true ) || it is Display } // replaced it.hasCustomName() temporarly
+            .filterNot { it in ours }
             .sortedBy { it.distanceToSqr(player) }
 
         if (entities.isEmpty()) {
@@ -102,6 +168,23 @@ object FarmingDebug : AbstractCommand() {
                 .withStyle(ChatFormatting.GOLD)
         )
 
+        // lit up as well as listed, since one head on screen can be several stands underneath it
+        highlighted = entities.map { entity ->
+            val color = when {
+                entity is ArmorStand && entity.isMarker -> MARKER_COLOR
+                entity is ArmorStand && entity.isSmall -> SMALL_COLOR
+                else -> FULL_COLOR
+            }
+
+            entity.boundingBox to color
+        }
+        highlightUntil = Instant.now().plus(HIGHLIGHT_TIME)
+
+        ChatUtils.sendWithPrefix(
+            Component.literal("green small, orange full sized, purple marker")
+                .withStyle(ChatFormatting.DARK_GRAY)
+        )
+
         entities.forEach { entity ->
             val offset = entity.position().subtract(player.position())
 
@@ -110,7 +193,7 @@ object FarmingDebug : AbstractCommand() {
                     .withStyle(ChatFormatting.GRAY)
                     .append(
                         Component.literal(
-                            "%.2f %.2f %.2f".format(offset.x, offset.y, offset.z)
+                            "%.4f %.4f %.4f".format(offset.x, offset.y, offset.z)
                         ).withStyle(ChatFormatting.DARK_GRAY)
                     )
             )

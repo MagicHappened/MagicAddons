@@ -33,6 +33,7 @@ import org.joml.Matrix4f;
 import org.joml.Matrix4fc;
 import org.joml.Vector4f;
 import org.jspecify.annotations.Nullable;
+import org.magic.magicaddons.commands.debug.FarmingDebug;
 import org.magic.magicaddons.features.farming.greenhousePresets.LayoutRenderState;
 import org.magic.magicaddons.util.EntityUtils;
 import org.magic.misc.EntityRenderModifier;
@@ -97,6 +98,13 @@ public abstract class LevelRendererMixin {
         // the layout plan, drawn from this pass so it is placed against the camera the frame is
         // actually drawn with rather than one read at some other moment
         LayoutRenderState.INSTANCE.submit(
+                poseStack,
+                submitNodeCollector,
+                levelRenderState.cameraRenderState.pos
+        );
+
+        // whatever the farming debug last listed, lit up so it can be counted by eye
+        FarmingDebug.INSTANCE.submitHighlights(
                 poseStack,
                 submitNodeCollector,
                 levelRenderState.cameraRenderState.pos

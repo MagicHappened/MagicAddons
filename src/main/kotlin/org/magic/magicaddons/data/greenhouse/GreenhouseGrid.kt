@@ -189,10 +189,19 @@ class GreenhouseGrid(
         val level = Minecraft.getInstance().level ?: return ReconcileResult()
         val buildableArea = plot?.getBuildableArea() ?: return ReconcileResult()
 
-        val stands = level.getEntitiesOfClass(ArmorStand::class.java, buildableArea)
-        val remainingStands = stands.toMutableList()
+        // a greenhouse is full of marker stands laid out in columns across the whole plot. They
+        // hold nothing, occupy nothing, and belong to the plot rather than to any plant, so a crop
+        // stand described without a skull to look for would happily bind to one
+        val remainingStands = level.getEntitiesOfClass(ArmorStand::class.java, buildableArea)
+            .filterNot { it.isMarker }
+            .toMutableList()
 
-        val previous = elements.associateBy { it.instance.slot.x to it.instance.slot.y }
+        // taken from the instances rather than from the runtime wrappers around them. The wrappers
+        // hold entities and blocks, which only mean anything while the plot is loaded, and are
+        // rebuilt from nothing every time the grid is. The instances are what carry the age, the
+        // water and the stage, and what is written to disk, so they are what a plant is remembered
+        // as between one look at the plot and the next.
+        val previous = layout.elementInstances.associateBy { it.slot.x to it.slot.y }
         val reconciled = mutableListOf<ElementRuntimeState>()
         val result = ReconcileResult()
 
@@ -223,7 +232,7 @@ class GreenhouseGrid(
                 }
 
                 val standing = previous[x to y]
-                val runtime = if (standing != null && standing.instance.elementId == found.instance.elementId) {
+                val runtime = if (standing != null && standing.elementId == found.instance.elementId) {
                     result.kept++
                     carryOver(standing, found)
                 } else {
@@ -254,15 +263,15 @@ class GreenhouseGrid(
      * grown it looks; it says nothing about when it was planted or how much water it holds.
      */
     private fun carryOver(
-        standing: ElementRuntimeState,
+        standing: GreenhouseElementInstance,
         found: ElementRuntimeState
     ): ElementRuntimeState {
-        found.instance.age = standing.instance.age
-        found.instance.waterLevel = standing.instance.waterLevel
+        found.instance.age = standing.age
+        found.instance.waterLevel = standing.waterLevel
 
         // a diagnostic pins a stage down to one number, a scan often cannot, so a reading already
         // taken is not thrown away for a guess that covers it
-        val standingStage = standing.instance.growthStage
+        val standingStage = standing.growthStage
         val foundStage = found.instance.growthStage
 
         if (standingStage is GrowthStageInfo.Known && foundStage is GrowthStageInfo.Estimated &&
@@ -564,6 +573,7 @@ class GreenhouseGrid(
         val area = plot?.getBuildableArea() ?: return null
         val stands = level.getEntities(null, area)
             .filterIsInstance<ArmorStand>()
+            .filterNot { it.isMarker }
             .toMutableList()
         elements.forEach {
             it.standEntities?.let { elements -> stands.removeAll(elements.toSet()) }
