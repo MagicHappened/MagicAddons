@@ -103,7 +103,15 @@ open class CropStage(
     val armorStands: List<CropArmorStand>? = null,  // make sure on the matcher if its NULL it shouldnt have the respective thing on it!
     val stageRange: IntRange, // eg if its a wheat crop it CANNOT have any armor stands on it otherwise it will be considered something
     val allowRotation: Boolean = false, // else at runtime (eg ashwreath having partially grown wheat block)
-    val extraInfo: CropExtraInfo? = null,
+    /**
+     * Facts this stage's identity implies, copied into the instance's readings when it wins.
+     *
+     * A reader takes values off the stands after matching; a trait is known by the matching
+     * itself, such as which time of day the noctilume whose skull matched is craving. Both land
+     * in the same readings map, because both answer the same question: what is this plant beyond
+     * its stage number.
+     */
+    val traits: Map<String, Int> = emptyMap(),
     /**
      * Values to take off the stands around the plant once it has matched. These never decide
      * whether it matched: a bar that happens to be empty is a plant that is starving, not a plant
@@ -334,7 +342,7 @@ class CropStagePattern(
     armorStands: List<CropArmorStand>? = null,
     stageRange: IntRange,
     allowRotation: Boolean = false,
-    extraInfo: CropExtraInfo? = null,
+    traits: Map<String, Int> = emptyMap(),
     val baseStageStandOffset: Vec3,
     val stageOffsetMultipliers: Map<Int, Int> = emptyMap()
 ) : CropStage(
@@ -342,7 +350,7 @@ class CropStagePattern(
     armorStands = armorStands,
     stageRange = stageRange,
     allowRotation = allowRotation,
-    extraInfo = extraInfo
+    traits = traits
 ){
     fun expand(): List<CropStage> {
         val result = mutableListOf<CropStage>()
@@ -371,7 +379,8 @@ class CropStagePattern(
                     blocks = blocks,
                     armorStands = newStands,
                     stageRange = stage..stage,
-                    allowRotation = allowRotation
+                    allowRotation = allowRotation,
+                    traits = traits
                 )
             )
         }
@@ -380,12 +389,6 @@ class CropStagePattern(
     }
 
 }
-/**
- * Was meant to carry whatever a crop needs beyond blocks and stands, and never carried anything.
- * Readers do that job now, see [CropStandReader]. Kept only until the definitions stop naming it.
- */
-interface CropExtraInfo
-
 /**
  * How the greenhouse turns its plants.
  *
@@ -480,14 +483,21 @@ data class GreenhouseElementInstance(
     var age: Long? = null,
     val cropDef: CropDefinition,
     /**
-     * What the stands around this plant said, by the name its reader files it under. A fleshtrap's
-     * hunger and a snoozling's sleep live here, since they are things a plant is rather than things
-     * that decide what it is.
+     * What the scan learned about this plant, by name: what the stands around it said through
+     * readers, and what the matched stage's traits implied. A fleshtrap's hunger, a snoozling's
+     * sleep and a noctilume's craving all live here, since they are things a plant is rather than
+     * things that decide what it is.
      */
     val readings: MutableMap<String, Int> = mutableMapOf(),
 ) {
     /** Whether this plant is asleep and will not grow until it is woken. */
     val isAsleep: Boolean get() = readings[CropStandReader.ASLEEP] == 1
+
+    /**
+     * The time of day this plant craves, or null for one that craves nothing. A noctilume only
+     * advances while the garden's clock matches its craving, and flips it on every advance.
+     */
+    val craving: Int? get() = readings[CropStandReader.CRAVES]
 }
 
 

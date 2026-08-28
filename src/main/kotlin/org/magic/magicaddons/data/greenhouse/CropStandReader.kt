@@ -31,6 +31,11 @@ class CropStandReader(
         const val HUNGER: String = "hunger"
         const val BONUS: String = "bonus"
 
+        /** Which time of day a plant craves, filed by a stage trait rather than a reader. */
+        const val CRAVES: String = "craves"
+        const val CRAVES_DAY: Int = 0
+        const val CRAVES_NIGHT: Int = 1
+
         /** The character skyblock builds every one of its bars out of. */
         private const val BAR_CHAR: Char = '|'
 
