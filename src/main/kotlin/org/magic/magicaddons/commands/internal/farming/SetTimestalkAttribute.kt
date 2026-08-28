@@ -71,11 +71,6 @@ object SetTimestalkAttribute : AbstractCommand() {
             Component.literal("Open your Attribute Menu and find Timestalk, then type its level below.")
                 .withStyle(ChatFormatting.YELLOW)
         )
-        ChatUtils.sendWithPrefix(
-            Component.literal("It is a number from 0 to $MAX_LEVEL, and it decides how fast your greenhouse ticks.")
-                .withStyle(ChatFormatting.GRAY)
-        )
-
         Minecraft.getInstance().setScreenAndShow(
             // not a draft: the text is put in as though the player had typed it, ready to add to
             ChatScreen("/MagicAddons internal $argument ", false)
