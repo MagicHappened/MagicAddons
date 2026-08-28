@@ -14,7 +14,8 @@
     "EntityRenderStateMixin",
     "CustomHeadLayerMixin",
     "LevelExtractorMixin",
-    "GuiMixin"
+    "GuiMixin",
+    "KeyboardHandlerMixin"
   ],
   "injectors": {
     "defaultRequire": 1

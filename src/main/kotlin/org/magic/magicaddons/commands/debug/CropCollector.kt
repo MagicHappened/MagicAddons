@@ -222,7 +222,7 @@ object CropCollector : EntityUtils.HighlightSource {
         ChatUtils.sendWithPrefix("${s.entries.size} plants found, click the right ones to confirm:")
         s.entries.forEach { sendLine(it) }
         ChatUtils.send(
-            Component.literal("  then run /MagicAddons farming collect finish to write the file")
+            Component.literal("  press G for the checklist, collect finish writes the file, collect quit dismisses")
                 .withStyle(ChatFormatting.DARK_GRAY)
         )
     }
@@ -393,13 +393,34 @@ object CropCollector : EntityUtils.HighlightSource {
 
     // ------------------------------------------------------------------ the player's verdicts
 
-    /** The click on an entry's chat line, flipping it in or out of the file. */
-    fun toggle(id: Int) {
+    /** One row of the checklist: everything a screen needs of an entry and nothing more. */
+    data class Row(
+        val id: Int,
+        val label: String,
+        val color: Int,
+        val confirmed: Boolean,
+        val collectable: Boolean
+    )
+
+    fun rows(): List<Row> = session?.entries?.map { entry ->
+        Row(
+            id = entry.id,
+            label = (if (entry.confirmed) "✔ " else "") + rowLabel(entry),
+            color = entry.color,
+            confirmed = entry.confirmed,
+            collectable = entry.status != Status.Unknown
+        )
+    } ?: emptyList()
+
+    /** The click on an entry's line, from chat or from the checklist screen. */
+    fun toggle(id: Int, announce: Boolean = true) {
         val s = session ?: run {
             ChatUtils.sendWithPrefix("No collection running.")
             return
         }
-        val entry = s.entries.getOrNull(id) ?: run {
+        // by the id it was given, never by position: the list is sorted for display after the
+        // ids are handed out, so the entry sitting at index n is not entry n
+        val entry = s.entries.firstOrNull { it.id == id } ?: run {
             ChatUtils.sendWithPrefix("No entry $id in this run.")
             return
         }
@@ -412,7 +433,7 @@ object CropCollector : EntityUtils.HighlightSource {
         }
 
         entry.confirmed = !entry.confirmed
-        sendLine(entry)
+        if (announce) sendLine(entry)
     }
 
     /**
@@ -525,16 +546,20 @@ object CropCollector : EntityUtils.HighlightSource {
         )
     }
 
-    private fun sendLine(entry: Entry) {
+    private fun rowLabel(entry: Entry): String {
         // a nameless plant is still told apart from the next one by the skull it carries
         val name = entry.def?.name
             ?: entry.names.firstOrNull()
             ?: entry.stands.firstNotNullOfOrNull { PlayerUtils.getSkullHash(it) }?.take(12)?.plus("…")
             ?: "unknown"
         val stage = entry.stageText?.let { "stage $it" } ?: "stage ?"
-        val mark = if (entry.confirmed) "[✔] " else ""
 
-        val body = "$mark[${entry.id}] $name (${entry.origin.x}, ${entry.origin.z}) $stage — ${entry.status.label}"
+        return "$name (${entry.origin.x}, ${entry.origin.z}) $stage — ${entry.status.label}"
+    }
+
+    private fun sendLine(entry: Entry) {
+        val mark = if (entry.confirmed) "[✔] " else ""
+        val body = "$mark[${entry.id}] ${rowLabel(entry)}"
 
         val style = when (entry.status) {
             Status.Unknown -> Style.EMPTY.withColor(ChatFormatting.WHITE)
