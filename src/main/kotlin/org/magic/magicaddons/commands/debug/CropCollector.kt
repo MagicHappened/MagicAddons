@@ -305,7 +305,7 @@ object CropCollector : EntityUtils.HighlightSource {
         }
 
         val entry = Entry(
-            id = s.entries.size,
+            id = (s.entries.maxOfOrNull { it.id } ?: -1) + 1,
             def = def,
             origin = origin,
             stands = stands,
@@ -536,8 +536,14 @@ object CropCollector : EntityUtils.HighlightSource {
     }
 
     /**
-     * A diagnosis taken during a run, which outranks every guess: the player is standing on the
-     * plant's north-western block and the page has just said which stage it is.
+     * A diagnosis taken during a run, which is the master source of truth.
+     *
+     * The player is standing on the plant's north-western block and the page has just said what
+     * the plant is and which stage it is at. Everything the scan decided about that footprint is
+     * thrown away and rebuilt from the world: every entry overlapping the area or holding one of
+     * its stands is dropped, and a fresh entry takes every stand actually standing there. The
+     * scan's guesses were made without knowing where one plant ends and the next begins, and a
+     * snoozling's wheat had been carved into wheat entries the snoozling could never win back.
      */
     fun correct(def: CropDefinition, stage: Int) {
         val s = session ?: return
@@ -547,39 +553,55 @@ object CropCollector : EntityUtils.HighlightSource {
 
         val feet = player.blockPosition()
         val standingOn = if (!s.level.getBlockState(feet).isAir) feet else feet.below()
-        val reach = max(def.footprint.width, def.footprint.height)
 
-        fun nearest(candidates: List<Entry>): Entry? = candidates
-            .minByOrNull { max(abs(it.origin.x - standingOn.x), abs(it.origin.z - standingOn.z)) }
-            ?.takeIf { max(abs(it.origin.x - standingOn.x), abs(it.origin.z - standingOn.z)) <= reach }
+        val w = def.footprint.width
+        val h = def.footprint.height
 
-        // its own crop first; failing that, a plant the scan could not name is claimed by the
-        // diagnosis, which just did name it
-        val entry = nearest(s.entries.filter { it.def === def })
-            ?: nearest(s.entries.filter { it.def == null })
-
-        if (entry == null) {
-            ChatUtils.sendWithPrefix(
-                "No collected ${def.name} near you to correct, stand on its north-western block."
+        // the same net the scan casts, but over this plant's whole footprint and blind to every
+        // earlier claim: what is standing there is this plant's, because the diagnosis says so
+        val stands = s.level.getEntitiesOfClass(
+            ArmorStand::class.java,
+            AABB(
+                standingOn.x.toDouble(), standingOn.y - 2.0, standingOn.z.toDouble(),
+                (standingOn.x + w).toDouble(), standingOn.y + PLANT_HEIGHT.toDouble(), (standingOn.z + h).toDouble()
             )
-            return
+        )
+            .filterNot { it.isMarker }
+            .filterNot { PlayerUtils.getSkullHash(it) == null && !it.hasCustomName() }
+
+        val absorbed = s.entries.filter { entry ->
+            val ew = entry.def?.footprint?.width ?: 1
+            val eh = entry.def?.footprint?.height ?: 1
+
+            val overlaps = entry.origin.x < standingOn.x + w && standingOn.x < entry.origin.x + ew &&
+                    entry.origin.z < standingOn.z + h && standingOn.z < entry.origin.z + eh
+
+            overlaps || entry.stands.any { it in stands }
         }
 
-        entry.def = def
-        entry.origin = standingOn
-        entry.stageText = stage.toString()
-        entry.stageNum = stage
-
-        if (entry.status == Status.Unknown) {
-            entry.status = Status.Unrecorded
-            entry.color = colorFor(def.name)
-            entry.stands.forEach { standColors[it] = entry.color }
+        absorbed.forEach { entry ->
+            s.entries.remove(entry)
+            entry.stands.forEach {
+                standColors.remove(it)
+                EntityUtils.remove(it, this)
+            }
         }
 
-        entry.boxes = boxesFor(entry)
+        addEntry(
+            def = def,
+            origin = standingOn,
+            stands = stands,
+            status = Status.Unrecorded,
+            stageText = stage.toString(),
+            stageNum = stage,
+            names = stands.standNames()
+        )
 
-        ChatUtils.sendWithPrefix("${def.name} pinned to (${standingOn.x}, ${standingOn.z}) at stage $stage")
-        sendLine(entry)
+        val note = if (absorbed.isEmpty()) "" else ", replacing ${absorbed.size} earlier guess(es)"
+        ChatUtils.sendWithPrefix(
+            "${def.name} pinned to (${standingOn.x}, ${standingOn.z}) at stage $stage$note"
+        )
+        s.entries.lastOrNull()?.let { sendLine(it) }
     }
 
     // ------------------------------------------------------------------ output
