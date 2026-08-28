@@ -27,6 +27,7 @@ import net.minecraft.world.entity.EquipmentSlot
 import net.minecraft.world.entity.decoration.ArmorStand
 import org.magic.magicaddons.commands.AbstractCommand
 import org.magic.magicaddons.data.greenhouse.Footprint
+import org.magic.magicaddons.data.greenhouse.PlantDex
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData
 import org.magic.magicaddons.features.farming.greenhousePresets.LayoutRenderState
 import org.magic.magicaddons.util.ChatUtils
@@ -170,6 +171,13 @@ object FarmingDebug : AbstractCommand() {
                     )
             )
             .then(
+                LiteralArgumentBuilder.literal<FabricClientCommandSource>("plantDex")
+                    .executes {
+                        dumpPlantDex()
+                        return@executes 1
+                    }
+            )
+            .then(
                 LiteralArgumentBuilder.literal<FabricClientCommandSource>("uniques")
                     .executes {
                         dumpGrowthState()
@@ -197,6 +205,31 @@ object FarmingDebug : AbstractCommand() {
                         }
                     )
             )
+    }
+
+    /**
+     * How much of every crop the definitions cover, and what is still owed.
+     *
+     * The percentage lands in chat; the crop-by-crop list of gaps rides the clipboard, sorted
+     * base crops first and mutations by rarity, so a collection trip can be planned off it.
+     */
+    private fun dumpPlantDex() {
+        val report = PlantDex.report()
+
+        ChatUtils.sendWithPrefix(
+            Component.literal(
+                "Plant dex: ${report.percent}% recorded (${report.recorded} of ${report.total} stages)"
+            ).withStyle(ChatFormatting.GOLD)
+        )
+
+        if (report.missingList.isEmpty()) {
+            ChatUtils.sendWithPrefix("Nothing missing. The dex is complete.")
+            return
+        }
+
+        Minecraft.getInstance().keyboardHandler.clipboard = report.missingList
+
+        ChatUtils.send(clipboard(report.missingList, "${report.incompleteCrops} crops incomplete"))
     }
 
     /**

@@ -23,6 +23,7 @@ import org.magic.magicaddons.data.greenhouse.CropStagePattern
 import org.magic.magicaddons.data.greenhouse.GreenhouseGrid
 import org.magic.magicaddons.data.greenhouse.GrowthStageInfo
 import org.magic.magicaddons.data.greenhouse.LayoutSlot
+import org.magic.magicaddons.data.greenhouse.PlantDex
 import org.magic.magicaddons.data.greenhouse.WorldRotation
 import org.magic.magicaddons.render.WorldRender
 import org.magic.magicaddons.util.ChatUtils
@@ -631,6 +632,8 @@ object CropCollector : EntityUtils.HighlightSource {
             recorded.rotationLegacy -> Status.Legacy
             else -> Status.Current
         }
+
+        if (status == Status.Legacy) PlantDex.noteLegacy(def.name, stage..stage)
 
         addEntry(
             def = def,

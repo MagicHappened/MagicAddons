@@ -22,6 +22,20 @@ object Cindershade : CropDefinitionProvider {
                 blocks = listOf(),
                 armorStands = listOf(
                     CropArmorStand(
+                        offset = Vec3(0.0, 0.09375, 0.0),
+                        headRotation = Rotations(0.0f, 45.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
+                        hashString = "7bd5a39c3f9b1f513ecc299afaa5f90040fdb7424a5cd592e9ff31de7a3aafb3"
+                    )
+                ),
+                1..1,
+                allowRotation = true
+            ),
+            CropStage(
+                blocks = listOf(),
+                armorStands = listOf(
+                    CropArmorStand(
                         offset = Vec3(0.0, -0.71875, 0.0),
                         headRotation = Rotations(0.0f, 45.0f, 0.0f),
                         xRotation = 0.0f,

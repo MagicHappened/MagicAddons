@@ -35,8 +35,20 @@ object Cactus : CropDefinitionProvider {
                         ),
                         hashString = "d4b3ea5cb6b6f046e326621ca11ffb7d6aec22d66c0d81e5039b19ee4400309f"
                     ),
-                stageRange = 2..3,
+                stageRange = 2..2,
                 baseStageStandOffset = Vec3(0.0, 0.59375, 0.0)
+            ),
+            CropStage(
+                blocks = listOf(),
+                armorStands = CropArmorStand.matcherPattern(
+                    offsets = listOf(
+                        Vec3(0.0, 0.09375, 0.0),
+                        Vec3(0.0, -0.5, 0.0)
+                    ),
+                    hashString = "d4b3ea5cb6b6f046e326621ca11ffb7d6aec22d66c0d81e5039b19ee4400309f",
+                    isSmall = false
+                ),
+                3..3
             ),
             CropStage(
                 blocks = listOf(
@@ -106,12 +118,18 @@ object Cactus : CropDefinitionProvider {
                     blockState = cactusState()
                 ),
                 armorStands = CropArmorStand.matcherPattern(
-                        offsets = listOf(
-                            Vec3(0.03125, 2.59375, -0.15625),
-                            Vec3(0.03125, 2.59375, -0.15625),
-                            Vec3(0.0, 1.5, 0.0)
-                        ),
-                        hashString = "d4b3ea5cb6b6f046e326621ca11ffb7d6aec22d66c0d81e5039b19ee4400309f"
+                    offsets = listOf(
+                        Vec3(-0.15625, 2.59375, -0.03125),
+                        Vec3(0.3125, 1.0, 0.0),
+                        Vec3(0.0, 1.5, 0.0)
+                    ),
+                    rotations = listOf(
+                        Rotations(0.0f, 0.0f, -67.5f),
+                        Rotations(0.0f, 0.0f, 67.5f),
+                        Rotations(0.0f, 0.0f, 0.0f)
+                    ),
+                    hashString = "d4b3ea5cb6b6f046e326621ca11ffb7d6aec22d66c0d81e5039b19ee4400309f",
+                    isSmall = false
                 ),
                 7..7,
                 allowRotation = true

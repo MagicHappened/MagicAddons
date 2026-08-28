@@ -60,13 +60,14 @@ object MagicJellybean : CropDefinitionProvider {
      * three stages cannot be told apart by looking, and a stage that covers all three says so
      * instead of claiming to be the first of them.
      *
-     * Read off exported stages 1, 2, 3, 5, 6, 9, 18, 90, 94, 95 and 96, which agree with each
-     * other wherever two of them landed on the same position. Positions 4, 7 and 8 remain unseen.
+     * Read off exported stages 1, 2, 3, 5, 6, 7, 8, 9, 18, 19, 90, 94, 95 and 96, which agree
+     * with each other wherever two of them landed on the same position. Position 4 remains unseen.
      */
     private val cycle: List<Pair<IntRange, Top>> = listOf(
         0..2 to Top(stemAge = 3),
         3..3 to Top(stemAge = 5, melonStandY = 0.28125),
         5..6 to Top(stemAge = 7, melonStandY = 0.59375),
+        7..8 to Top(stemAge = 7, melonStandY = 0.6875),
         9..10 to Top(stemAge = 6, melonStandY = 0.78125),
         11..11 to Top(stemAge = 6, extraCaneStand = true)
     )
@@ -97,7 +98,8 @@ object MagicJellybean : CropDefinitionProvider {
                 val caneStands = (0 until standCount).map {
                     CropArmorStand(
                         offset = Vec3(0.0, CANE_STAND_Y + it, 0.0),
-                        hashString = CANE_HASH
+                        hashString = CANE_HASH,
+                isSmall = false
                     )
                 }
 
@@ -133,7 +135,8 @@ object MagicJellybean : CropDefinitionProvider {
         armorStands = (0 until caneHeight).map {
             CropArmorStand(
                 offset = Vec3(0.0, CANE_STAND_Y + it, 0.0),
-                hashString = CANE_HASH
+                hashString = CANE_HASH,
+                isSmall = false
             )
         },
         stageRange = MAX_STAGE..MAX_STAGE,

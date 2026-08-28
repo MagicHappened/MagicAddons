@@ -425,6 +425,10 @@ class GreenhouseGrid(
 
             val definition = bestDef ?: return null
 
+            // the dex cannot see from the data which stages predate normalized exports, so it
+            // learns from every match that only got there through the rotation fallback
+            if (bestLegacy) bestStage?.let { PlantDex.noteLegacy(definition.name, it.stageRange) }
+
             val instance = GreenhouseElementInstance(
                 definition.skyblockId?.id ?: definition.name,
                 slot = slot,
