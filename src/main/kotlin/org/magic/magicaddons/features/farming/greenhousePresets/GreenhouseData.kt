@@ -5,6 +5,9 @@ import org.magic.magicaddons.util.getBuildableArea
 import org.magic.magicaddons.util.parseDurationToMs
 import org.magic.magicaddons.util.isCardinalYaw
 import org.magic.magicaddons.util.center
+import net.minecraft.network.chat.HoverEvent
+import net.minecraft.network.chat.ClickEvent
+import net.minecraft.ChatFormatting
 import net.minecraft.client.Minecraft
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Rotations
@@ -637,14 +640,21 @@ object GreenhouseData {
             def = CropRegistry.get(stackId.id)
         }
 
-        val beaconStack = realItems.firstOrNull { it.item == Items.BEACON }
-        val beaconLore = beaconStack?.getLore() ?: return
+        val beaconLore = realItems.firstOrNull { it.item == Items.BEACON }?.getLore()
+        val saplingLore = realItems.firstOrNull { it.item == Items.JUNGLE_SAPLING }?.getLore()
+        val bucketLore = realItems.firstOrNull { it.item == Items.WATER_BUCKET }?.getLore()
 
-        val saplingStack = realItems.firstOrNull { it.item == Items.JUNGLE_SAPLING }
-        val saplingLore = saplingStack?.getLore() ?: return
-
-        val bucketStack = realItems.firstOrNull { it.item == Items.WATER_BUCKET }
-        val bucketLore = bucketStack?.getLore() ?: return
+        if (beaconLore == null || saplingLore == null || bucketLore == null) {
+            ChatUtils.sendWithPrefix(
+                "The diagnosis is missing a page: " +
+                        listOfNotNull(
+                            "status".takeIf { beaconLore == null },
+                            "growth".takeIf { saplingLore == null },
+                            "water".takeIf { bucketLore == null }
+                        ).joinToString(", ")
+            )
+            return
+        }
 
         val waterLevel = runCatching {
             bucketLore[0].siblings[1].string.toInt()
@@ -654,13 +664,22 @@ object GreenhouseData {
             beaconLore[0].siblings[1].string
         }.getOrNull()
 
-        val age = runCatching {
-            saplingLore[0].siblings[1].string
-        }.getOrNull()
+        // these two are still read out of a numbered piece, the way the stage used to be, so when
+        // one comes up empty the page it came from is worth seeing before guessing at a label
+        if (waterLevel == null) {
+            ChatUtils.sendWithPrefix("Could not read the water level, the water page reads:")
+            dumpLore(bucketLore)
+        }
 
-        val stageRaw = runCatching {
-            saplingLore[1].siblings[2].string
-        }.getOrNull()
+        if (status == null) {
+            ChatUtils.sendWithPrefix("Could not read the status, the status page reads:")
+            dumpLore(beaconLore)
+        }
+
+        val age = saplingLore.valueFor("Age")
+
+        // "Stage: 1/15", of which only the part before the slash is the stage
+        val stageRaw = saplingLore.valueFor("Stage")?.substringBefore('/')?.trim()
             ?.let { raw ->
                 when {
                     raw.equals("FULLY GROWN", ignoreCase = true) -> def?.maxStage
@@ -674,11 +693,7 @@ object GreenhouseData {
                 }
             }
 
-        val nextStage = runCatching {
-            saplingLore[2].siblings.getOrNull(2)?.string
-                ?.ifBlank { saplingLore[2].siblings.getOrNull(1)?.string ?: "" }
-                ?: saplingLore[2].siblings.getOrNull(1)?.string
-        }.getOrNull()
+        val nextStage = saplingLore.valueFor("Next Stage")
 
         if (nextStage?.contains(Regex("\\d")) ?: false) {
             if (!LocationAPI.isGuest) {
@@ -697,11 +712,28 @@ object GreenhouseData {
         }
 
         if (stageRaw == null) {
-            ChatUtils.sendWithPrefix("Could not read what stage ${def.name} is at.")
+            ChatUtils.sendWithPrefix(
+                "Could not read what stage ${def.name} is at, the growth page reads:"
+            )
+
+            dumpLore(saplingLore)
             return
         }
 
         ChatUtils.sendWithPrefix("${def.name}, stage $stageRaw of ${def.maxStage}")
+
+        // the page says how many stages the crop really has, so a definition that disagrees is
+        // wrong about something the game just told us
+        saplingLore.valueFor("Stage")
+            ?.substringAfter('/', "")
+            ?.trim()
+            ?.toIntOrNull()
+            ?.takeIf { it != def.maxStage }
+            ?.let {
+                ChatUtils.sendWithPrefix(
+                    "${def.name} is described with ${def.maxStage} stages but the game says $it"
+                )
+            }
 
         val matchingStage = def.stageDefs.find { stageDef ->
             stageRaw in stageDef.stageRange
@@ -727,14 +759,32 @@ object GreenhouseData {
                 maxX, maxY, maxZ
             )
 
+            // the plot's own marker stands are not part of any plant, and counting them is how one
+            // crop ended up reporting four stands that nothing is drawing
             val armorStands = level.getEntitiesOfClass(ArmorStand::class.java, box)
+                .filterNot { it.isMarker }
+                .toMutableList()
 
             // a stand that is not small is rebuilt wrong unless its definition says so, and the
             // definitions take small as read
-            armorStands.filterNot { it.isSmall }.forEach {
+            val fullSized = armorStands.filterNot { it.isSmall }
+
+            // one line for the crop, not one per stand: several stands of the same plant share a
+            // block, so naming each of them says the same thing three times over
+            if (fullSized.isNotEmpty()) {
                 ChatUtils.sendWithPrefix(
-                    "Stand at ${it.blockPosition()} is not small, ${def.name} needs isSmall = false"
+                    "${fullSized.size} of ${def.name}'s stands are not small, its definition needs isSmall = false"
                 )
+
+                // exact positions, since stands of one plant share a block and only the fractions
+                // tell a stack of three apart from three sitting a hair from each other
+                fullSized.forEach {
+                    ChatUtils.send(
+                        Component.literal(
+                            "  %.4f %.4f %.4f".format(it.x, it.y, it.z)
+                        ).withStyle(ChatFormatting.DARK_GRAY)
+                    )
+                }
             }
 
             abnormalRotationFound = armorStands.any {
@@ -779,6 +829,47 @@ object GreenhouseData {
             }
         }
     }
+    /**
+     * The value written beside [label] on a diagnosis page.
+     *
+     * Read off the whole line rather than out of a numbered piece of it. The server splits a line
+     * wherever its own formatting changes, so "Stage: 1/15" arrives as three pieces and the one
+     * sitting at any given number is whatever the colouring happened to make it, which is how
+     * reading the stage ended up reading the slash.
+     */
+    private fun List<Component>.valueFor(label: String): String? =
+        firstOrNull { it.string.trimStart().startsWith("$label:", ignoreCase = true) }
+            ?.string
+            ?.substringAfter(':')
+            ?.trim()
+            ?.takeIf { it.isNotEmpty() }
+
+    /**
+     * Every line of [lore] as it reads and as the pieces it is built from.
+     *
+     * The stage is pulled out of one particular piece of one particular line, so when that stops
+     * working the only useful thing to say is what was actually there. Each line copies whole, to
+     * be pasted somewhere it can be read properly.
+     */
+    private fun dumpLore(lore: List<Component>) {
+        lore.forEachIndexed { index, line ->
+            val pieces = line.siblings
+                .mapIndexed { pieceIndex, piece -> "[$pieceIndex]${piece.string}" }
+                .joinToString(" ")
+
+            val whole = "[$index] ${line.string}    pieces: $pieces"
+
+            ChatUtils.send(
+                Component.literal("  $whole").withStyle(
+                    Style.EMPTY
+                        .withColor(ChatFormatting.GRAY)
+                        .withClickEvent(ClickEvent.CopyToClipboard(whole))
+                        .withHoverEvent(HoverEvent.ShowText(Component.literal("Click to copy")))
+                )
+            )
+        }
+    }
+
     fun CropStage.needsRotationData(abnormalRotation: Boolean): Boolean =
         abnormalRotation && this.armorStands?.let { stands ->
             stands.isNotEmpty() && !stands.any {

@@ -63,6 +63,9 @@ object WorldRender {
      */
     private const val FILL_EXPAND: Double = 0.002
 
+    /** The least a box can measure and still be seen, for entities that occupy nothing at all. */
+    private const val MIN_BOX: Double = 0.08
+
     /**
      * Marks whatever stands at [pos]: the boxes of its shape filled in [color] at [fillAlpha], and
      * the edges of those same boxes drawn solid on top.
@@ -92,6 +95,48 @@ object WorldRender {
         }
 
         outline(poseStack, collector, cameraPos, pos, shape, color)
+    }
+
+    /**
+     * Marks [box], given in world coordinates, the way [mark] marks a block.
+     *
+     * For an entity rather than a block, so the box handed in is the one the entity actually
+     * occupies: a small stand's is half the height of a full one's, and a marker's has no size at
+     * all, which is why anything too thin to see is opened out to the least that can be.
+     */
+    fun markBox(
+        poseStack: PoseStack,
+        collector: SubmitNodeCollector,
+        cameraPos: Vec3,
+        box: AABB,
+        color: Int,
+        fillAlpha: Int
+    ) {
+        val visible = if (box.xsize < MIN_BOX || box.ysize < MIN_BOX || box.zsize < MIN_BOX) {
+            box.grow(MIN_BOX / 2)
+        } else {
+            box
+        }
+
+        poseStack.pushPose()
+        poseStack.translate(-cameraPos.x, -cameraPos.y, -cameraPos.z)
+
+        try {
+            collector.submitCustomGeometry(poseStack, RenderTypes.debugFilledBox()) { transform, consumer ->
+                consumer.fillBox(transform, visible.grow(FILL_EXPAND), ARGB.color(fillAlpha, color))
+            }
+
+            collector.submitShapeOutline(
+                poseStack,
+                Shapes.create(visible),
+                RenderTypes.LINES,
+                color,
+                OUTLINE_WIDTH,
+                false
+            )
+        } finally {
+            poseStack.popPose()
+        }
     }
 
     /** The edges of [shape], each of its boxes drawn as its own box. */
