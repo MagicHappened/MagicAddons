@@ -1,0 +1,114 @@
+WATER FORMULA — OBSERVATIONS
+============================
+Working notes for the greenhouse water model. Append to this; do not rewrite
+earlier entries, since a later reading is only worth anything next to the ones
+before it.
+
+Verbatim source of session 1 is in water-formula-prompt.txt.
+
+
+WHAT THE WIKI SAYS
+------------------
+  After each growth stage, a crop loses between 2-3 Water Level, which can be
+  mitigated by the +50% Water Retain and +100% Improved Water Retain effects,
+  and amplified by the -30% Water Drain negative effect respectively.
+
+  If a crop has negative Water Level during a Growth Stage, it has a chance not
+  to advance to the next stage.
+
+
+UNITS AND UNKNOWNS
+------------------
+  water_level    integer, observed range -100 .. +100
+  loss_per_tick  2..3 unbuffed, per the wiki. Whether the range is random per
+                 tick or fixed per crop is NOT yet known.
+  retain         +50% or +100%, from an adjacent crop
+  drain          -30%, from an adjacent crop
+  P              the full growth tick PERIOD. NOT yet measured. Every "next
+                 tick in N" below is time REMAINING, not the period.
+  death          assumed at -100. NOT yet confirmed.
+  "Lasts for"    a string in the water bucket lore. Derived and rounded by the
+                 server, so it is weaker evidence than a water_level reading.
+
+
+SESSION 1 — 2026-08-28
+----------------------
+Player state: max growth speed under the current formula. The newer formula
+variable is zero for this account, so it does not affect these readings.
+Growth ticks are global, not per crop.
+
+  A. FRESH WHEAT, water_level = 0
+     Reported "next tick in 25m" (remaining, not the period).
+
+       neighbours          lasts_for      minutes
+       none                7h 50m         470
+       +50% retain         11h 32m        692
+       +100% retain        17h 06m        1026
+
+       ratio vs none:      +50% -> 1.472x     +100% -> 2.183x
+
+     Same "lasts for" seen on other crops with no retain, consistent with the
+     figure depending on water and neighbours rather than on the crop.
+
+  B. WILD ROSE, planted the previous day, left to dry out
+     B1. water_level = -93, "next tick in 20m", lasts_for = 20m
+         Adding +50% retain  -> still 20m   (no change)
+         Adding +100% retain -> still 20m   (no change)
+         Read as: one tick from death, and the figure floors there.
+
+     B2. after watering slightly: water_level = -79, "next stage 17m"
+         (time had passed between readings; treat the countdowns as
+         approximate, the water levels as exact)
+
+       neighbours          lasts_for      minutes
+       none                2h 08m         128
+       +50% retain         2h 08m         128     <- unchanged
+       +100% retain        3h 59m         239
+
+       ratio vs none:      +50% -> 1.000x     +100% -> 1.867x
+
+
+WHAT THESE TWO SETS DISAGREE ABOUT
+----------------------------------
+  +50% retain multiplied the wheat's remaining time by 1.47 and the rose's by
+  exactly 1.00. A single multiplier on duration cannot produce both.
+
+  The likeliest explanation is that the loss is an INTEGER per tick and retain
+  divides it before rounding. A loss of 3 reduced by 50% is 2 after rounding, a
+  visible change; a loss of 2 reduced by 50% is 1 after rounding one way and 2
+  after rounding the other. That would make +50% sometimes do nothing at all,
+  which is exactly what B2 shows, and it fits the wiki's 2-3 range being a
+  range rather than a number.
+
+  If that holds, "lasts for" is a rounded presentation of an integer tick count
+  and is a poor thing to fit a formula to.
+
+
+WHAT TO MEASURE NEXT
+--------------------
+  1. P, the growth tick period. Everything above is in minutes and cannot be
+     turned into per-tick figures without it. Two consecutive "next tick"
+     countdowns, or the gap between two ticks landing, gives it.
+  2. water_level immediately BEFORE and AFTER a tick, for the same plant, at
+     each of none / +50% / +100% / -30%. The difference IS the loss per tick.
+     This is worth more than any number of "lasts for" strings.
+  3. Whether the loss varies tick to tick for one unchanged plant. Two or three
+     consecutive ticks on the same plant answers it.
+  4. Whether death is at -100 exactly, and what happens at it.
+  5. Whether two retaining neighbours stack, and whether they cap.
+  6. Whether Effect Spread carries retain further than one crop.
+  7. Whether a plant in water debt actually skipped a stage, and how often. The
+     wiki says "a chance", so this needs several ticks to say anything.
+
+
+ENTRY TEMPLATE
+--------------
+  crop           =
+  neighbours     =            (none / +50 / +100 / -30 / combinations)
+  water_before   =
+  water_after    =
+  ticks_elapsed  =
+  stage_before   =
+  stage_after    =            (to catch a skipped stage)
+  lasts_for      =            (optional, secondary evidence)
+  notes          =

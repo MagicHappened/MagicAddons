@@ -75,6 +75,12 @@ object LayoutRenderState {
     const val GHOST_STAND_TINT: Int = 0xC0B8CCFF.toInt()
 
     /**
+     * The glow around a ghosted stand's head. Strong blue rather than the pale wash the model
+     * takes, since an outline is drawn as itself rather than multiplied over a texture.
+     */
+    const val GHOST_OUTLINE_COLOR: Int = 0xFF3399FF.toInt()
+
+    /**
      * Ground a hoe turns into other ground. A dirt where farmland belongs is not the wrong block,
      * it is the right one left untilled, and saying so in red would send the player digging.
      */
