@@ -164,8 +164,12 @@ public abstract class LevelRendererMixin {
 
 
         EntityRenderState state = renderer.createRenderState(entity, partialTicks);
-        modifier.modify(entity,state);
+
+        // the modifier speaks last: extractRenderState writes outlineColor and isInvisible from
+        // the entity itself, so a modifier run before it was silently overwritten, and the glow
+        // it asked for never survived to the submit
         renderer.extractRenderState(entity, state, partialTicks);
+        modifier.modify(entity, state);
 
 
 
