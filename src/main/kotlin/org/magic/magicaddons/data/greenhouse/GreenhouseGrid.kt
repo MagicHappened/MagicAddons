@@ -377,6 +377,7 @@ class GreenhouseGrid(
             var bestScore = -1
             var bestUsedStands: List<Entity>? = null
             var bestBlocks: Map<BlockPos, BlockState>? = null
+            var bestLegacy = false
 
             for (candidate in candidates) {
                 val stages = candidate.stageDefs.flatMap {
@@ -397,6 +398,7 @@ class GreenhouseGrid(
                     bestStage = stage
                     bestUsedStands = result.usedStands
                     bestBlocks = result.matchedBlocks
+                    bestLegacy = result.rotationLegacy
 
                     val range = stage.stageRange
                     bestGrowth = if (range.first == range.last) {
@@ -425,7 +427,8 @@ class GreenhouseGrid(
             return ElementRuntimeState(
                 instance = instance,
                 standEntities = bestUsedStands,
-                blocksMap = bestBlocks
+                blocksMap = bestBlocks,
+                rotationLegacy = bestLegacy
             )
         }
 

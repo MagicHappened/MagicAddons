@@ -875,6 +875,17 @@ object GreenhouseData {
                     CropStageExporter.copyCropStageData(it,stageRaw, def, !isSelf)
                 }
             }
+            else if (element?.rotationLegacy == true) {
+                // the stage exists and the plant is what it says, but its offsets were recorded
+                // before exports came out facing rotation zero. This plant is standing proof of
+                // the corrected version, so its export replaces the old data
+                ChatUtils.sendWithPrefix(
+                    "${def.name} stage $stageRaw predates rotation-normalized exports, please send the copied output to replace it"
+                )
+                plantDiagnosticHitBaseBlock?.let {
+                    CropStageExporter.copyCropStageData(it, stageRaw, def, !isSelf)
+                }
+            }
             else if (override){
                 ChatUtils.sendWithPrefix(
                     "${def.name} could only be narrowed to a range, so its output was copied too"
