@@ -254,7 +254,8 @@ object GreenhouseData {
         val growthTickMs = computeGrowthStageTimeMs(
             getCurrentUniques().size,
             miscInfo.cropGrowthValue!!,
-            miscInfo.cropSpeedUpgradeValue!!
+            miscInfo.cropSpeedUpgradeValue!!,
+            miscInfo.greenhouseSpeedAttribute ?: 0
         )
 
         val now = Instant.now()
@@ -555,6 +556,13 @@ object GreenhouseData {
                 ChatUtils.buildWithCommand(
                     "Unknown Crop Speed or Yield upgrade. Click here to open desk",
                     "/greenhouseupgrades"
+                )
+            )
+        }
+        if (miscInfo.greenhouseSpeedAttribute == null) {
+            warnings.add(
+                ChatUtils.buildWithPrefix(
+                    "Unknown Greenhouse Speed attribute, ticks are being timed as if it were zero"
                 )
             )
         }
@@ -964,11 +972,13 @@ object GreenhouseData {
     fun computeGrowthStageTimeMs(
         uniqueCrops: Int,
         cropGrowthStat: Int,
-        greenhouseUpgrade: Int
+        greenhouseUpgrade: Int,
+        speedAttribute: Int = 0
     ): Long {
 
         val uniqueCropBonus = 0.025 * uniqueCrops
         val cropGrowthBonus = 0.0025 * cropGrowthStat
+        val attributeBonus = 0.005 * speedAttribute
 
         val upgradeBonus = when (greenhouseUpgrade) {
             in 0..8 -> 0.05 * greenhouseUpgrade
@@ -980,6 +990,7 @@ object GreenhouseData {
             1.0 +
                     uniqueCropBonus +
                     cropGrowthBonus +
+                    attributeBonus +
                     upgradeBonus
 
         val seconds = 14400.0 / denominator

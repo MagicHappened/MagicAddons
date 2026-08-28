@@ -168,16 +168,19 @@ object Codecs {
                             .forGetter { Optional.ofNullable(it.cropSpeedUpgradeValue) },
                 Codec.INT.optionalFieldOf("crop_yield_upgrade")
                         .forGetter { Optional.ofNullable(it.cropYieldUpgradeValue) },
+                Codec.INT.optionalFieldOf("greenhouse_speed_attribute")
+                        .forGetter { Optional.ofNullable(it.greenhouseSpeedAttribute) },
                     Codec.BOOL.fieldOf("ignore_warnings")
                         .forGetter { it.shouldIgnoreWarning }
 
 
-            ).apply(instance) { tick, cropGrowth, cropSpeed, cropYield, ignoreWarnings ->
+            ).apply(instance) { tick, cropGrowth, cropSpeed, cropYield, speedAttribute, ignoreWarnings ->
                 MiscGreenhouseInfo(
                     nextTickTime = tick.orElse(null)?.let { Instant.ofEpochMilli(it) } ,
                     cropGrowthValue = cropGrowth.orElse(null),
                     cropSpeedUpgradeValue = cropSpeed.orElse(null),
                     cropYieldUpgradeValue = cropYield.orElse(null),
+                    greenhouseSpeedAttribute = speedAttribute.orElse(null),
                     ignoreWarnings
                     )
             }
