@@ -115,6 +115,17 @@ object FarmingDebug : AbstractCommand() {
                     )
             )
 
+            // how a stand is built decides where its head ends up, and a stand rebuilt at the right
+            // position but the wrong size puts its skull at the wrong height
+            if (entity is ArmorStand) {
+                ChatUtils.send(
+                    field(
+                        "stand",
+                        "small=${entity.isSmall} marker=${entity.isMarker} arms=${entity.showArms()}"
+                    )
+                )
+            }
+
             entity.customName?.let { name ->
                 // the name as it draws, so a bar can be counted, and again as the runs of styling
                 // it is built from, which is the only way to tell a filled notch from an empty one

@@ -83,10 +83,12 @@ object CropStageExporter {
 
         val stands = world.getEntities(null, box)
 
+        // the middle of the footprint on both axes, which is what the mirroring check measures
+        // from. z takes the height, not the width: they only agree while every crop is square
         val originVec = Vec3(
-            basePos.x.toDouble() + width / 2.0, //get center of footprint
-            basePos.y.toDouble(),               // has to be center for mirroring to work properly.
-            basePos.z.toDouble() + width / 2.0
+            basePos.x.toDouble() + width / 2.0,
+            basePos.y.toDouble(),
+            basePos.z.toDouble() + height / 2.0
         )
 
 
