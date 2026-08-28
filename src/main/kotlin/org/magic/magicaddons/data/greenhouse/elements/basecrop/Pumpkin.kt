@@ -53,6 +53,23 @@ object Pumpkin : CropDefinitionProvider {
             CropStage(
                 blocks = listOf(
                     CropBlockState(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = melonStemState(5)
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        isSmall = false,
+                        offset = Vec3(0.0, -0.53125, 0.0),
+                        hashString = "18bd4aa55673e90a3c611117277d94f6ce185b5d13d2a862a3376f50a6139c4f"
+                    )
+                ),
+                4..4,
+                allowRotation = true
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
                         offset = BlockPos(0,1,0),
                         blockState = melonStemState(6)
                     )

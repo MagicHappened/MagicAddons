@@ -88,7 +88,9 @@ object Moonflower : CropDefinitionProvider {
                 armorStands =
                     listOf(
                         CropArmorStand(
-                            offset = Vec3(-0.1875, 0.0625, 0.0),
+                            isSmall = false,
+                            offset = Vec3(0.0, 0.0625, 0.1875),
+                            headRotation = Rotations(15.0f, 0.0f, 0.0f),
                             hashString = "7775c5d80efc36c7b029470852aaf161e3733f8ae691fb5ed5450232630e4fcb",
                         )
                     )
@@ -133,6 +135,23 @@ object Moonflower : CropDefinitionProvider {
                     )
                 ),
                 10..10,
+                allowRotation = true
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = melonStemState(6)
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        isSmall = false,
+                        offset = Vec3(0.0, 0.25, 0.1875),
+                        hashString = "7775c5d80efc36c7b029470852aaf161e3733f8ae691fb5ed5450232630e4fcb"
+                    )
+                ),
+                11..11,
                 allowRotation = true
             ),
             CropStage(

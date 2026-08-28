@@ -67,6 +67,16 @@ object Potato : CropDefinitionProvider {
             CropStage(
                 blocks = listOf(
                     CropBlockState(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = potatoesState(5)
+                    )
+                ),
+                armorStands = listOf(),
+                6..6
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
                         offset = BlockPos(0,1,0),
                         blockState = potatoesState(6)
                     )
