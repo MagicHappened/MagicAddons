@@ -17,6 +17,7 @@ object Cactus : CropDefinitionProvider {
                 blocks = listOf(),
                 armorStands = listOf(
                     CropArmorStand(
+                        isSmall = false,
                         offset = Vec3(0.0, -0.5, 0.0),
                         headRotation = Rotations(0.0f, 0.0f, 0.0f),
                         hashString = "d4b3ea5cb6b6f046e326621ca11ffb7d6aec22d66c0d81e5039b19ee4400309f"
@@ -132,7 +133,8 @@ object Cactus : CropDefinitionProvider {
                         0.0f,
                         0.0f
                     ),
-                    hashString = "d4b3ea5cb6b6f046e326621ca11ffb7d6aec22d66c0d81e5039b19ee4400309f"
+                    hashString = "d4b3ea5cb6b6f046e326621ca11ffb7d6aec22d66c0d81e5039b19ee4400309f",
+                    isSmall = false
                 ),
                 8..8
             )

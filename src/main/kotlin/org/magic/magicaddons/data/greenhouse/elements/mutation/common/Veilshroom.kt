@@ -24,6 +24,7 @@ object Veilshroom : CropDefinitionProvider {
                 blocks = listOf(),
                 armorStands = listOf(
                     CropArmorStand(
+                        isSmall = false,
                         offset = Vec3(0.0, -0.5, 0.0),
                         headRotation = Rotations(0.0f, 0.0f, 0.0f),
                         hashString = "266754af4859ef6f0adb03e6c58e9e348a507debce6b5a7f660d1269401de674"

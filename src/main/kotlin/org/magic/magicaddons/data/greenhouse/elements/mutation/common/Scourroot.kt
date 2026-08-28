@@ -22,6 +22,7 @@ object Scourroot : CropDefinitionProvider {
                 blocks = listOf(),
                 armorStands = listOf(
                     CropArmorStand(
+                        isSmall = false,
                         offset = Vec3(0.0, -0.75, -0.125),
                         headRotation = Rotations(45.0f, 0.0f, 0.0f),
                         xRotation = 0.0f,
