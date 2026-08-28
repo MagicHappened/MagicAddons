@@ -20,6 +20,7 @@ import org.magic.magicaddons.ui.Focusable
 import org.magic.magicaddons.data.greenhouse.NEVER_DECAYS
 import org.magic.magicaddons.data.greenhouse.GreenhouseElementInstance
 import org.magic.magicaddons.data.greenhouse.WaterModel
+import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData
 import org.magic.magicaddons.data.greenhouse.LayoutSlot
 import org.magic.magicaddons.data.greenhouse.GrowthStageInfo
 import org.magic.magicaddons.util.ChatUtils
@@ -212,15 +213,16 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, Focus
         }
 
         val ticksNeeded = stage?.let { instance.cropDef.maxStage - it }
+        val tickMs = GreenhouseData.currentGrowthTickMs()
 
         val text: String
         val color: Int
 
-        if (ticksLeft == null || ticksNeeded == null) {
+        if (ticksLeft == null || ticksNeeded == null || tickMs == null) {
             text = "?"
             color = Common.UI.TEXT_COLOR
         } else {
-            text = "${ticksLeft}t"
+            text = readableDuration(ticksLeft * tickMs)
             color = if (ticksLeft > ticksNeeded) Common.UI.SUCCESS_COLOR else Common.UI.DANGER_COLOR
         }
 
@@ -325,6 +327,9 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, Focus
         /** Below this the meter is too short to read a level off, so nothing is drawn. */
         private const val WATER_BAR_MIN_WIDTH: Int = 8
 
+        /** Past this, a duration is shown in whole hours. */
+        private const val COARSE_AFTER_SECONDS: Long = 6 * 60 * 60
+
         private fun labelled(label: String, value: String): Component =
             Component.literal("$label: ").withStyle(ChatFormatting.GRAY)
                 .append(Component.literal(value).withStyle(ChatFormatting.WHITE))
@@ -342,20 +347,28 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, Focus
             return (decayTime - age).coerceAtLeast(0L)
         }
 
-        /** [ms] as the two largest units that fit, the way the game words its own timers. */
+        /**
+         * [ms] as a duration, cut off rather than rounded, so a figure never reads longer than the
+         * time actually left.
+         *
+         * Past six hours the minutes stop being worth the width they take and are dropped, so six
+         * hours and fifty minutes reads as six hours. Below that they are kept, since twenty
+         * minutes either way matters when a plant is nearly dry.
+         */
         private fun readableDuration(ms: Long): String {
             val seconds = ms / 1000
 
-            val parts = listOf(
-                "d" to seconds / 86400,
-                "h" to seconds % 86400 / 3600,
-                "m" to seconds % 3600 / 60,
-                "s" to seconds % 60
-            ).filter { it.second > 0L }
+            val days = seconds / 86400
+            val hours = seconds % 86400 / 3600
+            val minutes = seconds % 3600 / 60
 
-            if (parts.isEmpty()) return "0s"
-
-            return parts.take(2).joinToString(" ") { "${it.second}${it.first}" }
+            return when {
+                days > 0 -> "${days}d ${hours}h"
+                seconds >= COARSE_AFTER_SECONDS -> "${hours}h"
+                hours > 0 -> "${hours}h ${minutes}m"
+                minutes > 0 -> "${minutes}m"
+                else -> "${seconds}s"
+            }
         }
     }
 }

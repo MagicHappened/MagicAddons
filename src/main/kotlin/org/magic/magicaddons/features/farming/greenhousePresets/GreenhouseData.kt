@@ -969,6 +969,22 @@ object GreenhouseData {
     }
 
 
+    /**
+     * How long one growth tick currently takes, or null while something the formula needs is not
+     * known. Changes as uniques are planted, so it is worked out rather than remembered.
+     */
+    fun currentGrowthTickMs(): Long? {
+        val cropGrowth = miscInfo.cropGrowthValue ?: return null
+        val upgrade = miscInfo.cropSpeedUpgradeValue ?: return null
+
+        return computeGrowthStageTimeMs(
+            getCurrentUniques().size,
+            cropGrowth,
+            upgrade,
+            miscInfo.greenhouseSpeedAttribute ?: 0
+        )
+    }
+
     fun computeGrowthStageTimeMs(
         uniqueCrops: Int,
         cropGrowthStat: Int,
