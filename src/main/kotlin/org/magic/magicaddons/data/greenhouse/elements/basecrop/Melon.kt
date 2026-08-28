@@ -169,8 +169,8 @@ object Melon : CropDefinitionProvider {
                 ),
                 armorStands = CropArmorStand.matcherPattern(
                     offsets = listOf(
-                        Vec3(0.0, -0.46875, -0.0625),
-                        Vec3(-0.09375, -0.625, 0.09375)
+                        Vec3(-0.0625, -0.46875, 0.0),
+                        Vec3(0.09375, -0.625, 0.09375)
                     ),
                     rotations = listOf(
                         Rotations(0.0f, 0.0f, -22.5f),
@@ -181,8 +181,8 @@ object Melon : CropDefinitionProvider {
                         0.0f
                     ),
                     yRotations = listOf(
-                        90.0f,
-                        90.0f
+                        0.0f,
+                        0.0f
                     ),
                     hashString = "fdfae4b11048bc1ce96ed150134e79f16e2bcaf12d43fa0ff0e27fb2e0852130",
                     isSmall = false

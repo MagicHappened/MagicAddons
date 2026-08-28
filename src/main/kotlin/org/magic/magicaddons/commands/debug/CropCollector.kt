@@ -60,6 +60,10 @@ object CropCollector : EntityUtils.HighlightSource {
     /** How far above the soil a plant can reach, for the stand search and the block columns. */
     private const val PLANT_HEIGHT: Int = 15
 
+    /** The skull the plot marker stand carries on every greenhouse, never part of a plant. */
+    private const val PLOT_MARKER_SKIN: String =
+        "4099589796de185787ab92c3066d0d0af832ffad7153a42bb2e2d23598e7ea60"
+
     private const val GRAY: Int = 0xFF9E9E9E.toInt()
     private const val UNKNOWN_WHITE: Int = 0xFFFFFFFF.toInt()
 
@@ -176,6 +180,9 @@ object CropCollector : EntityUtils.HighlightSource {
         )
             .filterNot { it.isMarker }
             .filterNot { PlayerUtils.getSkullHash(it) == null && !it.hasCustomName() }
+            // the plot's own marker head hovers high over every greenhouse without being flagged
+            // a marker, and once floated seven blocks up into a snoozling export
+            .filterNot { PlayerUtils.getSkullHash(it) == PLOT_MARKER_SKIN }
             .toMutableList()
 
         // first pass: everything the definitions already recognise, wherever its origin lies
@@ -588,6 +595,9 @@ object CropCollector : EntityUtils.HighlightSource {
         )
             .filterNot { it.isMarker }
             .filterNot { PlayerUtils.getSkullHash(it) == null && !it.hasCustomName() }
+            // the plot's own marker head hovers high over every greenhouse without being flagged
+            // a marker, and once floated seven blocks up into a snoozling export
+            .filterNot { PlayerUtils.getSkullHash(it) == PLOT_MARKER_SKIN }
 
         val absorbed = s.entries.filter { entry ->
             val ew = entry.def?.footprint?.width ?: 1

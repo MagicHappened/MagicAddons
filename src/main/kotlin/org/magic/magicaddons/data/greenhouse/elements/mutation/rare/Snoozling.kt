@@ -105,20 +105,20 @@ object Snoozling : CropDefinitionProvider {
                 ),
                 armorStands = CropArmorStand.matcherPattern(
                     offsets = listOf(
-                        Vec3(0.0, -0.25, -0.625),
-                        Vec3(0.0, 0.9375, -0.90625),
                         Vec3(0.0, 0.4375, 0.40625),
                         Vec3(0.0, -0.5625, 0.0),
                         Vec3(0.5, -0.65625, -0.375),
-                        Vec3(-0.46875, -0.59375, -0.375)
+                        Vec3(-0.46875, -0.59375, -0.375),
+                        Vec3(0.0, -0.25, -0.625),
+                        Vec3(0.0, 0.9375, -0.90625)
                     ),
                     rotations = listOf(
                         Rotations(22.5f, 0.0f, 0.0f),
-                        Rotations(45.0f, 0.0f, 0.0f),
-                        Rotations(22.5f, 0.0f, 0.0f),
                         Rotations(0.0f, 0.0f, 0.0f),
                         Rotations(0.0f, 0.0f, 22.5f),
-                        Rotations(0.0f, 0.0f, -22.5f)
+                        Rotations(0.0f, 0.0f, -22.5f),
+                        Rotations(22.5f, 0.0f, 0.0f),
+                        Rotations(45.0f, 0.0f, 0.0f)
                     ),
                     xRotations = listOf(
                         0.0f,
@@ -129,18 +129,15 @@ object Snoozling : CropDefinitionProvider {
                         0.0f
                     ),
                     yRotations = listOf(
-                        -180.0f,
-                        -180.0f,
                         0.0f,
                         -180.0f,
                         0.0f,
-                        0.0f
+                        0.0f,
+                        -180.0f,
+                        -180.0f
                     ),
                     hashString = "b82d442528456547474dd88166a97818f057ecc4b3ed350ef9a5e4dbd27f98d7"
-                ) + listOf(CropArmorStand(
-                        isSmall = false,
-                    offset = Vec3(-1.01171875, 4.701741536458329, -1.071044921875)
-                ),
+                ) + listOf(
                     CropArmorStand(
                         isSmall = false,
                         offset = Vec3(0.0, 0.0, 0.84375),
