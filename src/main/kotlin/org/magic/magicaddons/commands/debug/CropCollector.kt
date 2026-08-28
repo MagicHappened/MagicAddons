@@ -532,6 +532,21 @@ object CropCollector : EntityUtils.HighlightSource {
         }
 
         entry.confirmed = !entry.confirmed
+
+        // a ticked plant stops being lit: the highlights are the pile still to sort, so what was
+        // just confirmed disappearing from it is the feedback that the click landed
+        if (entry.confirmed) {
+            entry.stands.forEach {
+                standColors.remove(it)
+                EntityUtils.remove(it, this)
+            }
+        } else {
+            entry.stands.forEach {
+                standColors[it] = entry.color
+                EntityUtils.add(it, this)
+            }
+        }
+
         if (announce) sendLine(entry)
     }
 
@@ -711,6 +726,8 @@ object CropCollector : EntityUtils.HighlightSource {
         }
 
         s.entries.forEach { entry ->
+            if (entry.confirmed) return@forEach
+
             entry.boxes.forEach { box ->
                 WorldRender.markBox(poseStack, collector, cameraPos, box, entry.color, BLOCK_ALPHA)
             }
