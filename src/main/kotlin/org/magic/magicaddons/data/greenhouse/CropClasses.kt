@@ -179,8 +179,7 @@ open class CropStage(
                     .map { entity ->
 
                         val offset = entity.position().subtract(center)
-                        val head = entity.getItemBySlot(EquipmentSlot.HEAD)
-                        val hash = PlayerUtils.getSkinHash(head)
+                        val hash = PlayerUtils.getSkullHash(entity)
                         val name = entity.customName?.string
 
                         val offsetOk = matchesWithRotation(offset, standDef.offset, allowRotation)
