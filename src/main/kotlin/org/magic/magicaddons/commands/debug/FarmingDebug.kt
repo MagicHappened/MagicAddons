@@ -121,6 +121,22 @@ object FarmingDebug : AbstractCommand() {
                     )
             )
             .then(
+                LiteralArgumentBuilder.literal<FabricClientCommandSource>("entitiesAll")
+                    .executes {
+                        dumpEverything(DEFAULT_RADIUS)
+                        return@executes 1
+                    }
+                    .then(
+                        RequiredArgumentBuilder.argument<FabricClientCommandSource, Double>(
+                            "radius",
+                            DoubleArgumentType.doubleArg(0.5, 32.0)
+                        ).executes {
+                            dumpEverything(DoubleArgumentType.getDouble(it, "radius"))
+                            return@executes 1
+                        }
+                    )
+            )
+            .then(
                 LiteralArgumentBuilder.literal<FabricClientCommandSource>("uniques")
                     .executes {
                         dumpGrowthState()
@@ -315,6 +331,97 @@ object FarmingDebug : AbstractCommand() {
             describeHeldItem(entity)?.let { ChatUtils.send(it) }
         }
     }
+
+    /**
+     * Everything within [radius], holding nothing back.
+     *
+     * The filtered listing answers "which of the things I know about is here". This answers the
+     * other question, the one that only comes up when something is plainly visible and nothing in
+     * the mod can see it: what is here at all. So it takes every entity of every type, says
+     * everything it can say about each, and makes no judgement about what is worth mentioning,
+     * because a judgement about what is worth mentioning is exactly what would hide the answer.
+     *
+     * It goes to the clipboard rather than only to chat. It is long on purpose, and chat drops the
+     * top of it.
+     */
+    private fun dumpEverything(radius: Double) {
+        val client = Minecraft.getInstance()
+        val player = client.player ?: return
+        val level = client.level ?: return
+
+        // every entity, this one included: a listing that quietly leaves someone out is the thing
+        // that made this command necessary
+        val entities = level.getEntities(null as Entity?, player.boundingBox.inflate(radius))
+            .sortedBy { it.distanceToSqr(player) }
+
+        val text = buildString {
+            appendLine("${entities.size} entities within $radius of ${fmt(player.position())}")
+
+            entities.forEach { entity ->
+                val at = entity.position()
+
+                appendLine()
+                appendLine("${entity.type.toString().substringAfterLast('.')} ${fmt(at)}")
+                appendLine("  id=${entity.id} uuid=${entity.uuid}")
+                appendLine("  rot=%.2f/%.2f box=${entity.boundingBox}".format(entity.yRot, entity.xRot))
+                appendLine("  invisible=${entity.isInvisible} passengers=${entity.passengers.size}")
+
+                entity.customName?.let {
+                    appendLine("  name=${it.string}")
+                    appendLine("  runs=${describeRuns(it)}")
+                }
+
+                if (entity is ArmorStand) {
+                    appendLine(
+                        "  stand small=${entity.isSmall} marker=${entity.isMarker} " +
+                                "arms=${entity.showArms()} basePlate=${entity.showBasePlate()}"
+                    )
+                    appendLine("  headPose=${entity.headPose}")
+
+                    EquipmentSlot.entries.forEach { slot ->
+                        val stack = entity.getItemBySlot(slot)
+                        if (!stack.isEmpty) appendLine("  $slot=${describeStack(stack)}")
+                    }
+                }
+
+                if (entity is Display) {
+                    appendLine("  display=${entity.javaClass.simpleName}")
+                }
+
+                if (entity is Display.ItemDisplay) {
+                    appendLine("  item=${describeStack(entity.itemStack)}")
+                }
+
+                if (entity is Display.BlockDisplay) {
+                    appendLine("  block=${entity.blockState}")
+                }
+            }
+        }
+
+        client.keyboardHandler.clipboard = text
+
+        ChatUtils.sendWithPrefix(
+            Component.literal("${entities.size} entities, ${text.length} chars")
+                .withStyle(ChatFormatting.GOLD)
+        )
+        ChatUtils.send(copyable("dump", text))
+    }
+
+    /** An item as everything that might tell us what it is, not only its skull. */
+    private fun describeStack(stack: net.minecraft.world.item.ItemStack): String = buildString {
+        append(stack.count).append("x ").append(stack.item)
+
+        PlayerUtils.getSkinHash(stack)?.let { append(" skin=").append(it) }
+
+        stack.hoverName.let { append(" as \"").append(it.string).append("\"") }
+
+        stack.componentsPatch.entrySet().forEach { (type, value) ->
+            append(" | ").append(type).append("=").append(value)
+        }
+    }
+
+    /** A position short enough to read in chat. */
+    private fun fmt(pos: Vec3): String = "%.4f %.4f %.4f".format(pos.x, pos.y, pos.z)
 
     /**
      * The custom name broken into its styled runs, written as `colour:text` for each. A bar that
