@@ -126,22 +126,25 @@ public abstract class LevelRendererMixin {
                     levelRenderState,
                     submitNodeCollector,
                     (ent, state) -> {
-                        // the outline alone says this head is a plan rather than a plant. Washing
-                        // the head blue as well made the skull hard to read as the crop it is,
-                        // and the outline was already carrying the message
-                        state.outlineColor = LayoutRenderState.GHOST_OUTLINE_COLOR;
-
-                        // the stand is scaffolding for the head it holds. Hiding it alone was
-                        // not enough: a hidden thing that glows is drawn as an outline of its
-                        // whole self, which is how the highlighted mobs are outlined and was the
-                        // stand outlining its own arms and legs. Hidden from the player as well
-                        // is the state a real greenhouse stand is already in, where the body
-                        // draws nothing at all and the layers, which is where the head is, still
-                        // draw. So the outline lands on the head alone
+                        // the stand is scaffolding for the head it holds, and the three ways a
+                        // body gets drawn all have to be closed. Visible draws it as itself.
+                        // Invisible-to-player draws it translucent. Invisible while carrying an
+                        // outline colour draws it as an outline of its whole self, which is how
+                        // the highlighted mobs are outlined and was this stand tracing its own
+                        // arms and legs. So it is hidden, not translucent, and carries no colour
                         state.isInvisible = true;
+                        state.outlineColor = EntityRenderState.NO_OUTLINE;
 
                         if (state instanceof LivingEntityRenderState living) {
-                            living.isInvisibleToPlayer = true;
+                            living.isInvisibleToPlayer = false;
+                        }
+
+                        // the head's own outline, which the head layer reads instead. The outline
+                        // alone says this head is a plan rather than a plant
+                        if (state instanceof WrappedEntityRenderState wrapped) {
+                            wrapped.magicaddons$setHeadOutlineColor(
+                                    LayoutRenderState.GHOST_OUTLINE_COLOR
+                            );
                         }
                     },
                     false

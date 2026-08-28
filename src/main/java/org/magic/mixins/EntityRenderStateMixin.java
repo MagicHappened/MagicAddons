@@ -14,6 +14,19 @@ public class EntityRenderStateMixin implements WrappedEntityRenderState {
     @Unique
     public int magicaddons$fakeEntityTintColor;
 
+    @Unique
+    public int magicaddons$headOutline;
+
+    @Override
+    public int magicaddons$headOutlineColor() {
+        return magicaddons$headOutline;
+    }
+
+    @Override
+    public void magicaddons$setHeadOutlineColor(int value) {
+        magicaddons$headOutline = value;
+    }
+
     @Override
     public int magicaddons$entityTintColor() {
         return  magicaddons$fakeEntityTintColor;
