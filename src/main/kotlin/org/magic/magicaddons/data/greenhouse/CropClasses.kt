@@ -498,6 +498,12 @@ data class GreenhouseElementInstance(
      * advances while the garden's clock matches its craving, and flips it on every advance.
      */
     val craving: Int? get() = readings[CropStandReader.CRAVES]
+
+    /**
+     * Whether this plant has run its hunger out. A fleshtrap that has eaten nothing stops growing
+     * until it is fed, the way a snoozling stops until it is woken.
+     */
+    val isStarving: Boolean get() = readings[CropStandReader.HUNGER] == 0
 }
 
 

@@ -527,6 +527,22 @@ object GreenhouseData {
     }
 
 
+    /**
+     * A plant is taken apart by hitting it, and what is hit is a stand rather than a block, so
+     * nothing about breaking one reaches the block listener. Without this a harvested crop stayed
+     * on the screen until something else in the plot happened to change.
+     */
+    @EventHandler
+    fun onAttackEntity(event: OnAttackEntityEvent) {
+        val grid = getCurrentGrid() ?: return
+        if (!grid.hasRuntime()) return
+
+        val area = grid.plot?.getBuildableArea() ?: return
+        if (!area.contains(event.target.position())) return
+
+        requestReconcile()
+    }
+
     @EventHandler
     fun onInteractEntity(event: OnInteractEntityEvent) {
         val entityBlockPos = BlockPos.containing(event.target.position())

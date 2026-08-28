@@ -322,13 +322,14 @@ class GreenhouseGrid(
             val instance = element.instance
             val maxStage = instance.cropDef.maxStage
 
-            // a snoozling that has dropped asleep stays where it is until someone wakes it, and a
-            // noctilume craving the other time of day is stuck the same way until the garden's
-            // clock comes around. The ticks pass both by, but both still dry out, since being
-            // stuck is not the same as being spared
+            // a snoozling that has dropped asleep stays where it is until someone wakes it, a
+            // noctilume craving the other time of day is stuck until the garden's clock comes
+            // around, and a fleshtrap that has run its hunger out is stuck until it is fed. The
+            // ticks pass all three by, and all three still dry out, since being stuck is not the
+            // same as being spared
             val cravingUnfulfilled = instance.craving?.let { it != timeOfDayNow() } == true
 
-            if (instance.isAsleep || cravingUnfulfilled) {
+            if (instance.isAsleep || cravingUnfulfilled || instance.isStarving) {
                 if (instance.cropDef.needsWater) {
                     instance.waterLevel = instance.waterLevel?.let {
                         WaterModel.after(it, ticks, layout.waterEffectAt(instance.slot))
