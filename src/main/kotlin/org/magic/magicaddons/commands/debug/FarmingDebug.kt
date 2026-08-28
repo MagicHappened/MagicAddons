@@ -156,6 +156,18 @@ object FarmingDebug : AbstractCommand() {
                                 return@executes 1
                             }
                     )
+                    .then(
+                        LiteralArgumentBuilder.literal<FabricClientCommandSource>("adjustPos")
+                            .then(
+                                RequiredArgumentBuilder.argument<FabricClientCommandSource, String>(
+                                    "offset",
+                                    StringArgumentType.word()
+                                ).executes {
+                                    CropCollector.scan(StringArgumentType.getString(it, "offset"))
+                                    return@executes 1
+                                }
+                            )
+                    )
             )
             .then(
                 LiteralArgumentBuilder.literal<FabricClientCommandSource>("uniques")

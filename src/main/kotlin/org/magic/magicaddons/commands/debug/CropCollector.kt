@@ -118,10 +118,22 @@ object CropCollector : EntityUtils.HighlightSource {
 
     // ------------------------------------------------------------------ scanning
 
-    fun scan() {
+    fun scan(adjust: String? = null) {
         val client = Minecraft.getInstance()
         val player = client.player ?: return
         val level = client.level ?: return
+
+        // "west2" says the player stands two west of the spot the grid is measured from, because
+        // something was in the way of standing there. Undoing it recovers the spot; height is
+        // taken from where they actually stand either way
+        val displacement = adjust?.let {
+            parseAdjust(it) ?: run {
+                ChatUtils.sendWithPrefix(
+                    "Could not read \"$it\", say a direction then blocks, such as west2 or north1."
+                )
+                return
+            }
+        }
 
         // north is the whole orientation contract, so standing any other way is an error now
         // rather than a grid collected sideways
@@ -138,7 +150,8 @@ object CropCollector : EntityUtils.HighlightSource {
         // the block being stood on: standing on farmland puts the feet inside it, since farmland
         // is a sliver short of a full block, while a full soil leaves the feet in air above it
         val feet = player.blockPosition()
-        val standingOn = if (!level.getBlockState(feet).isAir) feet else feet.below()
+        val actual = if (!level.getBlockState(feet).isAir) feet else feet.below()
+        val standingOn = displacement?.let { (dx, dz) -> actual.offset(-dx, 0, -dz) } ?: actual
 
         // one south of the south-eastern corner: the corner is a step north, and the grid runs
         // nine further north and nine west from it
@@ -217,6 +230,53 @@ object CropCollector : EntityUtils.HighlightSource {
             }
         }
 
+        // third pass: plants made only of blocks. Most crops speak through stands, but the
+        // base crops say everything with block states, and an unclaimed slot with something
+        // growing on it is a plant whichever way it speaks. Recorded standless stages were
+        // already claimed by the first pass, so whatever reaches here is unrecorded at best,
+        // and a block state names its crop only when exactly one definition uses it
+        val covered = mutableSetOf<Long>()
+        s.entries.forEach { entry ->
+            val w = entry.def?.footprint?.width ?: 1
+            val h = entry.def?.footprint?.height ?: 1
+            for (cx in 0 until w) {
+                for (cz in 0 until h) {
+                    covered.add(BlockPos.asLong(entry.origin.x + cx, entry.origin.y, entry.origin.z + cz))
+                }
+            }
+        }
+
+        for (dx in 0 until GRID) {
+            for (dz in 0 until GRID) {
+                val slotPos = origin.offset(dx, 0, dz)
+                if (slotPos.asLong() in covered) continue
+                if (level.getBlockState(slotPos).isAir) continue
+
+                val above = level.getBlockState(slotPos.above())
+                if (above.isAir) continue
+
+                val candidates = defsForBlockState(above, level.getBlockState(slotPos).block)
+                val described = describeState(above)
+
+                when {
+                    candidates.size == 1 -> addEntry(
+                        candidates.single(), slotPos, emptyList(),
+                        Status.Unrecorded, null, null, setOf(described)
+                    )
+
+                    candidates.isEmpty() -> addEntry(
+                        null, slotPos, emptyList(),
+                        Status.Unknown, null, null, setOf(described)
+                    )
+
+                    else -> addEntry(
+                        null, slotPos, emptyList(), Status.Unknown, null, null,
+                        setOf(described + " \u2014 " + candidates.joinToString("/") { it.name })
+                    )
+                }
+            }
+        }
+
         s.entries.sortBy { it.status.ordinal.let { o -> if (it.status == Status.Current) 9 else o } }
 
         ChatUtils.sendWithPrefix("${s.entries.size} plants found, click the right ones to confirm:")
@@ -268,6 +328,45 @@ object CropCollector : EntityUtils.HighlightSource {
     // ------------------------------------------------------------------ identity and geometry
 
     private fun norm(text: String): String = text.lowercase().filter { it.isLetter() }
+
+    /** "west2" as the two axes it moves, or null for anything that is not direction-then-count. */
+    private fun parseAdjust(spec: String): Pair<Int, Int>? {
+        val match = Regex("(north|south|east|west)(\\d+)", RegexOption.IGNORE_CASE)
+            .matchEntire(spec.trim()) ?: return null
+
+        val count = match.groupValues[2].toIntOrNull()?.takeIf { it in 1..64 } ?: return null
+
+        return when (match.groupValues[1].lowercase()) {
+            "north" -> 0 to -count
+            "south" -> 0 to count
+            "east" -> count to 0
+            else -> -count to 0
+        }
+    }
+
+    /** Every block state a definition's stages describe, for the plants that have no stands. */
+    private val defsByState: Map<net.minecraft.world.level.block.state.BlockState, List<CropDefinition>> by lazy {
+        buildMap<net.minecraft.world.level.block.state.BlockState, MutableList<CropDefinition>> {
+            CropRegistry.all.forEach { def ->
+                def.stageDefs
+                    .flatMap { it.blocks.orEmpty() }
+                    .map { it.blockState }
+                    .distinct()
+                    .forEach { getOrPut(it) { mutableListOf() }.add(def) }
+            }
+        }
+    }
+
+    private fun defsForBlockState(
+        state: net.minecraft.world.level.block.state.BlockState,
+        soil: net.minecraft.world.level.block.Block
+    ): List<CropDefinition> = defsByState[state].orEmpty().filter { soil in it.requiredSoil }
+
+    /** A block state short enough for a row, "melon_stem[age=3]" rather than the full toString. */
+    private fun describeState(state: net.minecraft.world.level.block.state.BlockState): String =
+        state.toString()
+            .removePrefix("Block{minecraft:")
+            .replace("}", "")
 
     private fun ArmorStand.standName(): String? = customName?.string
 
