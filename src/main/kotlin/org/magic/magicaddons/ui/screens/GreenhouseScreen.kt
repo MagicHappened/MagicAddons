@@ -132,6 +132,13 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
     override fun init() {
         super.init()
         initBaseLayout()
+
+        // said here rather than on joining a world or on every tick: opening this screen is the
+        // player asking about their greenhouses, which is the one moment a missing number is worth
+        // interrupting them for, and the warning carries its own cooldown against repeats
+        if (!GreenhouseData.miscInfo.shouldIgnoreWarning) {
+            GreenhouseData.warnUnknownValues()
+        }
     }
     fun initBaseLayout(){
 

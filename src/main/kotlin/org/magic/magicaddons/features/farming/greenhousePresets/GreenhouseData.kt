@@ -192,6 +192,16 @@ object GreenhouseData {
      * Every change in the plot pushes this back, so a burst of them settles into one read, and
      * [reconcileDeadline] stops a steady stream of changes from putting it off forever.
      */
+    /**
+     * The most one look at the clock may move the next tick by.
+     *
+     * The correction assumes the greenhouse runs on server ticks rather than on the wall clock, so
+     * it pulls the countdown back by however far the server fell behind. That direction has not
+     * been proven, only reasoned, so the size of any single correction is capped: a wrong sign then
+     * costs a little accuracy rather than walking the countdown away from the truth.
+     */
+    private const val MAX_TICK_ADJUSTMENT_MS: Long = 5_000
+
     private var reconcileDueAt: Instant? = null
     private var reconcileDeadline: Instant? = null
 
@@ -247,7 +257,10 @@ object GreenhouseData {
 
     fun checkForUpdate() {
         if (!greenhousesInitialized) return
-        if (warnUnknownValues(!miscInfo.shouldIgnoreWarning)) return
+
+        // only the values the clock actually needs stop it. Warning about them is the screen's job,
+        // not something to do from inside a check that runs every tick
+        if (miscInfo.cropGrowthValue == null || miscInfo.cropSpeedUpgradeValue == null) return
 
         val nextTick = miscInfo.nextTickTime ?: return
 
@@ -271,16 +284,33 @@ object GreenhouseData {
 
             lastServerTick = currentTick
 
-            if (previousTick == null) return
+            // a path that leaves without updating lastCheckTime makes the next call measure real
+            // time across the whole gap while the server side of it covers only the last moment,
+            // and the correction that comes out of that is nonsense
+            if (previousTick == null) {
+                lastCheckTime = now
+                return
+            }
 
             val passedServerTicks = currentTick - previousTick
-            if (passedServerTicks <= 0) return
+            if (passedServerTicks <= 0) {
+                lastCheckTime = now
+                return
+            }
 
-            val lastCheck = lastCheckTime ?: return
+            val lastCheck = lastCheckTime ?: run {
+                lastCheckTime = now
+                return
+            }
 
             val serverMs = passedServerTicks * 50L
             val realMs = now.toEpochMilli() - lastCheck.toEpochMilli()
-            val adjustmentDelta = realMs - serverMs
+            // how far the server fell behind the wall clock since the last look. Bounded, because
+            // this is meant to nudge a countdown that has drifted, and one long pause or one
+            // skipped update should not be able to move it by more than the gap it is measuring
+            val adjustmentDelta = (realMs - serverMs)
+                .coerceIn(-MAX_TICK_ADJUSTMENT_MS, MAX_TICK_ADJUSTMENT_MS)
+
             miscInfo.nextTickTime =
                 miscInfo.nextTickTime!!.minusMillis(adjustmentDelta)
             lastCheckTime = now
