@@ -17,6 +17,7 @@ import net.minecraft.world.entity.decoration.ArmorStand
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.CropDefinition
+import org.magic.magicaddons.data.greenhouse.GREENHOUSE_SOIL_Y
 import org.magic.magicaddons.data.greenhouse.CropRegistry
 import org.magic.magicaddons.data.greenhouse.GreenhouseGrid
 import org.magic.magicaddons.data.greenhouse.GrowthStageInfo
@@ -147,10 +148,11 @@ object CropCollector : EntityUtils.HighlightSource {
 
         clear()
 
-        // the block being stood on: standing on farmland puts the feet inside it, since farmland
-        // is a sliver short of a full block, while a full soil leaves the feet in air above it
+        // only x and z come from the player. Greenhouse soil sits at one height, guest garden
+        // or not, so the player's own y, on a path, on farmland, or on top of a grown plant,
+        // says nothing worth listening to
         val feet = player.blockPosition()
-        val actual = if (!level.getBlockState(feet).isAir) feet else feet.below()
+        val actual = BlockPos(feet.x, GREENHOUSE_SOIL_Y, feet.z)
         val standingOn = displacement?.let { (dx, dz) -> actual.offset(-dx, 0, -dz) } ?: actual
 
         // one south of the south-eastern corner: the corner is a step north, and the grid runs
@@ -566,8 +568,11 @@ object CropCollector : EntityUtils.HighlightSource {
         val player = client.player ?: return
         if (client.level !== s.level) return
 
+        // x and z from the player, y from the one height every greenhouse's soil sits at:
+        // reaching a tall plant's block can mean standing on the plant, and the pin must not
+        // lift the crop to wherever that put the player
         val feet = player.blockPosition()
-        val standingOn = if (!s.level.getBlockState(feet).isAir) feet else feet.below()
+        val standingOn = BlockPos(feet.x, GREENHOUSE_SOIL_Y, feet.z)
 
         val w = def.footprint.width
         val h = def.footprint.height
