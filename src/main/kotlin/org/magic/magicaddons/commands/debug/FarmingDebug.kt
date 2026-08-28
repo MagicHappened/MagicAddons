@@ -169,7 +169,7 @@ object FarmingDebug : AbstractCommand() {
         ChatUtils.send(
             field(
                 "speed attribute",
-                misc.greenhouseSpeedAttribute?.toString() ?: "unknown, counted as 0"
+                GreenhouseData.greenhouseSpeedAttribute()?.toString() ?: "unknown, counted as 0"
             )
         )
 
@@ -192,7 +192,9 @@ object FarmingDebug : AbstractCommand() {
     private fun dumpAttributes() {
         // anything the player has at all: a shard sitting in the box is owned but not yet syphoned,
         // so it has no level, and filtering on level alone hides everything but the levelled ones
-        val owned = AttributeAPI.attributeMap.filterValues { it.level > 0 || it.owned > 0 }
+        // only the greenhouse one: listing every shard held ran past what chat keeps
+        val owned = AttributeAPI.attributeMap
+            .filterKeys { it.id == GreenhouseData.GREENHOUSE_SPEED_ATTRIBUTE_ID }
 
         if (owned.isEmpty()) {
             ChatUtils.send(field("attributes", "none held, or the attribute menu has not been opened"))
