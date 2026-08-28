@@ -25,6 +25,7 @@ import net.minecraft.world.entity.EquipmentSlot
 import net.minecraft.world.entity.decoration.ArmorStand
 import org.magic.magicaddons.commands.AbstractCommand
 import org.magic.magicaddons.data.greenhouse.Footprint
+import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData
 import org.magic.magicaddons.features.farming.greenhousePresets.LayoutRenderState
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.PlayerUtils
@@ -118,6 +119,13 @@ object FarmingDebug : AbstractCommand() {
                     )
             )
             .then(
+                LiteralArgumentBuilder.literal<FabricClientCommandSource>("uniques")
+                    .executes {
+                        dumpGrowthState()
+                        return@executes 1
+                    }
+            )
+            .then(
                 LiteralArgumentBuilder.literal<FabricClientCommandSource>("footprint")
                     .then(
                         RequiredArgumentBuilder.argument<FabricClientCommandSource, String>(
@@ -138,6 +146,44 @@ object FarmingDebug : AbstractCommand() {
                         }
                     )
             )
+    }
+
+    /**
+     * Everything the growth tick is worked out from, and what it currently comes to.
+     *
+     * Worth watching live: planting a unique anywhere shortens the tick for every plot at once, so
+     * this moves while you work rather than only between sessions.
+     */
+    private fun dumpGrowthState() {
+        val misc = GreenhouseData.miscInfo
+        val uniques = GreenhouseData.getCurrentUniques()
+        val missing = GreenhouseData.getMissingUniques()
+
+        ChatUtils.sendWithPrefix(Component.literal("Growth").withStyle(ChatFormatting.GOLD))
+
+        ChatUtils.send(field("uniques", "${uniques.size} of ${uniques.size + missing.size}"))
+        ChatUtils.send(field("crop growth", misc.cropGrowthValue?.toString() ?: "unknown"))
+        ChatUtils.send(field("speed upgrade", misc.cropSpeedUpgradeValue?.toString() ?: "unknown"))
+        ChatUtils.send(field("yield upgrade", misc.cropYieldUpgradeValue?.toString() ?: "unknown"))
+        ChatUtils.send(
+            field(
+                "speed attribute",
+                misc.greenhouseSpeedAttribute?.toString() ?: "unknown, counted as 0"
+            )
+        )
+
+        val tick = GreenhouseData.currentGrowthTickMs()
+
+        ChatUtils.send(
+            field("growth tick", tick?.let { exactDuration(it) } ?: "cannot be worked out yet")
+        )
+    }
+
+    /** A duration to the second, for a figure being held against the game's own. */
+    private fun exactDuration(ms: Long): String {
+        val seconds = ms / 1000
+
+        return "%dh %02dm %02ds".format(seconds / 3600, seconds % 3600 / 60, seconds % 60)
     }
 
     /**
