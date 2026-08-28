@@ -284,6 +284,39 @@ class GreenhouseGrid(
     }
 
     /**
+     * The water effects reaching the plant on [slot], as a total signed percentage.
+     *
+     * Only what stands directly beside it counts, which is how the game words every one of them.
+     * A crop bigger than one slot reaches from any cell it covers, and never counts itself.
+     */
+    fun waterEffectAt(slot: LayoutSlot): Int {
+        val self = elementCovering(slot)
+
+        return elements
+            .filter { it !== self && it.touches(slot) }
+            .flatMap { it.instance.cropDef.effects }
+            .filter { it.kind == CropEffect.Kind.Water }
+            .sumOf { it.percent }
+    }
+
+    /** Whether this element occupies a cell orthogonally beside [slot]. */
+    private fun ElementRuntimeState.touches(slot: LayoutSlot): Boolean {
+        val origin = instance.slot
+        val footprint = instance.cropDef.footprint
+
+        for (dx in 0 until footprint.width) {
+            for (dy in 0 until footprint.height) {
+                val x = origin.x + dx
+                val y = origin.y + dy
+
+                if (kotlin.math.abs(x - slot.x) + kotlin.math.abs(y - slot.y) == 1) return true
+            }
+        }
+
+        return false
+    }
+
+    /**
      * Moves every plant on by [ticks] growth ticks, for a greenhouse nobody is standing in.
      *
      * The result is always an estimate, even for a plant whose stage was known: nothing has been
@@ -291,8 +324,8 @@ class GreenhouseGrid(
      * stage stays there. [tickMs] is how long one growth tick takes, so a plant also ages by the
      * time that passed and its decay keeps counting down.
      *
-     * Water is deliberately left alone. How fast a plant dries out depends on buffs we do not read
-     * yet, and a made up water level is worse than the last one actually seen. The wiki puts it as:
+     * Water is dried out at the measured rate, taking whatever stands beside the plant into
+     * account. See WaterModel and notes/water-formula.md. The wiki puts it as:
      *
      * > After each growth stage, a crop loses between 2-3 Water Level, which can be mitigated by
      * > the +50% Water Retain and +100% Improved Water Retain effects, and amplified by the -30%
@@ -312,6 +345,12 @@ class GreenhouseGrid(
             val maxStage = instance.cropDef.maxStage
 
             instance.age = instance.age?.plus(ticks * tickMs)
+
+            if (instance.cropDef.needsWater) {
+                instance.waterLevel = instance.waterLevel?.let {
+                    WaterModel.after(it, ticks, waterEffectAt(instance.slot))
+                }
+            }
 
             val range = when (val stage = instance.growthStage) {
                 is GrowthStageInfo.Known -> stage.stage..stage.stage
