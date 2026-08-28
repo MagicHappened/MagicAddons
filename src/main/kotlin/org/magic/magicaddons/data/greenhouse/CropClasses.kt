@@ -109,18 +109,7 @@ open class CropStage(
      * whether it matched: a bar that happens to be empty is a plant that is starving, not a plant
      * that is something else.
      */
-    val readers: List<CropStandReader> = emptyList(),
-    /**
-     * The world rotation the plant this stage was exported from stood at, as
-     * [WorldRotation.step] of its base block.
-     *
-     * The game turns every plant by ninety degrees per diagonal of the grid it stands on, so a
-     * stage's offsets are only canonical together with the rotation they were recorded at. With
-     * this known, matching computes the one rotation a plant at any block must have instead of
-     * trying four; without it, all four are tried, which is slower and can mistake a wrong
-     * rotation for a match. Stages exported before the rule was found leave it null.
-     */
-    val canonicalStep: Int? = null
+    val readers: List<CropStandReader> = emptyList()
 ) {
 
     /**
@@ -150,6 +139,7 @@ open class CropStage(
         )
 
         var score = 0
+        var matchedFirstCandidate = true
         val usedStands = mutableListOf<Entity>()
         val matchedBlocks = mutableMapOf<BlockPos, BlockState>()
         if (debug){
@@ -182,17 +172,18 @@ open class CropStage(
                 origin.y.toDouble(),
                 origin.z + footprint.height / 2.0
             )
-            // one rotation for the whole stage. The game turns a plant by ninety degrees per
-            // diagonal of the grid, so every stand of a plant shares one rotation, and letting
-            // each stand pick its own let half a plant match turned one way and half another.
-            // With the stage's canonical rotation known there is exactly one candidate; without
-            // it all four are tried, plus the two reflections older definitions leaned on
+            // one rotation for the whole stage, and the world's own comes first. Exports are
+            // written as the plant would stand at rotation zero, so canonical data matches on the
+            // first candidate, the rotation the grid gives this block. A stage that only matches
+            // further down the list was recorded before normalization and never rewritten, which
+            // the result reports so the caller can ask for a fresh export. The reflections stay
+            // last for the same reason: nothing canonical ever needs them
+            val worldStep = WorldRotation.step(origin.x, origin.z)
+
             val candidateSteps = when {
                 this.armorStands.isNullOrEmpty() -> listOf(0)
-                !allowRotation -> listOf(0)
-                canonicalStep != null ->
-                    listOf(Math.floorMod(WorldRotation.step(origin.x, origin.z) - canonicalStep, 4))
-                else -> listOf(0, 1, 2, 3, 4, 5)
+                allowRotation -> (listOf(worldStep) + listOf(0, 1, 2, 3, 4, 5)).distinct()
+                else -> listOf(worldStep, 0).distinct()
             }
 
             var matchedStands: List<Entity>? = null
@@ -229,6 +220,7 @@ open class CropStage(
 
                 if (allFound) {
                     matchedStands = used
+                    matchedFirstCandidate = step == candidateSteps.first()
                     break
                 }
             }
@@ -264,7 +256,8 @@ open class CropStage(
             matched = true,
             score = score,
             usedStands = usedStands,
-            matchedBlocks = matchedBlocks
+            matchedBlocks = matchedBlocks,
+            rotationLegacy = !matchedFirstCandidate
         )
     }
     private fun isClose(a: Vec3, b: Vec3, epsilon: Double = 0.01): Boolean {
@@ -343,15 +336,13 @@ class CropStagePattern(
     allowRotation: Boolean = false,
     extraInfo: CropExtraInfo? = null,
     val baseStageStandOffset: Vec3,
-    val stageOffsetMultipliers: Map<Int, Int> = emptyMap(),
-    canonicalStep: Int? = null
+    val stageOffsetMultipliers: Map<Int, Int> = emptyMap()
 ) : CropStage(
     blocks = blocks,
     armorStands = armorStands,
     stageRange = stageRange,
     allowRotation = allowRotation,
-    extraInfo = extraInfo,
-    canonicalStep = canonicalStep
+    extraInfo = extraInfo
 ){
     fun expand(): List<CropStage> {
         val result = mutableListOf<CropStage>()
@@ -380,8 +371,7 @@ class CropStagePattern(
                     blocks = blocks,
                     armorStands = newStands,
                     stageRange = stage..stage,
-                    allowRotation = allowRotation,
-                    canonicalStep = canonicalStep
+                    allowRotation = allowRotation
                 )
             )
         }
@@ -463,7 +453,13 @@ data class StageMatchResult(
     val matched: Boolean,
     val score: Int,
     val usedStands: List<Entity>,
-    val matchedBlocks: Map<BlockPos, BlockState>
+    val matchedBlocks: Map<BlockPos, BlockState>,
+    /**
+     * The stage matched, but not at the rotation the world gives its block: its offsets were
+     * recorded before exports were normalized. Everything about the plant is still right, only
+     * the recording is turned, so this asks for a fresh export rather than doubting the match.
+     */
+    val rotationLegacy: Boolean = false
 )
 
 
@@ -471,7 +467,9 @@ data class ElementRuntimeState(
     val instance: GreenhouseElementInstance,
     val standEntities: List<Entity>?,
     val blocksMap: Map<BlockPos,BlockState>?, // todo add handling of water level
-    //todo add here an extra info thing (maybe use the original one?)
+    //todo add here an extra info thing (maybe use the original one?),
+    /** See [StageMatchResult.rotationLegacy]: matched, but from a pre-normalization recording. */
+    val rotationLegacy: Boolean = false
 )
 
 data class GreenhouseElementInstance(

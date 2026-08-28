@@ -1,5 +1,6 @@
 package org.magic.magicaddons.commands.debug
 
+import net.minecraft.util.Mth
 import org.magic.magicaddons.data.greenhouse.WorldRotation
 import net.minecraft.network.chat.Component
 import net.minecraft.ChatFormatting
@@ -87,6 +88,12 @@ object CropStageExporter {
 
         val stands = world.getEntities(null, box)
 
+        // how far the world has turned this plant, undone below so the same stage exports
+        // identically wherever it stands. Offsets are turned back and the body yaw follows;
+        // the head pose rides on the body and needs nothing
+        val worldStep = WorldRotation.step(basePos.x, basePos.z)
+        val unturn = Math.floorMod(-worldStep, 4)
+
         // the middle of the footprint on both axes, which is what the mirroring check measures
         // from. z takes the height, not the width: they only agree while every crop is square
         val originVec = Vec3(
@@ -125,10 +132,10 @@ object CropStageExporter {
 
             standData.add(
                 ArmorStandExport(
-                    offset = offset,
+                    offset = WorldRotation.rotate(offset, unturn),
                     rotation = headRotations,
                     xRotation = entity.xRot,
-                    yRotation = entity.yRot,
+                    yRotation = Mth.wrapDegrees(entity.yRot - 90f * worldStep),
                     hash = hash,
                     customName = customName,
                     isSmall = entity.isSmall
@@ -351,11 +358,7 @@ object CropStageExporter {
             sb.appendLine("    armorStands = listOf(),")
         }
 
-        sb.appendLine("    ${stageNum ?: 1}..${stageNum ?: 1},")
-
-        // the rotation this plant stood at, without which the offsets above are only canonical
-        // for plants on the same diagonal of the grid
-        sb.appendLine("    canonicalStep = ${WorldRotation.step(basePos.x, basePos.z)}")
+        sb.appendLine("    ${stageNum ?: 1}..${stageNum ?: 1}")
         sb.appendLine(")")
 
         if (discordFormat) {
