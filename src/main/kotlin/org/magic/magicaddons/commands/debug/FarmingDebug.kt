@@ -89,7 +89,7 @@ object FarmingDebug : AbstractCommand() {
         val level = client.level ?: return
 
         val entities = level.getEntities(player, player.boundingBox.inflate(radius))
-            .filter { (it is ArmorStand && it.hasCustomName()) || it is Display }
+            .filter { (it is ArmorStand && true ) || it is Display } // replaced it.hasCustomName() temporarly
             .sortedBy { it.distanceToSqr(player) }
 
         if (entities.isEmpty()) {

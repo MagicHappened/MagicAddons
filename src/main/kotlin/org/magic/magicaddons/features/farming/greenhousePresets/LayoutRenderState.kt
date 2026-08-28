@@ -17,7 +17,6 @@ import org.magic.magicaddons.data.greenhouse.CropDefinition
 import org.magic.magicaddons.data.greenhouse.CropStage
 import org.magic.magicaddons.data.greenhouse.CropStagePattern
 import org.magic.magicaddons.data.greenhouse.GreenhouseGrid
-import org.magic.magicaddons.data.greenhouse.GreenhouseLayout
 import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.render.WorldRender
 import org.magic.magicaddons.util.ChatUtils
@@ -121,10 +120,6 @@ object LayoutRenderState {
     var ghostStands: List<ArmorStand> = emptyList()
         private set
 
-    /** The layout being built, or null while nothing is being shown. */
-    @Volatile
-    private var target: GreenhouseLayout? = null
-
     /** Crops with no first stage described yet, so each is only ever mentioned once. */
     private val reportedMissingStage = mutableSetOf<String>()
 
@@ -147,9 +142,8 @@ object LayoutRenderState {
         }
     }
 
-    /** Starts showing [layout], from the soil up. */
-    fun show(layout: GreenhouseLayout) {
-        target = layout
+    /** Starts over on the plan of whichever greenhouse the player is in. */
+    fun show() {
         phase = Phase.Soil
         reportedMissingStage.clear()
 
@@ -157,7 +151,6 @@ object LayoutRenderState {
     }
 
     fun hide() {
-        target = null
         marks = emptyMap()
         ghosts = emptyMap()
         badStandsUUID = emptySet()
@@ -170,8 +163,17 @@ object LayoutRenderState {
      * plot changes, and has to, since the whole point is to keep up with the player building.
      */
     fun refresh() {
-        val layout = target ?: return
-        val grid = GreenhouseData.getCurrentGrid() ?: return
+        val grid = GreenhouseData.getCurrentGrid()
+
+        // the plan is whatever this greenhouse was given, so standing in another one shows that
+        // one's plan or nothing, rather than carrying the last one around the garden
+        val layout = grid?.state?.assignedLayout
+
+        if (grid == null || layout == null) {
+            hide()
+            return
+        }
+
         val level = Minecraft.getInstance().level ?: return
 
         val marks = mutableMapOf<BlockPos, Pair<VoxelShape, Mark>>()
@@ -192,6 +194,11 @@ object LayoutRenderState {
 
         if (soilComplete) {
             layout.elementInstances.forEach { instance ->
+                // already growing there, so there is nothing to plan and nothing in the way of it
+                if (grid.elements.any { it.instance.slot.isCoordsEqual(instance.slot) }) {
+                    return@forEach
+                }
+
                 val soil = grid.getPosForSlotCoords(instance.slot.x, instance.slot.y)
                     ?: return@forEach
 

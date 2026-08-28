@@ -370,15 +370,7 @@ object GreenhouseData {
     }
 
     fun regenRender(){
-        val grid = getCurrentGrid() ?: return
-        val layout = grid.state.assignedLayout
-
-        if (layout == null) {
-            LayoutRenderState.hide()
-            return
-        }
-
-        LayoutRenderState.show(layout)
+        LayoutRenderState.show()
     }
 
 
