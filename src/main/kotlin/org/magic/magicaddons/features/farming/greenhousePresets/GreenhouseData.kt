@@ -599,8 +599,9 @@ object GreenhouseData {
         }
         if (greenhouseSpeedAttribute() == null) {
             warnings.add(
-                ChatUtils.buildWithPrefix(
-                    "Unknown Greenhouse Speed attribute, ticks are being timed as if it were zero"
+                ChatUtils.buildWithCommand(
+                    "Unknown Timestalk attribute, ticks are timed as if it were zero. Click to set it",
+                    "MagicAddons internal setTimestalkAttributeL57"
                 )
             )
         }
@@ -1014,17 +1015,18 @@ object GreenhouseData {
     /**
      * The greenhouse speed attribute, worth half a percent a level.
      *
-     * Read from the shard the player has syphoned, since attributes are shards and a level is what
-     * syphoning them buys. Falls back to a value entered by hand, for a player whose attribute
-     * menu has not been opened this session.
+     * Taken from what the player told us first, and only then from the shard they have syphoned.
+     * That order is the wrong way round in principle, since the game knows better than the player
+     * does, but the api that reports shards does not report this one at all, so what it says cannot
+     * be trusted over what was typed. Worth turning back around once that is fixed upstream.
      */
     fun greenhouseSpeedAttribute(): Int? =
-        AttributeAPI.attributeMap.entries
-            .firstOrNull { it.key.id == GREENHOUSE_SPEED_ATTRIBUTE_ID }
-            ?.value
-            ?.level
-            ?.takeIf { it > 0 }
-            ?: miscInfo.greenhouseSpeedAttribute
+        miscInfo.greenhouseSpeedAttribute
+            ?: AttributeAPI.attributeMap.entries
+                .firstOrNull { it.key.id == GREENHOUSE_SPEED_ATTRIBUTE_ID }
+                ?.value
+                ?.level
+                ?.takeIf { it > 0 }
 
     fun currentGrowthTickMs(): Long? {
         val cropGrowth = miscInfo.cropGrowthValue ?: return null
