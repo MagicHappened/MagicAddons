@@ -6,6 +6,8 @@ import net.minecraft.world.phys.Vec3
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.Level
+import org.magic.magicaddons.data.greenhouse.LayoutSlot
+import org.magic.magicaddons.data.greenhouse.Footprint
 import net.minecraft.client.renderer.SubmitNodeCollector
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.entity.decoration.ArmorStand
@@ -202,6 +204,11 @@ object LayoutRenderState {
 
         if (soilComplete) {
             layout.elementInstances.forEach { instance ->
+                // the plant the player is told to grow is the one they have to place. What the
+                // layout grows towards appears on its own once the ingredients are right, so
+                // planning it would be asking for the thing being asked for
+                if (instance.slot.slotMark == LayoutSlot.Marking.Target) return@forEach
+
                 // already growing there, so there is nothing to plan and nothing in the way of it
                 if (grid.elements.any { it.instance.slot.isCoordsEqual(instance.slot) }) {
                     return@forEach
@@ -209,6 +216,12 @@ object LayoutRenderState {
 
                 val soil = grid.getPosForSlotCoords(instance.slot.x, instance.slot.y)
                     ?: return@forEach
+
+                // a plant standing at a stage nobody has described yet matches nothing and drops
+                // out of the scan, and was then planned for as though its slot were bare, so a
+                // ghost appeared inside the plant and flickered away on the next scan that did
+                // match it. Anything growing on the soil is a plant, described or not
+                if (isOccupied(level, soil, instance.cropDef.footprint)) return@forEach
 
                 val stage = ghostStageOf(instance.cropDef) ?: return@forEach
                 val render = stage.toRenderData(level, soil, instance.cropDef.footprint)
@@ -237,6 +250,30 @@ object LayoutRenderState {
         this.ghosts = ghosts
         this.badStandsUUID = badStands
         this.ghostStands = ghostStands
+    }
+
+    /**
+     * Whether anything at all is growing on the soil a plan wants to fill.
+     *
+     * Deliberately blunt: a block above the soil, or a stand standing in the space, is a plant
+     * whether or not the definitions can name it. Being wrong here draws nothing where something
+     * could have been drawn, which is quieter than drawing a plan through a plant already there.
+     */
+    private fun isOccupied(level: Level, soil: BlockPos, footprint: Footprint): Boolean {
+        for (offsetX in 0 until footprint.width) {
+            for (offsetY in 0 until footprint.height) {
+                if (!level.getBlockState(soil.offset(offsetX, 1, offsetY)).isAir) return true
+            }
+        }
+
+        val space = AABB(
+            soil.x.toDouble(), soil.y.toDouble(), soil.z.toDouble(),
+            (soil.x + footprint.width).toDouble(),
+            (soil.y + CROP_HEIGHT).toDouble(),
+            (soil.z + footprint.height).toDouble()
+        )
+
+        return level.getEntitiesOfClass(ArmorStand::class.java, space).any { !it.isMarker }
     }
 
     /**
