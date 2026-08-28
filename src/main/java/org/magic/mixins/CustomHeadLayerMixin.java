@@ -70,6 +70,11 @@ public class CustomHeadLayerMixin {
         );
     }
 
+    /**
+     * The tinted stand in of vanilla's skull submission, which neither pushes nor pops, so neither
+     * does this. Popping here took an entry off the stack that nothing had put there, and the frame
+     * came down on the next pop that found it empty.
+     */
     @Unique
     private static void submitSkullWithTint(
             float animationValue,
@@ -97,7 +102,5 @@ public class CustomHeadLayerMixin {
                 outlineColor,
                 overlay
         );
-
-        poseStack.popPose();
     }
 }
