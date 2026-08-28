@@ -12,6 +12,7 @@ import org.magic.magicaddons.data.greenhouse.transfer.LayoutFormat
 import org.magic.magicaddons.data.greenhouse.transfer.MagicAddonsFormat
 import org.magic.magicaddons.data.greenhouse.transfer.LayoutTransferResult
 import org.magic.magicaddons.data.greenhouse.transfer.SkyMutationsFormat
+import org.magic.magicaddons.data.greenhouse.transfer.SkyShardsFormat
 import org.magic.magicaddons.data.greenhouse.GreenhouseLayout
 import org.magic.magicaddons.data.greenhouse.LayoutSlot
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData
@@ -212,6 +213,7 @@ class PresetUI(
     private fun formatFor(type: ImportExportFormatContext.LayoutFormatType): LayoutFormat =
         when (type) {
             ImportExportFormatContext.LayoutFormatType.SkyMutations -> SkyMutationsFormat
+            ImportExportFormatContext.LayoutFormatType.SkyShards -> SkyShardsFormat
             ImportExportFormatContext.LayoutFormatType.MagicAddons -> MagicAddonsFormat
         }
 

@@ -20,6 +20,7 @@ class ImportExportFormatContext(
 
     enum class LayoutFormatType {
         SkyMutations,
+        SkyShards,
         MagicAddons
     }
 
