@@ -104,6 +104,10 @@ object CropStageExporter {
                 entity.name.string.replace("\"", "\\\"")
             } else null
 
+            // a stand with neither a head nor a name gives a definition nothing to match on, and
+            // standing anywhere near a player puts their own nameplate stands inside the box
+            if (hash == null && customName == null) continue
+
             standData.add(
                 ArmorStandExport(
                     offset = offset,
@@ -222,19 +226,19 @@ object CropStageExporter {
                 patterns.forEach { group ->
 
                     val offsets = group.joinToString(",\n") {
-                        "        Vec3(${it.offset.x}, ${it.offset.y}, ${it.offset.z})"
+                        "    Vec3(${it.offset.x}, ${it.offset.y}, ${it.offset.z})"
                     }
 
                     val rotations = group.joinToString(",\n") {
-                        "        Rotations(${it.rotation.x}f, ${it.rotation.y}f, ${it.rotation.z}f)"
+                        "    Rotations(${it.rotation.x}f, ${it.rotation.y}f, ${it.rotation.z}f)"
                     }
 
                     val xRotations = group.joinToString(",\n") {
-                        "        ${it.xRotation}f"
+                        "    ${it.xRotation}f"
                     }
 
                     val yRotations = group.joinToString(",\n") {
-                        "        ${it.yRotation}f"
+                        "    ${it.yRotation}f"
                     }
 
                     val anyAbnormalRotations = group.any { it.rotation.x != 0f || it.rotation.y != 0f || it.rotation.z != 0f }
@@ -245,31 +249,24 @@ object CropStageExporter {
                     val hash = group.first().hash
                     val name = group.first().customName
 
-                    val rotationsSection = """
-    rotations = listOf(
-$rotations
-    ),
-    xRotations = listOf(
-$xRotations
-    ),
-    yRotations = listOf(
-$yRotations
-    ),
-""".trimIndent()
+                    val fields = mutableListOf<String>()
 
-                    patternSections += """
-CropArmorStand.matcherPattern(
-    offsets = listOf(
-$offsets
-    ),
-    ${if (anyAbnormalRotations || anyAbnormalXRotations || anyAbnormalYRotations) rotationsSection else ""}
-    hashString = "$hash"${
-                        name?.let {
-                            ",\n    customName = \"$it\""
-                        } ?: ""
+                    fields.add("offsets = listOf(\n$offsets\n)")
+
+                    if (anyAbnormalRotations || anyAbnormalXRotations || anyAbnormalYRotations) {
+                        fields.add("rotations = listOf(\n$rotations\n)")
+                        fields.add("xRotations = listOf(\n$xRotations\n)")
+                        fields.add("yRotations = listOf(\n$yRotations\n)")
                     }
-)
-        """.trimIndent()
+
+                    // written only when there is one. A hash of null used to reach the file as the
+                    // word "null", which is a hash no head will ever have
+                    if (hash != null) fields.add("hashString = \"$hash\"")
+                    if (name != null) fields.add("customName = \"$name\"")
+
+                    patternSections += "CropArmorStand.matcherPattern(\n" +
+                            indent(fields.joinToString(",\n")) +
+                            "\n)"
                 }
 
             }
@@ -298,13 +295,9 @@ $offsets
                             fields.add("isSmall = false")
                         }
 
-                        append(
-                            """
-CropArmorStand(
-    ${fields.joinToString(",\n" )}
-)
-""".trimIndent()
-                        )
+                        append("CropArmorStand(\n")
+                        append(indent(fields.joinToString(",\n")))
+                        append("\n)")
                     }
                 }
 
@@ -313,24 +306,24 @@ CropArmorStand(
             }
 
 
+            val singletonList = "listOf(\n" +
+                    indent(singletonSections.joinToString(",\n")) +
+                    "\n)"
+
             val final = when {
                 patterns.isNotEmpty() && singletons.isNotEmpty() ->
-                    patternSections.joinToString(" + ") +
-                            " + listOf(" +
-                            singletonSections.joinToString(",\n") +
-                            "\n)"
+                    patternSections.joinToString(" +\n") + " +\n" + singletonList
 
-                patterns.isNotEmpty() ->
-                    patternSections.joinToString(" + ")
+                patterns.isNotEmpty() -> patternSections.joinToString(" +\n")
 
-                singletons.isNotEmpty() ->
-                    "listOf(\n" +
-                            singletonSections.joinToString(",\n") +
-                            "\n)"
+                singletons.isNotEmpty() -> singletonList
 
-                else -> " listOf()"
+                else -> "listOf()"
             }
-            sb.appendLine("    armorStands = $final,")
+
+            // built at the left margin and moved into place in one go, so every level lines up with
+            // the one above it however the pieces ended up being combined
+            sb.appendLine("    armorStands = ${indent(final).trimStart()},")
         } else {
             sb.appendLine("    armorStands = listOf(),")
         }
@@ -348,6 +341,10 @@ CropArmorStand(
 
         ChatUtils.sendWithPrefix("Copied crop stage to clipboard (${result.length} chars)")
     }
+
+    /** Moves a block built at the left margin under whatever line it is being written into. */
+    private fun indent(text: String, by: String = "    "): String =
+        text.lineSequence().joinToString("\n") { if (it.isBlank()) it else by + it }
 
     //temp for exporting
     data class ArmorStandExport(
