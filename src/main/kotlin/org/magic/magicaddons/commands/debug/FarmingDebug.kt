@@ -149,6 +149,13 @@ object FarmingDebug : AbstractCommand() {
                                 return@executes 1
                             }
                     )
+                    .then(
+                        LiteralArgumentBuilder.literal<FabricClientCommandSource>("quit")
+                            .executes {
+                                CropCollector.quit()
+                                return@executes 1
+                            }
+                    )
             )
             .then(
                 LiteralArgumentBuilder.literal<FabricClientCommandSource>("uniques")
