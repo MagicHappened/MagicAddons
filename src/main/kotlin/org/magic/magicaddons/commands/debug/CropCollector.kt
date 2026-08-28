@@ -76,7 +76,7 @@ object CropCollector : EntityUtils.HighlightSource {
         Current("matches current data"),
 
         /** Matched, but through the pre-normalization fallback: worth re-collecting. */
-        Legacy("recorded before normalized exports"),
+        Legacy("needs normalization"),
 
         /** Named for a crop we know, standing at a stage nobody has recorded. */
         Unrecorded("unrecorded"),
@@ -87,7 +87,7 @@ object CropCollector : EntityUtils.HighlightSource {
 
     private class Entry(
         val id: Int,
-        val def: CropDefinition?,
+        var def: CropDefinition?,
         var origin: BlockPos,
         val stands: List<ArmorStand>,
         var status: Status,
@@ -95,7 +95,7 @@ object CropCollector : EntityUtils.HighlightSource {
         var stageText: String?,
         var stageNum: Int?,
         val names: Set<String>,
-        val color: Int,
+        var color: Int,
         var confirmed: Boolean = false,
         var boxes: List<AABB> = emptyList()
     )
@@ -109,6 +109,10 @@ object CropCollector : EntityUtils.HighlightSource {
     }
 
     private var session: Session? = null
+
+    /** Whether a run is live in the world the player is looking at. */
+    fun isActive(): Boolean =
+        session?.let { it.finishedAt == null && Minecraft.getInstance().level === it.level } == true
     private val standColors: MutableMap<Entity, Int> = mutableMapOf()
     private val cropColors: MutableMap<String, Int> = mutableMapOf()
 
@@ -190,7 +194,7 @@ object CropCollector : EntityUtils.HighlightSource {
         }
 
         // second pass: whatever is left, grouped by the crop its stands are named for
-        for ((def, standsOfCrop) in pool.groupBy { defForName(it.standName()) }) {
+        for ((def, standsOfCrop) in pool.groupBy { identify(it) }) {
             if (def == null) {
                 // reported so nothing vanishes, but per decision never collected: a crop with no
                 // definition at all has no footprint to anchor by, and one grown plant is cheaper
@@ -277,6 +281,30 @@ object CropCollector : EntityUtils.HighlightSource {
      * and magicjellybean1 alike, so the crop is the front of the name rather than the whole of it.
      * Longest match keeps a name from settling for a shorter crop it happens to start like.
      */
+    /**
+     * The one definition a skull hash appears in, for stands that carry no name.
+     *
+     * A hash shared between crops identifies nothing and is left out, so this can point wrong
+     * only if two crops share a skull we have only recorded on one of them.
+     */
+    private val defsByHash: Map<String, CropDefinition> by lazy {
+        val owners = mutableMapOf<String, MutableSet<CropDefinition>>()
+
+        CropRegistry.all.forEach { def ->
+            def.stageDefs.forEach { stage ->
+                stage.armorStands?.forEach { stand ->
+                    stand.hashString?.let { owners.getOrPut(it) { mutableSetOf() }.add(def) }
+                }
+            }
+        }
+
+        owners.filterValues { it.size == 1 }.mapValues { it.value.first() }
+    }
+
+    private fun identify(stand: ArmorStand): CropDefinition? =
+        defForName(stand.standName())
+            ?: PlayerUtils.getSkullHash(stand)?.let { defsByHash[it] }
+
     private fun defForName(name: String?): CropDefinition? {
         val n = name?.let(::norm) ?: return null
         if (n.isEmpty()) return null
@@ -401,10 +429,14 @@ object CropCollector : EntityUtils.HighlightSource {
         val standingOn = if (!s.level.getBlockState(feet).isAir) feet else feet.below()
         val reach = max(def.footprint.width, def.footprint.height)
 
-        val entry = s.entries
-            .filter { it.def === def }
+        fun nearest(candidates: List<Entry>): Entry? = candidates
             .minByOrNull { max(abs(it.origin.x - standingOn.x), abs(it.origin.z - standingOn.z)) }
             ?.takeIf { max(abs(it.origin.x - standingOn.x), abs(it.origin.z - standingOn.z)) <= reach }
+
+        // its own crop first; failing that, a plant the scan could not name is claimed by the
+        // diagnosis, which just did name it
+        val entry = nearest(s.entries.filter { it.def === def })
+            ?: nearest(s.entries.filter { it.def == null })
 
         if (entry == null) {
             ChatUtils.sendWithPrefix(
@@ -413,9 +445,17 @@ object CropCollector : EntityUtils.HighlightSource {
             return
         }
 
+        entry.def = def
         entry.origin = standingOn
         entry.stageText = stage.toString()
         entry.stageNum = stage
+
+        if (entry.status == Status.Unknown) {
+            entry.status = Status.Unrecorded
+            entry.color = colorFor(def.name)
+            entry.stands.forEach { standColors[it] = entry.color }
+        }
+
         entry.boxes = boxesFor(entry)
 
         ChatUtils.sendWithPrefix("${def.name} pinned to (${standingOn.x}, ${standingOn.z}) at stage $stage")
@@ -423,6 +463,17 @@ object CropCollector : EntityUtils.HighlightSource {
     }
 
     // ------------------------------------------------------------------ output
+
+    /** Ends the run without writing anything, for the scan that found nothing worth keeping. */
+    fun quit() {
+        if (session == null) {
+            ChatUtils.sendWithPrefix("No collection running.")
+            return
+        }
+
+        clear()
+        ChatUtils.sendWithPrefix("Collection dismissed, nothing written.")
+    }
 
     fun finish() {
         val s = session ?: run {
@@ -475,7 +526,11 @@ object CropCollector : EntityUtils.HighlightSource {
     }
 
     private fun sendLine(entry: Entry) {
-        val name = entry.def?.name ?: entry.names.firstOrNull() ?: "unknown"
+        // a nameless plant is still told apart from the next one by the skull it carries
+        val name = entry.def?.name
+            ?: entry.names.firstOrNull()
+            ?: entry.stands.firstNotNullOfOrNull { PlayerUtils.getSkullHash(it) }?.take(12)?.plus("…")
+            ?: "unknown"
         val stage = entry.stageText?.let { "stage $it" } ?: "stage ?"
         val mark = if (entry.confirmed) "[✔] " else ""
 

@@ -771,10 +771,6 @@ object GreenhouseData {
 
         ChatUtils.sendWithPrefix("${def.name}, stage $stageRaw of ${def.maxStage}")
 
-        // an active collection run takes this as ground truth: the player is standing on the
-        // plant's north-western block, and the page has just said which stage it is
-        CropCollector.correct(def, stageRaw)
-
         // the page says how many stages the crop really has, so a definition that disagrees is
         // wrong about something the game just told us
         saplingLore.valueFor("Stage")
@@ -787,6 +783,14 @@ object GreenhouseData {
                     "${def.name} is described with ${def.maxStage} stages but the game says $it"
                 )
             }
+
+        // during a collection run the click is a correction and nothing more. The player is
+        // standing on the plant's north-western block, the page has just said which stage it is,
+        // and the matching report below would only bury the run's own lines
+        if (CropCollector.isActive()) {
+            CropCollector.correct(def, stageRaw)
+            return
+        }
 
         val matchingStage = def.stageDefs.find { stageDef ->
             stageRaw in stageDef.stageRange
