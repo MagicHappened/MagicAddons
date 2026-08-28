@@ -19,6 +19,7 @@ import net.minecraft.world.level.block.Blocks
 import org.magic.magicaddons.ui.Focusable
 import org.magic.magicaddons.data.greenhouse.NEVER_DECAYS
 import org.magic.magicaddons.data.greenhouse.GreenhouseElementInstance
+import org.magic.magicaddons.data.greenhouse.WaterModel
 import org.magic.magicaddons.data.greenhouse.LayoutSlot
 import org.magic.magicaddons.data.greenhouse.GrowthStageInfo
 import org.magic.magicaddons.util.ChatUtils
@@ -41,6 +42,9 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, Focus
     }
     var renderedStack: ItemStack = ItemStack.EMPTY
     var markingColor: Int? = null
+
+    /** The water effects reaching this plant, set by whoever knows what stands beside it. */
+    var waterEffect: Int = 0
     override var focusedState: Boolean = false
 
     /**
@@ -162,6 +166,8 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, Focus
         val bottom = widgetY + height - WATER_BAR_INSET
         val top = bottom - WATER_BAR_HEIGHT
 
+        renderWaterVerdict(graphics, waterLevel, top)
+
         graphics.fillRounded(left, top, right, bottom, WATER_BAR_RADIUS, Common.UI.WATER_TRACK_COLOR)
 
         val filled = barWidth * waterLevel.absoluteValue.coerceAtMost(100) / 100
@@ -185,6 +191,62 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, Focus
                 WATER_BAR_RADIUS,
                 Common.UI.WATER_DEBT_COLOR
             )
+        }
+    }
+
+    /**
+     * How many ticks of water the plant has left, written just above its meter.
+     *
+     * Green when that is enough to see it through to its last stage, red when it runs dry first,
+     * and white when something needed to say either way is not known. The stage taken is the lowest
+     * it might be at, so an estimate errs towards saying a plant is in trouble rather than towards
+     * reassuring the player it is fine.
+     */
+    private fun renderWaterVerdict(graphics: GuiGraphicsExtractor, waterLevel: Int, barTop: Int) {
+        val ticksLeft = WaterModel.ticksUntilDeath(waterLevel, waterEffect)
+
+        val stage = when (val known = instance.growthStage) {
+            is GrowthStageInfo.Known -> known.stage
+            is GrowthStageInfo.Estimated -> known.range.first
+            null -> null
+        }
+
+        val ticksNeeded = stage?.let { instance.cropDef.maxStage - it }
+
+        val text: String
+        val color: Int
+
+        if (ticksLeft == null || ticksNeeded == null) {
+            text = "?"
+            color = Common.UI.TEXT_COLOR
+        } else {
+            text = "${ticksLeft}t"
+            color = if (ticksLeft > ticksNeeded) Common.UI.SUCCESS_COLOR else Common.UI.DANGER_COLOR
+        }
+
+        val font = Minecraft.getInstance().font
+        val textWidth = font.width(text) * INFO_TEXT_SCALE
+        val textHeight = font.lineHeight * INFO_TEXT_SCALE
+        val textX = widgetX + (width - textWidth) / 2f
+        val textY = barTop - textHeight - 1f
+
+        graphics.fill(
+            (textX - 1f).toInt(),
+            (textY - 1f).toInt(),
+            (textX + textWidth + 1f).toInt(),
+            (textY + textHeight).toInt(),
+            Common.UI.OVERLAY_BACKGROUND_COLOR
+        )
+
+        val pose = graphics.pose()
+        pose.pushMatrix()
+
+        try {
+            pose.translate(textX, textY)
+            pose.scale(INFO_TEXT_SCALE, INFO_TEXT_SCALE)
+            graphics.text(font, text, 0, 0, color, false)
+        } finally {
+            pose.popMatrix()
         }
     }
 
