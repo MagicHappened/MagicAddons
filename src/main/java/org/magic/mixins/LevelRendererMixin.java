@@ -130,6 +130,11 @@ public abstract class LevelRendererMixin {
                         // the head blue as well made the skull hard to read as the crop it is,
                         // and the outline was already carrying the message
                         state.outlineColor = LayoutRenderState.GHOST_OUTLINE_COLOR;
+
+                        // the stand is scaffolding for the head it holds. Drawn, it outlined its
+                        // own arms and legs around a crop that is only ever the skull, so it is
+                        // hidden and the layers, which is where the head is, still draw
+                        state.isInvisible = true;
                     },
                     false
             );

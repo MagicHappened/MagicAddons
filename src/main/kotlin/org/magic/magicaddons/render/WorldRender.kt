@@ -3,6 +3,7 @@ package org.magic.magicaddons.render
 import com.mojang.blaze3d.vertex.PoseStack
 import com.mojang.blaze3d.vertex.VertexConsumer
 import com.mojang.blaze3d.vertex.QuadInstance
+import net.minecraft.util.Mth
 import net.minecraft.util.RandomSource
 import net.minecraft.core.Direction
 import net.minecraft.client.renderer.block.dispatch.BlockStateModelPart
@@ -191,6 +192,12 @@ object WorldRender {
         alpha: Int
     ) {
         val parts = mutableListOf<BlockStateModelPart>()
+
+        // seeded from the block's own position, the way the chunk renderer seeds its own. A model
+        // with several variants, fire above all, picks one by this number, and a shared generator
+        // left running handed it a different answer every frame, which is a fire that flickers
+        // rather than burns
+        RANDOM.setSeed(Mth.getSeed(pos))
 
         Minecraft.getInstance().modelManager.blockStateModelSet.get(state)
             .collectParts(RANDOM, parts)
