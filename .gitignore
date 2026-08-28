@@ -40,3 +40,6 @@ remappedSrc/
 
 # local only, the crop data backup is not worth carrying in history
 backup/
+
+# working notes, local only
+notes/
