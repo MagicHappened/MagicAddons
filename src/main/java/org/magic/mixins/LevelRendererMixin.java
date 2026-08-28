@@ -126,12 +126,9 @@ public abstract class LevelRendererMixin {
                     levelRenderState,
                     submitNodeCollector,
                     (ent, state) -> {
-                        WrappedEntityRenderState fakeState = (WrappedEntityRenderState) state;
-                        fakeState.magicaddons$setWrappedEntity(true);
-                        fakeState.magicaddons$setWrappedEntityTintColor(LayoutRenderState.GHOST_STAND_TINT);
-
-                        // the same glow the highlighted mobs wear, so the head a ghosted crop is
-                        // really made of reads as part of the plan rather than as a plant
+                        // the outline alone says this head is a plan rather than a plant. Washing
+                        // the head blue as well made the skull hard to read as the crop it is,
+                        // and the outline was already carrying the message
                         state.outlineColor = LayoutRenderState.GHOST_OUTLINE_COLOR;
                     },
                     false
