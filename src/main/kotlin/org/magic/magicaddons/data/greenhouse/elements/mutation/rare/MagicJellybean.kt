@@ -42,9 +42,9 @@ object MagicJellybean : CropDefinitionProvider {
      * melon's head hangs, and [extraCaneStand] covers the one stage where the next length of cane
      * has its head but not yet its block.
      *
-     * A cycle position with no row is a stage we have not seen, and stages we have not seen are not
-     * described rather than guessed at: a wrong stage matches the wrong plant, which is worse than
-     * not matching.
+     * A cycle position with no row would be a stage we have not seen, and unseen stages are left
+     * undescribed rather than guessed at: a wrong stage matches the wrong plant, which is worse
+     * than not matching. Every position is now accounted for.
      */
     private data class Top(
         val stemAge: Int,
@@ -60,12 +60,13 @@ object MagicJellybean : CropDefinitionProvider {
      * three stages cannot be told apart by looking, and a stage that covers all three says so
      * instead of claiming to be the first of them.
      *
-     * Read off exported stages 1, 2, 3, 5, 6, 7, 8, 9, 18, 19, 90, 94, 95 and 96, which agree
-     * with each other wherever two of them landed on the same position. Position 4 remains unseen.
+     * Read off exported stages 1 through 9, 18, 19, 90, 94, 95 and 96, which agree with each
+     * other wherever two of them landed on the same position. All twelve positions are known, so
+     * every one of the hundred and twenty stages is described.
      */
     private val cycle: List<Pair<IntRange, Top>> = listOf(
         0..2 to Top(stemAge = 3),
-        3..3 to Top(stemAge = 5, melonStandY = 0.28125),
+        3..4 to Top(stemAge = 5, melonStandY = 0.28125),
         5..6 to Top(stemAge = 7, melonStandY = 0.59375),
         7..8 to Top(stemAge = 7, melonStandY = 0.6875),
         9..10 to Top(stemAge = 6, melonStandY = 0.78125),
