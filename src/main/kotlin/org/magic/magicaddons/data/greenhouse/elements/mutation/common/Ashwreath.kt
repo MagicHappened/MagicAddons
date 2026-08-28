@@ -34,7 +34,8 @@ object Ashwreath : CropDefinitionProvider {
                     CropArmorStand(
                         offset = Vec3(0.0, -0.375, 0.0),
                         headRotation = Rotations(0.0f, 0.0f, 0.0f),
-                        hashString = "5890f50780fdecedaa85aa40bf3399e9439ee68594c6d022688165608171681d"
+                        hashString = "5890f50780fdecedaa85aa40bf3399e9439ee68594c6d022688165608171681d",
+                        isSmall = false
                     )
                 ),
                 1..1
