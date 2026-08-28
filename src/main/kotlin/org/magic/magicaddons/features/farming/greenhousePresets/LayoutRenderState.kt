@@ -86,6 +86,17 @@ object LayoutRenderState {
     /** State a plan does not care about, because nothing the player does decides it. */
     private val IGNORED_PROPERTIES: List<IntegerProperty> = listOf(FarmlandBlock.MOISTURE)
 
+    /**
+     * Blocks whose state is the world's business rather than the player's.
+     *
+     * Fire keeps an age it burns through and a face for every neighbour it is leaning on, and both
+     * change constantly on their own. Comparing them made a fire that was exactly where the plan
+     * wanted it read as the wrong state most of the time and the right one whenever its age came
+     * back around to zero, which is the flicker. Nobody places fire in a particular state, so for
+     * these the block being there at all is the whole question.
+     */
+    private val STATE_IS_NOT_OURS: Set<Block> = setOf(Blocks.FIRE)
+
     private val TILLABLE: Set<Block> = setOf(
         Blocks.DIRT,
         Blocks.GRASS_BLOCK,
@@ -286,6 +297,8 @@ object LayoutRenderState {
     private fun BlockState.sameEnoughAs(other: BlockState): Boolean {
         if (this == other) return true
         if (block != other.block) return false
+
+        if (block in STATE_IS_NOT_OURS) return true
 
         // every ignored property is copied across before comparing, so what is left is only the
         // state a player actually chose
