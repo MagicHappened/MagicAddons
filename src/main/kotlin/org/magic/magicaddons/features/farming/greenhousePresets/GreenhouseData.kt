@@ -1059,7 +1059,9 @@ object GreenhouseData {
 
         val uniqueCropBonus = 0.025 * uniqueCrops
         val cropGrowthBonus = 0.0025 * cropGrowthStat
-        val attributeBonus = 0.005 * speedAttribute
+        // a tenth of a percent a level, not half of one. The attribute was hotfixed down to cap at
+        // one percent, and it still runs to ten levels, so what changed is what a level is worth
+        val attributeBonus = 0.001 * speedAttribute
 
         val upgradeBonus = when (greenhouseUpgrade) {
             in 0..8 -> 0.05 * greenhouseUpgrade
