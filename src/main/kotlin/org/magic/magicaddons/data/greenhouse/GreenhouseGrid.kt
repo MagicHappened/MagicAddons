@@ -6,6 +6,7 @@ import net.minecraft.core.BlockPos
 import net.minecraft.network.chat.Component
 import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.decoration.ArmorStand
+import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
@@ -311,6 +312,18 @@ class GreenhouseGrid(
             val instance = element.instance
             val maxStage = instance.cropDef.maxStage
 
+            // a snoozling that has dropped asleep stays where it is until someone wakes it, so the
+            // ticks pass it by. It still dries out, since sleeping is not the same as being spared
+            if (instance.isAsleep) {
+                if (instance.cropDef.needsWater) {
+                    instance.waterLevel = instance.waterLevel?.let {
+                        WaterModel.after(it, ticks, layout.waterEffectAt(instance.slot))
+                    }
+                }
+
+                return@forEach
+            }
+
             instance.age = instance.age?.plus(ticks * tickMs)
 
             if (instance.cropDef.needsWater) {
@@ -343,23 +356,29 @@ class GreenhouseGrid(
 
     // temp for testing
     companion object {
-        fun findElementAtBasePos(
-            pos: BlockPos,
-            remainingStands: MutableList<ArmorStand>
+        /**
+         * The plant standing at [origin], or null when nothing described matches what is there.
+         *
+         * The one implementation. The scan knows the slot it is looking at and the exporter only
+         * knows a position, so the soil is taken as given rather than looked up two different ways,
+         * and [slot] is passed only so a matched plant can be filed against it.
+         */
+        fun findElementAt(
+            origin: BlockPos,
+            soil: Block,
+            remainingStands: MutableList<ArmorStand>,
+            slot: LayoutSlot
         ): ElementRuntimeState? {
-            val level = Minecraft.getInstance().level ?: return null
-            val state = level.getBlockState(pos)
-            val soil = state.block
             val candidates = elementsBySoil[soil] ?: return null
+
             var bestDef: CropDefinition? = null
             var bestGrowth: GrowthStageInfo? = null
+            var bestStage: CropStage? = null
             var bestScore = -1
             var bestUsedStands: List<Entity>? = null
             var bestBlocks: Map<BlockPos, BlockState>? = null
 
-
             for (candidate in candidates) {
-
                 val stages = candidate.stageDefs.flatMap {
                     when (it) {
                         is CropStagePattern -> it.expand()
@@ -368,14 +387,14 @@ class GreenhouseGrid(
                 }
 
                 for (stage in stages) {
-                    val result = stage.matchesStage(pos, remainingStands, candidate.footprint)
+                    val result = stage.matchesStage(origin, remainingStands, candidate.footprint)
+
                     if (!result.matched) continue
-                    if (result.score <= bestScore) {
-                        continue
-                    }
+                    if (result.score <= bestScore) continue
 
                     bestScore = result.score
                     bestDef = candidate
+                    bestStage = stage
                     bestUsedStands = result.usedStands
                     bestBlocks = result.matchedBlocks
 
@@ -387,158 +406,60 @@ class GreenhouseGrid(
                     }
                 }
             }
-            if (bestDef != null) {
 
-                var elementStands = bestUsedStands
-                val originVec = Vec3(pos.x.toDouble(), pos.y.toDouble(), pos.z.toDouble())
-                val addedVec = originVec.add(
-                    Vec3(
-                        bestDef.footprint.width.toDouble(),
-                        5.0, //see if this needs more
-                        bestDef.footprint.height.toDouble()
-                    )
-                )
-                val footprintBox = AABB(originVec, addedVec)
-                when (bestDef.name) {
-                    "Fleshtrap" -> {
-                        val possibleStands = remainingStands.filter { footprintBox.contains(it.position()) }
+            val definition = bestDef ?: return null
 
-                        val bonusValueStand = possibleStands.find { it.customName?.contains(
-                            Component.literal("Bonus")
-                        ) ?: false }
-                        ChatUtils.sendWithPrefix("Bonus stand: ${bonusValueStand?.customName}")
+            val instance = GreenhouseElementInstance(
+                definition.skyblockId?.id ?: definition.name,
+                slot = slot,
+                growthStage = bestGrowth,
+                cropDef = definition
+            )
 
-                        val hungerStand = possibleStands.find { it.customName?.contains(
-                            Component.literal("||||||||||||||||||||")
-                        ) ?: false }
+            // read after matching, never during it, and from every stand around the plant rather
+            // than only the ones the stage claimed: a hunger bar belongs to the plant without
+            // being part of what makes it that plant
+            bestStage?.read(standsAround(origin, definition.footprint))
+                ?.let { instance.readings.putAll(it) }
 
-                        ChatUtils.sendWithPrefix("hunger stand: ${hungerStand?.customName}")
-
-                        possibleStands.forEach {
-                            if (it.hasCustomName()){
-                                ChatUtils.sendWithPrefix(it.customName!!) //hopefully good
-                            }
-                        }
-                    }
-                }
-
-                val instance = GreenhouseElementInstance(
-                    bestDef.skyblockId?.id ?: bestDef.name,
-                    slot = LayoutSlot(
-                        0, 0, state
-                    ),
-                    growthStage = bestGrowth,
-                    cropDef = bestDef
-                )
-
-                val runtime = ElementRuntimeState(
-                    instance = instance,
-                    standEntities = elementStands,
-                    blocksMap = bestBlocks
-                )
-
-                return runtime
-            }
-
-            return null
+            return ElementRuntimeState(
+                instance = instance,
+                standEntities = bestUsedStands,
+                blocksMap = bestBlocks
+            )
         }
+
+        /** Every stand sharing the space a crop of [footprint] occupies from [origin]. */
+        private fun standsAround(origin: BlockPos, footprint: Footprint): List<ArmorStand> {
+            val level = Minecraft.getInstance().level ?: return emptyList()
+
+            val box = AABB(
+                origin.x.toDouble(),
+                origin.y.toDouble(),
+                origin.z.toDouble(),
+                (origin.x + footprint.width).toDouble(),
+                (origin.y + READER_HEIGHT).toDouble(),
+                (origin.z + footprint.height).toDouble()
+            )
+
+            return level.getEntitiesOfClass(ArmorStand::class.java, box).filterNot { it.isMarker }
+        }
+
+        /** How far above the soil a plant may hang something worth reading. */
+        private const val READER_HEIGHT: Int = 5
+
     }
 
+    /** The plant standing on [slot], through the one matcher. */
     fun findElementAtSlot(
         slot: LayoutSlot,
         remainingStands: MutableList<ArmorStand>
     ): ElementRuntimeState? {
-
         val soil = slot.placedBlock?.block ?: return null
-        val candidates = elementsBySoil[soil] ?: return null
         val origin = getPosForSlot(slot) ?: return null
 
-        var bestDef: CropDefinition? = null
-        var bestGrowth: GrowthStageInfo? = null
-        var bestScore = -1
-        var bestUsedStands: List<Entity>? = null
-        var bestBlocks: Map<BlockPos, BlockState>? = null
-
-        for (candidate in candidates) {
-
-            val stages = candidate.stageDefs.flatMap {
-                when (it) {
-                    is CropStagePattern -> it.expand()
-                    is CropStage -> listOf(it)
-                }
-            }
-
-
-
-            for (stage in stages) {
-                val result = stage.matchesStage(origin, remainingStands, candidate.footprint)
-
-                if (!result.matched) continue
-                if (result.score <= bestScore) continue
-
-                bestScore = result.score
-                bestDef = candidate
-                bestUsedStands = result.usedStands
-                bestBlocks = result.matchedBlocks
-
-                val range = stage.stageRange
-                bestGrowth = if (range.first == range.last) {
-                    GrowthStageInfo.Known(range.first)
-                } else {
-                    GrowthStageInfo.Estimated(range)
-                }
-            }
-        }
-        if (bestDef != null) {
-            var elementStands = bestUsedStands
-            val originVec = Vec3(origin.x.toDouble(), origin.y.toDouble(), origin.z.toDouble())
-            val addedVec = originVec.add(
-                Vec3(
-                    bestDef.footprint.width.toDouble(),
-                    5.0, //see if this needs more
-                    bestDef.footprint.height.toDouble()
-                )
-            )
-            val footprintBox = AABB(originVec, addedVec)
-            when (bestDef.name) {
-                "Fleshtrap" -> {
-                    val possibleStands = remainingStands.filter { footprintBox.contains(it.position()) }
-
-                    val bonusValueStand = possibleStands.find { it.customName?.contains(
-                        Component.literal("Bonus")
-                    ) ?: false }
-                    ChatUtils.sendWithPrefix("Bonus stand: ${bonusValueStand?.customName}")
-
-                    val hungerStand = possibleStands.find { it.customName?.contains(
-                        Component.literal("||||||||||||||||||||")
-                    ) ?: false }
-
-                    ChatUtils.sendWithPrefix("hunger stand: ${hungerStand?.customName}")
-                }
-            }
-
-
-
-            val instance = GreenhouseElementInstance(
-                bestDef.skyblockId?.id ?: bestDef.name,
-                slot = slot,
-                growthStage = bestGrowth,
-                cropDef = bestDef
-
-            )
-
-            val runtime = ElementRuntimeState(
-                instance = instance,
-                standEntities = elementStands,
-                blocksMap = bestBlocks
-            )
-
-            return runtime
-        }
-
-        return null
+        return findElementAt(origin, soil, remainingStands, slot)
     }
-
 
     fun getUnassignedBlockMap(): Map<BlockPos, BlockState> {
         val level = Minecraft.getInstance().level ?: return emptyMap()

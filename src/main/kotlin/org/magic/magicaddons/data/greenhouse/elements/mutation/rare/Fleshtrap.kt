@@ -47,7 +47,13 @@ object Fleshtrap : CropDefinitionProvider {
                     )
                 ),
                 13..13,
-                allowRotation = true
+                allowRotation = true,
+                // a fleshtrap hangs a hunger bar and a bonus label over itself at all times, and
+                // both change from moment to moment, so neither can be part of matching one
+                readers = listOf(
+                    CropStandReader.bar(CropStandReader.HUNGER),
+                    CropStandReader.percentLabel(CropStandReader.BONUS, "Bonus")
+                )
             )
 
 

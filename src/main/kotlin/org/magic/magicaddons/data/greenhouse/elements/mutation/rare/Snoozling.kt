@@ -15,6 +15,11 @@ object Snoozling : CropDefinitionProvider {
         BlockPos(2, 1, 2),
     )
 
+    /**
+     * Kept only so nothing else breaks while it is being removed. Sleeping is a reading now, see
+     * the stage below: it is something a snoozling is at a moment, not something that tells us the
+     * plant is a snoozling.
+     */
     sealed interface SnoozlingInfo : CropExtraInfo {
         data object Sleeping : SnoozlingInfo
     }
@@ -97,7 +102,10 @@ object Snoozling : CropDefinitionProvider {
                             ),
                 5..5,
                 allowRotation = true,
-                extraInfo = SnoozlingInfo.Sleeping
+                // a snoozling drops asleep every fifth stage and stops growing until it is woken
+                // by hand. The stand saying so comes and goes, so it is read rather than matched:
+                // requiring it would make a woken snoozling fail to be a snoozling at all
+                readers = listOf(CropStandReader.presence(CropStandReader.ASLEEP, "z"))
             ),
             CropStage(
                 blocks = CropBlockState.blockStatePattern(

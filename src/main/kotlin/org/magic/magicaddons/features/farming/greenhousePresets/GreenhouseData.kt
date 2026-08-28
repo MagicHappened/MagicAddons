@@ -842,9 +842,15 @@ object GreenhouseData {
                         (!it.xRot.isCardinalYaw() || !it.yRot.isCardinalYaw()))
                         && PlayerUtils.getSkinHash(it.getItemBySlot(EquipmentSlot.HEAD)) != null
             }
-            GreenhouseGrid.findElementAtBasePos(
+            // the exporter only knows a position, so the soil is read from the world and the slot
+            // is made up to file the result against
+            val soil = level.getBlockState(block).block
+
+            GreenhouseGrid.findElementAt(
                 block,
-                armorStands
+                soil,
+                armorStands,
+                LayoutSlot(block.x, block.z, level.getBlockState(block))
             )
         }
 
