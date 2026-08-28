@@ -38,7 +38,8 @@ object Gloomgourd : CropDefinitionProvider {
                         Rotations(0.0f, 0.0f, -180.0f),
                         Rotations(0.0f, 0.0f, 0.0f)
                     ),
-                    hashString = "7f693e42ba3b763292e7de26fd2b0a08fcee3bec2e017075dc66dfc4a932aa64"
+                    hashString = "7f693e42ba3b763292e7de26fd2b0a08fcee3bec2e017075dc66dfc4a932aa64",
+                    isSmall = false
                 ),
                 1..1
             )

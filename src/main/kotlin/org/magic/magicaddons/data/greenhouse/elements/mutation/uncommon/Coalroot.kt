@@ -110,7 +110,8 @@ object Coalroot : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.40625, 0.0),
-                        hashString = "f946443fa0039354edd31a70c749c4f963464744dc20b79137bd9910356ee90"
+                        hashString = "f946443fa0039354edd31a70c749c4f963464744dc20b79137bd9910356ee90",
+                        isSmall = false
                     )
                 ),
                 8..8
