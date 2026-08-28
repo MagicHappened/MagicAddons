@@ -24,7 +24,6 @@ object Wildrose : CropDefinitionProvider {
                 ),
                 armorStands = listOf(
                     CropArmorStand(
-                        isSmall = false,
                         offset = Vec3(0.0, 0.0625, 0.0),
                         hashString = "f341905af17c74a1c6181a56c88d8f91853f2cff0a9a33aaa16c0d835fdceece"
                     )
