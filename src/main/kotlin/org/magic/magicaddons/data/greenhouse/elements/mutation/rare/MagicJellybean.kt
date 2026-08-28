@@ -60,12 +60,13 @@ object MagicJellybean : CropDefinitionProvider {
      * three stages cannot be told apart by looking, and a stage that covers all three says so
      * instead of claiming to be the first of them.
      *
-     * Read off exported stages 1, 2, 9, 18, 90, 94, 95 and 96, which agree with each other wherever
-     * two of them landed on the same position.
+     * Read off exported stages 1, 2, 3, 5, 6, 9, 18, 90, 94, 95 and 96, which agree with each
+     * other wherever two of them landed on the same position. Positions 4, 7 and 8 remain unseen.
      */
     private val cycle: List<Pair<IntRange, Top>> = listOf(
         0..2 to Top(stemAge = 3),
-        6..6 to Top(stemAge = 7, melonStandY = 0.59375),
+        3..3 to Top(stemAge = 5, melonStandY = 0.28125),
+        5..6 to Top(stemAge = 7, melonStandY = 0.59375),
         9..10 to Top(stemAge = 6, melonStandY = 0.78125),
         11..11 to Top(stemAge = 6, extraCaneStand = true)
     )

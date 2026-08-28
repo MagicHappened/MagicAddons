@@ -76,6 +76,33 @@ object Cocoa : CropDefinitionProvider {
             CropStage(
                 blocks = listOf(
                     CropBlockState(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = melonStemState(7)
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(-0.125, 0.46875, 0.0625),
+                        headRotation = Rotations(0.0f, -22.5f, -22.5f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
+                        hashString = "e1f5cb495ba97bf9c05c15b8c9cc866c14c1fe14807fed5802a0bf68deec8912"
+                    ),
+                    CropArmorStand(
+                        isSmall = false,
+                        offset = Vec3(0.0, -0.125, 0.0),
+                        headRotation = Rotations(0.0f, 22.5f, 22.5f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
+                        hashString = "db8f7d08f93594e385058afda93b0a077b218345751c1b9415d2623110e6afbd"
+                    )
+                ),
+                4..4,
+                allowRotation = true
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
                         offset = BlockPos(0,1,0),
                         blockState = melonStemState(7)
                     )
