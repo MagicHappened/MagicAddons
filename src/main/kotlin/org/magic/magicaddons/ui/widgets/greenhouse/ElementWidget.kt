@@ -205,6 +205,7 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, Focus
      */
     private fun renderWaterVerdict(graphics: GuiGraphicsExtractor, waterLevel: Int, barTop: Int) {
         val ticksLeft = WaterModel.ticksUntilDeath(waterLevel, waterEffect)
+        val remainingMs = GreenhouseData.remainingTickMs()
 
         val stage = when (val known = instance.growthStage) {
             is GrowthStageInfo.Known -> known.stage
@@ -218,11 +219,11 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, Focus
         val text: String
         val color: Int
 
-        if (ticksLeft == null || ticksNeeded == null || tickMs == null) {
+        if (ticksLeft == null || ticksNeeded == null || tickMs == null || remainingMs == null) {
             text = "?"
             color = Common.UI.TEXT_COLOR
         } else {
-            text = readableDuration(ticksLeft * tickMs)
+            text = readableDuration(remainingMs + (ticksLeft - 1) * tickMs)
             color = if (ticksLeft > ticksNeeded) Common.UI.SUCCESS_COLOR else Common.UI.DANGER_COLOR
         }
 

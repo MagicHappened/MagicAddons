@@ -9,6 +9,7 @@ import org.magic.magicaddons.data.config.BooleanSetting
 import org.magic.magicaddons.data.greenhouse.CropRegistry
 import org.magic.magicaddons.features.Feature
 import org.magic.magicaddons.util.ChatUtils
+import tech.thatgravyboat.skyblockapi.api.profile.hunting.AttributeAPI
 import tech.thatgravyboat.skyblockapi.api.SkyBlockAPI
 import tech.thatgravyboat.skyblockapi.api.events.base.Subscription
 import tech.thatgravyboat.skyblockapi.api.events.base.predicates.OnlyIn
@@ -45,6 +46,12 @@ object GreenhousePresets : Feature() {
         GreenhouseData
         GreenhouseWatering
         CropRegistry
+
+        // the attribute api reads the attribute menu and the hunting box as they are opened, but it
+        // is an object like the ones above and only starts listening once something has touched it.
+        // Waking it here rather than when the mod first asks means it has been listening all along,
+        // instead of being woken by a question it could only have answered earlier
+        AttributeAPI
 
 
     }

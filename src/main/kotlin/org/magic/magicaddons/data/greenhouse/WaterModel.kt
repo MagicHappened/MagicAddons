@@ -60,4 +60,18 @@ object WaterModel {
 
         return ceil((water - DEATH).toDouble() / loss).toInt()
     }
+
+    /**
+     * How long a plant at [water] has left, in the same terms the game states it.
+     *
+     * The tick already running only counts for what is left of it, [remainingMs], and every tick
+     * after that counts in full. The last tick is the one that kills the plant, so it is not
+     * waited out: a plant one tick from death has exactly the current tick left, which is why the
+     * rose at -93 read the same twenty minutes as its countdown.
+     */
+    fun timeUntilDeath(water: Int, waterEffectPercent: Int, remainingMs: Long, tickMs: Long): Long? {
+        val ticks = ticksUntilDeath(water, waterEffectPercent) ?: return null
+
+        return remainingMs + (ticks - 1) * tickMs
+    }
 }

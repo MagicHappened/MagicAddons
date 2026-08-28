@@ -985,6 +985,16 @@ object GreenhouseData {
         )
     }
 
+    /**
+     * What is left of the tick now running, or null while the next one is not known. Never
+     * negative: an overdue tick has nothing left of it rather than a debt.
+     */
+    fun remainingTickMs(): Long? {
+        val next = miscInfo.nextTickTime ?: return null
+
+        return (next.toEpochMilli() - Instant.now().toEpochMilli()).coerceAtLeast(0L)
+    }
+
     fun computeGrowthStageTimeMs(
         uniqueCrops: Int,
         cropGrowthStat: Int,
