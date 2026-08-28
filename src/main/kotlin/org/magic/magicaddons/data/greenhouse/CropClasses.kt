@@ -109,7 +109,18 @@ open class CropStage(
      * whether it matched: a bar that happens to be empty is a plant that is starving, not a plant
      * that is something else.
      */
-    val readers: List<CropStandReader> = emptyList()
+    val readers: List<CropStandReader> = emptyList(),
+    /**
+     * The world rotation the plant this stage was exported from stood at, as
+     * [WorldRotation.step] of its base block.
+     *
+     * The game turns every plant by ninety degrees per diagonal of the grid it stands on, so a
+     * stage's offsets are only canonical together with the rotation they were recorded at. With
+     * this known, matching computes the one rotation a plant at any block must have instead of
+     * trying four; without it, all four are tried, which is slower and can mistake a wrong
+     * rotation for a match. Stages exported before the rule was found leave it null.
+     */
+    val canonicalStep: Int? = null
 ) {
 
     /**
@@ -171,53 +182,65 @@ open class CropStage(
                 origin.y.toDouble(),
                 origin.z + footprint.height / 2.0
             )
-            this.armorStands?.forEach { standDef ->
+            // one rotation for the whole stage. The game turns a plant by ninety degrees per
+            // diagonal of the grid, so every stand of a plant shares one rotation, and letting
+            // each stand pick its own let half a plant match turned one way and half another.
+            // With the stage's canonical rotation known there is exactly one candidate; without
+            // it all four are tried, plus the two reflections older definitions leaned on
+            val candidateSteps = when {
+                this.armorStands.isNullOrEmpty() -> listOf(0)
+                !allowRotation -> listOf(0)
+                canonicalStep != null ->
+                    listOf(Math.floorMod(WorldRotation.step(origin.x, origin.z) - canonicalStep, 4))
+                else -> listOf(0, 1, 2, 3, 4, 5)
+            }
 
+            var matchedStands: List<Entity>? = null
 
+            for (step in candidateSteps) {
+                val used = mutableListOf<Entity>()
+                var allFound = true
 
-                val match = remainingStands
-                    .map { entity ->
+                for (standDef in this.armorStands.orEmpty()) {
+                    val expected = WorldRotation.rotate(standDef.offset, step)
 
+                    val match = remainingStands.firstOrNull { entity ->
                         val offset = entity.position().subtract(center)
                         val hash = PlayerUtils.getSkullHash(entity)
                         val name = entity.customName?.string
 
-                        val offsetOk = matchesWithRotation(offset, standDef.offset, allowRotation)
-                        val hashOk = standDef.hashString?.let { it == hash } ?: true
-                        val nameOk = standDef.containsCustomName?.let { name?.contains(it) ?: return@let false } ?: true
+                        isClose(offset, expected) &&
+                                (standDef.hashString?.let { it == hash } ?: true) &&
+                                (standDef.containsCustomName?.let { name?.contains(it) == true } ?: true)
+                    }
 
+                    if (match == null) {
                         if (debug) {
                             Common.LOGGER.info(
-                                """
-                    [ArmorStandMatch Debug]
-                    offset=$offset expected=${standDef.offset}
-                    hash=$hash expectedHash=${standDef.hashString}${standDef.containsCustomName?.let { "\nname: $name needs to contain: ${standDef.containsCustomName}" } ?: ""} 
-                    """.trimIndent()
+                                "step=$step: no stand at ${standDef.offset} (rotated $expected)"
                             )
                         }
-
-                        entity to (offsetOk && hashOk && nameOk)
-                    }
-                    .filter { it.second }
-                    .map { it.first }
-                    .firstOrNull()
-
-                if (match == null) {
-                    if (debug) {
-                        Common.LOGGER.info(
-                            "Failed to find matching armor stand for expected offset ${standDef.offset}"
-                        )
+                        allFound = false
+                        break
                     }
 
-                    return StageMatchResult(false, 0, emptyList(), emptyMap())
+                    used.add(match)
                 }
 
+                if (allFound) {
+                    matchedStands = used
+                    break
+                }
+            }
+
+            if (matchedStands == null) {
+                return StageMatchResult(false, 0, emptyList(), emptyMap())
+            }
+
+            matchedStands.forEach { match ->
                 if (debug) {
-                    Common.LOGGER.info(
-                        "Matched armor stand at ${match.position()}"
-                    )
+                    Common.LOGGER.info("Matched armor stand at ${match.position()}")
                 }
-
                 usedStands.add(match)
                 score += 2
             }
@@ -244,29 +267,6 @@ open class CropStage(
             matchedBlocks = matchedBlocks
         )
     }
-    fun matchesWithRotation(
-        actual: Vec3,
-        expected: Vec3,
-        allowRotation: Boolean
-    ): Boolean {
-        if (!allowRotation) {
-            return isClose(actual, expected)
-        }
-
-        val rotations = listOf(
-            expected,
-            Vec3(-expected.z, expected.y, expected.x),
-            Vec3(-expected.x, expected.y, -expected.z),
-            Vec3(expected.z, expected.y, -expected.x),
-            Vec3(expected.z, expected.y, expected.x),
-            Vec3(-expected.z, expected.y, -expected.x)
-        )
-
-        return rotations.any { rotated ->
-            isClose(actual, rotated)
-        }
-    }
-
     private fun isClose(a: Vec3, b: Vec3, epsilon: Double = 0.01): Boolean {
         return abs(a.x - b.x) < epsilon &&
                 abs(a.y - b.y) < epsilon &&
@@ -343,13 +343,15 @@ class CropStagePattern(
     allowRotation: Boolean = false,
     extraInfo: CropExtraInfo? = null,
     val baseStageStandOffset: Vec3,
-    val stageOffsetMultipliers: Map<Int, Int> = emptyMap()
+    val stageOffsetMultipliers: Map<Int, Int> = emptyMap(),
+    canonicalStep: Int? = null
 ) : CropStage(
     blocks = blocks,
     armorStands = armorStands,
     stageRange = stageRange,
     allowRotation = allowRotation,
-    extraInfo = extraInfo
+    extraInfo = extraInfo,
+    canonicalStep = canonicalStep
 ){
     fun expand(): List<CropStage> {
         val result = mutableListOf<CropStage>()
@@ -378,7 +380,8 @@ class CropStagePattern(
                     blocks = blocks,
                     armorStands = newStands,
                     stageRange = stage..stage,
-                    allowRotation = allowRotation
+                    allowRotation = allowRotation,
+                    canonicalStep = canonicalStep
                 )
             )
         }
@@ -392,6 +395,36 @@ class CropStagePattern(
  * Readers do that job now, see [CropStandReader]. Kept only until the definitions stop naming it.
  */
 interface CropExtraInfo
+
+/**
+ * How the greenhouse turns its plants.
+ *
+ * Every plant is rotated a quarter turn per diagonal of the grid it stands on: measured across four
+ * greenhouses and three hundred stands, a plant's rotation is always ninety degrees times
+ * `(z - x) mod 4` of its base block, and for a plant wider than one block any block on its main
+ * diagonal gives the same answer, so the base corner serves for every footprint.
+ */
+object WorldRotation {
+
+    /** The quarter turns the world gives a plant whose base block is at ([x], [z]). */
+    fun step(x: Int, z: Int): Int = Math.floorMod(z - x, 4)
+
+    /**
+     * [offset] turned by [steps] quarter turns about the plant's centre.
+     *
+     * Steps four and five are not rotations but the two reflections the matcher has always also
+     * tried; they are kept for stages recorded before the rotation rule was known, whose canonical
+     * step nobody wrote down.
+     */
+    fun rotate(offset: Vec3, steps: Int): Vec3 = when (Math.floorMod(steps, 6)) {
+        1 -> Vec3(-offset.z, offset.y, offset.x)
+        2 -> Vec3(-offset.x, offset.y, -offset.z)
+        3 -> Vec3(offset.z, offset.y, -offset.x)
+        4 -> Vec3(offset.z, offset.y, offset.x)
+        5 -> Vec3(-offset.z, offset.y, -offset.x)
+        else -> offset
+    }
+}
 
 /** Everything in a greenhouse that decays does so three days after it was planted. */
 const val DECAY_TIME_MS: Long = 3L * 24 * 60 * 60 * 1000
