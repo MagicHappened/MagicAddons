@@ -101,8 +101,27 @@ open class CropStage(
     val armorStands: List<CropArmorStand>? = null,  // make sure on the matcher if its NULL it shouldnt have the respective thing on it!
     val stageRange: IntRange, // eg if its a wheat crop it CANNOT have any armor stands on it otherwise it will be considered something
     val allowRotation: Boolean = false, // else at runtime (eg ashwreath having partially grown wheat block)
-    val extraInfo: CropExtraInfo? = null
+    val extraInfo: CropExtraInfo? = null,
+    /**
+     * Values to take off the stands around the plant once it has matched. These never decide
+     * whether it matched: a bar that happens to be empty is a plant that is starving, not a plant
+     * that is something else.
+     */
+    val readers: List<CropStandReader> = emptyList()
 ) {
+
+    /**
+     * Runs every reader against [stands], for a plant that has already matched.
+     *
+     * A reader takes the first stand it recognises and is dropped if it recognises none, so a bar
+     * that has not appeared yet leaves no reading behind rather than a wrong one.
+     */
+    fun read(stands: List<ArmorStand>): Map<String, Int> = readers.mapNotNull { reader ->
+        stands.firstOrNull { reader.matches(it) }
+            ?.let { reader.read(it) }
+            ?.let { reader.key to it }
+    }.toMap()
+
     // for now leaving debug in just in case
     fun matchesStage(
         origin: BlockPos,
@@ -367,6 +386,10 @@ class CropStagePattern(
     }
 
 }
+/**
+ * Was meant to carry whatever a crop needs beyond blocks and stands, and never carried anything.
+ * Readers do that job now, see [CropStandReader]. Kept only until the definitions stop naming it.
+ */
 interface CropExtraInfo
 
 /** Everything in a greenhouse that decays does so three days after it was planted. */
@@ -424,7 +447,16 @@ data class GreenhouseElementInstance(
     var growthStage: GrowthStageInfo? = null,
     var age: Long? = null,
     val cropDef: CropDefinition,
-)
+    /**
+     * What the stands around this plant said, by the name its reader files it under. A fleshtrap's
+     * hunger and a snoozling's sleep live here, since they are things a plant is rather than things
+     * that decide what it is.
+     */
+    val readings: MutableMap<String, Int> = mutableMapOf(),
+) {
+    /** Whether this plant is asleep and will not grow until it is woken. */
+    val isAsleep: Boolean get() = readings[CropStandReader.ASLEEP] == 1
+}
 
 
 interface CropDefinitionProvider {
