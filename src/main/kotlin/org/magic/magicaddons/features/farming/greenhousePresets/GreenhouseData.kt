@@ -1,5 +1,6 @@
 package org.magic.magicaddons.features.farming.greenhousePresets
 
+import org.magic.magicaddons.data.greenhouse.GrowthStageInfo
 import org.magic.magicaddons.commands.debug.CropStageExporter
 import org.magic.magicaddons.util.getBuildableArea
 import org.magic.magicaddons.util.parseDurationToMs
@@ -863,7 +864,10 @@ object GreenhouseData {
         }
 
         val isSelf = UUID.fromString("eef58b9d-39e1-4062-8a1a-2f921f14a46d") == Minecraft.getInstance().player?.uuid
-        val override = false
+        // an estimate is a match worth exporting anyway. It means several stages look alike, and
+        // an export of one of them is exactly what would tell them apart, so the one case we most
+        // want the output for was the one case that stopped producing it
+        val override = element?.instance?.growthStage is GrowthStageInfo.Estimated
         if (matchingStage != null){
             if (matchingStage.needsRotationData(abnormalRotationFound)){
                 ChatUtils.sendWithPrefix("No rotation data for ${def.name}")
@@ -872,7 +876,9 @@ object GreenhouseData {
                 }
             }
             else if (override){
-                ChatUtils.sendWithPrefix("Overridden ${def.name}")
+                ChatUtils.sendWithPrefix(
+                    "${def.name} could only be narrowed to a range, so its output was copied too"
+                )
                 plantDiagnosticHitBaseBlock?.let {
                     CropStageExporter.copyCropStageData(it,stageRaw, def, !isSelf)
                 }
