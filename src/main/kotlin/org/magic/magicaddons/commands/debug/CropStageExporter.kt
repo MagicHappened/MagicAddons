@@ -1,5 +1,6 @@
 package org.magic.magicaddons.commands.debug
 
+import org.magic.magicaddons.data.greenhouse.WorldRotation
 import net.minecraft.network.chat.Component
 import net.minecraft.ChatFormatting
 import net.minecraft.client.Minecraft
@@ -350,7 +351,11 @@ object CropStageExporter {
             sb.appendLine("    armorStands = listOf(),")
         }
 
-        sb.appendLine("    ${stageNum ?: 1}..${stageNum ?: 1}")
+        sb.appendLine("    ${stageNum ?: 1}..${stageNum ?: 1},")
+
+        // the rotation this plant stood at, without which the offsets above are only canonical
+        // for plants on the same diagonal of the grid
+        sb.appendLine("    canonicalStep = ${WorldRotation.step(basePos.x, basePos.z)}")
         sb.appendLine(")")
 
         if (discordFormat) {
