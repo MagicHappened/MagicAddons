@@ -687,11 +687,25 @@ object GreenhouseData {
             }
         }
 
-        def ?: return
+        // the whole point of pointing the tool at a plant is being told what the mod makes of it,
+        // so every way of learning nothing says so rather than returning quietly
+        if (def == null) {
+            ChatUtils.sendWithPrefix(
+                "No crop described for ${stackId?.id ?: "an unrecognised plant"}, nothing to match against."
+            )
+            return
+        }
+
+        if (stageRaw == null) {
+            ChatUtils.sendWithPrefix("Could not read what stage ${def.name} is at.")
+            return
+        }
+
+        ChatUtils.sendWithPrefix("${def.name}, stage $stageRaw of ${def.maxStage}")
+
         val matchingStage = def.stageDefs.find { stageDef ->
             stageRaw in stageDef.stageRange
         }
-        stageRaw ?: return
         plantDiagnosticListeningElement?.let {
             it.instance.age = age?.parseDurationToMs()
             it.instance.growthStage = GrowthStageInfo.Known(stageRaw)
@@ -714,6 +728,15 @@ object GreenhouseData {
             )
 
             val armorStands = level.getEntitiesOfClass(ArmorStand::class.java, box)
+
+            // a stand that is not small is rebuilt wrong unless its definition says so, and the
+            // definitions take small as read
+            armorStands.filterNot { it.isSmall }.forEach {
+                ChatUtils.sendWithPrefix(
+                    "Stand at ${it.blockPosition()} is not small, ${def.name} needs isSmall = false"
+                )
+            }
+
             abnormalRotationFound = armorStands.any {
                 ((it.headPose.x != 0.0f || it.headPose.y != 0.0f || it.headPose.z != 0.0f) ||
                         (!it.xRot.isCardinalYaw() || !it.yRot.isCardinalYaw()))
@@ -725,8 +748,12 @@ object GreenhouseData {
             )
         }
 
-        element?.let {
-            ChatUtils.sendWithPrefix("Successfully matched element ${it.instance.elementId} : ${it.instance.growthStage} to block $plantDiagnosticHitBaseBlock")
+        if (element == null) {
+            ChatUtils.sendWithPrefix("Nothing here matched ${def.name}, so it is not being tracked.")
+        } else {
+            ChatUtils.sendWithPrefix(
+                "Matched ${element.instance.elementId} at ${element.instance.growthStage}"
+            )
         }
 
         val isSelf = UUID.fromString("eef58b9d-39e1-4062-8a1a-2f921f14a46d") == Minecraft.getInstance().player?.uuid

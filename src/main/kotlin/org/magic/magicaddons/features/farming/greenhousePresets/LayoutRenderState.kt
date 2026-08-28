@@ -11,6 +11,8 @@ import net.minecraft.world.phys.AABB
 import net.minecraft.world.entity.decoration.ArmorStand
 import net.minecraft.client.Minecraft
 import net.minecraft.core.BlockPos
+import net.minecraft.world.level.block.FarmlandBlock
+import net.minecraft.world.level.block.state.properties.IntegerProperty
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.shapes.VoxelShape
 import org.magic.magicaddons.data.greenhouse.CropDefinition
@@ -76,6 +78,9 @@ object LayoutRenderState {
      * Ground a hoe turns into other ground. A dirt where farmland belongs is not the wrong block,
      * it is the right one left untilled, and saying so in red would send the player digging.
      */
+    /** State a plan does not care about, because nothing the player does decides it. */
+    private val IGNORED_PROPERTIES: List<IntegerProperty> = listOf(FarmlandBlock.MOISTURE)
+
     private val TILLABLE: Set<Block> = setOf(
         Blocks.DIRT,
         Blocks.GRASS_BLOCK,
@@ -232,6 +237,30 @@ object LayoutRenderState {
     }
 
     /**
+     * Whether two states are the same as far as a plan is concerned.
+     *
+     * A state carries things the player has no say over and no reason to be told about. Farmland
+     * grows damp when it is near water, so a watered plot differs from a dry one in every slot, and
+     * calling that out would paint a finished greenhouse orange over something nobody can fix.
+     */
+    private fun BlockState.sameEnoughAs(other: BlockState): Boolean {
+        if (this == other) return true
+        if (block != other.block) return false
+
+        // every ignored property is copied across before comparing, so what is left is only the
+        // state a player actually chose
+        val normalised = IGNORED_PROPERTIES.fold(this) { state, property ->
+            if (state.hasProperty(property) && other.hasProperty(property)) {
+                state.setValue(property, other.getValue(property))
+            } else {
+                state
+            }
+        }
+
+        return normalised == other
+    }
+
+    /**
      * Says what is wrong at [pos] given that [wanted] belongs there, filing it under the mark that
      * tells the player what to do about it. Returns whether the spot is already as it should be.
      */
@@ -244,7 +273,7 @@ object LayoutRenderState {
     ): Boolean {
         val standing = level.getBlockState(pos)
 
-        if (standing == wanted) return true
+        if (standing.sameEnoughAs(wanted)) return true
 
         // nothing belongs here, so anything standing here is in the way
         if (wanted.isAir) {
