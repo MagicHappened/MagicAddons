@@ -341,14 +341,15 @@ class CropStagePattern(
             val multiplier = stageOffsetMultipliers[stage]
                 ?: (stage - start) // good fallback
 
+            // the stand as described, moved along by the stage, rather than a new one built from
+            // two of its fields. Rebuilding dropped everything else it was given: its rotations,
+            // the name it looks for, and how it is built, so an expanded stage matched loosely and
+            // was drawn as a full sized stand however the crop actually stands
             val newStands = armorStands?.map { stand ->
-                val offset = stand.offset.add(
-                    baseStageStandOffset.scale(multiplier.toDouble())
-                )
-
-                CropArmorStand(
-                    offset = offset,
-                    hashString = stand.hashString
+                stand.copy(
+                    offset = stand.offset.add(
+                        baseStageStandOffset.scale(multiplier.toDouble())
+                    )
                 )
             }
 

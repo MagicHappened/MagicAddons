@@ -750,9 +750,12 @@ object GreenhouseData {
             val minY = block.y.toDouble()
             val minZ = block.z.toDouble()
 
-            val maxX = (block.x + FarmingDebug.footprint.width).toDouble()
+            // the crop's own footprint, not the one set by hand for exporting an unknown plant.
+            // A three by three searched as a one by one covers a ninth of itself and finds almost
+            // none of its stands, so it never matches
+            val maxX = (block.x + def.footprint.width).toDouble()
             val maxY = (block.y + 15).toDouble()  // height
-            val maxZ = (block.z + FarmingDebug.footprint.height).toDouble()
+            val maxZ = (block.z + def.footprint.height).toDouble()
 
             val box = AABB(
                 minX, minY, minZ,

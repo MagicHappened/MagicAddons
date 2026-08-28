@@ -25,6 +25,7 @@ object Lonelily : CropDefinitionProvider {
                 ),
                 armorStands = listOf(
                     CropArmorStand(
+                        isSmall = false,
                         offset = Vec3(0.0, -0.125, 0.0),
                         hashString = "f4672d5fb128c63197da27f40d7143818d318665b3ab2335121e9ae8f9ecc2e3"
                     )

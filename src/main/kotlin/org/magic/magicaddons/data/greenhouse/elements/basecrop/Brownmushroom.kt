@@ -28,6 +28,7 @@ object Brownmushroom : CropDefinitionProvider {
                 ),
                 armorStands = listOf(
                     CropArmorStand(
+                        isSmall = false,
                         offset = Vec3(0.0, -0.75, 0.0),
                         hashString = "7019992b5d440f85d2b05148aa9b85f450985d5f16ae960d1cdb32e06e3c896f"
                     )
@@ -44,7 +45,8 @@ object Brownmushroom : CropDefinitionProvider {
                 ),
                 armorStands = listOf(
                     CropArmorStand(
-                        offset = Vec3(0.0, -0.45000000000000284, 0.0),
+                        isSmall = false,
+                        offset = Vec3(0.0, -0.45, 0.0),
                         headRotation = Rotations(0.0f, 0.0f, 0.0f),
                         hashString = "578897b83f51fb96b59ba418ff0868cef7bdf661e315ba5dbac51d876d1d15d"
                     )
