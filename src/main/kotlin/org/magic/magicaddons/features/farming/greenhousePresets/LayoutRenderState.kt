@@ -133,6 +133,27 @@ object LayoutRenderState {
         val badStands: Set<UUID>,
         val ghostStands: List<ArmorStand>
     ) {
+        /**
+         * What this plan asks for, as one string, so two plans can be told apart without comparing
+         * the stands themselves. The stands are what makes this worth doing: they are entities
+         * built fresh every time the plan is worked out, and handing the renderer a new set of
+         * them for an unchanged plan is the one thing that still changed between frames.
+         */
+        val signature: String = buildString {
+            append(phase).append('|')
+            marks.entries.sortedBy { it.key.asLong() }
+                .forEach { append(it.key.asLong()).append(':').append(it.value.second).append(',') }
+            append('|')
+            ghosts.entries.sortedBy { it.key.asLong() }
+                .forEach { append(it.key.asLong()).append(':').append(it.value).append(',') }
+            append('|')
+            badStands.map { it.toString() }.sorted().forEach { append(it).append(',') }
+            append('|')
+            ghostStands.forEach {
+                append(it.x).append(',').append(it.y).append(',').append(it.z).append(';')
+            }
+        }
+
         companion object {
             val NOTHING = Plan(Phase.Soil, emptyMap(), emptyMap(), emptySet(), emptyList())
         }
@@ -310,6 +331,16 @@ object LayoutRenderState {
             }
         }
 
+        val next = Plan(soilPhase, marks, ghosts, badStands, ghostStands)
+
+        // a plan asking for exactly what is already up is not a new plan. Swapping it in anyway
+        // handed the renderer a fresh set of ghost stands, built from nothing every scan, and
+        // rebuilding an entity is not the same to a renderer as leaving it alone
+        if (next.signature == plan.signature) {
+            debug("$refreshCount unchanged: ${marks.size}m ${ghosts.size}g ${ghostStands.size}s, kept")
+            return
+        }
+
         debug(
             "$refreshCount built: ${marks.size}m ${ghosts.size}g ${ghostStands.size}s " +
                     "phase=$soilPhase planned=${layout.elementInstances.size} " +
@@ -318,7 +349,7 @@ object LayoutRenderState {
         )
 
         // one swap, so nothing drawn is ever half of this plan and half of the last
-        plan = Plan(soilPhase, marks, ghosts, badStands, ghostStands)
+        plan = next
     }
 
     /**
