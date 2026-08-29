@@ -227,6 +227,7 @@ object Zombud : CropDefinitionProvider {
 
 
         ),
+        // five day decay timer
         maxStage = 16,
         requiredSoil = setOf(Blocks.SOUL_SAND),
         needsWater = false,

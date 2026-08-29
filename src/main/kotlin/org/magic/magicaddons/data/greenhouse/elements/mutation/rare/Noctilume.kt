@@ -79,6 +79,7 @@ object Noctilume : CropDefinitionProvider {
                 craving = CropStandReader.CRAVES_NIGHT
             )
         ),
+        decayTimeMs = SIX_DAY_DECAY_TIME_MS,
         maxStage = 4,
         footprint = Footprint(2, 2),
         isMutation = true

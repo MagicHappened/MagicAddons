@@ -392,7 +392,7 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, Focus
          * its age was never read off a plant diagnostic.
          */
         private fun decayRemainingMs(instance: GreenhouseElementInstance): Long? {
-            val decayTime = instance.cropDef.decayTimeMs ?: return null
+            val decayTime = instance.cropDef.decayTimeMs
             if (decayTime == NEVER_DECAYS) return null
 
             val age = instance.age ?: return null

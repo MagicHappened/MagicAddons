@@ -57,6 +57,7 @@ object Timestalk : CropDefinitionProvider {
             )
 
         ),
+        // five days decay timer
         maxStage = 14,
         requiredSoil = setOf(Blocks.END_STONE),
         isMutation = true

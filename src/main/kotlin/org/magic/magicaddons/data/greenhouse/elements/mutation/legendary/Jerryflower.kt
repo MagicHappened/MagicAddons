@@ -11,5 +11,5 @@ object Jerryflower : CropDefinitionProvider {
         stageDefs = listOf(),
         maxStage = 10,
         isMutation = true
-    )
+    ) // dont know decay time leave it at default for now and todo it
 }

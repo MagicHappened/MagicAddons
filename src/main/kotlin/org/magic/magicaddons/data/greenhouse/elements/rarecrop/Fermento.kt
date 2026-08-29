@@ -6,6 +6,7 @@ import org.magic.magicaddons.data.greenhouse.CropArmorStand
 import org.magic.magicaddons.data.greenhouse.CropDefinition
 import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
 import org.magic.magicaddons.data.greenhouse.CropStage
+import org.magic.magicaddons.data.greenhouse.NEVER_DECAYS
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
 object Fermento : CropDefinitionProvider {
@@ -25,6 +26,7 @@ object Fermento : CropDefinitionProvider {
                 1..1
             )
         ),
+        decayTimeMs = NEVER_DECAYS,
         needsWater = false,
         isRareCrop = true
     )

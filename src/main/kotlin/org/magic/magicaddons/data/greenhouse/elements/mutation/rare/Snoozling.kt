@@ -212,6 +212,7 @@ object Snoozling : CropDefinitionProvider {
 
 
         ),
+        decayTimeMs = SIX_DAY_DECAY_TIME_MS,
         maxStage = 20,
         footprint = Footprint(3, 3),
         isMutation = true

@@ -224,6 +224,7 @@ object Puffercloud : CropDefinitionProvider {
 
 
         ),
+        // five days decay time
         maxStage = 14,
         isMutation = true
     )

@@ -11,6 +11,7 @@ import org.magic.magicaddons.data.greenhouse.CropDefinition
 import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
 import org.magic.magicaddons.data.greenhouse.CropStage
 import org.magic.magicaddons.data.greenhouse.CropStates.deadBushState
+import org.magic.magicaddons.data.greenhouse.DEFAULT_DECAY_TIME_MS
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
 object Witherbloom : CropDefinitionProvider {

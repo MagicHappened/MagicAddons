@@ -163,6 +163,7 @@ object MagicJellybean : CropDefinitionProvider {
         skyblockId = SkyBlockItemId.item("MAGIC_JELLYBEAN"),
         stageDefs = generateStages(),
         maxStage = MAX_STAGE,
+        decayTimeMs = NEVER_DECAYS,
         requiredSoil = setOf(Blocks.SAND),
         isMutation = true
     )

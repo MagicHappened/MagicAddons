@@ -4,7 +4,7 @@ import net.minecraft.core.BlockPos
 import net.minecraft.core.Rotations
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.CropEffect
-import org.magic.magicaddons.data.greenhouse.DECAY_TIME_MS
+import org.magic.magicaddons.data.greenhouse.DEFAULT_DECAY_TIME_MS
 import org.magic.magicaddons.data.greenhouse.CropArmorStand
 import org.magic.magicaddons.data.greenhouse.CropBlockState
 import org.magic.magicaddons.data.greenhouse.CropDefinition
@@ -46,7 +46,6 @@ object Gloomgourd : CropDefinitionProvider {
 
 
         ),
-        decayTimeMs = DECAY_TIME_MS,
         needsWater = false,
         isMutation = true
     )

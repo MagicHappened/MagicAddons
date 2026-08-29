@@ -6,6 +6,7 @@ import org.magic.magicaddons.data.greenhouse.CropArmorStand
 import org.magic.magicaddons.data.greenhouse.CropDefinition
 import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
 import org.magic.magicaddons.data.greenhouse.CropStage
+import org.magic.magicaddons.data.greenhouse.NEVER_DECAYS
 
 object DevourerRoots : CropDefinitionProvider {
     override val definition = CropDefinition(
@@ -25,6 +26,8 @@ object DevourerRoots : CropDefinitionProvider {
                 allowRotation = true
             )
         ),
+        decayTimeMs = NEVER_DECAYS, // devourer has a decay time, so clicking on the roots with a diagnosis tool will bring up the devourer itself,
+        // but since we are clicking on the roots stand configuration, we should avoid writing the decay time to them on the ui
         needsWater = false,
         requiredSoil = setOf(Blocks.FARMLAND, Blocks.SOUL_SAND)
 

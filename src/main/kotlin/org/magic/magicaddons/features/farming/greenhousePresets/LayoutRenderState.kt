@@ -7,6 +7,7 @@ import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.Level
 import org.magic.magicaddons.data.greenhouse.LayoutSlot
+import org.magic.magicaddons.data.greenhouse.ElementRuntimeState
 import org.magic.magicaddons.data.greenhouse.Footprint
 import net.minecraft.client.renderer.SubmitNodeCollector
 import net.minecraft.world.phys.AABB
@@ -265,30 +266,24 @@ object LayoutRenderState {
 
         if (soilComplete) {
             layout.elementInstances.forEach { instance ->
-                // the plant the player is told to grow is the one they have to place. What the
-                // layout grows towards appears on its own once the ingredients are right, so
-                // planning it would be asking for the thing being asked for
-                if (instance.slot.slotMark == LayoutSlot.Marking.Target) return@forEach
+                // whatever is growing on this slot, by whatever covers it rather than by what
+                // starts on it: a two by two beginning one slot over still stands here, and asking
+                // only about origins meant a plant sprawling across a slot was not on it at all
+                val growing = grid.elementCovering(instance.slot)
 
-                // whatever is growing on this slot, which is not the same question as whether
-                // anything is: a melon standing where a pumpkin was planned satisfied the plan
-                // simply by being a plant, and the slot went quiet as though it were done
-                val growing = grid.elements
-                    .firstOrNull { it.instance.slot.isCoordsEqual(instance.slot) }
+                // the plant the layout grows towards appears on its own once the ingredients are
+                // right, so nothing is planned for it. It can only appear on an empty slot though,
+                // so anything standing on that slot is in the way of the mutation happening at all
+                if (instance.slot.slotMark == LayoutSlot.Marking.Target) {
+                    if (growing != null) markInTheWay(level, growing, marks, badStands)
+                    return@forEach
+                }
 
                 if (growing != null) {
                     // the right plant, so there is nothing to plan and nothing in the way of it
                     if (growing.instance.cropDef == instance.cropDef) return@forEach
 
-                    // the wrong one, which is in the way rather than absent. Its blocks are marked
-                    // and its stands are tinted, the same as anything else standing where a crop
-                    // has to go, so the player is told to take it out rather than told nothing
-                    growing.blocksMap?.keys?.forEach { pos ->
-                        marks[pos] = level.getBlockState(pos).getShape(level, pos) to Mark.Wrong
-                    }
-
-                    growing.standEntities?.forEach { badStands.add(it.uuid) }
-
+                    markInTheWay(level, growing, marks, badStands)
                     return@forEach
                 }
 
@@ -338,6 +333,25 @@ object LayoutRenderState {
 
         // one swap, so nothing drawn is ever half of this plan and half of the last
         plan = next
+    }
+
+    /**
+     * Marks a plant as being in the way rather than absent.
+     *
+     * Its blocks are outlined and its stands are tinted, the same as anything else standing where
+     * a crop has to go, so the player is told to take it out rather than told nothing at all.
+     */
+    private fun markInTheWay(
+        level: Level,
+        growing: ElementRuntimeState,
+        marks: MutableMap<BlockPos, Pair<VoxelShape, Mark>>,
+        badStands: MutableSet<UUID>
+    ) {
+        growing.blocksMap?.keys?.forEach { pos ->
+            marks[pos] = level.getBlockState(pos).getShape(level, pos) to Mark.Wrong
+        }
+
+        growing.standEntities?.forEach { badStands.add(it.uuid) }
     }
 
     /**

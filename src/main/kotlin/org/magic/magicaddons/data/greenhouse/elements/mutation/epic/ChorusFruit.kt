@@ -214,6 +214,7 @@ object ChorusFruit : CropDefinitionProvider {
 
 
         ),
+        // decay time is 5 days
         maxStage = 12,
         requiredSoil = setOf(Blocks.END_STONE),
         needsWater = false,

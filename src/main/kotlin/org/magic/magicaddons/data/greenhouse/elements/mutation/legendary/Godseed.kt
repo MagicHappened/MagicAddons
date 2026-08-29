@@ -257,6 +257,7 @@ object Godseed : CropDefinitionProvider {
             )
 
         ),
+        // 10 days decay time
         maxStage = 40,
         isMutation = true
     )
