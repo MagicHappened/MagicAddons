@@ -15,6 +15,7 @@ import net.minecraft.client.renderer.texture.TextureAtlasSprite
 import net.minecraft.core.Direction
 import net.minecraft.network.chat.Component
 import net.minecraft.world.item.ItemStack
+import net.minecraft.world.item.Items
 import net.minecraft.world.level.block.Blocks
 import org.magic.magicaddons.ui.Focusable
 import org.magic.magicaddons.data.greenhouse.NEVER_DECAYS
@@ -58,12 +59,20 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, Focus
 
     /** What the mark means, said in full rather than left as a symbol nobody can look up. */
     private val DEBT_EXPLANATION: String = """
-        A plant with negative water has a chance of being skipped when the greenhouse ticks:
-        it neither grows a stage nor loses water that tick.
-        Because that is a chance rather than a rule, this timer assumes it was never skipped,
-        which is the soonest the plant could die rather than the likeliest.
-        Water it with a watering can, or read it with the plant analyzer,
-        to replace the guess with what the plant actually holds.
+        When the plant's water is negative, it has a chance to skip ticks entirely,
+        therefore not draining water. This estimate assumes it never skips ticks,
+        so your plants don't die.
+    """.trimIndent()
+
+    /** Worn in the corner of a plant the worst case has already killed. */
+    private val DEAD_MARK: ItemStack = ItemStack(Items.DEAD_BUSH)
+
+    /** Where the dead bush was drawn, so hovering it can explain itself. */
+    private var deadMarkBox: IntArray? = null
+
+    private val DEAD_EXPLANATION: String = """
+        In the worst case scenario this plant is dead.
+        Enter the greenhouse to verify.
     """.trimIndent()
     override var focusedState: Boolean = false
 
@@ -118,6 +127,20 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, Focus
             width - padding * 2,
             height - padding * 2
         )
+
+        deadMarkBox = null
+
+        // the worst case has this plant dead already. A dead bush in the corner says so, and only
+        // the greenhouse itself can settle it: a scan either replaces the plant with a real dead
+        // bush or finds it standing, at which point its water is put one tick from death instead
+        if (instance.cropDef.needsWater && (instance.waterLevel ?: 0) <= WaterModel.DEATH) {
+            val size = (width / 3).coerceAtLeast(8)
+            val markX = widgetX + width - size
+            val markY = widgetY
+
+            graphics.renderFakeItem(DEAD_MARK, markX, markY, size, size)
+            deadMarkBox = intArrayOf(markX, markY, markX + size, markY + size)
+        }
     }
 
     fun renderFire(graphics: GuiGraphicsExtractor){
@@ -143,7 +166,9 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, Focus
         if (info == HoverInfo.WaterLevel) {
             if (!instance.cropDef.needsWater) return
 
-            instance.waterLevel?.let { renderWaterBar(graphics, it) }
+            instance.waterLevel?.let {
+                renderWaterBar(graphics, it.coerceAtLeast(WaterModel.DEATH))
+            }
             return
         }
 
@@ -232,6 +257,9 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, Focus
     private fun renderWaterVerdict(graphics: GuiGraphicsExtractor, waterLevel: Int, barTop: Int) {
         debtMarkBox = null
 
+        // past death in the estimate there is no time left to state; the dead bush says it instead
+        if (waterLevel <= WaterModel.DEATH) return
+
         val ticksLeft = WaterModel.ticksUntilDeath(waterLevel, waterEffect)
         val remainingMs = GreenhouseData.remainingTickMs()
 
@@ -307,6 +335,15 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, Focus
     override fun isMouseOver(mouseX: Double, mouseY: Double): Boolean {
         return mouseX.toInt() in widgetX until widgetX + width &&
                 mouseY.toInt() in widgetY until widgetY + height
+    }
+
+    /** The dead bush's own tooltip, when the mouse is on it rather than on the plant. */
+    fun deadTooltipAt(mouseX: Int, mouseY: Int): String? {
+        val box = deadMarkBox ?: return null
+
+        return DEAD_EXPLANATION.takeIf {
+            mouseX in box[0]..box[2] && mouseY in box[1]..box[3]
+        }
     }
 
     /** The star's own tooltip, when the mouse is on the star rather than the plant. */

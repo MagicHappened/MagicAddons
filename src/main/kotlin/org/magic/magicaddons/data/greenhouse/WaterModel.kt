@@ -43,9 +43,32 @@ object WaterModel {
         return loss.coerceAtLeast(0.0).toInt()
     }
 
-    /** Where [water] sits after [ticks] more growth ticks, never past death. */
+    /**
+     * Where [water] sits after [ticks] more growth ticks.
+     *
+     * Deliberately allowed past [DEATH]: how far past says how many ticks the plant has been dead
+     * for in the estimate, which is what lets a plant found alive be put back at the worst level
+     * it could still be standing at.
+     */
     fun after(water: Int, ticks: Int, waterEffectPercent: Int): Int =
-        (water - lossPerTick(waterEffectPercent) * ticks).coerceAtLeast(DEATH)
+        water - lossPerTick(waterEffectPercent) * ticks
+
+    /**
+     * The worst a plant predicted at [predicted], at or past death, can be at while standing
+     * there alive.
+     *
+     * Alive means ticks were skipped. The fewest skips that leave it alive hand back whole ticks
+     * of loss until it is just above death, which leaves it one tick from dying: watered now or
+     * dead next tick.
+     */
+    fun aliveFloor(predicted: Int, waterEffectPercent: Int): Int {
+        val loss = lossPerTick(waterEffectPercent)
+        if (loss <= 0 || predicted > DEATH) return predicted
+
+        val skips = (DEATH - predicted) / loss + 1
+
+        return predicted + skips * loss
+    }
 
     /**
      * How many ticks a plant at [water] has before it dies, or null when it loses nothing at all.

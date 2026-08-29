@@ -221,6 +221,96 @@ object GreenhouseData {
         scanGridData()
     }
 
+    /** The tick already warned about, so ten minutes of danger is one message rather than ten. */
+    private var dehydrationWarnedFor: Instant? = null
+
+    private val DEATH_WARNING_WINDOW: Duration = Duration.ofMinutes(10)
+
+    /**
+     * Says which plants the coming tick will kill, while there is still time to water them.
+     *
+     * Asked when the countdown is inside the warning window, and once per tick: the danger does
+     * not change by being restated. A plant already past death in the estimate is not warned
+     * about, since the dead bush on its slot is already saying something stronger.
+     */
+    private fun warnOfDyingPlants() {
+        val nextTick = miscInfo.nextTickTime ?: return
+        val now = Instant.now()
+
+        if (Duration.between(now, nextTick) > DEATH_WARNING_WINDOW) return
+        if (dehydrationWarnedFor == nextTick) return
+
+        val dying = mutableListOf<Pair<String, String>>()
+
+        greenhouseGrids.forEach { grid ->
+            grid.layout.elementInstances.forEach { instance ->
+                if (!instance.cropDef.needsWater) return@forEach
+
+                val water = instance.waterLevel ?: return@forEach
+                if (water <= WaterModel.DEATH) return@forEach
+
+                // a plant that has finished growing stopped drinking, so nothing kills it
+                val lowestStage = when (val stage = instance.growthStage) {
+                    is GrowthStageInfo.Known -> stage.stage
+                    is GrowthStageInfo.Estimated -> stage.range.first
+                    null -> null
+                }
+                if (lowestStage != null && lowestStage >= instance.cropDef.maxStage) return@forEach
+
+                val effect = grid.layout.waterEffectAt(instance.slot)
+                val ticksLeft = WaterModel.ticksUntilDeath(water, effect) ?: return@forEach
+
+                if (ticksLeft <= 1) {
+                    dying += instance.cropDef.name to grid.layout.displayName()
+                }
+            }
+        }
+
+        if (dying.isEmpty()) return
+
+        dehydrationWarnedFor = nextTick
+        sendDehydrationWarning(dying)
+    }
+
+    /**
+     * The warning itself, plants grouped by the greenhouse they are dying in, with a way home at
+     * the end when the player is anywhere else.
+     */
+    fun sendDehydrationWarning(dying: List<Pair<String, String>>) {
+        val byHouse = dying.groupBy({ it.second }, { it.first })
+
+        val message = Component.literal("[MA] ").withStyle(ChatFormatting.GOLD)
+            .append(Component.literal("About to die of thirst: ").withStyle(ChatFormatting.RED))
+
+        byHouse.entries.forEachIndexed { index, (house, plants) ->
+            if (index > 0) {
+                message.append(Component.literal("; ").withStyle(ChatFormatting.DARK_GRAY))
+            }
+
+            message.append(
+                Component.literal(plants.joinToString(", ")).withStyle(ChatFormatting.YELLOW)
+            )
+            message.append(Component.literal(" in ").withStyle(ChatFormatting.GRAY))
+            message.append(Component.literal(house).withStyle(ChatFormatting.AQUA))
+        }
+
+        if (LocationAPI.island != SkyBlockIsland.GARDEN || LocationAPI.isGuest) {
+            message.append(Component.literal(" "))
+            message.append(
+                Component.literal("[GARDEN]").withStyle(
+                    Style.EMPTY
+                        .withColor(ChatFormatting.GREEN)
+                        .withClickEvent(ClickEvent.RunCommand("/warp garden"))
+                        .withHoverEvent(
+                            HoverEvent.ShowText(Component.literal("Click here to warp to garden!"))
+                        )
+                )
+            )
+        }
+
+        Minecraft.getInstance().player?.sendSystemMessage(message)
+    }
+
     @EventHandler
     fun onWorldTick(event: OnWorldTickEvent) {
         runDueReconcile()
@@ -245,39 +335,6 @@ object GreenhouseData {
 
         return nextId
     }
-
-    /**
-     * Temporary. Says why a tick did or did not land, and what it did to the water when it did,
-     * so the difference between the countdown reaching zero and anything happening can be read
-     * back rather than guessed at. Remove once it is understood.
-     */
-    private const val DEBUG_TICKS: Boolean = true
-
-    private fun tickDebug(message: String) {
-        if (DEBUG_TICKS) Common.LOGGER.info("[tick] $message")
-    }
-
-    /**
-     * A running account of where a countdown could have gone wrong, kept only while the logging is.
-     *
-     * Every one of these is a way the mod's clock and the game's can part company: real time the
-     * server did not keep up with, time the garden was not being watched at all, and the nudges
-     * already applied to paper over the first. Kept as totals since login rather than as the last
-     * reading, because a two minute disagreement is not made in one tick.
-     */
-    private var watchingSince: Instant? = null
-
-    /** Wall clock time spent watching the garden, and the server time that passed inside it. */
-    private var watchedRealMs: Long = 0
-    private var watchedServerMs: Long = 0
-
-    /** Stretches where the garden was loaded, then was not, then was again. */
-    private var awayMs: Long = 0
-    private var awaySpells: Int = 0
-
-    /** What the nudges have come to, and how much of it the cap refused to apply. */
-    private var driftAppliedMs: Long = 0
-    private var driftClippedMs: Long = 0
 
     /**
      * How far the server may fall behind the wall clock before the gap is read as an absence.
@@ -323,9 +380,6 @@ object GreenhouseData {
             // time across the whole gap while the server side of it covers only the last moment,
             // and the correction that comes out of that is nonsense
             if (previousTick == null) {
-                tickDebug("watching the garden again, no server tick to compare against yet")
-
-                watchingSince = watchingSince ?: now
                 lastCheckTime = now
                 return
             }
@@ -351,28 +405,14 @@ object GreenhouseData {
             val unaccountedMs = realMs - serverMs
 
             if (Duration.ofMillis(unaccountedMs) > AWAY_THRESHOLD) {
-                awayMs += unaccountedMs
-                awaySpells++
-
-                tickDebug(
-                    "away: ${realMs / 1000}s passed, server accounted for ${serverMs / 1000}s"
-                )
-
                 lastCheckTime = now
                 return
             }
-
-            watchingSince = watchingSince ?: lastCheck
-            watchedRealMs += realMs
-            watchedServerMs += serverMs
             // how far the server fell behind the wall clock since the last look. Bounded, because
             // this is meant to nudge a countdown that has drifted, and one long pause or one
             // skipped update should not be able to move it by more than the gap it is measuring
-            val wanted = realMs - serverMs
-            val adjustmentDelta = wanted.coerceIn(-MAX_TICK_ADJUSTMENT_MS, MAX_TICK_ADJUSTMENT_MS)
-
-            driftAppliedMs += adjustmentDelta
-            driftClippedMs += wanted - adjustmentDelta
+            val adjustmentDelta = unaccountedMs
+                .coerceIn(-MAX_TICK_ADJUSTMENT_MS, MAX_TICK_ADJUSTMENT_MS)
 
             // added, not taken off. The greenhouse counts in server ticks, so time the server
             // spent behind the wall clock is time the tick has not yet served and the countdown
@@ -402,21 +442,6 @@ object GreenhouseData {
         // than it counted; the plants were moved on by the count alone, so a greenhouse ticked
         // once and was never told
         val elapsedTicks = passedGrowthTicks.toInt() + 1
-
-        tickDebug(
-            "due: passed=$passedGrowthTicks elapsed=$elapsedTicks online=$onlineTickTracking " +
-                    "tickMs=$growthTickMs nextTick=$nextTick now=$now"
-        )
-
-        // what the tick length was worked out from, since a tick that disagrees with the game's own
-        // countdown disagrees by one of these rather than by drifting
-        tickDebug(
-            "  from: uniques=${getCurrentUniques().size} growth=${miscInfo.cropGrowthValue} " +
-                    "upgrade=${miscInfo.cropSpeedUpgradeValue} attribute=${greenhouseSpeedAttribute()} " +
-                    "-> ${growthTickMs / 60000}m ${(growthTickMs % 60000) / 1000}s"
-        )
-
-        tickDebug("  " + desyncLedger())
 //        Common.LOGGER.info("Overdue ms $overdueMs")
 //        Common.LOGGER.info("Overdue growth ticks $passedGrowthTicks")
         val nextTickAdvance = (passedGrowthTicks + 1) * growthTickMs
@@ -430,10 +455,7 @@ object GreenhouseData {
             )
 
         greenhouseGrids.forEach { grid ->
-            if (onlineTickTracking && !grid.hasRuntime()) {
-                tickDebug("  ${grid.layout.displayName()}: skipped, online and not loaded")
-                return@forEach
-            }
+            if (onlineTickTracking && !grid.hasRuntime()) return@forEach
 
             // a greenhouse that has not been read this session has no count of what it owes, and
             // owing nothing yet is not a reason to skip it: the ticks it is about to be told about
@@ -442,12 +464,6 @@ object GreenhouseData {
 
             grid.state.pendingGrowthTicks = pendingTicks + elapsedTicks
             grid.state.needsUpdate = true
-
-            tickDebug(
-                "  ${grid.layout.displayName()}: pending $pendingTicks -> " +
-                        "${pendingTicks + elapsedTicks}, " +
-                        "${grid.layout.elementInstances.size} plants"
-            )
 
             // nobody is looking at this greenhouse, so the clock is all we have to go on
             grid.predictGrowth(elapsedTicks, growthTickMs)
@@ -464,6 +480,7 @@ object GreenhouseData {
             miscInfo.nextTickTime?.isBefore(now) ?: false
         ) {
             checkForUpdate()
+            warnOfDyingPlants()
         }
     }
 
@@ -942,19 +959,8 @@ object GreenhouseData {
 
         if (nextStage?.contains(Regex("\\d")) ?: false) {
             if (!LocationAPI.isGuest) {
-                val was = miscInfo.nextTickTime
-
                 miscInfo.nextTickTime = Instant.now().plusMillis(nextStage.parseDurationToMs())
                 lastCheckTime = Instant.now()
-
-                // the one moment the game says what it thinks, so how far off we had drifted by
-                // then is worth saying, beside the account of everything that could have done it
-                was?.let {
-                    val offBy = Duration.between(it, miscInfo.nextTickTime).toSeconds()
-
-                    tickDebug("resynced from the game: countdown moved ${offBy}s")
-                    tickDebug("  ${desyncLedger()}")
-                }
 
                 realignWithGame()
             }
@@ -1181,44 +1187,14 @@ object GreenhouseData {
     }
 
     /**
-     * Starts the account again from a countdown the game itself just gave us.
+     * Re-anchors the server tick to the countdown the game itself just gave us.
      *
-     * Everything the account holds is a reason this clock might have parted company with the
-     * game's, and at this instant it has not: the game has just said what the countdown is. So the
-     * lag, the nudges and the time away are all spent, and letting them run on would blame the
-     * next drift on the one before it.
-     *
-     * The server tick is anchored again for the same reason. The next comparison measures real
-     * time from now, so measuring server time from wherever the tick counter happened to be left
-     * would put a whole absence on one side of the subtraction and a moment on the other.
+     * Without this, the next comparison measured real time from the resync against server time
+     * from wherever the counter was last touched, and handed the difference to the countdown as
+     * lag.
      */
     private fun realignWithGame() {
         lastServerTick = ServerUtils.totalServerTicks
-        watchingSince = Instant.now()
-
-        watchedRealMs = 0
-        watchedServerMs = 0
-        awayMs = 0
-        awaySpells = 0
-        driftAppliedMs = 0
-        driftClippedMs = 0
-    }
-
-    /**
-     * Everything known about why this countdown might not be the game's, in one line.
-     *
-     * Read together: time watched against server time inside it says how much the server fell
-     * behind, the nudges say how much of that was handed to the countdown, the clipped figure says
-     * how much the cap threw away, and the time away says how long nobody was watching at all.
-     */
-    private fun desyncLedger(): String {
-        val lagMs = watchedRealMs - watchedServerMs
-        val watchedFor = watchingSince?.let { Duration.between(it, Instant.now()).toSeconds() } ?: 0
-
-        return "ledger: inGarden=${watchedFor}s watched=${watchedRealMs / 1000}s " +
-                "serverTime=${watchedServerMs / 1000}s lag=${lagMs / 1000}s " +
-                "nudged=${driftAppliedMs / 1000}s clipped=${driftClippedMs / 1000}s " +
-                "away=${awayMs / 1000}s over $awaySpells spell(s)"
     }
 
     fun computeGrowthStageTimeMs(
