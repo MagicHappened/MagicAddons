@@ -601,6 +601,18 @@ object CropCollector : EntityUtils.HighlightSource {
             // a marker, and once floated seven blocks up into a snoozling export
             .filterNot { PlayerUtils.getSkullHash(it) == PLOT_MARKER_SKIN }
 
+        // a stand built at full size is a fact its definition has to state, and this is the
+        // moment it is worth saying: the plant has just been named, so the report names it too.
+        // It used to come from the diagnosis tool, which no longer reports anything on its own
+        val fullSized = stands.filterNot { it.isSmall }
+
+        if (fullSized.isNotEmpty()) {
+            ChatUtils.sendWithPrefix(
+                "${fullSized.size} of ${def.name}'s stands are not small, " +
+                        "its definition needs isSmall = false"
+            )
+        }
+
         val absorbed = s.entries.filter { entry ->
             val ew = entry.def?.footprint?.width ?: 1
             val eh = entry.def?.footprint?.height ?: 1

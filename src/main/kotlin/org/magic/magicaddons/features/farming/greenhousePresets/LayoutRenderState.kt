@@ -1,6 +1,5 @@
 package org.magic.magicaddons.features.farming.greenhousePresets
 
-import org.magic.magicaddons.Common
 import java.util.UUID
 import com.mojang.blaze3d.vertex.PoseStack
 import net.minecraft.world.phys.Vec3
@@ -168,21 +167,6 @@ object LayoutRenderState {
     @Volatile
     private var plan: Plan = Plan.NOTHING
 
-    /**
-     * Temporary. Every refresh says what it made of the plot and every frame says what it drew,
-     * so a blink can be read back as either a plan that came out empty or a frame that drew an
-     * empty one. Remove once the flicker is understood.
-     */
-    private const val DEBUG_PLAN: Boolean = true
-
-    private var refreshCount: Int = 0
-
-    @Volatile
-    private var lastDrawn: String = ""
-
-    private fun debug(message: String) {
-        if (DEBUG_PLAN) Common.LOGGER.info("[plan] $message")
-    }
 
     /** Which half of the job the player is on. */
     val phase: Phase get() = plan.phase
@@ -207,14 +191,6 @@ object LayoutRenderState {
         val plan = this.plan
         val marks = plan.marks
         val ghosts = plan.ghosts
-
-        if (DEBUG_PLAN) {
-            val drawn = "${marks.size}m ${ghosts.size}g ${plan.ghostStands.size}s"
-            if (drawn != lastDrawn) {
-                lastDrawn = drawn
-                Common.LOGGER.info("[plan] frame draws $drawn")
-            }
-        }
         marks.forEach { (pos, mark) ->
             WorldRender.mark(
                 poseStack, collector, cameraPos, pos, mark.first, mark.second.color, FILL_ALPHA
@@ -254,17 +230,9 @@ object LayoutRenderState {
         // nothing to draw. Wiping the plan on the way past cost a frame of blank screen every
         // time the plot was briefly unreadable, which is a rescan blinking rather than changing.
         // What was last worked out stays up until something is worked out to replace it
-        refreshCount++
+        if (grid == null) return
 
-        if (grid == null) {
-            debug("$refreshCount bail: no grid, keeping ${plan.marks.size}m ${plan.ghosts.size}g ${plan.ghostStands.size}s")
-            return
-        }
-
-        val level = Minecraft.getInstance().level ?: run {
-            debug("$refreshCount bail: no level")
-            return
-        }
+        val level = Minecraft.getInstance().level ?: return
 
         // the plan is whatever this greenhouse was given, so standing in another one shows that
         // one's plan or nothing, rather than carrying the last one around the garden. This one is
@@ -272,7 +240,6 @@ object LayoutRenderState {
         val layout = grid.state.assignedLayout
 
         if (layout == null) {
-            debug("$refreshCount bail: no layout assigned, clearing")
             hide()
             return
         }
@@ -284,7 +251,6 @@ object LayoutRenderState {
 
         // what is already up, to take the unchanged parts of it over rather than build them again
         val previous = plan
-        var reusedGroups = 0
 
         var soilComplete = true
 
@@ -347,10 +313,7 @@ object LayoutRenderState {
                 val key = "${instance.slot.x},${instance.slot.y}," +
                         "${instance.cropDef.name},${stage.stageRange}"
 
-                val kept = previous.standGroups[key]
-                if (kept != null) reusedGroups++
-
-                standGroups[key] = kept ?: render.stands
+                standGroups[key] = previous.standGroups[key] ?: render.stands
 
                 // a stand already standing in the crop's space is in the way of it
                 val footprint = instance.cropDef.footprint
@@ -367,23 +330,11 @@ object LayoutRenderState {
         }
 
         val next = Plan(soilPhase, marks, ghosts, badStands, standGroups)
-        val standCount = next.ghostStands.size
 
         // a plan asking for exactly what is already up is not a new plan. Swapping it in anyway
         // handed the renderer a fresh set of ghost stands, built from nothing every scan, and
         // rebuilding an entity is not the same to a renderer as leaving it alone
-        if (next.signature == plan.signature) {
-            debug("$refreshCount unchanged: ${marks.size}m ${ghosts.size}g ${standCount}s, kept")
-            return
-        }
-
-        debug(
-            "$refreshCount built: ${marks.size}m ${ghosts.size}g ${standCount}s " +
-                    "phase=$soilPhase planned=${layout.elementInstances.size} " +
-                    "growing=${grid.elements.size} " +
-                    "reused=$reusedGroups/${standGroups.size} " +
-                    "(was ${plan.marks.size}m ${plan.ghosts.size}g ${plan.ghostStands.size}s)"
-        )
+        if (next.signature == plan.signature) return
 
         // one swap, so nothing drawn is ever half of this plan and half of the last
         plan = next
