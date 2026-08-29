@@ -33,9 +33,18 @@ class HoverControls : Renderable, Focusable, HoverableContainer {
 
     override var focusedState: Boolean = false
 
-    /** The fact that has been picked, or null when none is. */
-    var selectedInfo: ElementWidget.HoverInfo? = null
-        private set
+    /**
+     * The fact that has been picked, or null when none is.
+     *
+     * Kept where the screen cannot take it away: closing the greenhouse and opening it again is
+     * how a player looks at their plot, not how they change their mind about what they wanted to
+     * see, so the pick outlives the screen it was made on.
+     */
+    var selectedInfo: ElementWidget.HoverInfo?
+        get() = lastPicked
+        private set(value) {
+            lastPicked = value
+        }
 
     /** The swatch under the mouse, which is only ever drawn differently, never read from. */
     private var hoveredInfo: ElementWidget.HoverInfo? = null
@@ -113,6 +122,9 @@ class HoverControls : Renderable, Focusable, HoverableContainer {
 
 
     companion object {
+        /** What was last picked, remembered across screens for as long as the game is running. */
+        private var lastPicked: ElementWidget.HoverInfo? = null
+
         /** Laid over the swatch the mouse is on, so it lifts rather than changes colour. */
         private const val HOVER_WASH: Int = 0x40FFFFFF
 
