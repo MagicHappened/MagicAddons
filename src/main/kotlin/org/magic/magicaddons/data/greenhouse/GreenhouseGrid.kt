@@ -329,6 +329,11 @@ class GreenhouseGrid(
             // same as being spared
             val cravingUnfulfilled = instance.craving?.let { it != timeOfDayNow() } == true
 
+            // a plant already in debt may be passed over entirely, taking neither its stage nor
+            // its water, and nothing here can know which happened. The loss is counted anyway, so
+            // what is shown is the worst it could be in, and the plant remembers that it is
+            if ((instance.waterLevel ?: 0) < 0) instance.waterPredictedInDebt = true
+
             if (instance.isAsleep || cravingUnfulfilled || instance.isStarving) {
                 if (instance.cropDef.needsWater) {
                     instance.waterLevel = instance.waterLevel?.let {

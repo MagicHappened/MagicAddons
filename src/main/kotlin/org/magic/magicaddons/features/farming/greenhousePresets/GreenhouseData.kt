@@ -809,7 +809,13 @@ object GreenhouseData {
         plantDiagnosticListeningElement?.let { element ->
             age?.parseDurationToMs()?.let { element.instance.age = it }
             stageRaw?.let { element.instance.growthStage = GrowthStageInfo.Known(it) }
-            waterLevel?.let { element.instance.waterLevel = it }
+
+            // read rather than predicted, so whatever was assumed about the ticks it may have been
+            // passed over for no longer applies
+            waterLevel?.let {
+                element.instance.waterLevel = it
+                element.instance.waterPredictedInDebt = false
+            }
         }
 
         if (!CropCollector.isActive()) return
