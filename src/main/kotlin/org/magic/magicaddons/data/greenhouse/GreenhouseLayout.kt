@@ -73,10 +73,15 @@ data class GreenhouseLayout(
      * How much longer a plant on [slot] holds its water, as a percentage.
      *
      * The pieces are added together, so a hundred percent retain beside a thirty percent drain
-     * comes to seventy. That is a guess: nobody has watched a plant sitting between the two long
-     * enough to say whether they add, whether the drain is taken off the loss afterwards, or
-     * whether one simply wins. The same doubt applies to the yield effects wherever they are
-     * eventually added up.
+     * comes to seventy. Measured rather than assumed: two pumpkins in one greenhouse, both dry,
+     * one with both effects and one with only the retain, were given thirteen and seventeen hours
+     * by the game itself, and both fall out of a single tick period at seventy and a hundred
+     * percent. Either effect winning outright would have given a different pair. See
+     * notes/water-formula.md.
+     *
+     * What that pair cannot separate is whether the drain is added or multiplied in, since both
+     * come to thirteen a tick here; a fifty percent retain beside a drain would tell them apart.
+     * The yield effects are still guessed at wherever they are eventually added up.
      */
     fun waterEffectAt(slot: LayoutSlot): Int = effectsAt(slot)
         .filter { it.kind == CropEffect.Kind.Water }
