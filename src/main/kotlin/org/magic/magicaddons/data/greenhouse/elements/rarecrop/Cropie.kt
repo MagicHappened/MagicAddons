@@ -1,5 +1,8 @@
 package org.magic.magicaddons.data.greenhouse.elements.rarecrop
 
+import org.magic.magicaddons.data.greenhouse.CropStage
+import org.magic.magicaddons.data.greenhouse.CropArmorStand
+import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.CropDefinition
 import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockId
@@ -9,7 +12,21 @@ object Cropie : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Cropie",
         skyblockId = SkyBlockItemId.item("CROPIE"),
-        stageDefs = listOf(),
+        stageDefs = listOf(
+            // placed rather than grown, so it has the one look it is put down with
+            CropStage(
+                blocks = listOf(),
+                armorStands = listOf(
+                    CropArmorStand(
+                        isSmall = false,
+                        offset = Vec3(0.0, -0.4, 0.0),
+                        hashString = "dd01cba23ede2cd2895107f0c0258e971d2485538fe9649ef2853bd26e6232dc"
+                    )
+                ),
+                1..1,
+                allowRotation = true
+            )
+        ),
         needsWater = false,
         isRareCrop = true
     )

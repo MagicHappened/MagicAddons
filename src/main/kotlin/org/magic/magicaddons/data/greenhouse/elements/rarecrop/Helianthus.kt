@@ -1,5 +1,8 @@
 package org.magic.magicaddons.data.greenhouse.elements.rarecrop
 
+import org.magic.magicaddons.data.greenhouse.CropStage
+import org.magic.magicaddons.data.greenhouse.CropArmorStand
+import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.CropDefinition
 import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockId
@@ -9,7 +12,21 @@ object Helianthus : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Helianthus",
         skyblockId = SkyBlockItemId.item("HELIANTHUS"),
-        stageDefs = listOf(),
+        stageDefs = listOf(
+            // placed rather than grown, so it has the one look it is put down with
+            CropStage(
+                blocks = listOf(),
+                armorStands = listOf(
+                    CropArmorStand(
+                        isSmall = false,
+                        offset = Vec3(0.0, -0.4, 0.0),
+                        hashString = "a98ac9224491a9dd480531bd971591724ce29921ec8f141461276f1bf3a59ed3"
+                    )
+                ),
+                1..1,
+                allowRotation = true
+            )
+        ),
         needsWater = false,
         isRareCrop = true
     )
