@@ -294,8 +294,25 @@ object LayoutRenderState {
                 // planning it would be asking for the thing being asked for
                 if (instance.slot.slotMark == LayoutSlot.Marking.Target) return@forEach
 
-                // already growing there, so there is nothing to plan and nothing in the way of it
-                if (grid.elements.any { it.instance.slot.isCoordsEqual(instance.slot) }) {
+                // whatever is growing on this slot, which is not the same question as whether
+                // anything is: a melon standing where a pumpkin was planned satisfied the plan
+                // simply by being a plant, and the slot went quiet as though it were done
+                val growing = grid.elements
+                    .firstOrNull { it.instance.slot.isCoordsEqual(instance.slot) }
+
+                if (growing != null) {
+                    // the right plant, so there is nothing to plan and nothing in the way of it
+                    if (growing.instance.cropDef == instance.cropDef) return@forEach
+
+                    // the wrong one, which is in the way rather than absent. Its blocks are marked
+                    // and its stands are tinted, the same as anything else standing where a crop
+                    // has to go, so the player is told to take it out rather than told nothing
+                    growing.blocksMap?.keys?.forEach { pos ->
+                        marks[pos] = level.getBlockState(pos).getShape(level, pos) to Mark.Wrong
+                    }
+
+                    growing.standEntities?.forEach { badStands.add(it.uuid) }
+
                     return@forEach
                 }
 
