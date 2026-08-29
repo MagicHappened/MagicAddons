@@ -3,15 +3,21 @@ package org.magic.magicaddons.ui.widgets.greenhouse
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.components.Renderable
 import net.minecraft.client.gui.components.events.GuiEventListener
+import net.minecraft.client.input.MouseButtonEvent
 import org.magic.magicaddons.ui.Focusable
 import org.magic.magicaddons.Common
 import org.magic.magicaddons.ui.HoverableContainer
 import org.magic.magicaddons.util.ScreenUtil.drawBorder
 
 /**
- * The coloured swatches down the right hand side of the grid. Holding the mouse over one writes the
- * fact it stands for onto every plant at once, so the whole greenhouse can be read at a glance
- * without hovering the plants one by one.
+ * The coloured swatches down the right hand side of the grid. Picking one writes the fact it stands
+ * for onto every plant at once, so the whole greenhouse can be read at a glance without going over
+ * the plants one by one.
+ *
+ * Picked rather than hovered: a fact worth reading across a hundred plants is worth reading with
+ * the mouse somewhere else, and holding still on a swatch to keep it on screen meant never being
+ * able to look at anything the swatch was describing. Clicking a swatch turns its fact on, clicking
+ * another swaps to it, and clicking the one already on turns it off again.
  *
  * Only one fact shows at a time because a plant is one slot wide and a second line of text over it
  * would cover the plant it is describing.
@@ -27,9 +33,12 @@ class HoverControls : Renderable, Focusable, HoverableContainer {
 
     override var focusedState: Boolean = false
 
-    /** The fact the mouse is asking for, or null while it is not over a swatch. */
-    var hoveredInfo: ElementWidget.HoverInfo? = null
+    /** The fact that has been picked, or null when none is. */
+    var selectedInfo: ElementWidget.HoverInfo? = null
         private set
+
+    /** The swatch under the mouse, which is only ever drawn differently, never read from. */
+    private var hoveredInfo: ElementWidget.HoverInfo? = null
 
     /** Sits the swatches against the right edge of a grid of [gridHeight] starting at [gridRight]. */
     fun layoutAgainstGrid(gridRight: Int, gridTop: Int, gridHeight: Int) {
@@ -43,25 +52,45 @@ class HoverControls : Renderable, Focusable, HoverableContainer {
         forEachSwatch { info, top, bottom ->
             graphics.fill(x, top, x + width, bottom, info.color)
 
-            // the swatch the mouse is on is the one talking, an outline says so without a label
-            if (info == hoveredInfo) {
+            // the picked swatch is the one talking and wears the outline that says so. The one
+            // merely under the mouse is only lightened, so a swatch about to be picked looks
+            // different from the swatch already doing the talking
+            if (info == selectedInfo) {
                 graphics.drawBorder(x, top, x + width, bottom, Common.UI.BORDER_SIZE, Common.UI.BORDER_COLOR)
+            } else if (info == hoveredInfo) {
+                graphics.fill(x, top, x + width, bottom, HOVER_WASH)
             }
         }
     }
 
     override fun mouseMoved(mouseX: Double, mouseY: Double) {
-        hoveredInfo = null
-        hoveredElement = null
+        hoveredInfo = swatchAt(mouseX, mouseY)
+        hoveredElement = if (hoveredInfo != null) this else null
+    }
 
-        if (!isMouseOver(mouseX, mouseY)) return
+    /**
+     * Picks the swatch that was clicked, or drops it when it was already the one picked, so the
+     * same click both turns a fact on and takes it away again.
+     */
+    override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
+        val clicked = swatchAt(mouseButtonEvent.x, mouseButtonEvent.y) ?: return false
+
+        selectedInfo = if (clicked == selectedInfo) null else clicked
+
+        return true
+    }
+
+    /** Which swatch, if any, sits under a point. */
+    private fun swatchAt(mouseX: Double, mouseY: Double): ElementWidget.HoverInfo? {
+        if (!isMouseOver(mouseX, mouseY)) return null
+
+        var found: ElementWidget.HoverInfo? = null
 
         forEachSwatch { info, top, bottom ->
-            if (mouseY.toInt() in top until bottom) {
-                hoveredInfo = info
-                hoveredElement = this
-            }
+            if (mouseY.toInt() in top until bottom) found = info
         }
+
+        return found
     }
 
     override fun isMouseOver(mouseX: Double, mouseY: Double): Boolean =
@@ -84,6 +113,9 @@ class HoverControls : Renderable, Focusable, HoverableContainer {
 
 
     companion object {
+        /** Laid over the swatch the mouse is on, so it lifts rather than changes colour. */
+        private const val HOVER_WASH: Int = 0x40FFFFFF
+
         private const val SWATCH_WIDTH: Int = 10
         private const val SWATCH_SPACING: Int = Common.UI.SPACING_SMALL
 

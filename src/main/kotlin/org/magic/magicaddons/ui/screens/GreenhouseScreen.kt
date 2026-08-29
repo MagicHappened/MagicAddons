@@ -427,6 +427,14 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
             }
             return true
         }
+        // the swatches are only beside a greenhouse, and off screen they still sit where they
+        // were last laid out, so they are asked before the grid but only where they exist
+        if (currentDisplay == CurrentDisplay.Greenhouses &&
+            hoverControls.mouseClicked(mouseButtonEvent, doubled)
+        ) {
+            return true
+        }
+
         if (displayedGridWidget?.mouseClicked(mouseButtonEvent, doubled) == true) {
             return true
         }
@@ -463,7 +471,7 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         }
 
         displayedGridWidget?.pinnedInfo =
-            hoverControls.hoveredInfo.takeIf { currentDisplay == CurrentDisplay.Greenhouses }
+            hoverControls.selectedInfo.takeIf { currentDisplay == CurrentDisplay.Greenhouses }
 
         displayedGridWidget?.mouseMoved(mouseX, mouseY)
 
