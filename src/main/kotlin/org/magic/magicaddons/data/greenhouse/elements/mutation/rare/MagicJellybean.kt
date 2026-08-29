@@ -128,11 +128,21 @@ object MagicJellybean : CropDefinitionProvider {
         add(topless(MAX_CANE))
     }
 
-    /** The finished plant: cane the whole way up and nothing growing above it. */
+    /**
+     * The finished plant, which is not bare cane after all.
+     *
+     * It stops one length short and keeps a melon stem above the last of it, and it carries a head
+     * for a length of cane that never arrives: ten heads over nine canes. So the last stage is
+     * written out rather than reasoned about, since it is the one stage that does not do what the
+     * cycle does.
+     */
     private fun topless(caneHeight: Int): CropStage = CropStage(
-        blocks = (1..caneHeight).map {
+        blocks = (1 until caneHeight).map {
             CropBlockState(offset = BlockPos(0, it, 0), blockState = sugarcaneState())
-        },
+        } + CropBlockState(
+            offset = BlockPos(0, caneHeight, 0),
+            blockState = melonStemState(6)
+        ),
         armorStands = (0 until caneHeight).map {
             CropArmorStand(
                 offset = Vec3(0.0, CANE_STAND_Y + it, 0.0),
