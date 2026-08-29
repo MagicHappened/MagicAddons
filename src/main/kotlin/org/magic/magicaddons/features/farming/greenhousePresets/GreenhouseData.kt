@@ -335,8 +335,15 @@ object GreenhouseData {
 
         if (passedGrowthTicks <= 0 && !nextTick.isBefore(now)) return
 
+        // the countdown having run out is itself a tick. passedGrowthTicks counts whole periods
+        // gone by since then, so an hour past a two hour tick counts none of them while the tick
+        // it ran out on has plainly happened. The clock always knew this and moved on by one more
+        // than it counted; the plants were moved on by the count alone, so a greenhouse ticked
+        // once and was never told
+        val elapsedTicks = passedGrowthTicks.toInt() + 1
+
         tickDebug(
-            "due: passed=$passedGrowthTicks online=$onlineTickTracking " +
+            "due: passed=$passedGrowthTicks elapsed=$elapsedTicks online=$onlineTickTracking " +
                     "tickMs=$growthTickMs nextTick=$nextTick now=$now"
         )
 //        Common.LOGGER.info("Overdue ms $overdueMs")
@@ -357,21 +364,21 @@ object GreenhouseData {
                 return@forEach
             }
 
-            val pendingTicks = grid.state.pendingGrowthTicks ?: run {
-                tickDebug("  ${grid.layout.displayName()}: skipped, pendingGrowthTicks is null")
-                return@forEach
-            }
+            // a greenhouse that has not been read this session has no count of what it owes, and
+            // owing nothing yet is not a reason to skip it: the ticks it is about to be told about
+            // are exactly the ones nobody was there to see
+            val pendingTicks = grid.state.pendingGrowthTicks ?: 0
 
-            grid.state.pendingGrowthTicks = pendingTicks + passedGrowthTicks.toInt()
+            grid.state.pendingGrowthTicks = pendingTicks + elapsedTicks
             grid.state.needsUpdate = true
 
             tickDebug(
-                "  ${grid.layout.displayName()}: pending ${pendingTicks} -> " +
-                        "${pendingTicks + passedGrowthTicks.toInt()}, ${grid.elements.size} plants"
+                "  ${grid.layout.displayName()}: pending $pendingTicks -> " +
+                        "${pendingTicks + elapsedTicks}, ${grid.elements.size} plants"
             )
 
             // nobody is looking at this greenhouse, so the clock is all we have to go on
-            grid.predictGrowth(passedGrowthTicks.toInt(), growthTickMs)
+            grid.predictGrowth(elapsedTicks, growthTickMs)
         }
     }
 
