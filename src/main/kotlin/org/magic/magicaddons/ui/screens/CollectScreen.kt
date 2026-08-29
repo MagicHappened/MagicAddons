@@ -24,6 +24,9 @@ import org.magic.magicaddons.util.ScreenUtil.drawBorder
  * config's [org.magic.magicaddons.ui.widgets.config.BooleanSettingWidget], shrunk to stay out of
  * the way; it cannot reuse it outright since these rows are not settings.
  */
+/** Where the checklist was scrolled to, kept outside the screen so reopening lands back there. */
+private var scroll: Int = 0
+
 class CollectScreen : Screen(Component.literal("Crop Collection")) {
 
     private companion object {
@@ -39,7 +42,6 @@ class CollectScreen : Screen(Component.literal("Crop Collection")) {
     }
 
     private val checkbox = CheckboxWidget()
-    private var scroll: Int = 0
 
     private var panelX: Int = 0
     private var panelY: Int = 0

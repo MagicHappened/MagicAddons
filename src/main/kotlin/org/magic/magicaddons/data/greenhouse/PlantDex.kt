@@ -73,16 +73,27 @@ object PlantDex {
      * for nothing. Asked when the dex is pointed at a single plant, where a line in chat is the
      * whole answer and there is nothing worth copying.
      */
+    /**
+     * Whether [stage] knows how every one of its stands is turned, the crop's role poses counted:
+     * a stand without an explicit pose is covered when its hash has a declared role, since one
+     * good sample of a role covers every stage that shows it.
+     */
+    private fun hasRotation(def: CropDefinition, stage: CropStage): Boolean =
+        stage.armorStands.orEmpty().all {
+            (it.headRotation != null && it.xRotation != null && it.yRotation != null) ||
+                    def.standPoses.containsKey(it.hashString)
+        }
+
     /** The stages of [def] recorded without the way their stands are turned. */
     fun rotationGaps(def: CropDefinition): List<Int> = def.stageDefs
-        .filterNot { it.hasRotationData }
+        .filterNot { hasRotation(def, it) }
         .flatMap { it.stageRange }
         .distinct()
         .sorted()
 
     /** Whether the stage [stage] of [def] was recorded without its rotations. */
     fun needsRotation(def: CropDefinition, stage: Int): Boolean = def.stageDefs
-        .any { stage in it.stageRange && !it.hasRotationData }
+        .any { stage in it.stageRange && !hasRotation(def, it) }
 
     fun reportFor(def: CropDefinition): String? {
         val covered = def.stageDefs.flatMap { it.stageRange }.toSet()

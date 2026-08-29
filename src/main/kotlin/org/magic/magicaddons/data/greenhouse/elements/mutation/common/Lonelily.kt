@@ -36,7 +36,6 @@ object Lonelily : CropDefinitionProvider {
                     )
                 ),
                 1..1,
-                allowRotation = true
             )
 
         ),

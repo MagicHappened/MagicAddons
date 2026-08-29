@@ -346,7 +346,9 @@ class GreenhouseGrid(
 
             // a plant that has finished growing stops drinking: the game shows no countdown on a
             // fully grown plant, so the model takes no water off one. Judged by the lowest stage
-            // it might be at, so a plant only probably grown keeps drying, worst case as ever
+            // it might be at, so a plant only probably grown keeps drying, worst case as ever.
+            // Untested edge, to be watched for in game: the tick that completes a plant still
+            // drains it here, so finishing at exactly -100 counts as dead until a scan says
             val lowestStage = when (val stage = instance.growthStage) {
                 is GrowthStageInfo.Known -> stage.stage
                 is GrowthStageInfo.Estimated -> stage.range.first

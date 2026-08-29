@@ -17,6 +17,11 @@ object Phantomleaf : CropDefinitionProvider {
             CropEffect.Immunity
         ),
         skyblockId = SkyBlockItemId.item("PHANTOMLEAF"),
+        /** Each skull's pose, found constant across every stage it appears in. */
+        standPoses = mapOf(
+            "92fb1e0e18cadb45a4d96721a9ee9c1d2c36d99826b3c23c19ee18801f721dd3" to StandPose.Fixed(Rotations(20.0f, 0.0f, 0.0f), yRotation = -90.0f),
+            "988eaca2c41056ed3fb34669548843c62bae0b406441ea9d224fd7bd2f73f86e" to StandPose.Fixed(Rotations(45.0f, 0.0f, 0.0f))
+        ),
         stageDefs = listOf(
             CropStage(
                 blocks = CropBlockState.blockStatePattern(
@@ -49,14 +54,10 @@ object Phantomleaf : CropDefinitionProvider {
                     CropArmorStand(
                         isSmall = false,
                         offset = Vec3(0.0, -0.375, -0.28125),
-                        headRotation = Rotations(45.0f, 0.0f, 0.0f),
-                        xRotation = 0.0f,
-                        yRotation = 0.0f,
                         hashString = "988eaca2c41056ed3fb34669548843c62bae0b406441ea9d224fd7bd2f73f86e"
                     )
                 ),
                 5..5,
-                allowRotation = true
             ),
             CropStage(
                 blocks = listOf(
@@ -68,9 +69,6 @@ object Phantomleaf : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                     offset = Vec3(-0.125, -0.375, 0.0),
-                    headRotation = Rotations(20.0f, 0.0f, 0.0f),
-                    xRotation = 0.0f,
-                    yRotation = -90.0f,
                     hashString = "92fb1e0e18cadb45a4d96721a9ee9c1d2c36d99826b3c23c19ee18801f721dd3")
                 ),
                 10..10

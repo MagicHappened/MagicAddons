@@ -17,6 +17,11 @@ object Wildrose : CropDefinitionProvider {
             CropEffect.EffectSpread
         ),
         skyblockId = SkyBlockItemId.item("WILD_ROSE"),
+        /** Each skull's pose, found constant across every stage it appears in. */
+        standPoses = mapOf(
+            "4a99a01317a01f65f7a7610122bea792c22a771e7a48ce1a5b352bccc8335074" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f)),
+            "61a37adb8bcad712663771235feeb136ebe0f5c4d593070a5410ccb6f6706aa0" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f))
+        ),
         stageDefs = listOf(
             CropStage(
                 blocks = listOf(
@@ -178,7 +183,6 @@ object Wildrose : CropDefinitionProvider {
                     )
                 ),
                 10..10,
-                allowRotation = true
             ),
             CropStage(
                 blocks = listOf(
@@ -191,7 +195,6 @@ object Wildrose : CropDefinitionProvider {
                     CropArmorStand(
                         isSmall = false,
                         offset = Vec3(0.0, 0.5, 0.0),
-                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
                         hashString = "4a99a01317a01f65f7a7610122bea792c22a771e7a48ce1a5b352bccc8335074"
                     )
                 ),
@@ -212,7 +215,6 @@ object Wildrose : CropDefinitionProvider {
                     CropArmorStand(
                         isSmall = false,
                         offset = Vec3(0.0, 0.78125, 0.0),
-                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
                         hashString = "4a99a01317a01f65f7a7610122bea792c22a771e7a48ce1a5b352bccc8335074"
                     )
                 ),
@@ -235,13 +237,11 @@ object Wildrose : CropDefinitionProvider {
                         CropArmorStand(
                         isSmall = false,
                             offset = Vec3(0.0, 1.09375, 0.0),
-                            headRotation = Rotations(0.0f, 0.0f, 0.0f),
                             hashString = "61a37adb8bcad712663771235feeb136ebe0f5c4d593070a5410ccb6f6706aa0",
                         )
                     )
                 ,
                 15..15,
-                allowRotation = true
             )
 
 

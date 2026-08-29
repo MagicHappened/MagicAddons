@@ -66,7 +66,6 @@ object Snoozling : CropDefinitionProvider {
                                 hashString = "b82d442528456547474dd88166a97818f057ecc4b3ed350ef9a5e4dbd27f98d7"
                             ),
                 3..4,
-                allowRotation = true
             ),
             CropStage(
                 blocks = CropBlockState.blockStatePattern(
@@ -92,7 +91,6 @@ object Snoozling : CropDefinitionProvider {
                                 hashString = "885c448a847959a7ea71f79686516886692e2c80b5464725dde847d5ae5a7215"
                             ),
                 5..5,
-                allowRotation = true,
                 // a snoozling drops asleep every fifth stage and stops growing until it is woken
                 // by hand. The stand saying so comes and goes, so it is read rather than matched:
                 // requiring it would make a woken snoozling fail to be a snoozling at all
@@ -126,7 +124,6 @@ object Snoozling : CropDefinitionProvider {
                     )
                 ),
                 6..6,
-                allowRotation = true
             ),
             CropStage(
                 blocks = CropBlockState.blockStatePattern(
@@ -158,7 +155,6 @@ object Snoozling : CropDefinitionProvider {
                     )
                 ),
                 8..8,
-                allowRotation = true
             ),
             CropStage(
                 blocks = CropBlockState.blockStatePattern(
@@ -207,7 +203,6 @@ object Snoozling : CropDefinitionProvider {
                     )
                 ),
                 20..20,
-                allowRotation = true
             )
 
 

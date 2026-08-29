@@ -31,6 +31,11 @@ object Godseed : CropDefinitionProvider {
         ),
         skyblockId = SkyBlockItemId.item("GODSEED"),
         footprint = Footprint(3, 3),
+        /** Each skull's pose, found constant across every stage it appears in. */
+        standPoses = mapOf(
+            "9bc7d71431dcdcfa432e8ef9fdb6aa4c4683786ac657e7ece038fb94f71e42be" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f)),
+            "ab849bae7ab0927a52836da1a45768527d1c7be5853a9290a283ae9aca0c908b" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f))
+        ),
         stageDefs = listOf(
             CropStage(
                 blocks = CropBlockState.blockStatePattern(
@@ -59,7 +64,6 @@ object Godseed : CropDefinitionProvider {
                 ) + listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.25, 0.0),
-                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
                         hashString = "ab849bae7ab0927a52836da1a45768527d1c7be5853a9290a283ae9aca0c908b"
                     )
                 ),
@@ -128,7 +132,6 @@ object Godseed : CropDefinitionProvider {
                     )
                 ),
                 13..13,
-                allowRotation = true
             ),
             CropStage(
                 blocks = CropBlockState.blockStatePattern(
@@ -173,7 +176,6 @@ object Godseed : CropDefinitionProvider {
                 ) + listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, 0.34375, 0.0),
-                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
                         hashString = "9bc7d71431dcdcfa432e8ef9fdb6aa4c4683786ac657e7ece038fb94f71e42be"
                     )
                 ),

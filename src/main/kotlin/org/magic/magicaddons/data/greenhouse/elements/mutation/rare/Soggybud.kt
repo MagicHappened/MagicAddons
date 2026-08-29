@@ -15,6 +15,10 @@ object Soggybud : CropDefinitionProvider {
         ),
         skyblockId = SkyBlockItemId.item("SOGGYBUD"),
         maxStage = 10,
+        /** Each skull's pose, found constant across every stage it appears in. */
+        standPoses = mapOf(
+            "b4bdf477d2f417f75798ad6377b131aca787be9bc05a2fddc1972d81d40c7356" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f))
+        ),
         stageDefs = listOf(
             CropStage(
                 blocks = listOf(
@@ -54,7 +58,6 @@ object Soggybud : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, 0.1875, 0.0),
-                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
                         hashString = "b4bdf477d2f417f75798ad6377b131aca787be9bc05a2fddc1972d81d40c7356"
                     )
                 ),
@@ -93,7 +96,6 @@ object Soggybud : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                     offset = Vec3(0.0, -0.4375, 0.0),
-                    headRotation = Rotations(0.0f, 0.0f, 0.0f),
                     hashString = "b4bdf477d2f417f75798ad6377b131aca787be9bc05a2fddc1972d81d40c7356"
                     )
                 ),

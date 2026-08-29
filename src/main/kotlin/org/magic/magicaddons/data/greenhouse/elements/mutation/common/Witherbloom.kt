@@ -1,5 +1,6 @@
 package org.magic.magicaddons.data.greenhouse.elements.mutation.common
 
+import org.magic.magicaddons.data.greenhouse.StandPose
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Rotations
 import net.minecraft.world.level.block.Blocks
@@ -22,6 +23,10 @@ object Witherbloom : CropDefinitionProvider {
             CropEffect.EffectSpread
         ),
         skyblockId = SkyBlockItemId.item("WITHERBLOOM"),
+        /** Each skull's pose, found constant across every stage it appears in. */
+        standPoses = mapOf(
+            "ef831051cf18a4c3ea7a2a83311f218f43b032712799cc81910ab67ee7397b32" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f))
+        ),
         stageDefs = listOf(
             CropStage(
                 blocks = listOf(
@@ -34,7 +39,6 @@ object Witherbloom : CropDefinitionProvider {
                     CropArmorStand(
                         isSmall = false,
                         offset = Vec3(0.0, 0.40625, 0.0),
-                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
                         hashString = "ef831051cf18a4c3ea7a2a83311f218f43b032712799cc81910ab67ee7397b32"
                     )
                 ),

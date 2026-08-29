@@ -1,5 +1,6 @@
 package org.magic.magicaddons.data.greenhouse
 
+import net.minecraft.util.Mth
 import net.minecraft.client.Minecraft
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Rotations
@@ -114,7 +115,6 @@ open class CropStage(
     val blocks: List<CropBlockState>? = null,
     val armorStands: List<CropArmorStand>? = null,  // make sure on the matcher if its NULL it shouldnt have the respective thing on it!
     val stageRange: IntRange, // eg if its a wheat crop it CANNOT have any armor stands on it otherwise it will be considered something
-    val allowRotation: Boolean = false, // else at runtime (eg ashwreath having partially grown wheat block)
     /**
      * Facts this stage's identity implies, copied into the instance's readings when it wins.
      *
@@ -131,19 +131,6 @@ open class CropStage(
      */
     val readers: List<CropStandReader> = emptyList()
 ) {
-
-    /**
-     * Whether every stand of this stage was recorded with the way it is turned.
-     *
-     * Matching does not need it: a stand with no rotation recorded is simply not checked on that
-     * count, which is looser and never wrong. Drawing a plant does need it, so a stage without it
-     * can be matched but not faithfully shown, and a stage with no stands at all has nothing to
-     * record and so wants for nothing.
-     */
-    val hasRotationData: Boolean
-        get() = armorStands.orEmpty().all {
-            it.headRotation != null && it.xRotation != null && it.yRotation != null
-        }
 
     /**
      * Runs every reader against [stands], for a plant that has already matched.
@@ -212,14 +199,12 @@ open class CropStage(
             // one rotation for the whole stage, and the world's own comes first. Exports are
             // written as the plant would stand at rotation zero, so canonical data matches on the
             // first candidate, the rotation the grid gives this block. A stage that only matches
-            // further down the list was recorded before normalization and never rewritten, which
-            // the result reports so the caller can ask for a fresh export. The reflections stay
-            // last for the same reason: nothing canonical ever needs them
+            // at zero was recorded before normalization and never rewritten, which the result
+            // reports so the caller can ask for a fresh export
             val worldStep = WorldRotation.step(origin.x, origin.z)
 
             val candidateSteps = when {
                 this.armorStands.isNullOrEmpty() -> listOf(0)
-                allowRotation -> (listOf(worldStep) + listOf(0, 1, 2, 3, 4, 5)).distinct()
                 else -> listOf(worldStep, 0).distinct()
             }
 
@@ -303,9 +288,17 @@ open class CropStage(
                 abs(a.z - b.z) < epsilon
     }
 
-    fun toRenderData(level: Level, baseBlock: BlockPos, footprint: Footprint): RenderData{
+    fun toRenderData(
+        level: Level,
+        baseBlock: BlockPos,
+        footprint: Footprint,
+        standPoses: Map<String, StandPose> = emptyMap()
+    ): RenderData{
         val renderStands = mutableListOf<ArmorStand>()
         val blockMap = mutableMapOf<BlockPos, BlockState>()
+
+        // definitions describe the plant at rotation zero; the world decides how this one stands
+        val worldStep = WorldRotation.step(baseBlock.x, baseBlock.z)
         val center = Vec3(
             baseBlock.x + footprint.width / 2.0,
             baseBlock.y.toDouble(),
@@ -319,11 +312,12 @@ open class CropStage(
         }
         armorStands?.forEach { standDef ->
             standDef.hashString ?: return@forEach
+            val turned = WorldRotation.rotate(standDef.offset, worldStep)
             val stand = ArmorStand(
                 level,
-                center.x + standDef.offset.x,
-                center.y + standDef.offset.y,
-                center.z + standDef.offset.z
+                center.x + turned.x,
+                center.y + turned.y,
+                center.z + turned.z
             )
 
             // the flags ride in synched data rather than in setters, which are not ours to call
@@ -340,7 +334,16 @@ open class CropStage(
             stand.id = FAKE_ENTITY_ID
 
             stand.isInvisible = true
-            standDef.headRotation?.let { stand.headPose = it }
+            // an explicit pose on the stand wins; otherwise the role says, and the role may
+            // care where in the world the plant stands
+            val role = standPoses[standDef.hashString]
+            val head = standDef.headRotation
+                ?: role?.headAt(baseBlock.x, baseBlock.z, standDef.offset)
+
+            head?.let { stand.headPose = it }
+            stand.yRot = Mth.wrapDegrees(
+                (standDef.yRotation ?: role?.yRotation ?: 0f) + 90f * worldStep
+            )
             val stack = PlayerUtils.getItemFromHash(standDef.hashString)
             stand.setItemSlot(EquipmentSlot.HEAD, stack)
             renderStands.add(stand)
@@ -370,7 +373,6 @@ class CropStagePattern(
     blocks: List<CropBlockState>? = null,
     armorStands: List<CropArmorStand>? = null,
     stageRange: IntRange,
-    allowRotation: Boolean = false,
     traits: Map<String, Int> = emptyMap(),
     val baseStageStandOffset: Vec3,
     val stageOffsetMultipliers: Map<Int, Int> = emptyMap()
@@ -378,7 +380,6 @@ class CropStagePattern(
     blocks = blocks,
     armorStands = armorStands,
     stageRange = stageRange,
-    allowRotation = allowRotation,
     traits = traits
 ){
     fun expand(): List<CropStage> {
@@ -408,7 +409,6 @@ class CropStagePattern(
                     blocks = blocks,
                     armorStands = newStands,
                     stageRange = stage..stage,
-                    allowRotation = allowRotation,
                     traits = traits
                 )
             )
@@ -431,19 +431,11 @@ object WorldRotation {
     /** The quarter turns the world gives a plant whose base block is at ([x], [z]). */
     fun step(x: Int, z: Int): Int = Math.floorMod(z - x, 4)
 
-    /**
-     * [offset] turned by [steps] quarter turns about the plant's centre.
-     *
-     * Steps four and five are not rotations but the two reflections the matcher has always also
-     * tried; they are kept for stages recorded before the rotation rule was known, whose canonical
-     * step nobody wrote down.
-     */
-    fun rotate(offset: Vec3, steps: Int): Vec3 = when (Math.floorMod(steps, 6)) {
+    /** [offset] turned by [steps] quarter turns about the plant's centre. */
+    fun rotate(offset: Vec3, steps: Int): Vec3 = when (Math.floorMod(steps, 4)) {
         1 -> Vec3(-offset.z, offset.y, offset.x)
         2 -> Vec3(-offset.x, offset.y, -offset.z)
         3 -> Vec3(offset.z, offset.y, -offset.x)
-        4 -> Vec3(offset.z, offset.y, offset.x)
-        5 -> Vec3(-offset.z, offset.y, -offset.x)
         else -> offset
     }
 }
@@ -456,6 +448,44 @@ const val NEVER_DECAYS: Long = -1L
 
 /** The longer life a few of the harder mutations get, twice the usual three days. */
 const val SIX_DAY_DECAY_TIME_MS: Long = 6L * 24 * 60 * 60 * 1000
+
+/**
+ * How the stands of one role are turned, declared once per crop rather than on every stage.
+ *
+ * A sweep over every recorded pose found that a stand's head pose belongs to the skull it carries,
+ * not to the stage it appears in: the same hash holds the same pose at stage two and at stage a
+ * hundred. So a crop names each hash's pose once, a stand without an explicit pose of its own
+ * inherits it, and the stages are left holding only what actually changes between them: offsets.
+ */
+sealed interface StandPose {
+
+    /** The head pose a stand of this role wears at world position ([x], [z]) with [offset]. */
+    fun headAt(x: Int, z: Int, offset: Vec3): Rotations
+
+    val xRotation: Float get() = 0f
+    val yRotation: Float get() = 0f
+
+    /** One pose everywhere the role appears, which is nearly every role there is. */
+    data class Fixed(
+        val headRotation: Rotations,
+        override val xRotation: Float = 0f,
+        override val yRotation: Float = 0f
+    ) : StandPose {
+        override fun headAt(x: Int, z: Int, offset: Vec3): Rotations = headRotation
+    }
+
+    /**
+     * A pose that walks a fixed cycle with world position and height.
+     *
+     * The magic jellybean's canes: pose = poses[(x + z + height) mod size], verified against
+     * every cane of fifteen exports, all ten of a fully grown plant included. Height is read off
+     * the stand's offset, whose fraction never reaches half a block.
+     */
+    data class Cycle(val poses: List<Rotations>) : StandPose {
+        override fun headAt(x: Int, z: Int, offset: Vec3): Rotations =
+            poses[Math.floorMod(x + z + Math.floor(offset.y + 0.5).toInt(), poses.size)]
+    }
+}
 
 data class CropDefinition(
     val name: String,
@@ -478,7 +508,9 @@ data class CropDefinition(
     /** Shown in the ui when skyblock has no item of its own for this crop, a dead plant has none. */
     val displayItem: Item? = null,
     /** The buffs and debuffs this crop carries, which are what make a layout worth planning. */
-    val effects: Set<CropEffect> = emptySet()
+    val effects: Set<CropEffect> = emptySet(),
+    /** Each skull hash's pose, held once here instead of repeated on every stage that shows it. */
+    val standPoses: Map<String, StandPose> = emptyMap()
 ){
     fun matchesId(id: SkyBlockId): Boolean{
         return skyblockId == id || (aliases?.any { it == id } ?: false)

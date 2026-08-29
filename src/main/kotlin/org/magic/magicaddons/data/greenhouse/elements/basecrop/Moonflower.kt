@@ -1,5 +1,6 @@
 package org.magic.magicaddons.data.greenhouse.elements.basecrop
 
+import org.magic.magicaddons.data.greenhouse.StandPose
 import org.magic.magicaddons.data.greenhouse.CropEffect
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Rotations
@@ -21,20 +22,22 @@ object Moonflower : CropDefinitionProvider {
             CropEffect.BonusDrops
         ),
         skyblockId = SkyBlockItemId.item("MOONFLOWER"),
+        /** Each skull's pose, found constant across every stage it appears in. */
+        standPoses = mapOf(
+            "10ba39f5a3bdb0f3ed6547e6e688fc43d64fabc056f3418b2bbbdfedd7248ba9" to StandPose.Fixed(Rotations(-45.0f, 0.0f, 0.0f)),
+            "7775c5d80efc36c7b029470852aaf161e3733f8ae691fb5ed5450232630e4fcb" to StandPose.Fixed(Rotations(15.0f, 0.0f, 0.0f)),
+            "bd1001840c85349f87c6e20478317f4026b588514d8b1e78241a849d93f9cd94" to StandPose.Fixed(Rotations(-22.5f, 0.0f, 0.0f))
+        ),
         stageDefs = listOf(
             CropStage(
                 blocks = listOf(),
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, 0.25, 0.1875),
-                        headRotation = Rotations(-45.0f, 0.0f, 0.0f),
-                        xRotation = 0.0f,
-                        yRotation = 0.0f,
                         hashString = "10ba39f5a3bdb0f3ed6547e6e688fc43d64fabc056f3418b2bbbdfedd7248ba9"
                     )
                 ),
                 1..1,
-                allowRotation = true
             ),
             CropStage(
                 blocks = listOf(
@@ -46,7 +49,6 @@ object Moonflower : CropDefinitionProvider {
                     )
                 ),
                 2..2,
-                allowRotation = true
             ),
             CropStage(
                 blocks = listOf(
@@ -62,7 +64,6 @@ object Moonflower : CropDefinitionProvider {
                     )
                 ),
                 3..3,
-                allowRotation = true
             ),
             CropStage(
                 blocks = listOf(
@@ -80,7 +81,6 @@ object Moonflower : CropDefinitionProvider {
                     )
                 ,
                 4..4,
-                allowRotation = true
             ),
             CropStage(
                 blocks = listOf(
@@ -94,13 +94,11 @@ object Moonflower : CropDefinitionProvider {
                         CropArmorStand(
                             isSmall = false,
                             offset = Vec3(0.0, 0.0625, 0.1875),
-                            headRotation = Rotations(15.0f, 0.0f, 0.0f),
                             hashString = "7775c5d80efc36c7b029470852aaf161e3733f8ae691fb5ed5450232630e4fcb",
                         )
                     )
                 ,
                 7..7,
-                allowRotation = true
             ),
             CropStage(
                 blocks = listOf(
@@ -113,14 +111,10 @@ object Moonflower : CropDefinitionProvider {
                     CropArmorStand(
                         isSmall = false,
                         offset = Vec3(0.0, 0.15625, 0.1875),
-                        headRotation = Rotations(15.0f, 0.0f, 0.0f),
-                        xRotation = 0.0f,
-                        yRotation = 0.0f,
                         hashString = "7775c5d80efc36c7b029470852aaf161e3733f8ae691fb5ed5450232630e4fcb"
                     )
                 ),
                 9..10,
-                allowRotation = true
             )
             ,
             CropStage(
@@ -138,7 +132,6 @@ object Moonflower : CropDefinitionProvider {
                     )
                 ),
                 11..11,
-                allowRotation = true
             ),
             CropStage(
                 blocks = listOf(
@@ -155,7 +148,6 @@ object Moonflower : CropDefinitionProvider {
                     )
                 ),
                 12..12,
-                allowRotation = true
             ),
             CropStage(
                 blocks = listOf(
@@ -172,7 +164,6 @@ object Moonflower : CropDefinitionProvider {
                     )
                 ),
                 13..13,
-                allowRotation = true
             ),
             CropStage(
                 blocks = listOf(
@@ -185,14 +176,10 @@ object Moonflower : CropDefinitionProvider {
                     CropArmorStand(
                         isSmall = false,
                         offset = Vec3(0.0, 0.5625, 0.1875),
-                        headRotation = Rotations(-22.5f, 0.0f, 0.0f),
-                        xRotation = 0.0f,
-                        yRotation = 0.0f,
                         hashString = "bd1001840c85349f87c6e20478317f4026b588514d8b1e78241a849d93f9cd94"
                     )
                 ),
                 15..15,
-                allowRotation = true
             )
         ),
         maxStage = 15,

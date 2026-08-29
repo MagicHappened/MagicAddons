@@ -17,6 +17,10 @@ object Devourer : CropDefinitionProvider {
             CropEffect.WaterDrain
         ),
         skyblockId = SkyBlockItemId.item("DEVOURER"),
+        /** Each skull's pose, found constant across every stage it appears in. */
+        standPoses = mapOf(
+            "d5dcd6e26e5ab3c3a60ccc824c05b0fd195f526961019d3249776e8d57399d27" to StandPose.Fixed(Rotations(0.0f, 45.0f, 0.0f), yRotation = 90.0f)
+        ),
         stageDefs = listOf(
             CropStage(
                 blocks = listOf(
@@ -28,9 +32,6 @@ object Devourer : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                     offset = Vec3(0.0, -0.4375, 0.0),
-                    headRotation = Rotations(0.0f, 45.0f, 0.0f),
-                    xRotation = 0.0f,
-                    yRotation = 90.0f,
                     hashString = "d5dcd6e26e5ab3c3a60ccc824c05b0fd195f526961019d3249776e8d57399d27"
                     )
                 ),

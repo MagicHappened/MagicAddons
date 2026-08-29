@@ -14,6 +14,11 @@ object PlantBoyAdvance : CropDefinitionProvider {
             CropEffect.HarvestBoost
         ),
         skyblockId = SkyBlockItemId.item("PLANTBOY_ADVANCE"),
+        /** Each skull's pose, found constant across every stage it appears in. */
+        standPoses = mapOf(
+            "765accb195aad0d7212eedd647e3f80ed5d4acdffe4329ead074f7587f366457" to StandPose.Fixed(Rotations(-22.5f, 0.0f, 0.0f)),
+            "f10e337f0a17a99e94bed4e8b13d5c7863debdd301f457da19763cf73a34d200" to StandPose.Fixed(Rotations(-45.0f, 0.0f, 0.0f))
+        ),
         stageDefs = listOf(
             CropStage(
                 blocks = CropBlockState.blockStatePattern(
@@ -43,7 +48,6 @@ object PlantBoyAdvance : CropDefinitionProvider {
                     )
                 ),
                 1..1,
-                allowRotation = true
             ),
             CropStage(
                 blocks = CropBlockState.blockStatePattern(
@@ -79,7 +83,6 @@ object PlantBoyAdvance : CropDefinitionProvider {
                     )
                 ),
                 2..2,
-                allowRotation = true
             ),
             CropStage(
                 blocks = CropBlockState.blockStatePattern(
@@ -110,12 +113,10 @@ object PlantBoyAdvance : CropDefinitionProvider {
                     CropArmorStand(
                         isSmall = false,
                         offset = Vec3(0.0, -0.65625, 0.09375),
-                        headRotation = Rotations(-45.0f, 0.0f, 0.0f),
                         hashString = "f10e337f0a17a99e94bed4e8b13d5c7863debdd301f457da19763cf73a34d200"
                     )
                 ),
                 3..3,
-                allowRotation = true
             ),
             CropStage(
                 blocks = listOf(
@@ -152,7 +153,6 @@ object PlantBoyAdvance : CropDefinitionProvider {
                                 hashString = "9eaf5fc0bf98649111f53d7516b18dec5d9d13f19273bef2b2b04f068ca9d337"
                             ),
                 9..9,
-                allowRotation = true
             ),
             CropStage(
                 blocks = CropBlockState.blockStatePattern(
@@ -184,7 +184,6 @@ object PlantBoyAdvance : CropDefinitionProvider {
                                 hashString = "9eaf5fc0bf98649111f53d7516b18dec5d9d13f19273bef2b2b04f068ca9d337"
                             ),
                 10..10,
-                allowRotation = true
             ),
             CropStage(
                 blocks =             CropBlockState.blockStatePattern(
@@ -221,14 +220,10 @@ object PlantBoyAdvance : CropDefinitionProvider {
                 ) + listOf(
                     CropArmorStand(
                     offset = Vec3(0.0, -0.4375, 0.0),
-                    headRotation = Rotations(-22.5f, 0.0f, 0.0f),
-                    xRotation = 0.0f,
-                    yRotation = 0.0f,
                     hashString = "765accb195aad0d7212eedd647e3f80ed5d4acdffe4329ead074f7587f366457"
                     )
                 ),
                 12..12,
-                allowRotation = true
             )
 
 

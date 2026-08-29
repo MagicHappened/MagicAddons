@@ -1,5 +1,6 @@
 package org.magic.magicaddons.data.greenhouse.elements.basecrop
 
+import org.magic.magicaddons.data.greenhouse.StandPose
 import org.magic.magicaddons.data.greenhouse.CropEffect
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Rotations
@@ -24,6 +25,10 @@ object Cocoa : CropDefinitionProvider {
         // the same item written the other way round, so whichever separator the game hands us matches
         aliases = listOf(SkyBlockItemId.item("INK_SACK:3")),
         displayItem = Items.COCOA_BEANS,
+        /** Each skull's pose, found constant across every stage it appears in. */
+        standPoses = mapOf(
+            "db8f7d08f93594e385058afda93b0a077b218345751c1b9415d2623110e6afbd" to StandPose.Fixed(Rotations(0.0f, 22.5f, 22.5f))
+        ),
         stageDefs = listOf(
             CropStage(
                 blocks = listOf(
@@ -42,7 +47,6 @@ object Cocoa : CropDefinitionProvider {
                     )
                 ),
                 1..1,
-                allowRotation = true
             ),
             CropStage(
                 blocks = listOf(
@@ -59,7 +63,6 @@ object Cocoa : CropDefinitionProvider {
                     )
                 ),
                 2..2,
-                allowRotation = true
             ),
             CropStage(
                 blocks = listOf(
@@ -75,7 +78,6 @@ object Cocoa : CropDefinitionProvider {
                     )
                 ),
                 3..3,
-                allowRotation = true
             ),
             CropStage(
                 blocks = listOf(
@@ -95,14 +97,10 @@ object Cocoa : CropDefinitionProvider {
                     CropArmorStand(
                         isSmall = false,
                         offset = Vec3(0.0, -0.125, 0.0),
-                        headRotation = Rotations(0.0f, 22.5f, 22.5f),
-                        xRotation = 0.0f,
-                        yRotation = 0.0f,
                         hashString = "db8f7d08f93594e385058afda93b0a077b218345751c1b9415d2623110e6afbd"
                     )
                 ),
                 4..4,
-                allowRotation = true
             ),
             CropStage(
                 blocks = listOf(
@@ -122,7 +120,6 @@ object Cocoa : CropDefinitionProvider {
                     )
                 ),
                 5..5,
-                allowRotation = true
             ),
             CropStage(
                 blocks = listOf(
@@ -152,7 +149,6 @@ object Cocoa : CropDefinitionProvider {
                     isSmall = false
                 ),
                 6..6,
-                allowRotation = true
             )
 
 

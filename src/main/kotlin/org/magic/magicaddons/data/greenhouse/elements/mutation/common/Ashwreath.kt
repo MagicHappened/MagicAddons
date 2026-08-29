@@ -1,5 +1,6 @@
 package org.magic.magicaddons.data.greenhouse.elements.mutation.common
 
+import org.magic.magicaddons.data.greenhouse.StandPose
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Rotations
 import net.minecraft.world.level.block.Blocks
@@ -22,6 +23,10 @@ object Ashwreath : CropDefinitionProvider {
             CropEffect.XpLoss
         ),
         skyblockId = SkyBlockItemId.item("ASHWREATH"),
+        /** Each skull's pose, found constant across every stage it appears in. */
+        standPoses = mapOf(
+            "5890f50780fdecedaa85aa40bf3399e9439ee68594c6d022688165608171681d" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f))
+        ),
         stageDefs = listOf(
             CropStage(
                 blocks = listOf(
@@ -33,7 +38,6 @@ object Ashwreath : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.375, 0.0),
-                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
                         hashString = "5890f50780fdecedaa85aa40bf3399e9439ee68594c6d022688165608171681d",
                         isSmall = false
                     )

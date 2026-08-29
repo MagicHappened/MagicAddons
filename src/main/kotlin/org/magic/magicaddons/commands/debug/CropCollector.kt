@@ -1,5 +1,6 @@
 package org.magic.magicaddons.commands.debug
 
+import net.minecraft.world.entity.EquipmentSlot
 import com.mojang.blaze3d.vertex.PoseStack
 import net.minecraft.ChatFormatting
 import net.minecraft.client.Minecraft
@@ -208,12 +209,19 @@ object CropCollector : EntityUtils.HighlightSource {
                 pool.removeAll(stands.toSet())
 
                 val def = found.instance.cropDef
-                val status = if (found.rotationLegacy) Status.Legacy else Status.Current
 
                 val (text, num) = when (val g = found.instance.growthStage) {
                     is GrowthStageInfo.Known -> g.stage.toString() to g.stage
                     is GrowthStageInfo.Estimated -> "${g.range.first}..${g.range.last}" to null
                     else -> null to null
+                }
+
+                // the same promotion the correction pass makes: matched fine, but recorded
+                // without the way its stands are turned, so worth taking again
+                val status = when {
+                    found.rotationLegacy -> Status.Legacy
+                    num != null && PlantDex.needsRotation(def, num) -> Status.Unturned
+                    else -> Status.Current
                 }
 
                 addEntry(def, slotPos, stands, status, text, num, stands.standNames())
@@ -574,6 +582,32 @@ object CropCollector : EntityUtils.HighlightSource {
      * scan's guesses were made without knowing where one plant ends and the next begins, and a
      * snoozling's wheat had been carved into wheat entries the snoozling could never win back.
      */
+    /**
+     * The block the item in [stand]'s hand hangs inside, or null when neither hand holds one.
+     *
+     * Modelled from the stand's own frame: the right shoulder, the arm turned there by its pose
+     * in the model's z-y-x order, the whole turned by the stand's yaw. An approximation, but a
+     * block is a whole metre wide and the only question is which one the item sits in.
+     */
+    private fun heldItemBlock(stand: ArmorStand): BlockPos? {
+        val holdsItem = !stand.getItemBySlot(EquipmentSlot.MAINHAND).isEmpty ||
+                !stand.getItemBySlot(EquipmentSlot.OFFHAND).isEmpty
+        if (!holdsItem) return null
+
+        val scale = if (stand.isSmall) 0.5 else 1.0
+        val pose = stand.rightArmPose
+
+        val arm = Vec3(0.0, -10.0 / 16.0, 0.0)
+            .xRot(-Math.toRadians(pose.x.toDouble()).toFloat())
+            .yRot(-Math.toRadians(pose.y.toDouble()).toFloat())
+            .zRot(-Math.toRadians(pose.z.toDouble()).toFloat())
+
+        val local = Vec3(-5.0 / 16.0, 22.0 / 16.0, 0.0).add(arm).scale(scale)
+        val turned = local.yRot(-Math.toRadians(stand.yRot.toDouble()).toFloat())
+
+        return BlockPos.containing(stand.position().add(turned))
+    }
+
     fun correct(def: CropDefinition, stage: Int) {
         val s = session ?: return
         val client = Minecraft.getInstance()
@@ -591,11 +625,13 @@ object CropCollector : EntityUtils.HighlightSource {
 
         // the same net the scan casts, but over this plant's whole footprint and blind to every
         // earlier claim: what is standing there is this plant's, because the diagnosis says so
+        // a block wider than the footprint on every side, because a stand may sit in a
+        // neighbouring block with an arm stretched out over this one
         val stands = s.level.getEntitiesOfClass(
             ArmorStand::class.java,
             AABB(
-                standingOn.x.toDouble(), standingOn.y - 2.0, standingOn.z.toDouble(),
-                (standingOn.x + w).toDouble(), standingOn.y + PLANT_HEIGHT.toDouble(), (standingOn.z + h).toDouble()
+                standingOn.x - 1.0, standingOn.y - 2.0, standingOn.z - 1.0,
+                standingOn.x + w + 1.0, standingOn.y + PLANT_HEIGHT.toDouble(), standingOn.z + h + 1.0
             )
         )
             .filterNot { it.isMarker }
@@ -603,6 +639,14 @@ object CropCollector : EntityUtils.HighlightSource {
             // the plot's own marker head hovers high over every greenhouse without being flagged
             // a marker, and once floated seven blocks up into a snoozling export
             .filterNot { PlayerUtils.getSkullHash(it) == PLOT_MARKER_SKIN }
+            // a stand holding an item belongs where the item hangs, not where its feet are: the
+            // jellybean's smallest looks stand in the next block over with an arm reached out
+            .filter { stand ->
+                val claimed = heldItemBlock(stand) ?: stand.blockPosition()
+
+                claimed.x in standingOn.x until standingOn.x + w &&
+                        claimed.z in standingOn.z until standingOn.z + h
+            }
 
         // a stand built at full size is a fact its definition has to state, and this is the
         // moment it is worth saying: the plant has just been named, so the report names it too.
