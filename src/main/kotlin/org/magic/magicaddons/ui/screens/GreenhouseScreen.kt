@@ -416,6 +416,13 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
             }
         }
 
+        // asked before the sweep below, because the sweep is what shut this widget's own list a
+        // moment before the widget was asked whether to shut it: it found it already closed and
+        // opened it again, so a second click on the selector never collapsed anything
+        if (gridSelector.mouseClicked(mouseButtonEvent, doubled)) {
+            return true
+        }
+
         // the click landed outside every overlay, which is what closes them
         closeOverlays()
 
@@ -448,9 +455,6 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         if (currentDisplay == CurrentDisplay.Presets &&
             presetUI.mouseClicked(mouseButtonEvent, doubled)
         ) {
-            return true
-        }
-        if (gridSelector.mouseClicked(mouseButtonEvent, doubled)) {
             return true
         }
         return super.mouseClicked(mouseButtonEvent, doubled)
