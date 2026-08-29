@@ -25,6 +25,7 @@ import org.magic.magicaddons.ui.widgets.config.ClickableButtonWidget
 import org.magic.magicaddons.ui.widgets.greenhouse.ElementWidget
 import org.magic.magicaddons.ui.widgets.greenhouse.GridWidget
 import org.magic.magicaddons.ui.widgets.greenhouse.HoverControls
+import org.magic.magicaddons.ui.widgets.greenhouse.GreenhousePanel
 import org.magic.magicaddons.ui.widgets.greenhouse.PresetUI
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.ScreenUtil.drawMultilineBoxCentered
@@ -93,11 +94,12 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         Component.literal("Plots")
     )
 
-    /** Takes the plan off the greenhouse on screen, the other end of the preset's Planner button. */
-    private val unplanButton = ClickableButtonWidget(
-        70,
-        26,
-        Component.literal("Unplan")
+    /** What the player can do to the greenhouse on screen, the other end of the Planner button. */
+    private val greenhousePanel = GreenhousePanel(
+        onUnplan = {
+            GreenhouseData.unplanCurrentGreenhouse()
+            initGreenhouseLayout()
+        }
     )
 
     /** Where a mode's own buttons begin, shared so the two modes line up with each other. */
@@ -117,8 +119,6 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
     )
 
     private val presetUI = PresetUI(
-        400,
-        400,
         this,
         onAssignedLayout = { assignedLayout, selectedGrid ->
             assignPresetLayout(assignedLayout, selectedGrid)
@@ -180,15 +180,17 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         gridSelector.height = currentDisplayToggle.height
         addOverlay(gridSelector.overlay)
 
-        // the row under the mode toggle, which is where the preset buttons sit too, so whichever
-        // mode is on screen puts its own buttons in the same place
-        actionRowX = currentDisplayToggle.x + ACTION_ROW_INSET
-        actionRowY = currentDisplayToggle.y + currentDisplayToggle.height +
-                Common.UI.SPACING_LARGE + ACTION_ROW_INSET
+        // one row under the mode toggle, offered to whichever mode is on screen, so the two put
+        // their buttons in the same place without either working out where that is
+        actionRowX = currentDisplayToggle.x
+        actionRowY = currentDisplayToggle.y + currentDisplayToggle.height + Common.UI.SPACING_LARGE
 
-        unplanButton.x = actionRowX
-        unplanButton.y = actionRowY
-        unplanButton.height = currentDisplayToggle.height
+        val rowWidth = (startX - actionRowX - Common.UI.SPACING_LARGE)
+            .coerceAtLeast(MIN_ACTION_ROW_WIDTH)
+        val rowHeight = height - actionRowY - Common.UI.SPACING_LARGE
+
+        greenhousePanel.layoutIn(actionRowX, actionRowY, rowWidth, rowHeight)
+        presetUI.layoutIn(actionRowX, actionRowY, rowWidth, rowHeight)
 
         hoverControls.layoutAgainstGrid(startX + containerSize, startY, containerSize)
         
@@ -274,10 +276,6 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         displayedGridWidget = null
         hoveredElement = null
 
-
-        presetUI.x = actionRowX - ACTION_ROW_INSET
-        presetUI.y = actionRowY - ACTION_ROW_INSET
-        presetUI.init()
 
         GreenhouseData.presetGrids.forEach { layout ->
             val gridWidget = GridWidget(layout, slotSize).apply {
@@ -389,8 +387,10 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
 
         // only where there is a plan to stop, since a button that does nothing is a question the
         // player has to answer every time they look at the screen
-        if (plannerRunning()) {
-            unplanButton.extractRenderState(graphics, mouseX, mouseY, delta)
+        greenhousePanel.showUnplan = plannerRunning()
+
+        if (currentDisplay == CurrentDisplay.Greenhouses) {
+            greenhousePanel.extractRenderState(graphics, mouseX, mouseY, delta)
         }
 
         when (currentDisplay) {
@@ -459,9 +459,9 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         // the click landed outside every overlay, which is what closes them
         closeOverlays()
 
-        if (plannerRunning() && unplanButton.mouseClicked(mouseButtonEvent, doubled)) {
-            GreenhouseData.unplanCurrentGreenhouse()
-            initGreenhouseLayout()
+        if (currentDisplay == CurrentDisplay.Greenhouses &&
+            greenhousePanel.mouseClicked(mouseButtonEvent, doubled)
+        ) {
             return true
         }
 
@@ -672,8 +672,8 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         initPresetLayout()
     }
     companion object {
-        /** How far a mode's buttons sit inside the panel they belong to. */
-        private const val ACTION_ROW_INSET: Int = 10
+        /** Enough for one button, however narrow the window gets. */
+        private const val MIN_ACTION_ROW_WIDTH: Int = 90
 
 
         /** What the toolbar down the left of the grid needs, so the grid never sits on top of it. */

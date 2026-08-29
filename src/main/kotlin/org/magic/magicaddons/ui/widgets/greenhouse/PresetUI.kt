@@ -22,20 +22,11 @@ import org.magic.magicaddons.ui.widgets.config.ClickableButtonWidget
 import org.magic.magicaddons.util.ChatUtils
 
 class PresetUI(
-    var width: Int,
-    var height: Int,
     val overlayContext: OverlayContext,
     val onAssignedLayout: (assignedLayout: GreenhouseLayout?, selectedGrid: GreenhouseGrid) -> Unit,
     val onAddPreset: (GreenhouseLayout) -> Unit,
     val onRemovePreset: () -> Unit,
-) : Renderable, Focusable, HoverableContainer {
-
-    var x: Int = 0
-    var y: Int = 0
-
-    override var hoveredElement: GuiEventListener? = null
-
-    override var focusedState: Boolean = false
+) : ActionPanel() {
 
     private val importButton = ClickableButtonWidget(
         50,
@@ -62,31 +53,11 @@ class PresetUI(
     )
 
 
-    fun init() {
-        importButton.x = x + 10
-        importButton.y = y + 10
+    override val buttons: List<ClickableButtonWidget> =
+        listOf(importButton, exportButton, applyToButton, deleteButton)
 
-        exportButton.x = importButton.x + importButton.width + 10
-        exportButton.y = importButton.y
-
-        applyToButton.x = exportButton.x + exportButton.width + 10
-        applyToButton.y = y + 10
-
-        deleteButton.x = applyToButton.x + applyToButton.width + 10
-        deleteButton.y = y + 10
-    }
-
-
-    override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
-
-        deleteButton.extractRenderState(graphics, mouseX, mouseY, delta)
-        importButton.extractRenderState(graphics, mouseX, mouseY, delta)
-        exportButton.extractRenderState(graphics, mouseX, mouseY, delta)
-        applyToButton.extractRenderState(graphics, mouseX, mouseY, delta)
-    }
-
-    override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
-        if (importButton.mouseClicked(mouseButtonEvent, doubled)) {
+    override fun onPressed(button: ClickableButtonWidget, mouseButtonEvent: MouseButtonEvent): Boolean {
+        if (button === importButton) {
             val context = ImportExportFormatContext(
                 mouseButtonEvent.x.toInt(),
                 mouseButtonEvent.y.toInt(),
@@ -99,7 +70,7 @@ class PresetUI(
             overlayContext.addContext(context)
             return true
         }
-        if (exportButton.mouseClicked(mouseButtonEvent, doubled)) {
+        if (button === exportButton) {
             val context = ImportExportFormatContext(
                 mouseButtonEvent.x.toInt(),
                 mouseButtonEvent.y.toInt(),
@@ -110,7 +81,7 @@ class PresetUI(
             overlayContext.addContext(context)
             return true
         }
-        if (applyToButton.mouseClicked(mouseButtonEvent, doubled)) {
+        if (button === applyToButton) {
             val context = ApplyToContext(
                 mouseButtonEvent.x.toInt(),
                 mouseButtonEvent.y.toInt(),
@@ -121,7 +92,7 @@ class PresetUI(
             overlayContext.addContext(context)
             return true
         }
-        if (deleteButton.mouseClicked(mouseButtonEvent, doubled)) {
+        if (button === deleteButton) {
             onRemovePreset()
             return true
         }
