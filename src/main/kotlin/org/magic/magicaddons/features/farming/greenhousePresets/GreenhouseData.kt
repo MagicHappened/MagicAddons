@@ -431,7 +431,8 @@ object GreenhouseData {
 
             tickDebug(
                 "  ${grid.layout.displayName()}: pending $pendingTicks -> " +
-                        "${pendingTicks + elapsedTicks}, ${grid.elements.size} plants"
+                        "${pendingTicks + elapsedTicks}, " +
+                        "${grid.layout.elementInstances.size} plants"
             )
 
             // nobody is looking at this greenhouse, so the clock is all we have to go on
