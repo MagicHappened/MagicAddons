@@ -1,5 +1,6 @@
 package org.magic.magicaddons.data.greenhouse
 
+import org.magic.magicaddons.Common
 import org.magic.magicaddons.util.getBuildableArea
 import net.minecraft.client.Minecraft
 import net.minecraft.core.BlockPos
@@ -316,7 +317,10 @@ class GreenhouseGrid(
     }
 
     fun predictGrowth(ticks: Int, tickMs: Long) {
-        if (ticks <= 0) return
+        if (ticks <= 0) {
+            Common.LOGGER.info("[tick] predictGrowth asked for $ticks ticks, doing nothing")
+            return
+        }
 
         elements.forEach { element ->
             val instance = element.instance
@@ -347,9 +351,15 @@ class GreenhouseGrid(
             instance.age = instance.age?.plus(ticks * tickMs)
 
             if (instance.cropDef.needsWater) {
-                instance.waterLevel = instance.waterLevel?.let {
-                    WaterModel.after(it, ticks, layout.waterEffectAt(instance.slot))
-                }
+                val before = instance.waterLevel
+                val effect = layout.waterEffectAt(instance.slot)
+
+                instance.waterLevel = before?.let { WaterModel.after(it, ticks, effect) }
+
+                Common.LOGGER.info(
+                    "[tick]    ${instance.cropDef.name}: water $before -> " +
+                            "${instance.waterLevel} over $ticks at $effect%"
+                )
             }
 
             val range = when (val stage = instance.growthStage) {

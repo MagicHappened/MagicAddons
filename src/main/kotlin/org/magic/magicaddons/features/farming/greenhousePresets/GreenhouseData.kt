@@ -246,6 +246,17 @@ object GreenhouseData {
         return nextId
     }
 
+    /**
+     * Temporary. Says why a tick did or did not land, and what it did to the water when it did,
+     * so the difference between the countdown reaching zero and anything happening can be read
+     * back rather than guessed at. Remove once it is understood.
+     */
+    private const val DEBUG_TICKS: Boolean = true
+
+    private fun tickDebug(message: String) {
+        if (DEBUG_TICKS) Common.LOGGER.info("[tick] $message")
+    }
+
     fun checkForUpdate() {
         if (!greenhousesInitialized) return
 
@@ -323,6 +334,11 @@ object GreenhouseData {
         val passedGrowthTicks = (overdueMs / growthTickMs)
 
         if (passedGrowthTicks <= 0 && !nextTick.isBefore(now)) return
+
+        tickDebug(
+            "due: passed=$passedGrowthTicks online=$onlineTickTracking " +
+                    "tickMs=$growthTickMs nextTick=$nextTick now=$now"
+        )
 //        Common.LOGGER.info("Overdue ms $overdueMs")
 //        Common.LOGGER.info("Overdue growth ticks $passedGrowthTicks")
         val nextTickAdvance = (passedGrowthTicks + 1) * growthTickMs
@@ -336,11 +352,23 @@ object GreenhouseData {
             )
 
         greenhouseGrids.forEach { grid ->
-            if (onlineTickTracking && !grid.hasRuntime()) return@forEach
-            val pendingTicks = grid.state.pendingGrowthTicks ?: return@forEach
+            if (onlineTickTracking && !grid.hasRuntime()) {
+                tickDebug("  ${grid.layout.displayName()}: skipped, online and not loaded")
+                return@forEach
+            }
+
+            val pendingTicks = grid.state.pendingGrowthTicks ?: run {
+                tickDebug("  ${grid.layout.displayName()}: skipped, pendingGrowthTicks is null")
+                return@forEach
+            }
 
             grid.state.pendingGrowthTicks = pendingTicks + passedGrowthTicks.toInt()
             grid.state.needsUpdate = true
+
+            tickDebug(
+                "  ${grid.layout.displayName()}: pending ${pendingTicks} -> " +
+                        "${pendingTicks + passedGrowthTicks.toInt()}, ${grid.elements.size} plants"
+            )
 
             // nobody is looking at this greenhouse, so the clock is all we have to go on
             grid.predictGrowth(passedGrowthTicks.toInt(), growthTickMs)

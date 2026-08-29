@@ -40,8 +40,17 @@ abstract class ActionPanel : Renderable, Focusable, HoverableContainer {
     var height: Int = 0
         private set
 
-    /** The buttons of this panel, left to right, in the order they are laid out and asked. */
+    /**
+     * Every button this panel has, left to right, whether or not it is showing.
+     *
+     * All of them, always: a panel is laid out once and asked to draw many times, so a button
+     * left out of the layout because it was hidden at that moment appears later still sitting at
+     * the corner of the screen where it was born.
+     */
     protected abstract val buttons: List<ClickableButtonWidget>
+
+    /** Whether [button] is worth showing right now. Everything is, unless a panel says otherwise. */
+    protected open fun isShown(button: ClickableButtonWidget): Boolean = true
 
     /** What each button does, asked in the same order the buttons are laid out. */
     protected abstract fun onPressed(button: ClickableButtonWidget, event: MouseButtonEvent): Boolean
@@ -86,7 +95,8 @@ abstract class ActionPanel : Renderable, Focusable, HoverableContainer {
         }
 
     override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
-        buttons.forEach { it.extractRenderState(graphics, mouseX, mouseY, delta) }
+        buttons.filter { isShown(it) }
+            .forEach { it.extractRenderState(graphics, mouseX, mouseY, delta) }
 
         renderContent(graphics, mouseX, mouseY, delta)
     }
@@ -100,7 +110,7 @@ abstract class ActionPanel : Renderable, Focusable, HoverableContainer {
     ) = Unit
 
     override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
-        buttons.forEach { button ->
+        buttons.filter { isShown(it) }.forEach { button ->
             if (button.mouseClicked(mouseButtonEvent, doubled)) {
                 return onPressed(button, mouseButtonEvent)
             }

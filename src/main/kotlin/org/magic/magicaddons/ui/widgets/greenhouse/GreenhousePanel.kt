@@ -24,8 +24,9 @@ class GreenhousePanel(
     /** Whether there is anything to do here, which today is whether a planner is running. */
     var showUnplan: Boolean = false
 
-    override val buttons: List<ClickableButtonWidget>
-        get() = if (showUnplan) listOf(unplanButton) else emptyList()
+    override val buttons: List<ClickableButtonWidget> = listOf(unplanButton)
+
+    override fun isShown(button: ClickableButtonWidget): Boolean = showUnplan
 
     override fun onPressed(button: ClickableButtonWidget, event: MouseButtonEvent): Boolean {
         if (button === unplanButton) {
