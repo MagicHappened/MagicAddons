@@ -100,6 +100,10 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         Component.literal("Unplan")
     )
 
+    /** Where a mode's own buttons begin, shared so the two modes line up with each other. */
+    private var actionRowX: Int = 0
+    private var actionRowY: Int = 0
+
     private var dynamicNameDisplay: ClickableButtonWidget? = null
     private var hoverWarning = false
 
@@ -176,8 +180,14 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         gridSelector.height = currentDisplayToggle.height
         addOverlay(gridSelector.overlay)
 
-        unplanButton.x = gridSelector.x + gridSelector.width + Common.UI.SPACING_LARGE
-        unplanButton.y = startY + borderPadding * 2
+        // the row under the mode toggle, which is where the preset buttons sit too, so whichever
+        // mode is on screen puts its own buttons in the same place
+        actionRowX = currentDisplayToggle.x + ACTION_ROW_INSET
+        actionRowY = currentDisplayToggle.y + currentDisplayToggle.height +
+                Common.UI.SPACING_LARGE + ACTION_ROW_INSET
+
+        unplanButton.x = actionRowX
+        unplanButton.y = actionRowY
         unplanButton.height = currentDisplayToggle.height
 
         hoverControls.layoutAgainstGrid(startX + containerSize, startY, containerSize)
@@ -265,8 +275,8 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         hoveredElement = null
 
 
-        presetUI.x = currentDisplayToggle.x
-        presetUI.y = currentDisplayToggle.y + currentDisplayToggle.height + Common.UI.SPACING_LARGE
+        presetUI.x = actionRowX - ACTION_ROW_INSET
+        presetUI.y = actionRowY - ACTION_ROW_INSET
         presetUI.init()
 
         GreenhouseData.presetGrids.forEach { layout ->
@@ -662,6 +672,9 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         initPresetLayout()
     }
     companion object {
+        /** How far a mode's buttons sit inside the panel they belong to. */
+        private const val ACTION_ROW_INSET: Int = 10
+
 
         /** What the toolbar down the left of the grid needs, so the grid never sits on top of it. */
         private const val TOOLBAR_WIDTH: Int = 180
