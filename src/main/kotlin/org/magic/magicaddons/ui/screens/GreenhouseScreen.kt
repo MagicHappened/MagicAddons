@@ -150,8 +150,12 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         val heightRoom = height - paddingY * 2 - borderPadding * 2
         val widthRoom = width - sideRoom - borderPadding * 2
 
-        slotSize = (minOf(heightRoom, widthRoom) / gridSize).coerceAtLeast(MIN_SLOT_SIZE)
-        containerSize = (slotSize + 1) * gridSize
+        // the room decides the slot and the slot decides everything else, so the division
+        // happens once and every other measurement is counted up from its answer
+        slotSize = GridWidget.slotSizeFor(minOf(heightRoom, widthRoom), gridSize)
+            .coerceAtLeast(MIN_SLOT_SIZE)
+
+        containerSize = GridWidget.spanFor(slotSize, gridSize)
 
         // never left of the toolbar, however narrow the window gets
         startX = ((width - containerSize) / 2).coerceAtLeast(TOOLBAR_WIDTH + Common.UI.SPACING_LARGE)
@@ -162,7 +166,6 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
 
         gridSelector.x = currentDisplayToggle.x + currentDisplayToggle.width + Common.UI.SPACING_LARGE
         gridSelector.y = startY + borderPadding * 2
-        gridSelector.width = 100
         gridSelector.height = currentDisplayToggle.height
         addOverlay(gridSelector.overlay)
 
@@ -285,12 +288,15 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
 
     }
 
-    /** Sizes the selector to whatever it currently lists, which changes when a layout is renamed. */
+    /**
+     * Sizes the selector to whatever it currently lists, which changes when a layout is renamed.
+     *
+     * The widget does the measuring, since it is the one that knows what it puts inside itself:
+     * the padding either side and the arrow it keeps to the right. All the screen knows is how
+     * much room there is, which is everything between the selector and the grid.
+     */
     private fun relayoutSelector() {
-        val maxWidth = gridSelector.values.maxOfOrNull { font.width(it.toString()) }
-            ?: font.width("null")
-
-        gridSelector.width = maxWidth + SELECTOR_TEXT_PADDING
+        gridSelector.fitToValues(startX - gridSelector.x - Common.UI.SPACING_LARGE)
     }
 
     fun initDynamicName(){
@@ -622,8 +628,6 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         initPresetLayout()
     }
     companion object {
-        /** Room either side of the widest name the selector lists. */
-        private const val SELECTOR_TEXT_PADDING: Int = 12
 
         /** What the toolbar down the left of the grid needs, so the grid never sits on top of it. */
         private const val TOOLBAR_WIDTH: Int = 180
