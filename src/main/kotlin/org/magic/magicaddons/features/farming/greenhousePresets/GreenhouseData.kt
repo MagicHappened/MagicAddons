@@ -163,26 +163,18 @@ object GreenhouseData {
 
         // a merge, so whatever the plot cannot say for a plant that is still there is carried over,
         // and any stage predicted while away is corrected by what is actually standing
-        val result = grid.setPlantData()
+        grid.setPlantData()
 
         claimPlantedCrop(grid)
 
         // the plan on screen is read off the plot, so it is only right until the plot changes
         LayoutRenderState.refresh()
 
-        if (result.changed) {
-            ChatUtils.sendWithPrefix(
-                "Greenhouse changed: ${result.added} new, ${result.removed} gone, ${result.replaced} different"
-            )
-        }
-
         // after grid update
         grid.state.hasRuntimeReferences = true
         grid.state.needsUpdate = false
         grid.state.lastUpdateTimestamp = Instant.now()
         grid.state.pendingGrowthTicks = 0
-
-        ChatUtils.sendWithPrefix("Successfully scanned data for ${plot.id}")
     }
 
 
