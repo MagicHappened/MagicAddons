@@ -1,6 +1,5 @@
 package org.magic.magicaddons.data.greenhouse
 
-import org.magic.magicaddons.Common
 import org.magic.magicaddons.util.getBuildableArea
 import net.minecraft.client.Minecraft
 import net.minecraft.core.BlockPos
@@ -12,6 +11,7 @@ import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData.elementsBySoil
+import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData
 import org.magic.magicaddons.util.ChatUtils
 import tech.thatgravyboat.skyblockapi.api.profile.garden.Plot
 import tech.thatgravyboat.skyblockapi.api.profile.garden.PlotAPI
@@ -269,7 +269,24 @@ class GreenhouseGrid(
         found: ElementRuntimeState
     ): ElementRuntimeState {
         found.instance.age = standing.age
-        found.instance.waterLevel = standing.waterLevel
+
+        // the prediction may have drained this plant past death, and here it stands: ticks were
+        // skipped. The fewest skips that leave it alive put it one tick from dying, so that is
+        // what is assumed, and said out loud, since watered now is the only way it stays standing
+        val water = standing.waterLevel
+
+        if (water != null && water <= WaterModel.DEATH && found.instance.cropDef.needsWater) {
+            found.instance.waterLevel =
+                WaterModel.aliveFloor(water, layout.waterEffectAt(found.instance.slot))
+            found.instance.waterPredictedInDebt = true
+
+            GreenhouseData.sendDehydrationWarning(
+                listOf(found.instance.cropDef.name to layout.displayName())
+            )
+        } else {
+            found.instance.waterLevel = water
+            found.instance.waterPredictedInDebt = standing.waterPredictedInDebt
+        }
 
         // a diagnostic pins a stage down to one number, a scan often cannot, so a reading already
         // taken is not thrown away for a guess that covers it
@@ -317,12 +334,7 @@ class GreenhouseGrid(
     }
 
     fun predictGrowth(ticks: Int, tickMs: Long) {
-        if (ticks <= 0) {
-            Common.LOGGER.info("[tick] predictGrowth asked for $ticks ticks, doing nothing")
-            return
-        }
-
-        Common.LOGGER.info("[tick]    moving ${layout.elementInstances.size} plants on by $ticks")
+        if (ticks <= 0) return
 
         // the plants themselves, not the runtime wrappers around them. A wrapper holds entities
         // and blocks and so only exists while the plot is loaded, which is never the case for the
@@ -331,6 +343,20 @@ class GreenhouseGrid(
         // and nothing else did
         layout.elementInstances.forEach { instance ->
             val maxStage = instance.cropDef.maxStage
+
+            // a plant that has finished growing stops drinking: the game shows no countdown on a
+            // fully grown plant, so the model takes no water off one. Judged by the lowest stage
+            // it might be at, so a plant only probably grown keeps drying, worst case as ever
+            val lowestStage = when (val stage = instance.growthStage) {
+                is GrowthStageInfo.Known -> stage.stage
+                is GrowthStageInfo.Estimated -> stage.range.first
+                null -> null
+            }
+
+            if (lowestStage != null && lowestStage >= maxStage) {
+                instance.age = instance.age?.plus(ticks * tickMs)
+                return@forEach
+            }
 
             // a snoozling that has dropped asleep stays where it is until someone wakes it, a
             // noctilume craving the other time of day is stuck until the garden's clock comes
@@ -357,15 +383,9 @@ class GreenhouseGrid(
             instance.age = instance.age?.plus(ticks * tickMs)
 
             if (instance.cropDef.needsWater) {
-                val before = instance.waterLevel
-                val effect = layout.waterEffectAt(instance.slot)
-
-                instance.waterLevel = before?.let { WaterModel.after(it, ticks, effect) }
-
-                Common.LOGGER.info(
-                    "[tick]    ${instance.cropDef.name}: water $before -> " +
-                            "${instance.waterLevel} over $ticks at $effect%"
-                )
+                instance.waterLevel = instance.waterLevel?.let {
+                    WaterModel.after(it, ticks, layout.waterEffectAt(instance.slot))
+                }
             }
 
             val range = when (val stage = instance.growthStage) {

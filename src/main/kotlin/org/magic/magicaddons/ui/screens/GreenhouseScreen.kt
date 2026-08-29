@@ -420,6 +420,11 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
 
         // the star beside a water time answers for itself, and says so instead of the plant's own
         // tooltip, since the mouse is on the star rather than on the plant
+        hovered.deadTooltipAt(mouseX, mouseY)?.let {
+            graphics.drawSimpleTooltip(it, mouseX + 7, mouseY + 12)
+            return
+        }
+
         hovered.debtTooltipAt(mouseX, mouseY)?.let {
             graphics.drawSimpleTooltip(it, mouseX + 7, mouseY + 12)
             return
@@ -552,6 +557,16 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
             if (it.charTyped(characterEvent)) return true
         }
         return super.charTyped(characterEvent)
+    }
+
+    override fun mouseScrolled(mouseX: Double, mouseY: Double, scrollX: Double, scrollY: Double): Boolean {
+        // the wheel walks the swatches, so a fact can be flipped through without leaving the grid
+        if (currentDisplay == CurrentDisplay.Greenhouses && scrollY != 0.0) {
+            hoverControls.cycle(down = scrollY < 0)
+            return true
+        }
+
+        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY)
     }
 
     override fun keyPressed(keyEvent: KeyEvent): Boolean {

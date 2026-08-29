@@ -89,6 +89,22 @@ class HoverControls : Renderable, Focusable, HoverableContainer {
         return true
     }
 
+    /**
+     * Moves the pick one swatch down or up the list, wrapping at the ends.
+     *
+     * From nothing picked, down starts at the top of the list and up at the bottom, so the wheel
+     * reaches every fact from either direction within a notch or two.
+     */
+    fun cycle(down: Boolean) {
+        val infos = ElementWidget.HoverInfo.entries
+        val current = selectedInfo
+
+        selectedInfo = when (current) {
+            null -> if (down) infos.first() else infos.last()
+            else -> infos[(current.ordinal + (if (down) 1 else -1) + infos.size) % infos.size]
+        }
+    }
+
     /** Which swatch, if any, sits under a point. */
     private fun swatchAt(mouseX: Double, mouseY: Double): ElementWidget.HoverInfo? {
         if (!isMouseOver(mouseX, mouseY)) return null
