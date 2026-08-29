@@ -1,5 +1,6 @@
 package org.magic.magicaddons.data.greenhouse.elements.basecrop
 
+import org.magic.magicaddons.data.greenhouse.StandPose
 import org.magic.magicaddons.data.greenhouse.CropEffect
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Rotations
@@ -23,6 +24,11 @@ object Redmushroom : CropDefinitionProvider {
             CropEffect.WaterDrain
         ),
         skyblockId = SkyBlockItemId.item("RED_MUSHROOM"),
+        /** Each skull's pose, found constant across every stage it appears in. */
+        standPoses = mapOf(
+            "162f0e8d32f3db02ffdf1a16efb21d614a3f0417d49138fdc18bfe52ead705b9" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f)),
+            "2278b4061f63755ba5a85c1d2491c261d6bd4a5d0536a17bdad934570f3cbfee" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f))
+        ),
         stageDefs = listOf(
             CropStagePattern(
                 blocks = listOf(
@@ -35,7 +41,6 @@ object Redmushroom : CropDefinitionProvider {
                     CropArmorStand(
                         isSmall = false,
                         offset = Vec3(0.0, -0.75, 0.0),
-                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
                         hashString = "162f0e8d32f3db02ffdf1a16efb21d614a3f0417d49138fdc18bfe52ead705b9"
                     )
                 ),
@@ -55,7 +60,6 @@ object Redmushroom : CropDefinitionProvider {
                         CropArmorStand(
                             isSmall = false,
                             offset = Vec3(0.0, -0.45, 0.0),
-                            headRotation = Rotations(0.0f, 0.0f, 0.0f),
                             hashString = "2278b4061f63755ba5a85c1d2491c261d6bd4a5d0536a17bdad934570f3cbfee",
                         )
                     ),

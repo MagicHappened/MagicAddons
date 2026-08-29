@@ -240,6 +240,10 @@ object GreenhouseData {
         if (Duration.between(now, nextTick) > DEATH_WARNING_WINDOW) return
         if (dehydrationWarnedFor == nextTick) return
 
+        // the sweep runs once per tick either way: water only moves when the tick does, so a
+        // quiet answer now is a quiet answer for the rest of this tick too
+        dehydrationWarnedFor = nextTick
+
         val dying = mutableListOf<Pair<String, String>>()
 
         greenhouseGrids.forEach { grid ->
@@ -268,7 +272,6 @@ object GreenhouseData {
 
         if (dying.isEmpty()) return
 
-        dehydrationWarnedFor = nextTick
         sendDehydrationWarning(dying)
     }
 
@@ -480,8 +483,11 @@ object GreenhouseData {
             miscInfo.nextTickTime?.isBefore(now) ?: false
         ) {
             checkForUpdate()
-            warnOfDyingPlants()
         }
+
+        // asked every tick rather than once a minute: until the window opens this is one time
+        // comparison, and once it fires it holds its tongue for the rest of the tick
+        warnOfDyingPlants()
     }
 
 
@@ -959,8 +965,18 @@ object GreenhouseData {
 
         if (nextStage?.contains(Regex("\\d")) ?: false) {
             if (!LocationAPI.isGuest) {
+                val was = miscInfo.nextTickTime
+
                 miscInfo.nextTickTime = Instant.now().plusMillis(nextStage.parseDurationToMs())
                 lastCheckTime = Instant.now()
+
+                // the one line of the old tick logging worth keeping: how far the countdown had
+                // drifted by the moment the game stated it, for reading a session back later
+                was?.let {
+                    val movedS = Duration.between(it, miscInfo.nextTickTime).toSeconds()
+
+                    Common.LOGGER.info("[tick] resynced from the game: countdown moved ${movedS}s")
+                }
 
                 realignWithGame()
             }

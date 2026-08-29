@@ -1,5 +1,6 @@
 package org.magic.magicaddons.data.greenhouse.elements.mutation.common
 
+import org.magic.magicaddons.data.greenhouse.StandPose
 import net.minecraft.core.Rotations
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.phys.Vec3
@@ -20,6 +21,10 @@ object Veilshroom : CropDefinitionProvider {
             CropEffect.WaterDrain
         ),
         skyblockId = SkyBlockItemId.item("VEILSHROOM"),
+        /** Each skull's pose, found constant across every stage it appears in. */
+        standPoses = mapOf(
+            "266754af4859ef6f0adb03e6c58e9e348a507debce6b5a7f660d1269401de674" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f))
+        ),
         stageDefs = listOf(
             CropStage(
                 blocks = listOf(),
@@ -27,7 +32,6 @@ object Veilshroom : CropDefinitionProvider {
                     CropArmorStand(
                         isSmall = false,
                         offset = Vec3(0.0, -0.5, 0.0),
-                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
                         hashString = "266754af4859ef6f0adb03e6c58e9e348a507debce6b5a7f660d1269401de674"
                     )
                 ),

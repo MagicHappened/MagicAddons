@@ -37,7 +37,6 @@ object Choconut : CropDefinitionProvider {
                     )
                 ),
                 1..1,
-                allowRotation = true
             )
 
         ),

@@ -1,5 +1,6 @@
 package org.magic.magicaddons.data.greenhouse.elements.mutation.epic
 
+import org.magic.magicaddons.data.greenhouse.StandPose
 import net.minecraft.core.Rotations
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.CropEffect
@@ -16,6 +17,10 @@ object Thunderling : CropDefinitionProvider {
             CropEffect.EffectSpread
         ),
         skyblockId = SkyBlockItemId.item("THUNDERLING"),
+        /** Each skull's pose, found constant across every stage it appears in. */
+        standPoses = mapOf(
+            "b35914deb539a1fde1b1c473f8e05cacca257b959e7270d444c1dc5ad2bf7cc8" to StandPose.Fixed(Rotations(22.5f, 22.5f, 0.0f))
+        ),
         stageDefs = listOf(
             CropStage(
                 blocks = listOf(),
@@ -64,14 +69,10 @@ object Thunderling : CropDefinitionProvider {
                     ),
                     CropArmorStand(
                         offset = Vec3(-0.21875, 0.1875, 0.03125),
-                        headRotation = Rotations(22.5f, 22.5f, 0.0f),
-                        xRotation = 0.0f,
-                        yRotation = 0.0f,
                         hashString = "b35914deb539a1fde1b1c473f8e05cacca257b959e7270d444c1dc5ad2bf7cc8"
                     )
                 ),
                 8..8,
-                allowRotation = true
             ),
             CropStage(
                 blocks = listOf(),
@@ -99,7 +100,6 @@ object Thunderling : CropDefinitionProvider {
                     hashString = "3724327576a20876fc95f41bb37fd0e2f2c79014455f19262f185ce88b155385"
                 ),
                 16..16,
-                allowRotation = true
             )
 
 

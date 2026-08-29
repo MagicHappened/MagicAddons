@@ -42,7 +42,6 @@ object AllinAloe : CropDefinitionProvider {
                     )
                 ),
                 7..7,
-                allowRotation = true
             )
 
         ),

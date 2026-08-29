@@ -24,7 +24,6 @@ object Chocoberry : CropDefinitionProvider {
                     )
                 ),
                 1..1,
-                allowRotation = true
             ),
 
             CropStage(

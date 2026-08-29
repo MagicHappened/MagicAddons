@@ -1,5 +1,6 @@
 package org.magic.magicaddons.data.greenhouse.elements.mutation.common
 
+import org.magic.magicaddons.data.greenhouse.StandPose
 import net.minecraft.core.Rotations
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.phys.Vec3
@@ -21,6 +22,10 @@ object Shadevine : CropDefinitionProvider {
             CropEffect.HarvestLoss
         ),
         skyblockId = SkyBlockItemId.item("SHADEVINE"),
+        /** Each skull's pose, found constant across every stage it appears in. */
+        standPoses = mapOf(
+            "c3c6d9dcb8fbd73de6171a2c2155314d097a9c99d09c9fce9cba068d7e5aedf7" to StandPose.Fixed(Rotations(-45.0f, 0.0f, 0.0f))
+        ),
         stageDefs = listOf(
             CropStage(
                 blocks = listOf(),
@@ -28,14 +33,10 @@ object Shadevine : CropDefinitionProvider {
                     CropArmorStand(
                         isSmall = false,
                         offset = Vec3(0.0, -0.75, 0.1875),
-                        headRotation = Rotations(-45.0f, 0.0f, 0.0f),
-                        xRotation = 0.0f,
-                        yRotation = 0.0f,
                         hashString = "c3c6d9dcb8fbd73de6171a2c2155314d097a9c99d09c9fce9cba068d7e5aedf7"
                     )
                 ),
                 1..1,
-                allowRotation = true
             )
 
         ),

@@ -296,11 +296,6 @@ object CropStageExporter {
                         "    ${it.yRotation}f"
                     }
 
-                    val anyAbnormalRotations = group.any { it.rotation.x != 0f || it.rotation.y != 0f || it.rotation.z != 0f }
-                    val anyAbnormalXRotations = group.any { !it.xRotation.isCardinalYaw() }
-                    val anyAbnormalYRotations = group.any { !it.yRotation.isCardinalYaw() }
-
-
                     val hash = group.first().hash
                     val name = group.first().customName
 
@@ -308,11 +303,10 @@ object CropStageExporter {
 
                     fields.add("offsets = listOf(\n$offsets\n)")
 
-                    if (anyAbnormalRotations || anyAbnormalXRotations || anyAbnormalYRotations) {
-                        fields.add("rotations = listOf(\n$rotations\n)")
-                        fields.add("xRotations = listOf(\n$xRotations\n)")
-                        fields.add("yRotations = listOf(\n$yRotations\n)")
-                    }
+                    // always written, zeros included, same as the single stands
+                    fields.add("rotations = listOf(\n$rotations\n)")
+                    fields.add("xRotations = listOf(\n$xRotations\n)")
+                    fields.add("yRotations = listOf(\n$yRotations\n)")
 
                     // written only when there is one. A hash of null used to reach the file as the
                     // word "null", which is a hash no head will ever have
@@ -338,11 +332,12 @@ object CropStageExporter {
 
                         val fields = mutableListOf<String>()
                         fields.add("offset = Vec3(${stand.offset.x}, ${stand.offset.y}, ${stand.offset.z})")
-                        if (stand.rotation.x != 0f || stand.rotation.y != 0f || stand.rotation.z != 0f) {
-                            fields.add("headRotation = Rotations(${stand.rotation.x}f, ${stand.rotation.y}f, ${stand.rotation.z}f)")
-                            fields.add("xRotation = ${stand.xRotation}f")
-                            fields.add("yRotation = ${stand.yRotation}f")
-                        }
+                        // always written, zeros included: a pose of nothing is still a
+                        // recorded pose, and leaving it out kept default-posed stands reading as
+                        // uncollected forever
+                        fields.add("headRotation = Rotations(${stand.rotation.x}f, ${stand.rotation.y}f, ${stand.rotation.z}f)")
+                        fields.add("xRotation = ${stand.xRotation}f")
+                        fields.add("yRotation = ${stand.yRotation}f")
                         if (stand.hash != null){
                             fields.add("hashString = \"${stand.hash}\"")
                         }

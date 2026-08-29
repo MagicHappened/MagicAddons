@@ -82,7 +82,6 @@ object Melon : CropDefinitionProvider {
                     )
                 ),
                 4..4,
-                allowRotation = true
             ),
             CropStage(
                 blocks = listOf(
@@ -119,7 +118,6 @@ object Melon : CropDefinitionProvider {
                     isSmall = false
                 ),
                 7..7,
-                allowRotation = true
             ),
             CropStage(
                 blocks = listOf(
@@ -141,7 +139,6 @@ object Melon : CropDefinitionProvider {
                     )
                 ,
                 8..8,
-                allowRotation = true
             ),
             CropStage(
                 blocks = listOf(
@@ -161,7 +158,6 @@ object Melon : CropDefinitionProvider {
                     )
                 ),
                 9..9,
-                allowRotation = true
             ), //todo check other rotations
             CropStage(
                 blocks = listOf(
@@ -183,7 +179,6 @@ object Melon : CropDefinitionProvider {
                     isSmall = false
                 ),
                 10..10,
-                allowRotation = true
             ),
             CropStage(
                 blocks = listOf(
@@ -213,7 +208,6 @@ object Melon : CropDefinitionProvider {
                     isSmall = false
                 ),
                 11..11,
-                allowRotation = true
             )
         ),
         maxStage = 11,

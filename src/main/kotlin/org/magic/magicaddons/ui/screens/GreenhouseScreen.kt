@@ -464,6 +464,13 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         // the click landed outside every overlay, which is what closes them
         closeOverlays()
 
+        // the wheel's other job: a middle click in greenhouse mode makes it walk the swatches
+        // instead of the plots, and another puts it back. Remembered past the screen, not to disk
+        if (currentDisplay == CurrentDisplay.Greenhouses && mouseButtonEvent.button() == 2) {
+            scrollPicksInfo = !scrollPicksInfo
+            return true
+        }
+
         if (currentDisplay == CurrentDisplay.Greenhouses &&
             greenhousePanel.mouseClicked(mouseButtonEvent, doubled)
         ) {
@@ -560,13 +567,32 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
     }
 
     override fun mouseScrolled(mouseX: Double, mouseY: Double, scrollX: Double, scrollY: Double): Boolean {
-        // the wheel walks the swatches, so a fact can be flipped through without leaving the grid
-        if (currentDisplay == CurrentDisplay.Greenhouses && scrollY != 0.0) {
+        if (scrollY == 0.0) return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY)
+
+        // the wheel walks the plots or presets; in greenhouse mode a middle click points it at
+        // the swatches instead, and presets never care which way that switch is left
+        if (currentDisplay == CurrentDisplay.Greenhouses && scrollPicksInfo) {
             hoverControls.cycle(down = scrollY < 0)
-            return true
+        } else {
+            cycleDisplayedGrid(forward = scrollY < 0)
         }
 
-        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY)
+        return true
+    }
+
+    /** Steps the shown grid to its neighbour in whichever list the mode is showing, wrapping. */
+    private fun cycleDisplayedGrid(forward: Boolean) {
+        val widgets = when (currentDisplay) {
+            CurrentDisplay.Greenhouses -> greenhouseGridWidgets
+            CurrentDisplay.Presets -> presetGridWidgets
+        }
+        if (widgets.isEmpty()) return
+
+        val index = widgets.indexOf(displayedGridWidget)
+        val next = widgets[Math.floorMod(index + if (forward) 1 else -1, widgets.size)]
+
+        gridSelector.currentValue = next.layout
+        gridWidgetChanged(next.layout)
     }
 
     override fun keyPressed(keyEvent: KeyEvent): Boolean {
@@ -698,6 +724,9 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         initPresetLayout()
     }
     companion object {
+        /** Whether the wheel walks the swatches rather than the plots, kept for the session. */
+        private var scrollPicksInfo: Boolean = false
+
         /** Enough for one button, however narrow the window gets. */
         private const val MIN_ACTION_ROW_WIDTH: Int = 90
 

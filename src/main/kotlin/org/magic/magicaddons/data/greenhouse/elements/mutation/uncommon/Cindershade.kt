@@ -17,29 +17,28 @@ object Cindershade : CropDefinitionProvider {
             CropEffect.XpLoss
         ),
         skyblockId = SkyBlockItemId.item("CINDERSHADE"),
+        /** Each skull's pose, found constant across every stage it appears in. */
+        standPoses = mapOf(
+            "66aa7b369efc0186937373242fe406e196281f0caf76899a4661c960b47fb74c" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f)),
+            "a0646bc0558155207204711cf5d3d07920e0e98c9b2be0b6107becb409a97427" to StandPose.Fixed(Rotations(0.0f, 45.0f, 0.0f)),
+            "7bd5a39c3f9b1f513ecc299afaa5f90040fdb7424a5cd592e9ff31de7a3aafb3" to StandPose.Fixed(Rotations(0.0f, 45.0f, 0.0f))
+        ),
         stageDefs = listOf(
             CropStage(
                 blocks = listOf(),
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, 0.09375, 0.0),
-                        headRotation = Rotations(0.0f, 45.0f, 0.0f),
-                        xRotation = 0.0f,
-                        yRotation = 0.0f,
                         hashString = "7bd5a39c3f9b1f513ecc299afaa5f90040fdb7424a5cd592e9ff31de7a3aafb3"
                     )
                 ),
                 1..1,
-                allowRotation = true
             ),
             CropStage(
                 blocks = listOf(),
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.71875, 0.0),
-                        headRotation = Rotations(0.0f, 45.0f, 0.0f),
-                        xRotation = 0.0f,
-                        yRotation = -90.0f,
                         hashString = "7bd5a39c3f9b1f513ecc299afaa5f90040fdb7424a5cd592e9ff31de7a3aafb3"
                     )
                 ),
@@ -55,9 +54,6 @@ object Cindershade : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.625, 0.0),
-                        headRotation = Rotations(0.0f, 45.0f, 0.0f),
-                        xRotation = 0.0f,
-                        yRotation = 90.0f,
                         hashString = "7bd5a39c3f9b1f513ecc299afaa5f90040fdb7424a5cd592e9ff31de7a3aafb3"
                     )
                 ),
@@ -73,9 +69,6 @@ object Cindershade : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.40625, 0.0),
-                        headRotation = Rotations(0.0f, 45.0f, 0.0f),
-                        xRotation = 0.0f,
-                        yRotation = -90.0f,
                         hashString = "7bd5a39c3f9b1f513ecc299afaa5f90040fdb7424a5cd592e9ff31de7a3aafb3"
                     )
                 ),
@@ -91,9 +84,6 @@ object Cindershade : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.25, 0.0),
-                        headRotation = Rotations(0.0f, 45.0f, 0.0f),
-                        xRotation = 0.0f,
-                        yRotation = -180.0f,
                         hashString = "7bd5a39c3f9b1f513ecc299afaa5f90040fdb7424a5cd592e9ff31de7a3aafb3"
                     ),
                     CropArmorStand(
@@ -118,9 +108,6 @@ object Cindershade : CropDefinitionProvider {
                     ),
                     CropArmorStand(
                         offset = Vec3(0.03125, -0.15625, -0.03125),
-                        headRotation = Rotations(0.0f, 45.0f, 0.0f),
-                        xRotation = 0.0f,
-                        yRotation = -90.0f,
                         hashString = "7bd5a39c3f9b1f513ecc299afaa5f90040fdb7424a5cd592e9ff31de7a3aafb3"
                     )
                 ),
@@ -140,9 +127,6 @@ object Cindershade : CropDefinitionProvider {
                     ),
                     CropArmorStand(
                         offset = Vec3(-0.03125, -0.03125, 0.03125),
-                        headRotation = Rotations(0.0f, 45.0f, 0.0f),
-                        xRotation = 0.0f,
-                        yRotation = 90.0f,
                         hashString = "7bd5a39c3f9b1f513ecc299afaa5f90040fdb7424a5cd592e9ff31de7a3aafb3"
                     )
                 ),
@@ -165,14 +149,10 @@ object Cindershade : CropDefinitionProvider {
                     CropArmorStand(
                         isSmall = false,
                         offset = Vec3(0.03125, -0.15625, 0.03125),
-                        headRotation = Rotations(0.0f, 45.0f, 0.0f),
-                        xRotation = 0.0f,
-                        yRotation = 0.0f,
                         hashString = "7bd5a39c3f9b1f513ecc299afaa5f90040fdb7424a5cd592e9ff31de7a3aafb3"
                     )
                 ),
                 6..6,
-                allowRotation = true
             ),
             CropStage(
                 blocks = listOf(
@@ -190,14 +170,10 @@ object Cindershade : CropDefinitionProvider {
                     CropArmorStand(
                         isSmall = false,
                         offset = Vec3(0.03125, -0.03125, 0.03125),
-                        headRotation = Rotations(0.0f, 45.0f, 0.0f),
-                        xRotation = 0.0f,
-                        yRotation = 0.0f,
                         hashString = "7bd5a39c3f9b1f513ecc299afaa5f90040fdb7424a5cd592e9ff31de7a3aafb3"
                     )
                 ),
                 7..7,
-                allowRotation = true
             ),
             CropStage(
                 blocks = listOf(
@@ -209,12 +185,10 @@ object Cindershade : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.5, 0.0),
-                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
                         hashString = "66aa7b369efc0186937373242fe406e196281f0caf76899a4661c960b47fb74c"
                     ),
                     CropArmorStand(
                         offset = Vec3(0.0, 0.09375, 0.0),
-                        headRotation = Rotations(0.0f, 45.0f, 0.0f),
                         hashString = "a0646bc0558155207204711cf5d3d07920e0e98c9b2be0b6107becb409a97427"
                     )
                 ),

@@ -90,7 +90,6 @@ object Cactus : CropDefinitionProvider {
                         isSmall = false
                     ),
                 5..5,
-                allowRotation = true
             ),
             CropStage(
                 blocks = CropBlockState.blockStatePattern(
@@ -111,7 +110,6 @@ object Cactus : CropDefinitionProvider {
                     )
                 ),
                 6..6,
-                allowRotation = true,
             ),
             CropStage(
                 blocks = CropBlockState.blockStatePattern(
@@ -136,7 +134,6 @@ object Cactus : CropDefinitionProvider {
                     isSmall = false
                 ),
                 7..7,
-                allowRotation = true
             ),
             CropStage(
                 blocks =             CropBlockState.blockStatePattern(

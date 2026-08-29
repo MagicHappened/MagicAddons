@@ -25,7 +25,6 @@ object Squash : CropDefinitionProvider {
                     )
                 ),
                 1..1,
-                allowRotation = true
             )
         ),
         decayTimeMs = NEVER_DECAYS,

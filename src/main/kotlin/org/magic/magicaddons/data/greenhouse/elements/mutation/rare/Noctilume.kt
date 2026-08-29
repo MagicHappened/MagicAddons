@@ -55,7 +55,6 @@ object Noctilume : CropDefinitionProvider {
             hashString = hash
         ),
         stageRange = stage..stage,
-        allowRotation = true,
         traits = mapOf(CropStandReader.CRAVES to craving)
     )
 

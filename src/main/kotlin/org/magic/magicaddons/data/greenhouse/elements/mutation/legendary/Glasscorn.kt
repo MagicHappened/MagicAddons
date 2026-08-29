@@ -65,7 +65,6 @@ object Glasscorn : CropDefinitionProvider {
                     isSmall = false
                 ),
                 4..5,
-                allowRotation = true
             )
         ),
         maxStage = 9,

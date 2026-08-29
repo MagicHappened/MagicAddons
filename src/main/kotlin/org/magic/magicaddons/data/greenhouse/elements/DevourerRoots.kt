@@ -23,7 +23,6 @@ object DevourerRoots : CropDefinitionProvider {
                     )
                 ),
                 1..1,
-                allowRotation = true
             )
         ),
         decayTimeMs = NEVER_DECAYS, // devourer has a decay time, so clicking on the roots with a diagnosis tool will bring up the devourer itself,

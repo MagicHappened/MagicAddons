@@ -69,7 +69,6 @@ object Pumpkin : CropDefinitionProvider {
                     )
                 ),
                 4..4,
-                allowRotation = true
             ),
             CropStage(
                 blocks = listOf(
@@ -103,7 +102,6 @@ object Pumpkin : CropDefinitionProvider {
                     )
                 ),
                 7..7,
-                allowRotation = true
             ),
             CropStage(
                 blocks = listOf(
@@ -124,7 +122,6 @@ object Pumpkin : CropDefinitionProvider {
                         )
                     ),
                 8..8,
-                allowRotation = true
             ),
             CropStage(
                 blocks = listOf(
@@ -152,7 +149,6 @@ object Pumpkin : CropDefinitionProvider {
                     )
                 ),
                 9..9,
-                allowRotation = true
             ),
             CropStage(
                 blocks = listOf(
@@ -174,7 +170,6 @@ object Pumpkin : CropDefinitionProvider {
                     isSmall = false
                 ),
                 10..10,
-                allowRotation = true
             ),
             CropStage(
                 blocks = listOf(
@@ -204,7 +199,6 @@ object Pumpkin : CropDefinitionProvider {
                     isSmall = false
                 ),
                 11..11,
-                allowRotation = true
             )
 
 

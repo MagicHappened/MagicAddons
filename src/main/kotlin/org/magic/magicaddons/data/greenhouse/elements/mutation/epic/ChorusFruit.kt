@@ -1,5 +1,6 @@
 package org.magic.magicaddons.data.greenhouse.elements.mutation.epic
 
+import org.magic.magicaddons.data.greenhouse.StandPose
 import net.minecraft.core.Rotations
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.phys.Vec3
@@ -18,6 +19,10 @@ object ChorusFruit : CropDefinitionProvider {
             CropEffect.HarvestLoss
         ),
         skyblockId = SkyBlockItemId.item("CHORUS_FRUIT"),
+        /** Each skull's pose, found constant across every stage it appears in. */
+        standPoses = mapOf(
+            "c5214cc92140cdf9b402b3e7ed1fa0bac7fb4b39e39b46d11b06301caf0f9c3d" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f))
+        ),
         stageDefs = listOf(
             CropStage(
                 blocks = listOf(
@@ -25,6 +30,9 @@ object ChorusFruit : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, 0.21875, 0.0),
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
                         hashString = "e044238503102f64f30f4d58f0843b215d8dd54fc9f1f70cc17d8dd891bb3e5e",
                     )
                 ),
@@ -140,6 +148,9 @@ object ChorusFruit : CropDefinitionProvider {
                     listOf(
                         CropArmorStand(
                             offset = Vec3(0.1875, 1.3125, 0.21875),
+                            headRotation = Rotations(45.0f, 0.0f, 45.0f),
+                            xRotation = 0.0f,
+                            yRotation = 0.0f,
                             hashString = "e044238503102f64f30f4d58f0843b215d8dd54fc9f1f70cc17d8dd891bb3e5e",
                         )
                     )
@@ -152,7 +163,6 @@ object ChorusFruit : CropDefinitionProvider {
                                 hashString = "c5214cc92140cdf9b402b3e7ed1fa0bac7fb4b39e39b46d11b06301caf0f9c3d"
                             ),
                 10..10,
-                allowRotation = true
             ),
             CropStage(
                 blocks = listOf(
@@ -171,10 +181,15 @@ object ChorusFruit : CropDefinitionProvider {
                                     Vec3(0.1875, 1.3125, 0.21875),
                                     Vec3(-0.1875, 1.25, -0.1875)
                                 ),
+                                rotations = listOf(
+                                    Rotations(45.0f, 0.0f, 45.0f),
+                                    Rotations(-45.0f, 0.0f, -45.0f)
+                                ),
+                                xRotations = listOf(0.0f, 0.0f),
+                                yRotations = listOf(0.0f, 0.0f),
                                 hashString = "e044238503102f64f30f4d58f0843b215d8dd54fc9f1f70cc17d8dd891bb3e5e"
                             ),
                 11..11,
-                allowRotation = true
             ),
             CropStage(
                 blocks = listOf(),
