@@ -198,16 +198,23 @@ object LayoutRenderState {
     fun refresh() {
         val grid = GreenhouseData.getCurrentGrid()
 
-        // the plan is whatever this greenhouse was given, so standing in another one shows that
-        // one's plan or nothing, rather than carrying the last one around the garden
-        val layout = grid?.state?.assignedLayout
+        // not being able to see the greenhouse for a moment is not the same as there being
+        // nothing to draw. Wiping the plan on the way past cost a frame of blank screen every
+        // time the plot was briefly unreadable, which is a rescan blinking rather than changing.
+        // What was last worked out stays up until something is worked out to replace it
+        if (grid == null) return
 
-        if (grid == null || layout == null) {
+        val level = Minecraft.getInstance().level ?: return
+
+        // the plan is whatever this greenhouse was given, so standing in another one shows that
+        // one's plan or nothing, rather than carrying the last one around the garden. This one is
+        // a real answer rather than a gap: the greenhouse is right there and has nothing planned
+        val layout = grid.state.assignedLayout
+
+        if (layout == null) {
             hide()
             return
         }
-
-        val level = Minecraft.getInstance().level ?: return
 
         val marks = mutableMapOf<BlockPos, Pair<VoxelShape, Mark>>()
         val ghosts = mutableMapOf<BlockPos, BlockState>()
