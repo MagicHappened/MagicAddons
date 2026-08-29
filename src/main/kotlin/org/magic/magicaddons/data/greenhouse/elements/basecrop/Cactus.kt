@@ -11,6 +11,9 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Cactus : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Cactus",
+        effects = setOf(
+            CropEffect.ImprovedWaterRetain
+        ),
         skyblockId = SkyBlockItemId.item("CACTUS"),
         stageDefs = listOf(
             CropStage(
