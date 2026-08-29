@@ -322,8 +322,14 @@ class GreenhouseGrid(
             return
         }
 
-        elements.forEach { element ->
-            val instance = element.instance
+        Common.LOGGER.info("[tick]    moving ${layout.elementInstances.size} plants on by $ticks")
+
+        // the plants themselves, not the runtime wrappers around them. A wrapper holds entities
+        // and blocks and so only exists while the plot is loaded, which is never the case for the
+        // greenhouse this is for: one nobody is standing in. Working through the wrappers meant a
+        // greenhouse away from the player had no plants to move on at all, so the clock advanced
+        // and nothing else did
+        layout.elementInstances.forEach { instance ->
             val maxStage = instance.cropDef.maxStage
 
             // a snoozling that has dropped asleep stays where it is until someone wakes it, a
