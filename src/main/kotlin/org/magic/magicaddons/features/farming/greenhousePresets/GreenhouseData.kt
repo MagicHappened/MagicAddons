@@ -940,6 +940,8 @@ object GreenhouseData {
                     tickDebug("resynced from the game: countdown moved ${offBy}s")
                     tickDebug("  ${desyncLedger()}")
                 }
+
+                realignWithGame()
             }
         }
 
@@ -1161,6 +1163,30 @@ object GreenhouseData {
         val next = miscInfo.nextTickTime ?: return null
 
         return (next.toEpochMilli() - Instant.now().toEpochMilli()).coerceAtLeast(0L)
+    }
+
+    /**
+     * Starts the account again from a countdown the game itself just gave us.
+     *
+     * Everything the account holds is a reason this clock might have parted company with the
+     * game's, and at this instant it has not: the game has just said what the countdown is. So the
+     * lag, the nudges and the time away are all spent, and letting them run on would blame the
+     * next drift on the one before it.
+     *
+     * The server tick is anchored again for the same reason. The next comparison measures real
+     * time from now, so measuring server time from wherever the tick counter happened to be left
+     * would put a whole absence on one side of the subtraction and a moment on the other.
+     */
+    private fun realignWithGame() {
+        lastServerTick = ServerUtils.totalServerTicks
+        watchingSince = Instant.now()
+
+        watchedRealMs = 0
+        watchedServerMs = 0
+        awayMs = 0
+        awaySpells = 0
+        driftAppliedMs = 0
+        driftClippedMs = 0
     }
 
     /**
