@@ -85,6 +85,9 @@ object CropCollector : EntityUtils.HighlightSource {
         /** Matched, but through the pre-normalization fallback: worth re-collecting. */
         Legacy("needs normalization"),
 
+        /** Matched, and described, but recorded without the way its stands are turned. */
+        Unturned("needs rotation data"),
+
         /** Named for a crop we know, standing at a stage nobody has recorded. */
         Unrecorded("unrecorded"),
 
@@ -647,11 +650,19 @@ object CropCollector : EntityUtils.HighlightSource {
 
         if (status == Status.Legacy) PlantDex.noteLegacy(def.name, stage..stage)
 
+        // a stage matched from a recording that never said how its stands are turned can be
+        // matched but not drawn, so a run is the moment to say it is worth taking again
+        val turned = if (status == Status.Current && PlantDex.needsRotation(def, stage)) {
+            Status.Unturned
+        } else {
+            status
+        }
+
         addEntry(
             def = def,
             origin = standingOn,
             stands = stands,
-            status = status,
+            status = turned,
             stageText = stage.toString(),
             stageNum = stage,
             names = stands.standNames()
