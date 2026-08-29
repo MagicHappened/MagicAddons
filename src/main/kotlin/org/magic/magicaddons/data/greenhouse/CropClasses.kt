@@ -74,20 +74,32 @@ data class CropArmorStand(
 }
 data class CropBlockState(
     val offset: BlockPos,
-    val blockState: BlockState
+    val blockState: BlockState,
+    /**
+     * Whether this block has to be there for the stage to match, or is only part of how the stage
+     * is drawn.
+     *
+     * A chloronite's glass is the reason for this. A grown one stands under green glass and a
+     * placed one does not, so the glass tells you the plant is finished without being what makes
+     * it finished, and requiring it would mean never recognising a placed one. A plan still draws
+     * it, since it is what the crop looks like.
+     */
+    val required: Boolean = true
 ){
 
     companion object {
         fun blockStatePattern(
             positions: List<BlockPos>,
-            blockState: BlockState
+            blockState: BlockState,
+            required: Boolean = true
         ): List<CropBlockState> {
             val result = mutableListOf<CropBlockState>()
             positions.forEach {
                 result.add(
                     CropBlockState(
                         it,
-                        blockState
+                        blockState,
+                        required
                     )
                 )
             }
@@ -155,6 +167,10 @@ open class CropStage(
         }
         try {
             this.blocks?.forEach { blockDef ->
+                // drawn but never demanded, so a stage is not refused for the absence of
+                // something that was only ever decoration
+                if (!blockDef.required) return@forEach
+
                 val pos = origin.offset(blockDef.offset)
                 val state = level.getBlockState(pos)
 
