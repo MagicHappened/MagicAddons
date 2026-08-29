@@ -13,6 +13,9 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Wildrose : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Wild Rose",
+        effects = setOf(
+            CropEffect.EffectSpread
+        ),
         skyblockId = SkyBlockItemId.item("WILD_ROSE"),
         stageDefs = listOf(
             CropStage(

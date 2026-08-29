@@ -1,5 +1,6 @@
 package org.magic.magicaddons.data.greenhouse.elements.basecrop
 
+import org.magic.magicaddons.data.greenhouse.CropEffect
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Rotations
 import net.minecraft.world.phys.Vec3
@@ -15,6 +16,9 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Melon : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Melon",
+        effects = setOf(
+            CropEffect.WaterRetain
+        ),
         skyblockId = SkyBlockItemId.item("MELON"),
         aliases = listOf(SkyBlockItemId.item("MELON_SEEDS")),
         stageDefs = listOf(

@@ -1,5 +1,6 @@
 package org.magic.magicaddons.data.greenhouse.elements.basecrop
 
+import org.magic.magicaddons.data.greenhouse.CropEffect
 import net.minecraft.core.BlockPos
 import net.minecraft.world.level.block.Blocks
 import org.magic.magicaddons.data.greenhouse.DECAY_TIME_MS
@@ -13,6 +14,10 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Netherwart : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Nether Wart",
+        effects = setOf(
+            CropEffect.ImprovedHarvestBoost,
+            CropEffect.XpLoss
+        ),
         skyblockId = SkyBlockItemId.item("NETHER_STALK"),
         stageDefs = listOf(
             CropStage(

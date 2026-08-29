@@ -238,7 +238,7 @@ class GreenhouseGrid(
                     carryOver(standing, found)
                 } else {
                     if (standing != null) result.replaced++ else result.added++
-                    startFresh(found)
+                    found
                 }
 
                 reconciled.add(runtime)
@@ -263,20 +263,6 @@ class GreenhouseGrid(
      * there. The world is right about which crop it is, where its blocks and stands are, and how
      * grown it looks; it says nothing about when it was planted or how much water it holds.
      */
-    /**
-     * A plant the grid has no record of, which is a plant that has just appeared. One that drinks
-     * starts empty: it was planted rather than found, and nothing has watered it yet. Saying
-     * nothing instead left the screen unable to say how long it had, which is the one thing worth
-     * knowing about a crop that was only just put down.
-     */
-    private fun startFresh(found: ElementRuntimeState): ElementRuntimeState {
-        if (found.instance.cropDef.needsWater && found.instance.waterLevel == null) {
-            found.instance.waterLevel = 0
-        }
-
-        return found
-    }
-
     private fun carryOver(
         standing: GreenhouseElementInstance,
         found: ElementRuntimeState
