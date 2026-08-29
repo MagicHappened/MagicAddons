@@ -5,6 +5,8 @@ import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource
 import org.magic.magicaddons.commands.AbstractCommand
 import org.magic.magicaddons.commands.internal.farming.CollectToggle
 import org.magic.magicaddons.commands.internal.farming.IgnoreFarmingWarnings
+import org.magic.magicaddons.commands.internal.farming.KeepPlanner
+import org.magic.magicaddons.commands.internal.farming.UnplanGreenhouse
 import org.magic.magicaddons.commands.internal.farming.SetTimestalkAttribute
 import org.magic.magicaddons.util.ChatUtils
 
@@ -14,6 +16,8 @@ object MainInternal : AbstractCommand() {
     val internalCommandList = mutableListOf<AbstractCommand>(
         CollectToggle,
         IgnoreFarmingWarnings,
+        KeepPlanner,
+        UnplanGreenhouse,
         SetTimestalkAttribute
     )
 

@@ -52,7 +52,7 @@ class PresetUI(
     val applyToButton = ClickableButtonWidget(
         50,
         26,
-        Component.literal("Apply")
+        Component.literal("Planner")
     )
 
     val deleteButton = ClickableButtonWidget(

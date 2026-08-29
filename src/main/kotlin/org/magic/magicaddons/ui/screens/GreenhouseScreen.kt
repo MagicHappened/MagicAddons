@@ -93,6 +93,13 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         Component.literal("Plots")
     )
 
+    /** Takes the plan off the greenhouse on screen, the other end of the preset's Planner button. */
+    private val unplanButton = ClickableButtonWidget(
+        70,
+        26,
+        Component.literal("Unplan")
+    )
+
     private var dynamicNameDisplay: ClickableButtonWidget? = null
     private var hoverWarning = false
 
@@ -168,6 +175,10 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         gridSelector.y = startY + borderPadding * 2
         gridSelector.height = currentDisplayToggle.height
         addOverlay(gridSelector.overlay)
+
+        unplanButton.x = gridSelector.x + gridSelector.width + Common.UI.SPACING_LARGE
+        unplanButton.y = startY + borderPadding * 2
+        unplanButton.height = currentDisplayToggle.height
 
         hoverControls.layoutAgainstGrid(startX + containerSize, startY, containerSize)
         
@@ -366,6 +377,12 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         gridSelector.extractRenderState(graphics, mouseX, mouseY, delta)
         currentDisplayToggle.extractRenderState(graphics, mouseX, mouseY, delta)
 
+        // only where there is a plan to stop, since a button that does nothing is a question the
+        // player has to answer every time they look at the screen
+        if (plannerRunning()) {
+            unplanButton.extractRenderState(graphics, mouseX, mouseY, delta)
+        }
+
         when (currentDisplay) {
             CurrentDisplay.Greenhouses -> {
 
@@ -431,6 +448,12 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
 
         // the click landed outside every overlay, which is what closes them
         closeOverlays()
+
+        if (plannerRunning() && unplanButton.mouseClicked(mouseButtonEvent, doubled)) {
+            GreenhouseData.unplanCurrentGreenhouse()
+            initGreenhouseLayout()
+            return true
+        }
 
         if (currentDisplayToggle.mouseClicked(mouseButtonEvent,doubled)) {
             when (currentDisplay) {
@@ -595,14 +618,25 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         initDynamicName()
     }
 
+    /** Whether the greenhouse on screen has a plan running, which is what the button is for. */
+    private fun plannerRunning(): Boolean =
+        currentDisplay == CurrentDisplay.Greenhouses &&
+                GreenhouseData.getCurrentGrid()?.state?.assignedLayout != null
+
     fun assignPresetLayout(layout: GreenhouseLayout?, grid: GreenhouseGrid) {
         if (layout == null) {
-            ChatUtils.sendWithPrefix("Cannot assign a non existing layout to grid: ${grid.layout.name ?: grid.layout.id}")
+            ChatUtils.sendWithPrefix(
+                "No such plan to run on ${grid.layout.displayName()}"
+            )
             return
         }
         grid.state.assignedLayout = layout
+        grid.state.completionMuted = false
         GreenhouseData.regenRender()
-        ChatUtils.sendWithPrefix("Assigned ${layout.displayName()} to: ${grid.layout.displayName()}")
+
+        ChatUtils.sendWithPrefix(
+            "Planner active on ${grid.layout.displayName()} for ${layout.displayName()}"
+        )
     }
 
     fun addPresetLayout(layout: GreenhouseLayout){

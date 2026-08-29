@@ -545,7 +545,12 @@ class GreenhouseGrid(
         var needsUpdate: Boolean = false,
         var assignedLayout: GreenhouseLayout? = null,
         var hasRuntimeReferences: Boolean = false,
-        var pendingGrowthTicks: Int? = null
+        var pendingGrowthTicks: Int? = null,
+        /**
+         * Whether the player has said they do not want to be told this plan is finished. Kept per
+         * grid rather than per plan, since it is this greenhouse they are tired of hearing about.
+         */
+        var completionMuted: Boolean = false
     )
 
     override fun toString(): String {
