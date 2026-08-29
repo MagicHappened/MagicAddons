@@ -163,6 +163,23 @@ object Wildrose : CropDefinitionProvider {
             CropStage(
                 blocks = listOf(
                     CropBlockState(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = roseBushState(DoubleBlockHalf.LOWER)
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        isSmall = false,
+                        offset = Vec3(0.0, 0.1875, 0.0),
+                        hashString = "4a99a01317a01f65f7a7610122bea792c22a771e7a48ce1a5b352bccc8335074"
+                    )
+                ),
+                10..10,
+                allowRotation = true
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
                         offset = BlockPos(0,1,0),
                         blockState = roseBushState(DoubleBlockHalf.LOWER)
                     )
