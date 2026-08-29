@@ -346,6 +346,14 @@ object GreenhouseData {
             "due: passed=$passedGrowthTicks elapsed=$elapsedTicks online=$onlineTickTracking " +
                     "tickMs=$growthTickMs nextTick=$nextTick now=$now"
         )
+
+        // what the tick length was worked out from, since a tick that disagrees with the game's own
+        // countdown disagrees by one of these rather than by drifting
+        tickDebug(
+            "  from: uniques=${getCurrentUniques().size} growth=${miscInfo.cropGrowthValue} " +
+                    "upgrade=${miscInfo.cropSpeedUpgradeValue} attribute=${greenhouseSpeedAttribute()} " +
+                    "-> ${growthTickMs / 60000}m ${(growthTickMs % 60000) / 1000}s"
+        )
 //        Common.LOGGER.info("Overdue ms $overdueMs")
 //        Common.LOGGER.info("Overdue growth ticks $passedGrowthTicks")
         val nextTickAdvance = (passedGrowthTicks + 1) * growthTickMs
