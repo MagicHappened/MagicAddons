@@ -65,6 +65,30 @@ object PlantDex {
         return Report(recorded, total, incomplete, text)
     }
 
+    /**
+     * What one crop is still missing, in the words the whole listing uses, or null when it wants
+     * for nothing. Asked when the dex is pointed at a single plant, where a line in chat is the
+     * whole answer and there is nothing worth copying.
+     */
+    fun reportFor(def: CropDefinition): String? {
+        val covered = def.stageDefs.flatMap { it.stageRange }.toSet()
+        val missing = (1..def.maxStage).filterNot { it in covered }
+        val legacy = legacySeen[def.name].orEmpty().filter { it in covered }.sorted()
+
+        val parts = mutableListOf<String>()
+        if (missing.isNotEmpty()) parts += "stages ${ranges(missing)} unrecorded"
+        if (legacy.isNotEmpty()) parts += "stages ${ranges(legacy)} need normalization"
+
+        return parts.joinToString("; ").takeIf { it.isNotEmpty() }
+    }
+
+    /** How much of one crop is described, as a percentage of the stages it has. */
+    fun percentFor(def: CropDefinition): Int {
+        val covered = def.stageDefs.flatMap { it.stageRange }.toSet().count { it in 1..def.maxStage }
+
+        return if (def.maxStage == 0) 100 else covered * 100 / def.maxStage
+    }
+
     /** 1, 2, 3, 7 written as 1-3, 7, so a crop missing forty stages is one line, not forty. */
     private fun ranges(sorted: List<Int>): String = buildString {
         var i = 0

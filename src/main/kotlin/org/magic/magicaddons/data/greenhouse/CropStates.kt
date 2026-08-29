@@ -43,13 +43,13 @@ object CropStates {
                 "cactusState()"
 
             Blocks.SUNFLOWER ->
-                "sunflowerState()"
+                "sunflowerState(${halfOf(state)})"
 
             Blocks.SHORT_GRASS ->
                 "shortGrassState()"
 
             Blocks.ROSE_BUSH ->
-                "roseBushState()"
+                "roseBushState(${halfOf(state)})"
 
             Blocks.DEAD_BUSH ->
                 "deadBushState()"
@@ -59,6 +59,14 @@ object CropStates {
     }
 
 
+
+    /** Which half of a two block plant a state is, written as the code that names it. */
+    private fun halfOf(state: BlockState): String =
+        if (state.getValue(DoublePlantBlock.HALF) == DoubleBlockHalf.UPPER) {
+            "DoubleBlockHalf.UPPER"
+        } else {
+            "DoubleBlockHalf.LOWER"
+        }
 
     fun wheatState(age: Int): BlockState =
         Blocks.WHEAT.defaultBlockState()
@@ -88,10 +96,16 @@ object CropStates {
     fun redMushroomState(): BlockState = Blocks.RED_MUSHROOM.defaultBlockState()
     fun brownMushroomState(): BlockState = Blocks.BROWN_MUSHROOM.defaultBlockState()
     fun cactusState(): BlockState = Blocks.CACTUS.defaultBlockState()
-    fun sunflowerState(): BlockState = Blocks.SUNFLOWER.defaultBlockState()
+    /**
+     * A sunflower is two blocks, a lower half rooted in the ground and an upper half above it, and
+     * a plan that wants the whole flower wants both. The lower one is what a crop is planted as,
+     * so it is what is meant when nothing is said.
+     */
+    fun sunflowerState(half: DoubleBlockHalf = DoubleBlockHalf.LOWER): BlockState =
+        Blocks.SUNFLOWER.defaultBlockState().setValue(DoublePlantBlock.HALF, half)
     fun shortGrassState(): BlockState = Blocks.SHORT_GRASS.defaultBlockState()
-    fun roseBushState(half: DoubleBlockHalf): BlockState =
-        Blocks.ROSE_BUSH.defaultBlockState()
+    fun roseBushState(half: DoubleBlockHalf = DoubleBlockHalf.LOWER): BlockState =
+        Blocks.ROSE_BUSH.defaultBlockState().setValue(DoublePlantBlock.HALF, half)
             .setValue(DoublePlantBlock.HALF, half)
     fun deadBushState(): BlockState = Blocks.DEAD_BUSH.defaultBlockState()
 }
