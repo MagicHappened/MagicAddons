@@ -1,5 +1,13 @@
 package org.magic.magicaddons.features.farming.greenhousePresets
 
+import java.time.Instant
+import java.time.Duration
+import org.magic.magicaddons.data.greenhouse.GreenhouseLayout
+import net.minecraft.network.chat.Style
+import net.minecraft.network.chat.HoverEvent
+import net.minecraft.network.chat.Component
+import net.minecraft.network.chat.ClickEvent
+import net.minecraft.ChatFormatting
 import java.util.UUID
 import com.mojang.blaze3d.vertex.PoseStack
 import net.minecraft.world.phys.Vec3
@@ -181,6 +189,15 @@ object LayoutRenderState {
     /** The stands a ghosted crop is made of, drawn as part of showing what to plant. */
     val ghostStands: List<ArmorStand> get() = plan.ghostStands
 
+    /** Whether the plan was finished the last time it was worked out. */
+    private var lastFinished: Boolean = false
+
+    /** When the player was last told, so finishing twice quickly is only said once. */
+    private var announcedAt: Instant? = null
+
+    /** How long after saying it the plan holds its tongue, however often it is finished again. */
+    private val ANNOUNCE_COOLDOWN: Duration = Duration.ofSeconds(30)
+
     /** Crops with no first stage described yet, so each is only ever mentioned once. */
     private val reportedMissingStage = mutableSetOf<String>()
 
@@ -333,7 +350,54 @@ object LayoutRenderState {
 
         // one swap, so nothing drawn is ever half of this plan and half of the last
         plan = next
+
+        announceIfFinished(grid, layout, next)
     }
+
+    /**
+     * Says so, once, when a plan has just been finished.
+     *
+     * A plan is finished when it is asking for nothing: no block marked, no crop ghosted, nothing
+     * standing where something else belongs. It is only worth saying at the moment it becomes
+     * true, so a plan that was already finished says nothing, and a plant taken out and put back
+     * says nothing again for half a minute, which is long enough that fiddling with the last slot
+     * cannot turn into a stream of congratulations.
+     */
+    private fun announceIfFinished(grid: GreenhouseGrid, layout: GreenhouseLayout, next: Plan) {
+        if (grid.state.completionMuted) return
+
+        val finished = next.marks.isEmpty() && next.ghosts.isEmpty() && next.badStands.isEmpty()
+        val was = lastFinished
+
+        lastFinished = finished
+
+        if (!finished || was) return
+
+        val now = Instant.now()
+        if (announcedAt?.let { now.isBefore(it.plus(ANNOUNCE_COOLDOWN)) } == true) return
+
+        announcedAt = now
+
+        ChatUtils.sendWithPrefix(
+            "${layout.displayName()} successfully built on ${grid.layout.displayName()}"
+        )
+        ChatUtils.send(
+            Component.literal("  Turn the planner off for this greenhouse? ")
+                .withStyle(ChatFormatting.GRAY)
+                .append(answer("YES", ChatFormatting.GREEN, "unplan"))
+                .append(Component.literal(" / ").withStyle(ChatFormatting.DARK_GRAY))
+                .append(answer("NO", ChatFormatting.RED, "keepPlanner"))
+        )
+    }
+
+    /** One of the two answers, as a word the player clicks rather than a command they type. */
+    private fun answer(word: String, color: ChatFormatting, command: String): Component =
+        Component.literal(word).withStyle(
+            Style.EMPTY
+                .withColor(color)
+                .withClickEvent(ClickEvent.RunCommand("/MagicAddons internal $command"))
+                .withHoverEvent(HoverEvent.ShowText(Component.literal("Click to answer $word")))
+        )
 
     /**
      * Marks a plant as being in the way rather than absent.

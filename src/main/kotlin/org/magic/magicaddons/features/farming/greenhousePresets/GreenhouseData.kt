@@ -398,6 +398,33 @@ object GreenhouseData {
         regenRender()
     }
 
+    /**
+     * Takes the plan off the greenhouse being stood in.
+     *
+     * The plan is a thing the player turned on and can turn off, so both the button on the screen
+     * and the word in chat come here rather than each reaching into the grid themselves.
+     */
+    fun unplanCurrentGreenhouse(): Boolean {
+        val grid = getCurrentGrid() ?: run {
+            ChatUtils.sendWithPrefix("Not standing in a greenhouse.")
+            return false
+        }
+
+        if (grid.state.assignedLayout == null) {
+            ChatUtils.sendWithPrefix("No planner running on ${grid.layout.displayName()}.")
+            return false
+        }
+
+        grid.state.assignedLayout = null
+        grid.state.completionMuted = false
+
+        regenRender()
+
+        ChatUtils.sendWithPrefix("Planner stopped on ${grid.layout.displayName()}")
+
+        return true
+    }
+
     fun regenRender(){
         LayoutRenderState.show()
     }
