@@ -279,8 +279,16 @@ object GreenhouseData {
     private var driftAppliedMs: Long = 0
     private var driftClippedMs: Long = 0
 
-    /** How long a gap in watching counts as having left rather than as a slow frame. */
-    private val AWAY_THRESHOLD: Duration = Duration.ofSeconds(10)
+    /**
+     * How far the server may fall behind the wall clock before the gap is read as an absence.
+     *
+     * Measured as time the server never accounted for, not as time passed: the check itself only
+     * runs once a minute, so every ordinary look back sees a minute of wall clock and would read
+     * as leaving if elapsed time were the question. What separates being away from being lagged is
+     * that a server which is merely behind still sends ticks, so its time nearly keeps up, while
+     * one nobody is listening to sends none at all.
+     */
+    private val AWAY_THRESHOLD: Duration = Duration.ofSeconds(20)
 
     fun checkForUpdate() {
         if (!greenhousesInitialized) return
@@ -336,13 +344,19 @@ object GreenhouseData {
             val serverMs = passedServerTicks * 50L
             val realMs = now.toEpochMilli() - lastCheck.toEpochMilli()
 
-            // a long silence is the garden having been left rather than a server that stalled for
-            // a minute, and counting it as lag would hand the countdown the whole absence at once
-            if (Duration.ofMillis(realMs) > AWAY_THRESHOLD) {
-                awayMs += realMs
+            // a server that merely stalls still sends ticks, so its time nearly keeps up with the
+            // wall clock. One nobody is listening to sends none, and the whole gap arrives as
+            // unaccounted time. Handing that to the countdown as lag would push it by the length
+            // of an absence rather than the length of a stall
+            val unaccountedMs = realMs - serverMs
+
+            if (Duration.ofMillis(unaccountedMs) > AWAY_THRESHOLD) {
+                awayMs += unaccountedMs
                 awaySpells++
 
-                tickDebug("away for ${realMs / 1000}s, not counted as lag")
+                tickDebug(
+                    "away: ${realMs / 1000}s passed, server accounted for ${serverMs / 1000}s"
+                )
 
                 lastCheckTime = now
                 return
