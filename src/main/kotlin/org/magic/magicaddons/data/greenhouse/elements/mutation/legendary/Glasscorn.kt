@@ -1,5 +1,6 @@
 package org.magic.magicaddons.data.greenhouse.elements.mutation.legendary
 
+import net.minecraft.world.level.block.state.properties.DoubleBlockHalf
 import org.magic.magicaddons.data.greenhouse.CropStates.sunflowerState
 import org.magic.magicaddons.data.greenhouse.CropStage
 import org.magic.magicaddons.data.greenhouse.CropBlockState
@@ -24,9 +25,7 @@ object Glasscorn : CropDefinitionProvider {
         skyblockId = SkyBlockItemId.item("GLASSCORN"),
         stageDefs = listOf(
             // the two stages look alike, so they are one stage that says so rather than two that
-            // pretend to be told apart. The sunflower's upper half sits above each of the four
-            // lower halves and is left undescribed: the exporter could not name that state, and a
-            // block nobody checks is looser than a block described wrongly
+            // pretend to be told apart
             CropStage(
                 blocks = CropBlockState.blockStatePattern(
                     positions = listOf(
@@ -36,6 +35,14 @@ object Glasscorn : CropDefinitionProvider {
                         BlockPos(1, 1, 1)
                     ),
                     blockState = sunflowerState()
+                ) + CropBlockState.blockStatePattern(
+                    positions = listOf(
+                        BlockPos(0, 2, 0),
+                        BlockPos(0, 2, 1),
+                        BlockPos(1, 2, 0),
+                        BlockPos(1, 2, 1)
+                    ),
+                    blockState = sunflowerState(DoubleBlockHalf.UPPER)
                 ),
                 armorStands = CropArmorStand.matcherPattern(
                     offsets = listOf(

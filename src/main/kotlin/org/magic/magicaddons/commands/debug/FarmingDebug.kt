@@ -27,6 +27,7 @@ import net.minecraft.world.entity.EquipmentSlot
 import net.minecraft.world.entity.decoration.ArmorStand
 import org.magic.magicaddons.commands.AbstractCommand
 import org.magic.magicaddons.data.greenhouse.Footprint
+import org.magic.magicaddons.data.greenhouse.CropRegistry
 import org.magic.magicaddons.data.greenhouse.PlantDex
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData
 import org.magic.magicaddons.features.farming.greenhousePresets.LayoutRenderState
@@ -176,6 +177,15 @@ object FarmingDebug : AbstractCommand() {
                         dumpPlantDex()
                         return@executes 1
                     }
+                    .then(
+                        RequiredArgumentBuilder.argument<FabricClientCommandSource, String>(
+                            "crop",
+                            StringArgumentType.greedyString()
+                        ).executes {
+                            dumpPlantDexFor(StringArgumentType.getString(it, "crop"))
+                            return@executes 1
+                        }
+                    )
             )
             .then(
                 LiteralArgumentBuilder.literal<FabricClientCommandSource>("uniques")
@@ -205,6 +215,43 @@ object FarmingDebug : AbstractCommand() {
                         }
                     )
             )
+    }
+
+    /**
+     * What one crop is still missing, said in chat.
+     *
+     * Named rather than picked from a list, and matched on the letters of the name alone, so
+     * "do not eat shroom" and "DoNotEatShroom" both find the same plant.
+     */
+    private fun dumpPlantDexFor(name: String) {
+        val wanted = name.lowercase().filter { it.isLetterOrDigit() }
+
+        val def = CropRegistry.all
+            .filter { wanted in it.name.lowercase().filter { c -> c.isLetterOrDigit() } }
+            .minByOrNull { it.name.length }
+
+        if (def == null) {
+            ChatUtils.sendWithPrefix("No crop here goes by \"$name\".")
+            return
+        }
+
+        val missing = PlantDex.reportFor(def)
+
+        if (missing == null) {
+            ChatUtils.sendWithPrefix(
+                Component.literal("${def.name}: all ${def.maxStage} stages recorded")
+                    .withStyle(ChatFormatting.GREEN)
+            )
+            return
+        }
+
+        ChatUtils.sendWithPrefix(
+            Component.literal("${def.name}: ${PlantDex.percentFor(def)}% of ${def.maxStage} stages")
+                .withStyle(ChatFormatting.GOLD)
+        )
+        ChatUtils.send(
+            Component.literal("  $missing").withStyle(ChatFormatting.GRAY)
+        )
     }
 
     /**
