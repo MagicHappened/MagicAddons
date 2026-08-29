@@ -26,6 +26,19 @@ class EnumWidget<T>(
     val valueChanged: ((T) -> Unit)? = null,
     ) : Renderable, Focusable {
     val overlay = EnumOverlay(1)
+
+    /**
+     * The gap between the border and what sits inside it, on both sides.
+     *
+     * Wider than the four the text used to get, which left the name all but touching the border
+     * while the flip beside it breathed, and the two sat side by side looking like two different
+     * widgets.
+     */
+    private val TEXT_PAD: Int = 6
+
+    private val ARROW: String = "↓"
+    private val ELLIPSIS: String = "…"
+
     val font = Minecraft.getInstance().font
     var overlayOpen = false
 
@@ -43,24 +56,37 @@ class EnumWidget<T>(
         graphics.fill(x, y, x + width, y + height, Common.UI.BACKGROUND_COLOR)
         graphics.drawBorder(x, y, x + width, y + height, Common.UI.BORDER_SIZE, Common.UI.BORDER_COLOR)
 
+        val textY = y + (height - font.lineHeight) / 2
+
+        // the arrow keeps to the far side and the name is given what is left, so a long name runs
+        // out of room before it runs into the arrow rather than under it
+        val arrowWidth = font.width(ARROW)
+        val room = width - TEXT_PAD * 2 - arrowWidth - Common.UI.SPACING
+
+        val name = currentValue.toString()
+        val shown = if (font.width(name) <= room) {
+            name
+        } else {
+            font.plainSubstrByWidth(name, room - font.width(ELLIPSIS)) + ELLIPSIS
+        }
+
         graphics.text(
             font,
-            Component.literal(currentValue.toString()),
-            x + Common.UI.TEXT_X_PAD,
-            y + (height - font.lineHeight) / 2,
+            Component.literal(shown),
+            x + TEXT_PAD,
+            textY,
             Common.UI.TEXT_COLOR,
             false
         )
 
         graphics.text(
             font,
-            Component.literal("↓"),
-            x + width - font.width("↓") - 4,
-            y + (height - font.lineHeight) / 2,
+            Component.literal(ARROW),
+            x + width - arrowWidth - TEXT_PAD,
+            textY,
             Common.UI.TEXT_COLOR,
             false
         )
-
     }
 
     override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, bl: Boolean): Boolean {
