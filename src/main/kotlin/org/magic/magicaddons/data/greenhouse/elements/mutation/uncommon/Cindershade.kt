@@ -153,6 +153,56 @@ object Cindershade : CropDefinitionProvider {
                 blocks = listOf(
                     CropBlockState(
                         offset = BlockPos(0, 1, 0),
+                        blockState = netherwartState(1)
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        isSmall = false,
+                        offset = Vec3(0.0, -0.71875, 0.0),
+                        hashString = "66aa7b369efc0186937373242fe406e196281f0caf76899a4661c960b47fb74c"
+                    ),
+                    CropArmorStand(
+                        isSmall = false,
+                        offset = Vec3(0.03125, -0.15625, 0.03125),
+                        headRotation = Rotations(0.0f, 45.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
+                        hashString = "7bd5a39c3f9b1f513ecc299afaa5f90040fdb7424a5cd592e9ff31de7a3aafb3"
+                    )
+                ),
+                6..6,
+                allowRotation = true
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = netherwartState(1)
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        isSmall = false,
+                        offset = Vec3(0.0, -0.625, 0.0),
+                        hashString = "66aa7b369efc0186937373242fe406e196281f0caf76899a4661c960b47fb74c"
+                    ),
+                    CropArmorStand(
+                        isSmall = false,
+                        offset = Vec3(0.03125, -0.03125, 0.03125),
+                        headRotation = Rotations(0.0f, 45.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
+                        hashString = "7bd5a39c3f9b1f513ecc299afaa5f90040fdb7424a5cd592e9ff31de7a3aafb3"
+                    )
+                ),
+                7..7,
+                allowRotation = true
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0, 1, 0),
                         blockState = netherwartState(3)
                     )
                 ),

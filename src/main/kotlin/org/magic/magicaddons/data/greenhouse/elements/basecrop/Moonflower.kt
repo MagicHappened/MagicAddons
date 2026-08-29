@@ -164,6 +164,40 @@ object Moonflower : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         isSmall = false,
+                        offset = Vec3(0.0, 0.4375, 0.1875),
+                        hashString = "7775c5d80efc36c7b029470852aaf161e3733f8ae691fb5ed5450232630e4fcb"
+                    )
+                ),
+                12..12,
+                allowRotation = true
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = sunflowerState()
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        isSmall = false,
+                        offset = Vec3(0.0, 0.4375, 0.1875),
+                        hashString = "24f985b13feff57c62440a1b88fc093da03966878a48a513bce57ee9d5004980"
+                    )
+                ),
+                13..13,
+                allowRotation = true
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = sunflowerState()
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        isSmall = false,
                         offset = Vec3(-0.1875, 0.5625, 0.0),
                         headRotation = Rotations(-22.5f, 0.0f, 0.0f),
                         xRotation = 0.0f,

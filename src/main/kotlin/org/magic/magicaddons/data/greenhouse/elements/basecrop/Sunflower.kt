@@ -162,11 +162,29 @@ object Sunflower : CropDefinitionProvider {
                 ),
                 armorStands = listOf(
                     CropArmorStand(
-                        offset = Vec3(-0.1875, 0.4375, 0.0),
+                        isSmall = false,
+                        offset = Vec3(0.0, 0.4375, 0.1875),
                         hashString = "8082ca3aa210204d1daa8a3b737f594e102daf3c87b776530d49ba79b9b22e71"
                     )
                 ),
                 12..12,
+                allowRotation = true
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = sunflowerState()
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        isSmall = false,
+                        offset = Vec3(0.0, 0.4375, 0.1875),
+                        hashString = "f942c5e8426609a132549b7df5300739fade9122dad08a1d0265347795cf51ad"
+                    )
+                ),
+                13..13,
                 allowRotation = true
             ),
             CropStage(
