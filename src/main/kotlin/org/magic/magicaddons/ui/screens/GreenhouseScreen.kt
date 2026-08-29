@@ -379,6 +379,13 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         }
         val hovered = hoveredElement
         if (hovered !is ElementWidget) return
+
+        // the star beside a water time answers for itself, and says so instead of the plant's own
+        // tooltip, since the mouse is on the star rather than on the plant
+        hovered.debtTooltipAt(mouseX, mouseY)?.let {
+            graphics.drawSimpleTooltip(it, mouseX + 7, mouseY + 12)
+            return
+        }
         // clears the swatches sitting against the right edge of the grid rather than covering them
         hovered.renderTooltip(
             graphics,

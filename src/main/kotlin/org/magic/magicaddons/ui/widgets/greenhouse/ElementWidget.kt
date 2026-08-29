@@ -46,6 +46,25 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, Focus
 
     /** The water effects reaching this plant, set by whoever knows what stands beside it. */
     var waterEffect: Int = 0
+
+    /** What a time worked out from a plant that may have been passed over is marked with. */
+    private val DEBT_MARK: String = "*"
+
+    /**
+     * Where that mark is on screen, so hovering it can explain itself. Null whenever the last
+     * drawing of this plant did not need one.
+     */
+    private var debtMarkBox: IntArray? = null
+
+    /** What the mark means, said in full rather than left as a symbol nobody can look up. */
+    private val DEBT_EXPLANATION: String = """
+        A plant with negative water has a chance of being skipped when the greenhouse ticks:
+        it neither grows a stage nor loses water that tick.
+        Because that is a chance rather than a rule, this timer assumes it was never skipped,
+        which is the soonest the plant could die rather than the likeliest.
+        Water it with a watering can, or read it with the plant analyzer,
+        to replace the guess with what the plant actually holds.
+    """.trimIndent()
     override var focusedState: Boolean = false
 
     /**
@@ -207,6 +226,8 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, Focus
      * reassuring the player it is fine.
      */
     private fun renderWaterVerdict(graphics: GuiGraphicsExtractor, waterLevel: Int, barTop: Int) {
+        debtMarkBox = null
+
         val ticksLeft = WaterModel.ticksUntilDeath(waterLevel, waterEffect)
         val remainingMs = GreenhouseData.remainingTickMs()
 
@@ -229,7 +250,8 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, Focus
             text = "?"
             color = Common.UI.TEXT_COLOR
         } else {
-            text = readableDuration(remainingMs + (ticksLeft - 1) * tickMs)
+            text = readableDuration(remainingMs + (ticksLeft - 1) * tickMs) +
+                    if (instance.waterPredictedInDebt) DEBT_MARK else ""
             color = if (ticksLeft > ticksNeeded) Common.UI.SUCCESS_COLOR else Common.UI.DANGER_COLOR
         }
 
@@ -254,6 +276,17 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, Focus
             pose.translate(textX, textY)
             pose.scale(INFO_TEXT_SCALE, INFO_TEXT_SCALE)
             graphics.text(font, text, 0, 0, color, false)
+
+            if (instance.waterPredictedInDebt) {
+                val markWidth = font.width(DEBT_MARK) * INFO_TEXT_SCALE
+
+                debtMarkBox = intArrayOf(
+                    (textX + textWidth - markWidth).toInt(),
+                    textY.toInt(),
+                    (textX + textWidth).toInt(),
+                    (textY + textHeight).toInt()
+                )
+            }
         } finally {
             pose.popMatrix()
         }
@@ -270,6 +303,15 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, Focus
     override fun isMouseOver(mouseX: Double, mouseY: Double): Boolean {
         return mouseX.toInt() in widgetX until widgetX + width &&
                 mouseY.toInt() in widgetY until widgetY + height
+    }
+
+    /** The star's own tooltip, when the mouse is on the star rather than the plant. */
+    fun debtTooltipAt(mouseX: Int, mouseY: Int): String? {
+        val box = debtMarkBox ?: return null
+
+        return DEBT_EXPLANATION.takeIf {
+            mouseX in box[0]..box[2] && mouseY in box[1]..box[3]
+        }
     }
 
     fun renderTooltip(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int) {

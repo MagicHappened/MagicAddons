@@ -533,6 +533,16 @@ data class GreenhouseElementInstance(
      * until it is fed, the way a snoozling stops until it is woken.
      */
     val isStarving: Boolean get() = readings[CropStandReader.HUNGER] == 0
+
+    /**
+     * Whether a tick has been counted against this plant while its water was already negative.
+     *
+     * A plant in debt has a chance of being passed over entirely, taking neither the stage nor the
+     * water, and the prediction cannot know which happened. It counts the loss regardless, so the
+     * water shown is the worst the plant could be in rather than the best, and this says the number
+     * carries that assumption. Cleared the moment anything is actually read off the plant.
+     */
+    var waterPredictedInDebt: Boolean = false
 }
 
 
