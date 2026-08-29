@@ -31,6 +31,7 @@ import org.magic.magicaddons.data.greenhouse.elements.FireElement
 import org.magic.magicaddons.data.handlers.DataHandler
 import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.events.EventHandler
+import org.magic.magicaddons.events.chat.OnSystemChatEvent
 import org.magic.magicaddons.events.greenhouse.PlotChangedEvent
 import org.magic.magicaddons.events.interact.*
 import org.magic.magicaddons.events.world.OnWorldTickEvent
@@ -659,6 +660,28 @@ object GreenhouseData {
 
         element.instance.age = 0L
         if (definition.needsWater) element.instance.waterLevel = 0
+
+        forgetPlacedCrop()
+    }
+
+    /**
+     * What the server says when a placement did not happen.
+     *
+     * A crop is claimed on the strength of what was in hand when the block went down, but the
+     * server has the last word and takes a moment to say it. Any of these means the plant never
+     * went in, so the claim is dropped rather than left to land on whatever the read finds in
+     * that slot next.
+     */
+    private val PLACE_REFUSALS: List<Regex> = listOf(
+        Regex("can only grow on ", RegexOption.IGNORE_CASE),
+        Regex("There is already a crop planted here", RegexOption.IGNORE_CASE),
+        Regex("You cannot build here", RegexOption.IGNORE_CASE)
+    )
+
+    @EventHandler
+    fun onPlacementRefused(event: OnSystemChatEvent) {
+        if (placedCrop == null) return
+        if (PLACE_REFUSALS.none { it.containsMatchIn(event.text) }) return
 
         forgetPlacedCrop()
     }

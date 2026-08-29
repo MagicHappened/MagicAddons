@@ -12,7 +12,8 @@ object Cactus : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Cactus",
         effects = setOf(
-            CropEffect.ImprovedWaterRetain
+            CropEffect.ImprovedWaterRetain,
+            CropEffect.HarvestLoss
         ),
         skyblockId = SkyBlockItemId.item("CACTUS"),
         stageDefs = listOf(

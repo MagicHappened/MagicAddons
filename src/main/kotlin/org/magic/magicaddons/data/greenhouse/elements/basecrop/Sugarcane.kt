@@ -1,5 +1,6 @@
 package org.magic.magicaddons.data.greenhouse.elements.basecrop
 
+import org.magic.magicaddons.data.greenhouse.CropEffect
 import net.minecraft.core.BlockPos
 import net.minecraft.world.level.block.Blocks
 import org.magic.magicaddons.data.greenhouse.DECAY_TIME_MS
@@ -14,6 +15,10 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Sugarcane : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Sugar Cane",
+        effects = setOf(
+            CropEffect.ImprovedXpBoost,
+            CropEffect.HarvestLoss
+        ),
         skyblockId = SkyBlockItemId.item("SUGAR_CANE"),
         stageDefs = listOf(
             CropStage(

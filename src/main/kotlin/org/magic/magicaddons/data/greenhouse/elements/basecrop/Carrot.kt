@@ -1,5 +1,6 @@
 package org.magic.magicaddons.data.greenhouse.elements.basecrop
 
+import org.magic.magicaddons.data.greenhouse.CropEffect
 import net.minecraft.core.BlockPos
 import org.magic.magicaddons.data.greenhouse.DECAY_TIME_MS
 import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
@@ -12,6 +13,9 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Carrot : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Carrot",
+        effects = setOf(
+            CropEffect.XpBoost
+        ),
         skyblockId = SkyBlockItemId.item("CARROT_ITEM"),
         stageDefs = listOf(
             CropStage(

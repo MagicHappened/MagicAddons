@@ -1,5 +1,6 @@
 package org.magic.magicaddons.data.greenhouse.elements.basecrop
 
+import org.magic.magicaddons.data.greenhouse.CropEffect
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Rotations
 import net.minecraft.world.level.block.Blocks
@@ -17,6 +18,10 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Redmushroom : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Red Mushroom",
+        effects = setOf(
+            CropEffect.ImprovedHarvestBoost,
+            CropEffect.WaterDrain
+        ),
         skyblockId = SkyBlockItemId.item("RED_MUSHROOM"),
         stageDefs = listOf(
             CropStagePattern(
