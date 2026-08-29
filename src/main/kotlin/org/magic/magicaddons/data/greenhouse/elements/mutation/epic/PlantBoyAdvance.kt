@@ -51,6 +51,42 @@ object PlantBoyAdvance : CropDefinitionProvider {
                         BlockPos(0, 1, 0),
                         BlockPos(1, 1, 0)
                     ),
+                    blockState = melonStemState(2)
+                ) + CropBlockState.blockStatePattern(
+                    positions = listOf(
+                        BlockPos(0, 1, 1),
+                        BlockPos(1, 1, 1)
+                    ),
+                    blockState = melonStemState(1)
+                ),
+                armorStands = CropArmorStand.matcherPattern(
+                    offsets = listOf(
+                        Vec3(-0.34375, -0.84375, 0.0),
+                        Vec3(0.3125, -0.84375, 0.0)
+                    ),
+                    rotations = listOf(
+                        Rotations(45.0f, 180.0f, 0.0f),
+                        Rotations(45.0f, 0.0f, 0.0f)
+                    ),
+                    hashString = "9eaf5fc0bf98649111f53d7516b18dec5d9d13f19273bef2b2b04f068ca9d337",
+                    isSmall = false
+                ) + listOf(
+                    CropArmorStand(
+                        isSmall = false,
+                        offset = Vec3(0.0, -0.65625, -0.28125),
+                        headRotation = Rotations(-45.0f, 0.0f, 0.0f),
+                        hashString = "a842c0c12f515281c228b2827f1c34d12b19833fa84083c6bee831245ceaa914"
+                    )
+                ),
+                2..2,
+                allowRotation = true
+            ),
+            CropStage(
+                blocks = CropBlockState.blockStatePattern(
+                    positions = listOf(
+                        BlockPos(0, 1, 0),
+                        BlockPos(1, 1, 0)
+                    ),
                     blockState = melonStemState(3)
                 ) + CropBlockState.blockStatePattern(
                     positions = listOf(
