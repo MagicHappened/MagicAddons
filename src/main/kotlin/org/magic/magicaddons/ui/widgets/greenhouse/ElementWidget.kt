@@ -137,8 +137,12 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, Focus
      * Nothing is drawn while that fact is unknown, an empty backdrop says less than the plant does.
      */
     fun renderHoverButtonInfo(graphics: GuiGraphicsExtractor, info: HoverInfo) {
-        // water is a level rather than a reading, and a meter says that faster than a number does
+        // water is a level rather than a reading, and a meter says that faster than a number does.
+        // A plant that never drinks has neither, so it is left alone rather than drawn with an
+        // empty meter that reads as a plant about to die of thirst
         if (info == HoverInfo.WaterLevel) {
+            if (!instance.cropDef.needsWater) return
+
             instance.waterLevel?.let { renderWaterBar(graphics, it) }
             return
         }
