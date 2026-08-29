@@ -1,11 +1,9 @@
 package org.magic.magicaddons.features.farming.greenhousePresets
 
 import org.magic.magicaddons.data.greenhouse.GrowthStageInfo
-import org.magic.magicaddons.commands.debug.CropStageExporter
 import org.magic.magicaddons.commands.debug.CropCollector
 import org.magic.magicaddons.util.getBuildableArea
 import org.magic.magicaddons.util.parseDurationToMs
-import org.magic.magicaddons.util.isCardinalYaw
 import org.magic.magicaddons.util.center
 import net.minecraft.network.chat.HoverEvent
 import net.minecraft.network.chat.ClickEvent
@@ -217,10 +215,6 @@ object GreenhouseData {
         if (!reconcileWanted) return
 
         reconcileWanted = false
-
-        // temporary, alongside the plan logging: says a scan happened, so a blink can be lined up
-        // against the scan that caused it
-        Common.LOGGER.info("[plan] reconcile running")
 
         getCurrentGrid()?.state?.needsUpdate = true
         scanGridData()
@@ -695,6 +689,11 @@ object GreenhouseData {
     }
 
     fun getDiagnosesData(realItems: List<ItemStack>) {
+        // a collector's instrument now. Pointed at a plant with no collection running it has
+        // nothing to say and says nothing, rather than reporting a match nobody asked for and
+        // leaving an export on the clipboard
+        if (!CropCollector.isActive()) return
+
         if (!baseSetting.value) return
         val identifyStack = realItems.firstOrNull() ?: return
 
@@ -806,133 +805,11 @@ object GreenhouseData {
                 )
             }
 
-        // during a collection run the click is a correction and nothing more. The player is
-        // standing on the plant's north-western block, the page has just said which stage it is,
-        // and the matching report below would only bury the run's own lines
-        if (CropCollector.isActive()) {
-            CropCollector.correct(def, stageRaw)
-            return
-        }
-
-        val matchingStage = def.stageDefs.find { stageDef ->
-            stageRaw in stageDef.stageRange
-        }
-        plantDiagnosticListeningElement?.let {
-            it.instance.age = age?.parseDurationToMs()
-            it.instance.growthStage = GrowthStageInfo.Known(stageRaw)
-            it.instance.waterLevel = waterLevel
-        }
-        val level = Minecraft.getInstance().level ?: return
-        var abnormalRotationFound = false
-        val element = plantDiagnosticHitBaseBlock?.let { block ->
-            val minX = block.x.toDouble()
-            val minY = block.y.toDouble()
-            val minZ = block.z.toDouble()
-
-            // the crop's own footprint, not the one set by hand for exporting an unknown plant.
-            // A three by three searched as a one by one covers a ninth of itself and finds almost
-            // none of its stands, so it never matches
-            val maxX = (block.x + def.footprint.width).toDouble()
-            val maxY = (block.y + 15).toDouble()  // height
-            val maxZ = (block.z + def.footprint.height).toDouble()
-
-            val box = AABB(
-                minX, minY, minZ,
-                maxX, maxY, maxZ
-            )
-
-            // the plot's own marker stands are not part of any plant, and counting them is how one
-            // crop ended up reporting four stands that nothing is drawing
-            val armorStands = level.getEntitiesOfClass(ArmorStand::class.java, box)
-                .filterNot { it.isMarker }
-                .toMutableList()
-
-            // a stand that is not small is rebuilt wrong unless its definition says so, and the
-            // definitions take small as read
-            val fullSized = armorStands.filterNot { it.isSmall }
-
-            // one line for the crop, not one per stand: several stands of the same plant share a
-            // block, so naming each of them says the same thing three times over
-            if (fullSized.isNotEmpty()) {
-                ChatUtils.sendWithPrefix(
-                    "${fullSized.size} of ${def.name}'s stands are not small, its definition needs isSmall = false"
-                )
-
-                // exact positions, since stands of one plant share a block and only the fractions
-                // tell a stack of three apart from three sitting a hair from each other
-                fullSized.forEach {
-                    ChatUtils.send(
-                        Component.literal(
-                            "  %.4f %.4f %.4f".format(it.x, it.y, it.z)
-                        ).withStyle(ChatFormatting.DARK_GRAY)
-                    )
-                }
-            }
-
-            abnormalRotationFound = armorStands.any {
-                ((it.headPose.x != 0.0f || it.headPose.y != 0.0f || it.headPose.z != 0.0f) ||
-                        (!it.xRot.isCardinalYaw() || !it.yRot.isCardinalYaw()))
-                        && PlayerUtils.getSkullHash(it) != null
-            }
-            // the exporter only knows a position, so the soil is read from the world and the slot
-            // is made up to file the result against
-            val soil = level.getBlockState(block).block
-
-            GreenhouseGrid.findElementAt(
-                block,
-                soil,
-                armorStands,
-                LayoutSlot(block.x, block.z, level.getBlockState(block))
-            )
-        }
-
-        if (element == null) {
-            ChatUtils.sendWithPrefix("Nothing here matched ${def.name}, so it is not being tracked.")
-        } else {
-            ChatUtils.sendWithPrefix(
-                "Matched ${element.instance.elementId} at ${element.instance.growthStage}"
-            )
-        }
-
-        val isSelf = UUID.fromString("eef58b9d-39e1-4062-8a1a-2f921f14a46d") == Minecraft.getInstance().player?.uuid
-        // an estimate is a match worth exporting anyway. It means several stages look alike, and
-        // an export of one of them is exactly what would tell them apart, so the one case we most
-        // want the output for was the one case that stopped producing it
-        val override = element?.instance?.growthStage is GrowthStageInfo.Estimated
-        if (matchingStage != null){
-            if (matchingStage.needsRotationData(abnormalRotationFound)){
-                ChatUtils.sendWithPrefix("No rotation data for ${def.name}")
-                plantDiagnosticHitBaseBlock?.let {
-                    CropStageExporter.copyCropStageData(it,stageRaw, def, !isSelf)
-                }
-            }
-            else if (element?.rotationLegacy == true) {
-                // the stage exists and the plant is what it says, but its offsets were recorded
-                // before exports came out facing rotation zero. This plant is standing proof of
-                // the corrected version, so its export replaces the old data
-                ChatUtils.sendWithPrefix(
-                    "${def.name} stage $stageRaw predates rotation-normalized exports, please send the copied output to replace it"
-                )
-                plantDiagnosticHitBaseBlock?.let {
-                    CropStageExporter.copyCropStageData(it, stageRaw, def, !isSelf)
-                }
-            }
-            else if (override){
-                ChatUtils.sendWithPrefix(
-                    "${def.name} could only be narrowed to a range, so its output was copied too"
-                )
-                plantDiagnosticHitBaseBlock?.let {
-                    CropStageExporter.copyCropStageData(it,stageRaw, def, !isSelf)
-                }
-            }
-        }
-        else {
-            ChatUtils.sendWithPrefix("No matching stage for ${def.name} please send the copied output")
-            plantDiagnosticHitBaseBlock?.let {
-                CropStageExporter.copyCropStageData(it,stageRaw, def, !isSelf)
-            }
-        }
+        // the only caller left, and it rescans the whole footprint itself, so what the tool
+        // hands over is the crop and the stage the page just named
+        CropCollector.correct(def, stageRaw)
     }
+
     /**
      * The value written beside [label] on a diagnosis page.
      *
@@ -973,13 +850,6 @@ object GreenhouseData {
             )
         }
     }
-
-    fun CropStage.needsRotationData(abnormalRotation: Boolean): Boolean =
-        abnormalRotation && this.armorStands?.let { stands ->
-            stands.isNotEmpty() && !stands.any {
-                it.headRotation != null && it.xRotation != null && it.yRotation != null
-            }
-        } ?: true
 
     fun updateCropGrowth(realItems: List<ItemStack>) {
         val sunflower = realItems.firstOrNull {
