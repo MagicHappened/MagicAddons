@@ -116,30 +116,41 @@ object LayoutRenderState {
         Crops
     }
 
-    @Volatile
-    var phase: Phase = Phase.Soil
-        private set
+    /**
+     * Everything the plan says, as one thing.
+     *
+     * Held together rather than as five fields because a frame is drawn while the plan is being
+     * worked out, on another thread, and five assignments in a row are five moments where a frame
+     * can catch the new answer to one question beside the old answer to the next. A plan swapped
+     * in one go is always answered from a single reading of the plot, so a rescan changes what is
+     * drawn without ever passing through a state nobody computed.
+     */
+    private class Plan(
+        val phase: Phase,
+        val marks: Map<BlockPos, Pair<VoxelShape, Mark>>,
+        val ghosts: Map<BlockPos, BlockState>,
+        val badStands: Set<UUID>,
+        val ghostStands: List<ArmorStand>
+    ) {
+        companion object {
+            val NOTHING = Plan(Phase.Soil, emptyMap(), emptyMap(), emptySet(), emptyList())
+        }
+    }
 
-    /** Blocks to be dealt with, by the shape they occupy and what is wrong with them. */
     @Volatile
-    private var marks: Map<BlockPos, Pair<VoxelShape, Mark>> = emptyMap()
+    private var plan: Plan = Plan.NOTHING
 
-    /** Blocks that have to be placed, as they would look once they are. */
-    @Volatile
-    private var ghosts: Map<BlockPos, BlockState> = emptyMap()
+    /** Which half of the job the player is on. */
+    val phase: Phase get() = plan.phase
 
     /**
      * Armor stands standing where a crop has to go. They are tinted rather than outlined, since an
      * entity is rendered one at a time and can simply be drawn a different colour.
      */
-    @Volatile
-    var badStandsUUID: Set<UUID> = emptySet()
-        private set
+    val badStandsUUID: Set<UUID> get() = plan.badStands
 
     /** The stands a ghosted crop is made of, drawn as part of showing what to plant. */
-    @Volatile
-    var ghostStands: List<ArmorStand> = emptyList()
-        private set
+    val ghostStands: List<ArmorStand> get() = plan.ghostStands
 
     /** Crops with no first stage described yet, so each is only ever mentioned once. */
     private val reportedMissingStage = mutableSetOf<String>()
@@ -149,6 +160,9 @@ object LayoutRenderState {
      * one the frame is actually drawn with.
      */
     fun submit(poseStack: PoseStack, collector: SubmitNodeCollector, cameraPos: Vec3) {
+        val plan = this.plan
+        val marks = plan.marks
+        val ghosts = plan.ghosts
         marks.forEach { (pos, mark) ->
             WorldRender.mark(
                 poseStack, collector, cameraPos, pos, mark.first, mark.second.color, FILL_ALPHA
@@ -165,17 +179,15 @@ object LayoutRenderState {
 
     /** Starts over on the plan of whichever greenhouse the player is in. */
     fun show() {
-        phase = Phase.Soil
+        // the phase rides in the plan now, and refresh works it out from the plot rather than
+        // being told, so starting over is forgetting what has been said and looking again
         reportedMissingStage.clear()
 
         refresh()
     }
 
     fun hide() {
-        marks = emptyMap()
-        ghosts = emptyMap()
-        badStandsUUID = emptySet()
-        ghostStands = emptyList()
+        plan = Plan.NOTHING
         reportedMissingStage.clear()
     }
 
@@ -211,7 +223,7 @@ object LayoutRenderState {
             if (!compare(level, pos, wanted, marks, ghosts)) soilComplete = false
         }
 
-        phase = if (soilComplete) Phase.Crops else Phase.Soil
+        val soilPhase = if (soilComplete) Phase.Crops else Phase.Soil
 
         if (soilComplete) {
             layout.elementInstances.forEach { instance ->
@@ -257,10 +269,8 @@ object LayoutRenderState {
             }
         }
 
-        this.marks = marks
-        this.ghosts = ghosts
-        this.badStandsUUID = badStands
-        this.ghostStands = ghostStands
+        // one swap, so nothing drawn is ever half of this plan and half of the last
+        plan = Plan(soilPhase, marks, ghosts, badStands, ghostStands)
     }
 
     /**
