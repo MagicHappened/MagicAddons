@@ -36,6 +36,9 @@ class EnumWidget<T>(
      */
     private val TEXT_PAD: Int = 6
 
+    /** Narrow enough to still look like a selector when every value is a short word. */
+    private val MIN_WIDTH: Int = 60
+
     private val ARROW: String = "↓"
     private val ELLIPSIS: String = "…"
 
@@ -51,6 +54,22 @@ class EnumWidget<T>(
         valueChanged?.invoke(newValue)
     }
 
+
+    /**
+     * Sets the width from the longest value it might have to show, up to [maxWidth].
+     *
+     * The caller used to pick a number and the widget cut whatever did not fit, so a name was
+     * shortened because of a guess made before anyone knew what the names were. It measures now,
+     * and the ellipsis is kept for the one case that is really about room: a name too long for the
+     * screen rather than too long for a number somebody typed.
+     */
+    fun fitToValues(maxWidth: Int) {
+        val shown = values.map { it.toString() } + listOfNotNull(currentValue?.toString())
+        val longest = shown.maxOfOrNull { font.width(it) } ?: 0
+
+        width = (longest + TEXT_PAD * 2 + font.width(ARROW) + Common.UI.SPACING)
+            .coerceIn(MIN_WIDTH, maxWidth.coerceAtLeast(MIN_WIDTH))
+    }
 
     override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, a: Float) {
         graphics.fill(x, y, x + width, y + height, Common.UI.BACKGROUND_COLOR)
@@ -140,15 +159,32 @@ class EnumWidget<T>(
 
         override var hoveredElement: GuiEventListener? = null
 
+        /**
+         * A row is as tall as the closed selector, so the list reads as the same control opened
+         * rather than a smaller one underneath it.
+         */
         val overlayRowHeight: Int
-            get() = (this@EnumWidget.height * 0.8f).toInt()
+            get() = this@EnumWidget.height
 
         val valueWidgets: MutableList<ClickableRowWidget<T>> = mutableListOf()
 
         override val overlayX: Int
             get() = this@EnumWidget.x
+        /**
+         * Under the selector, or above it when the screen runs out underneath. A list that falls
+         * off the bottom is a list whose last values cannot be picked at all.
+         */
         override val overlayY: Int
-            get() = this@EnumWidget.y + this@EnumWidget.height
+            get() {
+                val below = this@EnumWidget.y + this@EnumWidget.height
+                val room = Minecraft.getInstance().window.guiScaledHeight
+
+                return if (below + overlayHeight <= room) {
+                    below
+                } else {
+                    (this@EnumWidget.y - overlayHeight).coerceAtLeast(0)
+                }
+            }
         override val overlayWidth: Int
             get() = this@EnumWidget.width
         override val overlayHeight: Int

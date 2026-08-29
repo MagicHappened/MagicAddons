@@ -19,6 +19,17 @@ class GridWidget(
     val slotSize: Int
 ) : Renderable, Focusable, NarratableEntry, HoverableContainer {
 
+    /**
+     * How far the slot at [index] sits from the grid's own corner.
+     *
+     * A slot and the line drawn after it, counted [index] times. Written six ways in as many
+     * places before, which is how a grid ends up a pixel out in one of them.
+     */
+    private fun offsetOf(index: Int): Int = index * (slotSize + LINE_WIDTH)
+
+    /** Every slot and the line after each, which is the whole grid across or down. */
+    val gridSpan: Int get() = offsetOf(layout.size)
+
     private val slotWidgets = mutableListOf<SlotWidget>()
     private val elementWidgets = mutableListOf<ElementWidget>()
 
@@ -49,8 +60,8 @@ class GridWidget(
                 widget.widgetWidth = slotSize
                 widget.widgetHeight = slotSize
 
-                widget.widgetX = widgetX + x * slotSize + x
-                widget.widgetY = widgetY + y * slotSize + y
+                widget.widgetX = widgetX + offsetOf(x)
+                widget.widgetY = widgetY + offsetOf(y)
 
                 widget.init()
 
@@ -66,8 +77,8 @@ class GridWidget(
             val originX = instance.slot.x
             val originY = instance.slot.y
 
-            widget.widgetX = widgetX + originX * slotSize + originX
-            widget.widgetY = widgetY + originY * slotSize + originY
+            widget.widgetX = widgetX + offsetOf(originX)
+            widget.widgetY = widgetY + offsetOf(originY)
             //hopefully work?
 
             // each axis swallows the grid lines between the slots it covers, and a crop is not
@@ -94,21 +105,21 @@ class GridWidget(
         for (i in 1 until layout.size) {
             // vertical
             graphics.drawLine(
-                widgetX  + i * slotSize + i,
+                widgetX + offsetOf(i),
                 widgetY,
-                widgetX + i * slotSize + i,
-                widgetY + layout.size * slotSize + layout.size,
-                1,
+                widgetX + offsetOf(i),
+                widgetY + gridSpan,
+                LINE_WIDTH,
                 Common.UI.GRID_LINE_COLOR
             )
 
             // horizontal
             graphics.drawLine(
                 widgetX,
-                widgetY + i * slotSize + i,
-                widgetX + layout.size * slotSize + layout.size,
-                widgetY + i * slotSize + i,
-                1,
+                widgetY + offsetOf(i),
+                widgetX + gridSpan,
+                widgetY + offsetOf(i),
+                LINE_WIDTH,
                 Common.UI.GRID_LINE_COLOR
             )
         }
@@ -160,6 +171,24 @@ class GridWidget(
     }
 
     override fun updateNarration(narrationElementOutput: NarrationElementOutput) {}
+
+    companion object {
+        /** The line drawn between one slot and the next, and around the outside. */
+        const val LINE_WIDTH: Int = 1
+
+        /**
+         * The largest slot that fits a grid of [slots] into [room], lines included.
+         *
+         * The screen is the source of truth and the slot is worked out from it, rather than a slot
+         * size being chosen and the grid landing wherever it lands. Doing the division once, here,
+         * is what keeps the grid from being a pixel out: everything else is counted up from the
+         * answer instead of divided again.
+         */
+        fun slotSizeFor(room: Int, slots: Int): Int = room / slots - LINE_WIDTH
+
+        /** What a grid of [slots] at [slotSize] takes up, which is the span plus its closing line. */
+        fun spanFor(slotSize: Int, slots: Int): Int = slots * (slotSize + LINE_WIDTH)
+    }
 
 
 
