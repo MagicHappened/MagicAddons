@@ -1,5 +1,6 @@
 package org.magic.magicaddons.features.farming.greenhousePresets
 
+import org.magic.magicaddons.Common
 import java.util.UUID
 import com.mojang.blaze3d.vertex.PoseStack
 import net.minecraft.world.phys.Vec3
@@ -140,6 +141,22 @@ object LayoutRenderState {
     @Volatile
     private var plan: Plan = Plan.NOTHING
 
+    /**
+     * Temporary. Every refresh says what it made of the plot and every frame says what it drew,
+     * so a blink can be read back as either a plan that came out empty or a frame that drew an
+     * empty one. Remove once the flicker is understood.
+     */
+    private const val DEBUG_PLAN: Boolean = true
+
+    private var refreshCount: Int = 0
+
+    @Volatile
+    private var lastDrawn: String = ""
+
+    private fun debug(message: String) {
+        if (DEBUG_PLAN) Common.LOGGER.info("[plan] $message")
+    }
+
     /** Which half of the job the player is on. */
     val phase: Phase get() = plan.phase
 
@@ -163,6 +180,14 @@ object LayoutRenderState {
         val plan = this.plan
         val marks = plan.marks
         val ghosts = plan.ghosts
+
+        if (DEBUG_PLAN) {
+            val drawn = "${marks.size}m ${ghosts.size}g ${plan.ghostStands.size}s"
+            if (drawn != lastDrawn) {
+                lastDrawn = drawn
+                Common.LOGGER.info("[plan] frame draws $drawn")
+            }
+        }
         marks.forEach { (pos, mark) ->
             WorldRender.mark(
                 poseStack, collector, cameraPos, pos, mark.first, mark.second.color, FILL_ALPHA
@@ -202,9 +227,17 @@ object LayoutRenderState {
         // nothing to draw. Wiping the plan on the way past cost a frame of blank screen every
         // time the plot was briefly unreadable, which is a rescan blinking rather than changing.
         // What was last worked out stays up until something is worked out to replace it
-        if (grid == null) return
+        refreshCount++
 
-        val level = Minecraft.getInstance().level ?: return
+        if (grid == null) {
+            debug("$refreshCount bail: no grid, keeping ${plan.marks.size}m ${plan.ghosts.size}g ${plan.ghostStands.size}s")
+            return
+        }
+
+        val level = Minecraft.getInstance().level ?: run {
+            debug("$refreshCount bail: no level")
+            return
+        }
 
         // the plan is whatever this greenhouse was given, so standing in another one shows that
         // one's plan or nothing, rather than carrying the last one around the garden. This one is
@@ -212,6 +245,7 @@ object LayoutRenderState {
         val layout = grid.state.assignedLayout
 
         if (layout == null) {
+            debug("$refreshCount bail: no layout assigned, clearing")
             hide()
             return
         }
@@ -275,6 +309,13 @@ object LayoutRenderState {
                     .forEach { badStands.add(it.uuid) }
             }
         }
+
+        debug(
+            "$refreshCount built: ${marks.size}m ${ghosts.size}g ${ghostStands.size}s " +
+                    "phase=$soilPhase planned=${layout.elementInstances.size} " +
+                    "growing=${grid.elements.size} " +
+                    "(was ${plan.marks.size}m ${plan.ghosts.size}g ${plan.ghostStands.size}s)"
+        )
 
         // one swap, so nothing drawn is ever half of this plan and half of the last
         plan = Plan(soilPhase, marks, ghosts, badStands, ghostStands)

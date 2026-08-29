@@ -226,6 +226,10 @@ object GreenhouseData {
 
         reconcileWanted = false
 
+        // temporary, alongside the plan logging: says a scan happened, so a blink can be lined up
+        // against the scan that caused it
+        Common.LOGGER.info("[plan] reconcile running")
+
         getCurrentGrid()?.state?.needsUpdate = true
         scanGridData()
     }
