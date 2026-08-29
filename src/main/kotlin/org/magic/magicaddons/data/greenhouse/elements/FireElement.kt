@@ -11,6 +11,7 @@ import org.magic.magicaddons.data.greenhouse.CropStage
 import org.magic.magicaddons.data.greenhouse.ElementRuntimeState
 import org.magic.magicaddons.data.greenhouse.GreenhouseElementInstance
 import org.magic.magicaddons.data.greenhouse.LayoutSlot
+import org.magic.magicaddons.data.greenhouse.NEVER_DECAYS
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
 object FireElement : CropDefinitionProvider {
@@ -29,6 +30,7 @@ object FireElement : CropDefinitionProvider {
                 stageRange = 1..1
             ),
         ),
+        decayTimeMs = NEVER_DECAYS,
         needsWater = false,
         requiredSoil = setOf(Blocks.SOUL_SAND, Blocks.NETHERRACK)
 

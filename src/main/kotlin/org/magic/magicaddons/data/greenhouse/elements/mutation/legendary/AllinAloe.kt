@@ -10,6 +10,7 @@ import org.magic.magicaddons.data.greenhouse.CropDefinition
 import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
 import org.magic.magicaddons.data.greenhouse.CropStage
 import org.magic.magicaddons.data.greenhouse.CropStates.melonStemState
+import org.magic.magicaddons.data.greenhouse.NEVER_DECAYS
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockId
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
@@ -45,6 +46,7 @@ object AllinAloe : CropDefinitionProvider {
             )
 
         ),
+        decayTimeMs = NEVER_DECAYS,
         maxStage = 27,
         requiredSoil = setOf(Blocks.SAND),
         needsWater = false,

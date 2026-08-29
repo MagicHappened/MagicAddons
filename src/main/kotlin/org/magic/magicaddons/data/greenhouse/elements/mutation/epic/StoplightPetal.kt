@@ -240,6 +240,7 @@ object StoplightPetal : CropDefinitionProvider {
 
 
         ),
+        // five days decay timer
         maxStage = 12,
         isMutation = true
     )

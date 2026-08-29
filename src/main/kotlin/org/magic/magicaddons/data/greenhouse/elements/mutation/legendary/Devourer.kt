@@ -83,6 +83,7 @@ object Devourer : CropDefinitionProvider {
             )
 
         ),
+        // five days decay timer
         maxStage = 16,
         isMutation = true
     )

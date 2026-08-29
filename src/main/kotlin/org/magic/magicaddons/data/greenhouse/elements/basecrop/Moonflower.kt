@@ -4,7 +4,7 @@ import org.magic.magicaddons.data.greenhouse.CropEffect
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Rotations
 import net.minecraft.world.phys.Vec3
-import org.magic.magicaddons.data.greenhouse.DECAY_TIME_MS
+import org.magic.magicaddons.data.greenhouse.DEFAULT_DECAY_TIME_MS
 import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
 import org.magic.magicaddons.data.greenhouse.CropArmorStand
 import org.magic.magicaddons.data.greenhouse.CropBlockState
@@ -196,7 +196,6 @@ object Moonflower : CropDefinitionProvider {
             )
         ),
         maxStage = 15,
-        decayTimeMs = DECAY_TIME_MS,
         isBaseCrop = true
 
 

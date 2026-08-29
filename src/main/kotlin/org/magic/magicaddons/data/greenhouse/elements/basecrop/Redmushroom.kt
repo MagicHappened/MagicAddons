@@ -5,7 +5,7 @@ import net.minecraft.core.BlockPos
 import net.minecraft.core.Rotations
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.phys.Vec3
-import org.magic.magicaddons.data.greenhouse.DECAY_TIME_MS
+import org.magic.magicaddons.data.greenhouse.DEFAULT_DECAY_TIME_MS
 import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
 import org.magic.magicaddons.data.greenhouse.CropArmorStand
 import org.magic.magicaddons.data.greenhouse.CropBlockState
@@ -64,7 +64,6 @@ object Redmushroom : CropDefinitionProvider {
 
         ),
         maxStage = 6,
-        decayTimeMs = DECAY_TIME_MS,
         requiredSoil = setOf(Blocks.MYCELIUM),
         needsWater = false,
         isBaseCrop = true

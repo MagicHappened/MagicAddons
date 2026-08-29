@@ -105,6 +105,7 @@ object Thunderling : CropDefinitionProvider {
 
 
         ),
+        // five days decay timer
         maxStage = 16,
         needsWater = false,
         isMutation = true

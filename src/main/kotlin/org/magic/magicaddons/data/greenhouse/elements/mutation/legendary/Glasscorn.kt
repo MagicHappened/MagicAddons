@@ -11,6 +11,7 @@ import net.minecraft.world.level.block.Blocks
 import org.magic.magicaddons.data.greenhouse.CropEffect
 import org.magic.magicaddons.data.greenhouse.CropDefinition
 import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
+import org.magic.magicaddons.data.greenhouse.DEFAULT_DECAY_TIME_MS
 import org.magic.magicaddons.data.greenhouse.Footprint
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 

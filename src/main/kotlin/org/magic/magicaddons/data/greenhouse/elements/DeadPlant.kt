@@ -8,6 +8,7 @@ import org.magic.magicaddons.data.greenhouse.CropDefinition
 import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
 import org.magic.magicaddons.data.greenhouse.CropStage
 import org.magic.magicaddons.data.greenhouse.CropStates.deadBushState
+import org.magic.magicaddons.data.greenhouse.NEVER_DECAYS
 import org.magic.magicaddons.util.BlockUtils.isBlock
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
@@ -27,6 +28,7 @@ object DeadPlant : CropDefinitionProvider {
                 1..1
             )
         ),
+        decayTimeMs = NEVER_DECAYS,
         requiredSoil = setOf(Blocks.SAND, Blocks.DIRT, Blocks.FARMLAND, Blocks.MYCELIUM, Blocks.SOUL_SAND, Blocks.END_STONE),
         needsWater = false,
         isMutation = true, // see if needed

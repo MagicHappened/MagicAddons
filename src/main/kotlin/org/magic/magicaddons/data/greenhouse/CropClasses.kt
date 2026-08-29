@@ -449,10 +449,13 @@ object WorldRotation {
 }
 
 /** Everything in a greenhouse that decays does so three days after it was planted. */
-const val DECAY_TIME_MS: Long = 3L * 24 * 60 * 60 * 1000
+const val DEFAULT_DECAY_TIME_MS: Long = 3L * 24 * 60 * 60 * 1000
 
 /** [CropDefinition.decayTimeMs] for a plant that never decays, such as the fleshtrap. */
 const val NEVER_DECAYS: Long = -1L
+
+/** The longer life a few of the harder mutations get, twice the usual three days. */
+const val SIX_DAY_DECAY_TIME_MS: Long = 6L * 24 * 60 * 60 * 1000
 
 data class CropDefinition(
     val name: String,
@@ -460,7 +463,12 @@ data class CropDefinition(
     val aliases: List<SkyBlockId>? = null,
     val stageDefs: List<CropStage>,
     val maxStage: Int = 1,
-    val decayTimeMs: Long? = null,
+    /**
+     * How long after planting this crop rots away, three days for almost everything. A crop that
+     * does not is [NEVER_DECAYS], and the few that last longer say so; the rest say nothing,
+     * since a line repeated on forty definitions is not a fact about any of them.
+     */
+    val decayTimeMs: Long = DEFAULT_DECAY_TIME_MS,
     val footprint: Footprint = Footprint(1,1),
     val requiredSoil: Set<Block> = setOf(Blocks.FARMLAND),
     val needsWater: Boolean = true,

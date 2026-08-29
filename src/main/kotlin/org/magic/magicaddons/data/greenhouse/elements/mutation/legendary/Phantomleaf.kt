@@ -77,6 +77,7 @@ object Phantomleaf : CropDefinitionProvider {
             )
 
         ),
+        //five days decay time
         maxStage = 15,
         requiredSoil = setOf(Blocks.SOUL_SAND),
         needsWater = false,

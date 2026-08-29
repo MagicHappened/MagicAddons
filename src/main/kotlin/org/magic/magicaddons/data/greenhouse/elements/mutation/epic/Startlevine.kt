@@ -145,6 +145,7 @@ object Startlevine : CropDefinitionProvider {
 
 
         ),
+        // five days decay time
         maxStage = 12,
         isMutation = true
     )
