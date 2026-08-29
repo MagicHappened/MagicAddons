@@ -37,6 +37,7 @@ import org.magic.magicaddons.events.greenhouse.PlotChangedEvent
 import org.magic.magicaddons.events.interact.*
 import org.magic.magicaddons.events.world.OnWorldTickEvent
 import org.magic.magicaddons.events.world.OnEntityAdded
+import org.magic.magicaddons.events.world.OnEntityRemoved
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhousePresets.baseSetting
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.PlayerUtils
@@ -112,14 +113,7 @@ object GreenhouseData {
                 valueTransform = { it.second }
             )
 
-    /** How long the plot has to be still before it is read again. */
-    /** Whether to skip the waiting entirely and rescan on every change. */
-    private const val RECONCILE_BYPASS: Boolean = true
 
-    private val RECONCILE_QUIET: Duration = Duration.ofMillis(500)
-
-    /** How long a steady stream of changes may put a read off for. */
-    private val RECONCILE_CEILING: Duration = Duration.ofSeconds(2)
 
     private var plantDiagnosticHitBaseBlock: BlockPos? = null
     private var plantDiagnosticListeningElement: ElementRuntimeState? = null
@@ -211,32 +205,26 @@ object GreenhouseData {
     /** The hunting shard carrying greenhouse speed, a legendary one, twenty four syphons to max. */
     const val GREENHOUSE_SPEED_ATTRIBUTE_ID: String = "attribute:l57"
 
-    private var reconcileDueAt: Instant? = null
-    private var reconcileDeadline: Instant? = null
+    /**
+     * Whether the plot has changed since the last look.
+     *
+     * There was a wait here, half a second of quiet before scanning so a burst of changes cost one
+     * scan rather than twenty. It bought little: a stage that knows its rotation is matched at the
+     * one rotation the grid gives its block instead of six, which made a scan cheap enough to run
+     * on the change itself, and waiting only meant the screen was a beat behind the world.
+     */
+    private var reconcileWanted: Boolean = false
 
     /** Something in the plot changed, so what is stored for it can no longer be trusted. */
     fun requestReconcile() {
-        val now = Instant.now()
-
-        // bypassed while the cost of rescanning is being measured. The waiting is still here,
-        // and RECONCILE_QUIET is still what it would wait, but every change is taken as the plot
-        // having already gone quiet so the scan runs at the next opportunity
-        reconcileDueAt = if (RECONCILE_BYPASS) now else now.plus(RECONCILE_QUIET)
-
-        if (reconcileDeadline == null) {
-            reconcileDeadline = now.plus(RECONCILE_CEILING)
-        }
+        reconcileWanted = true
     }
 
-    /** Runs a reconcile once the plot has gone quiet, or once it has been put off long enough. */
+    /** Runs a reconcile if anything has asked for one since the last tick. */
     private fun runDueReconcile() {
-        val dueAt = reconcileDueAt ?: return
-        val now = Instant.now()
+        if (!reconcileWanted) return
 
-        if (now.isBefore(dueAt) && now.isBefore(reconcileDeadline ?: dueAt)) return
-
-        reconcileDueAt = null
-        reconcileDeadline = null
+        reconcileWanted = false
 
         getCurrentGrid()?.state?.needsUpdate = true
         scanGridData()
@@ -538,6 +526,22 @@ object GreenhouseData {
      * nothing about breaking one reaches the block listener. Without this a harvested crop stayed
      * on the screen until something else in the plot happened to change.
      */
+    /**
+     * A plant taken apart leaves when the server says so, a moment after the swing that did it.
+     * Asking on the swing looked at a plot the crop was still standing in, so the screen stayed a
+     * whole harvest behind: the first break showed up only once the second was swung for.
+     */
+    @EventHandler
+    fun onEntityRemoved(event: OnEntityRemoved) {
+        val grid = getCurrentGrid() ?: return
+        if (!grid.hasRuntime()) return
+
+        val area = grid.plot?.getBuildableArea() ?: return
+        if (event.removedEntityList.none { area.contains(it.entity.position()) }) return
+
+        requestReconcile()
+    }
+
     @EventHandler
     fun onAttackEntity(event: OnAttackEntityEvent) {
         val grid = getCurrentGrid() ?: return
