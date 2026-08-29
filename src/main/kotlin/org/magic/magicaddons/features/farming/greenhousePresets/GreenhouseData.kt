@@ -703,6 +703,18 @@ object GreenhouseData {
                 it.standEntities?.contains(hitEntity) ?: return@find false
             }
         }
+        // a stage names the stands and blocks it matched on and no others, so pointing the tool
+        // at a hunger bar, a sleep bubble, or a block the stage never mentioned found nothing and
+        // the plant went on wearing whatever had been guessed for it. Anything standing inside a
+        // plant's footprint belongs to that plant, named or not
+        if (hitElement == null) {
+            val pos = hitBlock ?: hitEntity?.blockPosition()
+
+            hitElement = pos
+                ?.let { grid.getSlotAt(BlockPos(it.x, GREENHOUSE_SOIL_Y, it.z), false) }
+                ?.let { grid.elementCovering(it) }
+        }
+
         if (hitElement == null) {
             plantDiagnosticListeningElement = null
             return

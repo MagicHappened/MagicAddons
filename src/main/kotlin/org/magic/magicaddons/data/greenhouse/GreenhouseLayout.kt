@@ -79,9 +79,11 @@ data class GreenhouseLayout(
      * percent. Either effect winning outright would have given a different pair. See
      * notes/water-formula.md.
      *
-     * What that pair cannot separate is whether the drain is added or multiplied in, since both
-     * come to thirteen a tick here; a fifty percent retain beside a drain would tell them apart.
-     * The yield effects are still guessed at wherever they are eventually added up.
+     * A plain fifty percent retain beside the same drain then separated adding from multiplying,
+     * which the first pair could not: twenty percent, and the plant lost eighteen a tick where
+     * multiplying would have cost nineteen. So a drain is a negative percentage like any other and
+     * the sum is taken unchanged. The yield effects are still guessed at wherever they are
+     * eventually added up.
      */
     fun waterEffectAt(slot: LayoutSlot): Int = effectsAt(slot)
         .filter { it.kind == CropEffect.Kind.Water }
