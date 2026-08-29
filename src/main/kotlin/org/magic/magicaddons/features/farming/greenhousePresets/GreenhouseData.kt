@@ -689,11 +689,6 @@ object GreenhouseData {
     }
 
     fun getDiagnosesData(realItems: List<ItemStack>) {
-        // a collector's instrument now. Pointed at a plant with no collection running it has
-        // nothing to say and says nothing, rather than reporting a match nobody asked for and
-        // leaving an export on the clipboard
-        if (!CropCollector.isActive()) return
-
         if (!baseSetting.value) return
         val identifyStack = realItems.firstOrNull() ?: return
 
@@ -715,7 +710,7 @@ object GreenhouseData {
         val bucketLore = realItems.firstOrNull { it.item == Items.WATER_BUCKET }?.getLore()
 
         if (beaconLore == null || saplingLore == null || bucketLore == null) {
-            ChatUtils.sendWithPrefix(
+            if (CropCollector.isActive()) ChatUtils.sendWithPrefix(
                 "The diagnosis is missing a page: " +
                         listOfNotNull(
                             "status".takeIf { beaconLore == null },
@@ -736,12 +731,12 @@ object GreenhouseData {
 
         // these two are still read out of a numbered piece, the way the stage used to be, so when
         // one comes up empty the page it came from is worth seeing before guessing at a label
-        if (waterLevel == null) {
+        if (waterLevel == null && CropCollector.isActive()) {
             ChatUtils.sendWithPrefix("Could not read the water level, the water page reads:")
             dumpLore(bucketLore)
         }
 
-        if (status == null) {
+        if (status == null && CropCollector.isActive()) {
             ChatUtils.sendWithPrefix("Could not read the status, the status page reads:")
             dumpLore(beaconLore)
         }
@@ -771,6 +766,18 @@ object GreenhouseData {
                 lastCheckTime = Instant.now()
             }
         }
+
+        // what the pages just said about the plant that was pointed at, whether or not anyone is
+        // collecting. Telling the greenhouse what it is looking at is the tool's other job, and
+        // the one thing here the game knows better than any guess: the stage exactly, the water
+        // exactly, and how long it has been standing there
+        plantDiagnosticListeningElement?.let { element ->
+            age?.parseDurationToMs()?.let { element.instance.age = it }
+            stageRaw?.let { element.instance.growthStage = GrowthStageInfo.Known(it) }
+            waterLevel?.let { element.instance.waterLevel = it }
+        }
+
+        if (!CropCollector.isActive()) return
 
         // the whole point of pointing the tool at a plant is being told what the mod makes of it,
         // so every way of learning nothing says so rather than returning quietly
