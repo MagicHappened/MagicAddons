@@ -131,11 +131,19 @@ object Pumpkin : CropDefinitionProvider {
                 ),
                 armorStands = listOf(
                     CropArmorStand(
-                        offset = Vec3(0.09375, -0.625, -0.09375),
+                        isSmall = false,
+                        offset = Vec3(0.09375, -0.625, 0.09375),
+                        headRotation = Rotations(22.5f, 0.0f, 22.5f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
                         hashString = "18bd4aa55673e90a3c611117277d94f6ce185b5d13d2a862a3376f50a6139c4f"
                     ),
                     CropArmorStand(
-                        offset = Vec3(0.0, -0.46875, 0.0625),
+                        isSmall = false,
+                        offset = Vec3(-0.0625, -0.46875, 0.0),
+                        headRotation = Rotations(0.0f, 0.0f, -22.5f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
                         hashString = "a9d2abe3c6d6400a20b47179bbe9be278ed336c07fcc1e03ab0eb0c470d620c"
                     )
                 ),
@@ -149,15 +157,17 @@ object Pumpkin : CropDefinitionProvider {
                         blockState = melonStemState(7)
                     )
                 ),
-                armorStands = listOf(
-                    CropArmorStand(
-                        offset = Vec3(-0.09375, -0.625, 0.09375),
-                        hashString = "a9d2abe3c6d6400a20b47179bbe9be278ed336c07fcc1e03ab0eb0c470d620c"
+                armorStands = CropArmorStand.matcherPattern(
+                    offsets = listOf(
+                        Vec3(0.09375, -0.625, 0.09375),
+                        Vec3(-0.0625, -0.46875, 0.0)
                     ),
-                    CropArmorStand(
-                        offset = Vec3(0.0, -0.46875, -0.0625),
-                        hashString = "a9d2abe3c6d6400a20b47179bbe9be278ed336c07fcc1e03ab0eb0c470d620c"
-                    )
+                    rotations = listOf(
+                        Rotations(22.5f, 0.0f, 22.5f),
+                        Rotations(0.0f, 0.0f, -22.5f)
+                    ),
+                    hashString = "a9d2abe3c6d6400a20b47179bbe9be278ed336c07fcc1e03ab0eb0c470d620c",
+                    isSmall = false
                 ),
                 10..10,
                 allowRotation = true

@@ -123,7 +123,8 @@ object Sunflower : CropDefinitionProvider {
                 ),
                 armorStands = listOf(
                     CropArmorStand(
-                        offset = Vec3(0.1875, 0.15625, 0.0),
+                        isSmall = false,
+                        offset = Vec3(0.0, 0.15625, 0.1875),
                         headRotation = Rotations(15.0f, 0.0f, 0.0f),
                         xRotation = 0.0f,
                         yRotation = 0.0f,

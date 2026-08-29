@@ -166,15 +166,17 @@ object Melon : CropDefinitionProvider {
                         blockState = melonStemState(7)
                     )
                 ),
-                armorStands = listOf(
-                    CropArmorStand(
-                        offset = Vec3(0.0625, -0.46875, 0.0),
-                        hashString = "192600cad8dbec5b6a6ec4dcf9bb4e9cd76190cad80aeee8b047de719cf5e36d"
+                armorStands = CropArmorStand.matcherPattern(
+                    offsets = listOf(
+                        Vec3(-0.0625, -0.46875, 0.0),
+                        Vec3(0.09375, -0.625, 0.09375)
                     ),
-                    CropArmorStand(
-                        offset = Vec3(-0.09375, -0.625, -0.09375),
-                        hashString = "192600cad8dbec5b6a6ec4dcf9bb4e9cd76190cad80aeee8b047de719cf5e36d"
-                    )
+                    rotations = listOf(
+                        Rotations(0.0f, 0.0f, -22.5f),
+                        Rotations(22.5f, 0.0f, 22.5f)
+                    ),
+                    hashString = "192600cad8dbec5b6a6ec4dcf9bb4e9cd76190cad80aeee8b047de719cf5e36d",
+                    isSmall = false
                 ),
                 10..10,
                 allowRotation = true
