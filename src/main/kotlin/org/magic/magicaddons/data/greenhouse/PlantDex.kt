@@ -39,16 +39,19 @@ object PlantDex {
                 val covered = def.stageDefs.flatMap { it.stageRange }.toSet()
                 val missing = (1..def.maxStage).filterNot { it in covered }
                 val legacy = legacySeen[def.name].orEmpty().filter { it in covered }.sorted()
+                val unturned = rotationGaps(def)
 
                 total += def.maxStage
                 recorded += def.maxStage - missing.size
 
-                if (missing.isEmpty() && legacy.isEmpty()) return@forEach
+                // a crop wanting for nothing, rotations included, is left out of the listing
+                if (missing.isEmpty() && legacy.isEmpty() && unturned.isEmpty()) return@forEach
                 incomplete++
 
                 val parts = mutableListOf<String>()
                 if (missing.isNotEmpty()) parts += "stages ${ranges(missing)} unrecorded"
                 if (legacy.isNotEmpty()) parts += "stages ${ranges(legacy)} need normalization"
+                if (unturned.isNotEmpty()) parts += "stages ${ranges(unturned)} need rotation data"
 
                 sections.getOrPut(CropRegistry.tierOf[def] ?: 7) { mutableListOf() }
                     .add("${def.name} -> ${parts.joinToString("; ")}")
@@ -70,14 +73,27 @@ object PlantDex {
      * for nothing. Asked when the dex is pointed at a single plant, where a line in chat is the
      * whole answer and there is nothing worth copying.
      */
+    /** The stages of [def] recorded without the way their stands are turned. */
+    fun rotationGaps(def: CropDefinition): List<Int> = def.stageDefs
+        .filterNot { it.hasRotationData }
+        .flatMap { it.stageRange }
+        .distinct()
+        .sorted()
+
+    /** Whether the stage [stage] of [def] was recorded without its rotations. */
+    fun needsRotation(def: CropDefinition, stage: Int): Boolean = def.stageDefs
+        .any { stage in it.stageRange && !it.hasRotationData }
+
     fun reportFor(def: CropDefinition): String? {
         val covered = def.stageDefs.flatMap { it.stageRange }.toSet()
         val missing = (1..def.maxStage).filterNot { it in covered }
         val legacy = legacySeen[def.name].orEmpty().filter { it in covered }.sorted()
+        val unturned = rotationGaps(def)
 
         val parts = mutableListOf<String>()
         if (missing.isNotEmpty()) parts += "stages ${ranges(missing)} unrecorded"
         if (legacy.isNotEmpty()) parts += "stages ${ranges(legacy)} need normalization"
+        if (unturned.isNotEmpty()) parts += "stages ${ranges(unturned)} need rotation data"
 
         return parts.joinToString("; ").takeIf { it.isNotEmpty() }
     }

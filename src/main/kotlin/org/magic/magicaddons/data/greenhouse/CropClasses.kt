@@ -133,6 +133,19 @@ open class CropStage(
 ) {
 
     /**
+     * Whether every stand of this stage was recorded with the way it is turned.
+     *
+     * Matching does not need it: a stand with no rotation recorded is simply not checked on that
+     * count, which is looser and never wrong. Drawing a plant does need it, so a stage without it
+     * can be matched but not faithfully shown, and a stage with no stands at all has nothing to
+     * record and so wants for nothing.
+     */
+    val hasRotationData: Boolean
+        get() = armorStands.orEmpty().all {
+            it.headRotation != null && it.xRotation != null && it.yRotation != null
+        }
+
+    /**
      * Runs every reader against [stands], for a plant that has already matched.
      *
      * A reader takes the first stand it recognises and is dropped if it recognises none, so a bar
