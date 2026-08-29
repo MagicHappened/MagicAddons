@@ -350,6 +350,11 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         displayedGridWidget?.extractRenderState(graphics, mouseX, mouseY, delta)
 
         if (currentDisplay == CurrentDisplay.Greenhouses) {
+            // read here rather than only when the mouse moves. A pick is made by clicking, and a
+            // click is not a movement, so the plants kept showing the last fact until the mouse
+            // happened to twitch
+            displayedGridWidget?.pinnedInfo = hoverControls.selectedInfo
+
             hoverControls.extractRenderState(graphics, mouseX, mouseY, delta)
         }
         gridSelector.extractRenderState(graphics, mouseX, mouseY, delta)
@@ -469,9 +474,6 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         if (currentDisplay == CurrentDisplay.Greenhouses) {
             hoverControls.mouseMoved(mouseX, mouseY)
         }
-
-        displayedGridWidget?.pinnedInfo =
-            hoverControls.selectedInfo.takeIf { currentDisplay == CurrentDisplay.Greenhouses }
 
         displayedGridWidget?.mouseMoved(mouseX, mouseY)
 
