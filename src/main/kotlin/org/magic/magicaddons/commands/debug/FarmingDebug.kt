@@ -27,6 +27,7 @@ import net.minecraft.world.entity.EquipmentSlot
 import net.minecraft.world.entity.decoration.ArmorStand
 import org.magic.magicaddons.commands.AbstractCommand
 import org.magic.magicaddons.data.greenhouse.Footprint
+import org.magic.magicaddons.data.greenhouse.CropDefinition
 import org.magic.magicaddons.data.greenhouse.CropRegistry
 import org.magic.magicaddons.data.greenhouse.PlantDex
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData
@@ -172,20 +173,7 @@ object FarmingDebug : AbstractCommand() {
                     )
             )
             .then(
-                LiteralArgumentBuilder.literal<FabricClientCommandSource>("plantDex")
-                    .executes {
-                        dumpPlantDex()
-                        return@executes 1
-                    }
-                    .then(
-                        RequiredArgumentBuilder.argument<FabricClientCommandSource, String>(
-                            "crop",
-                            StringArgumentType.greedyString()
-                        ).executes {
-                            dumpPlantDexFor(StringArgumentType.getString(it, "crop"))
-                            return@executes 1
-                        }
-                    )
+                plantDexCommand()
             )
             .then(
                 LiteralArgumentBuilder.literal<FabricClientCommandSource>("uniques")
@@ -218,23 +206,37 @@ object FarmingDebug : AbstractCommand() {
     }
 
     /**
-     * What one crop is still missing, said in chat.
+     * The dex, and under it every crop by name.
      *
-     * Named rather than picked from a list, and matched on the letters of the name alone, so
-     * "do not eat shroom" and "DoNotEatShroom" both find the same plant.
+     * A crop is its own word in the command rather than something typed out, so the game offers
+     * them as you type and a name is never guessed at or misspelled. The words are the crop names
+     * with the spaces and punctuation taken out, since a word in a command cannot hold a space.
      */
-    private fun dumpPlantDexFor(name: String) {
-        val wanted = name.lowercase().filter { it.isLetterOrDigit() }
+    private fun plantDexCommand(): LiteralArgumentBuilder<FabricClientCommandSource> {
+        val dex = LiteralArgumentBuilder.literal<FabricClientCommandSource>("plantDex")
+            .executes {
+                dumpPlantDex()
+                return@executes 1
+            }
 
-        val def = CropRegistry.all
-            .filter { wanted in it.name.lowercase().filter { c -> c.isLetterOrDigit() } }
-            .minByOrNull { it.name.length }
+        CropRegistry.all
+            .distinctBy { it.name.filter { c -> c.isLetterOrDigit() } }
+            .forEach { def ->
+                dex.then(
+                    LiteralArgumentBuilder.literal<FabricClientCommandSource>(
+                        def.name.filter { c -> c.isLetterOrDigit() }
+                    ).executes {
+                        dumpPlantDexFor(def)
+                        return@executes 1
+                    }
+                )
+            }
 
-        if (def == null) {
-            ChatUtils.sendWithPrefix("No crop here goes by \"$name\".")
-            return
-        }
+        return dex
+    }
 
+    /** What one crop is still missing, said in chat rather than copied. */
+    private fun dumpPlantDexFor(def: CropDefinition) {
         val missing = PlantDex.reportFor(def)
 
         if (missing == null) {
