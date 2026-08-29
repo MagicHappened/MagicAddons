@@ -113,6 +113,9 @@ object GreenhouseData {
             )
 
     /** How long the plot has to be still before it is read again. */
+    /** Whether to skip the waiting entirely and rescan on every change. */
+    private const val RECONCILE_BYPASS: Boolean = true
+
     private val RECONCILE_QUIET: Duration = Duration.ofMillis(500)
 
     /** How long a steady stream of changes may put a read off for. */
@@ -215,7 +218,10 @@ object GreenhouseData {
     fun requestReconcile() {
         val now = Instant.now()
 
-        reconcileDueAt = now.plus(RECONCILE_QUIET)
+        // bypassed while the cost of rescanning is being measured. The waiting is still here,
+        // and RECONCILE_QUIET is still what it would wait, but every change is taken as the plot
+        // having already gone quiet so the scan runs at the next opportunity
+        reconcileDueAt = if (RECONCILE_BYPASS) now else now.plus(RECONCILE_QUIET)
 
         if (reconcileDeadline == null) {
             reconcileDeadline = now.plus(RECONCILE_CEILING)
