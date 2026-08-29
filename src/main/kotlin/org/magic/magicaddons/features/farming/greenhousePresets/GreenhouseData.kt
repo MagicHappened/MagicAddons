@@ -257,6 +257,31 @@ object GreenhouseData {
         if (DEBUG_TICKS) Common.LOGGER.info("[tick] $message")
     }
 
+    /**
+     * A running account of where a countdown could have gone wrong, kept only while the logging is.
+     *
+     * Every one of these is a way the mod's clock and the game's can part company: real time the
+     * server did not keep up with, time the garden was not being watched at all, and the nudges
+     * already applied to paper over the first. Kept as totals since login rather than as the last
+     * reading, because a two minute disagreement is not made in one tick.
+     */
+    private var watchingSince: Instant? = null
+
+    /** Wall clock time spent watching the garden, and the server time that passed inside it. */
+    private var watchedRealMs: Long = 0
+    private var watchedServerMs: Long = 0
+
+    /** Stretches where the garden was loaded, then was not, then was again. */
+    private var awayMs: Long = 0
+    private var awaySpells: Int = 0
+
+    /** What the nudges have come to, and how much of it the cap refused to apply. */
+    private var driftAppliedMs: Long = 0
+    private var driftClippedMs: Long = 0
+
+    /** How long a gap in watching counts as having left rather than as a slow frame. */
+    private val AWAY_THRESHOLD: Duration = Duration.ofSeconds(10)
+
     fun checkForUpdate() {
         if (!greenhousesInitialized) return
 
@@ -290,6 +315,9 @@ object GreenhouseData {
             // time across the whole gap while the server side of it covers only the last moment,
             // and the correction that comes out of that is nonsense
             if (previousTick == null) {
+                tickDebug("watching the garden again, no server tick to compare against yet")
+
+                watchingSince = watchingSince ?: now
                 lastCheckTime = now
                 return
             }
@@ -307,11 +335,30 @@ object GreenhouseData {
 
             val serverMs = passedServerTicks * 50L
             val realMs = now.toEpochMilli() - lastCheck.toEpochMilli()
+
+            // a long silence is the garden having been left rather than a server that stalled for
+            // a minute, and counting it as lag would hand the countdown the whole absence at once
+            if (Duration.ofMillis(realMs) > AWAY_THRESHOLD) {
+                awayMs += realMs
+                awaySpells++
+
+                tickDebug("away for ${realMs / 1000}s, not counted as lag")
+
+                lastCheckTime = now
+                return
+            }
+
+            watchingSince = watchingSince ?: lastCheck
+            watchedRealMs += realMs
+            watchedServerMs += serverMs
             // how far the server fell behind the wall clock since the last look. Bounded, because
             // this is meant to nudge a countdown that has drifted, and one long pause or one
             // skipped update should not be able to move it by more than the gap it is measuring
-            val adjustmentDelta = (realMs - serverMs)
-                .coerceIn(-MAX_TICK_ADJUSTMENT_MS, MAX_TICK_ADJUSTMENT_MS)
+            val wanted = realMs - serverMs
+            val adjustmentDelta = wanted.coerceIn(-MAX_TICK_ADJUSTMENT_MS, MAX_TICK_ADJUSTMENT_MS)
+
+            driftAppliedMs += adjustmentDelta
+            driftClippedMs += wanted - adjustmentDelta
 
             // added, not taken off. The greenhouse counts in server ticks, so time the server
             // spent behind the wall clock is time the tick has not yet served and the countdown
@@ -354,6 +401,8 @@ object GreenhouseData {
                     "upgrade=${miscInfo.cropSpeedUpgradeValue} attribute=${greenhouseSpeedAttribute()} " +
                     "-> ${growthTickMs / 60000}m ${(growthTickMs % 60000) / 1000}s"
         )
+
+        tickDebug("  " + desyncLedger())
 //        Common.LOGGER.info("Overdue ms $overdueMs")
 //        Common.LOGGER.info("Overdue growth ticks $passedGrowthTicks")
         val nextTickAdvance = (passedGrowthTicks + 1) * growthTickMs
@@ -878,8 +927,19 @@ object GreenhouseData {
 
         if (nextStage?.contains(Regex("\\d")) ?: false) {
             if (!LocationAPI.isGuest) {
+                val was = miscInfo.nextTickTime
+
                 miscInfo.nextTickTime = Instant.now().plusMillis(nextStage.parseDurationToMs())
                 lastCheckTime = Instant.now()
+
+                // the one moment the game says what it thinks, so how far off we had drifted by
+                // then is worth saying, beside the account of everything that could have done it
+                was?.let {
+                    val offBy = Duration.between(it, miscInfo.nextTickTime).toSeconds()
+
+                    tickDebug("resynced from the game: countdown moved ${offBy}s")
+                    tickDebug("  ${desyncLedger()}")
+                }
             }
         }
 
@@ -1101,6 +1161,23 @@ object GreenhouseData {
         val next = miscInfo.nextTickTime ?: return null
 
         return (next.toEpochMilli() - Instant.now().toEpochMilli()).coerceAtLeast(0L)
+    }
+
+    /**
+     * Everything known about why this countdown might not be the game's, in one line.
+     *
+     * Read together: time watched against server time inside it says how much the server fell
+     * behind, the nudges say how much of that was handed to the countdown, the clipped figure says
+     * how much the cap threw away, and the time away says how long nobody was watching at all.
+     */
+    private fun desyncLedger(): String {
+        val lagMs = watchedRealMs - watchedServerMs
+        val watchedFor = watchingSince?.let { Duration.between(it, Instant.now()).toSeconds() } ?: 0
+
+        return "ledger: inGarden=${watchedFor}s watched=${watchedRealMs / 1000}s " +
+                "serverTime=${watchedServerMs / 1000}s lag=${lagMs / 1000}s " +
+                "nudged=${driftAppliedMs / 1000}s clipped=${driftClippedMs / 1000}s " +
+                "away=${awayMs / 1000}s over $awaySpells spell(s)"
     }
 
     fun computeGrowthStageTimeMs(
