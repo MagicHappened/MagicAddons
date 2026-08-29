@@ -131,8 +131,16 @@ object LayoutRenderState {
         val marks: Map<BlockPos, Pair<VoxelShape, Mark>>,
         val ghosts: Map<BlockPos, BlockState>,
         val badStands: Set<UUID>,
-        val ghostStands: List<ArmorStand>
+        /**
+         * The stands of each ghosted crop, kept apart by crop rather than poured into one list so
+         * a plan can take over the stands of every crop that has not changed. Rebuilding an entity
+         * is not the same to a renderer as leaving it alone, and when one crop of fifty changes,
+         * the other forty nine have not.
+         */
+        val standGroups: Map<String, List<ArmorStand>>
     ) {
+        val ghostStands: List<ArmorStand> = standGroups.values.flatten()
+
         /**
          * What this plan asks for, as one string, so two plans can be told apart without comparing
          * the stands themselves. The stands are what makes this worth doing: they are entities
@@ -149,13 +157,11 @@ object LayoutRenderState {
             append('|')
             badStands.map { it.toString() }.sorted().forEach { append(it).append(',') }
             append('|')
-            ghostStands.forEach {
-                append(it.x).append(',').append(it.y).append(',').append(it.z).append(';')
-            }
+            standGroups.keys.sorted().forEach { append(it).append(';') }
         }
 
         companion object {
-            val NOTHING = Plan(Phase.Soil, emptyMap(), emptyMap(), emptySet(), emptyList())
+            val NOTHING = Plan(Phase.Soil, emptyMap(), emptyMap(), emptySet(), emptyMap())
         }
     }
 
@@ -274,7 +280,11 @@ object LayoutRenderState {
         val marks = mutableMapOf<BlockPos, Pair<VoxelShape, Mark>>()
         val ghosts = mutableMapOf<BlockPos, BlockState>()
         val badStands = mutableSetOf<UUID>()
-        val ghostStands = mutableListOf<ArmorStand>()
+        val standGroups = mutableMapOf<String, List<ArmorStand>>()
+
+        // what is already up, to take the unchanged parts of it over rather than build them again
+        val previous = plan
+        var reusedGroups = 0
 
         var soilComplete = true
 
@@ -332,7 +342,15 @@ object LayoutRenderState {
                     compare(level, pos, state, marks, ghosts)
                 }
 
-                ghostStands.addAll(render.stands)
+                // a crop in the same place at the same stage wants the same stands it already
+                // has, so it keeps them. Only a crop that actually changed is built anew
+                val key = "${instance.slot.x},${instance.slot.y}," +
+                        "${instance.cropDef.name},${stage.stageRange}"
+
+                val kept = previous.standGroups[key]
+                if (kept != null) reusedGroups++
+
+                standGroups[key] = kept ?: render.stands
 
                 // a stand already standing in the crop's space is in the way of it
                 val footprint = instance.cropDef.footprint
@@ -348,20 +366,22 @@ object LayoutRenderState {
             }
         }
 
-        val next = Plan(soilPhase, marks, ghosts, badStands, ghostStands)
+        val next = Plan(soilPhase, marks, ghosts, badStands, standGroups)
+        val standCount = next.ghostStands.size
 
         // a plan asking for exactly what is already up is not a new plan. Swapping it in anyway
         // handed the renderer a fresh set of ghost stands, built from nothing every scan, and
         // rebuilding an entity is not the same to a renderer as leaving it alone
         if (next.signature == plan.signature) {
-            debug("$refreshCount unchanged: ${marks.size}m ${ghosts.size}g ${ghostStands.size}s, kept")
+            debug("$refreshCount unchanged: ${marks.size}m ${ghosts.size}g ${standCount}s, kept")
             return
         }
 
         debug(
-            "$refreshCount built: ${marks.size}m ${ghosts.size}g ${ghostStands.size}s " +
+            "$refreshCount built: ${marks.size}m ${ghosts.size}g ${standCount}s " +
                     "phase=$soilPhase planned=${layout.elementInstances.size} " +
                     "growing=${grid.elements.size} " +
+                    "reused=$reusedGroups/${standGroups.size} " +
                     "(was ${plan.marks.size}m ${plan.ghosts.size}g ${plan.ghostStands.size}s)"
         )
 
