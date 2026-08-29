@@ -438,6 +438,17 @@ object GreenhouseData {
             return false
         }
 
+        return unplanGreenhouse(grid)
+    }
+
+    /**
+     * Takes the plan off [grid], whichever greenhouse that is.
+     *
+     * The screen shows whichever greenhouse was picked from its selector rather than the one being
+     * stood in, so the button there has to say which it means. Only the chat answer is about where
+     * the player happens to be standing, since that is what it was asked about.
+     */
+    fun unplanGreenhouse(grid: GreenhouseGrid): Boolean {
         if (grid.state.assignedLayout == null) {
             ChatUtils.sendWithPrefix("No planner running on ${grid.layout.displayName()}.")
             return false

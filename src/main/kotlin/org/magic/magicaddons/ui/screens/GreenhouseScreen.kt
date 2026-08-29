@@ -97,7 +97,7 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
     /** What the player can do to the greenhouse on screen, the other end of the Planner button. */
     private val greenhousePanel = GreenhousePanel(
         onUnplan = {
-            GreenhouseData.unplanCurrentGreenhouse()
+            displayedGrid()?.let { GreenhouseData.unplanGreenhouse(it) }
             initGreenhouseLayout()
         }
     )
@@ -631,7 +631,18 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
     /** Whether the greenhouse on screen has a plan running, which is what the button is for. */
     private fun plannerRunning(): Boolean =
         currentDisplay == CurrentDisplay.Greenhouses &&
-                GreenhouseData.getCurrentGrid()?.state?.assignedLayout != null
+                displayedGrid()?.state?.assignedLayout != null
+
+    /**
+     * The greenhouse on screen, which is whichever the selector is showing rather than the one
+     * being stood in. Looking at one greenhouse while standing in another is the ordinary way to
+     * use this screen, and the button belongs to what is being looked at.
+     */
+    private fun displayedGrid(): GreenhouseGrid? {
+        val layout = displayedGridWidget?.layout ?: return null
+
+        return GreenhouseData.greenhouseGrids.firstOrNull { it.layout === layout }
+    }
 
     fun assignPresetLayout(layout: GreenhouseLayout?, grid: GreenhouseGrid) {
         if (layout == null) {
