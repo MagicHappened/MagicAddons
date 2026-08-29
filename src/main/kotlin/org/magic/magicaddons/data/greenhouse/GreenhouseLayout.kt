@@ -33,9 +33,52 @@ data class GreenhouseLayout(
      * Only what stands directly beside it counts, which is how the game words every one of them. A
      * crop bigger than one slot reaches from any cell it covers, and never counts itself.
      */
-    fun waterEffectAt(slot: LayoutSlot): Int = elementInstances
+    /**
+     * The effects a plant standing on [slot] has.
+     *
+     * A crop's own effects are what it gives away rather than what it holds: a cactus keeps its
+     * neighbours' water and not its own. So what a plant has is what the plants around it grant,
+     * and a plant with nothing beside it has nothing at all.
+     *
+     * Effect spread is the second helping. A neighbour that has been granted effect spread passes
+     * on everything else it has been granted, so a buff can travel two plants from where it came
+     * from, but only two: spread never passes on spread itself, which is what keeps a pair of
+     * plants from handing the same buffs back and forth forever.
+     *
+     * A set, so two melons beside one plant are one water retain rather than two. What a plant has
+     * is which effects it has, not how many times it was given them.
+     */
+    fun effectsAt(slot: LayoutSlot): Set<CropEffect> {
+        val neighbours = elementInstances.filter { !it.covers(slot) && it.touches(slot) }
+
+        val granted = neighbours.flatMapTo(mutableSetOf()) { it.cropDef.effects }
+
+        neighbours.forEach { neighbour ->
+            val theirs = grantedTo(neighbour.slot)
+
+            if (CropEffect.EffectSpread in theirs) {
+                granted += theirs - CropEffect.EffectSpread
+            }
+        }
+
+        return granted
+    }
+
+    /** What the plants around [slot] give it directly, before any of it is spread further. */
+    private fun grantedTo(slot: LayoutSlot): Set<CropEffect> = elementInstances
         .filter { !it.covers(slot) && it.touches(slot) }
-        .flatMap { it.cropDef.effects }
+        .flatMapTo(mutableSetOf()) { it.cropDef.effects }
+
+    /**
+     * How much longer a plant on [slot] holds its water, as a percentage.
+     *
+     * The pieces are added together, so a hundred percent retain beside a thirty percent drain
+     * comes to seventy. That is a guess: nobody has watched a plant sitting between the two long
+     * enough to say whether they add, whether the drain is taken off the loss afterwards, or
+     * whether one simply wins. The same doubt applies to the yield effects wherever they are
+     * eventually added up.
+     */
+    fun waterEffectAt(slot: LayoutSlot): Int = effectsAt(slot)
         .filter { it.kind == CropEffect.Kind.Water }
         .sumOf { it.percent }
 
