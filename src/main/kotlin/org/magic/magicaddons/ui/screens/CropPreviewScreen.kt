@@ -1,5 +1,6 @@
 package org.magic.magicaddons.ui.screens
 
+import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.components.events.GuiEventListener
@@ -50,6 +51,9 @@ class CropPreviewScreen(
     private var sceneStage: CropStage? = null
     private var sceneData: CropStage.RenderData? = null
 
+    /** The ground under the plant: the first soil its definition asks for, one per footprint cell. */
+    private var soilBlocks: Map<BlockPos, BlockState> = emptyMap()
+
     private var yaw: Float = 45f
     private var pitch: Float = -20f
 
@@ -87,6 +91,9 @@ class CropPreviewScreen(
         sliderW = previewSize - 40
         sliderX = previewX + 20
         sliderY = previewY - 14
+
+        // the list may climb over the preview box, but not over the slider above it
+        selector.overlayBudget = selector.y - previewY - 8
     }
 
     private fun picked(def: CropDefinition) {
@@ -111,6 +118,7 @@ class CropPreviewScreen(
     private fun rebuildScene() {
         sceneStage = null
         sceneData = null
+        soilBlocks = emptyMap()
 
         val def = selectedDef ?: return
         val level = Minecraft.getInstance().level ?: return
@@ -121,6 +129,17 @@ class CropPreviewScreen(
 
         sceneStage = stageDef
         sceneData = stageDef.toRenderData(level, ORIGIN, def.footprint, def.standPoses)
+
+        // so the plant is not left floating in a void: the ground it grows from, drawn under it
+        soilBlocks = def.requiredSoil.firstOrNull()?.defaultBlockState()?.let { soil ->
+            buildMap {
+                for (dx in 0 until def.footprint.width) {
+                    for (dz in 0 until def.footprint.height) {
+                        put(ORIGIN.offset(dx, 0, dz), soil)
+                    }
+                }
+            }
+        } ?: emptyMap()
     }
 
     /** Where the middle of the scene sits, and how many blocks it spans at its widest. */
@@ -220,7 +239,7 @@ class CropPreviewScreen(
 
         graphics.guiRenderState.addPicturesInPictureState(
             CropPreviewRenderState(
-                blocks = data.blockMap,
+                blocks = soilBlocks + data.blockMap,
                 stands = stands,
                 sceneCenter = center,
                 yawDeg = yaw,

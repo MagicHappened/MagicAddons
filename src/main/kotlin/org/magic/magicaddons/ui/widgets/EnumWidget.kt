@@ -43,10 +43,18 @@ class EnumWidget<T>(
     private val MIN_WIDTH: Int = 60
 
     private val ARROW: String = "↓"
+    private val ARROW_UP: String = "↑"
     private val ELLIPSIS: String = "…"
 
     val font = Minecraft.getInstance().font
     var overlayOpen = false
+
+    /**
+     * How many pixels the open list may take along the direction it opens, set by whoever laid
+     * the widget out. Null takes whatever the screen has; the screen edge caps it either way, and
+     * anything past the cap is reached by typing until it fits.
+     */
+    var overlayBudget: Int? = null
 
     override var focusedState: Boolean = false
 
@@ -82,10 +90,19 @@ class EnumWidget<T>(
 
         // the arrow keeps to the far side and the name is given what is left, so a long name runs
         // out of room before it runs into the arrow rather than under it
-        val arrowWidth = font.width(ARROW)
+        val arrow = if (
+            if (overlayOpen) overlay.opensDown else overlay.wouldOpenDown(values.size)
+        ) ARROW else ARROW_UP
+
+        val arrowWidth = font.width(arrow)
         val room = width - TEXT_PAD * 2 - arrowWidth - Common.UI.SPACING
 
-        val name = currentValue?.toString() ?: "Select…"
+        // while the list is open the search lives here, in the box itself, caret and all
+        val name = if (overlayOpen && includeSearch) {
+            overlay.searchText + "_"
+        } else {
+            currentValue?.toString() ?: "Select…"
+        }
         val shown = if (font.width(name) <= room) {
             name
         } else {
@@ -103,7 +120,7 @@ class EnumWidget<T>(
 
         graphics.text(
             font,
-            Component.literal(ARROW),
+            Component.literal(arrow),
             x + width - arrowWidth - TEXT_PAD,
             textY,
             Common.UI.TEXT_COLOR,
@@ -172,16 +189,43 @@ class EnumWidget<T>(
          */
         var searchText: String = ""
 
-        /** Builds the rows from whatever the search currently lets through. */
+        /** Whether the list grows downward from the widget, settled when the rows are built. */
+        var opensDown: Boolean = true
+            private set
+
+        /** Which way a list of [rowsWanted] rows would open: down when it fits, else the roomier side. */
+        fun wouldOpenDown(rowsWanted: Int): Boolean {
+            val screenHeight = Minecraft.getInstance().window.guiScaledHeight
+            val spaceBelow = screenHeight - (this@EnumWidget.y + this@EnumWidget.height)
+            val spaceAbove = this@EnumWidget.y
+
+            return rowsWanted * overlayRowHeight <= spaceBelow || spaceBelow >= spaceAbove
+        }
+
+        /**
+         * Builds the rows from whatever the search currently lets through, and no more of them
+         * than the room allows: the side of the screen it opens into, tightened further by any
+         * budget the caller set aside. What is cut off is reached by typing until it fits.
+         */
         fun rebuildRows() {
             valueWidgets.clear()
 
-            values.forEach { value ->
-                if (value == currentValue) return@forEach
-                if (!value.toString().startsWith(searchText, ignoreCase = true)) return@forEach
-
-                valueWidgets.add(ClickableRowWidget(value))
+            val matching = values.filter {
+                it != currentValue && it.toString().startsWith(searchText, ignoreCase = true)
             }
+
+            opensDown = wouldOpenDown(matching.size)
+
+            val screenHeight = Minecraft.getInstance().window.guiScaledHeight
+            val space = (if (opensDown) {
+                screenHeight - (this@EnumWidget.y + this@EnumWidget.height)
+            } else {
+                this@EnumWidget.y
+            }).coerceAtMost(overlayBudget ?: Int.MAX_VALUE)
+
+            val rows = (space / overlayRowHeight).coerceAtLeast(1)
+
+            matching.take(rows).forEach { valueWidgets.add(ClickableRowWidget(it)) }
 
             layoutOverlay()
         }
@@ -193,30 +237,21 @@ class EnumWidget<T>(
          * off the bottom is a list whose last values cannot be picked at all.
          */
         override val overlayY: Int
-            get() {
-                val below = this@EnumWidget.y + this@EnumWidget.height
-                val room = Minecraft.getInstance().window.guiScaledHeight
-
-                return if (below + overlayHeight <= room) {
-                    below
-                } else {
-                    (this@EnumWidget.y - overlayHeight).coerceAtLeast(0)
-                }
+            get() = if (opensDown) {
+                this@EnumWidget.y + this@EnumWidget.height
+            } else {
+                (this@EnumWidget.y - overlayHeight).coerceAtLeast(0)
             }
         override val overlayWidth: Int
             get() = this@EnumWidget.width
         override val overlayHeight: Int
-            get() = overlayRowHeight * (valueWidgets.size + if (includeSearch) 1 else 0)
+            get() = overlayRowHeight * valueWidgets.size
 
 
 
 
         fun layoutOverlay() {
             var currentY = overlayY
-
-            // the first row's height is the search box's; drawn in renderOverlay, it only needs
-            // the rows below it to start one row further down
-            if (includeSearch) currentY += overlayRowHeight
 
             valueWidgets.forEach {
                 it.x = overlayX
@@ -233,26 +268,6 @@ class EnumWidget<T>(
             mouseY: Int,
             delta: Float
         ) {
-            if (includeSearch) {
-                val font = Minecraft.getInstance().font
-                val boxY = overlayY
-
-                graphics.fill(overlayX, boxY, overlayX + overlayWidth, boxY + overlayRowHeight, Common.UI.BACKGROUND_COLOR)
-                graphics.drawBorder(
-                    overlayX, boxY,
-                    overlayX + overlayWidth, boxY + overlayRowHeight,
-                    1, Common.UI.BORDER_COLOR
-                )
-                graphics.text(
-                    font,
-                    Component.literal(searchText + "_"),
-                    overlayX + TEXT_PAD,
-                    boxY + (overlayRowHeight - font.lineHeight) / 2,
-                    Common.UI.TEXT_COLOR,
-                    false
-                )
-            }
-
             valueWidgets.forEach { it.extractRenderState(graphics, mouseX, mouseY) }
         }
 
