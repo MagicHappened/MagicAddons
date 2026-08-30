@@ -43,17 +43,6 @@ object ChorusFruit : CropDefinitionProvider {
                 ),
                 armorStands = listOf(
                     CropArmorStand(
-                        offset = Vec3(0.0, -0.65625, 0.0),
-                        hashString = "c5214cc92140cdf9b402b3e7ed1fa0bac7fb4b39e39b46d11b06301caf0f9c3d",
-                    )
-                ),
-                2..2
-            ),
-            CropStage(
-                blocks = listOf(
-                ),
-                armorStands = listOf(
-                    CropArmorStand(
                         offset = Vec3(0.0, -0.53125, 0.0),
                         hashString = "c5214cc92140cdf9b402b3e7ed1fa0bac7fb4b39e39b46d11b06301caf0f9c3d",
                     )

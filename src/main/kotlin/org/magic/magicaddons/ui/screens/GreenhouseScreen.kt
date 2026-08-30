@@ -584,6 +584,11 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
     }
 
     override fun mouseScrolled(mouseX: Double, mouseY: Double, scrollX: Double, scrollY: Double): Boolean {
+        // an open list takes the wheel before the screen's own scrolling does
+        overlays.toList().forEach {
+            if (it.mouseScrolled(mouseX, mouseY, scrollX, scrollY)) return true
+        }
+
         if (scrollY == 0.0) return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY)
 
         // the wheel walks the plots or presets; in greenhouse mode a middle click points it at
