@@ -1,5 +1,8 @@
 package org.magic.magicaddons.ui.widgets
 
+import net.minecraft.client.input.KeyEvent
+import net.minecraft.client.input.CharacterEvent
+import com.mojang.blaze3d.platform.InputConstants
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.components.Renderable
@@ -82,7 +85,7 @@ class EnumWidget<T>(
         val arrowWidth = font.width(ARROW)
         val room = width - TEXT_PAD * 2 - arrowWidth - Common.UI.SPACING
 
-        val name = currentValue.toString()
+        val name = currentValue?.toString() ?: "Select…"
         val shown = if (font.width(name) <= room) {
             name
         } else {
@@ -112,15 +115,8 @@ class EnumWidget<T>(
         if (isMouseOver(mouseButtonEvent.x, mouseButtonEvent.y)) {
             if (mouseButtonEvent.button() == 0) {
                 if (!overlayOpen){
-                    overlay.valueWidgets.clear()
-                    values.forEach { value ->
-                        if (value == currentValue) return@forEach
-                        val widget = ClickableRowWidget(
-                            value
-                        )
-                        overlay.valueWidgets.add(widget)
-                    }
-                    overlay.layoutOverlay()
+                    overlay.searchText = ""
+                    overlay.rebuildRows()
                     overlayOpen = true
                     overlayContext.addOverlay(overlay)
                 }
@@ -168,6 +164,28 @@ class EnumWidget<T>(
 
         val valueWidgets: MutableList<ClickableRowWidget<T>> = mutableListOf()
 
+        /**
+         * What has been typed so far, narrowing the list to values that start with it.
+         *
+         * Prefix rather than contains: the ask was typing M to see the crops starting with M,
+         * and a contains-match surfaces every crop with an m somewhere in it instead.
+         */
+        var searchText: String = ""
+
+        /** Builds the rows from whatever the search currently lets through. */
+        fun rebuildRows() {
+            valueWidgets.clear()
+
+            values.forEach { value ->
+                if (value == currentValue) return@forEach
+                if (!value.toString().startsWith(searchText, ignoreCase = true)) return@forEach
+
+                valueWidgets.add(ClickableRowWidget(value))
+            }
+
+            layoutOverlay()
+        }
+
         override val overlayX: Int
             get() = this@EnumWidget.x
         /**
@@ -188,16 +206,17 @@ class EnumWidget<T>(
         override val overlayWidth: Int
             get() = this@EnumWidget.width
         override val overlayHeight: Int
-            get() = overlayRowHeight * valueWidgets.size
+            get() = overlayRowHeight * (valueWidgets.size + if (includeSearch) 1 else 0)
 
 
 
 
         fun layoutOverlay() {
             var currentY = overlayY
-            if (includeSearch) {
-                TODO("Not yet implemented")
-            }
+
+            // the first row's height is the search box's; drawn in renderOverlay, it only needs
+            // the rows below it to start one row further down
+            if (includeSearch) currentY += overlayRowHeight
 
             valueWidgets.forEach {
                 it.x = overlayX
@@ -214,7 +233,47 @@ class EnumWidget<T>(
             mouseY: Int,
             delta: Float
         ) {
+            if (includeSearch) {
+                val font = Minecraft.getInstance().font
+                val boxY = overlayY
+
+                graphics.fill(overlayX, boxY, overlayX + overlayWidth, boxY + overlayRowHeight, Common.UI.BACKGROUND_COLOR)
+                graphics.drawBorder(
+                    overlayX, boxY,
+                    overlayX + overlayWidth, boxY + overlayRowHeight,
+                    1, Common.UI.BORDER_COLOR
+                )
+                graphics.text(
+                    font,
+                    Component.literal(searchText + "_"),
+                    overlayX + TEXT_PAD,
+                    boxY + (overlayRowHeight - font.lineHeight) / 2,
+                    Common.UI.TEXT_COLOR,
+                    false
+                )
+            }
+
             valueWidgets.forEach { it.extractRenderState(graphics, mouseX, mouseY) }
+        }
+
+        override fun charTyped(characterEvent: CharacterEvent): Boolean {
+            if (!includeSearch) return false
+
+            searchText += characterEvent.codepointAsString()
+            rebuildRows()
+            return true
+        }
+
+        override fun keyPressed(keyEvent: KeyEvent): Boolean {
+            if (!includeSearch) return false
+
+            if (keyEvent.key == InputConstants.KEY_BACKSPACE && searchText.isNotEmpty()) {
+                searchText = searchText.dropLast(1)
+                rebuildRows()
+                return true
+            }
+
+            return false
         }
 
         override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {

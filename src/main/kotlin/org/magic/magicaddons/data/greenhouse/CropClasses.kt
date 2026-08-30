@@ -344,6 +344,7 @@ open class CropStage(
             stand.yRot = Mth.wrapDegrees(
                 (standDef.yRotation ?: role?.yRotation ?: 0f) + 90f * worldStep
             )
+            stand.xRot = standDef.xRotation ?: role?.xRotation ?: 0f
             val stack = PlayerUtils.getItemFromHash(standDef.hashString)
             stand.setItemSlot(EquipmentSlot.HEAD, stack)
             renderStands.add(stand)

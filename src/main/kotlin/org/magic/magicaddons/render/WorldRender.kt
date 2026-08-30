@@ -233,6 +233,48 @@ object WorldRender {
         outline(poseStack, collector, cameraPos, pos, state.getShape(level, pos), outlineColor)
     }
 
+    /**
+     * Draws [state] at [pos] exactly as it is: full colour, full brightness, no outline. A block
+     * being shown rather than a block being asked for, which is what the crop preview is made of.
+     */
+    fun solid(
+        poseStack: PoseStack,
+        collector: SubmitNodeCollector,
+        cameraPos: Vec3,
+        pos: BlockPos,
+        state: BlockState
+    ) {
+        val parts = mutableListOf<BlockStateModelPart>()
+
+        RANDOM.setSeed(Mth.getSeed(pos))
+
+        Minecraft.getInstance().modelManager.blockStateModelSet.get(state)
+            .collectParts(RANDOM, parts)
+
+        if (parts.isEmpty()) return
+
+        atBlock(poseStack, cameraPos, pos) { pose ->
+            collector.submitCustomGeometry(
+                pose,
+                RenderTypes.translucentMovingBlock()
+            ) { transform, consumer ->
+                val quadInstance = QuadInstance()
+
+                parts.forEach { part ->
+                    QUAD_SIDES.forEach { side ->
+                        part.getQuads(side).forEach { quad ->
+                            quadInstance.setColor(-1)
+                            quadInstance.setLightCoords(FULL_BRIGHT)
+                            quadInstance.setOverlayCoords(NO_OVERLAY)
+
+                            consumer.putBakedQuad(transform, quad, quadInstance)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     /** Runs [action] with the pose stack sitting at [pos], as the game sets up its own outline. */
     private inline fun atBlock(
         poseStack: PoseStack,

@@ -589,7 +589,7 @@ object CropCollector : EntityUtils.HighlightSource {
      * in the model's z-y-x order, the whole turned by the stand's yaw. An approximation, but a
      * block is a whole metre wide and the only question is which one the item sits in.
      */
-    private fun heldItemBlock(stand: ArmorStand): BlockPos? {
+    fun heldItemBlock(stand: ArmorStand): BlockPos? {
         val holdsItem = !stand.getItemBySlot(EquipmentSlot.MAINHAND).isEmpty ||
                 !stand.getItemBySlot(EquipmentSlot.OFFHAND).isEmpty
         if (!holdsItem) return null
@@ -597,8 +597,10 @@ object CropCollector : EntityUtils.HighlightSource {
         val scale = if (stand.isSmall) 0.5 else 1.0
         val pose = stand.rightArmPose
 
+        // signs pinned by two known poses: an arm at x = -90 holds its item in front of the
+        // stand, and a right arm at z = +90 holds it out away from the body
         val arm = Vec3(0.0, -10.0 / 16.0, 0.0)
-            .xRot(-Math.toRadians(pose.x.toDouble()).toFloat())
+            .xRot(Math.toRadians(pose.x.toDouble()).toFloat())
             .yRot(-Math.toRadians(pose.y.toDouble()).toFloat())
             .zRot(-Math.toRadians(pose.z.toDouble()).toFloat())
 
