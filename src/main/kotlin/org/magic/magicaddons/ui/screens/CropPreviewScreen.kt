@@ -86,16 +86,17 @@ class CropPreviewScreen(
         previewSize = height - previewY * 2
         previewX = (width - previewSize) / 2
 
-        sliderW = previewSize - 40
-        sliderX = previewX + 20
-        sliderY = (previewY - 22).coerceAtLeast(2)
+        // label and track just inside the box's top edge, on the backdrop, reaching across
+        // until the incomplete-data mark's corner
+        sliderX = previewX + 10
+        sliderW = previewX + previewSize - 26 - sliderX
+        sliderY = previewY + font.lineHeight + 8
 
-        // the picker lies along the top of the preview itself, where the backdrop keeps it
-        // readable against any sky, reaching across until the incomplete-data mark's corner
+        // the picker stands off to the left, its top lined up with the preview's
         selector.height = 22
-        selector.x = previewX + 4
-        selector.width = previewX + previewSize - 26 - selector.x
-        selector.y = previewY + 4
+        selector.fitToValues((previewX - Common.UI.SPACING_LARGE * 2).coerceAtLeast(80))
+        selector.x = Common.UI.SPACING_LARGE
+        selector.y = previewY
 
         // the list stops short of the chat, give or take: about six rows above the bottom
         selector.overlayBudget = height - (selector.y + selector.height) - selector.height * 6
@@ -288,15 +289,6 @@ class CropPreviewScreen(
     private fun drawSlider(graphics: GuiGraphicsExtractor, def: CropDefinition) {
         if (def.maxStage <= 1) return
 
-        // its own backdrop, or a dark sky swallows the track whole
-        graphics.fill(
-            sliderX - 8,
-            sliderY - font.lineHeight - 6,
-            sliderX + sliderW + 8,
-            sliderY + SLIDER_HEIGHT + 4,
-            SLIDER_BACKGROUND
-        )
-
         val trackY = sliderY + SLIDER_HEIGHT / 2
 
         graphics.fill(sliderX, trackY - 1, sliderX + sliderW, trackY + 1, Common.UI.BORDER_COLOR)
@@ -466,8 +458,5 @@ class CropPreviewScreen(
         const val HANDLE_WIDTH: Int = 5
 
         val INCOMPLETE_COLOR: Int = 0xFFFF4444.toInt()
-
-        /** Dark enough to hold its own against a night sky behind the screen. */
-        val SLIDER_BACKGROUND: Int = 0xA0101010.toInt()
     }
 }
