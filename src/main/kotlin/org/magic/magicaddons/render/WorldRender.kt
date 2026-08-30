@@ -253,6 +253,12 @@ object WorldRender {
 
         if (parts.isEmpty()) return
 
+        // a stem is yellow and grass is green because of tints the model does not carry itself;
+        // without asking for them here every tinted block came out white
+        val colors = Minecraft.getInstance().blockColors
+        val level = Minecraft.getInstance().level
+        val tintColors = mutableMapOf<Int, Int>()
+
         atBlock(poseStack, cameraPos, pos) { pose ->
             collector.submitCustomGeometry(
                 pose,
@@ -263,7 +269,24 @@ object WorldRender {
                 parts.forEach { part ->
                     QUAD_SIDES.forEach { side ->
                         part.getQuads(side).forEach { quad ->
-                            quadInstance.setColor(-1)
+                            val material = quad.materialInfo()
+
+                            val color = if (material.isTinted) {
+                                tintColors.getOrPut(material.tintIndex()) {
+                                    val source = colors.getTintSource(state, material.tintIndex())
+                                    val rgb = when {
+                                        source == null -> 0xFFFFFF
+                                        level != null -> source.colorInWorld(state, level, pos)
+                                        else -> source.color(state)
+                                    }
+
+                                    ARGB.color(0xFF, rgb)
+                                }
+                            } else {
+                                -1
+                            }
+
+                            quadInstance.setColor(color)
                             quadInstance.setLightCoords(FULL_BRIGHT)
                             quadInstance.setOverlayCoords(NO_OVERLAY)
 

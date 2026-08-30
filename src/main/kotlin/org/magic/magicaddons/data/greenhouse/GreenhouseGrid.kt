@@ -11,6 +11,7 @@ import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData.elementsBySoil
+import org.magic.magicaddons.features.farming.greenhousePresets.DyingPlant
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData
 import org.magic.magicaddons.util.ChatUtils
 import tech.thatgravyboat.skyblockapi.api.profile.garden.Plot
@@ -280,8 +281,8 @@ class GreenhouseGrid(
                 WaterModel.aliveFloor(water, layout.waterEffectAt(found.instance.slot))
             found.instance.waterPredictedInDebt = true
 
-            GreenhouseData.sendDehydrationWarning(
-                listOf(found.instance.cropDef.name to layout.displayName())
+            GreenhouseData.warnSurvivor(
+                DyingPlant(found.instance.cropDef.name, layout.displayName(), layout.id)
             )
         } else {
             found.instance.waterLevel = water
