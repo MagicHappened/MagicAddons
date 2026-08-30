@@ -88,13 +88,16 @@ class CropPreviewScreen(
 
         sliderW = previewSize - 40
         sliderX = previewX + 20
-        sliderY = (previewY - 14).coerceAtLeast(2)
+        sliderY = (previewY - 22).coerceAtLeast(2)
 
-        // the picker stands off to the left, out of the plant's way entirely
+        // the picker stands off to the left, its top lined up with the preview's
         selector.height = 22
         selector.fitToValues((previewX - Common.UI.SPACING_LARGE * 2).coerceAtLeast(80))
         selector.x = Common.UI.SPACING_LARGE
-        selector.y = (height - selector.height) / 2
+        selector.y = previewY
+
+        // the list stops short of the chat, give or take: about six rows above the bottom
+        selector.overlayBudget = height - (selector.y + selector.height) - selector.height * 6
     }
 
     private fun picked(def: CropDefinition) {
@@ -284,6 +287,15 @@ class CropPreviewScreen(
     private fun drawSlider(graphics: GuiGraphicsExtractor, def: CropDefinition) {
         if (def.maxStage <= 1) return
 
+        // its own backdrop, or a dark sky swallows the track whole
+        graphics.fill(
+            sliderX - 8,
+            sliderY - font.lineHeight - 6,
+            sliderX + sliderW + 8,
+            sliderY + SLIDER_HEIGHT + 4,
+            SLIDER_BACKGROUND
+        )
+
         val trackY = sliderY + SLIDER_HEIGHT / 2
 
         graphics.fill(sliderX, trackY - 1, sliderX + sliderW, trackY + 1, Common.UI.BORDER_COLOR)
@@ -313,12 +325,21 @@ class CropPreviewScreen(
         val missing = missingData()
         if (missing.isEmpty()) return
 
-        val markX = previewX + previewSize - 10
-        val markY = previewY + 4
+        val markX = previewX + previewSize - 20
+        val markY = previewY + 6
 
-        graphics.text(font, Component.literal("!"), markX, markY, INCOMPLETE_COLOR, false)
+        val pose = graphics.pose()
 
-        if (mouseX in markX - 3..markX + 8 && mouseY in markY - 2..markY + font.lineHeight + 2) {
+        pose.pushMatrix()
+        pose.translate(markX.toFloat(), markY.toFloat())
+        pose.scale(2.5f, 2.5f)
+        graphics.text(font, Component.literal("!"), 0, 0, INCOMPLETE_COLOR, false)
+        pose.popMatrix()
+
+        val markW = (font.width("!") * 2.5f).toInt()
+        val markH = (font.lineHeight * 2.5f).toInt()
+
+        if (mouseX in markX - 3..markX + markW + 3 && mouseY in markY - 2..markY + markH + 2) {
             graphics.drawSimpleTooltip(
                 "Data is incomplete for this stage, may be inaccurate\n" +
                         "data missing: ${missing.joinToString(", ")}",
@@ -373,8 +394,9 @@ class CropPreviewScreen(
         }
 
         if (draggingView) {
-            yaw = (yaw + dragX.toFloat() * 0.8f) % 360f
-            pitch = (pitch + dragY.toFloat() * 0.5f).coerceIn(-75f, 30f)
+            // dragging pulls the plant with the hand rather than pushing the camera
+            yaw = (yaw - dragX.toFloat() * 0.8f) % 360f
+            pitch = (pitch - dragY.toFloat() * 0.5f).coerceIn(-75f, 30f)
             return true
         }
 
@@ -399,6 +421,14 @@ class CropPreviewScreen(
 
     override fun mouseMoved(mouseX: Double, mouseY: Double) {
         overlays.toList().forEach { it.mouseMoved(mouseX, mouseY) }
+    }
+
+    override fun mouseScrolled(mouseX: Double, mouseY: Double, scrollX: Double, scrollY: Double): Boolean {
+        overlays.toList().forEach {
+            if (it.mouseScrolled(mouseX, mouseY, scrollX, scrollY)) return true
+        }
+
+        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY)
     }
 
     override fun charTyped(characterEvent: CharacterEvent): Boolean {
@@ -435,5 +465,8 @@ class CropPreviewScreen(
         const val HANDLE_WIDTH: Int = 5
 
         val INCOMPLETE_COLOR: Int = 0xFFFF4444.toInt()
+
+        /** Dark enough to hold its own against a night sky behind the screen. */
+        val SLIDER_BACKGROUND: Int = 0xA0101010.toInt()
     }
 }

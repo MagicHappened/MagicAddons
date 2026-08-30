@@ -67,6 +67,9 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, Focus
     /** Worn in the corner of a plant the worst case has already killed. */
     private val DEAD_MARK: ItemStack = ItemStack(Items.DEAD_BUSH)
 
+    /** Behind the bush, so a slot that might already be dead reads as such at a glance. */
+    private val DEAD_MARK_BACKGROUND: Int = 0xC0201010.toInt()
+
     /** Where the dead bush was drawn, so hovering it can explain itself. */
     private var deadMarkBox: IntArray? = null
 
@@ -138,6 +141,7 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, Focus
             val markX = widgetX + width - size
             val markY = widgetY
 
+            graphics.fill(markX, markY, markX + size, markY + size, DEAD_MARK_BACKGROUND)
             graphics.renderFakeItem(DEAD_MARK, markX, markY, size, size)
             deadMarkBox = intArrayOf(markX, markY, markX + size, markY + size)
         }

@@ -202,15 +202,21 @@ class EnumWidget<T>(
             return rowsWanted * overlayRowHeight <= spaceBelow || spaceBelow >= spaceAbove
         }
 
+        /** Everything the search lets through, of which a scrolled window is on screen. */
+        private var matching: List<T> = emptyList()
+
+        private var visibleRows: Int = 1
+        private var scroll: Int = 0
+
         /**
          * Builds the rows from whatever the search currently lets through, and no more of them
          * than the room allows: the side of the screen it opens into, tightened further by any
-         * budget the caller set aside. What is cut off is reached by typing until it fits.
+         * budget the caller set aside. The rest is reached by the wheel, or by typing.
          */
         fun rebuildRows() {
-            valueWidgets.clear()
+            scroll = 0
 
-            val matching = values.filter {
+            matching = values.filter {
                 it != currentValue && it.toString().startsWith(searchText, ignoreCase = true)
             }
 
@@ -223,11 +229,36 @@ class EnumWidget<T>(
                 this@EnumWidget.y
             }).coerceAtMost(overlayBudget ?: Int.MAX_VALUE)
 
-            val rows = (space / overlayRowHeight).coerceAtLeast(1)
+            visibleRows = (space / overlayRowHeight).coerceAtLeast(1)
 
-            matching.take(rows).forEach { valueWidgets.add(ClickableRowWidget(it)) }
+            buildWindow()
+        }
+
+        /** The rows for the stretch of the list the scroll is looking at. */
+        private fun buildWindow() {
+            valueWidgets.clear()
+
+            matching.drop(scroll).take(visibleRows).forEach {
+                valueWidgets.add(ClickableRowWidget(it))
+            }
 
             layoutOverlay()
+        }
+
+        override fun mouseScrolled(
+            mouseX: Double,
+            mouseY: Double,
+            scrollX: Double,
+            scrollY: Double
+        ): Boolean {
+            if (!isMouseOver(mouseX.toInt(), mouseY.toInt())) return false
+            if (matching.size <= visibleRows) return true
+
+            scroll = (scroll - scrollY.toInt().coerceIn(-1, 1))
+                .coerceIn(0, matching.size - visibleRows)
+
+            buildWindow()
+            return true
         }
 
         override val overlayX: Int
@@ -269,6 +300,18 @@ class EnumWidget<T>(
             delta: Float
         ) {
             valueWidgets.forEach { it.extractRenderState(graphics, mouseX, mouseY) }
+
+            // a sliver of a scroll bar over the list's edge - display only, the wheel does the
+            // moving - so a long list shows how deep it goes and where the window sits in it
+            if (matching.size > visibleRows) {
+                val barX = overlayX + overlayWidth - 2
+                val barHeight = (overlayHeight * visibleRows / matching.size).coerceAtLeast(6)
+                val travel = overlayHeight - barHeight
+                val barY = overlayY + travel * scroll / (matching.size - visibleRows)
+
+                graphics.fill(barX, overlayY, barX + 2, overlayY + overlayHeight, 0x40000000)
+                graphics.fill(barX, barY, barX + 2, barY + barHeight, Common.UI.TEXT_COLOR)
+            }
         }
 
         override fun charTyped(characterEvent: CharacterEvent): Boolean {
