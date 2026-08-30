@@ -1,5 +1,7 @@
 package org.magic.magicaddons.ui.screens
 
+import net.minecraft.resources.Identifier
+import net.minecraft.client.renderer.RenderPipelines
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
@@ -79,21 +81,20 @@ class CropPreviewScreen(
     override fun init() {
         super.init()
 
-        selector.height = 22
-        selector.fitToValues(240)
-        selector.x = (width - selector.width) / 2
-        selector.y = height - selector.height - BOTTOM_PADDING
-
-        previewSize = (minOf(width, height) * 0.55).toInt()
+        // a tenth of the screen above and below; everything between is the preview's
+        previewY = height / 10
+        previewSize = height - previewY * 2
         previewX = (width - previewSize) / 2
-        previewY = ((height - previewSize) / 2).coerceAtLeast(SLIDER_ROOM)
 
         sliderW = previewSize - 40
         sliderX = previewX + 20
-        sliderY = previewY - 14
+        sliderY = (previewY - 14).coerceAtLeast(2)
 
-        // the list may climb over the preview box, but not over the slider above it
-        selector.overlayBudget = selector.y - previewY - 8
+        // the picker stands off to the left, out of the plant's way entirely
+        selector.height = 22
+        selector.fitToValues((previewX - Common.UI.SPACING_LARGE * 2).coerceAtLeast(80))
+        selector.x = Common.UI.SPACING_LARGE
+        selector.y = (height - selector.height) / 2
     }
 
     private fun picked(def: CropDefinition) {
@@ -185,10 +186,14 @@ class CropPreviewScreen(
         // the slow turn, resting while the player is the one turning it
         if (!draggingView) yaw = (yaw + delta * 1.2f) % 360f
 
-        graphics.drawBorder(
-            previewX, previewY,
-            previewX + previewSize, previewY + previewSize,
-            1, Common.UI.BORDER_COLOR
+        // the same backdrop the greenhouse screen boxes its grid with
+        graphics.blitSprite(
+            RenderPipelines.GUI_TEXTURED,
+            Identifier.fromNamespaceAndPath("minecraft", "popup/background"),
+            previewX - BORDER_PAD,
+            previewY - BORDER_PAD,
+            previewSize + BORDER_PAD * 2,
+            previewSize + BORDER_PAD * 2
         )
 
         when {
@@ -423,8 +428,9 @@ class CropPreviewScreen(
 
         const val FULL_BRIGHT: Int = 0xF000F0
 
-        const val BOTTOM_PADDING: Int = 14
-        const val SLIDER_ROOM: Int = 40
+        /** The same breathing room the greenhouse screen gives its grid inside the backdrop. */
+        const val BORDER_PAD: Int = 6
+
         const val SLIDER_HEIGHT: Int = 10
         const val HANDLE_WIDTH: Int = 5
 

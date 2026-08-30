@@ -221,30 +221,32 @@ object GreenhouseData {
         scanGridData()
     }
 
-    /** The tick already warned about, so ten minutes of danger is one message rather than ten. */
-    private var dehydrationWarnedFor: Instant? = null
+    /** The last thirst warning sent while away, so coming home quickly can be answered. */
+    private var awayWarning: Pair<Instant, DyingPlant>? = null
 
-    private val DEATH_WARNING_WINDOW: Duration = Duration.ofMinutes(10)
+    /** The ride still owed after coming home, held until the world has had a moment to load. */
+    private var teleportOffer: DyingPlant? = null
+    private var teleportOfferAt: Instant? = null
+
+    /** How soon after a warning the trip home still counts as answering it. */
+    private val TELEPORT_OFFER_WINDOW: Duration = Duration.ofSeconds(15)
+
+    private const val DEHYDRATION: String = "dehydration"
 
     /**
      * Says which plants the coming tick will kill, while there is still time to water them.
      *
-     * Asked when the countdown is inside the warning window, and once per tick: the danger does
-     * not change by being restated. A plant already past death in the estimate is not warned
-     * about, since the dead bush on its slot is already saying something stronger.
+     * The cadence lives in [GreenhouseWarnings]: ten minutes out, five, and one, each said once
+     * per tick however often the countdown is restated. A plant already past death in the
+     * estimate is not warned about, since the dead bush on its slot says something stronger.
      */
     private fun warnOfDyingPlants() {
         val nextTick = miscInfo.nextTickTime ?: return
-        val now = Instant.now()
+        val remainingMs = Duration.between(Instant.now(), nextTick).toMillis()
 
-        if (Duration.between(now, nextTick) > DEATH_WARNING_WINDOW) return
-        if (dehydrationWarnedFor == nextTick) return
+        GreenhouseWarnings.tick(DEHYDRATION, remainingMs)
 
-        // the sweep runs once per tick either way: water only moves when the tick does, so a
-        // quiet answer now is a quiet answer for the rest of this tick too
-        dehydrationWarnedFor = nextTick
-
-        val dying = mutableListOf<Pair<String, String>>()
+        val dying = mutableListOf<DyingPlant>()
 
         greenhouseGrids.forEach { grid ->
             grid.layout.elementInstances.forEach { instance ->
@@ -265,25 +267,48 @@ object GreenhouseData {
                 val ticksLeft = WaterModel.ticksUntilDeath(water, effect) ?: return@forEach
 
                 if (ticksLeft <= 1) {
-                    dying += instance.cropDef.name to grid.layout.displayName()
+                    dying += DyingPlant(
+                        instance.cropDef.name,
+                        grid.layout.displayName(),
+                        grid.layout.id
+                    )
                 }
             }
         }
 
         if (dying.isEmpty()) return
+        if (!GreenhouseWarnings.shouldWarn(DEHYDRATION, remainingMs)) return
 
-        sendDehydrationWarning(dying)
+        sendDehydrationWarning(dying, remainingMs)
+    }
+
+    /** A plant found alive past its predicted death: said now, at whatever the countdown reads. */
+    fun warnSurvivor(plant: DyingPlant) {
+        val remaining = miscInfo.nextTickTime
+            ?.let { Duration.between(Instant.now(), it).toMillis().coerceAtLeast(0) }
+            ?: 0
+
+        sendDehydrationWarning(listOf(plant), remaining)
+    }
+
+    private fun shortDuration(ms: Long): String {
+        val seconds = (ms / 1000).coerceAtLeast(0)
+
+        return if (seconds >= 60) "${seconds / 60}m ${seconds % 60}s" else "${seconds}s"
     }
 
     /**
      * The warning itself, plants grouped by the greenhouse they are dying in, with a way home at
      * the end when the player is anywhere else.
      */
-    fun sendDehydrationWarning(dying: List<Pair<String, String>>) {
-        val byHouse = dying.groupBy({ it.second }, { it.first })
+    private fun sendDehydrationWarning(dying: List<DyingPlant>, remainingMs: Long) {
+        val byHouse = dying.groupBy({ it.greenhouse }, { it.plant })
 
         val message = Component.literal("[MA] ").withStyle(ChatFormatting.GOLD)
-            .append(Component.literal("About to die of thirst: ").withStyle(ChatFormatting.RED))
+            .append(
+                Component.literal("Dying of thirst in ${shortDuration(remainingMs)}: ")
+                    .withStyle(ChatFormatting.RED)
+            )
 
         byHouse.entries.forEachIndexed { index, (house, plants) ->
             if (index > 0) {
@@ -309,6 +334,9 @@ object GreenhouseData {
                         )
                 )
             )
+
+            // remembered so that actually coming home is met with the last leg of the trip
+            awayWarning = Instant.now() to dying.first()
         }
 
         Minecraft.getInstance().player?.sendSystemMessage(message)
@@ -485,14 +513,58 @@ object GreenhouseData {
             checkForUpdate()
         }
 
-        // asked every tick rather than once a minute: until the window opens this is one time
-        // comparison, and once it fires it holds its tongue for the rest of the tick
+        // asked every tick rather than once a minute, so each threshold fires the moment it
+        // is crossed rather than up to a minute late
         warnOfDyingPlants()
+        offerTeleportIfArrived()
+    }
+
+    /** The promised ride to the dying plant, sent once the garden is loaded and still current. */
+    private fun offerTeleportIfArrived() {
+        val offer = teleportOffer ?: return
+        val at = teleportOfferAt ?: return
+
+        if (Instant.now().isBefore(at)) return
+        if (Minecraft.getInstance().level == null) return
+
+        teleportOffer = null
+
+        if (LocationAPI.island != SkyBlockIsland.GARDEN || LocationAPI.isGuest) return
+
+        val plotNumber = offer.plotId.removePrefix("plot_")
+
+        val message = Component.literal("[MA] ").withStyle(ChatFormatting.GOLD)
+            .append(
+                Component.literal(
+                    "Click here to teleport to ${offer.greenhouse} to water ${offer.plant}"
+                ).withStyle(
+                    Style.EMPTY
+                        .withColor(ChatFormatting.GREEN)
+                        .withClickEvent(ClickEvent.RunCommand("/tptoplot $plotNumber"))
+                        .withHoverEvent(
+                            HoverEvent.ShowText(Component.literal("Running: /tptoplot $plotNumber"))
+                        )
+                )
+            )
+
+        Minecraft.getInstance().player?.sendSystemMessage(message)
     }
 
 
     @Subscription
     fun onIslandChange(event: IslandChangeEvent) {
+        // coming home within moments of a thirst warning reads as answering it, so the ride to
+        // the plot itself is offered too - once the world has had a moment to load
+        if (event.new == SkyBlockIsland.GARDEN) {
+            awayWarning?.let { (at, plant) ->
+                if (Duration.between(at, Instant.now()) <= TELEPORT_OFFER_WINDOW) {
+                    teleportOffer = plant
+                    teleportOfferAt = Instant.now().plusSeconds(2)
+                }
+            }
+            awayWarning = null
+        }
+
         if (event.new != SkyBlockIsland.GARDEN) {
             DataHandler.saveGardenData()
             greenhouseGrids.forEach {
