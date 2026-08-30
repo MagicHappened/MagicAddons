@@ -81,8 +81,8 @@ class CropPreviewScreen(
     override fun init() {
         super.init()
 
-        // a tenth of the screen above and below; everything between is the preview's
-        previewY = height / 10
+        // eight percent of the screen above and below; everything between is the preview's
+        previewY = height * 8 / 100
         previewSize = height - previewY * 2
         previewX = (width - previewSize) / 2
 
@@ -90,11 +90,12 @@ class CropPreviewScreen(
         sliderX = previewX + 20
         sliderY = (previewY - 22).coerceAtLeast(2)
 
-        // the picker stands off to the left, its top lined up with the preview's
+        // the picker lies along the top of the preview itself, where the backdrop keeps it
+        // readable against any sky, reaching across until the incomplete-data mark's corner
         selector.height = 22
-        selector.fitToValues((previewX - Common.UI.SPACING_LARGE * 2).coerceAtLeast(80))
-        selector.x = Common.UI.SPACING_LARGE
-        selector.y = previewY
+        selector.x = previewX + 4
+        selector.width = previewX + previewSize - 26 - selector.x
+        selector.y = previewY + 4
 
         // the list stops short of the chat, give or take: about six rows above the bottom
         selector.overlayBudget = height - (selector.y + selector.height) - selector.height * 6
@@ -394,8 +395,8 @@ class CropPreviewScreen(
         }
 
         if (draggingView) {
-            // dragging pulls the plant with the hand rather than pushing the camera
-            yaw = (yaw - dragX.toFloat() * 0.8f) % 360f
+            // sideways dragging turned out to feel right the way it first was
+            yaw = (yaw + dragX.toFloat() * 0.8f) % 360f
             pitch = (pitch - dragY.toFloat() * 0.5f).coerceIn(-75f, 30f)
             return true
         }
