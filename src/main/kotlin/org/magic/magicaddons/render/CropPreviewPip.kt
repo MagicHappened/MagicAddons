@@ -70,6 +70,13 @@ class CropPreviewRenderer : PictureInPictureRenderer<CropPreviewRenderState>() {
 
     override fun getTextureLabel(): String = "magicaddons_crop_preview"
 
+    /**
+     * The base class parks the origin at the texture's bottom edge, which is right for an entity
+     * whose origin is its feet and wrong for a scene whose offsets are taken from its centre; the
+     * plant showed up half-sunk through the bottom of its box.
+     */
+    override fun getTranslateY(height: Int, guiScale: Int): Float = height / 2f
+
     override fun renderToTexture(
         state: CropPreviewRenderState,
         poseStack: PoseStack,
