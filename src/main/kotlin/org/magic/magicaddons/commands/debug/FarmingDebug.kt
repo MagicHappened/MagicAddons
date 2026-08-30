@@ -1,5 +1,6 @@
 package org.magic.magicaddons.commands.debug
 
+import org.magic.magicaddons.commands.debug.CropCollector
 import com.mojang.brigadier.arguments.BoolArgumentType
 import com.mojang.brigadier.arguments.DoubleArgumentType
 import com.mojang.brigadier.arguments.StringArgumentType
@@ -456,6 +457,13 @@ object FarmingDebug : AbstractCommand() {
                                 "arms=${entity.showArms()} basePlate=${entity.showBasePlate()}"
                     )
                     appendLine("  headPose=${entity.headPose}")
+                    appendLine("  rightArmPose=${entity.rightArmPose}")
+
+                    // where the collector believes a held item hangs, for calibrating that guess
+                    // against what is plainly visible in game
+                    CropCollector.heldItemBlock(entity)?.let {
+                        appendLine("  heldItemBlock=(${it.x}, ${it.y}, ${it.z})")
+                    }
 
                     EquipmentSlot.entries.forEach { slot ->
                         val stack = entity.getItemBySlot(slot)

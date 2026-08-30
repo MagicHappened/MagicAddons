@@ -1,5 +1,6 @@
 package org.magic.magicaddons.ui.screens
 
+import org.magic.magicaddons.util.ScreenUtil
 import org.magic.magicaddons.util.toReadableDuration
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
@@ -139,6 +140,12 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
 
     private val hoverControls = HoverControls()
 
+    private val cropPreviewButton = ClickableButtonWidget(
+        100,
+        22,
+        Component.literal("Crop Preview")
+    )
+
 
     override fun init() {
         super.init()
@@ -193,6 +200,10 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         presetUI.layoutIn(actionRowX, actionRowY, rowWidth, rowHeight)
 
         hoverControls.layoutAgainstGrid(startX + containerSize, startY, containerSize)
+
+        // bottom centre, in the margin the grid already leaves under itself
+        cropPreviewButton.x = (width - cropPreviewButton.width) / 2
+        cropPreviewButton.y = height - cropPreviewButton.height - Common.UI.SPACING_LARGE
         
         when (currentDisplay) {
             CurrentDisplay.Greenhouses -> {
@@ -384,6 +395,7 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         }
         gridSelector.extractRenderState(graphics, mouseX, mouseY, delta)
         currentDisplayToggle.extractRenderState(graphics, mouseX, mouseY, delta)
+        cropPreviewButton.extractRenderState(graphics, mouseX, mouseY, delta)
 
         // only where there is a plan to stop, since a button that does nothing is a question the
         // player has to answer every time they look at the screen
@@ -474,6 +486,11 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         if (currentDisplay == CurrentDisplay.Greenhouses &&
             greenhousePanel.mouseClicked(mouseButtonEvent, doubled)
         ) {
+            return true
+        }
+
+        if (cropPreviewButton.mouseClicked(mouseButtonEvent, doubled)) {
+            ScreenUtil.setScreen(CropPreviewScreen(this))
             return true
         }
 

@@ -1,6 +1,8 @@
 package org.magic.magicaddons
 
 
+import org.magic.magicaddons.render.CropPreviewRenderer
+import net.fabricmc.fabric.api.client.rendering.v1.PictureInPictureRendererRegistry
 import net.fabricmc.api.ClientModInitializer
 import net.minecraft.client.renderer.entity.EntityRenderers
 import org.magic.magicaddons.commands.MainCommand
@@ -17,6 +19,10 @@ class MagicAddons : ClientModInitializer {
         EntityUtils
         ServerUtils
         ScreenUtil.register()
+
+        // the crop preview draws plants into the gui the way the inventory draws the player, and
+        // the pipeline only draws states it was handed a renderer for at startup
+        PictureInPictureRendererRegistry.register { CropPreviewRenderer() }
         MainCommand
         DataHandler.init()
 
