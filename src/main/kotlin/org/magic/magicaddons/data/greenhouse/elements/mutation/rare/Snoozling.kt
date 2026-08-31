@@ -21,6 +21,11 @@ object Snoozling : CropDefinitionProvider {
             CropEffect.BonusDrops
         ),
         skyblockId = SkyBlockItemId.item("SNOOZLING"),
+        /** Each skull's pose, found constant across every stage it appears in. */
+        standPoses = mapOf(
+            "b82d442528456547474dd88166a97818f057ecc4b3ed350ef9a5e4dbd27f98d7" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f)),
+            "77bb86dedeb827f2489aa0103d58d0e12e64a8152d5a0f5b1d4d208a3cb55999" to StandPose.Fixed(Rotations(-22.5f, 0.0f, 0.0f))
+        ),
         stageDefs = listOf(
             CropStage(
                 blocks = CropBlockState.blockStatePattern(
@@ -30,17 +35,18 @@ object Snoozling : CropDefinitionProvider {
                 armorStands =
                     listOf(
                         CropArmorStand(
-                        isSmall = false,
-                            offset = Vec3(-0.03125, 0.15625, 0.0),
+                            offset = Vec3(0.0, 0.15625, 0.03125),
                             hashString = "b82d442528456547474dd88166a97818f057ecc4b3ed350ef9a5e4dbd27f98d7",
                         ),
                         CropArmorStand(
-                        isSmall = false,
-                            offset = Vec3(-0.5625, -0.46875, 0.0),
+                            isSmall = false,
+                            offset = Vec3(0.0, -0.46875, 0.5625),
                             hashString = "77bb86dedeb827f2489aa0103d58d0e12e64a8152d5a0f5b1d4d208a3cb55999",
                         )
                     ),
-                1..1
+                // collected at stages one and two and identical at both, so the two are one stage
+                // as far as looking at the plant goes
+                1..2
             ),
             CropStage(
                 blocks = CropBlockState.blockStatePattern(

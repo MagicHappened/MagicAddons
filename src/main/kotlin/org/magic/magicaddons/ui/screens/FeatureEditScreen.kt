@@ -106,6 +106,31 @@ class FeatureEditScreen(
     }
 
 
+    /**
+     * Dragging, letting go and the wheel, passed on the same way clicks are.
+     *
+     * [mouseClicked] deliberately does not defer to the vanilla screen, so the screen never learns
+     * which widget is being dragged and would drop all three of these on the floor.
+     */
+    override fun mouseDragged(
+        mouseButtonEvent: MouseButtonEvent,
+        dragX: Double,
+        dragY: Double
+    ): Boolean = baseChildrenWidgets.any { it.mouseDragged(mouseButtonEvent, dragX, dragY) } ||
+            super.mouseDragged(mouseButtonEvent, dragX, dragY)
+
+    override fun mouseReleased(mouseButtonEvent: MouseButtonEvent): Boolean =
+        baseChildrenWidgets.any { it.mouseReleased(mouseButtonEvent) } ||
+                super.mouseReleased(mouseButtonEvent)
+
+    override fun mouseScrolled(
+        mouseX: Double,
+        mouseY: Double,
+        scrollX: Double,
+        scrollY: Double
+    ): Boolean = baseChildrenWidgets.any { it.mouseScrolled(mouseX, mouseY, scrollX, scrollY) } ||
+            super.mouseScrolled(mouseX, mouseY, scrollX, scrollY)
+
     override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
         var handled = false
 

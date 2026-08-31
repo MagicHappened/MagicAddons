@@ -10,6 +10,7 @@ import org.magic.magicaddons.data.greenhouse.CropArmorStand
 import org.magic.magicaddons.data.greenhouse.CropBlockState
 import org.magic.magicaddons.data.greenhouse.CropDefinition
 import org.magic.magicaddons.data.greenhouse.CropStage
+import org.magic.magicaddons.data.greenhouse.StandPose
 import org.magic.magicaddons.data.greenhouse.CropStates.melonStemState
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
@@ -21,6 +22,10 @@ object Melon : CropDefinitionProvider {
         ),
         skyblockId = SkyBlockItemId.item("MELON"),
         aliases = listOf(SkyBlockItemId.item("MELON_SEEDS")),
+        /** Each skull's pose, found constant across every stage it appears in. */
+        standPoses = mapOf(
+            "360549bf880605bba628e89b1cca4b8a0e428b61d879f45edd9f45469d87aec4" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f))
+        ),
         stageDefs = listOf(
             CropStage(
                 blocks = listOf(
@@ -61,6 +66,7 @@ object Melon : CropDefinitionProvider {
                 ),
                 armorStands = listOf(
                     CropArmorStand(
+                        isSmall = false,
                         offset = Vec3(0.0, -0.53125, 0.0),
                         hashString = "360549bf880605bba628e89b1cca4b8a0e428b61d879f45edd9f45469d87aec4"
                     )

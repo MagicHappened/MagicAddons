@@ -29,6 +29,9 @@ abstract class SettingWidget<T>(
 
     protected val childPadding: Int = 4
 
+    /** The gap between a row and the live line under it. */
+    private val detailPadding: Int = 2
+
     var baseWidget = false
     open var hovered: Boolean = false
     open var childrenExpanded: Boolean = false
@@ -56,9 +59,35 @@ abstract class SettingWidget<T>(
     }
     open fun layout(){}
 
+    /**
+     * How much room this row's live detail is asking for right now, zero when it has none.
+     *
+     * Asked rather than stored because the answer changes while the config is open: a countdown
+     * that becomes unreadable takes its line back with it. See [SettingDetail].
+     */
+    fun detailHeight(): Int {
+        val detail = node.detail?.invoke() ?: return 0
+
+        return detail.height(Minecraft.getInstance().font) + detailPadding
+    }
+
+    /** Draws the live line in the strip under the row, if there is one to draw. */
+    protected fun renderDetail(graphics: GuiGraphicsExtractor) {
+        val detail = node.detail?.invoke() ?: return
+        val font = Minecraft.getInstance().font
+
+        detail.render(
+            graphics,
+            font,
+            x + textXPad,
+            y + height + detailPadding,
+            width - textXPad * 2
+        )
+    }
+
     open fun layoutChildren() {
         if (!childrenExpanded) return
-        var currentY = y + height + childPadding
+        var currentY = y + height + detailHeight() + childPadding
 
         childrenWidgets.forEach {
             currentY = layoutChild(it,currentY)
@@ -66,7 +95,7 @@ abstract class SettingWidget<T>(
     }
     private fun layoutChildrenBut(child: SettingWidget<*>) {
         if (!childrenExpanded) return
-        var currentY = y + height + childPadding
+        var currentY = y + height + detailHeight() + childPadding
 
         childrenWidgets.forEach {
             if (it == child) return@forEach
@@ -165,15 +194,57 @@ abstract class SettingWidget<T>(
         return false
     }
 
+    /**
+     * The wheel, offered to this row and then to whatever it has open. Only a setting that has
+     * something to do with it takes it; everything else lets it through.
+     */
+    override fun mouseScrolled(mouseX: Double, mouseY: Double, scrollX: Double, scrollY: Double): Boolean {
+        if (!childrenExpanded) return false
+
+        childrenWidgets.forEach {
+            if (it.mouseScrolled(mouseX, mouseY, scrollX, scrollY)) return true
+        }
+        return false
+    }
+
+    /**
+     * The mouse moving with a button held, and the button coming back up.
+     *
+     * The config screen hands both of these round by hand: it consumes clicks itself rather than
+     * letting the vanilla screen record which widget is being dragged, so nothing downstream would
+     * ever hear about a drag on its own.
+     */
+    override fun mouseDragged(
+        mouseButtonEvent: MouseButtonEvent,
+        dragX: Double,
+        dragY: Double
+    ): Boolean {
+        if (!childrenExpanded) return false
+
+        childrenWidgets.forEach {
+            if (it.mouseDragged(mouseButtonEvent, dragX, dragY)) return true
+        }
+        return false
+    }
+
+    override fun mouseReleased(mouseButtonEvent: MouseButtonEvent): Boolean {
+        if (!childrenExpanded) return false
+
+        childrenWidgets.forEach {
+            if (it.mouseReleased(mouseButtonEvent)) return true
+        }
+        return false
+    }
+
     override fun isMouseOver(mouseX: Double, mouseY: Double): Boolean {
         return mouseX.toInt() in x until (x + width) &&
                 mouseY.toInt() in y until (y + height)
     }
 
     open fun getTotalHeight(): Int {
-        if (!childrenExpanded) return height
+        if (!childrenExpanded) return height + detailHeight()
 
-        return height + childrenWidgets.sumOf {
+        return height + detailHeight() + childrenWidgets.sumOf {
             it.getTotalHeight() + childPadding
         }
     }

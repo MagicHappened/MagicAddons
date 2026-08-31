@@ -31,6 +31,7 @@ import org.magic.magicaddons.ui.widgets.greenhouse.PresetUI
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.ScreenUtil.drawMultilineBoxCentered
 import org.magic.magicaddons.util.ScreenUtil.drawSimpleTooltip
+import tech.thatgravyboat.skyblockapi.api.location.LocationAPI
 import tech.thatgravyboat.skyblockapi.api.profile.garden.PlotAPI
 
 class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, OverlayContext {
@@ -226,15 +227,20 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         val amountInitialized = GreenhouseData.greenhouseGrids.count { it.state.lastUpdateTimestamp != null }
         if (PlotAPI.plots.any { it.data == null }) {
             if (!GreenhouseData.miscInfo.shouldIgnoreWarning) {
-                ChatUtils.sendWithCommand(
-                    "Plot data is null, please join skyblock.",
-                    "/desk"
-                )
+                if (!LocationAPI.isOnSkyBlock) {
+                    ChatUtils.sendWithPrefix("Plot data is null, please join skyblock.")
+                } else {
+                    ChatUtils.sendWithCommand(
+                        "Plot data is null, please open /desk to load it.",
+                        "/desk"
+                    )
+                }
             }
             return
         }
         if (amountInitialized != PlotAPI.plots.count { it.data?.isGreenhouse ?: throw IllegalStateException("Plot data was null after null check.") }){
-            if (!GreenhouseData.miscInfo.shouldIgnoreWarning){
+            if (!GreenhouseData.miscInfo.shouldIgnoreWarning && !warnedMissingGreenhouses){
+                warnedMissingGreenhouses = true
                 ChatUtils.sendWithCommand(
                     "Not all greenhouses available, enter them to see them. (IGNORE)",
                     "/MagicAddons internal ignoreFarmingWarnings"
@@ -262,10 +268,8 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
 
         displayedGridWidget = greenhouseGridWidgets.find { it.layout === currentLayout }
             ?: greenhouseGridWidgets.firstOrNull()
-        if (displayedGridWidget == null) {
-            ChatUtils.sendWithPrefix("Unable to find your greenhouses.")
-            return
-        }
+        // No greenhouse scanned yet: nothing to show, the warning above already covers it.
+        if (displayedGridWidget == null) return
 
         displayedName = displayedGridWidget?.layout?.name
             ?: displayedGridWidget?.layout?.id
@@ -748,6 +752,9 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
     companion object {
         /** Whether the wheel walks the swatches rather than the plots, kept for the session. */
         private var scrollPicksInfo: Boolean = false
+
+        /** The "not all greenhouses available" warning is sent at most once per game run. */
+        private var warnedMissingGreenhouses: Boolean = false
 
         /** Enough for one button, however narrow the window gets. */
         private const val MIN_ACTION_ROW_WIDTH: Int = 90

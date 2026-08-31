@@ -1,13 +1,21 @@
 package org.magic.magicaddons.data.config
 
 import org.magic.magicaddons.data.ListEntry
+import org.magic.magicaddons.ui.widgets.config.SettingDetail
 import kotlin.collections.get
 
 sealed class SettingNode<T>(
     val key: String,
     val displayName: String,
     val tooltip: String,
-    open var value: T
+    open var value: T,
+    /**
+     * Live text drawn under this setting's row, or null for a setting that speaks for itself.
+     *
+     * Asked afresh every frame and never stored: it is what the value currently means rather than
+     * part of the value. See [SettingDetail].
+     */
+    val detail: (() -> SettingDetail?)? = null
 
 ) {
     open val children: List<SettingNode<*>>? = null
@@ -52,8 +60,9 @@ class ToggleListSetting(
     key: String,
     displayName: String,
     tooltip: String,
-    override var value: MutableList<ListEntry>
-) : SettingNode<MutableList<ListEntry>>(key, displayName, tooltip, value) {
+    override var value: MutableList<ListEntry>,
+    detail: (() -> SettingDetail?)? = null
+) : SettingNode<MutableList<ListEntry>>(key, displayName, tooltip, value, detail) {
 
     override fun parseValue(value: Any): MutableList<ListEntry> {
         val list = value as? List<*> ?: return mutableListOf()
@@ -97,8 +106,9 @@ class BooleanSetting(
     displayName: String,
     tooltip: String,
     override var value: Boolean,
-    override var children: List<SettingNode<*>>? = null
-) : SettingNode<Boolean>(key, displayName, tooltip, value) {
+    override var children: List<SettingNode<*>>? = null,
+    detail: (() -> SettingDetail?)? = null
+) : SettingNode<Boolean>(key, displayName, tooltip, value, detail) {
 
     override fun serializeSettings(parentPath: String): MutableMap<String, Any> {
         val map = super.serializeSettings(parentPath)
@@ -137,12 +147,43 @@ class BooleanSetting(
     }
 }
 
+/**
+ * A whole number the player picks by dragging a bar or by typing one.
+ *
+ * [step] is how far dragging and scrolling move the value at a time, so a setting whose useful
+ * numbers are coarse can be dragged in coarse jumps. It is deliberately not a constraint on the
+ * value: a number typed into the box lands exactly where it was typed, clamped to [range] and
+ * nothing else, so no setting is ever unable to hold a particular number.
+ */
+class IntSetting(
+    key: String,
+    displayName: String,
+    tooltip: String,
+    override var value: Int,
+    val range: IntRange,
+    val step: Int = 1,
+    detail: (() -> SettingDetail?)? = null
+) : SettingNode<Int>(key, displayName, tooltip, value, detail) {
+
+    /** Gson hands numbers back as doubles, and an older config may hold the number as text. */
+    override fun parseValue(value: Any): Int {
+        val number = when (value) {
+            is Number -> value.toInt()
+            is String -> value.trim().toDoubleOrNull()?.toInt()
+            else -> null
+        } ?: throw IllegalArgumentException("Not a number: $value")
+
+        return number.coerceIn(range)
+    }
+}
+
 class TextSetting(
     key: String,
     displayName: String,
     tooltip: String,
-    override var value: String
-) : SettingNode<String>(key, displayName, tooltip, value) {
+    override var value: String,
+    detail: (() -> SettingDetail?)? = null
+) : SettingNode<String>(key, displayName, tooltip, value, detail) {
 
     val history: MutableSet<String> = mutableSetOf()
 
@@ -186,8 +227,9 @@ class EnumSetting<T : Enum<T>>(
     tooltip: String,
     value: T,
     override val children: List<SettingNode<*>>? = null,
-    val childrenProvider: ((T) -> List<SettingNode<*>>)? = null
-) : SettingNode<T>(key, displayName, tooltip, value) {
+    val childrenProvider: ((T) -> List<SettingNode<*>>)? = null,
+    detail: (() -> SettingDetail?)? = null
+) : SettingNode<T>(key, displayName, tooltip, value, detail) {
 
     private var activeChildren: List<SettingNode<*>>? =
         childrenProvider?.invoke(value)

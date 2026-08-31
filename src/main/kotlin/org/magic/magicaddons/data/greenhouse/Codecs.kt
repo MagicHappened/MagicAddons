@@ -86,8 +86,11 @@ object Codecs {
                     .forGetter { Optional.ofNullable(it.age) },
 
                 Codec.unboundedMap(Codec.STRING, Codec.INT).optionalFieldOf("readings")
-                    .forGetter { Optional.of(it.readings.toMap()) }
-            ).apply(instance) { id, slot, waterOpt, growthOpt, ageOpt, readingsOpt ->
+                    .forGetter { Optional.of(it.readings.toMap()) },
+
+                Codec.INT.optionalFieldOf("first_seen_stage")
+                    .forGetter { Optional.ofNullable(it.firstSeenStage) }
+            ).apply(instance) { id, slot, waterOpt, growthOpt, ageOpt, readingsOpt, firstSeenOpt ->
                 GreenhouseElementInstance(
                     elementId = id,
                     slot = slot.orElse(null),
@@ -96,7 +99,9 @@ object Codecs {
                     age = ageOpt.orElse(null),
                     readings = readingsOpt.orElse(emptyMap()).toMutableMap(),
                     cropDef = CropRegistry.get(id) ?: throw IllegalStateException("Unable to find crop for id $id")
-                )
+                ).also { plant ->
+                    plant.firstSeenStage = firstSeenOpt.orElse(null)
+                }
             }
         }
     }

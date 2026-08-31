@@ -1,5 +1,6 @@
 package org.magic.magicaddons.data.greenhouse.elements.mutation.rare
 
+import net.minecraft.core.Rotations
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.CropEffect
 import org.magic.magicaddons.data.greenhouse.CropArmorStand
@@ -8,6 +9,7 @@ import org.magic.magicaddons.data.greenhouse.CropStage
 import org.magic.magicaddons.data.greenhouse.CropStagePattern
 import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
 import org.magic.magicaddons.data.greenhouse.DEFAULT_DECAY_TIME_MS
+import org.magic.magicaddons.data.greenhouse.StandPose
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
 object DoNotEatShroom : CropDefinitionProvider {
@@ -18,6 +20,10 @@ object DoNotEatShroom : CropDefinitionProvider {
             CropEffect.WaterDrain
         ),
         skyblockId = SkyBlockItemId.item("DO_NOT_EAT_SHROOM"),
+        /** Each skull's pose, found constant across every stage it appears in. */
+        standPoses = mapOf(
+            "6a7ae95a8bb1fcdbf71385fe663c5647e0a5c32004db8c0313c2d45c94e3d1ad" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f))
+        ),
         stageDefs = listOf(
             CropStage(
                 blocks = listOf(

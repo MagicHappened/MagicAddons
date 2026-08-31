@@ -1,6 +1,7 @@
 package org.magic.magicaddons.data.greenhouse.elements.mutation.uncommon
 
 import net.minecraft.core.BlockPos
+import net.minecraft.core.Rotations
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.*
 import org.magic.magicaddons.data.greenhouse.CropStates.melonStemState
@@ -13,6 +14,10 @@ object Creambloom : CropDefinitionProvider {
             CropEffect.Immunity
         ),
         skyblockId = SkyBlockItemId.item("CREAMBLOOM"),
+        /** Each skull's pose, found constant across every stage it appears in. */
+        standPoses = mapOf(
+            "60e98c0b598e2f5ce7c5ee8183ed157c5436a00585da711f8a87f24ea1ff055b" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f))
+        ),
         stageDefs = listOf(
             CropStage(
                 blocks = listOf(
@@ -81,6 +86,7 @@ object Creambloom : CropDefinitionProvider {
                 ),
                 armorStands = listOf(
                     CropArmorStand(
+                        isSmall = false,
                         offset = Vec3(0.0, 0.0625, 0.0),
                         hashString = "60e98c0b598e2f5ce7c5ee8183ed157c5436a00585da711f8a87f24ea1ff055b"
                     )

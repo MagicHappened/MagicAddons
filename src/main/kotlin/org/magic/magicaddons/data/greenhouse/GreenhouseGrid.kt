@@ -271,6 +271,10 @@ class GreenhouseGrid(
     ): ElementRuntimeState {
         found.instance.age = standing.age
 
+        // the plant is the one that was standing here, so it keeps the stage it was first seen at
+        // rather than the one this scan happens to find it at
+        found.instance.firstSeenStage = standing.firstSeenStage ?: found.instance.lowestStage
+
         // the prediction may have drained this plant past death, and here it stands: ticks were
         // skipped. The fewest skips that leave it alive put it one tick from dying, so that is
         // what is assumed, and said out loud, since watered now is the only way it stays standing
@@ -480,6 +484,11 @@ class GreenhouseGrid(
                 growthStage = bestGrowth,
                 cropDef = definition
             )
+
+            // where this plant enters our records. Overwritten by whatever the plant standing here
+            // already carried, in the reconcile that follows, so only a plant nobody has seen
+            // before keeps the stage read here
+            instance.firstSeenStage = instance.lowestStage
 
             // what winning this stage implies about the plant, filed before the stand readings:
             // a noctilume's craving is carried by which skull matched, not by anything a stand
