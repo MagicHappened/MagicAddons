@@ -175,6 +175,8 @@ class TextListSettingWidget(
 
         graphics.drawBorder(x, y, x + width, y + height, borderSize, borderColor)
 
+        renderDetail(graphics)
+
         renderTooltip(graphics, mouseX, mouseY)
     }
 
@@ -275,6 +277,7 @@ class TextListSettingWidget(
                 totalPadding +
                 addLabelHeight +
                 inputHeight +
-                borderSize
+                borderSize +
+                detailHeight()
     }
 }

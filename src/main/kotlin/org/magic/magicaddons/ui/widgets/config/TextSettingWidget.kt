@@ -117,6 +117,8 @@ class TextSettingWidget(
                 it.extractRenderState(graphics, mouseX, mouseY)
             }
         }
+
+        renderDetail(graphics)
     }
 
     override fun mouseMoved(mouseX: Double, mouseY: Double) {
@@ -171,5 +173,5 @@ class TextSettingWidget(
         return false
     }
 
-    override fun getTotalHeight(): Int = height
+    override fun getTotalHeight(): Int = height + detailHeight()
 }

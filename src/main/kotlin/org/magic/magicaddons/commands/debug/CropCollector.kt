@@ -64,8 +64,7 @@ object CropCollector : EntityUtils.HighlightSource {
     private const val PLANT_HEIGHT: Int = 15
 
     /** The skull the plot marker stand carries on every greenhouse, never part of a plant. */
-    private const val PLOT_MARKER_SKIN: String =
-        "4099589796de185787ab92c3066d0d0af832ffad7153a42bb2e2d23598e7ea60"
+    private val PLOT_MARKER_SKIN: String = CropStageExporter.PLOT_MARKER_SKIN
 
     private const val GRAY: Int = 0xFF9E9E9E.toInt()
     private const val UNKNOWN_WHITE: Int = 0xFFFFFFFF.toInt()

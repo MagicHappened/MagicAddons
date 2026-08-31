@@ -6,6 +6,7 @@ import net.minecraft.world.entity.decoration.ArmorStand
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.level.block.state.BlockState
 import org.magic.magicaddons.data.config.BooleanSetting
+import org.magic.magicaddons.data.config.IntSetting
 import org.magic.magicaddons.data.greenhouse.CropRegistry
 import org.magic.magicaddons.features.Feature
 import org.magic.magicaddons.util.ChatUtils
@@ -32,6 +33,27 @@ object GreenhousePresets : Feature() {
         displayName = displayName,
         tooltip = tooltipMessage,
         value = true,
+        children = listOf(
+            BooleanSetting(
+                key = "ChorusCollisionWarning",
+                displayName = "Chorus Collision Warning",
+                tooltip = "Warns before a chorus fruit runs out of tiles to teleport into and " +
+                        "starts destroying the plot around it",
+                value = false,
+                children = listOf(
+                    IntSetting(
+                        key = "ChorusAbsenceTicks",
+                        displayName = "Ticks Away",
+                        tooltip = "How many growth ticks you expect to be away for. The line " +
+                                "underneath says what that is in real time, counted from the tick " +
+                                "already running",
+                        value = 5,
+                        range = 1..48,
+                        detail = { GreenhouseData.absenceDetail() }
+                    )
+                )
+            )
+        )
     )
 
 

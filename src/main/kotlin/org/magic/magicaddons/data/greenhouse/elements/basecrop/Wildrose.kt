@@ -19,6 +19,7 @@ object Wildrose : CropDefinitionProvider {
         skyblockId = SkyBlockItemId.item("WILD_ROSE"),
         /** Each skull's pose, found constant across every stage it appears in. */
         standPoses = mapOf(
+            "f341905af17c74a1c6181a56c88d8f91853f2cff0a9a33aaa16c0d835fdceece" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f)),
             "4a99a01317a01f65f7a7610122bea792c22a771e7a48ce1a5b352bccc8335074" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f)),
             "61a37adb8bcad712663771235feeb136ebe0f5c4d593070a5410ccb6f6706aa0" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f))
         ),
@@ -47,7 +48,6 @@ object Wildrose : CropDefinitionProvider {
                 ),
                 armorStands = listOf(
                     CropArmorStand(
-                        isSmall = false,
                         offset = Vec3(0.0, 0.0625, 0.0),
                         hashString = "f341905af17c74a1c6181a56c88d8f91853f2cff0a9a33aaa16c0d835fdceece"
                     )

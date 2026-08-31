@@ -53,7 +53,9 @@ class EnumSettingWidget<T : Enum<T>>(
     }
 
     private fun layoutDropdown() {
-        var currentY = y + height
+        // below the live line, when there is one: the dropdown opens under the whole row rather
+        // than over the note explaining it
+        var currentY = y + height + detailHeight()
 
         selectionOptions.forEach {
             it.x = x
@@ -110,6 +112,8 @@ class EnumSettingWidget<T : Enum<T>>(
             false
         )
 
+        renderDetail(graphics)
+
         extractChildrenRenderStates(graphics, mouseX, mouseY, delta)
 
         if (selectionMenuExpanded) {
@@ -159,7 +163,7 @@ class EnumSettingWidget<T : Enum<T>>(
     }
 
     override fun getTotalHeight(): Int {
-        var total = height
+        var total = height + detailHeight()
 
         if (childrenExpanded) {
             total += childrenWidgets.sumOf { it.getTotalHeight() + childPadding }

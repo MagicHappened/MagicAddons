@@ -47,6 +47,8 @@ class BooleanSettingWidget(
             false
         )
 
+        renderDetail(graphics)
+
         extractChildrenRenderStates(graphics, mouseX, mouseY, delta)
     }
 

@@ -2,6 +2,8 @@ package org.magic.magicaddons.features.farming.greenhousePresets
 
 import org.magic.magicaddons.data.greenhouse.GrowthStageInfo
 import org.magic.magicaddons.commands.debug.CropCollector
+import org.magic.magicaddons.data.config.BooleanSetting
+import org.magic.magicaddons.data.config.IntSetting
 import org.magic.magicaddons.util.getBuildableArea
 import org.magic.magicaddons.util.parseDurationToMs
 import org.magic.magicaddons.util.center
@@ -40,6 +42,7 @@ import org.magic.magicaddons.events.world.OnEntityRemoved
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhousePresets.baseSetting
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.PlayerUtils
+import org.magic.magicaddons.ui.widgets.config.SettingDetail
 import org.magic.magicaddons.util.ServerUtils
 import tech.thatgravyboat.skyblockapi.api.profile.hunting.AttributeAPI
 import tech.thatgravyboat.skyblockapi.api.SkyBlockAPI
@@ -232,6 +235,140 @@ object GreenhouseData {
     private val TELEPORT_OFFER_WINDOW: Duration = Duration.ofSeconds(15)
 
     private const val DEHYDRATION: String = "dehydration"
+    private const val CHORUS_COLLISION: String = "chorus-collision"
+
+    /** How many growth ticks the player says they will be away for. */
+    private fun absenceTicks(): Int? = baseSetting
+        .getChild<BooleanSetting>("ChorusCollisionWarning")
+        ?.getChild<IntSetting>("ChorusAbsenceTicks")
+        ?.value
+
+    /**
+     * What the chosen number of ticks comes to in time off, for the line under the setting.
+     *
+     * A window of n ticks is not one length: the tick already running has however much of itself
+     * left, and the player is away for n ticks for any absence from that remainder plus n-1 whole
+     * ticks up to that remainder plus n. So the answer is a span one tick wide, and it slides as
+     * the countdown runs, which is why it is worked out per frame rather than stored.
+     */
+    fun absenceDetail(): SettingDetail? {
+        val ticks = absenceTicks() ?: return null
+
+        val tickMs = currentGrowthTickMs()
+        val remaining = remainingTickMs()
+
+        if (tickMs == null || remaining == null) {
+            return SettingDetail.Text(
+                "(Missing variables, Cannot resolve tick time.)",
+                MISSING_COLOR
+            )
+        }
+
+        val shortest = remaining + (ticks - 1) * tickMs
+        val longest = remaining + ticks * tickMs
+
+        return SettingDetail.Text(
+            "(absent for between ${spanText(shortest)} - ${spanText(longest)})"
+        )
+    }
+
+    /** The colour the detail line wears when it has nothing to say, rather than saying nothing. */
+    private const val MISSING_COLOR: Int = 0xFFFF8855.toInt()
+
+    /** A length of time as the player reads one: "2d 3h", "9h 40m", "54m", "30s". */
+    fun spanText(ms: Long): String {
+        val seconds = (ms / 1000).coerceAtLeast(0)
+        val minutes = seconds / 60
+        val hours = minutes / 60
+        val days = hours / 24
+
+        return when {
+            days > 0 -> "${days}d ${hours % 24}h"
+            hours > 0 -> "${hours}h ${minutes % 60}m"
+            minutes > 0 -> "${minutes}m"
+            else -> "${seconds}s"
+        }
+    }
+
+    /**
+     * Says which greenhouses will run out of room for their chorus before the player is next back.
+     *
+     * Shares the dehydration warning's cadence and its reason for having one: both are about the
+     * coming growth tick, and both would otherwise repeat every time the countdown is restated.
+     * The arithmetic, and what it deliberately does not assume, is in [ChorusCollision].
+     */
+    private fun warnOfChorusCollision() {
+        if (baseSetting.getChild<BooleanSetting>("ChorusCollisionWarning")?.value != true) return
+
+        val nextTick = miscInfo.nextTickTime ?: return
+        val remainingMs = Duration.between(Instant.now(), nextTick).toMillis()
+
+        GreenhouseWarnings.tick(CHORUS_COLLISION, remainingMs)
+
+        val ticks = absenceTicks() ?: return
+
+        val crowded = greenhouseGrids.mapNotNull { grid ->
+            ChorusCollision.analyse(grid, ticks)
+                ?.takeIf { it.warns }
+                ?.let { grid.layout to it }
+        }
+
+        if (crowded.isEmpty()) return
+        if (!GreenhouseWarnings.shouldWarn(CHORUS_COLLISION, remainingMs)) return
+
+        sendChorusWarning(crowded)
+    }
+
+    /**
+     * The warning itself: what to break, where, and what it is being broken for. A jellybean still
+     * growing is the expensive thing on the plot, so it is named when there is one to lose.
+     */
+    private fun sendChorusWarning(crowded: List<Pair<GreenhouseLayout, ChorusCollision.Report>>) {
+        val message = Component.literal("[MA] ").withStyle(ChatFormatting.GOLD)
+            .append(
+                Component.literal("Chorus collision likely: ").withStyle(ChatFormatting.RED)
+            )
+
+        crowded.forEachIndexed { index, (layout, report) ->
+            if (index > 0) {
+                message.append(Component.literal("; ").withStyle(ChatFormatting.DARK_GRAY))
+            }
+
+            message.append(
+                Component.literal("break ${report.cull} youngest chorus")
+                    .withStyle(ChatFormatting.YELLOW)
+            )
+            message.append(
+                Component.literal(" (or harvest ${report.cull * 2} ripe)")
+                    .withStyle(ChatFormatting.GRAY)
+            )
+            message.append(Component.literal(" in ").withStyle(ChatFormatting.GRAY))
+
+            // the numbers behind the verdict hang off the greenhouse's own name, so several
+            // greenhouses in one warning each keep their own working
+            val detail = Component.literal(
+                "${report.movers} moving chorus, ${report.free} free tiles, " +
+                        "${report.spawnOpen} open spawners over ${report.ticks} ticks away.\n" +
+                        "Margin ${report.margin} plus ${report.ripening} ripening is under the " +
+                        "${report.need} the window asks for." +
+                        if (report.jelliesAtRisk > 0) {
+                            "\n${report.jelliesAtRisk} growing jellybeans stand in the blast radius."
+                        } else {
+                            ""
+                        }
+            )
+
+            message.append(
+                Component.literal(layout.displayName()).withStyle(
+                    Style.EMPTY
+                        .withColor(ChatFormatting.AQUA)
+                        .withHoverEvent(HoverEvent.ShowText(detail))
+                )
+            )
+        }
+
+        Minecraft.getInstance().player?.sendSystemMessage(message)
+    }
 
     /**
      * Says which plants the coming tick will kill, while there is still time to water them.
@@ -516,6 +653,7 @@ object GreenhouseData {
         // asked every tick rather than once a minute, so each threshold fires the moment it
         // is crossed rather than up to a minute late
         warnOfDyingPlants()
+        warnOfChorusCollision()
         offerTeleportIfArrived()
     }
 

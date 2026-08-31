@@ -584,6 +584,44 @@ data class GreenhouseElementInstance(
      * carries that assumption. Cleared the moment anything is actually read off the plant.
      */
     var waterPredictedInDebt: Boolean = false
+
+    /**
+     * The lowest stage this plant has ever been seen at, which is where it entered our records.
+     *
+     * A plant the mod watched climb away from that stage grew on the plot; a plant that has only
+     * ever been seen at the stage it first appeared at was put there. That is the whole of what
+     * separates a magic jellybean being grown to a hundred and twenty, worth about nine million
+     * coins, from a bought one standing in a spawner ring as cheap scenery, and it is why losing
+     * one of them matters and losing the other does not.
+     *
+     * Set the first time a plant is filed and carried across every scan afterwards, so it survives
+     * both the reconcile that re-reads the plot and the trip to disk.
+     */
+    var firstSeenStage: Int? = null
+
+    /** The lowest stage this plant might be at now, which is all a scan can promise about most. */
+    val lowestStage: Int?
+        get() = when (val stage = growthStage) {
+            is GrowthStageInfo.Known -> stage.stage
+            is GrowthStageInfo.Estimated -> stage.range.first
+            null -> null
+        }
+
+    /**
+     * Whether this plant grew where it stands rather than being placed there.
+     *
+     * todo the other half of this: once a mutation being grown reaches its last stage, tell the
+     *  player to harvest it, since a grown crop left standing is profit going nowhere and
+     *  eventually decays. An estimated stage should be judged by the high end of its range there,
+     *  so the player is told early rather than late.
+     */
+    val grewInPlace: Boolean
+        get() {
+            val first = firstSeenStage ?: return false
+            val now = lowestStage ?: return false
+
+            return now > first
+        }
 }
 
 
