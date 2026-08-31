@@ -37,3 +37,6 @@ fabric-cache/
 *.orig
 remappedSrc/
 .run/
+
+# local game-behaviour notes (see memory: greenhouse-water-notes)
+notes/
