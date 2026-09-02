@@ -12,6 +12,7 @@ import net.minecraft.client.input.MouseButtonEvent
 import org.magic.magicaddons.data.config.SettingNode
 import org.magic.magicaddons.ui.screens.FeatureEditScreen
 import org.magic.magicaddons.util.ScreenUtil.drawSimpleTooltip
+import org.magic.magicaddons.util.compat.McCompat
 
 abstract class SettingWidget<T>(
     protected val node: SettingNode<T>,
@@ -130,7 +131,7 @@ abstract class SettingWidget<T>(
 
     override fun mouseMoved(mouseX: Double, mouseY: Double) {
         hovered = isMouseOver(mouseX, mouseY)
-        val currentScreen = Minecraft.getInstance().screen
+        val currentScreen = McCompat.currentScreen()
         if (currentScreen is FeatureEditScreen && hovered) {
             currentScreen.hoveredWidget = this
         }

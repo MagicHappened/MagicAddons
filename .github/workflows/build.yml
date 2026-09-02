@@ -13,7 +13,7 @@ jobs:
     steps:
         - name: Checkout sources
           uses: actions/checkout@v6
-      
+
         - name: Setup Java
           uses: actions/setup-java@v5
           with:
@@ -22,13 +22,23 @@ jobs:
 
         - name: Make gradle executable
           run: chmod +x ./gradlew
-      
+
         - name: Build with Gradle
           run: ./gradlew build
 
-        - name: Upload Jar
+        # with archive false each jar arrives as its own artifact, named after the file itself
+        - name: Upload 26.1.2 jar
           uses: actions/upload-artifact@v7
           with:
-            path: build/libs/*.jar
+            path: |
+              versions/26.1.2/build/libs/*.jar
+              !versions/26.1.2/build/libs/*-sources.jar
             archive: false
-      
+
+        - name: Upload 26.2 jar
+          uses: actions/upload-artifact@v7
+          with:
+            path: |
+              versions/26.2/build/libs/*.jar
+              !versions/26.2/build/libs/*-sources.jar
+            archive: false
