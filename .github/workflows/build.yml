@@ -26,10 +26,10 @@ jobs:
         - name: Build with Gradle
           run: ./gradlew build -Pbuild_id=${GITHUB_SHA::7}
 
+        # with archive false each jar arrives as its own artifact, named after the file itself
         - name: Upload 26.1.2 jar
           uses: actions/upload-artifact@v7
           with:
-            name: magicaddons-26.1.2
             path: |
               versions/26.1.2/build/libs/*.jar
               !versions/26.1.2/build/libs/*-sources.jar
@@ -38,7 +38,6 @@ jobs:
         - name: Upload 26.2 jar
           uses: actions/upload-artifact@v7
           with:
-            name: magicaddons-26.2
             path: |
               versions/26.2/build/libs/*.jar
               !versions/26.2/build/libs/*-sources.jar
