@@ -424,7 +424,7 @@ const val SIX_DAY_DECAY_TIME_MS: Long = 6L * 24 * 60 * 60 * 1000
  */
 sealed interface StandPose {
 
-    /** The head pose a stand of this role wears at world position ([x], [z]) with [offset]. */
+    /** The head pose a stand of this role has at world position (x, z) with that offset. */
     fun headAt(x: Int, z: Int, offset: Vec3): Rotations
 
     val xRotation: Float get() = 0f

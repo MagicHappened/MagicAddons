@@ -21,9 +21,9 @@ import java.time.Duration
 import java.time.Instant
 
 /**
- * The warnings that hang off the growth tick: what has finished growing, what is about to rot, and
- * what has stopped growing until somebody sees to it. Each speaks when the tick lands and again on
- * the way to the next one; decay climbs its own ladder instead, six hours down to one minute.
+ * Warnings tied to the growth tick: mutations that finished growing, plants about to decay, and
+ * plants that stopped growing until the player acts. Each is sent when a tick lands and again at
+ * ten, five and one minute before the next. Decay instead warns at 6h, 1h, 20m, 5m and 1m.
  */
 object PlantWarnings {
 
@@ -49,7 +49,7 @@ object PlantWarnings {
         Duration.ofMinutes(1)
     )
 
-    /** What a countdown reads with nothing to count down to, so the cadence clears its cycle. */
+    /** The countdown value used when nothing is pending, which resets that kind's thresholds. */
     private val NOTHING_PENDING_MS: Long = Duration.ofDays(365).toMillis()
 
     /** One greenhouse's part of a warning: the name shown, and the lines hung inside it. */
@@ -136,7 +136,7 @@ object PlantWarnings {
 
     // -------------------------------------------------------------------------- when they run
 
-    /** The tick has landed, so everything it made true is said now. Decay keeps its own ladder. */
+    /** Sends the harvest and attention warnings straight after a tick. Decay is on its own schedule. */
     @EventHandler
     fun onGrowthTick(event: GrowthTickEvent) {
         if (enabled(HARVEST_KEY)) {
@@ -216,7 +216,7 @@ object PlantWarnings {
 
     // --------------------------------------------------------------------------- how they read
 
-    /** Files what each plant is worth saying, counting identical answers instead of repeating them. */
+    /** Groups the plants each greenhouse should report, counting repeats instead of listing them. */
     private fun notes(
         label: (GreenhouseElementInstance) -> Pair<String, String?>?
     ): List<HouseNote> = GreenhouseData.greenhouseGrids.mapNotNull { grid ->

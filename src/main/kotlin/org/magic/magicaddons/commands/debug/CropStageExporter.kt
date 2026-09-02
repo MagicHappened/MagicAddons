@@ -307,8 +307,8 @@ object CropStageExporter {
                     fields.add("xRotations = listOf(\n$xRotations\n)")
                     fields.add("yRotations = listOf(\n$yRotations\n)")
 
-                    // written only when there is one. A hash of null used to reach the file as the
-                    // word "null", which is a hash no head will ever have
+                    // only written when the stand has one, so no export contains the string "null"
+                    // as a hash
                     if (hash != null) fields.add("hashString = \"$hash\"")
                     if (name != null) fields.add("customName = \"$name\"")
 
@@ -373,8 +373,8 @@ object CropStageExporter {
                 else -> "listOf()"
             }
 
-            // built at the left margin and moved into place in one go, so every level lines up with
-            // the one above it however the pieces ended up being combined
+            // indented once at the end rather than per piece, so every level lines up whatever the
+            // pieces were built from
             sb.appendLine("    armorStands = ${indent(final).trimStart()},")
         } else {
             sb.appendLine("    armorStands = listOf(),")

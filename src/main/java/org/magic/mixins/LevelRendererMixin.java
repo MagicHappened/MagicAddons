@@ -151,9 +151,8 @@ public abstract class LevelRendererMixin {
                     levelRenderState,
                     submitNodeCollector,
                     (ent, state) -> {
-                        // the stand is scaffolding for the head it holds, and all three ways a body
-                        // is drawn have to be closed: visible, translucent, and outlined. So it is
-                        // hidden rather than translucent, and carries no outline colour
+                        // only the head should be drawn, so all three ways the body could appear are
+                        // closed off: visible, translucent, and outlined. Hidden, and no outline colour
                         state.isInvisible = true;
                         state.outlineColor = EntityRenderState.NO_OUTLINE;
 
@@ -200,8 +199,8 @@ public abstract class LevelRendererMixin {
 
         EntityRenderState state = renderer.createRenderState(entity, partialTicks);
 
-        // the modifier speaks last: extractRenderState writes outlineColor and isInvisible from the
-        // entity, so anything set before it was silently overwritten
+        // run after extractRenderState, which writes outlineColor and isInvisible from the entity
+        // and would overwrite anything set before it
         renderer.extractRenderState(entity, state, partialTicks);
         modifier.modify(entity, state);
 

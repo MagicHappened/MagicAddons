@@ -51,7 +51,7 @@ object McCompat {
         //?}
     }
 
-    /** [formatting]'s colour as a packed rgb int, for comparing against what a component wears. */
+    /** A chat colour as a packed rgb int, for comparing against the colour a component carries. */
     fun chatColor(formatting: ChatFormatting): Int {
         //? if >=26.2 {
         /*return TextColor.fromLegacyFormat(formatting)?.value ?: 0xFFFFFF
@@ -60,7 +60,7 @@ object McCompat {
         //?}
     }
 
-    /** The green stained glass block, which the chloronite wears when it is finished. */
+    /** The green stained glass block, which a finished chloronite has above it. */
     fun greenStainedGlass(): Block {
         //? if >=26.2 {
         /*return Blocks.STAINED_GLASS.green()

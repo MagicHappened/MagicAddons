@@ -73,8 +73,8 @@ object Pumpkin : CropDefinitionProvider {
                         hashString = "18bd4aa55673e90a3c611117277d94f6ce185b5d13d2a862a3376f50a6139c4f"
                     )
                 ),
-                // a collected stage 3 came out byte-identical to what was recorded as stage 4, so
-                // the two cannot be told apart by looking and the stage says so
+                // a collected stage 3 came out identical to the recorded stage 4, so one stage
+                // covers both
                 3..4,
             ),
             CropStage(

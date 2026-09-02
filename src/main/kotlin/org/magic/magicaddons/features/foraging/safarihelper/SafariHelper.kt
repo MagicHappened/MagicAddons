@@ -286,7 +286,7 @@ object SafariHelper : HighlightFeature() {
                 designatedZone = zoneTicks.maxByOrNull { it.value }?.key ?: currentZone
             }
 
-            // the safari wide message already speaks for the zone that finished the run
+            // the safari wide message already covers the zone that completed the run
             if (safariMessage != null || !zoneMessages.value) return@forEach
             if (ownZoneOnly.value && zone != designatedZone) return@forEach
 

@@ -25,8 +25,7 @@ object Glasscorn : CropDefinitionProvider {
         ),
         skyblockId = SkyBlockItemId.item("GLASSCORN"),
         stageDefs = listOf(
-            // the two stages look alike, so they are one stage that says so rather than two that
-            // pretend to be told apart
+            // the two stages look identical, so they are recorded as one stage covering both
             CropStage(
                 blocks = CropBlockState.blockStatePattern(
                     positions = listOf(

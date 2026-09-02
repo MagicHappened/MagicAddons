@@ -4,8 +4,8 @@ import net.minecraft.ChatFormatting
 import net.minecraft.network.chat.Component
 
 /**
- * A system chat message, which is how skyblock sends almost everything, action bar included. The
- * text is stripped of formatting codes, since that is what matching needs.
+ * A system chat message. Skyblock sends almost everything this way, the action bar included, and
+ * the text is stripped of formatting codes for matching.
  */
 class OnSystemChatEvent(
     val message: Component,

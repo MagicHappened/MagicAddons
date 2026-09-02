@@ -8,8 +8,8 @@ import org.magic.magicaddons.data.greenhouse.CropStates.wheatState
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
 /**
- * Craves a time of day and wears the one it craves: it only advances while the garden's clock
- * matches, and flips the craving on every advance, so each stage has one skull per craving.
+ * Craves either day or night, shown by which skull it carries. It only advances while the garden's
+ * clock matches that craving, and the craving flips on every advance, so each stage has two skulls.
  */
 object Noctilume : CropDefinitionProvider {
 

@@ -37,7 +37,7 @@ object GreenhouseWatering {
     /** The character skyblock builds its bars out of, one per notch of the level. */
     private const val BAR_CHAR: Char = '|'
 
-    /** Water bar notches: blue is water held, red is water owed, white is the rest of the bar. */
+    /** Water bar notches: blue is a positive water level, red a negative one, white the empty rest. */
     private val BAR_FILLED_COLOR: Int = McCompat.chatColor(ChatFormatting.BLUE)
     private val BAR_DEBT_COLOR: Int = McCompat.chatColor(ChatFormatting.RED)
     private val BAR_EMPTY_COLOR: Int = McCompat.chatColor(ChatFormatting.WHITE)
@@ -128,7 +128,7 @@ object GreenhouseWatering {
 
         if (foreign || total == 0) return null
 
-        // a bar cannot hold water and owe it at once, and owing is the half worth believing
+        // a bar cannot show both at once, and a negative level is the one worth reporting
         if (debt > 0) return -(debt * 100 / total)
 
         return filled * 100 / total

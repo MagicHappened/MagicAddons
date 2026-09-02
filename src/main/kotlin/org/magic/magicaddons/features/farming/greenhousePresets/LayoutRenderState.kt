@@ -296,8 +296,8 @@ object LayoutRenderState {
     }
 
     /**
-     * Says so once, at the moment a plan stops asking for anything. A plant taken out and put back
-     * stays quiet for half a minute, so fiddling does not become a stream of congratulations.
+     * Sends the finished message once, when a plan first has nothing left to mark or ghost. A plan
+     * that finishes again within half a minute is not announced twice.
      */
     private fun announceIfFinished(grid: GreenhouseGrid, layout: GreenhouseLayout, next: Plan) {
         if (grid.state.completionMuted) return
@@ -355,8 +355,8 @@ object LayoutRenderState {
     }
 
     /**
-     * Whether anything is growing on the soil a plan wants. Blunt on purpose: a block or a stand is
-     * a plant whether or not we can name it, and drawing nothing beats drawing through a plant.
+     * Whether anything is growing on the soil a plan wants to fill. Any block or armor stand counts,
+     * even one no definition matches, so a plan is never drawn through an existing plant.
      */
     private fun isOccupied(level: Level, soil: BlockPos, footprint: Footprint): Boolean {
         for (offsetX in 0 until footprint.width) {

@@ -48,7 +48,7 @@ class HoverControls : Renderable, Focusable, HoverableContainer {
         forEachSwatch { info, top, bottom ->
             graphics.fill(x, top, x + width, bottom, info.color)
 
-            // the picked swatch wears an outline; the one merely hovered is only lightened
+            // the picked swatch is outlined; a swatch only hovered is lightened instead
             if (info == selectedInfo) {
                 graphics.drawBorder(x, top, x + width, bottom, Common.UI.BORDER_SIZE, Common.UI.BORDER_COLOR)
             } else if (info == hoveredInfo) {

@@ -10,9 +10,8 @@ public interface WrappedEntityRenderState {
     void magicaddons$setWrappedEntityTintColor(int value);
 
     /**
-     * An outline for the head alone, kept off the render state's own outlineColor because that
-     * one outlines the whole body: a hidden entity with an outline colour is drawn as an outline
-     * of all of itself, which is how highlighted mobs are outlined.
+     * An outline for the head alone. Kept separate from the render state's outlineColor, which
+     * outlines the entire entity.
      */
     int magicaddons$headOutlineColor();
 

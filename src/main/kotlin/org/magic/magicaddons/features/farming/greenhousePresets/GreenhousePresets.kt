@@ -99,8 +99,8 @@ object GreenhousePresets : Feature() {
         PlantWarnings
         CropRegistry
 
-        // the attribute api only starts listening once something touches it, so waking it here means
-        // it heard the menus open rather than being woken by a question it could not answer
+        // the attribute api only registers its listeners once something references it, so it is
+        // referenced here rather than the first time a value is asked of it
         AttributeAPI
 
 

@@ -38,7 +38,7 @@ import org.magic.magicaddons.util.PlayerUtils
 
 /**
  * Reads the entities standing around the player. Greenhouse stands have no hit box to aim at, so
- * they are dumped by proximity with their formatting spelled out, which is how a bar becomes readable.
+ * they are dumped by proximity, with each name's formatting spelled out so bars can be read.
  */
 object FarmingDebug : AbstractCommand() {
     var footprint: Footprint = Footprint(1, 1)

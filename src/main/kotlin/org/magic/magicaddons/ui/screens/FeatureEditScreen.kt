@@ -109,7 +109,7 @@ class FeatureEditScreen(
 
     /**
      * Drag, release and the wheel, passed on the same way clicks are: mouseClicked never defers to
-     * the vanilla screen, so nothing downstream would hear about a drag.
+     * the vanilla screen, so no widget would otherwise receive a drag.
      */
     override fun mouseDragged(
         mouseButtonEvent: MouseButtonEvent,
