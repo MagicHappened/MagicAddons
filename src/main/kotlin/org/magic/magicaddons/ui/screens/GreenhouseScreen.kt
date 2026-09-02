@@ -212,7 +212,7 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
                     ChatUtils.sendWithPrefix("Plot data is null, please join skyblock.")
                 } else {
                     ChatUtils.sendWithCommand(
-                        "Plot data is null, please open /desk to load it.",
+                        "Plot data is null, please open /desk and go to \"configure plots\" to load it.",
                         "/desk"
                     )
                 }

@@ -2,7 +2,7 @@ name: build
 
 on:
   push:
-    branches: [ "greenhouse-presets" ]
+    branches: [ "beta" ]
 
 jobs:
   build:
@@ -13,7 +13,7 @@ jobs:
     steps:
         - name: Checkout sources
           uses: actions/checkout@v6
-      
+
         - name: Setup Java
           uses: actions/setup-java@v5
           with:
@@ -22,15 +22,24 @@ jobs:
 
         - name: Make gradle executable
           run: chmod +x ./gradlew
-      
-        - name: Build with Gradle
-          run: ./gradlew build
 
-        - name: Upload Jar
+        - name: Build with Gradle
+          run: ./gradlew build -Pbuild_id=${GITHUB_SHA::7}
+
+        - name: Upload 26.1.2 jar
           uses: actions/upload-artifact@v7
           with:
+            name: magicaddons-26.1.2
             path: |
-              versions/*/build/libs/*.jar
-              !versions/*/build/libs/*-sources.jar
+              versions/26.1.2/build/libs/*.jar
+              !versions/26.1.2/build/libs/*-sources.jar
             archive: false
-      
+
+        - name: Upload 26.2 jar
+          uses: actions/upload-artifact@v7
+          with:
+            name: magicaddons-26.2
+            path: |
+              versions/26.2/build/libs/*.jar
+              !versions/26.2/build/libs/*-sources.jar
+            archive: false

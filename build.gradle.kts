@@ -4,7 +4,18 @@ plugins {
     id("maven-publish")
 }
 
-version = project.property("mod_version") as String
+// the jar says which Minecraft it is for, and a CI build says which commit it came from:
+// magicaddons-1.1.0-beta.9d66111+26.1.2.jar. A hash of nothing but digits would not be a valid
+// semver prerelease, so those are prefixed
+val buildId: String? = (findProperty("build_id") as String?)
+    ?.takeIf { it.isNotBlank() }
+    ?.let { if (it.all(Char::isDigit)) "g$it" else it }
+
+version = buildString {
+    append(project.property("mod_version") as String)
+    buildId?.let { append(".$it") }
+    append("+${project.property("minecraft_version")}")
+}
 group = project.property("maven_group") as String
 
 base {
