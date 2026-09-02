@@ -12,6 +12,7 @@ import net.minecraft.client.renderer.state.gui.ColoredRectangleRenderState
 import net.minecraft.client.renderer.state.gui.GuiTextRenderState
 import net.minecraft.network.chat.Component
 import org.joml.Matrix3x2f
+import org.magic.magicaddons.util.compat.McCompat
 
 object ScreenUtil {
 
@@ -57,8 +58,8 @@ object ScreenUtil {
         ClientTickEvents.END_CLIENT_TICK.register { _ ->
             val target = newScreen ?: return@register
 
-            if (Minecraft.getInstance().screen !== target) {
-                Minecraft.getInstance().setScreen(target)
+            if (McCompat.currentScreen() !== target) {
+                McCompat.setScreen(target)
             } else {
                 newScreen = null
             }

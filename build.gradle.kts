@@ -7,7 +7,18 @@ plugins {
     id("maven-publish")
 }
 
-version = project.property("mod_version") as String
+// the jar says which Minecraft it is for, and a CI build says which commit it came from:
+// magicaddons-1.0.0+26.1.2.jar. A hash of nothing but digits would not be a valid semver
+// prerelease, so those are prefixed
+val buildId: String? = (findProperty("build_id") as String?)
+    ?.takeIf { it.isNotBlank() }
+    ?.let { if (it.all(Char::isDigit)) "g$it" else it }
+
+version = buildString {
+    append(project.property("mod_version") as String)
+    buildId?.let { append(".$it") }
+    append("+${project.property("minecraft_version")}")
+}
 group = project.property("maven_group") as String
 
 base {
@@ -24,7 +35,15 @@ java {
     // If you remove this line, sources will not be generated.
 }
 
+// only the version the source tree is currently shaped for can actually be run, so the other one
+// generates no IDE run configuration and its run tasks do nothing: one game starts, not two
+val activeVersion: Boolean = stonecutter.current.isActive
+
 loom {
+    runConfigs.all {
+        isIdeConfigGenerated = activeVersion
+    }
+
     mods {
         register("magicaddons") {
             sourceSet(sourceSets.main.get())
@@ -63,11 +82,11 @@ dependencies {
     api("com.terraformersmc:modmenu:${project.property("modmenu_version")}")
 
     include("tech.thatgravyboat:skyblock-api:${project.property("skyblock_api_version")}") {
-        capabilities { requireCapability("tech.thatgravyboat:skyblock-api-26.1") }
+        capabilities { requireCapability("tech.thatgravyboat:${project.property("skyblock_api_capability")}") }
     }
 
     api("tech.thatgravyboat:skyblock-api:${project.property("skyblock_api_version")}") {
-        capabilities { requireCapability("tech.thatgravyboat:skyblock-api-26.1") }
+        capabilities { requireCapability("tech.thatgravyboat:${project.property("skyblock_api_capability")}") }
     }
 }
 
@@ -151,4 +170,10 @@ publishing {
 }
 kotlin {
     jvmToolchain(targetJavaVersion)
+}
+
+if (!activeVersion) {
+    tasks.matching { it.name.startsWith("run") }.configureEach {
+        enabled = false
+    }
 }

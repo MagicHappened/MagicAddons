@@ -11,6 +11,7 @@ import org.magic.magicaddons.ui.screens.FeatureEditScreen
 import org.magic.magicaddons.features.Feature
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.ScreenUtil.drawBorder
+import org.magic.magicaddons.util.compat.McCompat
 
 class FeatureToggleWidget(
     val feature: Feature
@@ -78,7 +79,7 @@ class FeatureToggleWidget(
                 && mouseButtonEvent.y.toInt() in y + 0..y + height
             ) {
 
-                val currentScreen = Minecraft.getInstance().screen
+                val currentScreen = McCompat.currentScreen()
                 if (currentScreen !is ConfigScreen) {
                     return false
                 }
@@ -87,7 +88,7 @@ class FeatureToggleWidget(
                     return true
                 }
                 val featureEditScreen = FeatureEditScreen(feature, currentScreen)
-                Minecraft.getInstance().setScreen(featureEditScreen)
+                McCompat.setScreen(featureEditScreen)
                 return true
             }
         }
