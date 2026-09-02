@@ -10,11 +10,16 @@ import net.minecraft.world.phys.shapes.VoxelShape
 /**
  * The one piece of drawing the two versions disagree about: outlining a shape.
  *
- * 26.2 asks the collector for it and hands over a line width; 26.1.2 has no such call, so the edges
- * are walked and written out here instead, which is what vanilla's own shape renderer does. Line
- * width is whatever the render type carries, since there is nowhere to ask for one per call.
+ * 26.2 asks the collector for it and hands over a line width. 26.1.2 has no such call, so the edges
+ * are walked and written out here instead, which is what vanilla's own shape renderer does; the
+ * line is then whatever width the render type carries, since there is nowhere to ask for one.
  */
 object RenderCompat {
+
+    //? if >=26.2 {
+    /*/** How thick a mark's edges are drawn, where the version lets that be asked for. */
+    private const val OUTLINE_WIDTH: Float = 3f
+    *///?}
 
     /** Draws the edges of [shape], already positioned by [poseStack], in [color]. */
     fun outline(
@@ -23,11 +28,16 @@ object RenderCompat {
         shape: VoxelShape,
         color: Int
     ) {
+        //? if >=26.2 {
+        /*collector.submitShapeOutline(poseStack, shape, RenderTypes.LINES, color, OUTLINE_WIDTH, false)
+        *///?} else {
         collector.submitCustomGeometry(poseStack, RenderTypes.LINES) { transform, consumer ->
             consumer.edges(transform, shape, color)
         }
+        //?}
     }
 
+    //? if <26.2 {
     /** A line per edge, the line's own direction as its normal, as vanilla writes them. */
     private fun VertexConsumer.edges(pose: PoseStack.Pose, shape: VoxelShape, color: Int) {
         shape.forAllEdges { x0, y0, z0, x1, y1, z1 ->
@@ -50,4 +60,5 @@ object RenderCompat {
                 .setNormal(pose, nx, ny, nz)
         }
     }
+    //?}
 }

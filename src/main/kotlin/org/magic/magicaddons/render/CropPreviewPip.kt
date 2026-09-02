@@ -5,7 +5,11 @@ import com.mojang.blaze3d.vertex.PoseStack
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.navigation.ScreenRectangle
 import net.minecraft.client.gui.render.pip.PictureInPictureRenderer
+//? if >=26.2 {
+/*import net.minecraft.client.renderer.SubmitNodeCollector
+*///?} else {
 import net.minecraft.client.renderer.MultiBufferSource
+//?}
 import net.minecraft.client.renderer.entity.state.EntityRenderState
 import net.minecraft.client.renderer.state.gui.pip.PictureInPictureRenderState
 import net.minecraft.client.renderer.state.level.CameraRenderState
@@ -63,9 +67,13 @@ data class CropPreviewRenderState(
  * [WorldRender.solid] and stands through the entity render dispatcher, both against the scene's
  * centre so the plant turns about its own middle.
  */
+//? if >=26.2 {
+/*class CropPreviewRenderer : PictureInPictureRenderer<CropPreviewRenderState>() {
+*///?} else {
 class CropPreviewRenderer(
     bufferSource: MultiBufferSource.BufferSource
 ) : PictureInPictureRenderer<CropPreviewRenderState>(bufferSource) {
+//?}
 
     override fun getRenderStateClass(): Class<CropPreviewRenderState> =
         CropPreviewRenderState::class.java
@@ -79,6 +87,14 @@ class CropPreviewRenderer(
      */
     override fun getTranslateY(height: Int, guiScale: Int): Float = height / 2f
 
+    //? if >=26.2 {
+    /*override fun renderToTexture(
+        state: CropPreviewRenderState,
+        poseStack: PoseStack,
+        collector: SubmitNodeCollector
+    ) {
+        Minecraft.getInstance().gameRenderer.lighting().setupFor(Lighting.Entry.ENTITY_IN_UI)
+    *///?} else {
     override fun renderToTexture(
         state: CropPreviewRenderState,
         poseStack: PoseStack
@@ -87,11 +103,12 @@ class CropPreviewRenderer(
 
         gameRenderer.lighting.setupFor(Lighting.Entry.ENTITY_IN_UI)
 
-        // the gui has no collector of its own to hand out here, so the scene goes through the
+        // 26.1.2's gui has no collector of its own to hand out here, so the scene goes through the
         // game's own submit node storage and is drawn at the end of this method, which is how
-        // vanilla's entity preview does it
+        // vanilla's entity preview does it there
         val features = gameRenderer.featureRenderDispatcher
         val collector = features.submitNodeStorage
+    //?}
 
         // the gui's y runs down, so the scene is flipped the way the inventory flips its player,
         // then tilted and turned by however the viewer has dragged it
@@ -113,6 +130,8 @@ class CropPreviewRenderer(
             dispatcher.submit(stand.state, camera, stand.x, stand.y, stand.z, poseStack, collector)
         }
 
+        //? if <26.2 {
         features.renderAllFeatures()
+        //?}
     }
 }
