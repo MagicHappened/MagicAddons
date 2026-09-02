@@ -85,7 +85,7 @@ class FeatureEditScreen(
             this.extractPanorama(graphics, deltaTick)
         }
         this.extractMenuBackground(graphics)
-        this.minecraft.gui.hud.extractDeferredSubtitles()
+        this.minecraft.gui.extractDeferredSubtitles()
     }
 
     override fun charTyped(characterEvent: CharacterEvent): Boolean {

@@ -48,9 +48,9 @@ interface OverlayRenderable : GuiEventListener, HoverableContainer {
          * cursor when it fits, folded back over it when the screen runs out.
          */
         fun placeOnScreen(x: Int, y: Int, menuWidth: Int, menuHeight: Int): Pair<Int, Int> {
-            val window = Minecraft.getInstance().gui
-            val screenWidth = window.screen()?.width ?: return x to y
-            val screenHeight = window.screen()?.height ?: return x to y
+            val window = Minecraft.getInstance().screen ?: return x to y
+            val screenWidth = window.width
+            val screenHeight = window.height
 
             return (if (x + menuWidth > screenWidth) x - menuWidth else x).coerceAtLeast(0) to
                     (if (y + menuHeight > screenHeight) y - menuHeight else y).coerceAtLeast(0)

@@ -70,8 +70,8 @@ object ScreenUtil {
         ClientTickEvents.END_CLIENT_TICK.register { _ ->
             val target = newScreen ?: return@register
 
-            if (Minecraft.getInstance().gui.screen() !== target) {
-                Minecraft.getInstance().gui.setScreen(target)
+            if (Minecraft.getInstance().screen !== target) {
+                Minecraft.getInstance().setScreen(target)
             } else {
                 newScreen = null
             }
