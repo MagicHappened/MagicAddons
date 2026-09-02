@@ -23,7 +23,8 @@ data class DyingPlant(
  */
 object GreenhouseWarnings {
 
-    private val THRESHOLDS = listOf(
+    /** The ladder almost everything here climbs: ten minutes out, five, and one. */
+    val THRESHOLDS: List<Duration> = listOf(
         Duration.ofMinutes(10),
         Duration.ofMinutes(5),
         Duration.ofMinutes(1)
@@ -52,15 +53,34 @@ object GreenhouseWarnings {
 
     /**
      * Whether [kind] should speak now, [remainingMs] from its deadline. Saying yes burns every
-     * threshold already crossed, so a deadline is spoken of at most three times.
+     * threshold already crossed, so a deadline is spoken of at most once per rung of [thresholds].
      */
-    fun shouldWarn(kind: String, remainingMs: Long): Boolean {
+    fun shouldWarn(
+        kind: String,
+        remainingMs: Long,
+        thresholds: List<Duration> = THRESHOLDS
+    ): Boolean = warnThreshold(kind, remainingMs, thresholds) != null
+
+    /**
+     * The rung that has just been reached, or null when [kind] has nothing to say yet.
+     *
+     * The tightest of the crossed rungs, since that is the one the player is actually near: a
+     * warning that arrives with four minutes left is a five minute warning however long it has
+     * been since ten minutes went by. Every crossed rung is burned either way, so the ones that
+     * were skipped do not fire afterwards.
+     */
+    fun warnThreshold(
+        kind: String,
+        remainingMs: Long,
+        thresholds: List<Duration> = THRESHOLDS
+    ): Duration? {
         val cycle = cycles.getOrPut(kind) { Cycle() }
 
-        val crossed = THRESHOLDS.filter { remainingMs <= it.toMillis() }
-        if (crossed.isEmpty() || crossed.all { it in cycle.fired }) return false
+        val crossed = thresholds.filter { remainingMs <= it.toMillis() }
+        if (crossed.isEmpty() || crossed.all { it in cycle.fired }) return null
 
         cycle.fired.addAll(crossed)
-        return true
+
+        return crossed.minOrNull()
     }
 }

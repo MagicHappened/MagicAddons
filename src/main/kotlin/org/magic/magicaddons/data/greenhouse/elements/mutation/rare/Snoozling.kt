@@ -215,6 +215,8 @@ object Snoozling : CropDefinitionProvider {
         ),
         decayTimeMs = SIX_DAY_DECAY_TIME_MS,
         maxStage = 20,
+        // it drops asleep on arriving at each of these and grows no further until it is woken
+        sleepStages = setOf(5, 10, 15),
         footprint = Footprint(3, 3),
         isMutation = true
     )

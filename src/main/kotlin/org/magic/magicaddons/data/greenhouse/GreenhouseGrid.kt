@@ -328,16 +328,6 @@ class GreenhouseGrid(
      * So even unbuffed the loss is a range rather than a number, and a plant in debt may not have
      * advanced at all, which is why the stage this writes is only ever an estimate.
      */
-    /**
-     * The garden clock as a craving value. The garden's customisable time reaches the client as
-     * ordinary world time, so day and night are the vanilla windows of it.
-     */
-    private fun timeOfDayNow(): Int {
-        val time = (Minecraft.getInstance().level?.overworldClockTime ?: 0L) % 24000L
-
-        return if (time in 13000L..22999L) CropStandReader.CRAVES_NIGHT else CropStandReader.CRAVES_DAY
-    }
-
     fun predictGrowth(ticks: Int, tickMs: Long) {
         if (ticks <= 0) return
 
@@ -401,9 +391,22 @@ class GreenhouseGrid(
                 null -> return@forEach
             }
 
-            instance.growthStage = GrowthStageInfo.Estimated(
-                (range.first + ticks).coerceAtMost(maxStage)..(range.last + ticks).coerceAtMost(maxStage)
-            )
+            // a snoozling drops asleep the moment it arrives at one of its sleep stages, so the
+            // ticks after that one were never served. Walking it the whole way would have it wake
+            // up several stages further on than the game ever moved it
+            val sleepStages = instance.cropDef.sleepStages
+
+            fun ceiling(from: Int): Int =
+                sleepStages.filter { it > from }.minOrNull()?.coerceAtMost(maxStage) ?: maxStage
+
+            val first = (range.first + ticks).coerceAtMost(ceiling(range.first))
+            val last = (range.last + ticks).coerceAtMost(ceiling(range.last))
+
+            instance.growthStage = GrowthStageInfo.Estimated(first..last)
+
+            // judged by the lowest it might be at, so a plant only probably asleep is still called
+            // awake: the warning for one that has stopped growing is worth being sure about
+            if (first in sleepStages) instance.readings[CropStandReader.ASLEEP] = 1
         }
     }
 
@@ -419,6 +422,21 @@ class GreenhouseGrid(
 
     // temp for testing
     companion object {
+
+        /**
+         * The garden clock as a craving value. The garden's customisable time reaches the client as
+         * ordinary world time, so day and night are the vanilla windows of it.
+         */
+        fun timeOfDayNow(): Int {
+            val time = (Minecraft.getInstance().level?.overworldClockTime ?: 0L) % 24000L
+
+            return if (time in 13000L..22999L) {
+                CropStandReader.CRAVES_NIGHT
+            } else {
+                CropStandReader.CRAVES_DAY
+            }
+        }
+
         /**
          * The plant standing at [origin], or null when nothing described matches what is there.
          *

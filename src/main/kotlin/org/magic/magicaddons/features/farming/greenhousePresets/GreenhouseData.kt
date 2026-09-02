@@ -34,6 +34,7 @@ import org.magic.magicaddons.data.handlers.DataHandler
 import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.events.EventHandler
 import org.magic.magicaddons.events.chat.OnSystemChatEvent
+import org.magic.magicaddons.events.greenhouse.GrowthTickEvent
 import org.magic.magicaddons.events.greenhouse.PlotChangedEvent
 import org.magic.magicaddons.events.interact.*
 import org.magic.magicaddons.events.world.OnWorldTickEvent
@@ -636,6 +637,10 @@ object GreenhouseData {
             // nobody is looking at this greenhouse, so the clock is all we have to go on
             grid.predictGrowth(elapsedTicks, growthTickMs)
         }
+
+        // posted after every plant has been moved on, so a listener reads the garden as it now
+        // stands. An absence arrives as one event carrying all of its ticks rather than as a burst
+        EventBus.post(GrowthTickEvent(elapsedTicks, growthTickMs))
     }
 
     @Subscription
@@ -654,6 +659,7 @@ object GreenhouseData {
         // is crossed rather than up to a minute late
         warnOfDyingPlants()
         warnOfChorusCollision()
+        PlantWarnings.onTick()
         offerTeleportIfArrived()
     }
 
