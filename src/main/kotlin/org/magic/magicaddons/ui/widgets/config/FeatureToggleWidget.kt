@@ -83,7 +83,7 @@ class FeatureToggleWidget(
                 && mouseButtonEvent.y.toInt() in y + 0..y + height
             ) {
 
-                val currentScreen = Minecraft.getInstance().gui.screen()
+                val currentScreen = Minecraft.getInstance().screen
                 if (currentScreen !is ConfigScreen) {
                     return false
                 }

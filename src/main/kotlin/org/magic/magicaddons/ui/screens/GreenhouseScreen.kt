@@ -459,7 +459,7 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
             this.extractPanorama(graphics, a)
         }
         this.extractMenuBackground(graphics)
-        this.minecraft.gui.hud.extractDeferredSubtitles()
+        this.minecraft.gui.extractDeferredSubtitles()
     }
 
     override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {

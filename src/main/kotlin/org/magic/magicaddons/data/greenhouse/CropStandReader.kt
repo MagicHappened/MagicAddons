@@ -1,5 +1,6 @@
 package org.magic.magicaddons.data.greenhouse
 
+import net.minecraft.ChatFormatting
 import net.minecraft.network.chat.Component
 import net.minecraft.network.chat.Style
 import net.minecraft.network.chat.TextColor
@@ -40,7 +41,7 @@ class CropStandReader(
         private const val BAR_CHAR: Char = '|'
 
         /** An empty notch, whatever the filled ones happen to be coloured. */
-        private val EMPTY = TextColor.WHITE.value
+        private val EMPTY = ChatFormatting.WHITE.color ?: 0xFFFFFF
 
         /**
          * Reads any of skyblock's bars as the percentage of it that is filled.

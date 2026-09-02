@@ -29,10 +29,10 @@ public class KeyboardHandlerMixin {
         if (event.key() != GLFW.GLFW_KEY_G) return;
 
         Minecraft mc = Minecraft.getInstance();
-        if (mc.gui.screen() != null) return;
+        if (mc.screen != null) return;
         if (!CropCollector.INSTANCE.isActive()) return;
 
-        mc.gui.setScreen(new CollectScreen());
+        mc.setScreen(new CollectScreen());
         ci.cancel();
     }
 }

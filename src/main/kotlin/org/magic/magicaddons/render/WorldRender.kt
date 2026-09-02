@@ -34,8 +34,6 @@ import net.minecraft.world.phys.shapes.VoxelShape
  */
 object WorldRender {
 
-    /** Thick enough to read from across a plot without hiding what it surrounds. */
-    private const val OUTLINE_WIDTH: Float = 3f
 
     /** Full brightness: a plan is a hint laid over the world, not a block lit by it. */
     private const val FULL_BRIGHT: Int = 0xF000F0
@@ -127,14 +125,9 @@ object WorldRender {
                 consumer.fillBox(transform, visible.grow(FILL_EXPAND), ARGB.color(fillAlpha, color))
             }
 
-            collector.submitShapeOutline(
-                poseStack,
-                Shapes.create(visible),
-                RenderTypes.LINES,
-                color,
-                OUTLINE_WIDTH,
-                false
-            )
+            collector.submitCustomGeometry(poseStack, RenderTypes.LINES) { transform, consumer ->
+                consumer.shapeOutline(transform, Shapes.create(visible), color)
+            }
         } finally {
             poseStack.popPose()
         }
@@ -155,14 +148,13 @@ object WorldRender {
             // one call per box, so two marked blocks side by side stay two boxes rather than
             // merging into one long one the way a single combined shape would
             shape.toAabbs().forEach { box ->
-                collector.submitShapeOutline(
-                    pose,
-                    Shapes.create(box.grow(-OUTLINE_INSET)),
-                    RenderTypes.LINES,
-                    color,
-                    OUTLINE_WIDTH,
-                    false
-                )
+                collector.submitCustomGeometry(pose, RenderTypes.LINES) { transform, consumer ->
+                    consumer.shapeOutline(
+                        transform,
+                        Shapes.create(box.grow(-OUTLINE_INSET)),
+                        color
+                    )
+                }
             }
         }
     }
@@ -371,4 +363,34 @@ object WorldRender {
         addVertex(pose, dx, dy, dz).setColor(color)
     }
 
+}
+
+/**
+ * Draws the edges of [shape] onto this consumer, a line per edge.
+ *
+ * What the submit node collector used to be asked for directly. Vanilla walks the shape's edges
+ * and writes two coloured vertices for each, the line's own direction as their normal, and that is
+ * all this does. Line width is whatever the render type carries, since there is nowhere to ask for
+ * one per call.
+ */
+private fun VertexConsumer.shapeOutline(pose: PoseStack.Pose, shape: VoxelShape, color: Int) {
+    shape.forAllEdges { x0, y0, z0, x1, y1, z1 ->
+        var nx = (x1 - x0).toFloat()
+        var ny = (y1 - y0).toFloat()
+        var nz = (z1 - z0).toFloat()
+
+        val length = Mth.sqrt(nx * nx + ny * ny + nz * nz)
+        if (length > 0f) {
+            nx /= length
+            ny /= length
+            nz /= length
+        }
+
+        this.addVertex(pose, x0.toFloat(), y0.toFloat(), z0.toFloat())
+            .setColor(color)
+            .setNormal(pose, nx, ny, nz)
+        this.addVertex(pose, x1.toFloat(), y1.toFloat(), z1.toFloat())
+            .setColor(color)
+            .setNormal(pose, nx, ny, nz)
+    }
 }

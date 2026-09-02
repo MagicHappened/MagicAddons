@@ -3,6 +3,7 @@ package org.magic.magicaddons.features.farming.greenhousePresets
 import net.minecraft.client.Minecraft
 import net.minecraft.network.chat.Component
 import net.minecraft.network.chat.Style
+import net.minecraft.ChatFormatting
 import net.minecraft.network.chat.TextColor
 import net.minecraft.world.entity.decoration.ArmorStand
 import org.magic.magicaddons.events.EventBus
@@ -42,9 +43,9 @@ object GreenhouseWatering {
      * The notches of a water bar. Blue is water the plant holds and red is water it owes, both
      * measured against the white notches that make up the rest of the bar.
      */
-    private val BAR_FILLED_COLOR: Int = TextColor.BLUE.value
-    private val BAR_DEBT_COLOR: Int = TextColor.RED.value
-    private val BAR_EMPTY_COLOR: Int = TextColor.WHITE.value
+    private val BAR_FILLED_COLOR: Int = (ChatFormatting.BLUE.color ?: 0x5555FF)
+    private val BAR_DEBT_COLOR: Int = (ChatFormatting.RED.color ?: 0xFF5555)
+    private val BAR_EMPTY_COLOR: Int = (ChatFormatting.WHITE.color ?: 0xFFFFFF)
 
     /**
      * How long after a watering the stands are worth looking for. The water bar is not a permanent

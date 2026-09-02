@@ -343,7 +343,7 @@ object SafariHelper : HighlightFeature() {
         val client = Minecraft.getInstance()
 
         // only while free walking around the island
-        if (client.gui.hud.isHidden || client.gui.screen() != null) return
+        if (client.options.hideGui || client.screen != null) return
 
         var y = HUD_Y
         hudLines(zone).forEach { line ->

@@ -4,24 +4,23 @@ import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.client.renderer.entity.state.EntityRenderState;
-import net.minecraft.client.renderer.extract.LevelExtractor;
 import net.minecraft.world.entity.Entity;
 import org.magic.magicaddons.features.farming.greenhousePresets.LayoutRenderState;
 import org.magic.misc.WrappedEntityRenderState;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 
-@Mixin(LevelExtractor.class)
+@Mixin(LevelRenderer.class)
 public class LevelExtractorMixin {
 
     @WrapOperation(
             method = "extractVisibleEntities",
             at = @At(
                     value = "INVOKE",
-                    target = "Lnet/minecraft/client/renderer/extract/LevelExtractor;extractEntity(Lnet/minecraft/world/entity/Entity;F)Lnet/minecraft/client/renderer/entity/state/EntityRenderState;")
+                    target = "Lnet/minecraft/client/renderer/LevelRenderer;extractEntity(Lnet/minecraft/world/entity/Entity;F)Lnet/minecraft/client/renderer/entity/state/EntityRenderState;")
     )
     private EntityRenderState wrapExtractEntity(
-            LevelExtractor instance,
+            LevelRenderer instance,
             Entity entity,
             float partialTickTime,
             Operation<EntityRenderState> original

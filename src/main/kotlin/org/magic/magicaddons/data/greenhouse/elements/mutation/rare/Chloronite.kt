@@ -110,7 +110,7 @@ object Chloronite : CropDefinitionProvider {
                 blocks = listOf(
                     CropBlockState(
                         offset = BlockPos(0, 1, 0),
-                        blockState = Blocks.STAINED_GLASS.green.defaultBlockState(),
+                        blockState = Blocks.GREEN_STAINED_GLASS.defaultBlockState(),
                         required = false
                     )
                 ),
