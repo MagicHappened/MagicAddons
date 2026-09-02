@@ -35,6 +35,35 @@ object GreenhousePresets : Feature() {
         value = true,
         children = listOf(
             BooleanSetting(
+                key = "ReadyToHarvestWarning",
+                displayName = "Ready To Harvest Warning",
+                tooltip = "Tells you when a mutation you grew has nothing left to grow, on the " +
+                        "tick it finishes and again on the way to the next one",
+                value = false
+            ),
+            BooleanSetting(
+                key = "DecayWarning",
+                displayName = "Decay Warning",
+                tooltip = "Warns six hours, one hour, twenty, five and one minute before a plant " +
+                        "rots away. Needs a plant diagnostic to have been used on the plant, " +
+                        "since nothing else says how old it is",
+                value = false
+            ),
+            BooleanSetting(
+                key = "SnoozlingAsleepWarning",
+                displayName = "Snoozling Asleep Warning",
+                tooltip = "Warns when a snoozling has dropped asleep, which it does on reaching " +
+                        "stage 5, 10 and 15, and grows no further until it is woken",
+                value = false
+            ),
+            BooleanSetting(
+                key = "NoctilumeTimeWarning",
+                displayName = "Noctilume Time Warning",
+                tooltip = "Warns while a noctilume craves a time of day the garden is not on, " +
+                        "since it stalls every tick until the garden time is changed",
+                value = false
+            ),
+            BooleanSetting(
                 key = "ChorusCollisionWarning",
                 displayName = "Chorus Collision Warning",
                 tooltip = "Warns before a chorus fruit runs out of tiles to teleport into and " +
@@ -67,6 +96,7 @@ object GreenhousePresets : Feature() {
         // are only ever reached from their own handlers, so nothing else would wake them
         GreenhouseData
         GreenhouseWatering
+        PlantWarnings
         CropRegistry
 
         // the attribute api reads the attribute menu and the hunting box as they are opened, but it

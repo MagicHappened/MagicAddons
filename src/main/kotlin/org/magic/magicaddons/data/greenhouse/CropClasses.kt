@@ -511,7 +511,16 @@ data class CropDefinition(
     /** The buffs and debuffs this crop carries, which are what make a layout worth planning. */
     val effects: Set<CropEffect> = emptySet(),
     /** Each skull hash's pose, held once here instead of repeated on every stage that shows it. */
-    val standPoses: Map<String, StandPose> = emptyMap()
+    val standPoses: Map<String, StandPose> = emptyMap(),
+    /**
+     * The stages this crop drops asleep on arriving at, empty for everything that never sleeps.
+     *
+     * A snoozling falls asleep the moment it becomes stage five, ten and fifteen, and grows no
+     * further until it is woken. Held on the definition rather than read off the plant so a
+     * greenhouse nobody is standing in can be moved on correctly: the prediction stops at the next
+     * one of these instead of walking the plant past a sleep it could not have slept through.
+     */
+    val sleepStages: Set<Int> = emptySet()
 ){
     fun matchesId(id: SkyBlockId): Boolean{
         return skyblockId == id || (aliases?.any { it == id } ?: false)
@@ -604,6 +613,20 @@ data class GreenhouseElementInstance(
         get() = when (val stage = growthStage) {
             is GrowthStageInfo.Known -> stage.stage
             is GrowthStageInfo.Estimated -> stage.range.first
+            null -> null
+        }
+
+    /**
+     * The highest stage this plant might be at now, which is what anything about profit asks for.
+     *
+     * A plant that might already be finished is told about early rather than late: the cost of
+     * being told to harvest something that turns out to have a stage left is a wasted look, and
+     * the cost of being told late is a grown mutation standing there not progressing
+     */
+    val highestStage: Int?
+        get() = when (val stage = growthStage) {
+            is GrowthStageInfo.Known -> stage.stage
+            is GrowthStageInfo.Estimated -> stage.range.last
             null -> null
         }
 
