@@ -30,7 +30,15 @@ java {
     withSourcesJar()
 }
 
+// only the version the source tree is currently shaped for can actually be run, so the other one
+// generates no IDE run configuration and its run tasks do nothing: one game starts, not two
+val activeVersion: Boolean = stonecutter.current.isActive
+
 loom {
+    runConfigs.all {
+        isIdeConfigGenerated = activeVersion
+    }
+
     accessWidenerPath.set(rootProject.file("src/main/resources/magicaddons.accesswidener"))
     mods {
         register("magicaddons") {
@@ -161,4 +169,10 @@ publishing {
 }
 kotlin {
     jvmToolchain(targetJavaVersion)
+}
+
+if (!activeVersion) {
+    tasks.matching { it.name.startsWith("run") }.configureEach {
+        enabled = false
+    }
 }
