@@ -24,6 +24,7 @@ import tech.thatgravyboat.skyblockapi.api.events.base.Subscription
 import tech.thatgravyboat.skyblockapi.api.events.location.IslandChangeEvent
 import tech.thatgravyboat.skyblockapi.api.location.LocationAPI
 import tech.thatgravyboat.skyblockapi.api.location.SkyBlockIsland
+import org.magic.magicaddons.util.compat.McCompat
 
 object SafariHelper : HighlightFeature() {
 
@@ -343,7 +344,7 @@ object SafariHelper : HighlightFeature() {
         val client = Minecraft.getInstance()
 
         // only while free walking around the island
-        if (client.options.hideGui || client.screen != null) return
+        if (McCompat.hudHidden() || McCompat.currentScreen() != null) return
 
         var y = HUD_Y
         hudLines(zone).forEach { line ->

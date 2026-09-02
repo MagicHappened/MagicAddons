@@ -33,6 +33,7 @@ import org.magic.magicaddons.util.ScreenUtil.drawMultilineBoxCentered
 import org.magic.magicaddons.util.ScreenUtil.drawSimpleTooltip
 import tech.thatgravyboat.skyblockapi.api.location.LocationAPI
 import tech.thatgravyboat.skyblockapi.api.profile.garden.PlotAPI
+import org.magic.magicaddons.util.compat.McCompat
 
 class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, OverlayContext {
 
@@ -459,7 +460,7 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
             this.extractPanorama(graphics, a)
         }
         this.extractMenuBackground(graphics)
-        this.minecraft.gui.extractDeferredSubtitles()
+        McCompat.extractDeferredSubtitles(this.minecraft)
     }
 
     override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {

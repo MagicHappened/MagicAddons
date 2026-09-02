@@ -7,6 +7,7 @@ import net.minecraft.client.input.CharacterEvent
 import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
 import org.magic.magicaddons.ui.widgets.AbstractContextMenu
+import org.magic.magicaddons.util.compat.McCompat
 
 interface OverlayRenderable : GuiEventListener, HoverableContainer {
 
@@ -48,7 +49,7 @@ interface OverlayRenderable : GuiEventListener, HoverableContainer {
          * cursor when it fits, folded back over it when the screen runs out.
          */
         fun placeOnScreen(x: Int, y: Int, menuWidth: Int, menuHeight: Int): Pair<Int, Int> {
-            val window = Minecraft.getInstance().screen ?: return x to y
+            val window = McCompat.currentScreen() ?: return x to y
             val screenWidth = window.width
             val screenHeight = window.height
 

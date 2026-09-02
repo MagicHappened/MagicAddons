@@ -1,11 +1,11 @@
 package org.magic.mixins;
 
 import net.minecraft.client.KeyboardHandler;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.input.KeyEvent;
 import org.lwjgl.glfw.GLFW;
 import org.magic.magicaddons.commands.debug.CropCollector;
 import org.magic.magicaddons.ui.screens.CollectScreen;
+import org.magic.magicaddons.util.compat.McCompat;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -28,11 +28,10 @@ public class KeyboardHandlerMixin {
         if (action != GLFW.GLFW_PRESS) return;
         if (event.key() != GLFW.GLFW_KEY_G) return;
 
-        Minecraft mc = Minecraft.getInstance();
-        if (mc.screen != null) return;
+        if (McCompat.INSTANCE.currentScreen() != null) return;
         if (!CropCollector.INSTANCE.isActive()) return;
 
-        mc.setScreen(new CollectScreen());
+        McCompat.INSTANCE.setScreen(new CollectScreen());
         ci.cancel();
     }
 }

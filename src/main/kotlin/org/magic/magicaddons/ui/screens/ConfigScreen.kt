@@ -12,6 +12,7 @@ import org.magic.magicaddons.features.Feature
 import org.magic.magicaddons.features.FeatureManager
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.ScreenUtil.drawMultilineBoxCentered
+import org.magic.magicaddons.util.compat.McCompat
 
 class ConfigScreen(title: Component, val parent: Screen?) : Screen(title) {
 
@@ -69,7 +70,7 @@ class ConfigScreen(title: Component, val parent: Screen?) : Screen(title) {
             this.extractBackground(graphics, mouseX, mouseY, deltaTick)
         }
         this.extractMenuBackground(graphics)
-        this.minecraft.gui.extractDeferredSubtitles()
+        McCompat.extractDeferredSubtitles(this.minecraft)
     }
 
     override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
@@ -80,7 +81,7 @@ class ConfigScreen(title: Component, val parent: Screen?) : Screen(title) {
     }
 
     override fun onClose() {
-        Minecraft.getInstance().setScreen(parent)
+        McCompat.setScreen(parent)
     }
 
     override fun removed() {
