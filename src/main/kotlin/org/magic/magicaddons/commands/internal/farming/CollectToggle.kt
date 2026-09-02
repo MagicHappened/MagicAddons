@@ -8,10 +8,8 @@ import org.magic.magicaddons.commands.AbstractCommand
 import org.magic.magicaddons.commands.debug.CropCollector
 
 /**
- * Flips one collector entry between confirmed and not.
- *
- * Exists to be clicked rather than typed: every line the collector lists carries this command with
- * its own id, so confirming a plant is pointing at it instead of copying numbers around.
+ * Flips one collector entry between confirmed and not. Meant to be clicked: every listed line
+ * carries this command with its own id.
  */
 object CollectToggle : AbstractCommand() {
 

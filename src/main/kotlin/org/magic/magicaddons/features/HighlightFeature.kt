@@ -4,15 +4,10 @@ import org.magic.magicaddons.data.EntityInfo
 import org.magic.magicaddons.util.EntityUtils
 
 /**
- * A feature that contributes entity outlines.
+ * A feature that contributes entity outlines: subclasses decide what is highlighted and in what
+ * colour, and keeping EntityUtils in step is owned here.
  *
- * Subclasses only decide *what* is highlighted ([shouldHighlight]) and *how* it is colored
- * ([EntityUtils.HighlightSource.highlightColor]); keeping [EntityUtils] in sync with those answers
- * is owned here.
- *
- * Event wiring still lives in the subclass because [org.magic.magicaddons.events.EventBus] only
- * scans declared methods, so an inherited `@EventHandler` would never be found. Subclasses declare
- * the handlers and delegate to the `handleEntities*` functions below.
+ * Event wiring stays in the subclass, since EventBus only scans declared methods.
  */
 abstract class HighlightFeature : Feature(), EntityUtils.HighlightSource {
 

@@ -110,10 +110,7 @@ object ScreenUtil {
         drawLine(x2, y1, x2, y2, thickness, color)
     }
 
-    /**
-     * A filled rectangle with its corners taken off, which reads as rounded at the sizes this ui
-     * draws at. Three bands: the full height middle, and the top and bottom inset by [radius].
-     */
+    /** A filled rectangle with its corners taken off: a full height middle band and two inset ones. */
     fun GuiGraphicsExtractor.fillRounded(x1: Int, y1: Int, x2: Int, y2: Int, radius: Int, color: Int) {
         if (x2 <= x1 || y2 <= y1) return
 

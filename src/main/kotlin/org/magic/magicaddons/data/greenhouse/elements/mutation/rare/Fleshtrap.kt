@@ -66,10 +66,8 @@ object Fleshtrap : CropDefinitionProvider {
                     )
                 ),
                 13..13,
-                // a fleshtrap hangs a hunger bar and a bonus label over itself, and both change
-                // from moment to moment, so neither can be part of matching one. It spawns with
-                // the bar at 60 and no bonus label at all until it has been fed once, so a missing
-                // bonus means never fed rather than fed nothing
+                // hunger and bonus change from moment to moment, so neither can be part of matching.
+                // A missing bonus label means never fed, not fed nothing
                 readers = listOf(
                     CropStandReader.bar(CropStandReader.HUNGER),
                     CropStandReader.percentLabel(CropStandReader.BONUS, "Bonus")

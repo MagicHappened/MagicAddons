@@ -10,17 +10,10 @@ import org.magic.magicaddons.ui.HoverableContainer
 import org.magic.magicaddons.util.ScreenUtil.drawBorder
 
 /**
- * The coloured swatches down the right hand side of the grid. Picking one writes the fact it stands
- * for onto every plant at once, so the whole greenhouse can be read at a glance without going over
- * the plants one by one.
+ * The coloured swatches beside the grid: picking one writes its fact onto every plant at once.
  *
- * Picked rather than hovered: a fact worth reading across a hundred plants is worth reading with
- * the mouse somewhere else, and holding still on a swatch to keep it on screen meant never being
- * able to look at anything the swatch was describing. Clicking a swatch turns its fact on, clicking
- * another swaps to it, and clicking the one already on turns it off again.
- *
- * Only one fact shows at a time because a plant is one slot wide and a second line of text over it
- * would cover the plant it is describing.
+ * Picked rather than hovered, so the mouse is free to be somewhere else, and one at a time, since a
+ * second line of text would cover the plant it describes.
  */
 class HoverControls : Renderable, Focusable, HoverableContainer {
 
@@ -33,13 +26,7 @@ class HoverControls : Renderable, Focusable, HoverableContainer {
 
     override var focusedState: Boolean = false
 
-    /**
-     * The fact that has been picked, or null when none is.
-     *
-     * Kept where the screen cannot take it away: closing the greenhouse and opening it again is
-     * how a player looks at their plot, not how they change their mind about what they wanted to
-     * see, so the pick outlives the screen it was made on.
-     */
+    /** The picked fact, kept across closing the screen: reopening is how a plot is looked at. */
     var selectedInfo: ElementWidget.HoverInfo?
         get() = lastPicked
         private set(value) {
@@ -61,9 +48,7 @@ class HoverControls : Renderable, Focusable, HoverableContainer {
         forEachSwatch { info, top, bottom ->
             graphics.fill(x, top, x + width, bottom, info.color)
 
-            // the picked swatch is the one talking and wears the outline that says so. The one
-            // merely under the mouse is only lightened, so a swatch about to be picked looks
-            // different from the swatch already doing the talking
+            // the picked swatch wears an outline; the one merely hovered is only lightened
             if (info == selectedInfo) {
                 graphics.drawBorder(x, top, x + width, bottom, Common.UI.BORDER_SIZE, Common.UI.BORDER_COLOR)
             } else if (info == hoveredInfo) {
@@ -77,10 +62,7 @@ class HoverControls : Renderable, Focusable, HoverableContainer {
         hoveredElement = if (hoveredInfo != null) this else null
     }
 
-    /**
-     * Picks the swatch that was clicked, or drops it when it was already the one picked, so the
-     * same click both turns a fact on and takes it away again.
-     */
+    /** Picks the clicked swatch, or drops it when it was already picked. */
     override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
         val clicked = swatchAt(mouseButtonEvent.x, mouseButtonEvent.y) ?: return false
 
@@ -89,12 +71,7 @@ class HoverControls : Renderable, Focusable, HoverableContainer {
         return true
     }
 
-    /**
-     * Moves the pick one swatch down or up the list, wrapping at the ends.
-     *
-     * From nothing picked, down starts at the top of the list and up at the bottom, so the wheel
-     * reaches every fact from either direction within a notch or two.
-     */
+    /** Moves the pick one swatch along, wrapping. From nothing, down starts at the top and up at the bottom. */
     fun cycle(down: Boolean) {
         val infos = ElementWidget.HoverInfo.entries
         val current = selectedInfo

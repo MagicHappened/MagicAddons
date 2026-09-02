@@ -31,13 +31,8 @@ import org.magic.magicaddons.util.ScreenUtil.drawSimpleTooltip
 import org.magic.magicaddons.util.ScreenUtil.drawMultilineBoxCentered
 
 /**
- * A crop turned over in the hand: any crop, at any stage, drawn in three dimensions the way it
- * would stand in a greenhouse.
- *
- * The picker sits at the bottom and narrows as its search box is typed into; the slider above the
- * preview walks the stages. The plant spins slowly on its own and can be dragged around by hand. A
- * stage nobody has recorded shows a question mark instead of a guess, and a stage recorded without
- * all of its data carries a red mark saying exactly what is missing.
+ * Any crop at any stage, drawn as it would stand in a greenhouse: the picker searches, the slider
+ * walks the stages, and an unrecorded stage shows a question mark rather than a guess.
  */
 class CropPreviewScreen(
     private val parent: Screen
@@ -117,10 +112,7 @@ class CropPreviewScreen(
         rebuildScene()
     }
 
-    /**
-     * Builds the plant out of the same pieces the holograms use, at a spot whose world rotation
-     * and pose cycle both come out to zero, so what is shown is the crop's own canonical look.
-     */
+    /** Built from the same pieces the holograms use, at a spot whose rotation and pose both come out zero. */
     private fun rebuildScene() {
         sceneStage = null
         sceneData = null

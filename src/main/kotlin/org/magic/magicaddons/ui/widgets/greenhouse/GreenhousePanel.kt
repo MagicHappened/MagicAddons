@@ -5,11 +5,8 @@ import net.minecraft.network.chat.Component
 import org.magic.magicaddons.ui.widgets.config.ClickableButtonWidget
 
 /**
- * What the player can do to the greenhouse they are looking at.
- *
- * Only one thing so far, and a panel holding one button is barely a panel. It is one anyway because
- * the alternative is what was there before: a button laid out, drawn and clicked in three separate
- * corners of the screen, which is how the last one ended up sitting on top of the selector.
+ * What the player can do to the greenhouse they are looking at. One button so far, in a panel
+ * anyway, so it is laid out, drawn and clicked in one place.
  */
 class GreenhousePanel(
     private val onUnplan: () -> Unit

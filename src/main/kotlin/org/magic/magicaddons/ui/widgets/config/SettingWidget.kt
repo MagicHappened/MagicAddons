@@ -59,12 +59,7 @@ abstract class SettingWidget<T>(
     }
     open fun layout(){}
 
-    /**
-     * How much room this row's live detail is asking for right now, zero when it has none.
-     *
-     * Asked rather than stored because the answer changes while the config is open: a countdown
-     * that becomes unreadable takes its line back with it. See [SettingDetail].
-     */
+    /** Room this row's live detail wants now, zero when it has none. Asked, since it changes. */
     fun detailHeight(): Int {
         val detail = node.detail?.invoke() ?: return 0
 
@@ -169,10 +164,7 @@ abstract class SettingWidget<T>(
         }
     }
 
-    /**
-     * The deepest widget under the mouse, this one included, or null while the mouse is elsewhere.
-     * Children win over their parent because they are drawn on top of it.
-     */
+    /** The deepest widget under the mouse, children before parents, or null when it is elsewhere. */
     open fun hoveredWidget(): SettingWidget<*>? =
         childrenWidgets.firstNotNullOfOrNull { it.hoveredWidget() } ?: takeIf { hovered }
 
@@ -194,10 +186,7 @@ abstract class SettingWidget<T>(
         return false
     }
 
-    /**
-     * The wheel, offered to this row and then to whatever it has open. Only a setting that has
-     * something to do with it takes it; everything else lets it through.
-     */
+    /** The wheel, offered to this row and then to whatever it has open. */
     override fun mouseScrolled(mouseX: Double, mouseY: Double, scrollX: Double, scrollY: Double): Boolean {
         if (!childrenExpanded) return false
 
@@ -208,11 +197,8 @@ abstract class SettingWidget<T>(
     }
 
     /**
-     * The mouse moving with a button held, and the button coming back up.
-     *
-     * The config screen hands both of these round by hand: it consumes clicks itself rather than
-     * letting the vanilla screen record which widget is being dragged, so nothing downstream would
-     * ever hear about a drag on its own.
+     * Drag and release, handed round by hand: the config screen consumes clicks itself, so vanilla
+     * never records which widget is being dragged.
      */
     override fun mouseDragged(
         mouseButtonEvent: MouseButtonEvent,

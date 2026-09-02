@@ -96,11 +96,7 @@ object CropStates {
     fun redMushroomState(): BlockState = Blocks.RED_MUSHROOM.defaultBlockState()
     fun brownMushroomState(): BlockState = Blocks.BROWN_MUSHROOM.defaultBlockState()
     fun cactusState(): BlockState = Blocks.CACTUS.defaultBlockState()
-    /**
-     * A sunflower is two blocks, a lower half rooted in the ground and an upper half above it, and
-     * a plan that wants the whole flower wants both. The lower one is what a crop is planted as,
-     * so it is what is meant when nothing is said.
-     */
+    /** A sunflower is two blocks; the lower half is what a crop is planted as, so it is the default. */
     fun sunflowerState(half: DoubleBlockHalf = DoubleBlockHalf.LOWER): BlockState =
         Blocks.SUNFLOWER.defaultBlockState().setValue(DoublePlantBlock.HALF, half)
     fun shortGrassState(): BlockState = Blocks.SHORT_GRASS.defaultBlockState()

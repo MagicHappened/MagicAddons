@@ -78,9 +78,8 @@ public class CustomHeadLayerMixin {
     }
 
     /**
-     * The tinted stand in of vanilla's skull submission, which neither pushes nor pops, so neither
-     * does this. Popping here took an entry off the stack that nothing had put there, and the frame
-     * came down on the next pop that found it empty.
+     * The tinted stand in for vanilla's skull submission. Neither pushes nor pops, as vanilla does
+     * not: popping here took an entry nothing had put there.
      */
     @Unique
     private static void submitSkullWithTint(

@@ -99,10 +99,8 @@ object GreenhousePresets : Feature() {
         PlantWarnings
         CropRegistry
 
-        // the attribute api reads the attribute menu and the hunting box as they are opened, but it
-        // is an object like the ones above and only starts listening once something has touched it.
-        // Waking it here rather than when the mod first asks means it has been listening all along,
-        // instead of being woken by a question it could only have answered earlier
+        // the attribute api only starts listening once something touches it, so waking it here means
+        // it heard the menus open rather than being woken by a question it could not answer
         AttributeAPI
 
 

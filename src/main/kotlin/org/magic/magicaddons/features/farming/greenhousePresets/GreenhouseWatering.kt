@@ -17,11 +17,8 @@ import java.util.Optional
 import org.magic.magicaddons.util.compat.McCompat
 
 /**
- * Reads how much water the plants of a greenhouse hold.
- *
- * Skyblock only says so when the level changes: watering a plant hangs a bar above it for a few
- * seconds and then takes it away again. So using a watering can opens a window, and for as long as
- * it is open the plot is watched for bars to read.
+ * Reads how much water a greenhouse's plants hold. Skyblock only shows a bar when the level
+ * changes, so using a watering can opens a window and the plot is watched for bars while it lasts.
  */
 object GreenhouseWatering {
 
@@ -40,19 +37,12 @@ object GreenhouseWatering {
     /** The character skyblock builds its bars out of, one per notch of the level. */
     private const val BAR_CHAR: Char = '|'
 
-    /**
-     * The notches of a water bar. Blue is water the plant holds and red is water it owes, both
-     * measured against the white notches that make up the rest of the bar.
-     */
+    /** Water bar notches: blue is water held, red is water owed, white is the rest of the bar. */
     private val BAR_FILLED_COLOR: Int = McCompat.chatColor(ChatFormatting.BLUE)
     private val BAR_DEBT_COLOR: Int = McCompat.chatColor(ChatFormatting.RED)
     private val BAR_EMPTY_COLOR: Int = McCompat.chatColor(ChatFormatting.WHITE)
 
-    /**
-     * How long after a watering the stands are worth looking for. The water bar is not a permanent
-     * part of a plant like the fleshtrap hunger bar is, it appears when the level changes and takes
-     * itself away again a few seconds later.
-     */
+    /** How long after a watering the bars are worth looking for before they take themselves away. */
     private val WATERING_WINDOW: Duration = Duration.ofSeconds(10)
 
     /** When the stands spawned by the last watering stop being expected. */
@@ -63,10 +53,7 @@ object GreenhouseWatering {
     private fun isWaterCan(id: SkyBlockId): Boolean =
         id.id.substringAfter("item:").uppercase() in waterCanIds
 
-    /**
-     * Opens the window if [heldId] is a watering can, and says whether it did, so the caller can
-     * stop looking at what the item might otherwise have been.
-     */
+    /** Opens the window if the held item is a watering can, and says whether it did. */
     fun startWateringWindow(heldId: SkyBlockId): Boolean {
         if (!isWaterCan(heldId)) return false
 
@@ -74,29 +61,18 @@ object GreenhouseWatering {
         return true
     }
 
-    /**
-     * The spray of a watering can does not reach the plants on the same tick the can is used, so a
-     * use only says the water bars are about to appear. [readWaterStands] does the reading.
-     */
+    /** The spray does not reach the plants on the tick the can is used, so this only opens the window. */
 
 
-    /**
-     * Takes the water level off any bar standing over a plant of the current grid. Called for every
-     * batch of entities that appears while a watering is expected, since the bars spawn a moment
-     * after the spray and take themselves away again.
-     */
+    /** Reads any bar standing over a plant of the current grid, for every batch of new entities. */
     @EventHandler
     fun onWorldTick(event: OnWorldTickEvent) {
         readWaterStands()
     }
 
     /**
-     * Takes the water level off any bar standing over a plant of the current grid, for as long as a
-     * watering is expected.
-     *
-     * Polled rather than driven by an entity event: the game reuses a bar it already has above a
-     * plant, and a stand whose name changed is neither added nor counted as updated, since an update
-     * only means the entities standing beside a plant changed.
+     * Polled rather than driven by entity events: the game reuses a bar it already has, and a stand
+     * whose name changed counts as neither added nor updated.
      */
     private fun readWaterStands() {
         val until = wateringUntil ?: return
@@ -124,20 +100,8 @@ object GreenhouseWatering {
     }
 
     /**
-     * Reads a water bar as the level it stands for, between -100 and 100.
-     *
-     * The bar is one character per notch and always full length, what changes is the colouring. A
-     * watered plant fills from the front in blue with white behind it, so eleven blue of sixteen is
-     * 68. A plant in debt is white from the front with red behind it, and the red is the debt, so a
-     * quarter red is -25 and a half red is -50.
-     *
-     * Counting the coloured notches rather than taking the leading run matters at both ends: a
-     * plant sitting on exactly zero shows a bar of nothing but white, which a leading run would
-     * have read as completely full.
-     *
-     * A bar in any other colour is not a water bar and is refused. Several plants hang a bar of the
-     * same character over themselves, the fleshtrap hunger bar among them, and reading one of those
-     * as a water level would be worse than reading nothing.
+     * A water bar as a level between -100 and 100: blue notches are water held, red notches debt,
+     * counted rather than taken as a leading run. Any other colour is somebody else's bar, refused.
      */
     private fun parseBar(name: Component): Int? {
         var filled = 0

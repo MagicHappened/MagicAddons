@@ -51,10 +51,7 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, Focus
     /** What a time worked out from a plant that may have been passed over is marked with. */
     private val DEBT_MARK: String = "*"
 
-    /**
-     * Where that mark is on screen, so hovering it can explain itself. Null whenever the last
-     * drawing of this plant did not need one.
-     */
+    /** Where that mark sits on screen, so hovering it can explain itself. Null when none was drawn. */
     private var debtMarkBox: IntArray? = null
 
     /** What the mark means, said in full rather than left as a symbol nobody can look up. */
@@ -79,10 +76,7 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, Focus
     """.trimIndent()
     override var focusedState: Boolean = false
 
-    /**
-     * A single fact about a plant, small enough to write over the plant itself. [color] is how the
-     * hover controls stand for this fact, the swatches carry no text of their own.
-     */
+    /** One fact about a plant, small enough to write over it. The colour is how the controls stand for it. */
     enum class HoverInfo(val color: Int) {
         GrowthStage(0xFF3FBF3F.toInt()),
         WaterLevel(0xFF3F7FDF.toInt()),
@@ -133,9 +127,8 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, Focus
 
         deadMarkBox = null
 
-        // the worst case has this plant dead already. A dead bush in the corner says so, and only
-        // the greenhouse itself can settle it: a scan either replaces the plant with a real dead
-        // bush or finds it standing, at which point its water is put one tick from death instead
+        // the worst case has this plant dead already, and only a scan can settle it: it either finds
+        // a dead bush or finds the plant standing, one tick from death
         if (instance.cropDef.needsWater && (instance.waterLevel ?: 0) <= WaterModel.DEATH) {
             val size = (width / 3).coerceAtLeast(8)
             val markX = widgetX + width - size
@@ -159,14 +152,10 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, Focus
         )
     }
 
-    /**
-     * Writes [info] over the plant itself, for the one fact the player pinned to always be visible.
-     * Nothing is drawn while that fact is unknown, an empty backdrop says less than the plant does.
-     */
+    /** Writes the pinned fact over the plant. Nothing is drawn while that fact is unknown. */
     fun renderHoverButtonInfo(graphics: GuiGraphicsExtractor, info: HoverInfo) {
-        // water is a level rather than a reading, and a meter says that faster than a number does.
-        // A plant that never drinks has neither, so it is left alone rather than drawn with an
-        // empty meter that reads as a plant about to die of thirst
+        // water is a level, and a meter says that faster than a number. A plant that never drinks is
+        // left alone rather than shown an empty meter
         if (info == HoverInfo.WaterLevel) {
             if (!instance.cropDef.needsWater) return
 
@@ -207,11 +196,8 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, Focus
     }
 
     /**
-     * The water meter, drawn along the bottom of the plant.
-     *
-     * A plant holds between -100 and 100 water. What it has fills from the left in blue, what it
-     * owes fills from the right in red, which is the way the game words its own bar: watered plants
-     * fill up from the front, dry ones lose ground from the back.
+     * The water meter: what the plant holds fills from the left in blue, what it owes from the right
+     * in red, the way the game words its own bar.
      */
     private fun renderWaterBar(graphics: GuiGraphicsExtractor, waterLevel: Int) {
         val barWidth = width - WATER_BAR_INSET * 2
@@ -251,12 +237,8 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, Focus
     }
 
     /**
-     * How many ticks of water the plant has left, written just above its meter.
-     *
-     * Green when that is enough to see it through to its last stage, red when it runs dry first,
-     * and white when something needed to say either way is not known. The stage taken is the lowest
-     * it might be at, so an estimate errs towards saying a plant is in trouble rather than towards
-     * reassuring the player it is fine.
+     * Ticks of water left, above the meter. Green when that sees the plant to its last stage, red
+     * when it runs dry first, white when something is unknown. Judged by the lowest stage it might be at.
      */
     private fun renderWaterVerdict(graphics: GuiGraphicsExtractor, waterLevel: Int, barTop: Int) {
         debtMarkBox = null
@@ -428,10 +410,7 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, Focus
             Component.literal("$label: ").withStyle(ChatFormatting.GRAY)
                 .append(Component.literal(value).withStyle(ChatFormatting.WHITE))
 
-        /**
-         * How long this plant has before it decays, or null when either the plant never decays or
-         * its age was never read off a plant diagnostic.
-         */
+        /** Time before this plant decays, null when it never does or its age was never read. */
         private fun decayRemainingMs(instance: GreenhouseElementInstance): Long? {
             val decayTime = instance.cropDef.decayTimeMs
             if (decayTime == NEVER_DECAYS) return null
@@ -442,12 +421,8 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, Focus
         }
 
         /**
-         * [ms] as a duration, cut off rather than rounded, so a figure never reads longer than the
-         * time actually left.
-         *
-         * Past six hours the minutes stop being worth the width they take and are dropped, so six
-         * hours and fifty minutes reads as six hours. Below that they are kept, since twenty
-         * minutes either way matters when a plant is nearly dry.
+         * A duration cut off rather than rounded, so it never reads longer than the time left. Past
+         * six hours the minutes are dropped.
          */
         private fun readableDuration(ms: Long): String {
             val seconds = ms / 1000

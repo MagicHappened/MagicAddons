@@ -10,16 +10,8 @@ data class DyingPlant(
 )
 
 /**
- * When a greenhouse warning may speak: the shared cadence for all of them.
- *
- * A warning fires at ten minutes, five, and one before its deadline, once each. Crossing several
- * thresholds at once - logging in four minutes from a death - says its piece once rather than once
- * per threshold missed. The countdown climbing back up is a new deadline, and everything may speak
- * again. Keyed by the remaining time alone, so the deadline being re-stated as a fresh instant
- * every minute (which is what had one warning sent five times) changes nothing.
- *
- * Dehydration is the first customer; the snoozling and noctilume warnings land in the same frame,
- * each under its own kind.
+ * When a greenhouse warning may speak: ten minutes before its deadline, five, and one, once each.
+ * Keyed by the remaining time, so a deadline restated every minute is still one deadline.
  */
 object GreenhouseWarnings {
 
@@ -40,10 +32,7 @@ object GreenhouseWarnings {
 
     private val cycles = mutableMapOf<String, Cycle>()
 
-    /**
-     * Keeps [kind]'s cycle abreast of the countdown. Called every tick whether or not there is
-     * anything to warn about, since the new deadline has to be noticed even while all is well.
-     */
+    /** Keeps a kind's cycle abreast of its countdown, so a new deadline is noticed. */
     fun tick(kind: String, remainingMs: Long) {
         val cycle = cycles.getOrPut(kind) { Cycle() }
 
@@ -51,10 +40,7 @@ object GreenhouseWarnings {
         cycle.lastRemainingMs = remainingMs
     }
 
-    /**
-     * Whether [kind] should speak now, [remainingMs] from its deadline. Saying yes burns every
-     * threshold already crossed, so a deadline is spoken of at most once per rung of [thresholds].
-     */
+    /** Whether this kind should speak now. Saying yes burns every threshold already crossed. */
     fun shouldWarn(
         kind: String,
         remainingMs: Long,
@@ -62,12 +48,7 @@ object GreenhouseWarnings {
     ): Boolean = warnThreshold(kind, remainingMs, thresholds) != null
 
     /**
-     * The rung that has just been reached, or null when [kind] has nothing to say yet.
-     *
-     * The tightest of the crossed rungs, since that is the one the player is actually near: a
-     * warning that arrives with four minutes left is a five minute warning however long it has
-     * been since ten minutes went by. Every crossed rung is burned either way, so the ones that
-     * were skipped do not fire afterwards.
+     * The tightest threshold just crossed, or null when there is nothing to say. Skipped ones burn too.
      */
     fun warnThreshold(
         kind: String,

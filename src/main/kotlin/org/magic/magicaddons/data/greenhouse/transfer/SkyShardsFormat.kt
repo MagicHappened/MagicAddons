@@ -11,22 +11,9 @@ import java.util.zip.Deflater
 import java.util.zip.Inflater
 
 /**
- * Layouts as greenhouse.skyshards.com shares them.
- *
- * The share string is two things stacked: a plain text description of the design, raw-deflated and
- * then written in url-safe base64 without padding. Decompressed it reads as three fields separated
- * by pipes, `inputs|targets|grid`.
- *
- * The two field lists are palettes, each a comma separated list of base36 numbers indexing one
- * table of crops: the base crops first, then the mutations offset past them, which is why a
- * mutation's number is always at least seventeen. Inputs may be either kind; targets are always
- * mutations, since a target is the thing being grown towards.
- *
- * The grid is the ten by ten read row by row, a letter per cell, lower case indexing the inputs
- * palette and upper case the targets, with a dot for an empty cell. A palette of more than
- * twenty six crops switches the whole grid to two letters a cell, `aa` through `zz`, so a cell is
- * measured rather than assumed. A crop wider than one cell is written into every cell it covers,
- * the same repetition skymutations uses, so both directions here walk the footprint.
+ * Layouts as greenhouse.skyshards.com shares them: `inputs|targets|grid`, raw-deflated and written
+ * in url-safe base64. The palettes are base36 crop indices; the grid is one letter a cell, lower
+ * case for inputs and upper for targets, and two letters once a palette passes twenty six crops.
  */
 object SkyShardsFormat : LayoutFormat {
 
@@ -60,11 +47,7 @@ object SkyShardsFormat : LayoutFormat {
         "jerryflower", "phantomleaf", "timestalk"
     )
 
-    /**
-     * Both sides written the same way, so a name can be compared without a table of exceptions.
-     * The site says `do_not_eat_shroom` where this mod says `Do-not-eat-shroom`, and once the
-     * punctuation and case are gone they are the same word.
-     */
+    /** Both sides written the same way, so `do_not_eat_shroom` and `Do-not-eat-shroom` compare equal. */
     private fun key(text: String): String = text.lowercase().filter { it.isLetterOrDigit() }
 
     private val byKey: Map<String, CropDefinition> by lazy {

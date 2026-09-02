@@ -105,26 +105,6 @@ object HighlightMobs : HighlightFeature() {
                             entityTypeMobPathValue
                         )
                     )
-//                    EnumSetting<EntityTypeDetection>(
-//                        key = "EntityTypePlayerOtherEnum",
-//                        displayName = "Entity Type", // just dont display this (only values)
-//                        tooltip = "Which entity type detection to use",
-//                        value = EntityTypeDetection.Player,
-//                        children = listOf(
-//                            entityTypePlayerSkinHashList,
-//                            entityTypeMobPathValue
-//                        ),
-//                        childrenProvider = { entityTypeDetection ->
-//                            when (entityTypeDetection) {
-//                                EntityTypeDetection.Player -> listOf(
-//                                    entityTypePlayerSkinHashList
-//                                )
-//                                EntityTypeDetection.Other -> listOf(
-//                                    entityTypeMobPathValue
-//                                )
-//                            }
-//                        }
-//                    )
                 )
             ),
             BooleanSetting(

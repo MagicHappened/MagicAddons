@@ -19,12 +19,7 @@ class GridWidget(
     val slotSize: Int
 ) : Renderable, Focusable, NarratableEntry, HoverableContainer {
 
-    /**
-     * How far the slot at [index] sits from the grid's own corner.
-     *
-     * A slot and the line drawn after it, counted [index] times. Written six ways in as many
-     * places before, which is how a grid ends up a pixel out in one of them.
-     */
+    /** How far a slot sits from the grid's corner: a slot and the line after it, counted that often. */
     private fun offsetOf(index: Int): Int = index * (slotSize + LINE_WIDTH)
 
     /** Every slot and the line after each, which is the whole grid across or down. */
@@ -79,10 +74,8 @@ class GridWidget(
 
             widget.widgetX = widgetX + offsetOf(originX)
             widget.widgetY = widgetY + offsetOf(originY)
-            //hopefully work?
-
-            // each axis swallows the grid lines between the slots it covers, and a crop is not
-            // always square, so the two axes cannot share one border count
+            // each axis swallows the lines between the slots it covers, and a crop is not always
+            // square, so the axes cannot share one border count
             val footprint = instance.cropDef.footprint
             val widgetWidth = slotSize * footprint.width + (footprint.width - 1)
             val widgetHeight = slotSize * footprint.height + (footprint.height - 1)
@@ -177,12 +170,8 @@ class GridWidget(
         const val LINE_WIDTH: Int = 1
 
         /**
-         * The largest slot that fits a grid of [slots] into [room], lines included.
-         *
-         * The screen is the source of truth and the slot is worked out from it, rather than a slot
-         * size being chosen and the grid landing wherever it lands. Doing the division once, here,
-         * is what keeps the grid from being a pixel out: everything else is counted up from the
-         * answer instead of divided again.
+         * The largest slot that fits a grid into the room available, lines included. Divided once,
+         * here, so nothing else lands a pixel out.
          */
         fun slotSizeFor(room: Int, slots: Int): Int = room / slots - LINE_WIDTH
 

@@ -13,16 +13,8 @@ import org.magic.magicaddons.ui.widgets.CheckboxWidget
 import org.magic.magicaddons.util.ScreenUtil.drawBorder
 
 /**
- * The collector's checklist, docked to the right edge so the garden stays visible behind it.
- *
- * The chat flow asked the player to click lines that scrolled away and resent themselves on every
- * change. This is the same verdict-giving without the ceremony: the highlights are the evidence,
- * the list is the ballot, and the screen deliberately draws no background at all, blurred or
- * otherwise, because looking at the plants while ticking them off is the entire point.
- *
- * Opened with G while a collection run is live, closed with G again or escape. Styled after the
- * config's [org.magic.magicaddons.ui.widgets.config.BooleanSettingWidget], shrunk to stay out of
- * the way; it cannot reuse it outright since these rows are not settings.
+ * The collector's checklist, docked right so the garden stays visible behind it. Opened with G
+ * while a run is live, closed with G or escape.
  */
 /** Where the checklist was scrolled to, kept outside the screen so reopening lands back there. */
 private var scroll: Int = 0

@@ -10,15 +10,8 @@ import org.magic.magicaddons.data.greenhouse.GreenhouseLayout
 import org.magic.magicaddons.data.greenhouse.LayoutSlot
 
 /**
- * This mod's own layout format: plain json, one line per plant, meant to be read.
- *
- * Nothing carrying a layout of ours has a length limit worth compressing for, and the things worth
- * having from a format of our own are exactly what compressing takes away: a layout somebody pastes
- * in broken can be read, corrected and pasted back by hand.
- *
- * A plant is written once at the slot it starts from rather than once per slot it covers, since the
- * crop already knows how much room it takes. [VERSION] is carried so a later shape can be told
- * apart from this one.
+ * This mod's own layout format: plain json, one line per plant, meant to be read and hand-corrected.
+ * A plant is written once at the slot it starts from, and the version is carried for later shapes.
  */
 object MagicAddonsFormat : LayoutFormat {
 

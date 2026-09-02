@@ -10,11 +10,7 @@ import org.magic.magicaddons.data.greenhouse.LayoutSlot
 
 /**
  * Layouts as skymutations.eu shares them: a link whose `layout` parameter is an LZString compressed
- * json array, one entry of `[row, column, name, marking]` per covered cell.
- *
- * A crop taking more than one slot is stored as its name repeated over every cell it covers, which
- * is how the site itself decides to draw a crop as one merged block, so both directions here have
- * to walk the footprint rather than the anchor alone.
+ * json array of `[row, column, name, marking]`, a big crop repeated over every cell it covers.
  */
 object SkyMutationsFormat : LayoutFormat {
 
@@ -23,10 +19,7 @@ object SkyMutationsFormat : LayoutFormat {
     /** Where a shared layout lives, the encoded layout is appended to it. */
     private const val URL: String = "https://skymutations.eu/greenhouse?layout="
 
-    /**
-     * Crops this mod names differently than skymutations does, keyed by the name used here.
-     * Skymutations names the three vanilla crops after the seed they are planted from.
-     */
+    /** Crops we name differently: skymutations names the vanilla three after their seeds. */
     private val NAMES: Map<String, String> = mapOf(
         "Wheat" to "Wheat Seeds",
         "Melon" to "Melon Seeds",
@@ -34,10 +27,7 @@ object SkyMutationsFormat : LayoutFormat {
         "Dead Plant" to "Dead Plants"
     )
 
-    /**
-     * Crops this mod knows that skymutations has no entry for at all. Helianthus is planted in the
-     * greenhouse but the site only lists the condensed version, which is a different item.
-     */
+    /** Crops the site has no entry for. Its condensed helianthus is a different item from ours. */
     private val NOT_ON_SITE: Set<String> = setOf(
         "Cropie",
         "Squash",

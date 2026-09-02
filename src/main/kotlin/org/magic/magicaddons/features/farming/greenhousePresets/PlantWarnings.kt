@@ -22,17 +22,8 @@ import java.time.Instant
 
 /**
  * The warnings that hang off the growth tick: what has finished growing, what is about to rot, and
- * what has stopped growing until somebody does something about it.
- *
- * Each of the three speaks twice over a tick. Once the moment the tick lands, because that is when
- * the thing became true, and again on the way to the next one through [GreenhouseWarnings]'s
- * cadence, because a warning nobody was around to read is worth repeating while there is still
- * time to act on it. Decay is the exception: it is not tied to the tick at all and climbs its own
- * ladder from six hours down to one minute.
- *
- * All three share a shape the player asked for: a headline, then the greenhouses concerned, each
- * carrying what is wrong inside it on hover, so one line covers a garden full of plants without
- * becoming a wall of chat.
+ * what has stopped growing until somebody sees to it. Each speaks when the tick lands and again on
+ * the way to the next one; decay climbs its own ladder instead, six hours down to one minute.
  */
 object PlantWarnings {
 
@@ -58,13 +49,7 @@ object PlantWarnings {
         Duration.ofMinutes(1)
     )
 
-    /**
-     * What a countdown reads while there is nothing to count down to.
-     *
-     * Handed to the cadence so a garden with nothing decaying in it clears its cycle rather than
-     * carrying the last warning's fired rungs into the next plant. Finite rather than [Long.MAX_VALUE]
-     * because the cadence adds slack to it.
-     */
+    /** What a countdown reads with nothing to count down to, so the cadence clears its cycle. */
     private val NOTHING_PENDING_MS: Long = Duration.ofDays(365).toMillis()
 
     /** One greenhouse's part of a warning: the name shown, and the lines hung inside it. */
@@ -80,14 +65,11 @@ object PlantWarnings {
     private fun enabled(key: String): Boolean =
         baseSetting.getChild<BooleanSetting>(key)?.value == true
 
-    // ---------------------------------------------------------------- what each warning is about
+    // ------------------------------------------------------------ what each warning is about
 
     /**
-     * Mutations that grew where they stand and have nothing left to grow.
-     *
-     * Only mutations, and only ones the mod watched climb: a jellybean bought and parked in a
-     * spawner ring was never grown and harvesting it gains nothing. Judged by the highest stage the
-     * plant might be at, so the player is told early rather than left with a finished crop rotting.
+     * Mutations the mod watched grow, now at their last stage. A bought one was never grown, so
+     * harvesting it gains nothing. Judged by the highest stage it might be at, to tell the player early.
      */
     private fun harvestNotes(): List<HouseNote> = notes { instance ->
         val definition = instance.cropDef
@@ -102,10 +84,8 @@ object PlantWarnings {
     }
 
     /**
-     * Plants that have stopped growing and will stay stopped: a snoozling that has dropped asleep,
-     * and a noctilume craving a time of day the garden is not on.
-     *
-     * Each half answers to its own setting, so the two can be run apart.
+     * Plants that have stopped growing: a snoozling asleep, a noctilume craving the other time of
+     * day. Each half answers to its own setting.
      */
     private fun attentionNotes(): List<HouseNote> {
         val snoozling = enabled(SNOOZLING_KEY)
@@ -144,12 +124,7 @@ object PlantWarnings {
             }
         }.sortedBy { it.remainingMs }
 
-    /**
-     * How long this plant has before it rots, or null when it never rots or its age was never read.
-     *
-     * Age only exists once a plant diagnostic has been used on the plant, so a greenhouse nobody
-     * has ever measured warns about nothing. Nothing here can invent that number.
-     */
+    /** Time left before this plant rots. Null when it never rots, or its age was never measured. */
     private fun decayRemainingMs(instance: GreenhouseElementInstance): Long? {
         val decayTime = instance.cropDef.decayTimeMs
         if (decayTime == NEVER_DECAYS) return null
@@ -159,13 +134,9 @@ object PlantWarnings {
         return (decayTime - age).coerceAtLeast(0L)
     }
 
-    // ------------------------------------------------------------------------------ when they run
+    // -------------------------------------------------------------------------- when they run
 
-    /**
-     * The tick has landed, so everything it made true is said now.
-     *
-     * Decay is left out: it does not turn on the tick, and its own ladder already covers it.
-     */
+    /** The tick has landed, so everything it made true is said now. Decay keeps its own ladder. */
     @EventHandler
     fun onGrowthTick(event: GrowthTickEvent) {
         if (enabled(HARVEST_KEY)) {
@@ -180,9 +151,7 @@ object PlantWarnings {
     }
 
     /**
-     * Asked every client tick, so each rung fires the moment it is crossed rather than up to a
-     * minute late. Every kind is kept abreast of its countdown whether or not it has anything to
-     * say, since a new deadline has to be noticed while all is well.
+     * Asked every client tick, so a rung fires the moment it is crossed and a new deadline is noticed.
      */
     fun onTick() {
         tickBoundWarnings()
@@ -245,13 +214,9 @@ object PlantWarnings {
         send("Some plants decay in ${rungText(rung)}!", notes)
     }
 
-    // ------------------------------------------------------------------------------- how they read
+    // --------------------------------------------------------------------------- how they read
 
-    /**
-     * Walks every greenhouse and files what [label] makes of each plant, as a crop name and an
-     * optional word about its state. Identical answers are counted rather than repeated, so five
-     * finished jellybeans are one line.
-     */
+    /** Files what each plant is worth saying, counting identical answers instead of repeating them. */
     private fun notes(
         label: (GreenhouseElementInstance) -> Pair<String, String?>?
     ): List<HouseNote> = GreenhouseData.greenhouseGrids.mapNotNull { grid ->
@@ -272,10 +237,7 @@ object PlantWarnings {
         )
     }
 
-    /**
-     * The message: a headline, the greenhouses under it each holding their own detail on hover, and
-     * a way home when the player is not already in the garden.
-     */
+    /** A headline, the greenhouses under it each holding their detail on hover, and a way home. */
     private fun send(headline: String, notes: List<HouseNote>) {
         val message = Component.literal("[MA] ").withStyle(ChatFormatting.GOLD)
             .append(Component.literal(headline).withStyle(ChatFormatting.YELLOW))

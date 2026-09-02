@@ -10,16 +10,8 @@ import org.magic.magicaddons.ui.HoverableContainer
 import org.magic.magicaddons.ui.widgets.config.ClickableButtonWidget
 
 /**
- * A row of buttons belonging to one half of the greenhouse screen.
- *
- * Each mode of the screen has things the player can do in it, and they were being laid out, drawn
- * and clicked in whichever place happened to own them: the presets in a panel of their own and the
- * greenhouses loose on the screen. So the two lined up only because both did the same arithmetic,
- * and every new greenhouse button made the screen itself longer.
- *
- * A panel is told where it may sit and how much room it has, and fits its buttons into that. It
- * never measures the grid or the window itself, since a panel that works out where it is cannot be
- * put anywhere else, which is what made the old one only ever fit beside a ten by ten.
+ * A row of buttons belonging to one half of the greenhouse screen. A panel is told where it may sit
+ * and fits its buttons into that, rather than measuring the grid or the window itself.
  */
 abstract class ActionPanel : Renderable, Focusable, HoverableContainer {
 
@@ -41,11 +33,8 @@ abstract class ActionPanel : Renderable, Focusable, HoverableContainer {
         private set
 
     /**
-     * Every button this panel has, left to right, whether or not it is showing.
-     *
-     * All of them, always: a panel is laid out once and asked to draw many times, so a button
-     * left out of the layout because it was hidden at that moment appears later still sitting at
-     * the corner of the screen where it was born.
+     * Every button, showing or not: a panel is laid out once and drawn many times, so one left out
+     * of the layout stays wherever it was born.
      */
     protected abstract val buttons: List<ClickableButtonWidget>
 
@@ -55,12 +44,7 @@ abstract class ActionPanel : Renderable, Focusable, HoverableContainer {
     /** What each button does, asked in the same order the buttons are laid out. */
     protected abstract fun onPressed(button: ClickableButtonWidget, event: MouseButtonEvent): Boolean
 
-    /**
-     * Puts the panel at [x], [y] with [width] by [height] to work within.
-     *
-     * The buttons run along the top in a row, wrapping onto the next line when the room runs out
-     * rather than continuing off the edge of what they were given.
-     */
+    /** Puts the panel in the given box, buttons in a row along the top, wrapping when room runs out. */
     fun layoutIn(x: Int, y: Int, width: Int, height: Int) {
         this.x = x
         this.y = y

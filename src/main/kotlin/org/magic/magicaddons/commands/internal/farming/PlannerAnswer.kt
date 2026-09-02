@@ -9,11 +9,8 @@ import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData
 import org.magic.magicaddons.util.ChatUtils
 
 /**
- * The two answers to being told a plan is finished.
- *
- * Written as commands because the question is asked in chat and answered by clicking a word in it.
- * Turning the planner off takes the plan away from the greenhouse; leaving it on only stops the
- * question being asked again, since a plan still worth looking at is not a plan worth nagging over.
+ * The two answers to being told a plan is finished, as commands because the question is answered by
+ * clicking a word in chat. Turning it off takes the plan away; leaving it on only stops the asking.
  */
 object UnplanGreenhouse : AbstractCommand() {
 

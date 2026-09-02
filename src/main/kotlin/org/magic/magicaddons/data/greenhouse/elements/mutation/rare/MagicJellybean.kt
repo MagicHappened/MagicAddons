@@ -10,13 +10,8 @@ import org.magic.magicaddons.data.greenhouse.CropStates.sugarcaneState
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
 /**
- * A jellybean is a stack of sugar cane with a melon growing on top of it, and it climbs a hundred
- * and twenty stages doing the same twelve-stage thing over and over: the melon on top ripens, turns
- * into another length of cane, and a new melon starts above it.
- *
- * So the stages are generated from one twelve-row cycle rather than written out. Writing them out
- * would take a hundred and twenty near-identical blocks that differ only in how many times the same
- * two lines repeat, and every one of them would have to be re-exported to fix a single mistake.
+ * A stack of sugar cane with a melon on top, climbing a hundred and twenty stages by repeating one
+ * twelve-stage cycle. The stages are generated from that cycle rather than written out.
  */
 object MagicJellybean : CropDefinitionProvider {
 
@@ -30,10 +25,7 @@ object MagicJellybean : CropDefinitionProvider {
     private const val CANE_STAND_Y = -0.21875
 
     /**
-     * The three head poses a length of cane cycles through, picked by (x + z + height) mod 3.
-     *
-     * Not the world's mod-4 rule: the jellybean turns its canes by where they stand and how high
-     * they sit, verified against every cane of fifteen exports, all ten of a grown plant included.
+     * The three cane head poses, picked by (x + z + height) mod 3 rather than the world's mod-4 rule.
      */
     private val CANE_POSES = listOf(
         Rotations(22.5f, -22.5f, 0.0f),
@@ -49,15 +41,8 @@ object MagicJellybean : CropDefinitionProvider {
     private const val MAX_CANE = 10
 
     /**
-     * What the top of the plant looks like at one point in the cycle.
-     *
-     * [stemAge] is the melon stem's own growth, [melonStandY] is how far above the cane below it the
-     * melon's head hangs, and [extraCaneStand] covers the one stage where the next length of cane
-     * has its head but not yet its block.
-     *
-     * A cycle position with no row would be a stage we have not seen, and unseen stages are left
-     * undescribed rather than guessed at: a wrong stage matches the wrong plant, which is worse
-     * than not matching. Every position is now accounted for.
+     * The top of the plant at one point in the cycle: the stem's own growth, how high the melon hangs,
+     * and whether the next cane already has its head. Unseen positions are left undescribed.
      */
     private data class Top(
         val stemAge: Int,
@@ -66,16 +51,8 @@ object MagicJellybean : CropDefinitionProvider {
     )
 
     /**
-     * The cycle, as far as it has been observed.
-     *
-     * Keyed by a run of positions rather than by one, because the plant does not change every
-     * stage. It spends the first three positions of every cycle looking exactly the same, so those
-     * three stages cannot be told apart by looking, and a stage that covers all three says so
-     * instead of claiming to be the first of them.
-     *
-     * Read off exported stages 1 through 9, 18, 19, 90, 94, 95 and 96, which agree with each
-     * other wherever two of them landed on the same position. All twelve positions are known, so
-     * every one of the hundred and twenty stages is described.
+     * The cycle as observed, keyed by runs of positions: the plant looks the same for the first three
+     * of every cycle, so a stage covering all three says so. All twelve positions are known.
      */
     private val cycle: List<Pair<IntRange, Top>> = listOf(
         0..2 to Top(stemAge = 3),
@@ -86,12 +63,7 @@ object MagicJellybean : CropDefinitionProvider {
         11..11 to Top(stemAge = 6, extraCaneStand = true)
     )
 
-    /**
-     * One stage per run of cycle positions we know, at every height the plant reaches.
-     *
-     * A run covers consecutive stages because a cycle is consecutive: position k of cycle c is
-     * always stage `c * 12 + k`, and the whole cycle shares one cane height.
-     */
+    /** One stage per known run, at every height: position k of cycle c is always stage c * 12 + k. */
     private fun generateStages(): List<CropStage> = buildList {
         for (cycleNumber in 0 until MAX_CANE) {
             val caneHeight = cycleNumber
@@ -112,9 +84,8 @@ object MagicJellybean : CropDefinitionProvider {
                 val caneStands = (0 until standCount).map { height ->
                     CropArmorStand(
                         offset = Vec3(0.0, CANE_STAND_Y + height, 0.0),
-                        // a length of cane still arriving hangs its head its own way rather than
-                        // where the cycle puts it. One plant says so (stage 23, exported twice);
-                        // explicit here so the cycle itself stays clean
+                        // a cane still arriving hangs its head its own way rather than where the cycle
+                        // puts it, as stage 23 shows
                         headRotation = if (top.extraCaneStand && height == caneHeight) {
                             Rotations(22.5f, 22.5f, 22.5f)
                         } else {
@@ -148,10 +119,7 @@ object MagicJellybean : CropDefinitionProvider {
         add(topless(MAX_CANE))
     }
 
-    /**
-     * The finished plant: ten lengths of cane wearing all ten of their heads, no stem and no
-     * melon. An export of a grown plant says so, and so does looking at one.
-     */
+    /** The finished plant: ten canes wearing all ten heads, no stem and no melon. */
     private fun topless(caneHeight: Int): CropStage = CropStage(
         blocks = (1..caneHeight).map {
             CropBlockState(offset = BlockPos(0, it, 0), blockState = sugarcaneState())

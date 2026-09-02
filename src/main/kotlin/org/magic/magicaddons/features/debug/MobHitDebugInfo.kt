@@ -23,12 +23,8 @@ import org.magic.magicaddons.util.PlayerUtils
 import java.net.URI
 
 /**
- * Prints what the client knows about whatever was hit, so the values the rest of the mod matches on
- * can be read straight out of the game.
- *
- * Everything a matcher keys off is printed unconditionally, since a dump without it says nothing:
- * the entity type, its custom name and its skin hash. The settings add the parts that are only
- * sometimes wanted and are long enough to bury the rest of the chat.
+ * Prints what the client knows about whatever was hit. Type, custom name and skin hash always,
+ * since a dump without them says nothing; the rest is behind settings, being long enough to bury chat.
  */
 object MobHitDebugInfo : Feature() {
     init {

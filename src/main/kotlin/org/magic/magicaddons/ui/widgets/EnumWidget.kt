@@ -30,13 +30,7 @@ class EnumWidget<T>(
     ) : Renderable, Focusable {
     val overlay = EnumOverlay(1)
 
-    /**
-     * The gap between the border and what sits inside it, on both sides.
-     *
-     * Wider than the four the text used to get, which left the name all but touching the border
-     * while the flip beside it breathed, and the two sat side by side looking like two different
-     * widgets.
-     */
+    /** The gap between border and contents, wide enough that the name is not touching the border. */
     private val TEXT_PAD: Int = 6
 
     /** Narrow enough to still look like a selector when every value is a short word. */
@@ -49,11 +43,7 @@ class EnumWidget<T>(
     val font = Minecraft.getInstance().font
     var overlayOpen = false
 
-    /**
-     * How many pixels the open list may take along the direction it opens, set by whoever laid
-     * the widget out. Null takes whatever the screen has; the screen edge caps it either way, and
-     * anything past the cap is reached by typing until it fits.
-     */
+    /** How many pixels the open list may take, null for whatever the screen has. */
     var overlayBudget: Int? = null
 
     override var focusedState: Boolean = false
@@ -67,12 +57,8 @@ class EnumWidget<T>(
 
 
     /**
-     * Sets the width from the longest value it might have to show, up to [maxWidth].
-     *
-     * The caller used to pick a number and the widget cut whatever did not fit, so a name was
-     * shortened because of a guess made before anyone knew what the names were. It measures now,
-     * and the ellipsis is kept for the one case that is really about room: a name too long for the
-     * screen rather than too long for a number somebody typed.
+     * Sets the width from the longest value it might show. Measured rather than guessed, so a name
+     * is only ellipsised when it is too long for the screen.
      */
     fun fitToValues(maxWidth: Int) {
         val shown = values.map { it.toString() } + listOfNotNull(currentValue?.toString())
@@ -172,21 +158,13 @@ class EnumWidget<T>(
 
         override var hoveredElement: GuiEventListener? = null
 
-        /**
-         * A row is as tall as the closed selector, so the list reads as the same control opened
-         * rather than a smaller one underneath it.
-         */
+        /** A row is as tall as the closed selector, so the list reads as the same control opened. */
         val overlayRowHeight: Int
             get() = this@EnumWidget.height
 
         val valueWidgets: MutableList<ClickableRowWidget<T>> = mutableListOf()
 
-        /**
-         * What has been typed so far, narrowing the list to values that start with it.
-         *
-         * Prefix rather than contains: the ask was typing M to see the crops starting with M,
-         * and a contains-match surfaces every crop with an m somewhere in it instead.
-         */
+        /** What has been typed, narrowing to values that start with it: typing M means crops from M. */
         var searchText: String = ""
 
         /** Whether the list grows downward from the widget, settled when the rows are built. */
@@ -208,11 +186,7 @@ class EnumWidget<T>(
         private var visibleRows: Int = 1
         private var scroll: Int = 0
 
-        /**
-         * Builds the rows from whatever the search currently lets through, and no more of them
-         * than the room allows: the side of the screen it opens into, tightened further by any
-         * budget the caller set aside. The rest is reached by the wheel, or by typing.
-         */
+        /** Builds the rows the search lets through, no more than the room allows. The rest is scrolled. */
         fun rebuildRows() {
             scroll = 0
 
@@ -263,10 +237,7 @@ class EnumWidget<T>(
 
         override val overlayX: Int
             get() = this@EnumWidget.x
-        /**
-         * Under the selector, or above it when the screen runs out underneath. A list that falls
-         * off the bottom is a list whose last values cannot be picked at all.
-         */
+        /** Under the selector, or above it when the screen runs out: a list off the bottom cannot be picked. */
         override val overlayY: Int
             get() = if (opensDown) {
                 this@EnumWidget.y + this@EnumWidget.height

@@ -41,10 +41,8 @@ object SafariHelperCommand : AbstractCommand() {
     }
 
     /**
-     * Reports [zone], or every zone that is not finished yet when it is null.
-     *
-     * Every biome is sent as its own message so that a mod which copies a message on right click
-     * copies exactly one biome, title and remaining mobs together.
+     * Reports one zone, or every unfinished zone. One message per biome, so a right-click copy takes
+     * exactly one biome with its title and mobs.
      */
     private fun sendRemainingReport(source: FabricClientCommandSource, zone: SafariZone?) {
         val zones = zone?.let { listOf(it) } ?: SafariZone.entries.toList()

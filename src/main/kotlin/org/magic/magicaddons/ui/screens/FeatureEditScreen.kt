@@ -108,10 +108,8 @@ class FeatureEditScreen(
 
 
     /**
-     * Dragging, letting go and the wheel, passed on the same way clicks are.
-     *
-     * [mouseClicked] deliberately does not defer to the vanilla screen, so the screen never learns
-     * which widget is being dragged and would drop all three of these on the floor.
+     * Drag, release and the wheel, passed on the same way clicks are: mouseClicked never defers to
+     * the vanilla screen, so nothing downstream would hear about a drag.
      */
     override fun mouseDragged(
         mouseButtonEvent: MouseButtonEvent,

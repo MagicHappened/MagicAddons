@@ -181,33 +181,13 @@ object GreenhouseData {
     }
 
 
-    /**
-     * When the plot the player is standing in should be read again.
-     *
-     * Every change in the plot pushes this back, so a burst of them settles into one read, and
-     * [reconcileDeadline] stops a steady stream of changes from putting it off forever.
-     */
-    /**
-     * The most one look at the clock may move the next tick by.
-     *
-     * The correction assumes the greenhouse runs on server ticks rather than on the wall clock, so
-     * it pulls the countdown back by however far the server fell behind. That direction has not
-     * been proven, only reasoned, so the size of any single correction is capped: a wrong sign then
-     * costs a little accuracy rather than walking the countdown away from the truth.
-     */
+    /** The most one look at the clock may move the next tick by, so a wrong guess cannot walk it away. */
     private const val MAX_TICK_ADJUSTMENT_MS: Long = 5_000
 
     /** The hunting shard carrying greenhouse speed, a legendary one, twenty four syphons to max. */
     const val GREENHOUSE_SPEED_ATTRIBUTE_ID: String = "attribute:l57"
 
-    /**
-     * Whether the plot has changed since the last look.
-     *
-     * There was a wait here, half a second of quiet before scanning so a burst of changes cost one
-     * scan rather than twenty. It bought little: a stage that knows its rotation is matched at the
-     * one rotation the grid gives its block instead of six, which made a scan cheap enough to run
-     * on the change itself, and waiting only meant the screen was a beat behind the world.
-     */
+    /** Whether the plot changed since the last look. Scans are cheap enough to run on the change itself. */
     private var reconcileWanted: Boolean = false
 
     /** Something in the plot changed, so what is stored for it can no longer be trusted. */
@@ -245,12 +225,8 @@ object GreenhouseData {
         ?.value
 
     /**
-     * What the chosen number of ticks comes to in time off, for the line under the setting.
-     *
-     * A window of n ticks is not one length: the tick already running has however much of itself
-     * left, and the player is away for n ticks for any absence from that remainder plus n-1 whole
-     * ticks up to that remainder plus n. So the answer is a span one tick wide, and it slides as
-     * the countdown runs, which is why it is worked out per frame rather than stored.
+     * The chosen ticks as time off, for the line under the setting. A span one tick wide, since the
+     * tick already running is part spent, and it slides as the countdown runs.
      */
     fun absenceDetail(): SettingDetail? {
         val ticks = absenceTicks() ?: return null
@@ -291,13 +267,7 @@ object GreenhouseData {
         }
     }
 
-    /**
-     * Says which greenhouses will run out of room for their chorus before the player is next back.
-     *
-     * Shares the dehydration warning's cadence and its reason for having one: both are about the
-     * coming growth tick, and both would otherwise repeat every time the countdown is restated.
-     * The arithmetic, and what it deliberately does not assume, is in [ChorusCollision].
-     */
+    /** Which greenhouses run out of room for their chorus before the player is next back. */
     private fun warnOfChorusCollision() {
         if (baseSetting.getChild<BooleanSetting>("ChorusCollisionWarning")?.value != true) return
 
@@ -320,10 +290,7 @@ object GreenhouseData {
         sendChorusWarning(crowded)
     }
 
-    /**
-     * The warning itself: what to break, where, and what it is being broken for. A jellybean still
-     * growing is the expensive thing on the plot, so it is named when there is one to lose.
-     */
+    /** What to break, where, and why. A growing jellybean is named when there is one to lose. */
     private fun sendChorusWarning(crowded: List<Pair<GreenhouseLayout, ChorusCollision.Report>>) {
         val message = Component.literal("[MA] ").withStyle(ChatFormatting.GOLD)
             .append(
@@ -372,11 +339,8 @@ object GreenhouseData {
     }
 
     /**
-     * Says which plants the coming tick will kill, while there is still time to water them.
-     *
-     * The cadence lives in [GreenhouseWarnings]: ten minutes out, five, and one, each said once
-     * per tick however often the countdown is restated. A plant already past death in the
-     * estimate is not warned about, since the dead bush on its slot says something stronger.
+     * Which plants the coming tick will kill, while there is still time to water them. One already
+     * past death is left alone, since the dead bush says it better.
      */
     private fun warnOfDyingPlants() {
         val nextTick = miscInfo.nextTickTime ?: return
@@ -435,10 +399,7 @@ object GreenhouseData {
         return if (seconds >= 60) "${seconds / 60}m ${seconds % 60}s" else "${seconds}s"
     }
 
-    /**
-     * The warning itself, plants grouped by the greenhouse they are dying in, with a way home at
-     * the end when the player is anywhere else.
-     */
+    /** The warning itself, plants grouped by greenhouse, with a way home when away. */
     private fun sendDehydrationWarning(dying: List<DyingPlant>, remainingMs: Long) {
         val byHouse = dying.groupBy({ it.greenhouse }, { it.plant })
 
@@ -506,13 +467,8 @@ object GreenhouseData {
     }
 
     /**
-     * How far the server may fall behind the wall clock before the gap is read as an absence.
-     *
-     * Measured as time the server never accounted for, not as time passed: the check itself only
-     * runs once a minute, so every ordinary look back sees a minute of wall clock and would read
-     * as leaving if elapsed time were the question. What separates being away from being lagged is
-     * that a server which is merely behind still sends ticks, so its time nearly keeps up, while
-     * one nobody is listening to sends none at all.
+     * How far the server may fall behind before the gap reads as an absence. A stalled server still
+     * sends ticks; one nobody is listening to sends none.
      */
     private val AWAY_THRESHOLD: Duration = Duration.ofSeconds(20)
 
@@ -545,9 +501,8 @@ object GreenhouseData {
 
             lastServerTick = currentTick
 
-            // a path that leaves without updating lastCheckTime makes the next call measure real
-            // time across the whole gap while the server side of it covers only the last moment,
-            // and the correction that comes out of that is nonsense
+            // leaving without updating lastCheckTime makes the next call measure real time across
+            // the whole gap against server time from the last moment only
             if (previousTick == null) {
                 lastCheckTime = now
                 return
@@ -567,26 +522,21 @@ object GreenhouseData {
             val serverMs = passedServerTicks * 50L
             val realMs = now.toEpochMilli() - lastCheck.toEpochMilli()
 
-            // a server that merely stalls still sends ticks, so its time nearly keeps up with the
-            // wall clock. One nobody is listening to sends none, and the whole gap arrives as
-            // unaccounted time. Handing that to the countdown as lag would push it by the length
-            // of an absence rather than the length of a stall
+            // a stalled server still sends ticks so its time nearly keeps up; an absence arrives as
+            // unaccounted time and must not be handed to the countdown as lag
             val unaccountedMs = realMs - serverMs
 
             if (Duration.ofMillis(unaccountedMs) > AWAY_THRESHOLD) {
                 lastCheckTime = now
                 return
             }
-            // how far the server fell behind the wall clock since the last look. Bounded, because
-            // this is meant to nudge a countdown that has drifted, and one long pause or one
-            // skipped update should not be able to move it by more than the gap it is measuring
+            // bounded: this nudges a drifted countdown, so one long pause cannot move it further
+            // than the gap it is measuring
             val adjustmentDelta = unaccountedMs
                 .coerceIn(-MAX_TICK_ADJUSTMENT_MS, MAX_TICK_ADJUSTMENT_MS)
 
-            // added, not taken off. The greenhouse counts in server ticks, so time the server
-            // spent behind the wall clock is time the tick has not yet served and the countdown
-            // still owes. Taking it off ran the screen a few seconds ahead of the game, which is
-            // how the direction was settled
+            // added, not taken off: time the server spent behind is time the tick has not served
+            // yet. Taking it off ran the screen ahead of the game
             miscInfo.nextTickTime =
                 miscInfo.nextTickTime!!.plusMillis(adjustmentDelta)
             lastCheckTime = now
@@ -605,11 +555,8 @@ object GreenhouseData {
 
         if (passedGrowthTicks <= 0 && !nextTick.isBefore(now)) return
 
-        // the countdown having run out is itself a tick. passedGrowthTicks counts whole periods
-        // gone by since then, so an hour past a two hour tick counts none of them while the tick
-        // it ran out on has plainly happened. The clock always knew this and moved on by one more
-        // than it counted; the plants were moved on by the count alone, so a greenhouse ticked
-        // once and was never told
+        // the countdown running out is itself a tick, and passedGrowthTicks only counts whole
+        // periods since then. The clock knew this and the plants did not, so one tick went untold
         val elapsedTicks = passedGrowthTicks.toInt() + 1
 //        Common.LOGGER.info("Overdue ms $overdueMs")
 //        Common.LOGGER.info("Overdue growth ticks $passedGrowthTicks")
@@ -626,9 +573,8 @@ object GreenhouseData {
         greenhouseGrids.forEach { grid ->
             if (onlineTickTracking && !grid.hasRuntime()) return@forEach
 
-            // a greenhouse that has not been read this session has no count of what it owes, and
-            // owing nothing yet is not a reason to skip it: the ticks it is about to be told about
-            // are exactly the ones nobody was there to see
+            // a greenhouse unread this session owes nothing yet, which is no reason to skip it:
+            // these are exactly the ticks nobody was there to see
             val pendingTicks = grid.state.pendingGrowthTicks ?: 0
 
             grid.state.pendingGrowthTicks = pendingTicks + elapsedTicks
@@ -744,12 +690,7 @@ object GreenhouseData {
         regenRender()
     }
 
-    /**
-     * Takes the plan off the greenhouse being stood in.
-     *
-     * The plan is a thing the player turned on and can turn off, so both the button on the screen
-     * and the word in chat come here rather than each reaching into the grid themselves.
-     */
+    /** Takes the plan off the greenhouse being stood in, for both the button and the chat word. */
     fun unplanCurrentGreenhouse(): Boolean {
         val grid = getCurrentGrid() ?: run {
             ChatUtils.sendWithPrefix("Not standing in a greenhouse.")
@@ -760,11 +701,8 @@ object GreenhouseData {
     }
 
     /**
-     * Takes the plan off [grid], whichever greenhouse that is.
-     *
-     * The screen shows whichever greenhouse was picked from its selector rather than the one being
-     * stood in, so the button there has to say which it means. Only the chat answer is about where
-     * the player happens to be standing, since that is what it was asked about.
+     * Takes the plan off one particular greenhouse: the screen means whichever was picked from its
+     * selector, not the one being stood in.
      */
     fun unplanGreenhouse(grid: GreenhouseGrid): Boolean {
         if (grid.state.assignedLayout == null) {
@@ -897,14 +835,8 @@ object GreenhouseData {
 
 
     /**
-     * A plant is taken apart by hitting it, and what is hit is a stand rather than a block, so
-     * nothing about breaking one reaches the block listener. Without this a harvested crop stayed
-     * on the screen until something else in the plot happened to change.
-     */
-    /**
-     * A plant taken apart leaves when the server says so, a moment after the swing that did it.
-     * Asking on the swing looked at a plot the crop was still standing in, so the screen stayed a
-     * whole harvest behind: the first break showed up only once the second was swung for.
+     * A plant is taken apart by hitting stands, not blocks, so the block listener never hears of it.
+     * Waited for rather than read on the swing, which looked at a plot the crop still stood in.
      */
     @EventHandler
     fun onEntityRemoved(event: OnEntityRemoved) {
@@ -1020,13 +952,8 @@ object GreenhouseData {
     }
 
     /**
-     * Marks a plant the player just put down as new.
-     *
-     * The server decides whether a placement happened at all, so nothing is added here: the read
-     * that follows finds the plant, or it does not because the server refused. All this supplies is
-     * what a read cannot know, that this particular plant went in just now and so is at no age and
-     * holds no water. A crop the read never found, or found as something else, is simply forgotten
-     * once the window passes.
+     * Marks a plant just put down as new. The server decides whether it went in at all; all this
+     * adds is what a read cannot know, that it is at no age and holds no water.
      */
     private fun claimPlantedCrop(grid: GreenhouseGrid) {
         val (definition, pos) = placedCrop ?: return
@@ -1048,14 +975,7 @@ object GreenhouseData {
         forgetPlacedCrop()
     }
 
-    /**
-     * What the server says when a placement did not happen.
-     *
-     * A crop is claimed on the strength of what was in hand when the block went down, but the
-     * server has the last word and takes a moment to say it. Any of these means the plant never
-     * went in, so the claim is dropped rather than left to land on whatever the read finds in
-     * that slot next.
-     */
+    /** What the server says when a placement did not happen, so the claim is dropped rather than reused. */
     private val PLACE_REFUSALS: List<Regex> = listOf(
         Regex("can only grow on ", RegexOption.IGNORE_CASE),
         Regex("There is already a crop planted here", RegexOption.IGNORE_CASE),
@@ -1087,10 +1007,8 @@ object GreenhouseData {
                 it.standEntities?.contains(hitEntity) ?: return@find false
             }
         }
-        // a stage names the stands and blocks it matched on and no others, so pointing the tool
-        // at a hunger bar, a sleep bubble, or a block the stage never mentioned found nothing and
-        // the plant went on wearing whatever had been guessed for it. Anything standing inside a
-        // plant's footprint belongs to that plant, named or not
+        // anything standing inside a plant's footprint belongs to it, named by the stage or not:
+        // pointing the tool at a hunger bar or an unnamed block used to find nothing
         if (hitElement == null) {
             val pos = hitBlock ?: hitEntity?.blockPosition()
 
@@ -1198,10 +1116,8 @@ object GreenhouseData {
             }
         }
 
-        // what the pages just said about the plant that was pointed at, whether or not anyone is
-        // collecting. Telling the greenhouse what it is looking at is the tool's other job, and
-        // the one thing here the game knows better than any guess: the stage exactly, the water
-        // exactly, and how long it has been standing there
+        // what the pages say about the plant pointed at, and the one thing the game knows better
+        // than any guess: stage, water and age exactly
         plantDiagnosticListeningElement?.let { element ->
             age?.parseDurationToMs()?.let { element.instance.age = it }
             stageRaw?.let { element.instance.growthStage = GrowthStageInfo.Known(it) }
@@ -1255,12 +1171,8 @@ object GreenhouseData {
     }
 
     /**
-     * The value written beside [label] on a diagnosis page.
-     *
-     * Read off the whole line rather than out of a numbered piece of it. The server splits a line
-     * wherever its own formatting changes, so "Stage: 1/15" arrives as three pieces and the one
-     * sitting at any given number is whatever the colouring happened to make it, which is how
-     * reading the stage ended up reading the slash.
+     * The value beside a label on a diagnosis page, read off the whole line: the server splits a
+     * line wherever its colouring changes, so "Stage: 1/15" arrives as three pieces.
      */
     private fun List<Component>.valueFor(label: String): String? =
         firstOrNull { it.string.trimStart().startsWith("$label:", ignoreCase = true) }
@@ -1269,13 +1181,7 @@ object GreenhouseData {
             ?.trim()
             ?.takeIf { it.isNotEmpty() }
 
-    /**
-     * Every line of [lore] as it reads and as the pieces it is built from.
-     *
-     * The stage is pulled out of one particular piece of one particular line, so when that stops
-     * working the only useful thing to say is what was actually there. Each line copies whole, to
-     * be pasted somewhere it can be read properly.
-     */
+    /** Every lore line as it reads and as the pieces behind it, for when the parsing stops working. */
     private fun dumpLore(lore: List<Component>) {
         lore.forEachIndexed { index, line ->
             val pieces = line.siblings
@@ -1377,16 +1283,8 @@ object GreenhouseData {
 
 
     /**
-     * How long one growth tick currently takes, or null while something the formula needs is not
-     * known. Changes as uniques are planted, so it is worked out rather than remembered.
-     */
-    /**
-     * The greenhouse speed attribute, worth half a percent a level.
-     *
-     * Taken from what the player told us first, and only then from the shard they have syphoned.
-     * That order is the wrong way round in principle, since the game knows better than the player
-     * does, but the api that reports shards does not report this one at all, so what it says cannot
-     * be trusted over what was typed. Worth turning back around once that is fixed upstream.
+     * The greenhouse speed attribute, half a percent a level. Taken from what the player typed first,
+     * since the shard api does not report this one at all.
      */
     fun greenhouseSpeedAttribute(): Int? =
         miscInfo.greenhouseSpeedAttribute
@@ -1396,6 +1294,7 @@ object GreenhouseData {
                 ?.level
                 ?.takeIf { it > 0 }
 
+    /** How long one growth tick takes now, null while the formula is missing something. */
     fun currentGrowthTickMs(): Long? {
         val cropGrowth = miscInfo.cropGrowthValue ?: return null
         val upgrade = miscInfo.cropSpeedUpgradeValue ?: return null
@@ -1408,10 +1307,7 @@ object GreenhouseData {
         )
     }
 
-    /**
-     * What is left of the tick now running, or null while the next one is not known. Never
-     * negative: an overdue tick has nothing left of it rather than a debt.
-     */
+    /** What is left of the current tick. Never negative: an overdue tick has nothing left, not a debt. */
     fun remainingTickMs(): Long? {
         val next = miscInfo.nextTickTime ?: return null
 
@@ -1419,11 +1315,8 @@ object GreenhouseData {
     }
 
     /**
-     * Re-anchors the server tick to the countdown the game itself just gave us.
-     *
-     * Without this, the next comparison measured real time from the resync against server time
-     * from wherever the counter was last touched, and handed the difference to the countdown as
-     * lag.
+     * Re-anchors the server tick to the countdown the game just gave us, so the next comparison is
+     * not measuring across the resync.
      */
     private fun realignWithGame() {
         lastServerTick = ServerUtils.totalServerTicks

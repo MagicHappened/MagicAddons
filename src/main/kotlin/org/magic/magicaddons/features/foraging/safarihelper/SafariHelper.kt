@@ -51,9 +51,8 @@ object SafariHelper : HighlightFeature() {
     private const val MACAW: String = "Macaw"
 
     private val catchPatterns = listOf(
-        // "§a§lCAPTURE! §7You caught a §aTreefrog§7 and gained 2x §aTreefrog Shard§7!"
-        // sparklings say "received" instead, their extra reward comes before the shards
-        // "§a§lCAPTURE! §7You caught a §6SPARKLING §aWoodchucker§7 and received a §5Rainbow Feather§7 and 20x §aWoodchucker Shard§7!"
+        // "§a§lCAPTURE! §7You caught a §aTreefrog§7 and gained 2x §aTreefrog Shard§7!", with
+        // sparklings saying "received" and naming their extra reward before the shards
         Regex("You caught an? (.+?) and (?:gained|received)"),
         // "§e§lLOOT SHARE! §7You received a §aPolaris Shard§7 from §bAceMech§7 catching a §aPolaris§7!"
         Regex("catching an? (.+?)!"),
@@ -157,16 +156,10 @@ object SafariHelper : HighlightFeature() {
     var currentZone: SafariZone? = null
         private set
 
-    /**
-     * Uniques caught during this safari visit, lowercased. The server never tells us what was already
-     * caught before we arrived, so this starts empty every time the island is entered.
-     */
+    /** Uniques caught this visit. The server never says what was caught before, so it starts empty. */
     private val caughtUniques = mutableSetOf<String>()
 
-    /**
-     * The two done messages of one scope, either the whole safari or a single zone. Both are worth
-     * sending once per safari visit.
-     */
+    /** The two done messages of one scope, whole safari or single zone, each sent once a visit. */
     private class DoneMessages(val done: String, val doneWithoutMacaw: String) {
         var doneSent: Boolean = false
         var doneWithoutMacawSent: Boolean = false
@@ -193,15 +186,12 @@ object SafariHelper : HighlightFeature() {
     private val zoneTicks = mutableMapOf<SafariZone, Long>()
 
     /**
-     * The zone the player was sent to. Nothing announces it, so it is guessed from where the player
-     * had spent the most time by the time the first zone was finished, and stays fixed after that.
+     * The zone the player was sent to. Nothing announces it, so it is guessed from where they had
+     * spent the most time when the first zone finished, and fixed after that.
      */
     private var designatedZone: SafariZone? = null
 
-    /**
-     * Highlighted entities that the name tag next to them marks as sparkling. The renderer only hands
-     * back the entity, so the answer has to be remembered while the entity info is still around.
-     */
+    /** Highlighted entities a name tag marks as sparkling, remembered while the entity info lasts. */
     private val sparklingEntities = mutableSetOf<Entity>()
 
     override fun highlightColor(entity: Entity): Int = when {
@@ -304,10 +294,7 @@ object SafariHelper : HighlightFeature() {
         }
     }
 
-    /**
-     * Takes whichever of the [messages] the scope has earned by being down to [remaining], marking it
-     * as said so it cannot be said again, or null when the scope owes nothing.
-     */
+    /** Takes whichever message the scope has earned, marking it said, or null when it owes nothing. */
     private fun claim(messages: DoneMessages, remaining: List<String>): String? {
         if (remaining.isEmpty()) {
             // catching everything says more than having caught everything but the macaw
@@ -359,10 +346,7 @@ object SafariHelper : HighlightFeature() {
 
     private fun isCaught(mobName: String): Boolean = mobName.lowercase() in caughtUniques
 
-    /**
-     * The key a caught mob is remembered under. Catch messages name a sparkling as "SPARKLING
-     * Woodchucker", which still is the woodchucker of the zone being caught.
-     */
+    /** The key a caught mob is remembered under: a "SPARKLING Woodchucker" is still a woodchucker. */
     private fun normalizeCaught(mobName: String): String =
         mobName.lowercase().removePrefix("$SPARKLING_TAG ")
 

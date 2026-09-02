@@ -13,11 +13,8 @@ import org.magic.magicaddons.data.EntityInfo
 import org.magic.magicaddons.util.PlayerUtils
 
 /**
- * One unique mob of a safari zone.
- *
- * [matches] gets the whole [EntityInfo] because the visual of a mob is often an item display or an
- * armor stand: when the mob has a real entity of its own the visual sits in its information
- * entities, when it does not the visual is the entity itself.
+ * One unique mob of a safari zone. Matching gets the whole EntityInfo, since a mob's visual is
+ * often an item display or armor stand rather than the entity itself.
  */
 class SafariMob(
     val displayName: String,
@@ -27,13 +24,8 @@ class SafariMob(
 }
 
 /**
- * The safari island is split into four quadrants around x = -47 / z = 0, each with its own set of
- * uniques that have to be caught once each to complete the zone.
- *
- *  haunted: negative z, positive x
- *  icy:     negative z, negative x
- *  cavern:  positive z, negative x
- *  forest:  positive z, positive x
+ * The safari island split into four quadrants around x = -47 / z = 0, each with its own uniques:
+ * haunted -z +x, icy -z -x, cavern +z -x, forest +z +x.
  */
 enum class SafariZone(val displayName: String, val uniqueMobs: List<SafariMob>) {
     FOREST(

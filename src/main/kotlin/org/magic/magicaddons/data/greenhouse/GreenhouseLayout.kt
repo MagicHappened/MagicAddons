@@ -27,26 +27,11 @@ data class GreenhouseLayout(
 
     fun displayName(): String = name ?: id
 
+    /** The water effects reaching a slot, as a total signed percentage. Only direct neighbours count. */
+
     /**
-     * The water effects reaching [slot], as a total signed percentage.
-     *
-     * Only what stands directly beside it counts, which is how the game words every one of them. A
-     * crop bigger than one slot reaches from any cell it covers, and never counts itself.
-     */
-    /**
-     * The effects a plant standing on [slot] has.
-     *
-     * A crop's own effects are what it gives away rather than what it holds: a cactus keeps its
-     * neighbours' water and not its own. So what a plant has is what the plants around it grant,
-     * and a plant with nothing beside it has nothing at all.
-     *
-     * Effect spread is the second helping. A neighbour that has been granted effect spread passes
-     * on everything else it has been granted, so a buff can travel two plants from where it came
-     * from, but only two: spread never passes on spread itself, which is what keeps a pair of
-     * plants from handing the same buffs back and forth forever.
-     *
-     * A set, so two melons beside one plant are one water retain rather than two. What a plant has
-     * is which effects it has, not how many times it was given them.
+     * The effects a plant has are the ones its neighbours grant: a crop's effects are what it gives
+     * away. Spread passes on everything but itself, so a buff travels two plants and no further.
      */
     fun effectsAt(slot: LayoutSlot): Set<CropEffect> {
         val neighbours = elementInstances.filter { !it.covers(slot) && it.touches(slot) }
@@ -70,20 +55,8 @@ data class GreenhouseLayout(
         .flatMapTo(mutableSetOf()) { it.cropDef.effects }
 
     /**
-     * How much longer a plant on [slot] holds its water, as a percentage.
-     *
-     * The pieces are added together, so a hundred percent retain beside a thirty percent drain
-     * comes to seventy. Measured rather than assumed: two pumpkins in one greenhouse, both dry,
-     * one with both effects and one with only the retain, were given thirteen and seventeen hours
-     * by the game itself, and both fall out of a single tick period at seventy and a hundred
-     * percent. Either effect winning outright would have given a different pair. See
-     * notes/water-formula.md.
-     *
-     * A plain fifty percent retain beside the same drain then separated adding from multiplying,
-     * which the first pair could not: twenty percent, and the plant lost eighteen a tick where
-     * multiplying would have cost nineteen. So a drain is a negative percentage like any other and
-     * the sum is taken unchanged. The yield effects are still guessed at wherever they are
-     * eventually added up.
+     * How much longer a plant holds its water, as a percentage: the pieces are added, drains being
+     * negative. Measured rather than assumed, in notes/water-formula.md.
      */
     fun waterEffectAt(slot: LayoutSlot): Int = effectsAt(slot)
         .filter { it.kind == CropEffect.Kind.Water }

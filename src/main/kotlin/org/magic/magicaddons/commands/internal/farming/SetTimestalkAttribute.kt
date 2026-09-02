@@ -13,14 +13,8 @@ import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData
 import org.magic.magicaddons.util.ChatUtils
 
 /**
- * Takes the Timestalk attribute level by hand.
- *
- * The level decides how fast a greenhouse ticks, and it should be read off the shard the player has
- * syphoned, but the api that reports shards does not report this one. Until it does, the player is
- * asked, and what they answer is remembered with the rest of the greenhouse numbers.
- *
- * Run bare, it explains what it wants and opens the chat with the command already typed, so the
- * player only has to add the number.
+ * Takes the Timestalk attribute level by hand, since the shard api does not report this one. Run
+ * bare, it opens the chat with the command already typed.
  */
 object SetTimestalkAttribute : AbstractCommand() {
 
