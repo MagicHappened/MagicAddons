@@ -38,9 +38,9 @@ class CropStandReader(
         private val EMPTY = McCompat.chatColor(ChatFormatting.WHITE)
 
         /**
-         * Any skyblock bar as the percentage of it that is filled. Anything not white counts as
-         * filled, since the colour is the bar's mood rather than its value, and notches are counted
-         * rather than taken as a leading run.
+         * Any skyblock bar as the percentage of it that is filled. Any colour but white counts as
+         * filled, since a bar changes colour as it empties, and the filled notches are counted
+         * rather than measured as a leading run.
          */
         fun barPercent(name: Component): Int? {
             var filled = 0

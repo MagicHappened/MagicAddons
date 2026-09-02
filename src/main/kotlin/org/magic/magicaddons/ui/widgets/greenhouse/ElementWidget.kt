@@ -196,8 +196,8 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, Focus
     }
 
     /**
-     * The water meter: what the plant holds fills from the left in blue, what it owes from the right
-     * in red, the way the game words its own bar.
+     * The water meter: a positive level fills from the left in blue, a negative one from the right
+     * in red, as the game's own bar does.
      */
     private fun renderWaterBar(graphics: GuiGraphicsExtractor, waterLevel: Int) {
         val barWidth = width - WATER_BAR_INSET * 2

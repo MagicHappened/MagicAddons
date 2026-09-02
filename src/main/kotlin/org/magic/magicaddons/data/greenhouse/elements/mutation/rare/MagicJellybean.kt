@@ -51,8 +51,8 @@ object MagicJellybean : CropDefinitionProvider {
     )
 
     /**
-     * The cycle as observed, keyed by runs of positions: the plant looks the same for the first three
-     * of every cycle, so a stage covering all three says so. All twelve positions are known.
+     * The cycle as observed, keyed by runs of positions: the plant looks identical for the first
+     * three of every cycle, so one stage covers all three. All twelve positions are known.
      */
     private val cycle: List<Pair<IntRange, Top>> = listOf(
         0..2 to Top(stemAge = 3),

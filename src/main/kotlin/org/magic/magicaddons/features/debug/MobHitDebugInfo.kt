@@ -24,7 +24,7 @@ import java.net.URI
 
 /**
  * Prints what the client knows about whatever was hit. Type, custom name and skin hash always,
- * since a dump without them says nothing; the rest is behind settings, being long enough to bury chat.
+ * since a dump without them is useless; the rest is behind settings, being long enough to fill chat.
  */
 object MobHitDebugInfo : Feature() {
     init {

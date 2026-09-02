@@ -10,8 +10,8 @@ data class DyingPlant(
 )
 
 /**
- * When a greenhouse warning may speak: ten minutes before its deadline, five, and one, once each.
- * Keyed by the remaining time, so a deadline restated every minute is still one deadline.
+ * Decides when a greenhouse warning may be sent: ten minutes before its deadline, five, and one,
+ * once each. Keyed by the time remaining, so a deadline restated every minute is still one deadline.
  */
 object GreenhouseWarnings {
 
@@ -32,7 +32,7 @@ object GreenhouseWarnings {
 
     private val cycles = mutableMapOf<String, Cycle>()
 
-    /** Keeps a kind's cycle abreast of its countdown, so a new deadline is noticed. */
+    /** Updates one warning kind with its current countdown, so a new deadline resets its thresholds. */
     fun tick(kind: String, remainingMs: Long) {
         val cycle = cycles.getOrPut(kind) { Cycle() }
 
@@ -40,7 +40,7 @@ object GreenhouseWarnings {
         cycle.lastRemainingMs = remainingMs
     }
 
-    /** Whether this kind should speak now. Saying yes burns every threshold already crossed. */
+    /** Whether this kind should send a warning now. Returning true marks every crossed threshold as used. */
     fun shouldWarn(
         kind: String,
         remainingMs: Long,
@@ -48,7 +48,8 @@ object GreenhouseWarnings {
     ): Boolean = warnThreshold(kind, remainingMs, thresholds) != null
 
     /**
-     * The tightest threshold just crossed, or null when there is nothing to say. Skipped ones burn too.
+     * The smallest threshold just crossed, or null when none is due. Thresholds skipped over are
+     * marked as used as well, so they do not fire afterwards.
      */
     fun warnThreshold(
         kind: String,

@@ -40,7 +40,7 @@ public class CustomHeadLayerMixin {
             @Local(argsOnly = true, name = "state") LivingEntityRenderState state
             ){
         // an outline meant for the head rather than the whole body arrives here instead of on
-        // the render state, since a colour there would have outlined the body too
+        // the render state, since a colour there outlines the whole body as well
         if (state instanceof WrappedEntityRenderState wrapped
                 && wrapped.magicaddons$headOutlineColor() != 0) {
             outlineColor = wrapped.magicaddons$headOutlineColor();

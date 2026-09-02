@@ -27,7 +27,8 @@ object WaterModel {
         return loss.coerceAtLeast(0.0).toInt()
     }
 
-    /** Water after that many ticks. Allowed past death, since how far past says how long dead. */
+    /** Water level after that many ticks. Allowed below the death level: the gap says how many
+     * ticks the plant has been dead for in the estimate. */
     fun after(water: Int, ticks: Int, waterEffectPercent: Int): Int =
         water - lossPerTick(waterEffectPercent) * ticks
 

@@ -205,14 +205,14 @@ object GreenhouseData {
         scanGridData()
     }
 
-    /** The last thirst warning sent while away, so coming home quickly can be answered. */
+    /** The last dehydration warning sent while away from the garden, with the time it was sent. */
     private var awayWarning: Pair<Instant, DyingPlant>? = null
 
-    /** The ride still owed after coming home, held until the world has had a moment to load. */
+    /** A teleport to a dying plant's plot, offered once the garden has finished loading. */
     private var teleportOffer: DyingPlant? = null
     private var teleportOfferAt: Instant? = null
 
-    /** How soon after a warning the trip home still counts as answering it. */
+    /** How soon after a warning returning to the garden still counts as a response to it. */
     private val TELEPORT_OFFER_WINDOW: Duration = Duration.ofSeconds(15)
 
     private const val DEHYDRATION: String = "dehydration"
@@ -249,7 +249,7 @@ object GreenhouseData {
         )
     }
 
-    /** The colour the detail line wears when it has nothing to say, rather than saying nothing. */
+    /** The colour of the detail line when a value it needs is missing. */
     private const val MISSING_COLOR: Int = 0xFFFF8855.toInt()
 
     /** A length of time as the player reads one: "2d 3h", "9h 40m", "54m", "30s". */
@@ -434,7 +434,7 @@ object GreenhouseData {
                 )
             )
 
-            // remembered so that actually coming home is met with the last leg of the trip
+            // remembered so returning to the garden can be answered with a teleport to the plot
             awayWarning = Instant.now() to dying.first()
         }
 
@@ -468,7 +468,7 @@ object GreenhouseData {
 
     /**
      * How far the server may fall behind before the gap reads as an absence. A stalled server still
-     * sends ticks; one nobody is listening to sends none.
+     * sends ticks; one the client is disconnected from sends none.
      */
     private val AWAY_THRESHOLD: Duration = Duration.ofSeconds(20)
 
@@ -573,8 +573,8 @@ object GreenhouseData {
         greenhouseGrids.forEach { grid ->
             if (onlineTickTracking && !grid.hasRuntime()) return@forEach
 
-            // a greenhouse unread this session owes nothing yet, which is no reason to skip it:
-            // these are exactly the ticks nobody was there to see
+            // a greenhouse not read this session has no pending count yet, which is no reason to
+            // skip it: these are exactly the ticks nobody was there to see
             val pendingTicks = grid.state.pendingGrowthTicks ?: 0
 
             grid.state.pendingGrowthTicks = pendingTicks + elapsedTicks
@@ -643,8 +643,8 @@ object GreenhouseData {
 
     @Subscription
     fun onIslandChange(event: IslandChangeEvent) {
-        // coming home within moments of a thirst warning reads as answering it, so the ride to
-        // the plot itself is offered too - once the world has had a moment to load
+        // returning to the garden just after a dehydration warning is treated as a response to it,
+        // so a teleport to the plot is offered two seconds later, once the world has loaded
         if (event.new == SkyBlockIsland.GARDEN) {
             awayWarning?.let { (at, plant) ->
                 if (Duration.between(at, Instant.now()) <= TELEPORT_OFFER_WINDOW) {
@@ -835,7 +835,7 @@ object GreenhouseData {
 
 
     /**
-     * A plant is taken apart by hitting stands, not blocks, so the block listener never hears of it.
+     * A plant is broken by hitting stands, not blocks, so the block listener never fires for it.
      * Waited for rather than read on the swing, which looked at a plot the crop still stood in.
      */
     @EventHandler
@@ -1007,8 +1007,8 @@ object GreenhouseData {
                 it.standEntities?.contains(hitEntity) ?: return@find false
             }
         }
-        // anything standing inside a plant's footprint belongs to it, named by the stage or not:
-        // pointing the tool at a hunger bar or an unnamed block used to find nothing
+        // anything inside a plant's footprint counts as part of it, whether or not the stage names
+        // it, so pointing the tool at a hunger bar or an unnamed block still finds the plant
         if (hitElement == null) {
             val pos = hitBlock ?: hitEntity?.blockPosition()
 
@@ -1066,8 +1066,8 @@ object GreenhouseData {
             beaconLore[0].siblings[1].string
         }.getOrNull()
 
-        // these two are still read out of a numbered piece, the way the stage used to be, so when
-        // one comes up empty the page it came from is worth seeing before guessing at a label
+        // these two are read out of a fixed position in the lore rather than by label, so an empty
+        // result prints the page it came from
         if (waterLevel == null && CropCollector.isActive()) {
             ChatUtils.sendWithPrefix("Could not read the water level, the water page reads:")
             dumpLore(bucketLore)
@@ -1132,8 +1132,8 @@ object GreenhouseData {
 
         if (!CropCollector.isActive()) return
 
-        // the whole point of pointing the tool at a plant is being told what the mod makes of it,
-        // so every way of learning nothing says so rather than returning quietly
+        // every failure is reported in chat rather than returning silently, since the player pointed
+        // the tool at a plant to find out what the mod makes of it
         if (def == null) {
             ChatUtils.sendWithPrefix(
                 "No crop described for ${stackId?.id ?: "an unrecognised plant"}, nothing to match against."
