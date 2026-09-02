@@ -37,19 +37,8 @@ import kotlin.math.max
 import kotlin.math.roundToInt
 
 /**
- * Collects stage definitions from a whole greenhouse at once instead of one diagnosis click at a
- * time.
- *
- * Run standing one block south of the grid's south-eastern corner, facing north, so the ten by ten
- * lies ahead and to the left. The plot api only answers for the player's own garden, which is why
- * the grid is taken from where the player stands rather than asked for.
- *
- * Everything found is listed in chat and lit up in the world, one colour per crop, so what the
- * collector believes can be checked by eye against what is planted. Plants whose stage already
- * matches current data show gray and are left out unless clicked back in; everything else is a
- * candidate, confirmed by clicking its line. A diagnosis click during a run is taken as ground
- * truth for the plant the player is standing on. `collect finish` writes the confirmed plants to a
- * file for inspection, and nothing in the mod consumes what it writes.
+ * Collects stage definitions from a whole greenhouse at once. Run standing one block south of the
+ * grid's south-eastern corner, facing north; confirm a listed line by clicking it, then `collect finish`.
  */
 object CropCollector : EntityUtils.HighlightSource {
 
@@ -133,9 +122,8 @@ object CropCollector : EntityUtils.HighlightSource {
         val player = client.player ?: return
         val level = client.level ?: return
 
-        // "west2" says the player stands two west of the spot the grid is measured from, because
-        // something was in the way of standing there. Undoing it recovers the spot; height is
-        // taken from where they actually stand either way
+        // "west2" says the player stands two west of the spot the grid is measured from, so undoing
+        // it recovers the spot
         val displacement = adjust?.let {
             parseAdjust(it) ?: run {
                 ChatUtils.sendWithPrefix(
@@ -157,9 +145,8 @@ object CropCollector : EntityUtils.HighlightSource {
 
         clear()
 
-        // only x and z come from the player. Greenhouse soil sits at one height, guest garden
-        // or not, so the player's own y, on a path, on farmland, or on top of a grown plant,
-        // says nothing worth listening to
+        // only x and z come from the player: greenhouse soil sits at one height, whatever the player
+        // happens to be standing on
         val feet = player.blockPosition()
         val actual = BlockPos(feet.x, GREENHOUSE_SOIL_Y, feet.z)
         val standingOn = displacement?.let { (dx, dz) -> actual.offset(-dx, 0, -dz) } ?: actual
@@ -230,9 +217,8 @@ object CropCollector : EntityUtils.HighlightSource {
         // second pass: whatever is left, grouped by the crop its stands are named for
         for ((def, standsOfCrop) in pool.groupBy { identify(it) }) {
             if (def == null) {
-                // reported so nothing vanishes, but per decision never collected: a crop with no
-                // definition at all has no footprint to anchor by, and one grown plant is cheaper
-                // than untangling a bad guess later
+                // reported so nothing vanishes, but never collected: a crop with no definition has no
+                // footprint to anchor by
                 standsOfCrop.groupBy { it.blockPosition().atY(origin.y) }.forEach { (pos, stands) ->
                     addEntry(null, pos, stands, Status.Unknown, null, null, stands.standNames())
                 }
@@ -251,11 +237,8 @@ object CropCollector : EntityUtils.HighlightSource {
             }
         }
 
-        // third pass: plants made only of blocks. Most crops speak through stands, but the
-        // base crops say everything with block states, and an unclaimed slot with something
-        // growing on it is a plant whichever way it speaks. Recorded standless stages were
-        // already claimed by the first pass, so whatever reaches here is unrecorded at best,
-        // and a block state names its crop only when exactly one definition uses it
+        // third pass: plants made only of blocks, as the base crops are. A block state names its crop
+        // only when exactly one definition uses it
         val covered = mutableSetOf<Long>()
         s.entries.forEach { entry ->
             val w = entry.def?.footprint?.width ?: 1
@@ -395,17 +378,11 @@ object CropCollector : EntityUtils.HighlightSource {
         mapNotNull { it.standName() }.toSet()
 
     /**
-     * The definition a stand's name points at, by the longest name prefix that fits.
-     *
-     * The game names stands after their crop with decorations of its own on the end, snoozlingLeaf0
-     * and magicjellybean1 alike, so the crop is the front of the name rather than the whole of it.
-     * Longest match keeps a name from settling for a shorter crop it happens to start like.
+     * The definition a stand's name points at, by the longest name prefix that fits: the game names
+     * stands after their crop with decorations on the end.
      */
     /**
-     * The one definition a skull hash appears in, for stands that carry no name.
-     *
-     * A hash shared between crops identifies nothing and is left out, so this can point wrong
-     * only if two crops share a skull we have only recorded on one of them.
+     * The one definition a skull hash appears in, for stands with no name. Shared hashes are left out.
      */
     private val defsByHash: Map<String, CropDefinition> by lazy {
         val owners = mutableMapOf<String, MutableSet<CropDefinition>>()
@@ -467,11 +444,8 @@ object CropCollector : EntityUtils.HighlightSource {
     }
 
     /**
-     * Where the plant most likely starts, from the middle of its stands.
-     *
-     * A guess and said to be one: stands need not be centred on their plant, so the click that
-     * confirms an entry is also the check on this, and a diagnosis taken standing on the plant's
-     * north-western block replaces it with the truth.
+     * Where the plant most likely starts, from the middle of its stands. A guess: stands need not be
+     * centred, and a diagnosis replaces it with the truth.
      */
     private fun guessOrigin(cluster: List<ArmorStand>, def: CropDefinition, soilY: Int): BlockPos {
         val xs = cluster.map { it.x }
@@ -572,21 +546,12 @@ object CropCollector : EntityUtils.HighlightSource {
     }
 
     /**
-     * A diagnosis taken during a run, which is the master source of truth.
-     *
-     * The player is standing on the plant's north-western block and the page has just said what
-     * the plant is and which stage it is at. Everything the scan decided about that footprint is
-     * thrown away and rebuilt from the world: every entry overlapping the area or holding one of
-     * its stands is dropped, and a fresh entry takes every stand actually standing there. The
-     * scan's guesses were made without knowing where one plant ends and the next begins, and a
-     * snoozling's wheat had been carved into wheat entries the snoozling could never win back.
+     * A diagnosis taken during a run, which outranks everything the scan decided: every entry over
+     * that footprint is dropped and rebuilt from the stands actually standing there.
      */
     /**
-     * The block the item in [stand]'s hand hangs inside, or null when neither hand holds one.
-     *
-     * Modelled from the stand's own frame: the right shoulder, the arm turned there by its pose
-     * in the model's z-y-x order, the whole turned by the stand's yaw. An approximation, but a
-     * block is a whole metre wide and the only question is which one the item sits in.
+     * The block the item in a stand's hand hangs inside, modelled from its shoulder, pose and yaw.
+     * An approximation, but the only question is which whole block the item sits in.
      */
     fun heldItemBlock(stand: ArmorStand): BlockPos? {
         val holdsItem = !stand.getItemBySlot(EquipmentSlot.MAINHAND).isEmpty ||
@@ -615,19 +580,16 @@ object CropCollector : EntityUtils.HighlightSource {
         val player = client.player ?: return
         if (client.level !== s.level) return
 
-        // x and z from the player, y from the one height every greenhouse's soil sits at:
-        // reaching a tall plant's block can mean standing on the plant, and the pin must not
-        // lift the crop to wherever that put the player
+        // x and z from the player, y from the one height greenhouse soil sits at: reaching a tall
+        // plant can mean standing on it
         val feet = player.blockPosition()
         val standingOn = BlockPos(feet.x, GREENHOUSE_SOIL_Y, feet.z)
 
         val w = def.footprint.width
         val h = def.footprint.height
 
-        // the same net the scan casts, but over this plant's whole footprint and blind to every
-        // earlier claim: what is standing there is this plant's, because the diagnosis says so
-        // a block wider than the footprint on every side, because a stand may sit in a
-        // neighbouring block with an arm stretched out over this one
+        // the same net the scan casts, but over this plant's whole footprint and blind to earlier
+        // claims, and a block wider each way since a stand may reach in from next door
         val stands = s.level.getEntitiesOfClass(
             ArmorStand::class.java,
             AABB(
@@ -649,9 +611,8 @@ object CropCollector : EntityUtils.HighlightSource {
                         claimed.z in standingOn.z until standingOn.z + h
             }
 
-        // a stand built at full size is a fact its definition has to state, and this is the
-        // moment it is worth saying: the plant has just been named, so the report names it too.
-        // It used to come from the diagnosis tool, which no longer reports anything on its own
+        // a full sized stand is a fact its definition has to state, and the plant has just been named,
+        // so the report names it too
         val fullSized = stands.filterNot { it.isSmall }
 
         if (fullSized.isNotEmpty()) {

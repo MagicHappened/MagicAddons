@@ -15,13 +15,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public class KeyboardHandlerMixin {
 
     /**
-     * G opens the collector's checklist while a collection run is live.
-     *
-     * At HEAD so it runs before anything else reads the key, and cancelled so nothing else does:
-     * the key is deliberately taken whole rather than shared, which a debug tool that only exists
-     * mid-run can afford. It steps aside whenever any screen is open, and while no run is live it
-     * does nothing at all, silently, so the key is only ever special when the checklist is the
-     * thing it opens.
+     * G opens the collector's checklist while a run is live, cancelled so nothing else reads the
+     * key. It steps aside whenever a screen is open, and does nothing at all with no run going.
      */
     @Inject(method = "keyPress", at = @At("HEAD"), cancellable = true)
     private void magicaddons$openCollectChecklist(long window, int action, KeyEvent event, CallbackInfo ci) {

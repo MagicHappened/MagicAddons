@@ -15,12 +15,7 @@ import kotlin.math.roundToInt
 
 /**
  * A number picked either way round: dragged along a bar, or typed into the box beside its name.
- *
- * The bar is for a number the player is feeling out - how long they will be away, how close to the
- * edge they want to sit - where watching the live line underneath change is the whole point of
- * touching it. The box is for a number they already know. Dragging and the wheel move by the
- * setting's step, since a coarse setting is easier to aim at in coarse jumps; typing ignores the
- * step entirely, so a step never stands between the player and a particular number.
+ * Dragging and the wheel move by the setting's step; typing ignores it, so no number is out of reach.
  */
 class IntSettingWidget(
     private val setting: IntSetting
@@ -194,10 +189,7 @@ class IntSettingWidget(
         return valueBox.keyPressed(keyEvent)
     }
 
-    /**
-     * Takes whatever is in the box as the value, or puts the value back when it is not a number.
-     * The range is the only thing a typed number has to answer to; the step is not.
-     */
+    /** Takes the typed number, or puts the value back. Clamped to the range, never to the step. */
     private fun commitTypedValue() {
         if (!valueBox.isFocused) return
 

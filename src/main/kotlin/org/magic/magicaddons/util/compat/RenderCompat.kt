@@ -8,11 +8,8 @@ import net.minecraft.util.Mth
 import net.minecraft.world.phys.shapes.VoxelShape
 
 /**
- * The one piece of drawing the two versions disagree about: outlining a shape.
- *
- * 26.2 asks the collector for it and hands over a line width. 26.1.2 has no such call, so the edges
- * are walked and written out here instead, which is what vanilla's own shape renderer does; the
- * line is then whatever width the render type carries, since there is nowhere to ask for one.
+ * The one piece of drawing the two versions disagree about: 26.2 asks the collector to outline a
+ * shape, 26.1.2 has no such call and the edges are written out here instead.
  */
 object RenderCompat {
 

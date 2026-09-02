@@ -20,18 +20,8 @@ import net.minecraft.world.phys.shapes.Shapes
 import net.minecraft.world.phys.shapes.VoxelShape
 
 /**
- * Drawing single blocks into the world, for showing a player what a plot should look like.
- *
- * Positions come from the camera of the frame being drawn, handed in by the caller, rather than
- * from a camera read at some other moment. The pose stack of a world render is already relative to
- * the camera, so a block is drawn at its position minus the camera's; taking that camera from
- * anywhere else leaves the drawing lagging behind by however far the player moved in between, which
- * shows up as marks sliding while walking and settling once still.
- *
- * A block that is in the way is drawn from its [VoxelShape] rather than from its model. Every block
- * has a shape, whether its model is a full cube or a paper thin stalk of sugar cane, and the shape
- * matches what the block actually occupies, so farmland is marked as the low slab it is. The model
- * itself is never drawn a second time, which is what made the paper thin cases fail.
+ * Draws single blocks into the world, to show a player what a plot should look like. The camera
+ * comes from the frame being drawn, or the marks lag behind the player as they walk.
  */
 object WorldRender {
 
@@ -46,32 +36,18 @@ object WorldRender {
     /** Every side a model files its quads under, the unculled ones included. */
     private val QUAD_SIDES: List<Direction?> = Direction.entries + null
 
-    /**
-     * Pulls an outlined box in off its faces a little.
-     *
-     * Two marked blocks side by side share a face, and drawn flush their edges land on top of each
-     * other and read as one long box rather than as two. A gap this small is invisible on its own
-     * and enough to tell them apart.
-     */
+    /** Pulls an outlined box off its faces, so two marked blocks side by side stay two boxes. */
     private const val OUTLINE_INSET: Double = 0.012
 
-    /**
-     * Pushes a filled box out past the block it covers.
-     *
-     * Drawn flush the fill sits exactly on the block's own faces and fights them for depth, and
-     * drawn inside it is simply behind them, which is why an inset fill never appeared at all.
-     */
+    /** Pushes a filled box past the block it covers, or it fights the block's own faces for depth. */
     private const val FILL_EXPAND: Double = 0.002
 
     /** The least a box can measure and still be seen, for entities that occupy nothing at all. */
     private const val MIN_BOX: Double = 0.08
 
     /**
-     * Marks whatever stands at [pos]: the boxes of its shape filled in [color] at [fillAlpha], and
-     * the edges of those same boxes drawn solid on top.
-     *
-     * Neither is depth tested, so a block behind another one still reads, which is the point when
-     * the player is being told to go and deal with it.
+     * Marks whatever stands at a position: its shape filled, its edges drawn on top. Neither is depth
+     * tested, so a block behind another still reads.
      */
     fun mark(
         poseStack: PoseStack,
@@ -98,11 +74,8 @@ object WorldRender {
     }
 
     /**
-     * Marks [box], given in world coordinates, the way [mark] marks a block.
-     *
-     * For an entity rather than a block, so the box handed in is the one the entity actually
-     * occupies: a small stand's is half the height of a full one's, and a marker's has no size at
-     * all, which is why anything too thin to see is opened out to the least that can be.
+     * Marks a world-space box the way mark marks a block, for entities. Anything too thin to see is
+     * opened out to the least that can be.
      */
     fun markBox(
         poseStack: PoseStack,
@@ -158,18 +131,8 @@ object WorldRender {
     }
 
     /**
-     * Draws [state] at [pos] as it would look if it were there, washed with [tint] and see through,
-     * so the player can see which block to put down rather than only that one is missing. The box
-     * around it is drawn in [outlineColor].
-     *
-     * The model's own quads are handed to the game to write, with a colour set straight onto each
-     * one. Going through the tint array instead does nothing to ordinary ground: a tint only
-     * reaches quads that ask to be tinted, which is how grass and leaves take a biome colour, and
-     * dirt never asks. Writing the colour onto the quad reaches every one of them.
-     *
-     * That colour multiplies the texture rather than replacing it, so [tint] wants to be pale. A
-     * saturated one holds the channels it lacks near zero, which drains the block of its own colour
-     * instead of washing over it, and a brown block ends up unrecognisably dark.
+     * Draws a block as it would look if it were there, tinted and see through. The colour is written
+     * onto each quad, since the tint array only reaches quads that ask for it, and it multiplies the texture.
      */
     fun ghost(
         poseStack: PoseStack,
@@ -183,10 +146,8 @@ object WorldRender {
     ) {
         val parts = mutableListOf<BlockStateModelPart>()
 
-        // seeded from the block's own position, the way the chunk renderer seeds its own. A model
-        // with several variants, fire above all, picks one by this number, and a shared generator
-        // left running handed it a different answer every frame, which is a fire that flickers
-        // rather than burns
+        // seeded from the block's own position, as the chunk renderer seeds its own: a shared
+        // generator picked a different fire variant every frame, which flickers
         RANDOM.setSeed(Mth.getSeed(pos))
 
         Minecraft.getInstance().modelManager.blockStateModelSet.get(state)
@@ -223,10 +184,7 @@ object WorldRender {
         outline(poseStack, collector, cameraPos, pos, state.getShape(level, pos), outlineColor)
     }
 
-    /**
-     * Draws [state] at [pos] exactly as it is: full colour, full brightness, no outline. A block
-     * being shown rather than a block being asked for, which is what the crop preview is made of.
-     */
+    /** Draws a block exactly as it is: full colour, no outline. What the crop preview is made of. */
     fun solid(
         poseStack: PoseStack,
         collector: SubmitNodeCollector,
@@ -315,10 +273,7 @@ object WorldRender {
         maxX + by, maxY + by, maxZ + by
     )
 
-    /**
-     * The six faces of [box], each wound both ways so that whichever winding the pipeline decides
-     * to cull, the face is still there from the other side.
-     */
+    /** The six faces of a box, wound both ways so the face survives whichever winding is culled. */
     private fun VertexConsumer.fillBox(pose: PoseStack.Pose, box: AABB, color: Int) {
         val x1 = box.minX.toFloat()
         val y1 = box.minY.toFloat()

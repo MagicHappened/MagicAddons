@@ -3,10 +3,8 @@ package org.magic.magicaddons.data.greenhouse.transfer
 import org.magic.magicaddons.data.greenhouse.GreenhouseLayout
 
 /**
- * One way of writing a greenhouse layout down so it can leave the game and come back.
- *
- * The formats deal in text rather than in the clipboard, so what carries a layout is the caller's
- * business and a format can be exercised without a running client.
+ * One way of writing a layout down so it can leave the game and come back. Formats deal in text,
+ * not the clipboard, so they can be exercised without a running client.
  */
 interface LayoutFormat {
 
@@ -23,10 +21,7 @@ interface LayoutFormat {
     fun export(layout: GreenhouseLayout): LayoutTransferResult
 }
 
-/**
- * What came of a transfer. [notes] carries whatever the player should know that did not stop the
- * transfer, such as a plant the other side has no name for.
- */
+/** What came of a transfer. Notes carry whatever the player should know that did not stop it. */
 sealed interface LayoutTransferResult {
 
     val notes: List<String>

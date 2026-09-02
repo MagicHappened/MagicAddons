@@ -10,16 +10,8 @@ import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.Blocks
 
 /**
- * Everything the game renamed between 26.1.2 and 26.2, behind one door.
- *
- * The two versions differ in a handful of places that have nothing to do with each other: where the
- * current screen lives, where the subtitle extraction hangs, whether a colour is asked of
- * [ChatFormatting] or of a text colour constant, and whether the stained glass blocks are separate
- * fields or one coloured collection. None of that is interesting to the code that calls it, so it
- * is answered once here and the callers ask a question that means the same thing on both.
- *
- * The version directives live here and in a handful of render classes and mixins, so a feature is
- * never written twice and never carries a comment about which Minecraft it is being compiled for.
+ * Everything the game renamed between 26.1.2 and 26.2, behind one door, so callers ask one question
+ * that means the same on both. The version directives live here rather than in the features.
  */
 object McCompat {
 

@@ -7,25 +7,9 @@ import kotlin.math.ceil
 import kotlin.math.sqrt
 
 /**
- * Whether the chorus fruit standing in a greenhouse will start destroying the plot before the
- * player is next looking at it.
- *
- * Chorus teleports on every growth stage below its last, and every chorus on the plot teleports in
- * the same tick, onto distinct free tiles. So while there are at least as many free tiles as
- * moving chorus, nothing is hurt; the moment there are more movers than free tiles, each spare
- * mover lands on a random tile and destroys whatever stood there. A magic jellybean being grown to
- * its last stage is worth about nine million coins, so the plot losing one costs far more than the
- * two or three stage-one chorus a player would give up to keep the margin.
- *
- * The naive check - free tiles minus chorus below zero - only reports a collision that is already
- * happening. What matters is whether one becomes likely over the ticks the player will be away,
- * since every mutation born in that window costs two margin: it takes a free tile and adds a
- * mover. This sizes the coming births to a high quantile rather than their mean, deliberately
- * pessimistic, and says how many chorus to break to stay clear of it.
- *
- * The model, the discord thread it came from and the Monte Carlo that checks this arithmetic are
- * in notes/chorus-teleport-model.md and notes/chorus-sim.js. Everything the thread left unproven
- * is written down there; the rule below was chosen not to depend on any of it.
+ * Whether the chorus in a greenhouse will run out of tiles to teleport into and start destroying
+ * the plot. Sizes the mutations born while the player is away pessimistically, and says how many
+ * young chorus to break. Model and simulation: notes/chorus-teleport-model.md, notes/chorus-sim.js.
  */
 object ChorusCollision {
 
@@ -34,33 +18,23 @@ object ChorusCollision {
     const val JELLYBEAN: String = "Magic Jellybean"
     const val CHLORONITE: String = "Chloronite"
 
-    /**
-     * What a mutation spawner is made of: an empty tile whose eight neighbours are exactly three
-     * magic jellybeans and five chloronite. The ring fills all eight neighbours, so a spawn tile
-     * can never sit on the plot border.
-     */
+    /** A spawner is an empty tile ringed by exactly three jellybeans and five chloronite. */
     const val RING_JELLYBEANS: Int = 3
     const val RING_CHLORONITE: Int = 5
 
     /** An open spawn tile's chance of producing a chorus in one growth tick. */
     const val SPAWN_CHANCE: Double = 0.25
 
-    /**
-     * How many standard deviations of birth count to plan for. The cost is lopsided - a handful of
-     * stage-one chorus against a nine million coin jellybean - so the safe side is worth buying at
-     * the ninety-ninth percentile rather than at the mean.
-     */
+    /** Standard deviations of births to plan for: the ninety-ninth percentile, since a lost
+     * jellybean costs far more than the chorus given up to avoid it. */
     const val QUANTILE: Double = 2.33
 
     /** The plot is square and this is its side, the same ten every layout is built on. */
     private const val SIZE: Int = 10
 
     /**
-     * One greenhouse weighed against one absence.
-     *
-     * [margin] is free tiles minus movers as the plot stands; [need] is the margin the window
-     * asks for; [cull] is how many of the youngest chorus to break to cover the difference, zero
-     * when there is nothing to warn about.
+     * One greenhouse weighed against one absence: the margin it has, the margin it needs, and how
+     * many young chorus to break to cover the difference.
      */
     data class Report(
         val movers: Int,
@@ -77,11 +51,7 @@ object ChorusCollision {
         val warns: Boolean get() = cull > 0
     }
 
-    /**
-     * What [grid] looks like [ticks] growth ticks from now, if nobody touches it.
-     *
-     * Null for a greenhouse with no chorus in it, which is every greenhouse this does not concern.
-     */
+    /** What the greenhouse looks like that many ticks from now. Null when it holds no chorus. */
     fun analyse(grid: GreenhouseGrid, ticks: Int): Report? = analyse(grid.layout, ticks)
 
     fun analyse(layout: GreenhouseLayout, ticks: Int): Report? {
@@ -124,9 +94,8 @@ object ChorusCollision {
             margin = margin,
             need = need,
             cull = cull,
-            // only the jellybeans this plot grew itself. One bought and stood in a spawner ring is
-            // scenery worth replacing; one climbing towards a hundred and twenty is the nine
-            // million coins the whole warning exists to protect
+            // only jellybeans this plot grew itself: a bought one is scenery, a grown one is the
+            // nine million coins the warning exists to protect
             jelliesAtRisk = layout.elementInstances.count {
                 it.cropDef.name == JELLYBEAN &&
                         it.grewInPlace &&
@@ -136,18 +105,12 @@ object ChorusCollision {
         )
     }
 
-    /**
-     * The chorus to break first, youngest first: a stage-one chorus is the cheapest thing standing
-     * on the plot, and breaking one buys twice what harvesting a ripe one does.
-     */
+    /** The chorus to break first, youngest first: the cheapest thing standing on the plot. */
     fun cullOrder(layout: GreenhouseLayout): List<GreenhouseElementInstance> = layout.elementInstances
         .filter { it.cropDef.name == CHORUS && (it.lowestStage ?: 1) < it.cropDef.maxStage }
         .sortedBy { it.lowestStage ?: 1 }
 
-    /**
-     * Which crop stands on each tile, by name, null for air. Indexed y * [SIZE] + x, and a crop
-     * bigger than one tile is written into every tile it covers rather than only its corner.
-     */
+    /** Which crop stands on each tile, by name, null for air. A big crop fills every tile it covers. */
     private fun occupancy(layout: GreenhouseLayout): Array<String?> {
         val tiles = arrayOfNulls<String>(SIZE * SIZE)
 
@@ -170,11 +133,8 @@ object ChorusCollision {
     }
 
     /**
-     * Open spawn tiles: empty tiles ringed by exactly the jellybean and chloronite counts a
-     * spawner is made of.
-     *
-     * A chorus standing on a spawn tile blocks it for that tick, which is why only empty ones are
-     * counted; rings may overlap, so one plant can serve several spawners.
+     * Empty tiles with a full spawner ring around them. A chorus standing on one blocks it, and
+     * rings may overlap.
      */
     private fun countSpawners(tiles: Array<String?>): Int {
         var open = 0

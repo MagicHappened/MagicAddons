@@ -9,15 +9,8 @@ import java.util.Optional
 import org.magic.magicaddons.util.compat.McCompat
 
 /**
- * A value read off a stand standing near a plant.
- *
- * Not the same thing as a [CropArmorStand], which is a stand that has to be there for a stage to
- * match at all. A reader never decides whether a plant is what we think it is: it looks at what is
- * already standing there and takes a number off it. That distinction is the whole point. A
- * fleshtrap's hunger and a snoozling's sleep change from moment to moment, and a stage that failed
- * to match because a bar happened to be empty would be a stage that fails for the wrong reason.
- *
- * [key] is what the value is filed under on the plant, so anything reading it later asks by name.
+ * A value read off a stand near a plant, filed under its key. Unlike a CropArmorStand it never
+ * decides whether the plant matched: a hunger bar that happens to be empty must not fail a stage.
  */
 class CropStandReader(
     val key: String,
@@ -45,16 +38,9 @@ class CropStandReader(
         private val EMPTY = McCompat.chatColor(ChatFormatting.WHITE)
 
         /**
-         * Reads any of skyblock's bars as the percentage of it that is filled.
-         *
-         * The filled notches come first in some colour and the empty ones follow in white, and
-         * which colour the filled ones are is the bar saying how it feels about the number rather
-         * than part of the number: a hunger bar runs green to yellow to red on its way down while
-         * still meaning the same thing at the same fill. So anything that is not white counts as
-         * filled and the colour itself is ignored.
-         *
-         * Counting notches rather than taking the leading run is what keeps a bar of nothing but
-         * white from reading as completely full.
+         * Any skyblock bar as the percentage of it that is filled. Anything not white counts as
+         * filled, since the colour is the bar's mood rather than its value, and notches are counted
+         * rather than taken as a leading run.
          */
         fun barPercent(name: Component): Int? {
             var filled = 0

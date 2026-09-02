@@ -51,34 +51,15 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
 
 
 
-    //todo
-    // preset buttons would be like: add crop (render all itemstacks of all crops scrollable) with search on enum thingy
-    // (maybe instead of scrollable typable and autocomplete? since easier)
-    // remove crop, render highlight
-
-    //todo PS maybe later on add custom layers as well as the base ones
-    // for now make ingredients cancel break, target not cancel
-    // (unless not fully grown but that later since we dont have all stages)
-
-    //todo in the base feature add not all unique crops detected warning
-    //todo add snoozling sleeping warning, thunderling thunder warning (prob forgot more)
-
-    //todo add inference of stages, on next tick time detection timestamp it, and every time
-    // upon reopening the screen check that time, if its past the tick time,
-    // will have to think about how to do this because cant just add +1 to everything
-    // need logic like, if it exits this range and enters this one
-    // after all that is sorted :pray: add a warning when its the inference
-    // eg when tick has passed make a yellow warning saying this is a prediction of the stages
-    // will be hard, but validate scan from previous tick (if only 1 tick difference)
-    // and if no crop has been detected in an old crop's spot, make it a yellow warning on the corner
-    // informing the user that the crop definition has not been added for this crop and to send the debug to me
+    //todo preset buttons: add crop (searchable list of every crop), remove crop, render highlight
+    //todo custom layers as well as the base ones. For now ingredients cancel break, target does not
+    //todo warn in the base feature when not all unique crops are detected
+    //todo infer stages between ticks, and mark an inferred board yellow rather than showing it as read
 
     var currentDisplay = CurrentDisplay.Greenhouses
 
-    /**
-     * Whether the greenhouse on screen is running on guessed growth. Read while drawing rather than
-     * stored, since the tick that makes it stale can land while the screen is open.
-     */
+    /** Whether the greenhouse on screen is running on guessed growth. Read while drawing, since the
+     * tick that makes it stale can land with the screen open. */
     private val shouldWarn: Boolean
         get() = currentDisplay == CurrentDisplay.Greenhouses &&
                 (GreenhouseData.greenhouseGrids.getOrNull(GreenhouseData.currentGridIndex)
@@ -153,9 +134,8 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         super.init()
         initBaseLayout()
 
-        // said here rather than on joining a world or on every tick: opening this screen is the
-        // player asking about their greenhouses, which is the one moment a missing number is worth
-        // interrupting them for, and the warning carries its own cooldown against repeats
+        // opening this screen is the player asking about their greenhouses, which is the one moment a
+        // missing number is worth interrupting them for
         if (!GreenhouseData.miscInfo.shouldIgnoreWarning) {
             GreenhouseData.warnUnknownValues()
         }
@@ -324,11 +304,8 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
     }
 
     /**
-     * Sizes the selector to whatever it currently lists, which changes when a layout is renamed.
-     *
-     * The widget does the measuring, since it is the one that knows what it puts inside itself:
-     * the padding either side and the arrow it keeps to the right. All the screen knows is how
-     * much room there is, which is everything between the selector and the grid.
+     * Sizes the selector to whatever it lists now, which changes when a layout is renamed. The
+     * widget measures itself; the screen only knows how much room there is.
      */
     private fun relayoutSelector() {
         gridSelector.fitToValues(startX - gridSelector.x - Common.UI.SPACING_LARGE)
@@ -391,9 +368,8 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         displayedGridWidget?.extractRenderState(graphics, mouseX, mouseY, delta)
 
         if (currentDisplay == CurrentDisplay.Greenhouses) {
-            // read here rather than only when the mouse moves. A pick is made by clicking, and a
-            // click is not a movement, so the plants kept showing the last fact until the mouse
-            // happened to twitch
+            // read here rather than only on mouse movement: a pick is a click, and a click is not a
+            // movement, so the plants kept showing the last fact
             displayedGridWidget?.pinnedInfo = hoverControls.selectedInfo
 
             hoverControls.extractRenderState(graphics, mouseX, mouseY, delta)
@@ -471,9 +447,8 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
             }
         }
 
-        // asked before the sweep below, because the sweep is what shut this widget's own list a
-        // moment before the widget was asked whether to shut it: it found it already closed and
-        // opened it again, so a second click on the selector never collapsed anything
+        // asked before the sweep below, which had already shut this widget's list: it found it closed
+        // and opened it again, so a second click never collapsed anything
         if (gridSelector.mouseClicked(mouseButtonEvent, doubled)) {
             return true
         }
@@ -701,11 +676,7 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         currentDisplay == CurrentDisplay.Greenhouses &&
                 displayedGrid()?.state?.assignedLayout != null
 
-    /**
-     * The greenhouse on screen, which is whichever the selector is showing rather than the one
-     * being stood in. Looking at one greenhouse while standing in another is the ordinary way to
-     * use this screen, and the button belongs to what is being looked at.
-     */
+    /** The greenhouse on screen is whichever the selector shows, not the one being stood in. */
     private fun displayedGrid(): GreenhouseGrid? {
         val layout = displayedGridWidget?.layout ?: return null
 

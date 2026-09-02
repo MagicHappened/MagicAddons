@@ -3,20 +3,8 @@ package org.magic.magicaddons.data.greenhouse
 import kotlin.math.ceil
 
 /**
- * How a greenhouse plant loses water.
- *
- * Measured in game over several growth ticks rather than taken from the wiki, which states a loss
- * of two to three a stage and is wrong by an order of magnitude. The readings and the working are
- * in notes/water-formula.md; anything changed here should be checked against them.
- *
- * A plant loses [BASE_LOSS] every growth tick. A neighbour carrying water retain takes away half of
- * that per full hundred percent, and a neighbour draining adds to it on the same scale, so the
- * effect is linear in the loss rather than in how long the water lasts:
- *
- *     none        20        +50% retain    15
- *     +100%       10        -30% drain     23
- *
- * A plant dies when its water reaches [DEATH].
+ * How a greenhouse plant loses water: BASE_LOSS a tick, halved per full retain effect beside it and
+ * raised by draining ones. Measured in game, not off the wiki. Working: notes/water-formula.md.
  */
 object WaterModel {
 
@@ -30,12 +18,8 @@ object WaterModel {
     const val FULL: Int = 100
 
     /**
-     * What a plant loses each tick given the water effects of everything beside it, as a total
-     * signed percentage: 50 for one retaining neighbour, -30 for a draining one.
-     *
-     * Whether two neighbours of the same kind really add up this way is not measured yet, so a
-     * total is taken at face value and clamped so that no amount of retain can make a plant gain
-     * water by standing still.
+     * Loss per tick for a total signed effect: 50 for one retaining neighbour, -30 for a draining one.
+     * Clamped, so no amount of retain lets a plant gain water by standing still.
      */
     fun lossPerTick(waterEffectPercent: Int): Int {
         val loss = BASE_LOSS * (1.0 - waterEffectPercent / 200.0)
@@ -43,23 +27,12 @@ object WaterModel {
         return loss.coerceAtLeast(0.0).toInt()
     }
 
-    /**
-     * Where [water] sits after [ticks] more growth ticks.
-     *
-     * Deliberately allowed past [DEATH]: how far past says how many ticks the plant has been dead
-     * for in the estimate, which is what lets a plant found alive be put back at the worst level
-     * it could still be standing at.
-     */
+    /** Water after that many ticks. Allowed past death, since how far past says how long dead. */
     fun after(water: Int, ticks: Int, waterEffectPercent: Int): Int =
         water - lossPerTick(waterEffectPercent) * ticks
 
     /**
-     * The worst a plant predicted at [predicted], at or past death, can be at while standing
-     * there alive.
-     *
-     * Alive means ticks were skipped. The fewest skips that leave it alive hand back whole ticks
-     * of loss until it is just above death, which leaves it one tick from dying: watered now or
-     * dead next tick.
+     * The worst level a plant predicted dead can be at while still standing: one tick from dying.
      */
     fun aliveFloor(predicted: Int, waterEffectPercent: Int): Int {
         val loss = lossPerTick(waterEffectPercent)
@@ -71,11 +44,8 @@ object WaterModel {
     }
 
     /**
-     * How many ticks a plant at [water] has before it dies, or null when it loses nothing at all.
-     *
-     * The last tick counts even when it only takes the plant part of the way, which is what the
-     * game's own "lasts for" figure does, and is why an effect can change the loss without changing
-     * that figure.
+     * Ticks before the plant dies, null when it loses nothing. The last tick counts even when it
+     * only takes the plant part of the way, as the game's own figure does.
      */
     fun ticksUntilDeath(water: Int, waterEffectPercent: Int): Int? {
         val loss = lossPerTick(waterEffectPercent)
@@ -85,12 +55,8 @@ object WaterModel {
     }
 
     /**
-     * How long a plant at [water] has left, in the same terms the game states it.
-     *
-     * The tick already running only counts for what is left of it, [remainingMs], and every tick
-     * after that counts in full. The last tick is the one that kills the plant, so it is not
-     * waited out: a plant one tick from death has exactly the current tick left, which is why the
-     * rose at -93 read the same twenty minutes as its countdown.
+     * Time left, stated as the game states it: what remains of the current tick plus whole ticks
+     * after it. The killing tick is not waited out.
      */
     fun timeUntilDeath(water: Int, waterEffectPercent: Int, remainingMs: Long, tickMs: Long): Long? {
         val ticks = ticksUntilDeath(water, waterEffectPercent) ?: return null

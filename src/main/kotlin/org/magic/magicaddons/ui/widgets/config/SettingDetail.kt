@@ -4,16 +4,10 @@ import net.minecraft.client.gui.Font
 import net.minecraft.client.gui.GuiGraphicsExtractor
 
 /**
- * Something drawn under a setting's row that the setting itself does not store.
+ * Something drawn under a setting's row that the setting does not store: what the chosen value
+ * currently means, worked out afresh each frame and never written to disk.
  *
- * A setting's value is what the player chose; a detail is what that choice currently means, worked
- * out from whatever the mod knows at the moment the config is open - a tick length, a countdown, a
- * count of something on a plot. It is produced by a lambda rather than held as a field, so it is
- * never written to disk and never goes stale, and it knows its own height so a row can make room
- * for it without assuming it is one line of text.
- *
- * [Text] is the only kind so far. A picture, a bar or a small live preview would each be one more
- * case here and nothing else would have to change.
+ * Text is the only kind so far; a picture or a bar would each be one more case here.
  */
 sealed interface SettingDetail {
 

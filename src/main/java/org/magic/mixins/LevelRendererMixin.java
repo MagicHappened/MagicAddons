@@ -151,12 +151,9 @@ public abstract class LevelRendererMixin {
                     levelRenderState,
                     submitNodeCollector,
                     (ent, state) -> {
-                        // the stand is scaffolding for the head it holds, and the three ways a
-                        // body gets drawn all have to be closed. Visible draws it as itself.
-                        // Invisible-to-player draws it translucent. Invisible while carrying an
-                        // outline colour draws it as an outline of its whole self, which is how
-                        // the highlighted mobs are outlined and was this stand tracing its own
-                        // arms and legs. So it is hidden, not translucent, and carries no colour
+                        // the stand is scaffolding for the head it holds, and all three ways a body
+                        // is drawn have to be closed: visible, translucent, and outlined. So it is
+                        // hidden rather than translucent, and carries no outline colour
                         state.isInvisible = true;
                         state.outlineColor = EntityRenderState.NO_OUTLINE;
 
@@ -203,9 +200,8 @@ public abstract class LevelRendererMixin {
 
         EntityRenderState state = renderer.createRenderState(entity, partialTicks);
 
-        // the modifier speaks last: extractRenderState writes outlineColor and isInvisible from
-        // the entity itself, so a modifier run before it was silently overwritten, and the glow
-        // it asked for never survived to the submit
+        // the modifier speaks last: extractRenderState writes outlineColor and isInvisible from the
+        // entity, so anything set before it was silently overwritten
         renderer.extractRenderState(entity, state, partialTicks);
         modifier.modify(entity, state);
 

@@ -9,21 +9,15 @@ sealed class SettingNode<T>(
     val displayName: String,
     val tooltip: String,
     open var value: T,
-    /**
-     * Live text drawn under this setting's row, or null for a setting that speaks for itself.
-     *
-     * Asked afresh every frame and never stored: it is what the value currently means rather than
-     * part of the value. See [SettingDetail].
-     */
+    /** Live text under this setting's row, asked afresh every frame rather than stored. */
     val detail: (() -> SettingDetail?)? = null
 
 ) {
     open val children: List<SettingNode<*>>? = null
 
     /**
-     * The key this node is stored under, namespaced by the path of its parent ("Parent.Child").
-     * Keys only have to be unique among siblings, so renaming or moving a branch cannot collide with
-     * an unrelated setting somewhere else in the tree.
+     * The key this node is stored under, namespaced by its parent ("Parent.Child"), so keys only
+     * have to be unique among siblings.
      */
     fun pathIn(parentPath: String): String = if (parentPath.isEmpty()) key else "$parentPath.$key"
 
@@ -127,10 +121,7 @@ class BooleanSetting(
     }
     override fun parseValue(value: Any): Boolean = value as Boolean
 
-    /**
-     * A feature toggle is the root of its tree: it is stored under its own key while its children
-     * start at the top level, so no stored key carries a redundant "enabled." prefix.
-     */
+    /** A feature toggle is its own root: stored under its key, children at the top level. */
     fun serializeAsFeatureRoot(): MutableMap<String, Any> {
         val map = mutableMapOf<String, Any>(key to value)
         children?.forEach { child ->
@@ -148,12 +139,8 @@ class BooleanSetting(
 }
 
 /**
- * A whole number the player picks by dragging a bar or by typing one.
- *
- * [step] is how far dragging and scrolling move the value at a time, so a setting whose useful
- * numbers are coarse can be dragged in coarse jumps. It is deliberately not a constraint on the
- * value: a number typed into the box lands exactly where it was typed, clamped to [range] and
- * nothing else, so no setting is ever unable to hold a particular number.
+ * A whole number picked by dragging a bar or typing one. The step is how far a drag moves it, never
+ * a constraint: a typed number lands exactly where it was typed, clamped only to the range.
  */
 class IntSetting(
     key: String,

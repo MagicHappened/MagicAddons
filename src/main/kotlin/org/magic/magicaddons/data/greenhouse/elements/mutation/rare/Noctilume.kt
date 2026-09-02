@@ -8,13 +8,8 @@ import org.magic.magicaddons.data.greenhouse.CropStates.wheatState
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
 /**
- * A noctilume craves a time of day, and wears the one it craves.
- *
- * It spawns craving day or night, and only advances a stage while the garden's clock matches;
- * otherwise it sits at that stage indefinitely. Every advance flips the craving, so the same stage
- * number exists in two looks, one skull per craving, and which of the two matches is how the
- * craving is known. The looks share their geometry: the four heads sit in the same places whichever
- * skull they carry.
+ * Craves a time of day and wears the one it craves: it only advances while the garden's clock
+ * matches, and flips the craving on every advance, so each stage has one skull per craving.
  */
 object Noctilume : CropDefinitionProvider {
 

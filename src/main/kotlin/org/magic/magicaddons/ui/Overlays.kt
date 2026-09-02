@@ -44,10 +44,7 @@ interface OverlayRenderable : GuiEventListener, HoverableContainer {
     }
 
     companion object {
-        /**
-         * Where a menu of [menuWidth] by [menuHeight] should sit if opened at [x], [y]: at the
-         * cursor when it fits, folded back over it when the screen runs out.
-         */
+        /** Where a menu opened at a point should sit: at the cursor, folded back when it runs out. */
         fun placeOnScreen(x: Int, y: Int, menuWidth: Int, menuHeight: Int): Pair<Int, Int> {
             val window = McCompat.currentScreen() ?: return x to y
             val screenWidth = window.width

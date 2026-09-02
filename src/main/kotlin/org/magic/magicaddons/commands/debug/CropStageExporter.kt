@@ -20,11 +20,8 @@ import org.magic.magicaddons.util.PlayerUtils
 import org.magic.magicaddons.util.isCardinalYaw
 
 /**
- * Writes out the blocks and armor stands around a plant as the kotlin a [CropDefinition] is made
- * of, so a crop nobody has described yet can be added by standing next to one and pasting.
- *
- * A development tool rather than part of the greenhouse itself: it reads the world and produces
- * text, and nothing in the mod consumes what it writes.
+ * Writes the blocks and stands around a plant as the kotlin a CropDefinition is made of, so a new
+ * crop can be described by standing next to one and pasting. A development tool; nothing reads its output.
  */
 object CropStageExporter {
 
@@ -46,12 +43,7 @@ object CropStageExporter {
         ChatUtils.sendWithPrefix("Copied crop stage to clipboard (${result.length} chars)")
     }
 
-    /**
-     * The stage as the kotlin its definition would be written in, or null without a world.
-     *
-     * [quiet] keeps the skipped-entity report out of chat, for a caller building many stages in
-     * one go rather than showing the player a single one.
-     */
+    /** The stage as kotlin, or null without a world. Quiet keeps the skipped-entity report out of chat. */
     fun buildCropStageData(
         basePos: BlockPos,
         stageNum: Int? = null,
@@ -113,9 +105,8 @@ object CropStageExporter {
 
         val stands = world.getEntities(null, box)
 
-        // how far the world has turned this plant, undone below so the same stage exports
-        // identically wherever it stands. Offsets are turned back and the body yaw follows;
-        // the head pose rides on the body and needs nothing
+        // how far the world has turned this plant, undone so the stage exports identically wherever
+        // it stands. The head pose rides on the body and needs nothing
         val worldStep = WorldRotation.step(basePos.x, basePos.z)
         val unturn = Math.floorMod(-worldStep, 4)
 
@@ -340,9 +331,8 @@ object CropStageExporter {
 
                         val fields = mutableListOf<String>()
                         fields.add("offset = Vec3(${stand.offset.x}, ${stand.offset.y}, ${stand.offset.z})")
-                        // always written, zeros included: a pose of nothing is still a
-                        // recorded pose, and leaving it out kept default-posed stands reading as
-                        // uncollected forever
+                        // always written, zeros included: leaving a pose of nothing out kept default
+                        // posed stands reading as uncollected forever
                         fields.add("headRotation = Rotations(${stand.rotation.x}f, ${stand.rotation.y}f, ${stand.rotation.z}f)")
                         fields.add("xRotation = ${stand.xRotation}f")
                         fields.add("yRotation = ${stand.yRotation}f")

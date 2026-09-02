@@ -97,9 +97,8 @@ object Snoozling : CropDefinitionProvider {
                                 hashString = "885c448a847959a7ea71f79686516886692e2c80b5464725dde847d5ae5a7215"
                             ),
                 5..5,
-                // a snoozling drops asleep every fifth stage and stops growing until it is woken
-                // by hand. The stand saying so comes and goes, so it is read rather than matched:
-                // requiring it would make a woken snoozling fail to be a snoozling at all
+                // read rather than matched: the sleep stand comes and goes, and requiring it would
+                // make a woken snoozling fail to be a snoozling
                 readers = listOf(CropStandReader.presence(CropStandReader.ASLEEP, "z"))
             ),
             CropStage(

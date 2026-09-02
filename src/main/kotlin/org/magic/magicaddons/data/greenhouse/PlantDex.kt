@@ -1,12 +1,8 @@
 package org.magic.magicaddons.data.greenhouse
 
 /**
- * What the definitions know and what they are missing, crop by crop.
- *
- * Coverage is read straight off the stage ranges. Whether a recorded stage still needs a
- * normalized re-export cannot be seen in the data itself, so that part is learned by watching:
- * every match that only succeeded through the legacy rotation fallback is noted here, and the dex
- * reports the union of what has been seen this session.
+ * What the definitions know and what they are missing, crop by crop. Coverage is read off the stage
+ * ranges; stages needing a normalized re-export are learned by watching matches fall back this session.
  */
 object PlantDex {
 
@@ -68,15 +64,11 @@ object PlantDex {
         return Report(recorded, total, incomplete, text)
     }
 
+    /** What one crop is missing, in the listing's own words, or null when it wants for nothing. */
+
     /**
-     * What one crop is still missing, in the words the whole listing uses, or null when it wants
-     * for nothing. Asked when the dex is pointed at a single plant, where a line in chat is the
-     * whole answer and there is nothing worth copying.
-     */
-    /**
-     * Whether [stage] knows how every one of its stands is turned, the crop's role poses counted:
-     * a stand without an explicit pose is covered when its hash has a declared role, since one
-     * good sample of a role covers every stage that shows it.
+     * Whether a stage knows how every stand is turned, role poses counted: one good sample of a
+     * skull covers every stage that shows it.
      */
     private fun hasRotation(def: CropDefinition, stage: CropStage): Boolean =
         stage.armorStands.orEmpty().all {

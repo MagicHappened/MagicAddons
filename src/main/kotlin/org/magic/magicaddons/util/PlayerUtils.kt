@@ -80,15 +80,8 @@ object PlayerUtils {
     }
 
     /**
-     * The skull an entity carries, in whichever slot it happens to carry it.
-     *
-     * Reading only the head slot was wrong. Hypixel hangs some crops' skulls off the main hand
-     * instead, which renders the same head smaller for free, and a stand built that way looked
-     * to us like a stand carrying nothing at all.
-     *
-     * Every slot is tried and the first skull found wins. A stand holding something that is not a
-     * skull, or nothing at all, has no hash, which is a failure to identify it rather than a
-     * reason to keep looking elsewhere.
+     * The skull an entity carries, in whichever slot it holds it: hypixel hangs some crops' skulls
+     * off the main hand. The first skull found wins, and nothing else counts as one.
      */
     fun getSkullHash(entity: LivingEntity): String? =
         EquipmentSlot.entries.firstNotNullOfOrNull { getSkinHash(entity.getItemBySlot(it)) }

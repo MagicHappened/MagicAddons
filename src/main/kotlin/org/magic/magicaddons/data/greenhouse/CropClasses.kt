@@ -38,11 +38,7 @@ data class CropArmorStand(
     val yRotation: Float? = null,
     val hashString: String? = null,
     val containsCustomName: String? = null,
-    /**
-     * How the stand is built, which decides where its head lands. A stand's position is its feet,
-     * so rebuilding a small one at full size puts the skull it carries well above where it belongs.
-     * Nearly every greenhouse stand is small, so that is the default and the odd one out says so.
-     */
+    /** A stand's position is its feet, so size decides where its skull lands. Nearly all are small. */
     val isSmall: Boolean = true,
 ) {
     companion object {
@@ -77,13 +73,8 @@ data class CropBlockState(
     val offset: BlockPos,
     val blockState: BlockState,
     /**
-     * Whether this block has to be there for the stage to match, or is only part of how the stage
-     * is drawn.
-     *
-     * A chloronite's glass is the reason for this. A grown one stands under green glass and a
-     * placed one does not, so the glass tells you the plant is finished without being what makes
-     * it finished, and requiring it would mean never recognising a placed one. A plan still draws
-     * it, since it is what the crop looks like.
+     * Whether the block must be there to match, or is only drawn. A chloronite's green glass says
+     * the plant is finished without being what makes it finished, so requiring it would hide placed ones.
      */
     val required: Boolean = true
 ){
@@ -116,28 +107,15 @@ open class CropStage(
     val armorStands: List<CropArmorStand>? = null,  // make sure on the matcher if its NULL it shouldnt have the respective thing on it!
     val stageRange: IntRange, // eg if its a wheat crop it CANNOT have any armor stands on it otherwise it will be considered something
     /**
-     * Facts this stage's identity implies, copied into the instance's readings when it wins.
-     *
-     * A reader takes values off the stands after matching; a trait is known by the matching
-     * itself, such as which time of day the noctilume whose skull matched is craving. Both land
-     * in the same readings map, because both answer the same question: what is this plant beyond
-     * its stage number.
+     * Facts the matched stage implies, such as which time of day a noctilume craves. They land in
+     * the same readings map the stand readers write to.
      */
     val traits: Map<String, Int> = emptyMap(),
-    /**
-     * Values to take off the stands around the plant once it has matched. These never decide
-     * whether it matched: a bar that happens to be empty is a plant that is starving, not a plant
-     * that is something else.
-     */
+    /** Values taken off the stands after matching. They never decide whether it matched. */
     val readers: List<CropStandReader> = emptyList()
 ) {
 
-    /**
-     * Runs every reader against [stands], for a plant that has already matched.
-     *
-     * A reader takes the first stand it recognises and is dropped if it recognises none, so a bar
-     * that has not appeared yet leaves no reading behind rather than a wrong one.
-     */
+    /** Runs every reader over a matched plant. A reader that recognises nothing leaves no reading. */
     fun read(stands: List<ArmorStand>): Map<String, Int> = readers.mapNotNull { reader ->
         stands.firstOrNull { reader.matches(it) }
             ?.let { reader.read(it) }
@@ -196,11 +174,8 @@ open class CropStage(
                 origin.y.toDouble(),
                 origin.z + footprint.height / 2.0
             )
-            // one rotation for the whole stage, and the world's own comes first. Exports are
-            // written as the plant would stand at rotation zero, so canonical data matches on the
-            // first candidate, the rotation the grid gives this block. A stage that only matches
-            // at zero was recorded before normalization and never rewritten, which the result
-            // reports so the caller can ask for a fresh export
+            // the world's own rotation is tried first, since exports are normalized to rotation zero.
+            // matching only at zero means a pre-normalization recording, which the result reports
             val worldStep = WorldRotation.step(origin.x, origin.z)
 
             val candidateSteps = when {
@@ -328,9 +303,8 @@ open class CropStage(
                 )
             }
 
-            // a stand built to be drawn and never put in the world has no id of its own, and
-            // rendering one holding an item asks for that id, which throws rather than returning
-            // nothing. Any id will do, so long as it is not one the world handed out.
+            // rendering a stand holding an item asks for its entity id and throws without one. Any
+            // id will do, so long as the world never handed it out
             stand.id = FAKE_ENTITY_ID
 
             stand.isInvisible = true
@@ -393,10 +367,8 @@ class CropStagePattern(
             val multiplier = stageOffsetMultipliers[stage]
                 ?: (stage - start) // good fallback
 
-            // the stand as described, moved along by the stage, rather than a new one built from
-            // two of its fields. Rebuilding dropped everything else it was given: its rotations,
-            // the name it looks for, and how it is built, so an expanded stage matched loosely and
-            // was drawn as a full sized stand however the crop actually stands
+            // the stand as described, moved along by the stage. Rebuilding it from two fields lost
+            // its rotations, the name it looks for, and how it is built
             val newStands = armorStands?.map { stand ->
                 stand.copy(
                     offset = stand.offset.add(
@@ -420,12 +392,8 @@ class CropStagePattern(
 
 }
 /**
- * How the greenhouse turns its plants.
- *
- * Every plant is rotated a quarter turn per diagonal of the grid it stands on: measured across four
- * greenhouses and three hundred stands, a plant's rotation is always ninety degrees times
- * `(z - x) mod 4` of its base block, and for a plant wider than one block any block on its main
- * diagonal gives the same answer, so the base corner serves for every footprint.
+ * How the greenhouse turns its plants: a quarter turn per `(z - x) mod 4` of the base block,
+ * measured across four greenhouses and three hundred stands.
  */
 object WorldRotation {
 
@@ -451,12 +419,8 @@ const val NEVER_DECAYS: Long = -1L
 const val SIX_DAY_DECAY_TIME_MS: Long = 6L * 24 * 60 * 60 * 1000
 
 /**
- * How the stands of one role are turned, declared once per crop rather than on every stage.
- *
- * A sweep over every recorded pose found that a stand's head pose belongs to the skull it carries,
- * not to the stage it appears in: the same hash holds the same pose at stage two and at stage a
- * hundred. So a crop names each hash's pose once, a stand without an explicit pose of its own
- * inherits it, and the stages are left holding only what actually changes between them: offsets.
+ * How the stands of one role are turned, declared once per crop. A head pose belongs to the skull
+ * it carries rather than to the stage, so stages hold only their offsets.
  */
 sealed interface StandPose {
 
@@ -476,11 +440,7 @@ sealed interface StandPose {
     }
 
     /**
-     * A pose that walks a fixed cycle with world position and height.
-     *
-     * The magic jellybean's canes: pose = poses[(x + z + height) mod size], verified against
-     * every cane of fifteen exports, all ten of a fully grown plant included. Height is read off
-     * the stand's offset, whose fraction never reaches half a block.
+     * A pose walking a fixed cycle: poses[(x + z + height) mod size], as the jellybean's canes do.
      */
     data class Cycle(val poses: List<Rotations>) : StandPose {
         override fun headAt(x: Int, z: Int, offset: Vec3): Rotations =
@@ -494,11 +454,7 @@ data class CropDefinition(
     val aliases: List<SkyBlockId>? = null,
     val stageDefs: List<CropStage>,
     val maxStage: Int = 1,
-    /**
-     * How long after planting this crop rots away, three days for almost everything. A crop that
-     * does not is [NEVER_DECAYS], and the few that last longer say so; the rest say nothing,
-     * since a line repeated on forty definitions is not a fact about any of them.
-     */
+    /** How long after planting this crop rots, three days unless it says otherwise. */
     val decayTimeMs: Long = DEFAULT_DECAY_TIME_MS,
     val footprint: Footprint = Footprint(1,1),
     val requiredSoil: Set<Block> = setOf(Blocks.FARMLAND),
@@ -513,12 +469,8 @@ data class CropDefinition(
     /** Each skull hash's pose, held once here instead of repeated on every stage that shows it. */
     val standPoses: Map<String, StandPose> = emptyMap(),
     /**
-     * The stages this crop drops asleep on arriving at, empty for everything that never sleeps.
-     *
-     * A snoozling falls asleep the moment it becomes stage five, ten and fifteen, and grows no
-     * further until it is woken. Held on the definition rather than read off the plant so a
-     * greenhouse nobody is standing in can be moved on correctly: the prediction stops at the next
-     * one of these instead of walking the plant past a sleep it could not have slept through.
+     * Stages this crop drops asleep on arriving at, so a prediction stops there instead of walking
+     * it past a sleep it could not have slept through. A snoozling sleeps at 5, 10 and 15.
      */
     val sleepStages: Set<Int> = emptySet()
 ){
@@ -536,11 +488,7 @@ data class StageMatchResult(
     val score: Int,
     val usedStands: List<Entity>,
     val matchedBlocks: Map<BlockPos, BlockState>,
-    /**
-     * The stage matched, but not at the rotation the world gives its block: its offsets were
-     * recorded before exports were normalized. Everything about the plant is still right, only
-     * the recording is turned, so this asks for a fresh export rather than doubting the match.
-     */
+    /** Matched, but only at rotation zero: a pre-normalization recording that wants re-exporting. */
     val rotationLegacy: Boolean = false
 )
 
@@ -562,49 +510,28 @@ data class GreenhouseElementInstance(
     var age: Long? = null,
     val cropDef: CropDefinition,
     /**
-     * What the scan learned about this plant, by name: what the stands around it said through
-     * readers, and what the matched stage's traits implied. A fleshtrap's hunger, a snoozling's
-     * sleep and a noctilume's craving all live here, since they are things a plant is rather than
-     * things that decide what it is.
+     * What the scan learned about this plant beyond its stage: hunger, sleep, craving and the like.
      */
     val readings: MutableMap<String, Int> = mutableMapOf(),
 ) {
     /** Whether this plant is asleep and will not grow until it is woken. */
     val isAsleep: Boolean get() = readings[CropStandReader.ASLEEP] == 1
 
-    /**
-     * The time of day this plant craves, or null for one that craves nothing. A noctilume only
-     * advances while the garden's clock matches its craving, and flips it on every advance.
-     */
+    /** The time of day this plant craves, null for one that craves nothing. Flips on every advance. */
     val craving: Int? get() = readings[CropStandReader.CRAVES]
 
-    /**
-     * Whether this plant has run its hunger out. A fleshtrap that has eaten nothing stops growing
-     * until it is fed, the way a snoozling stops until it is woken.
-     */
+    /** Whether hunger has run out. A starving fleshtrap stops growing until it is fed. */
     val isStarving: Boolean get() = readings[CropStandReader.HUNGER] == 0
 
     /**
-     * Whether a tick has been counted against this plant while its water was already negative.
-     *
-     * A plant in debt has a chance of being passed over entirely, taking neither the stage nor the
-     * water, and the prediction cannot know which happened. It counts the loss regardless, so the
-     * water shown is the worst the plant could be in rather than the best, and this says the number
-     * carries that assumption. Cleared the moment anything is actually read off the plant.
+     * Whether a tick was counted against this plant while its water was already negative, so the
+     * level shown is the worst it could be in. Cleared as soon as anything is read off the plant.
      */
     var waterPredictedInDebt: Boolean = false
 
     /**
-     * The lowest stage this plant has ever been seen at, which is where it entered our records.
-     *
-     * A plant the mod watched climb away from that stage grew on the plot; a plant that has only
-     * ever been seen at the stage it first appeared at was put there. That is the whole of what
-     * separates a magic jellybean being grown to a hundred and twenty, worth about nine million
-     * coins, from a bought one standing in a spawner ring as cheap scenery, and it is why losing
-     * one of them matters and losing the other does not.
-     *
-     * Set the first time a plant is filed and carried across every scan afterwards, so it survives
-     * both the reconcile that re-reads the plot and the trip to disk.
+     * The lowest stage this plant was ever seen at. A plant that climbed away from it grew here; one
+     * still sitting at it was placed, which is what tells a grown jellybean from a bought one.
      */
     var firstSeenStage: Int? = null
 
@@ -617,11 +544,8 @@ data class GreenhouseElementInstance(
         }
 
     /**
-     * The highest stage this plant might be at now, which is what anything about profit asks for.
-     *
-     * A plant that might already be finished is told about early rather than late: the cost of
-     * being told to harvest something that turns out to have a stage left is a wasted look, and
-     * the cost of being told late is a grown mutation standing there not progressing
+     * The highest stage this plant might be at, which is what anything about profit asks for: better
+     * a wasted look than a grown mutation left standing.
      */
     val highestStage: Int?
         get() = when (val stage = growthStage) {
@@ -633,10 +557,8 @@ data class GreenhouseElementInstance(
     /**
      * Whether this plant grew where it stands rather than being placed there.
      *
-     * todo the other half of this: once a mutation being grown reaches its last stage, tell the
-     *  player to harvest it, since a grown crop left standing is profit going nowhere and
-     *  eventually decays. An estimated stage should be judged by the high end of its range there,
-     *  so the player is told early rather than late.
+     * todo tell the player to harvest a grown mutation at its last stage, judged by the high end
+     *  of an estimated range so they are told early.
      */
     val grewInPlace: Boolean
         get() {

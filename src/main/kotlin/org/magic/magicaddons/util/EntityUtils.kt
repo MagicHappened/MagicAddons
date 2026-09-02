@@ -30,9 +30,8 @@ object EntityUtils {
         val highlightPriority: Int
 
         /**
-         * Color of the outline this source paints on [entity], as ARGB.
-         * Takes the entity so a single source can color the things it highlights differently
-         * (for example treasure versus mobs).
+         * Outline colour for this entity, as ARGB. Takes the entity so one source can colour
+         * treasure and mobs differently.
          */
         fun highlightColor(entity: Entity): Int
     }

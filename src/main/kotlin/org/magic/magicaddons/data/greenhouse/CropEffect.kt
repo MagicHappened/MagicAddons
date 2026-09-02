@@ -1,15 +1,8 @@
 package org.magic.magicaddons.data.greenhouse
 
 /**
- * A buff or debuff a crop carries.
- *
- * Several of these are the same effect at a different strength: harvest boost and improved harvest
- * boost both move yield, water retain and improved water retain both slow drying. They are kept as
- * separate entries because that is how the game names them, but each says which [Kind] it belongs
- * to and by how much, so anything working out what a plot actually does can add up a kind rather
- * than listing every name it might meet.
- *
- * [percent] is signed: a loss is negative. Effects that do not scale carry zero.
+ * A buff or debuff a crop carries. Several are the same effect at a different strength, so each
+ * says which kind it belongs to and by how much. The percentage is signed, zero when it does not scale.
  */
 enum class CropEffect(val kind: Kind, val percent: Int) {
 

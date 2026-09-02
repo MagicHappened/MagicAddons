@@ -35,15 +35,8 @@ import org.magic.magicaddons.render.WorldRender
 import org.magic.magicaddons.util.ChatUtils
 
 /**
- * Shows the player how to build a layout, one job at a time.
- *
- * The soil comes first and alone. A greenhouse is laid out on a single row of ground, and until
- * that row is right nothing planted on it can be. Only once every slot holds the ground its crop
- * wants does the plan move on to the crops themselves, each drawn at the first stage it grows
- * through, since that is what a freshly planted one looks like.
- *
- * Two things are ever drawn: a block that should be there and is not, drawn as a ghost of itself,
- * and a block that is in the way, outlined in red so it can be found and removed.
+ * Shows the player how to build a layout: the soil row first, then the crops on it, each drawn at
+ * its first stage. Missing blocks are ghosted, blocks in the way are outlined.
  */
 object LayoutRenderState {
     init {
@@ -51,10 +44,8 @@ object LayoutRenderState {
     }
 
     /**
-     * What a marked block is being told to do, which is the whole message: red is the wrong block
-     * and has to be swapped, orange is the right sort of block in the wrong state and only needs
-     * working on, purple is a block that should not be there at all, and blue is a block that
-     * should be there and is not.
+     * What a marked block is told to do: red swap it, orange work on it, purple remove it, blue
+     * place it.
      */
     private enum class Mark(val color: Int) {
         Wrong(0xFFFF3333.toInt()),
@@ -66,43 +57,22 @@ object LayoutRenderState {
     /** Enough colour to read the mark through, little enough to see the block under it. */
     private const val FILL_ALPHA: Int = 0x4D
 
-    /**
-     * How solid a ghosted block is drawn.
-     *
-     * Far more than a mark's fill, because the two fade differently: a fill is one flat colour laid
-     * over a block, while a ghost is the block's own texture multiplied by the tint and then faded,
-     * so the same figure that reads clearly as a fill leaves a model barely there.
-     */
+    /** Far more solid than a mark's fill: a ghost is the block's texture tinted and then faded. */
     private const val GHOST_ALPHA: Int = 0xC0
 
-    /**
-     * The wash over a ghosted block. Pale on purpose: the colour multiplies the block's texture, so
-     * a saturated blue would hold its red and green near zero and drain the block of its own colour
-     * rather than tinting it, leaving dirt as a dark smear instead of recognisably dirt.
-     */
+    /** Pale on purpose: the tint multiplies the texture, and a saturated one drains the block's colour. */
     private const val GHOST_TINT: Int = 0xFFB8CCFF.toInt()
 
-    /**
-     * The glow around a ghosted stand's head. Strong blue rather than the pale wash the model
-     * takes, since an outline is drawn as itself rather than multiplied over a texture.
-     */
+    /** The glow around a ghosted head, drawn as itself rather than multiplied over a texture. */
     const val GHOST_OUTLINE_COLOR: Int = 0xFF3399FF.toInt()
 
-    /**
-     * Ground a hoe turns into other ground. A dirt where farmland belongs is not the wrong block,
-     * it is the right one left untilled, and saying so in red would send the player digging.
-     */
+    /** Ground a hoe turns into other ground: untilled dirt is not the wrong block. */
     /** State a plan does not care about, because nothing the player does decides it. */
     private val IGNORED_PROPERTIES: List<IntegerProperty> = listOf(FarmlandBlock.MOISTURE)
 
     /**
-     * Blocks whose state is the world's business rather than the player's.
-     *
-     * Fire keeps an age it burns through and a face for every neighbour it is leaning on, and both
-     * change constantly on their own. Comparing them made a fire that was exactly where the plan
-     * wanted it read as the wrong state most of the time and the right one whenever its age came
-     * back around to zero, which is the flicker. Nobody places fire in a particular state, so for
-     * these the block being there at all is the whole question.
+     * Blocks whose state is the world's business: fire keeps an age and a face per neighbour, both
+     * changing on their own, which made a correctly placed fire flicker between right and wrong.
      */
     private val STATE_IS_NOT_OURS: Set<Block> = setOf(Blocks.FIRE)
 
@@ -126,13 +96,8 @@ object LayoutRenderState {
     }
 
     /**
-     * Everything the plan says, as one thing.
-     *
-     * Held together rather than as five fields because a frame is drawn while the plan is being
-     * worked out, on another thread, and five assignments in a row are five moments where a frame
-     * can catch the new answer to one question beside the old answer to the next. A plan swapped
-     * in one go is always answered from a single reading of the plot, so a rescan changes what is
-     * drawn without ever passing through a state nobody computed.
+     * Everything the plan says, held as one object: a frame drawn mid-rescan would otherwise catch
+     * the new answer to one question beside the old answer to the next.
      */
     private class Plan(
         val phase: Phase,
@@ -140,21 +105,14 @@ object LayoutRenderState {
         val ghosts: Map<BlockPos, BlockState>,
         val badStands: Set<UUID>,
         /**
-         * The stands of each ghosted crop, kept apart by crop rather than poured into one list so
-         * a plan can take over the stands of every crop that has not changed. Rebuilding an entity
-         * is not the same to a renderer as leaving it alone, and when one crop of fifty changes,
-         * the other forty nine have not.
+         * Ghost stands kept apart by crop, so an unchanged crop keeps its stands. Rebuilding an
+         * entity is not the same to a renderer as leaving it alone.
          */
         val standGroups: Map<String, List<ArmorStand>>
     ) {
         val ghostStands: List<ArmorStand> = standGroups.values.flatten()
 
-        /**
-         * What this plan asks for, as one string, so two plans can be told apart without comparing
-         * the stands themselves. The stands are what makes this worth doing: they are entities
-         * built fresh every time the plan is worked out, and handing the renderer a new set of
-         * them for an unchanged plan is the one thing that still changed between frames.
-         */
+        /** What this plan asks for, as one string, so two plans compare without comparing stands. */
         val signature: String = buildString {
             append(phase).append('|')
             marks.entries.sortedBy { it.key.asLong() }
@@ -180,10 +138,7 @@ object LayoutRenderState {
     /** Which half of the job the player is on. */
     val phase: Phase get() = plan.phase
 
-    /**
-     * Armor stands standing where a crop has to go. They are tinted rather than outlined, since an
-     * entity is rendered one at a time and can simply be drawn a different colour.
-     */
+    /** Stands in the way of a crop. Tinted rather than outlined, since entities draw one at a time. */
     val badStandsUUID: Set<UUID> get() = plan.badStands
 
     /** The stands a ghosted crop is made of, drawn as part of showing what to plant. */
@@ -201,10 +156,7 @@ object LayoutRenderState {
     /** Crops with no first stage described yet, so each is only ever mentioned once. */
     private val reportedMissingStage = mutableSetOf<String>()
 
-    /**
-     * Draws the plan, from the frame's own render pass so the camera it is placed against is the
-     * one the frame is actually drawn with.
-     */
+    /** Draws the plan from the frame's own render pass, against the camera that frame uses. */
     fun submit(poseStack: PoseStack, collector: SubmitNodeCollector, cameraPos: Vec3) {
         val plan = this.plan
         val marks = plan.marks
@@ -237,24 +189,18 @@ object LayoutRenderState {
         reportedMissingStage.clear()
     }
 
-    /**
-     * Works out what to draw from what the plot holds right now. Cheap enough to run whenever the
-     * plot changes, and has to, since the whole point is to keep up with the player building.
-     */
+    /** Works out what to draw from what the plot holds now. Cheap enough to run on every change. */
     fun refresh() {
         val grid = GreenhouseData.getCurrentGrid()
 
-        // not being able to see the greenhouse for a moment is not the same as there being
-        // nothing to draw. Wiping the plan on the way past cost a frame of blank screen every
-        // time the plot was briefly unreadable, which is a rescan blinking rather than changing.
-        // What was last worked out stays up until something is worked out to replace it
+        // losing sight of the greenhouse is not the same as having nothing to draw, so the last
+        // plan stays up rather than blinking out on every unreadable moment
         if (grid == null) return
 
         val level = Minecraft.getInstance().level ?: return
 
-        // the plan is whatever this greenhouse was given, so standing in another one shows that
-        // one's plan or nothing, rather than carrying the last one around the garden. This one is
-        // a real answer rather than a gap: the greenhouse is right there and has nothing planned
+        // the plan belongs to this greenhouse, so standing in another shows that one's plan or
+        // nothing rather than carrying the last one around the garden
         val layout = grid.state.assignedLayout
 
         if (layout == null) {
@@ -283,14 +229,12 @@ object LayoutRenderState {
 
         if (soilComplete) {
             layout.elementInstances.forEach { instance ->
-                // whatever is growing on this slot, by whatever covers it rather than by what
-                // starts on it: a two by two beginning one slot over still stands here, and asking
-                // only about origins meant a plant sprawling across a slot was not on it at all
+                // by what covers the slot rather than what starts on it: a two by two beginning one
+                // slot over still stands here
                 val growing = grid.elementCovering(instance.slot)
 
-                // the plant the layout grows towards appears on its own once the ingredients are
-                // right, so nothing is planned for it. It can only appear on an empty slot though,
-                // so anything standing on that slot is in the way of the mutation happening at all
+                // the target plant appears on its own once the ingredients are right, so nothing is
+                // planned for it, but it needs an empty slot to appear on
                 if (instance.slot.slotMark == LayoutSlot.Marking.Target) {
                     if (growing != null) markInTheWay(level, growing, marks, badStands)
                     return@forEach
@@ -307,10 +251,8 @@ object LayoutRenderState {
                 val soil = grid.getPosForSlotCoords(instance.slot.x, instance.slot.y)
                     ?: return@forEach
 
-                // a plant standing at a stage nobody has described yet matches nothing and drops
-                // out of the scan, and was then planned for as though its slot were bare, so a
-                // ghost appeared inside the plant and flickered away on the next scan that did
-                // match it. Anything growing on the soil is a plant, described or not
+                // a plant at a stage nobody has described matches nothing, and planning for its slot
+                // as bare put a ghost inside it. Anything growing on the soil is a plant
                 if (isOccupied(level, soil, instance.cropDef.footprint)) return@forEach
 
                 val stage = ghostStageOf(instance.cropDef) ?: return@forEach
@@ -343,9 +285,8 @@ object LayoutRenderState {
 
         val next = Plan(soilPhase, marks, ghosts, badStands, standGroups)
 
-        // a plan asking for exactly what is already up is not a new plan. Swapping it in anyway
-        // handed the renderer a fresh set of ghost stands, built from nothing every scan, and
-        // rebuilding an entity is not the same to a renderer as leaving it alone
+        // a plan asking for what is already up is not a new plan: swapping it in handed the renderer
+        // a fresh set of ghost stands for nothing
         if (next.signature == plan.signature) return
 
         // one swap, so nothing drawn is ever half of this plan and half of the last
@@ -355,13 +296,8 @@ object LayoutRenderState {
     }
 
     /**
-     * Says so, once, when a plan has just been finished.
-     *
-     * A plan is finished when it is asking for nothing: no block marked, no crop ghosted, nothing
-     * standing where something else belongs. It is only worth saying at the moment it becomes
-     * true, so a plan that was already finished says nothing, and a plant taken out and put back
-     * says nothing again for half a minute, which is long enough that fiddling with the last slot
-     * cannot turn into a stream of congratulations.
+     * Says so once, at the moment a plan stops asking for anything. A plant taken out and put back
+     * stays quiet for half a minute, so fiddling does not become a stream of congratulations.
      */
     private fun announceIfFinished(grid: GreenhouseGrid, layout: GreenhouseLayout, next: Plan) {
         if (grid.state.completionMuted) return
@@ -419,11 +355,8 @@ object LayoutRenderState {
     }
 
     /**
-     * Whether anything at all is growing on the soil a plan wants to fill.
-     *
-     * Deliberately blunt: a block above the soil, or a stand standing in the space, is a plant
-     * whether or not the definitions can name it. Being wrong here draws nothing where something
-     * could have been drawn, which is quieter than drawing a plan through a plant already there.
+     * Whether anything is growing on the soil a plan wants. Blunt on purpose: a block or a stand is
+     * a plant whether or not we can name it, and drawing nothing beats drawing through a plant.
      */
     private fun isOccupied(level: Level, soil: BlockPos, footprint: Footprint): Boolean {
         for (offsetX in 0 until footprint.width) {
@@ -443,11 +376,8 @@ object LayoutRenderState {
     }
 
     /**
-     * Whether two states are the same as far as a plan is concerned.
-     *
-     * A state carries things the player has no say over and no reason to be told about. Farmland
-     * grows damp when it is near water, so a watered plot differs from a dry one in every slot, and
-     * calling that out would paint a finished greenhouse orange over something nobody can fix.
+     * Whether two states are the same as far as a plan cares. Farmland goes damp near water, and
+     * calling that out would paint a finished greenhouse orange over nothing anyone can fix.
      */
     private fun BlockState.sameEnoughAs(other: BlockState): Boolean {
         if (this == other) return true
@@ -506,15 +436,8 @@ object LayoutRenderState {
     }
 
     /**
-     * What a crop looks like the moment it is put down, which is not the same question for the two
-     * kinds of crop.
-     *
-     * A base crop is planted as a seed and grows, so it starts at its first stage. A mutation is
-     * placed already grown and never grows further, so it looks like its last stage from the moment
-     * it goes in, and drawing it as a seedling would show the player something they will never see.
-     *
-     * A crop nobody has described that stage for is skipped and named once, since a plan that
-     * silently leaves a plant out is worse than one that says which plant it could not draw.
+     * What a crop looks like when put down: a base crop starts at its first stage, a mutation is
+     * placed already grown. A crop with no stage recorded is skipped and named once.
      */
     private fun ghostStageOf(definition: CropDefinition): CropStage? {
         val stages = definition.stageDefs

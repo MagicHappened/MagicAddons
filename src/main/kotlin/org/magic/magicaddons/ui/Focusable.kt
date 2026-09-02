@@ -3,15 +3,8 @@ package org.magic.magicaddons.ui
 import net.minecraft.client.gui.components.events.GuiEventListener
 
 /**
- * Focus state for the widgets of this mod.
- *
- * [GuiEventListener] declares focus as the pair of methods `isFocused()` and `setFocused()`, which
- * kotlin also sees as a synthetic `isFocused` property. A widget that stores its focus in a field
- * of that same name shadows the property, and the usual `override fun isFocused() = isFocused` then
- * reads the method it is defining rather than the field, calling itself until the stack runs out.
- *
- * Implementing this instead names the state something else, so the shadowing cannot happen and the
- * contract lives in one place.
+ * Focus state for this mod's widgets, named away from GuiEventListener's synthetic `isFocused`
+ * property: a field of that name shadows it, and the usual override then calls itself forever.
  */
 interface Focusable : GuiEventListener {
 

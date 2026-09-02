@@ -27,12 +27,8 @@ data class StandInScene(
 )
 
 /**
- * A whole plant handed to the gui to draw in three dimensions: its blocks, its stands, and how the
- * viewer has it turned.
- *
- * The gui pipeline draws each of these into a texture of its own with a real depth buffer, which
- * is what lets a head hide behind the cane it belongs to; drawing the parts as separate gui
- * elements could never interleave them.
+ * A whole plant handed to the gui to draw: its blocks, its stands, and how the viewer has it turned.
+ * Each goes into its own texture with a real depth buffer, so a head can hide behind its own cane.
  */
 data class CropPreviewRenderState(
     val blocks: Map<BlockPos, BlockState>,
@@ -80,11 +76,7 @@ class CropPreviewRenderer(
 
     override fun getTextureLabel(): String = "magicaddons_crop_preview"
 
-    /**
-     * The base class parks the origin at the texture's bottom edge, which is right for an entity
-     * whose origin is its feet and wrong for a scene whose offsets are taken from its centre; the
-     * plant showed up half-sunk through the bottom of its box.
-     */
+    /** The base class parks the origin at the texture's bottom, which sinks a centre-based scene. */
     override fun getTranslateY(height: Int, guiScale: Int): Float = height / 2f
 
     //? if >=26.2 {
@@ -103,9 +95,8 @@ class CropPreviewRenderer(
 
         gameRenderer.lighting.setupFor(Lighting.Entry.ENTITY_IN_UI)
 
-        // 26.1.2's gui has no collector of its own to hand out here, so the scene goes through the
-        // game's own submit node storage and is drawn at the end of this method, which is how
-        // vanilla's entity preview does it there
+        // 26.1.2's gui hands out no collector here, so the scene goes through the game's own submit
+        // node storage, as vanilla's entity preview does
         val features = gameRenderer.featureRenderDispatcher
         val collector = features.submitNodeStorage
     //?}

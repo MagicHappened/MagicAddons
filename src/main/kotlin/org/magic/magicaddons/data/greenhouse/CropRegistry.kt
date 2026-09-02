@@ -14,10 +14,7 @@ import org.magic.magicaddons.data.greenhouse.elements.rarecrop.*
 object CropRegistry {
     val all: MutableList<CropDefinition> = mutableListOf()
 
-    /**
-     * Where each crop sits in the dex ordering, taken from the package its provider lives in,
-     * which is the one place the rarity is already written down.
-     */
+    /** Where each crop sits in the dex ordering, taken from the package its provider lives in. */
     val tierOf: MutableMap<CropDefinition, Int> = mutableMapOf()
 
     private fun register(provider: CropDefinitionProvider) {
@@ -36,10 +33,7 @@ object CropRegistry {
         else -> 7
     }
 
-    /**
-     * Every name a definition answers to, built once. Lookups happen per block update, which is
-     * far too often to walk the whole registry for.
-     */
+    /** Every name a definition answers to, built once: lookups happen on every block update. */
     private val byKey: Map<String, CropDefinition> by lazy {
         buildMap {
             all.forEach { definition ->

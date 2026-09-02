@@ -4,10 +4,8 @@ import net.minecraft.ChatFormatting
 import net.minecraft.network.chat.Component
 
 /**
- * A system chat message received from the server. Skyblock routes almost everything through system
- * chat, so this covers normal server messages as well as the action bar ([overlay]).
- *
- * [text] is the message without any formatting codes, which is what matching server messages needs.
+ * A system chat message, which is how skyblock sends almost everything, action bar included. The
+ * text is stripped of formatting codes, since that is what matching needs.
  */
 class OnSystemChatEvent(
     val message: Component,

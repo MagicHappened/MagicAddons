@@ -81,10 +81,7 @@ class GreenhouseGrid(
     }
 
 
-    /**
-     * The element standing on [slot], including a crop bigger than one slot that covers it from its
-     * top left corner, which is the only slot such a crop is filed under.
-     */
+    /** The element standing on a slot, including a big crop covering it from its corner. */
     fun elementCovering(slot: LayoutSlot): ElementRuntimeState? = elements.find { element ->
         val origin = element.instance.slot
         val footprint = element.instance.cropDef.footprint
@@ -172,19 +169,10 @@ class GreenhouseGrid(
     }
 
 
-    //todo need to make this also set plant specific data, aka if candidate "Fleshtrap" was found
-    // already handling it need to see the when statement working for fleshtrap once someone grows some
-    // (or me)
+    //todo set plant specific data too, such as a found Fleshtrap's hunger, once one can be grown
     /**
-     * Reads the plot and brings [elements] into line with it.
-     *
-     * A merge rather than a rebuild: a plant the world still shows in the same slot keeps the
-     * instance already held for it, so the age it was planted at, the water level read off its bar
-     * and a growth stage a plant diagnostic confirmed all survive. Only what the world disagrees
-     * about is written over. Reading the plot is the only way to learn that a plant was removed,
-     * replaced or grown, and none of those should cost the plants around them their history.
-     *
-     * Returns what changed, for a caller that wants to say so.
+     * Reads the plot and brings the elements into line with it. A merge, not a rebuild: a plant
+     * still in its slot keeps its age, water and confirmed stage. Returns what changed.
      */
     fun setPlantData(): ReconcileResult {
         val visitedSlots = Array(width) { BooleanArray(height) }
@@ -192,18 +180,14 @@ class GreenhouseGrid(
         val level = Minecraft.getInstance().level ?: return ReconcileResult()
         val buildableArea = plot?.getBuildableArea() ?: return ReconcileResult()
 
-        // a greenhouse is full of marker stands laid out in columns across the whole plot. They
-        // hold nothing, occupy nothing, and belong to the plot rather than to any plant, so a crop
-        // stand described without a skull to look for would happily bind to one
+        // a greenhouse is full of plot marker stands that hold nothing and belong to no plant, so a
+        // crop stand described without a skull would bind to one
         val remainingStands = level.getEntitiesOfClass(ArmorStand::class.java, buildableArea)
             .filterNot { it.isMarker }
             .toMutableList()
 
-        // taken from the instances rather than from the runtime wrappers around them. The wrappers
-        // hold entities and blocks, which only mean anything while the plot is loaded, and are
-        // rebuilt from nothing every time the grid is. The instances are what carry the age, the
-        // water and the stage, and what is written to disk, so they are what a plant is remembered
-        // as between one look at the plot and the next.
+        // from the instances, not the runtime wrappers: the wrappers are rebuilt every scan, while
+        // the instances carry the age, water and stage, and are what goes to disk
         val previous = layout.elementInstances.associateBy { it.slot.x to it.slot.y }
         val reconciled = mutableListOf<ElementRuntimeState>()
         val result = ReconcileResult()
@@ -215,10 +199,8 @@ class GreenhouseGrid(
                 val slot = layout.getSlot(x, y) ?: continue
 
                 val found = findElementAtSlot(slot, remainingStands) ?: continue
-                //todo insert code here that catches certain types of mutations:
-                // aka Fleshtraps and other stuff that might arise, and add
-                // catching of hunger and bonus data.
-                // fuck i forgot it needs to be saved to disk fucking fleshtrap grr
+                //todo catch mutation specifics here, such as fleshtrap hunger and bonus data, and
+                // make sure they reach disk
 
                 val def = found.instance.cropDef
 
@@ -261,9 +243,8 @@ class GreenhouseGrid(
     }
 
     /**
-     * The plant the world just described, wearing what was already known about the one standing
-     * there. The world is right about which crop it is, where its blocks and stands are, and how
-     * grown it looks; it says nothing about when it was planted or how much water it holds.
+     * The plant the world just described, wearing what was known about the one already standing
+     * there: the world knows the crop and its stage, not when it was planted or what it holds.
      */
     private fun carryOver(
         standing: GreenhouseElementInstance,
@@ -275,9 +256,8 @@ class GreenhouseGrid(
         // rather than the one this scan happens to find it at
         found.instance.firstSeenStage = standing.firstSeenStage ?: found.instance.lowestStage
 
-        // the prediction may have drained this plant past death, and here it stands: ticks were
-        // skipped. The fewest skips that leave it alive put it one tick from dying, so that is
-        // what is assumed, and said out loud, since watered now is the only way it stays standing
+        // predicted past death and still standing means ticks were skipped. The fewest that leave
+        // it alive put it one tick from dying, so that is assumed and said out loud
         val water = standing.waterLevel
 
         if (water != null && water <= WaterModel.DEATH && found.instance.cropDef.needsWater) {
@@ -308,42 +288,19 @@ class GreenhouseGrid(
     }
 
     /**
-     * Moves every plant on by [ticks] growth ticks, for a greenhouse nobody is standing in.
-     *
-     * The result is always an estimate, even for a plant whose stage was known: nothing has been
-     * looked at, this is only what the clock says should have happened. A plant already at its last
-     * stage stays there. [tickMs] is how long one growth tick takes, so a plant also ages by the
-     * time that passed and its decay keeps counting down.
-     *
-     * Water is dried out at the measured rate, taking whatever stands beside the plant into
-     * account. See WaterModel and notes/water-formula.md. The wiki puts it as:
-     *
-     * > After each growth stage, a crop loses between 2-3 Water Level, which can be mitigated by
-     * > the +50% Water Retain and +100% Improved Water Retain effects, and amplified by the -30%
-     * > Water Drain negative effect respectively.
-     * >
-     * > If a crop has negative Water Level during a Growth Stage, it has a chance not to advance to
-     * > the next stage.
-     *
-     * So even unbuffed the loss is a range rather than a number, and a plant in debt may not have
-     * advanced at all, which is why the stage this writes is only ever an estimate.
+     * Moves every plant on by that many ticks, for a greenhouse nobody is standing in. Always an
+     * estimate: a plant in water debt may not have advanced at all. Water model: notes/water-formula.md.
      */
     fun predictGrowth(ticks: Int, tickMs: Long) {
         if (ticks <= 0) return
 
-        // the plants themselves, not the runtime wrappers around them. A wrapper holds entities
-        // and blocks and so only exists while the plot is loaded, which is never the case for the
-        // greenhouse this is for: one nobody is standing in. Working through the wrappers meant a
-        // greenhouse away from the player had no plants to move on at all, so the clock advanced
-        // and nothing else did
+        // the plants themselves, not the runtime wrappers: a wrapper only exists while the plot is
+        // loaded, which is never true of the greenhouse this is for
         layout.elementInstances.forEach { instance ->
             val maxStage = instance.cropDef.maxStage
 
-            // a plant that has finished growing stops drinking: the game shows no countdown on a
-            // fully grown plant, so the model takes no water off one. Judged by the lowest stage
-            // it might be at, so a plant only probably grown keeps drying, worst case as ever.
-            // Untested edge, to be watched for in game: the tick that completes a plant still
-            // drains it here, so finishing at exactly -100 counts as dead until a scan says
+            // a finished plant stops drinking, so no water is taken off one. Judged by the lowest
+            // stage it might be at, so a plant only probably grown keeps drying
             val lowestStage = when (val stage = instance.growthStage) {
                 is GrowthStageInfo.Known -> stage.stage
                 is GrowthStageInfo.Estimated -> stage.range.first
@@ -355,16 +312,12 @@ class GreenhouseGrid(
                 return@forEach
             }
 
-            // a snoozling that has dropped asleep stays where it is until someone wakes it, a
-            // noctilume craving the other time of day is stuck until the garden's clock comes
-            // around, and a fleshtrap that has run its hunger out is stuck until it is fed. The
-            // ticks pass all three by, and all three still dry out, since being stuck is not the
-            // same as being spared
+            // a sleeping snoozling, a noctilume craving the other time of day and a starved fleshtrap
+            // are all stuck, and all still dry out: being stuck is not being spared
             val cravingUnfulfilled = instance.craving?.let { it != timeOfDayNow() } == true
 
-            // a plant already in debt may be passed over entirely, taking neither its stage nor
-            // its water, and nothing here can know which happened. The loss is counted anyway, so
-            // what is shown is the worst it could be in, and the plant remembers that it is
+            // a plant in debt may be passed over entirely and nothing here can know, so the loss is
+            // counted anyway and the plant remembers that it is a worst case
             if ((instance.waterLevel ?: 0) < 0) instance.waterPredictedInDebt = true
 
             if (instance.isAsleep || cravingUnfulfilled || instance.isStarving) {
@@ -391,9 +344,8 @@ class GreenhouseGrid(
                 null -> return@forEach
             }
 
-            // a snoozling drops asleep the moment it arrives at one of its sleep stages, so the
-            // ticks after that one were never served. Walking it the whole way would have it wake
-            // up several stages further on than the game ever moved it
+            // a snoozling drops asleep on arriving at a sleep stage, so the ticks after it were never
+            // served and it must not be walked past
             val sleepStages = instance.cropDef.sleepStages
 
             fun ceiling(from: Int): Int =
@@ -423,10 +375,7 @@ class GreenhouseGrid(
     // temp for testing
     companion object {
 
-        /**
-         * The garden clock as a craving value. The garden's customisable time reaches the client as
-         * ordinary world time, so day and night are the vanilla windows of it.
-         */
+        /** The garden clock as a craving value: its custom time reaches the client as world time. */
         fun timeOfDayNow(): Int {
             val time = (Minecraft.getInstance().level?.overworldClockTime ?: 0L) % 24000L
 
@@ -438,11 +387,8 @@ class GreenhouseGrid(
         }
 
         /**
-         * The plant standing at [origin], or null when nothing described matches what is there.
-         *
-         * The one implementation. The scan knows the slot it is looking at and the exporter only
-         * knows a position, so the soil is taken as given rather than looked up two different ways,
-         * and [slot] is passed only so a matched plant can be filed against it.
+         * The plant standing at a position, or null when nothing described matches. The soil is
+         * taken as given, since the scan and the exporter know it different ways.
          */
         fun findElementAt(
             origin: BlockPos,
@@ -503,19 +449,16 @@ class GreenhouseGrid(
                 cropDef = definition
             )
 
-            // where this plant enters our records. Overwritten by whatever the plant standing here
-            // already carried, in the reconcile that follows, so only a plant nobody has seen
-            // before keeps the stage read here
+            // where this plant enters our records, overwritten in the reconcile by whatever the
+            // plant already standing here carried
             instance.firstSeenStage = instance.lowestStage
 
-            // what winning this stage implies about the plant, filed before the stand readings:
-            // a noctilume's craving is carried by which skull matched, not by anything a stand
-            // will say afterwards
+            // what winning this stage implies, filed before the stand readings: a noctilume's craving
+            // is carried by which skull matched
             bestStage?.traits?.let { instance.readings.putAll(it) }
 
-            // read after matching, never during it, and from every stand around the plant rather
-            // than only the ones the stage claimed: a hunger bar belongs to the plant without
-            // being part of what makes it that plant
+            // read after matching and from every stand around the plant: a hunger bar belongs to the
+            // plant without being part of what makes it that plant
             bestStage?.read(standsAround(origin, definition.footprint))
                 ?.let { instance.readings.putAll(it) }
 
@@ -612,10 +555,7 @@ class GreenhouseGrid(
         var assignedLayout: GreenhouseLayout? = null,
         var hasRuntimeReferences: Boolean = false,
         var pendingGrowthTicks: Int? = null,
-        /**
-         * Whether the player has said they do not want to be told this plan is finished. Kept per
-         * grid rather than per plan, since it is this greenhouse they are tired of hearing about.
-         */
+        /** Whether the player is tired of hearing this particular greenhouse's plan is finished. */
         var completionMuted: Boolean = false
     )
 
