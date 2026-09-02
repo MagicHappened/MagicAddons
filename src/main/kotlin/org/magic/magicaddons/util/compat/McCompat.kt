@@ -3,6 +3,9 @@ package org.magic.magicaddons.util.compat
 import net.minecraft.ChatFormatting
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.screens.Screen
+//? if >=26.2 {
+/*import net.minecraft.network.chat.TextColor
+*///?}
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.Blocks
 
@@ -15,31 +18,62 @@ import net.minecraft.world.level.block.Blocks
  * fields or one coloured collection. None of that is interesting to the code that calls it, so it
  * is answered once here and the callers ask a question that means the same thing on both.
  *
- * This is also the seam the version directives will live on once both versions build from one tree:
- * keeping them in a file nothing else reads means the features themselves never carry a comment
- * about which Minecraft they are being compiled for.
+ * The version directives live here and in a handful of render classes and mixins, so a feature is
+ * never written twice and never carries a comment about which Minecraft it is being compiled for.
  */
 object McCompat {
 
     /** The screen the player is looking at, or null while they are looking at the world. */
-    fun currentScreen(): Screen? = Minecraft.getInstance().screen
+    fun currentScreen(): Screen? {
+        //? if >=26.2 {
+        /*return Minecraft.getInstance().gui.screen()
+        *///?} else {
+        return Minecraft.getInstance().screen
+        //?}
+    }
 
     /** Puts [screen] up, or takes whatever is up down when it is null. */
     fun setScreen(screen: Screen?) {
+        //? if >=26.2 {
+        /*Minecraft.getInstance().gui.setScreen(screen)
+        *///?} else {
         Minecraft.getInstance().setScreen(screen)
+        //?}
     }
 
     /** The subtitle pass a screen has to run itself when it draws its own background. */
     fun extractDeferredSubtitles(minecraft: Minecraft) {
+        //? if >=26.2 {
+        /*minecraft.gui.hud.extractDeferredSubtitles()
+        *///?} else {
         minecraft.gui.extractDeferredSubtitles()
+        //?}
     }
 
     /** Whether the player has hidden the hud, which anything drawing over it should respect. */
-    fun hudHidden(): Boolean = Minecraft.getInstance().options.hideGui
+    fun hudHidden(): Boolean {
+        //? if >=26.2 {
+        /*return Minecraft.getInstance().gui.hud.isHidden
+        *///?} else {
+        return Minecraft.getInstance().options.hideGui
+        //?}
+    }
 
     /** [formatting]'s colour as a packed rgb int, for comparing against what a component wears. */
-    fun chatColor(formatting: ChatFormatting): Int = formatting.color ?: 0xFFFFFF
+    fun chatColor(formatting: ChatFormatting): Int {
+        //? if >=26.2 {
+        /*return TextColor.fromLegacyFormat(formatting)?.value ?: 0xFFFFFF
+        *///?} else {
+        return formatting.color ?: 0xFFFFFF
+        //?}
+    }
 
     /** The green stained glass block, which the chloronite wears when it is finished. */
-    fun greenStainedGlass(): Block = Blocks.GREEN_STAINED_GLASS
+    fun greenStainedGlass(): Block {
+        //? if >=26.2 {
+        /*return Blocks.STAINED_GLASS.green()
+        *///?} else {
+        return Blocks.GREEN_STAINED_GLASS
+        //?}
+    }
 }

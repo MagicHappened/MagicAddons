@@ -19,6 +19,9 @@ import net.minecraft.client.renderer.entity.EntityRenderer;
 import net.minecraft.client.renderer.entity.LivingEntityRenderer;
 import net.minecraft.client.renderer.entity.state.EntityRenderState;
 import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
+//? if >=26.2 {
+/*import net.minecraft.client.renderer.feature.FeatureRenderDispatcher;
+*///?}
 import net.minecraft.client.renderer.state.level.CameraRenderState;
 import net.minecraft.client.renderer.state.level.LevelRenderState;
 import net.minecraft.util.profiling.ProfilerFiller;
@@ -55,25 +58,34 @@ public abstract class LevelRendererMixin {
     @Final
     private EntityRenderDispatcher entityRenderDispatcher;
 
+    //? if <26.2 {
     @Shadow
     public abstract void initOutline();
 
     @Shadow
     private @Nullable RenderTarget entityOutlineTarget;
+    //?}
 
+    //? if >=26.2 {
+    /*@Inject(method = "addMainPass", at = @At("HEAD"))
+    private void enableGlow(FrameGraphBuilder frame, FeatureRenderDispatcher.PreparedFrame featureFrame, GpuBufferSlice terrainFog, LevelRenderState levelRenderState, ProfilerFiller profiler, ChunkSectionsToRender chunkSectionsToRender, CallbackInfo ci) {
+        levelRenderState.shouldShowEntityOutlines = true;
+    }
+    *///?} else {
     @Inject(method = "addMainPass", at = @At("HEAD"))
     private void enableGlow(FrameGraphBuilder frame, Frustum frustum, Matrix4fc modelViewMatrix, GpuBufferSlice terrainFog, boolean renderOutline, LevelRenderState levelRenderState, DeltaTracker deltaTracker, ProfilerFiller profiler, ChunkSectionsToRender chunkSectionsToRender, CallbackInfo ci) {
         levelRenderState.haveGlowingEntities = true;
     }
 
     // 26.1.2 never builds the outline target on its own, so the glow had nothing to draw into
-    // until something else asked for one
+    // until something else asked for one. 26.2 removed the call and does it itself
     @Inject(method = "renderLevel", at = @At("HEAD"))
     private void initOutlineIfNeeded(GraphicsResourceAllocator resourceAllocator, DeltaTracker deltaTracker, boolean renderOutline, CameraRenderState cameraState, Matrix4fc modelViewMatrix, GpuBufferSlice terrainFog, Vector4f fogColor, boolean shouldRenderSky, ChunkSectionsToRender chunkSectionsToRender, CallbackInfo ci) {
         if (this.entityOutlineTarget == null) {
             this.initOutline();
         }
     }
+    //?}
 
     @Inject(
             method = "submitEntities",
@@ -209,7 +221,11 @@ public abstract class LevelRendererMixin {
                 entity.getZ() - cam.z
         );
 
-        levelRenderState.haveGlowingEntities = true;
+            //? if >=26.2 {
+            /*levelRenderState.shouldShowEntityOutlines = true;
+            *///?} else {
+            levelRenderState.haveGlowingEntities = true;
+            //?}
 
         renderer.submit(state, poseStack, submitNodeCollector, levelRenderState.cameraRenderState);
         poseStack.popPose();

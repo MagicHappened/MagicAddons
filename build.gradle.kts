@@ -20,7 +20,7 @@ java {
 }
 
 loom {
-    accessWidenerPath.set(file("src/main/resources/magicaddons.accesswidener"))
+    accessWidenerPath.set(rootProject.file("src/main/resources/magicaddons.accesswidener"))
     mods {
         register("magicaddons") {
             sourceSet(sourceSets.main.get())
@@ -62,11 +62,11 @@ dependencies {
     api("com.terraformersmc:modmenu:${project.property("modmenu_version")}")
 
     include("tech.thatgravyboat:skyblock-api:${project.property("skyblock_api_version")}") {
-        capabilities { requireCapability("tech.thatgravyboat:skyblock-api-26.1") }
+        capabilities { requireCapability("tech.thatgravyboat:${project.property("skyblock_api_capability")}") }
     }
 
     api("tech.thatgravyboat:skyblock-api:${project.property("skyblock_api_version")}") {
-        capabilities { requireCapability("tech.thatgravyboat:skyblock-api-26.1") }
+        capabilities { requireCapability("tech.thatgravyboat:${project.property("skyblock_api_capability")}") }
     }
 }
 

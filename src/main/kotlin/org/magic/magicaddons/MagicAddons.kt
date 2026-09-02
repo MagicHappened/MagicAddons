@@ -22,7 +22,11 @@ class MagicAddons : ClientModInitializer {
 
         // the crop preview draws plants into the gui the way the inventory draws the player, and
         // the pipeline only draws states it was handed a renderer for at startup
+        //? if >=26.2 {
+        /*PictureInPictureRendererRegistry.register { CropPreviewRenderer() }
+        *///?} else {
         PictureInPictureRendererRegistry.register { CropPreviewRenderer(it.bufferSource()) }
+        //?}
         MainCommand
         DataHandler.init()
 
