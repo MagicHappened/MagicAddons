@@ -14,6 +14,7 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockId
 import java.time.Duration
 import java.time.Instant
 import java.util.Optional
+import org.magic.magicaddons.util.compat.McCompat
 
 /**
  * Reads how much water the plants of a greenhouse hold.
@@ -43,9 +44,9 @@ object GreenhouseWatering {
      * The notches of a water bar. Blue is water the plant holds and red is water it owes, both
      * measured against the white notches that make up the rest of the bar.
      */
-    private val BAR_FILLED_COLOR: Int = (ChatFormatting.BLUE.color ?: 0x5555FF)
-    private val BAR_DEBT_COLOR: Int = (ChatFormatting.RED.color ?: 0xFF5555)
-    private val BAR_EMPTY_COLOR: Int = (ChatFormatting.WHITE.color ?: 0xFFFFFF)
+    private val BAR_FILLED_COLOR: Int = McCompat.chatColor(ChatFormatting.BLUE)
+    private val BAR_DEBT_COLOR: Int = McCompat.chatColor(ChatFormatting.RED)
+    private val BAR_EMPTY_COLOR: Int = McCompat.chatColor(ChatFormatting.WHITE)
 
     /**
      * How long after a watering the stands are worth looking for. The water bar is not a permanent

@@ -15,6 +15,7 @@ import org.magic.magicaddons.ui.widgets.config.SettingWidget
 import org.magic.magicaddons.ui.widgets.config.SettingWidgetFactory
 import org.magic.magicaddons.features.Feature
 import org.magic.magicaddons.util.ScreenUtil.drawMultilineBoxCentered
+import org.magic.magicaddons.util.compat.McCompat
 
 class FeatureEditScreen(
     val feature: Feature,
@@ -85,7 +86,7 @@ class FeatureEditScreen(
             this.extractPanorama(graphics, deltaTick)
         }
         this.extractMenuBackground(graphics)
-        this.minecraft.gui.extractDeferredSubtitles()
+        McCompat.extractDeferredSubtitles(this.minecraft)
     }
 
     override fun charTyped(characterEvent: CharacterEvent): Boolean {

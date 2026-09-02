@@ -6,6 +6,7 @@ import net.minecraft.network.chat.Style
 import net.minecraft.network.chat.TextColor
 import net.minecraft.world.entity.decoration.ArmorStand
 import java.util.Optional
+import org.magic.magicaddons.util.compat.McCompat
 
 /**
  * A value read off a stand standing near a plant.
@@ -41,7 +42,7 @@ class CropStandReader(
         private const val BAR_CHAR: Char = '|'
 
         /** An empty notch, whatever the filled ones happen to be coloured. */
-        private val EMPTY = ChatFormatting.WHITE.color ?: 0xFFFFFF
+        private val EMPTY = McCompat.chatColor(ChatFormatting.WHITE)
 
         /**
          * Reads any of skyblock's bars as the percentage of it that is filled.

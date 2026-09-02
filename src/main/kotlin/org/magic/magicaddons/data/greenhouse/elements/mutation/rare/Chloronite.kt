@@ -7,6 +7,7 @@ import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.*
 import org.magic.magicaddons.data.greenhouse.CropStates.wheatState
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
+import org.magic.magicaddons.util.compat.McCompat
 
 object Chloronite : CropDefinitionProvider {
     override val definition = CropDefinition(
@@ -110,7 +111,7 @@ object Chloronite : CropDefinitionProvider {
                 blocks = listOf(
                     CropBlockState(
                         offset = BlockPos(0, 1, 0),
-                        blockState = Blocks.GREEN_STAINED_GLASS.defaultBlockState(),
+                        blockState = McCompat.greenStainedGlass().defaultBlockState(),
                         required = false
                     )
                 ),
