@@ -4,10 +4,11 @@ import org.magic.magicaddons.Common
 import org.magic.magicaddons.ui.Focusable
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
-import net.minecraft.client.gui.components.events.GuiEventListener
 import net.minecraft.client.renderer.RenderPipelines
 import net.minecraft.network.chat.Component
 import net.minecraft.resources.Identifier
+import org.magic.magicaddons.util.ScreenUtil.drawWrappedText
+import org.magic.magicaddons.util.ScreenUtil.wrappedHeight
 
 open class BaseRowWidget<T>(
     val value: T
@@ -27,6 +28,11 @@ open class BaseRowWidget<T>(
     override var focusedState: Boolean = false
     open val textLeftPadding = 4
 
+    /** Room kept above and below the text when the row grows to fit it. */
+    open val textVerticalPadding = 4
+
+    protected val font get() = Minecraft.getInstance().font
+
     open fun getRightReservedWidth(): Int = 0
 
     open fun getLeftReservedWidth(): Int = 0
@@ -35,8 +41,18 @@ open class BaseRowWidget<T>(
         return BUTTON
     }
 
+    protected open fun label(): Component = Component.literal(value.toString())
+
+    /** How wide the text may be before it wraps. */
+    protected fun textWidth(): Int =
+        width - getLeftReservedWidth() - getRightReservedWidth() - textLeftPadding * 2
+
+    /** Grows the row to hold its wrapped text, never below [minHeight]. Call after setting the width. */
+    fun fitHeight(minHeight: Int) {
+        height = (wrappedHeight(font, label(), textWidth()) + textVerticalPadding * 2).coerceAtLeast(minHeight)
+    }
+
     open fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int) {
-        val font = Minecraft.getInstance().font
         val usableWidth = width - getRightReservedWidth() - getLeftReservedWidth()
         graphics.blitSprite(
             RenderPipelines.GUI_TEXTURED,
@@ -47,15 +63,16 @@ open class BaseRowWidget<T>(
             height
         )
 
-        val text = font.plainSubstrByWidth(value.toString(), usableWidth)
+        val text = label()
+        val textHeight = wrappedHeight(font, text, textWidth())
 
-        graphics.text(
+        graphics.drawWrappedText(
             font,
-            Component.literal(text),
+            text,
             x + textLeftPadding + getLeftReservedWidth(),
-            y + (height - font.lineHeight) / 2,
-            Common.UI.TEXT_COLOR,
-            false
+            y + (height - textHeight) / 2,
+            textWidth(),
+            Common.UI.TEXT_COLOR
         )
 
     }

@@ -12,6 +12,8 @@ import org.magic.magicaddons.data.ListEntry
 import org.magic.magicaddons.data.config.ToggleListSetting
 import org.magic.magicaddons.ui.widgets.ToggleRowWidget
 import org.magic.magicaddons.util.ScreenUtil.drawBorder
+import org.magic.magicaddons.util.ScreenUtil.drawWrappedText
+import org.magic.magicaddons.util.ScreenUtil.wrappedHeight
 
 /**
  * Every name in the catalogue as a row with a checkbox, a search box above narrowing them, and a
@@ -27,14 +29,18 @@ class ChoiceListSettingWidget(
 
     override val childrenWidgets: MutableList<SettingWidget<*>> = mutableListOf()
 
-    private val titleHeight = 20
+    /** The title strip is this tall for one line of text and grows when the name wraps. */
+    private val titleMinHeight = 20
+    private var titleHeight = titleMinHeight
+
+    /** A row is at least this tall; a wrapped name makes it taller. */
     private val rowHeight = 20
 
     /** Room between the widget border and the search box or a row. */
     private val inset = 2
 
     /** Rows overlap by one pixel so their borders meet as a single line. */
-    private val rowStep = rowHeight - 1
+    private val rowOverlap = 1
 
     /** How many rows show at once, however long the catalogue gets. */
     private val visibleRows = 5
@@ -48,6 +54,11 @@ class ChoiceListSettingWidget(
     private var scroll: Int = 0
 
     private var rowY: Int = 0
+
+    private val title: Component get() = Component.literal(listSetting.displayName)
+
+    /** The rows on screen, top to bottom, overlaps counted. */
+    private fun listHeight(): Int = rows.sumOf { it.height - rowOverlap } + rowOverlap
 
 
     private fun isOn(name: String): Boolean = listSetting.value.any { it.value == name }
@@ -75,6 +86,9 @@ class ChoiceListSettingWidget(
     }
 
     override fun layout() {
+        titleHeight = (wrappedHeight(font, title, width - textXPad * 2) + titleMinHeight - font.lineHeight)
+            .coerceAtLeast(titleMinHeight)
+
         searchBox.x = x + inset
         searchBox.y = y + borderSize + titleHeight
         searchBox.width = width - inset * 2
@@ -113,15 +127,15 @@ class ChoiceListSettingWidget(
             row.x = x + inset
             row.y = currentY
             row.width = width - inset * 2
-            row.height = rowHeight
+            row.fitHeight(rowHeight)
 
             rows.add(row)
-            currentY += rowStep
+            currentY += row.height - rowOverlap
         }
 
         // an empty window still shows the "nothing matches" line, so it keeps one row of height
-        val shown = rows.size.coerceAtLeast(1)
-        val newHeight = rowY + shown * rowStep + 1 + inset + borderSize - y
+        val shown = if (rows.isEmpty()) rowHeight else listHeight()
+        val newHeight = rowY + shown + inset + borderSize - y
 
         if (newHeight != height) {
             height = newHeight
@@ -130,17 +144,17 @@ class ChoiceListSettingWidget(
     }
 
     override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
-        val font = Minecraft.getInstance().font
-
         graphics.fill(x, y, x + width, y + height, backgroundColor)
 
-        graphics.text(
+        val titleTextHeight = wrappedHeight(font, title, width - textXPad * 2)
+
+        graphics.drawWrappedText(
             font,
-            Component.literal(listSetting.displayName),
+            title,
             x + textXPad,
-            y + borderSize + (titleHeight - font.lineHeight) / 2,
-            Common.UI.TEXT_COLOR,
-            false
+            y + borderSize + (titleHeight - titleTextHeight) / 2,
+            width - textXPad * 2,
+            Common.UI.TEXT_COLOR
         )
 
         searchBox.extractRenderState(graphics, mouseX, mouseY, delta)
@@ -166,7 +180,7 @@ class ChoiceListSettingWidget(
     private fun renderScrollBar(graphics: GuiGraphicsExtractor) {
         if (matching.size <= visibleRows) return
 
-        val listHeight = rows.size * rowStep + 1
+        val listHeight = listHeight()
         val barX = x + width - inset - 2
         val barHeight = (listHeight * visibleRows / matching.size).coerceAtLeast(6)
         val travel = listHeight - barHeight
@@ -177,7 +191,7 @@ class ChoiceListSettingWidget(
     }
 
     private fun overRows(mouseX: Double, mouseY: Double): Boolean =
-        mouseX.toInt() in x..(x + width) && mouseY.toInt() in rowY..(rowY + rows.size * rowStep)
+        mouseX.toInt() in x..(x + width) && mouseY.toInt() in rowY..(rowY + listHeight())
 
     override fun mouseScrolled(mouseX: Double, mouseY: Double, scrollX: Double, scrollY: Double): Boolean {
         if (!overRows(mouseX, mouseY) || matching.size <= visibleRows) return false

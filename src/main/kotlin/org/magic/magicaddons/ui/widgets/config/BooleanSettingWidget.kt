@@ -1,6 +1,5 @@
 package org.magic.magicaddons.ui.widgets.config
 
-import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.network.chat.Component
@@ -8,6 +7,8 @@ import org.magic.magicaddons.Common
 import org.magic.magicaddons.data.config.BooleanSetting
 import org.magic.magicaddons.ui.widgets.CheckboxWidget
 import org.magic.magicaddons.util.ScreenUtil.drawBorder
+import org.magic.magicaddons.util.ScreenUtil.drawWrappedText
+import org.magic.magicaddons.util.ScreenUtil.wrappedHeight
 
 class BooleanSettingWidget(
     private val setting: BooleanSetting
@@ -17,34 +18,38 @@ class BooleanSettingWidget(
     override val hasChildren: Boolean = true
     private val checkbox = CheckboxWidget(checked = setting.value)
 
+    private val name: Component get() = Component.literal(setting.displayName)
+
+    private fun textWidth(): Int = width - checkbox.size - textXPad * 2
+
     override fun layout() {
+        checkbox.size = baseHeight
+        height = (wrappedHeight(font, name, textWidth()) + textYPad * 2).coerceAtLeast(baseHeight)
         layoutCheckbox()
     }
 
     private fun layoutCheckbox() {
         checkbox.x = x
-        checkbox.y = y
-        checkbox.size = height
+        checkbox.y = y + (height - checkbox.size) / 2
         checkbox.checked = setting.value
     }
 
     override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
-        val font = Minecraft.getInstance().font
-
         graphics.fill(x, y, x + width, y + height, backgroundColor)
-
 
         checkbox.render(graphics)
 
         graphics.drawBorder(x, y, x + width, y + height, borderSize, borderColor)
 
-        graphics.text(
+        val textHeight = wrappedHeight(font, name, textWidth())
+
+        graphics.drawWrappedText(
             font,
-            Component.literal(setting.displayName),
+            name,
             x + checkbox.size + textXPad,
-            y + (height - font.lineHeight) / 2,
-            Common.UI.TEXT_COLOR,
-            false
+            y + (height - textHeight) / 2,
+            textWidth(),
+            Common.UI.TEXT_COLOR
         )
 
         renderDetail(graphics)

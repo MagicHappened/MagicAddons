@@ -1,6 +1,5 @@
 package org.magic.magicaddons.ui.screens
 
-import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.input.CharacterEvent
@@ -18,11 +17,12 @@ import org.magic.magicaddons.ui.widgets.config.SettingWidgetFactory
 import org.magic.magicaddons.features.Feature
 import org.magic.magicaddons.util.ScreenUtil.drawMultilineBoxCentered
 import org.magic.magicaddons.util.compat.McCompat
+import net.minecraft.client.Minecraft
 
 class FeatureEditScreen(
     val feature: Feature,
     val parent: Screen?
-) : Screen(Component.literal(feature.displayName)), HoverableContainer, OverlayContext {
+) : ScrollableScreen(Component.literal(feature.displayName)), HoverableContainer, OverlayContext {
 
     override var hoveredElement: GuiEventListener? = null
 
@@ -38,10 +38,26 @@ class FeatureEditScreen(
 
     val screenDisplayTitle: String = "Editing ${feature.displayName}"
 
-    val screenPaddingX: Int = 100
     val screenPaddingY: Int = 50
 
     val settingSpacingX: Int = 20 // setting childs CANNOT be larger than the base
+
+    /** A column is never squeezed below this, however many settings share the screen. */
+    private val columnMinWidth: Int = 120
+
+    private var columnsCenterX = 0
+    private var columnsRight = 0
+
+    override var contentWidth: Int = 0
+        private set
+
+    /** Measured every time: expanded children and open lists change how far the content reaches. */
+    override val contentHeight: Int
+        get() {
+            val settingsBottom = baseChildrenWidgets.maxOfOrNull { it.y + it.getTotalHeight() } ?: 0
+            val overlaysBottom = overlays.maxOfOrNull { it.overlayY + it.overlayHeight } ?: 0
+            return extentFor(maxOf(settingsBottom, overlaysBottom), height)
+        }
 
     override fun init() {
         super.init()
@@ -58,9 +74,13 @@ class FeatureEditScreen(
         val count = childrenSettings.size
         if (count == 0) return
 
-        val settingsTotalWidth = width - 2 * screenPaddingX
-        val totalSpacing = (count - 1) * settingSpacingX
-        val widgetWidth = (settingsTotalWidth - totalSpacing) / count
+        val widgetWidth = columnWidth(count, settingSpacingX, columnMinWidth)
+        val totalWidth = count * widgetWidth + (count - 1) * settingSpacingX
+        val startX = columnsStartX(totalWidth)
+
+        columnsCenterX = startX + totalWidth / 2
+        columnsRight = startX + totalWidth
+        contentWidth = extentFor(columnsRight, width)
 
         childrenSettings.forEachIndexed { index, setting ->
             val widget = SettingWidgetFactory.create(setting).apply {
@@ -70,26 +90,28 @@ class FeatureEditScreen(
             val xOffset = index * (widgetWidth + settingSpacingX)
 
             widget.width = widgetWidth
-            widget.x = screenPaddingX + xOffset
+            widget.x = startX + xOffset
             widget.y = screenPaddingY
             widget.baseWidget = true
             widget.layout()
             baseChildrenWidgets.add(widget)
-            addRenderableWidget(widget)
         }
+        clampScroll()
     }
 
-    override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, a: Float) {
-        super.extractRenderState(graphics, mouseX, mouseY, a)
-
+    override fun extractContent(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
         graphics.drawMultilineBoxCentered(
             screenDisplayTitle,
-            width / 2,
+            columnsCenterX,
             20
         )
 
-        overlays.asReversed().forEach { it.renderOverlay(graphics, mouseX, mouseY, a) }
+        baseChildrenWidgets.forEach { it.extractRenderState(graphics, mouseX, mouseY, delta) }
 
+        overlays.asReversed().forEach { it.renderOverlay(graphics, mouseX, mouseY, delta) }
+    }
+
+    override fun extractFixed(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
         if (overlays.isEmpty()) (hoveredElement as? SettingWidget<*>)?.renderTooltip(graphics, mouseX, mouseY)
     }
 
@@ -113,7 +135,7 @@ class FeatureEditScreen(
         return super.keyPressed(keyEvent)
     }
 
-    override fun mouseMoved(mouseX: Double, mouseY: Double) {
+    override fun contentMouseMoved(mouseX: Double, mouseY: Double) {
         overlays.forEach { it.mouseMoved(mouseX, mouseY) }
         baseChildrenWidgets.forEach {
             it.mouseMoved(mouseX, mouseY)
@@ -121,39 +143,25 @@ class FeatureEditScreen(
         hoveredElement = baseChildrenWidgets.firstNotNullOfOrNull { it.hoveredWidget() }
     }
 
+    /** Drag and release reach the widgets the same way clicks do, in content coordinates. */
+    override fun contentMouseDragged(event: MouseButtonEvent, dragX: Double, dragY: Double): Boolean =
+        baseChildrenWidgets.any { it.mouseDragged(event, dragX, dragY) }
 
-    /**
-     * Drag, release and the wheel, passed on the same way clicks are: mouseClicked never defers to
-     * the vanilla screen, so no widget would otherwise receive a drag.
-     */
-    override fun mouseDragged(
-        mouseButtonEvent: MouseButtonEvent,
-        dragX: Double,
-        dragY: Double
-    ): Boolean = baseChildrenWidgets.any { it.mouseDragged(mouseButtonEvent, dragX, dragY) } ||
-            super.mouseDragged(mouseButtonEvent, dragX, dragY)
+    override fun contentMouseReleased(event: MouseButtonEvent): Boolean =
+        baseChildrenWidgets.any { it.mouseReleased(event) }
 
-    override fun mouseReleased(mouseButtonEvent: MouseButtonEvent): Boolean =
-        baseChildrenWidgets.any { it.mouseReleased(mouseButtonEvent) } ||
-                super.mouseReleased(mouseButtonEvent)
+    override fun contentMouseScrolled(mouseX: Double, mouseY: Double, scrollX: Double, scrollY: Double): Boolean =
+        overlays.any { it.mouseScrolled(mouseX, mouseY, scrollX, scrollY) } ||
+                baseChildrenWidgets.any { it.mouseScrolled(mouseX, mouseY, scrollX, scrollY) }
 
-    override fun mouseScrolled(
-        mouseX: Double,
-        mouseY: Double,
-        scrollX: Double,
-        scrollY: Double
-    ): Boolean = overlays.any { it.mouseScrolled(mouseX, mouseY, scrollX, scrollY) } ||
-            baseChildrenWidgets.any { it.mouseScrolled(mouseX, mouseY, scrollX, scrollY) } ||
-            super.mouseScrolled(mouseX, mouseY, scrollX, scrollY)
-
-    override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
+    override fun contentMouseClicked(event: MouseButtonEvent, doubled: Boolean): Boolean {
         // the second event of a double click is the same click again: acting on it would undo
         // whatever the first one did, so it is swallowed here
         if (doubled) return true
 
         // an open list takes the click if it lands inside it; anywhere else closes every list and
         // the click then goes on to the settings underneath
-        if (overlays.toList().any { it.mouseClicked(mouseButtonEvent, doubled) }) return true
+        if (overlays.toList().any { it.mouseClicked(event, doubled) }) return true
         if (overlays.isNotEmpty()) closeOverlays()
 
         var handled = false
@@ -161,7 +169,7 @@ class FeatureEditScreen(
         // every widget still sees the click so the previously focused one can let the keyboard go,
         // the last one that took it keeps the focus
         baseChildrenWidgets.forEach {
-            if (it.mouseClicked(mouseButtonEvent, doubled)) {
+            if (it.mouseClicked(event, doubled)) {
                 setFocused(it)
                 handled = true
             }

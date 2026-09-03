@@ -14,6 +14,8 @@ import org.magic.magicaddons.ui.OverlayContext
 import org.magic.magicaddons.ui.OverlayRenderable
 import org.magic.magicaddons.ui.widgets.RemovableRowWidget
 import org.magic.magicaddons.util.ScreenUtil.drawBorder
+import org.magic.magicaddons.util.ScreenUtil.drawWrappedText
+import org.magic.magicaddons.util.ScreenUtil.wrappedHeight
 import org.magic.magicaddons.util.compat.McCompat
 
 /**
@@ -34,11 +36,18 @@ class TextSettingWidget(
 
     val textFieldPadding: Int = 1
 
+    /** The box is this tall; the label above it wraps and the widget grows to hold both. */
+    private val boxHeight: Int = 17
+
+    private val label: Component get() = Component.literal("${setting.displayName}: ")
+
+    private fun labelWidth(): Int = width - (textXPad + borderSize) * 2
+
     private val textWidget by lazy {
         EditBox(
             Minecraft.getInstance().font,
             width - (borderSize + textFieldPadding) * 2,
-            20,
+            boxHeight,
             Component.literal("")
         )
     }
@@ -48,11 +57,14 @@ class TextSettingWidget(
     private fun overlayContext(): OverlayContext? = McCompat.currentScreen() as? OverlayContext
 
     override fun layout() {
-        val font = Minecraft.getInstance().font
+        val labelHeight = wrappedHeight(font, label, labelWidth())
+
+        height = (borderSize + textFieldPadding) * 2 + textXPad * 2 + labelHeight + boxHeight
 
         textWidget.x = x + borderSize + textFieldPadding
-        textWidget.y = y + borderSize + textFieldPadding + font.lineHeight + textXPad * 2
-        textWidget.height = height - (borderSize + textFieldPadding + textXPad) * 2 - font.lineHeight
+        textWidget.y = y + borderSize + textFieldPadding + labelHeight + textXPad * 2
+        textWidget.width = width - (borderSize + textFieldPadding) * 2
+        textWidget.height = boxHeight
         textWidget.setMaxLength(256)
 
         textWidget.value = setting.value
@@ -96,13 +108,13 @@ class TextSettingWidget(
 
         textWidget.extractRenderState(graphics, mouseX, mouseY, delta)
 
-        graphics.text(
-            Minecraft.getInstance().font,
-            Component.literal("${setting.displayName}: "),
+        graphics.drawWrappedText(
+            font,
+            label,
             x + textXPad + borderSize,
             y + textXPad + borderSize,
-            0xFFCCCCCC.toInt(),
-            false
+            labelWidth(),
+            0xFFCCCCCC.toInt()
         )
 
         renderDetail(graphics)
@@ -173,7 +185,7 @@ class TextSettingWidget(
                 row.x = textWidget.x
                 row.y = currentY
                 row.width = textWidget.width
-                row.height = textWidget.height
+                row.fitHeight(textWidget.height)
 
                 currentY += row.height
                 rows.add(row)

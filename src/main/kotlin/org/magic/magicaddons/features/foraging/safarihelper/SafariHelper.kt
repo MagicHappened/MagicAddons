@@ -18,6 +18,7 @@ import org.magic.magicaddons.events.world.OnEntityRemoved
 import org.magic.magicaddons.events.world.OnEntityUpdated
 import org.magic.magicaddons.events.world.OnWorldTickEvent
 import org.magic.magicaddons.features.HighlightFeature
+import org.magic.magicaddons.ui.hud.HudPosition
 import org.magic.magicaddons.util.ChatUtils
 import tech.thatgravyboat.skyblockapi.api.SkyBlockAPI
 import tech.thatgravyboat.skyblockapi.api.events.base.Subscription
@@ -34,8 +35,7 @@ object SafariHelper : HighlightFeature() {
     }
 
     // TODO replace the fixed hud position with a hud position editor
-    private const val HUD_X: Int = 20
-    private const val HUD_Y: Int = 20
+    private val hudPosition = HudPosition(offsetX = 20, offsetY = 20, xFraction = 0.02f, yFraction = 0.04f)
 
     /** Fallback for hud text that carries no style of its own. */
     private const val HUD_TEXT_COLOR: Int = 0xFFFFFFFF.toInt()
@@ -333,9 +333,9 @@ object SafariHelper : HighlightFeature() {
         // only while free walking around the island
         if (McCompat.hudHidden() || McCompat.currentScreen() != null) return
 
-        var y = HUD_Y
+        var y = hudPosition.y()
         hudLines(zone).forEach { line ->
-            event.graphics.text(client.font, line, HUD_X, y, HUD_TEXT_COLOR, true)
+            event.graphics.text(client.font, line, hudPosition.x(), y, HUD_TEXT_COLOR, true)
             y += client.font.lineHeight + 1
         }
     }

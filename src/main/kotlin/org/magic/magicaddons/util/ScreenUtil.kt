@@ -3,6 +3,9 @@ package org.magic.magicaddons.util
 import org.magic.magicaddons.Common
 import com.mojang.blaze3d.pipeline.RenderPipeline
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
+import net.minecraft.client.Minecraft
+import net.minecraft.client.gui.Font
+import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.render.TextureSetup
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.gui.screens.inventory.tooltip.ClientTooltipComponent
@@ -14,8 +17,6 @@ import net.minecraft.resources.Identifier
 import net.minecraft.util.RandomSource
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.block.state.BlockState
-import net.minecraft.client.Minecraft
-import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.renderer.block.dispatch.BlockStateModelPart
 import net.minecraft.client.renderer.item.ItemStackRenderState
 import net.minecraft.client.renderer.state.gui.ColoredRectangleRenderState
@@ -184,15 +185,37 @@ object ScreenUtil {
         )
     }
 
-    /** A tooltip of one or more lines, split on newlines, colour codes honoured. */
+    /** How tall [text] is once wrapped to [maxWidth]. */
+    fun wrappedHeight(font: Font, text: Component, maxWidth: Int): Int =
+        font.wordWrapHeight(text, maxWidth.coerceAtLeast(font.width("W")))
+
+    /** Draws [text] wrapped to [maxWidth], one line under the other. Returns the height used. */
+    fun GuiGraphicsExtractor.drawWrappedText(
+        font: Font,
+        text: Component,
+        x: Int,
+        y: Int,
+        maxWidth: Int,
+        color: Int,
+        shadow: Boolean = false
+    ): Int {
+        var currentY = y
+        font.split(text, maxWidth.coerceAtLeast(font.width("W"))).forEach { line ->
+            text(font, line, x, currentY, color, shadow)
+            currentY += font.lineHeight
+        }
+        return currentY - y
+    }
+
+    /** Tooltips wrap at this width, the same as vanilla's own widget tooltips. */
+    private const val TOOLTIP_MAX_WIDTH = 170
+
+    /** A tooltip split on newlines and wrapped at vanilla's width, colour codes honoured. */
     fun GuiGraphicsExtractor.drawSimpleTooltip(text: String, mouseX: Int, mouseY: Int) {
         val client = Minecraft.getInstance()
-
-        val lines = text.split("\n").map {
-            ClientTooltipComponent.create(
-                Component.literal(it).visualOrderText
-            )
-        }
+        val lines = text.split('\n').flatMap { line ->
+            client.font.split(Component.literal(line), TOOLTIP_MAX_WIDTH)
+        }.map { ClientTooltipComponent.create(it) }
 
         this.tooltip(
             client.font,
