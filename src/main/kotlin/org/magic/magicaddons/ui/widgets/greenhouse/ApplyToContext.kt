@@ -30,7 +30,7 @@ class ApplyToContext(
         get() =
             font.lineHeight +
                     yPadding * 2 +
-                    (valueWidgets.size * rowHeight)
+                    valueWidgets.sumOf { it.height }
     override val rowStartY: Int = overlayY + yPadding *2 + font.lineHeight
 
 

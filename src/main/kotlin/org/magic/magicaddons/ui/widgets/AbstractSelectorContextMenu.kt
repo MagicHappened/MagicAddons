@@ -28,20 +28,20 @@ abstract class AbstractSelectorContextMenu<T>(
 
     protected open val rowHeight = 20
     protected open val paddingLeft: Int = Common.UI.TEXT_X_PAD
-    protected open val paddingRight: Int = 2
+    protected open val paddingRight: Int = Common.UI.TEXT_X_PAD
 
     protected open val rowStartY = overlayY
 
 
     open fun init(){
         buildWidgets()
-        valueWidgets.forEachIndexed { index, widget ->
-
+        var currentY = rowStartY
+        valueWidgets.forEach { widget ->
             widget.x = overlayX
-            widget.y = rowStartY + index * rowHeight
-
+            widget.y = currentY
             widget.width = overlayWidth
-            widget.height = rowHeight
+            widget.fitHeight(rowHeight)
+            currentY += widget.height
         }
     }
 

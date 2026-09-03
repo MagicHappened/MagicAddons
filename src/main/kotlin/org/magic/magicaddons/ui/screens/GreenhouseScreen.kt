@@ -13,7 +13,6 @@ import net.minecraft.client.renderer.RenderPipelines
 import net.minecraft.network.chat.Component
 import net.minecraft.resources.Identifier
 import org.magic.magicaddons.Common
-import org.magic.magicaddons.commands.features.farming.GreenhouseScreenCommand
 import org.magic.magicaddons.data.greenhouse.GreenhouseGrid
 import org.magic.magicaddons.data.greenhouse.GreenhouseLayout
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData
@@ -601,16 +600,6 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
             if (it.keyPressed(keyEvent)) return true
         }
         return super.keyPressed(keyEvent)
-    }
-
-    override fun removed() {
-        super.removed()
-
-        // only the command changes the scale, opening the screen any other way leaves it alone
-        GreenhouseScreenCommand.tempGuiScale?.let {
-            Minecraft.getInstance().options.guiScale().set(it)
-            GreenhouseScreenCommand.tempGuiScale = null
-        }
     }
 
     fun openLayoutWidgetContext(layout: GreenhouseLayout?, buttonEvent: MouseButtonEvent) {
