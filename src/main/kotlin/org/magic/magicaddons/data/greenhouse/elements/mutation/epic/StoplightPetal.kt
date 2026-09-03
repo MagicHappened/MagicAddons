@@ -18,7 +18,10 @@ object StoplightPetal : CropDefinitionProvider {
         skyblockId = SkyBlockItemId.item("STOPLIGHT_PETAL"),
         /** Each skull's pose, found constant across every stage it appears in. */
         standPoses = mapOf(
-            "57f6c922e742b5c571b1cf091d6d4bc06360f4f03443d79c5174097b0b373d7e" to StandPose.Fixed(Rotations(90.0f, 0.0f, 0.0f))
+            "57f6c922e742b5c571b1cf091d6d4bc06360f4f03443d79c5174097b0b373d7e" to StandPose.Fixed(Rotations(90.0f, 0.0f, 0.0f)),
+            "4c2b797e7172a05169e313739908515864d6b372f9a5ecc772f81d9c4e402a54" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f)),
+            "d6653a481cc301bcf694a70bfb5969485dc42f1e6803288d24d31b7261b61811" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f)),
+            "f15bd3a726eee1f2f8ffd3a92ae95c44a2f37f6b0345a795b44e0360564c67fe" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f))
         ),
         stageDefs = listOf(
             CropStage(
@@ -62,6 +65,7 @@ object StoplightPetal : CropDefinitionProvider {
                     CropArmorStand(
                         offset = Vec3(-0.21875, 0.875, 0.0),
                         hashString = "f15bd3a726eee1f2f8ffd3a92ae95c44a2f37f6b0345a795b44e0360564c67fe",
+                        isSmall = false
                     ),
                     CropArmorStand(
                         offset = Vec3(0.0, -0.4375, 0.0),
@@ -81,6 +85,7 @@ object StoplightPetal : CropDefinitionProvider {
                     CropArmorStand(
                         offset = Vec3(0.0, 0.75, 0.0),
                         hashString = "f15bd3a726eee1f2f8ffd3a92ae95c44a2f37f6b0345a795b44e0360564c67fe",
+                        isSmall = false
                     ),
                     CropArmorStand(
                         offset = Vec3(0.0, -0.4375, 0.0),
@@ -104,7 +109,8 @@ object StoplightPetal : CropDefinitionProvider {
                     ),
                     CropArmorStand(
                         offset = Vec3(0.0, 0.84375, 0.0),
-                        hashString = "f15bd3a726eee1f2f8ffd3a92ae95c44a2f37f6b0345a795b44e0360564c67fe"
+                        hashString = "f15bd3a726eee1f2f8ffd3a92ae95c44a2f37f6b0345a795b44e0360564c67fe",
+                        isSmall = false
                     )
                 ),
                 5..5
@@ -124,7 +130,8 @@ object StoplightPetal : CropDefinitionProvider {
                     ),
                     CropArmorStand(
                         offset = Vec3(0.0, 0.15625, 0.0),
-                        hashString = "f15bd3a726eee1f2f8ffd3a92ae95c44a2f37f6b0345a795b44e0360564c67fe"
+                        hashString = "f15bd3a726eee1f2f8ffd3a92ae95c44a2f37f6b0345a795b44e0360564c67fe",
+                        isSmall = false
                     )
                 ),
                 6..6
@@ -145,6 +152,7 @@ object StoplightPetal : CropDefinitionProvider {
                     CropArmorStand(
                         offset = Vec3(0.0, 0.15625, 0.0),
                         hashString = "f15bd3a726eee1f2f8ffd3a92ae95c44a2f37f6b0345a795b44e0360564c67fe",
+                        isSmall = false
                     ),
                     CropArmorStand(
                         offset = Vec3(0.0, -0.4375, 0.0),
@@ -172,10 +180,12 @@ object StoplightPetal : CropDefinitionProvider {
                     CropArmorStand(
                         offset = Vec3(0.0, 1.21875, 0.0),
                         hashString = "d6653a481cc301bcf694a70bfb5969485dc42f1e6803288d24d31b7261b61811",
+                        isSmall = false
                     ),
                     CropArmorStand(
                         offset = Vec3(0.0, 0.15625, 0.0),
                         hashString = "f15bd3a726eee1f2f8ffd3a92ae95c44a2f37f6b0345a795b44e0360564c67fe",
+                        isSmall = false
                     )
                 ),
                 8..8,
@@ -191,11 +201,13 @@ object StoplightPetal : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, 0.15625, 0.0),
-                        hashString = "f15bd3a726eee1f2f8ffd3a92ae95c44a2f37f6b0345a795b44e0360564c67fe"
+                        hashString = "f15bd3a726eee1f2f8ffd3a92ae95c44a2f37f6b0345a795b44e0360564c67fe",
+                        isSmall = false
                     ),
                     CropArmorStand(
                         offset = Vec3(0.0, 0.71875, 0.0),
-                        hashString = "d6653a481cc301bcf694a70bfb5969485dc42f1e6803288d24d31b7261b61811"
+                        hashString = "d6653a481cc301bcf694a70bfb5969485dc42f1e6803288d24d31b7261b61811",
+                        isSmall = false
                     ),
                     CropArmorStand(
                         offset = Vec3(0.0, -0.4375, 0.0),
@@ -216,15 +228,18 @@ object StoplightPetal : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.4375, 0.0),
-                        hashString = "4c2b797e7172a05169e313739908515864d6b372f9a5ecc772f81d9c4e402a54"
+                        hashString = "4c2b797e7172a05169e313739908515864d6b372f9a5ecc772f81d9c4e402a54",
+                        isSmall = false
                     ),
                     CropArmorStand(
                         offset = Vec3(0.0, 0.71875, 0.0),
-                        hashString = "d6653a481cc301bcf694a70bfb5969485dc42f1e6803288d24d31b7261b61811"
+                        hashString = "d6653a481cc301bcf694a70bfb5969485dc42f1e6803288d24d31b7261b61811",
+                        isSmall = false
                     ),
                     CropArmorStand(
                         offset = Vec3(0.0, 0.15625, 0.0),
-                        hashString = "f15bd3a726eee1f2f8ffd3a92ae95c44a2f37f6b0345a795b44e0360564c67fe"
+                        hashString = "f15bd3a726eee1f2f8ffd3a92ae95c44a2f37f6b0345a795b44e0360564c67fe",
+                        isSmall = false
                     ),
                     CropArmorStand(
                         offset = Vec3(0.03125, 2.125, -0.21875),

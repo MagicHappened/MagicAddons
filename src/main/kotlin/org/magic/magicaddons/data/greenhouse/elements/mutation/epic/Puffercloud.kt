@@ -17,7 +17,10 @@ object Puffercloud : CropDefinitionProvider {
         skyblockId = SkyBlockItemId.item("PUFFERCLOUD"),
         /** Each skull's pose, found constant across every stage it appears in. */
         standPoses = mapOf(
-            "fb1e911b28a5bc539bba0e159256c415c6f74833cbee9c32fbcac4ca7b98a77b" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f))
+            "fb1e911b28a5bc539bba0e159256c415c6f74833cbee9c32fbcac4ca7b98a77b" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f)),
+            "a9ceff4063b495dbe5c42885f5f81b022d5b37322255b71e30963c489f936985" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f)),
+            "4c5d2d992b12548a4112cd533627ef76e193fec3f4452d367d654a4bb60f0a04" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f)),
+            "9a488340c3d9131b6e97bae6279aac852037367cb93a6b50c60a7d328aec173e" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f))
         ),
         stageDefs = listOf(
             CropStage(
@@ -32,6 +35,7 @@ object Puffercloud : CropDefinitionProvider {
                         CropArmorStand(
                             offset = Vec3(0.0, -0.75, 0.0),
                             hashString = "a9ceff4063b495dbe5c42885f5f81b022d5b37322255b71e30963c489f936985",
+                            isSmall = false
                         )
                     )
                 ,
@@ -48,6 +52,7 @@ object Puffercloud : CropDefinitionProvider {
                     CropArmorStand(
                         offset = Vec3(0.0, -0.75, 0.0),
                         hashString = "a9ceff4063b495dbe5c42885f5f81b022d5b37322255b71e30963c489f936985",
+                        isSmall = false
                     )
                 ),
                 2..2
@@ -63,6 +68,7 @@ object Puffercloud : CropDefinitionProvider {
                     CropArmorStand(
                         offset = Vec3(0.0, -0.75, 0.0),
                         hashString = "a9ceff4063b495dbe5c42885f5f81b022d5b37322255b71e30963c489f936985",
+                        isSmall = false
                     )
                 ),
                 3..3
@@ -77,7 +83,8 @@ object Puffercloud : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.71875, 0.0),
-                        hashString = "4c5d2d992b12548a4112cd533627ef76e193fec3f4452d367d654a4bb60f0a04"
+                        hashString = "4c5d2d992b12548a4112cd533627ef76e193fec3f4452d367d654a4bb60f0a04",
+                        isSmall = false
                     )
                 ),
                 4..4
@@ -92,7 +99,8 @@ object Puffercloud : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.71875, 0.0),
-                        hashString = "4c5d2d992b12548a4112cd533627ef76e193fec3f4452d367d654a4bb60f0a04"
+                        hashString = "4c5d2d992b12548a4112cd533627ef76e193fec3f4452d367d654a4bb60f0a04",
+                        isSmall = false
                     )
                 ),
                 5..5
@@ -108,6 +116,7 @@ object Puffercloud : CropDefinitionProvider {
                     CropArmorStand(
                         offset = Vec3(0.0, -0.6875, 0.0),
                         hashString = "4c5d2d992b12548a4112cd533627ef76e193fec3f4452d367d654a4bb60f0a04",
+                        isSmall = false
                     )
                 ),
                 6..6
@@ -122,7 +131,8 @@ object Puffercloud : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.6875, 0.0),
-                        hashString = "4c5d2d992b12548a4112cd533627ef76e193fec3f4452d367d654a4bb60f0a04"
+                        hashString = "4c5d2d992b12548a4112cd533627ef76e193fec3f4452d367d654a4bb60f0a04",
+                        isSmall = false
                     )
                 ),
                 7..7
@@ -217,6 +227,7 @@ object Puffercloud : CropDefinitionProvider {
                     CropArmorStand(
                         offset = Vec3(0.0, -0.4375, 0.0),
                         hashString = "9a488340c3d9131b6e97bae6279aac852037367cb93a6b50c60a7d328aec173e",
+                        isSmall = false
                     )
                 ),
                 14..14

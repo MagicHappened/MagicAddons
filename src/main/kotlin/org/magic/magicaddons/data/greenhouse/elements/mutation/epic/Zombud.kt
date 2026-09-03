@@ -6,6 +6,7 @@ import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.*
 import org.magic.magicaddons.data.greenhouse.CropStates.netherwartState
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
+import net.minecraft.core.Rotations
 
 object Zombud : CropDefinitionProvider {
     override val definition = CropDefinition(
@@ -15,6 +16,11 @@ object Zombud : CropDefinitionProvider {
             CropEffect.BonusDrops
         ),
         skyblockId = SkyBlockItemId.item("ZOMBUD"),
+        /** Each skull's pose, found constant across every stage it appears in. */
+        standPoses = mapOf(
+            "de090b85462e85f7f44be07e55f1486602c141bb6fd0c277d5bb7c68deda265d" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f)),
+            "b2c4994b7a1c45231b623b8245c117382b267c8856c57cffa2d808c241027a51" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f))
+        ),
         stageDefs = listOf(
             CropStage(
                 blocks = listOf(
@@ -26,7 +32,8 @@ object Zombud : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, 0.21875, 0.0),
-                        hashString = "de090b85462e85f7f44be07e55f1486602c141bb6fd0c277d5bb7c68deda265d"
+                        hashString = "de090b85462e85f7f44be07e55f1486602c141bb6fd0c277d5bb7c68deda265d",
+                        isSmall = false
                     )
                 ),
                 1..1
@@ -41,7 +48,8 @@ object Zombud : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.625, 0.0),
-                        hashString = "de090b85462e85f7f44be07e55f1486602c141bb6fd0c277d5bb7c68deda265d"
+                        hashString = "de090b85462e85f7f44be07e55f1486602c141bb6fd0c277d5bb7c68deda265d",
+                        isSmall = false
                     )
                 ),
                 2..2
@@ -56,7 +64,8 @@ object Zombud : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.4375, 0.0),
-                        hashString = "de090b85462e85f7f44be07e55f1486602c141bb6fd0c277d5bb7c68deda265d"
+                        hashString = "de090b85462e85f7f44be07e55f1486602c141bb6fd0c277d5bb7c68deda265d",
+                        isSmall = false
                     )
                 ),
                 3..3
@@ -154,6 +163,7 @@ object Zombud : CropDefinitionProvider {
                         CropArmorStand(
                             offset = Vec3(0.0, 0.40625, 0.0),
                             hashString = "de090b85462e85f7f44be07e55f1486602c141bb6fd0c277d5bb7c68deda265d",
+                            isSmall = false
                         ),
                         CropArmorStand(
                             offset = Vec3(0.0, -0.09375, 0.0),
@@ -179,6 +189,7 @@ object Zombud : CropDefinitionProvider {
                         CropArmorStand(
                             offset = Vec3(0.0, 0.40625, 0.0),
                             hashString = "de090b85462e85f7f44be07e55f1486602c141bb6fd0c277d5bb7c68deda265d",
+                            isSmall = false
                         )
                     )
                 ,
@@ -196,6 +207,7 @@ object Zombud : CropDefinitionProvider {
                         CropArmorStand(
                             offset = Vec3(0.0, 0.40625, 0.0),
                             hashString = "de090b85462e85f7f44be07e55f1486602c141bb6fd0c277d5bb7c68deda265d",
+                            isSmall = false
                         ),
                         CropArmorStand(
                             offset = Vec3(0.0, 0.125, 0.0),
@@ -215,11 +227,13 @@ object Zombud : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.375, 0.0),
-                        hashString = "de090b85462e85f7f44be07e55f1486602c141bb6fd0c277d5bb7c68deda265d"
+                        hashString = "de090b85462e85f7f44be07e55f1486602c141bb6fd0c277d5bb7c68deda265d",
+                        isSmall = false
                     ),
                     CropArmorStand(
                         offset = Vec3(0.0, 0.21875, 0.0),
-                        hashString = "b2c4994b7a1c45231b623b8245c117382b267c8856c57cffa2d808c241027a51"
+                        hashString = "b2c4994b7a1c45231b623b8245c117382b267c8856c57cffa2d808c241027a51",
+                        isSmall = false
                     )
                 ),
                 16..16

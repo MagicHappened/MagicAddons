@@ -11,6 +11,8 @@ import org.magic.magicaddons.data.greenhouse.CropStage
 import org.magic.magicaddons.data.greenhouse.CropStates.wheatState
 import org.magic.magicaddons.data.greenhouse.DEFAULT_DECAY_TIME_MS
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
+import net.minecraft.core.Rotations
+import org.magic.magicaddons.data.greenhouse.StandPose
 
 object Lonelily : CropDefinitionProvider {
 
@@ -20,6 +22,10 @@ object Lonelily : CropDefinitionProvider {
             CropEffect.BonusDrops
         ),
         skyblockId = SkyBlockItemId.item("LONELILY"),
+        /** Each skull's pose, found constant across every stage it appears in. */
+        standPoses = mapOf(
+            "f4672d5fb128c63197da27f40d7143818d318665b3ab2335121e9ae8f9ecc2e3" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f))
+        ),
         stageDefs = listOf(
             CropStage(
                 blocks = listOf(

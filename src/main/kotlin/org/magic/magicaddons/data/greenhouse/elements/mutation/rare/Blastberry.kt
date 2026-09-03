@@ -5,6 +5,7 @@ import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.*
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
+import net.minecraft.core.Rotations
 
 object Blastberry : CropDefinitionProvider {
     override val definition = CropDefinition(
@@ -15,6 +16,10 @@ object Blastberry : CropDefinitionProvider {
             CropEffect.XpLoss
         ),
         skyblockId = SkyBlockItemId.item("BLASTBERRY"),
+        /** Each skull's pose, found constant across every stage it appears in. */
+        standPoses = mapOf(
+            "bacae0e87ffeadb750260c2e6531004d69d14473376cb22577fafe70569349f3" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f))
+        ),
         stageDefs = listOf(
             CropStage(
                 blocks = listOf(
@@ -26,7 +31,8 @@ object Blastberry : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.53125, 0.0),
-                        hashString = "bacae0e87ffeadb750260c2e6531004d69d14473376cb22577fafe70569349f3"
+                        hashString = "bacae0e87ffeadb750260c2e6531004d69d14473376cb22577fafe70569349f3",
+                        isSmall = false
                     )
                 ),
                 6..6
