@@ -50,11 +50,18 @@ sealed class SettingNode<T>(
 
 }
 
+/**
+ * A list picked from a fixed set of names: the widget offers whatever [choices] returns that is not
+ * already in the list, and each entry keeps its own on/off switch.
+ */
 class ToggleListSetting(
     key: String,
     displayName: String,
     tooltip: String,
     override var value: MutableList<ListEntry>,
+    val choices: () -> List<String>,
+    /** What the closed selector says. It searches the whole catalogue, listed and not. */
+    val searchLabel: String = "Search",
     detail: (() -> SettingDetail?)? = null
 ) : SettingNode<MutableList<ListEntry>>(key, displayName, tooltip, value, detail) {
 
