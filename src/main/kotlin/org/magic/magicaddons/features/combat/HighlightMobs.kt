@@ -11,9 +11,7 @@ import net.minecraft.world.entity.player.Player
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
 import org.magic.magicaddons.data.EntityInfo
-import org.magic.magicaddons.data.ListEntry
 import org.magic.magicaddons.data.config.BooleanSetting
-import org.magic.magicaddons.data.config.EnumSetting
 import org.magic.magicaddons.data.config.TextSetting
 import org.magic.magicaddons.data.config.ToggleListSetting
 import org.magic.magicaddons.events.ConfigChangedEvent
@@ -41,34 +39,36 @@ object HighlightMobs : HighlightFeature() {
         SkyBlockAPI.eventBus.register(this)
     }
 
-    enum class EntityTypeDetection {
-        Player,
-        Other
-    }
-
     override val id: String = "HighlightMobs"
     override val displayName: String = "Mob Highlight"
-    override val tooltipMessage: String = "Highlights specific mobs of your choosing"
+    override val tooltipMessage: String = "§fHighlights mobs of your choosing.\n" +
+            "§fPresets, single mobs, a name, or advanced filters."
     override val category: String = "combat"
 
-    val entityTypePlayerSkinHashList = ToggleListSetting(
+    val entityTypePlayerSkinHash = TextSetting(
         key = "EntityTypePlayerSkinHash",
         displayName = "Skin Hash Value",
-        tooltip = "The skin hash value to detect (get with mob hit debug)",
-        value = mutableListOf(
-            ListEntry(name = "Littlefoot", "f2b33640bfb71557e0e1d852287263ceafc9bec205301acf046b7c29fe8cb37b", enabled = true)
-        )
+        tooltip = "§fThe skin hash to look for.\n§eGet it from the mob hit debug.",
+        value = "f2b33640bfb71557e0e1d852287263ceafc9bec205301acf046b7c29fe8cb37b"
     )
 
     val entityTypeMobPathValue = TextSetting(
         key = "EntityTypeMobPathValue",
         displayName = "Mob Path",
-        tooltip = "The mob path value to detect (get with mob hit debug)",
+        tooltip = "§fThe entity type path to look for, such as entity.minecraft.pig.\n" +
+                "§eGet it from the mob hit debug.",
         value = "entity.minecraft.pig"
     )
 
+    val singleMobsList = ToggleListSetting(
+        key = "SingleMobs",
+        displayName = "Mobs",
+        tooltip = "§fTick the mobs to highlight.\n§fType to search the list.",
+        value = mutableListOf(),
+        choices = { SingleMobs.names }
+    )
+
     override val baseSetting: BooleanSetting = BooleanSetting(
-        key = "enabled",
         displayName = displayName,
         tooltip = tooltipMessage,
         value = false,
@@ -76,80 +76,101 @@ object HighlightMobs : HighlightFeature() {
             BooleanSetting(
                 key = "PresetsEnabled",
                 displayName = "Mob Presets",
-                tooltip = "Preselected Mobs to add to the highlight list.",
+                tooltip = "§fPreselect highlight options for different areas of the game.",
                 value = false,
                 children = listOf(
                     BooleanSetting(
                         key = "PresetsForagingTreasure",
                         displayName = "Foraging Treasure",
-                        tooltip = "Preset to highlight the grass containing treasure (or shards) inside foraging islands",
+                        tooltip = "§fHighlights the grass hiding treasure or shards\n§fon the foraging islands.",
                         value = false
                     ),
                     BooleanSetting(
                         key = "PresetsShaftCorpses",
                         displayName = "Shaft Corpses",
-                        tooltip = "Preset to highlight the lapis, umber and tungsten corpses inside " +
-                                "mineshafts, each outlined in its own colour",
+                        // each corpse named in the colour it is outlined in, as near as chat colours get
+                        tooltip = "§fHighlights the §9lapis§f, §6umber§f and §btungsten§f corpses in mineshafts.\n" +
+                                "§fEach is outlined in its own colour.",
                         value = false
                     )
                 )
             ),
             BooleanSetting(
-                key = "EntityTypeEnabled",
-                displayName = "Entity Type",
-                tooltip = "If to use an entity type based filtering for mob highlighting",
+                key = "SingleMobsEnabled",
+                displayName = "Single Mobs",
+                tooltip = "§fHighlight specific mobs.\n" +
+                        "§bIf a mob you want isn't added here, suggest it to a dev for implementation.",
                 value = false,
-                children = listOf(
-                    BooleanSetting(
-                        key = "EntityTypePlayerEnabled",
-                        displayName = "Player Entity",
-                        tooltip = "Enables searching based on player skin hashes.",
-                        value = false,
-                        children = listOf(
-                            entityTypePlayerSkinHashList
-                        )
-                    ),
-                    BooleanSetting(
-                        key = "EntityTypeOtherEnabled",
-                        displayName = "Other Entities",
-                        tooltip = "Enables searching based on entity paths",
-                        value = false,
-                        children = listOf(
-                            entityTypeMobPathValue
-                        )
-                    )
-                )
-            ),
-            BooleanSetting(
-                key = "EntityEquipmentDetectionEnabled",
-                displayName = "Entity Helmet",
-                tooltip = "Highlight based on the entity helmet filtering",
-                value = false,
-                children = listOf(
-                    TextSetting(
-                        key = "EntityEquipmentHelmetSkullHash",
-                        displayName = "Entity Helmet",
-                        tooltip = "The skull hash to look for on the entity (get with mob hit debug)",
-                        value = "a8abb471db0ab78703011979dc8b40798a941f3a4dec3ec61cbeec2af8cffe8" //default rat helmet skin
-                    )
-                )
+                children = listOf(singleMobsList)
             ),
             BooleanSetting(
                 key = "MobInfoEnabled",
-                displayName = "Mob Info",
-                tooltip = "If to use a mob info based filtering for mob highlighting",
+                displayName = "Mob Name",
+                tooltip = "§fHighlights mobs whose name contains this text.\n" +
+                        "\n" +
+                        "§cNames usually sit on a separate armor stand above the mob,\n" +
+                        "§cso the highlight is often shorter range than with the\n" +
+                        "§cother highlight options.",
                 value = false,
                 children = listOf(
                     TextSetting(
                         key = "MobInfoContains",
                         displayName = "Mob Name Contains",
-                        tooltip = "The string which to filter mobs in",
+                        tooltip = "§fThe text to look for in a mob's name.",
                         value = "Littlefoot"
+                    )
+                )
+            ),
+            BooleanSetting(
+                key = "AdvancedHighlightEnabled",
+                displayName = "Advanced Highlight",
+                tooltip = "§fFilters by entity type, skin hash or helmet skull,\n" +
+                        "§ffor mobs no preset covers.\n" +
+                        "§eValues come from the mob hit debug.",
+                value = false,
+                children = listOf(
+                    BooleanSetting(
+                        key = "EntityTypeEnabled",
+                        displayName = "Entity Type",
+                        tooltip = "§fMatch on what the entity is.\n§fA player's skin hash, or a mob's type path.",
+                        value = false,
+                        children = listOf(
+                            BooleanSetting(
+                                key = "EntityTypePlayerEnabled",
+                                displayName = "Player Entity",
+                                tooltip = "§fMatch players by skin hash.",
+                                value = false,
+                                children = listOf(entityTypePlayerSkinHash)
+                            ),
+                            BooleanSetting(
+                                key = "EntityTypeOtherEnabled",
+                                displayName = "Other Entities",
+                                tooltip = "§fMatch non-player entities by type path.",
+                                value = false,
+                                children = listOf(entityTypeMobPathValue)
+                            )
+                        )
+                    ),
+                    BooleanSetting(
+                        key = "EntityEquipmentDetectionEnabled",
+                        displayName = "Entity Helmet",
+                        tooltip = "§fMatch on the skull an entity wears,\n" +
+                                "§for one carried by a stand or display standing in it.",
+                        value = false,
+                        children = listOf(
+                            TextSetting(
+                                key = "EntityEquipmentHelmetSkullHash",
+                                displayName = "Helmet Skull Hash",
+                                tooltip = "§fThe skull hash to look for.\n§eGet it from the mob hit debug.",
+                                value = "a8abb471db0ab78703011979dc8b40798a941f3a4dec3ec61cbeec2af8cffe8" //default rat helmet skin
+                            )
+                        )
                     )
                 )
             )
         )
     )
+
     @EventHandler
     fun onConfigChanged(event: ConfigChangedEvent) {
         invalidateHighlights()
@@ -194,22 +215,19 @@ object HighlightMobs : HighlightFeature() {
     }
 
     /** The entity a preset wants outlined, or null when no preset matched. */
-    fun presetTarget(info: EntityInfo): Entity? {
-        val presetsEnabled = baseSetting.getChild<BooleanSetting>("PresetsEnabled")
-        presetsEnabled ?: return null
-        if (!presetsEnabled.value) return null
+    private fun presetTarget(info: EntityInfo): Entity? {
+        val presets = baseSetting.getChild<BooleanSetting>("PresetsEnabled") ?: return null
+        if (!presets.value) return null
 
-        val dirtTreasurePresetEnabled = presetsEnabled.getChild<BooleanSetting>("PresetsForagingTreasure")
-        if (dirtTreasurePresetEnabled?.value ?: false){
-            if (info.entity is Display.ItemDisplay && info.entity.itemStack.item == Items.STRING){
+        if (presets.getChild<BooleanSetting>("PresetsForagingTreasure")?.value == true) {
+            if (info.entity is Display.ItemDisplay && info.entity.itemStack.item == Items.STRING) {
                 return info.entity
             }
         }
 
         // only inside a mineshaft: the three colours are ordinary dyes, and anything else wearing
         // one of them elsewhere in the game is not a corpse
-        val shaftCorpsesEnabled = presetsEnabled.getChild<BooleanSetting>("PresetsShaftCorpses")
-        if (shaftCorpsesEnabled?.value == true &&
+        if (presets.getChild<BooleanSetting>("PresetsShaftCorpses")?.value == true &&
             LocationAPI.island == SkyBlockIsland.MINESHAFT &&
             corpseColor(info.entity) != null
         ) {
@@ -219,133 +237,86 @@ object HighlightMobs : HighlightFeature() {
         return null
     }
 
+    /** The entity one of the picked single mobs wants outlined, or null. */
+    private fun singleMobTarget(info: EntityInfo): Entity? {
+        if (baseSetting.getChild<BooleanSetting>("SingleMobsEnabled")?.value != true) return null
+
+        return singleMobsList.value
+            .asSequence()
+            .filter { it.enabled }
+            .mapNotNull { SingleMobs.byName(it.value) }
+            .mapNotNull { SingleMobs.target(it, info) }
+            .firstOrNull()
+    }
+
+    /** The mob, when its own name or a tag beside it contains the filter text. */
+    private fun nameTarget(info: EntityInfo): Entity? {
+        val nameSetting = baseSetting.getChild<BooleanSetting>("MobInfoEnabled") ?: return null
+        if (!nameSetting.value) return null
+
+        val filter = nameSetting.getChild<TextSetting>("MobInfoContains")?.value ?: return null
+        if (filter.isBlank()) return null
+
+        val entity = info.entity
+        val matches = entity.customName?.string?.contains(filter, true) == true ||
+                info.informationEntities?.any {
+                    it.customName?.string?.contains(filter, true) == true
+                } == true
+
+        return entity.takeIf { matches }
+    }
+
+    /** The advanced filters: entity type, skin hash and helmet skull. */
+    private fun advancedTarget(info: EntityInfo): Entity? {
+        val advanced = baseSetting.getChild<BooleanSetting>("AdvancedHighlightEnabled") ?: return null
+        if (!advanced.value) return null
+
+        val entity = info.entity
+
+        val entityType = advanced.getChild<BooleanSetting>("EntityTypeEnabled")
+        if (entityType?.value == true) {
+            val playerEnabled = entityType.getChild<BooleanSetting>("EntityTypePlayerEnabled")?.value == true
+            if (playerEnabled && entity is Player) {
+                val expected = entityTypePlayerSkinHash.value
+                if (expected.isNotBlank() && PlayerUtils.getSkinHash(entity) == expected) return entity
+            }
+
+            val otherEnabled = entityType.getChild<BooleanSetting>("EntityTypeOtherEnabled")?.value == true
+            if (otherEnabled && entity !is LocalPlayer) {
+                val path = entityTypeMobPathValue.value
+                if (path.isNotBlank() && entity.type.toString().contains(path)) return entity
+            }
+        }
+
+        val helmet = advanced.getChild<BooleanSetting>("EntityEquipmentDetectionEnabled")
+        if (helmet?.value == true && entity is LivingEntity) {
+            val expected = helmet.getChild<TextSetting>("EntityEquipmentHelmetSkullHash")?.value
+                ?: return null
+
+            if (PlayerUtils.getSkinHash(entity.getItemBySlot(EquipmentSlot.HEAD)) == expected) return entity
+
+            // a skull on something standing in the mob: a rat is an invisible zombie whose skull is
+            // its own item display, and that display is what should be drawn
+            val carrier = info.informationEntities?.firstOrNull { other ->
+                val stack = when (other) {
+                    is ArmorStand -> other.getItemBySlot(EquipmentSlot.HEAD)
+                    is Display.ItemDisplay -> other.itemStack
+                    else -> ItemStack.EMPTY
+                }
+                !stack.isEmpty && PlayerUtils.getSkinHash(stack) == expected
+            }
+            if (carrier != null) return if (entity.isInvisible) carrier else entity
+        }
+
+        return null
+    }
 
     override fun highlightTarget(info: EntityInfo): Entity? {
         if (!baseSetting.value) return null
 
-        presetTarget(info)?.let { return it }
-        val entity = info.entity
-
-        var matches = false
-        var hasAnyFilter = false
-
-        // what to outline when a filter matched something standing beside the mob rather than the
-        // mob itself: a rat is an invisible zombie whose skull is its own item display
-        var visual: Entity? = null
-
-        val entityTypeSetting = baseSetting.getChild<BooleanSetting>("EntityTypeEnabled")
-        if (entityTypeSetting?.value == true) {
-            hasAnyFilter = true
-
-            val entityTypePlayerEnabled = entityTypeSetting
-                .getChild<BooleanSetting>("EntityTypePlayerEnabled")
-
-            val typePlayerResult =
-                if (entity !is Player) {
-                    false
-                } else {
-                    val skinHashEntryList = entityTypePlayerEnabled
-                        ?.getChild<ToggleListSetting>("EntityTypePlayerSkinHash")?.value
-                        ?: emptyList()
-
-                    val actualHash = PlayerUtils.getSkinHash(entity)
-                    val hashList = skinHashEntryList
-                        .filter { it.enabled }
-                        .map { it.value }
-
-                    actualHash in hashList
-                }
-
-            val entityTypeOtherEnabled = entityTypeSetting
-                .getChild<BooleanSetting>("EntityTypeOtherEnabled")
-
-            val typeOtherResult =
-                if (entity is LocalPlayer) {
-                    false
-                } else {
-                    val expectedPath = entityTypeOtherEnabled
-                        ?.getChild<TextSetting>("EntityTypeMobPathValue")?.value
-                        ?: ""
-
-                    if (expectedPath.isEmpty()){
-                        false
-                    }
-                    else {
-                        entity.type.toString().contains(expectedPath)
-                    }
-                }
-            matches = typePlayerResult || typeOtherResult
-        }
-
-        val mobInfoSetting = baseSetting.getChild<BooleanSetting>("MobInfoEnabled")
-        if (mobInfoSetting?.value == true) {
-            hasAnyFilter = true
-
-            val filter = mobInfoSetting
-                .getChild<TextSetting>("MobInfoContains")?.value
-                ?: return null
-
-            val matchesName =
-                entity.customName?.string?.contains(filter, true) == true
-            val matchesArmorStandTag =
-                info.informationEntities?.any {
-                    it.customName?.string?.contains(filter, true) ?: false
-                } == true
-
-
-            matches = matches || (matchesName || matchesArmorStandTag)
-        }
-
-        val entityEquipmentDetection = baseSetting.getChild<BooleanSetting>("EntityEquipmentDetectionEnabled")
-        if (entityEquipmentDetection?.value == true) {
-            hasAnyFilter = true
-
-            if (entity !is LivingEntity) return null
-
-            val expectedHash = entityEquipmentDetection
-                .getChild<TextSetting>("EntityEquipmentHelmetSkullHash")?.value
-                ?: return null
-
-            var hashResult = false
-
-            val entityHeadStack = entity.getItemBySlot(EquipmentSlot.HEAD)
-            var actualHash = PlayerUtils.getSkinHash(entityHeadStack)
-
-            if (actualHash == expectedHash) {
-                hashResult = true
-            }
-
-            if (!hashResult) {
-                info.informationEntities?.forEach { infoEntity ->
-                    if (hashResult) return@forEach
-
-                    val stack = when (infoEntity) {
-                        is ArmorStand -> infoEntity.getItemBySlot(EquipmentSlot.HEAD)
-                        is Display.ItemDisplay -> infoEntity.itemStack
-                        else -> ItemStack.EMPTY
-                    }
-
-                    if (!stack.isEmpty) {
-                        val actualHash = PlayerUtils.getSkinHash(stack)
-                        if (actualHash == expectedHash) {
-                            hashResult = true
-                            visual = infoEntity
-                        }
-                    }
-                }
-            }
-
-
-
-
-
-            matches = matches || hashResult
-        }
-
-        if (!hasAnyFilter) return null
-        if (!matches) return null
-
-        // the mob is what matched, but an invisible one is drawn by something else standing in it
-        return if (entity.isInvisible) visual ?: entity else entity
+        return presetTarget(info)
+            ?: singleMobTarget(info)
+            ?: nameTarget(info)
+            ?: advancedTarget(info)
     }
 }

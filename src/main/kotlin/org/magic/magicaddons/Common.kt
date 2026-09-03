@@ -28,6 +28,9 @@ object Common {
         /** Plain text on a panel of this mod. */
         const val TEXT_COLOR: Int = 0xFFFFFFFF.toInt()
 
+        /** Text on a control that does nothing at the moment. */
+        const val DISABLED_TEXT_COLOR: Int = 0xFF888888.toInt()
+
         /** Something the player should look at, such as a greenhouse running on guessed data. */
         const val WARNING_COLOR: Int = 0xFFAA0000.toInt()
 

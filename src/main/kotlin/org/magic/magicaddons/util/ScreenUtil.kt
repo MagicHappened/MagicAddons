@@ -160,6 +160,8 @@ object ScreenUtil {
         pose.translate(x1, y1)
         pose.rotate(kotlin.math.atan2(dy, dx))
 
+        // never thinner than one pixel: taking toInt() of half a thickness turned every line of
+        // thickness 1 into a rectangle of no height, which drew nothing
         val half = thickness / 2f
         val y0 = kotlin.math.floor(-half).toInt()
         val y1 = kotlin.math.ceil(half).toInt()
@@ -173,7 +175,7 @@ object ScreenUtil {
                 pose,
                 0,
                 y0,
-                length.toInt(),
+                kotlin.math.round(length).toInt().coerceAtLeast(1),
                 y1,
                 actualColor,
                 actualColor,
@@ -182,6 +184,7 @@ object ScreenUtil {
         )
     }
 
+    /** A tooltip of one or more lines, split on newlines, colour codes honoured. */
     fun GuiGraphicsExtractor.drawSimpleTooltip(text: String, mouseX: Int, mouseY: Int) {
         val client = Minecraft.getInstance()
 

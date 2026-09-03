@@ -49,7 +49,8 @@ class CheckboxWidget(
         val x3 = sx(36f)
         val y3 = sy(12f)
 
-        val thickness = (size / 8).coerceAtLeast(1).toFloat()
+        // a small box still gets a mark two pixels thick, or the tick reads as a faint scratch
+        val thickness = (size / 8f).coerceAtLeast(2f)
 
         // extend first segment slightly
         val dx = x2 - x1

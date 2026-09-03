@@ -48,6 +48,9 @@ abstract class SettingWidget<T>(
 
 
     open fun initChildren() {
+        // built fresh: a second call would otherwise leave the first set alive and clickable
+        childrenWidgets.clear()
+
         node.children?.forEach {
             childrenWidgets.add(SettingWidgetFactory.create(it).apply {
                 requestRelayout = {
