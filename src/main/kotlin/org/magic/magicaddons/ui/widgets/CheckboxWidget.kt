@@ -3,13 +3,18 @@ package org.magic.magicaddons.ui.widgets
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.components.events.GuiEventListener
 import net.minecraft.client.input.MouseButtonEvent
+import org.magic.magicaddons.Common
+import org.magic.magicaddons.ui.Focusable
 import org.magic.magicaddons.util.ScreenUtil.drawLine
 import kotlin.math.sqrt
 
 class CheckboxWidget(
     var size: Int = 24,
     var checked: Boolean = false
-) : GuiEventListener {
+) : Focusable {
+
+    override var focusedState: Boolean = false
+
 
     var x: Int = 0
     var y: Int = 0
@@ -17,7 +22,7 @@ class CheckboxWidget(
     val baseSize = 48f
 
     val bgColor = 0xFFC6C6C6.toInt()
-    val checkColor = 0xFF00FF00.toInt()
+    val checkColor = Common.UI.SUCCESS_COLOR
 
 
     fun render(graphics: GuiGraphicsExtractor) {
@@ -44,7 +49,8 @@ class CheckboxWidget(
         val x3 = sx(36f)
         val y3 = sy(12f)
 
-        val thickness = (size / 8).coerceAtLeast(1).toFloat()
+        // a small box still gets a mark two pixels thick, or the tick reads as a faint scratch
+        val thickness = (size / 8f).coerceAtLeast(2f)
 
         // extend first segment slightly
         val dx = x2 - x1
@@ -77,9 +83,5 @@ class CheckboxWidget(
         return (mouseX.toInt() in x..x+size) && (mouseY.toInt() in y..y+size)
     }
 
-    override fun setFocused(focused: Boolean) {
-        isFocused = focused
-    }
 
-    override fun isFocused(): Boolean = isFocused
 }

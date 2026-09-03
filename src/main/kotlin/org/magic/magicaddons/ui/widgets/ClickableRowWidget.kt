@@ -5,17 +5,17 @@ import net.minecraft.resources.Identifier
 
 open class ClickableRowWidget<T>(
     value: T,
-    val onClick: (ClickableRowWidget<T>) -> Unit,
+    val onClick: ((ClickableRowWidget<T>) -> Unit)? = null,
 ) : BaseRowWidget<T>(value) {
     val BUTTON_HOVERED = Identifier.fromNamespaceAndPath("minecraft", "widget/button_highlighted")
 
     override fun getSprite(): Identifier {
-        return if (hovered) BUTTON_HOVERED else super.getSprite()
+        return if (isFocused) BUTTON_HOVERED else super.getSprite()
     }
 
-    open fun mouseClicked(mouseButtonEvent: MouseButtonEvent, double: Boolean): Boolean {
+    override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, double: Boolean): Boolean {
         if (super.isMouseOverRow(mouseButtonEvent.x,mouseButtonEvent.y)){
-            onClick.invoke(this)
+            onClick?.invoke(this)
             return true
         }
         return false

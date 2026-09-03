@@ -150,7 +150,10 @@ object ScreenUtil {
         pose.translate(x1, y1)
         pose.rotate(kotlin.math.atan2(dy, dx))
 
-        val half = thickness / 2f
+        // rounded to whole pixels and never thinner than one: taking toInt() of half a thickness
+        // turned every line of thickness 1 into a rectangle of no height, which drew nothing
+        val pixels = kotlin.math.round(thickness).toInt().coerceAtLeast(1)
+        val top = -(pixels / 2)
 
         this.guiRenderState.addGuiElement(
             ColoredRectangleRenderState(
@@ -158,9 +161,9 @@ object ScreenUtil {
                 TextureSetup.noTexture(),
                 pose,
                 0,
-                -half.toInt(),
-                length.toInt(),
-                half.toInt(),
+                top,
+                kotlin.math.round(length).toInt().coerceAtLeast(1),
+                top + pixels,
                 color,
                 color,
                 this.scissorStack.peek()
@@ -168,13 +171,12 @@ object ScreenUtil {
         )
     }
 
+    /** A tooltip of one or more lines, split on newlines, colour codes honoured. */
     fun GuiGraphicsExtractor.drawSimpleTooltip(text: String, mouseX: Int, mouseY: Int) {
         val client = Minecraft.getInstance()
-        val lines = listOf(
-            ClientTooltipComponent.create(
-                Component.literal(text).visualOrderText
-            )
-        )
+        val lines = text.split('\n').map { line ->
+            ClientTooltipComponent.create(Component.literal(line).visualOrderText)
+        }
 
         this.tooltip(
             client.font,

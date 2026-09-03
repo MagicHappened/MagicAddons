@@ -41,6 +41,9 @@ abstract class SettingWidget<T>(
 
 
     open fun initChildren() {
+        // built fresh: a second call would otherwise leave the first set alive and clickable
+        childrenWidgets.clear()
+
         node.children?.forEach {
             childrenWidgets.add(SettingWidgetFactory.create(it).apply {
                 requestRelayout = {
@@ -138,6 +141,12 @@ abstract class SettingWidget<T>(
         childrenWidgets.forEach {
             it.mouseMoved(mouseX, mouseY)
         }
+    }
+
+    override fun mouseScrolled(mouseX: Double, mouseY: Double, scrollX: Double, scrollY: Double): Boolean {
+        if (!childrenExpanded) return false
+
+        return childrenWidgets.any { it.mouseScrolled(mouseX, mouseY, scrollX, scrollY) }
     }
 
     override fun charTyped(characterEvent: CharacterEvent): Boolean {
