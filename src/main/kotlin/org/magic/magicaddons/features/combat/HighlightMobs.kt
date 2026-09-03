@@ -17,12 +17,16 @@ import org.magic.magicaddons.data.config.ToggleListSetting
 import org.magic.magicaddons.events.ConfigChangedEvent
 import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.events.EventHandler
+import org.magic.magicaddons.events.chat.OnSystemChatEvent
+import org.magic.magicaddons.events.interact.OnInteractEntityEvent
 import org.magic.magicaddons.events.world.OnEntityAdded
 import org.magic.magicaddons.events.world.OnEntityRemoved
 import org.magic.magicaddons.events.world.OnEntityUpdated
 import org.magic.magicaddons.features.HighlightFeature
 import org.magic.magicaddons.util.PlayerUtils
 import tech.thatgravyboat.skyblockapi.api.SkyBlockAPI
+import tech.thatgravyboat.skyblockapi.api.events.base.Subscription
+import tech.thatgravyboat.skyblockapi.api.events.location.IslandChangeEvent
 import tech.thatgravyboat.skyblockapi.api.location.LocationAPI
 import tech.thatgravyboat.skyblockapi.api.location.SkyBlockIsland
 
@@ -91,7 +95,15 @@ object HighlightMobs : HighlightFeature() {
                         // each corpse named in the colour it is outlined in, as near as chat colours get
                         tooltip = "§fHighlights the §9lapis§f, §6umber§f and §btungsten§f corpses in mineshafts.\n" +
                                 "§fEach is outlined in its own colour.",
-                        value = false
+                        value = false,
+                        children = listOf(
+                            BooleanSetting(
+                                key = "HideLootedCorpses",
+                                displayName = "Hide Looted",
+                                tooltip = "§fStops highlighting a corpse once you have looted it.",
+                                value = false
+                            )
+                        )
                     )
                 )
             ),
@@ -214,6 +226,55 @@ object HighlightMobs : HighlightFeature() {
         return if (rgb in CORPSE_COLORS) 0xFF000000.toInt() or rgb else null
     }
 
+    /** Corpses looted this visit, by entity id. Cleared when the mineshaft is left. */
+    private val lootedCorpses: MutableSet<Int> = mutableSetOf()
+
+    /** The corpse just right clicked, waiting for chat to say whether the loot went through. */
+    private var pendingCorpse: Entity? = null
+    private var pendingSince: Long = 0
+
+    /** How long a right click waits for its loot message before it is forgotten. */
+    private const val LOOT_WINDOW_MS: Long = 3000
+
+    /** "  LAPIS CORPSE LOOT!", sent only to the player who opened it. */
+    private val CORPSE_LOOT_MESSAGE = Regex("\\s*\\w+ CORPSE LOOT!\\s*")
+
+    @EventHandler
+    fun onInteractEntity(event: OnInteractEntityEvent) {
+        if (!hideLootedEnabled()) return
+        if (corpseColor(event.target) == null) return
+
+        pendingCorpse = event.target
+        pendingSince = System.currentTimeMillis()
+    }
+
+    /** The loot message names the type but not which corpse, so it settles the one just clicked. */
+    @EventHandler
+    fun onSystemChat(event: OnSystemChatEvent) {
+        if (event.overlay) return
+        if (!CORPSE_LOOT_MESSAGE.matches(event.text)) return
+
+        val corpse = pendingCorpse ?: return
+        pendingCorpse = null
+
+        if (System.currentTimeMillis() - pendingSince > LOOT_WINDOW_MS) return
+
+        lootedCorpses.add(corpse.id)
+        invalidateHighlights()
+    }
+
+    @Subscription
+    fun onIslandChange(event: IslandChangeEvent) {
+        lootedCorpses.clear()
+        pendingCorpse = null
+    }
+
+    private fun hideLootedEnabled(): Boolean =
+        baseSetting.getChild<BooleanSetting>("PresetsEnabled")
+            ?.getChild<BooleanSetting>("PresetsShaftCorpses")
+            ?.getChild<BooleanSetting>("HideLootedCorpses")
+            ?.value == true
+
     /** The entity a preset wants outlined, or null when no preset matched. */
     private fun presetTarget(info: EntityInfo): Entity? {
         val presets = baseSetting.getChild<BooleanSetting>("PresetsEnabled") ?: return null
@@ -229,7 +290,8 @@ object HighlightMobs : HighlightFeature() {
         // one of them elsewhere in the game is not a corpse
         if (presets.getChild<BooleanSetting>("PresetsShaftCorpses")?.value == true &&
             LocationAPI.island == SkyBlockIsland.MINESHAFT &&
-            corpseColor(info.entity) != null
+            corpseColor(info.entity) != null &&
+            info.entity.id !in lootedCorpses
         ) {
             return info.entity
         }
