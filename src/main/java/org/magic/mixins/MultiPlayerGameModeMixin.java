@@ -4,9 +4,13 @@ import net.minecraft.client.multiplayer.MultiPlayerGameMode;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.phys.EntityHitResult;
 import org.magic.magicaddons.events.EventBus;
 import org.magic.magicaddons.events.interact.OnAttackEntityEvent;
+import org.magic.magicaddons.events.interact.OnInteractEntityEvent;
 import org.magic.magicaddons.events.world.OnStartDestroyBlock;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -24,6 +28,15 @@ public class MultiPlayerGameModeMixin {
         EventBus.post(event);
         if (event.getCanceled()){
             ci.cancel();
+        }
+    }
+
+    @Inject(method = "interact", at = @At("HEAD"), cancellable = true)
+    private void onInteractEntity(Player player, Entity entity, EntityHitResult hitResult, InteractionHand hand, CallbackInfoReturnable<InteractionResult> cir){
+        OnInteractEntityEvent event = new OnInteractEntityEvent(player, entity, hand);
+        EventBus.post(event);
+        if (event.getCanceled()){
+            cir.setReturnValue(InteractionResult.PASS);
         }
     }
 
