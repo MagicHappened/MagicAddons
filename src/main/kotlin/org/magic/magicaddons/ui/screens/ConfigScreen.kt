@@ -12,6 +12,7 @@ import org.magic.magicaddons.features.Feature
 import org.magic.magicaddons.features.FeatureManager
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.ScreenUtil.drawMultilineBoxCentered
+import org.magic.magicaddons.util.VersionChecker
 import org.magic.magicaddons.util.compat.McCompat
 
 class ConfigScreen(title: Component, val parent: Screen?) : Screen(title) {
@@ -31,6 +32,7 @@ class ConfigScreen(title: Component, val parent: Screen?) : Screen(title) {
 
     override fun init() {
         MagicAddonsConfigJsonHandler.load()
+        VersionChecker.check()
         categories = FeatureManager.features
             .groupBy { it.category }
             .mapValues { it.value.toMutableList() }
@@ -63,6 +65,11 @@ class ConfigScreen(title: Component, val parent: Screen?) : Screen(title) {
         super.extractRenderState(graphics, mouseX, mouseY, deltaTick)
 
         graphics.drawMultilineBoxCentered(helpText, width/2, 35)
+
+        // whatever the last check found, so opening the config says it as well as chat did
+        VersionChecker.result?.takeIf { it.outdated }?.let { found ->
+            graphics.drawMultilineBoxCentered(found.headline(), width / 2, 58)
+        }
     }
 
     override fun extractBackground(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, deltaTick: Float) {

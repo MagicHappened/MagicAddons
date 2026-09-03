@@ -20,12 +20,13 @@ object ChatUtils {
     }
 
     fun sendWithPrefix(message: String) {
-        val prefixed = buildWithPrefix(message)
-        Minecraft.getInstance().player?.sendSystemMessage(prefixed)
+        sendWithPrefix(Component.literal(message).withStyle(ChatFormatting.WHITE))
     }
 
-    fun buildWithPrefix(message: String): Component {
-        return buildWithPrefix(Component.literal(message).withStyle(ChatFormatting.WHITE))
+    fun buildWithPrefix(message: String?): Component {
+        val body = message?.takeIf { it.isNotBlank() } ?: return Component.literal("")
+
+        return buildWithPrefix(Component.literal(body).withStyle(ChatFormatting.WHITE))
     }
 
     fun sendWithPrefix(message: Component) {
@@ -38,11 +39,10 @@ object ChatUtils {
         Minecraft.getInstance().player?.connection?.sendCommand(command)
     }
 
-    fun buildWithPrefix(message: Component): Component {
-        val component = Component.literal("[MA] ")
-            .withStyle(ChatFormatting.GOLD)
-            .append(message)
-        return component
+    fun buildWithPrefix(message: Component?): Component {
+        val prefix = Component.literal("[MA] ").withStyle(ChatFormatting.GOLD)
+
+        return if (message != null && message != Component.empty()) prefix.append(message) else prefix
     }
     fun sendWithCommand(message: String, command: String) {
         val component = buildWithCommand(message, command)

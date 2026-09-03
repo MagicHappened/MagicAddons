@@ -197,7 +197,7 @@ object OldConfigHandler {
             if (name.isBlank()) value else "$name: $value"
         }
         ConfigNotices.queue(
-            Component.literal("[MagicAddons] ").withStyle(ChatFormatting.GOLD)
+            Component.literal("[MA] ").withStyle(ChatFormatting.GOLD)
                 .append(
                     Component.literal(
                         "Config update: the Player Entity skin hash list is now a single value " +
