@@ -68,10 +68,31 @@ object Phantomleaf : CropDefinitionProvider {
                 ),
                 armorStands = listOf(
                     CropArmorStand(
-                    offset = Vec3(-0.125, -0.375, 0.0),
-                    hashString = "92fb1e0e18cadb45a4d96721a9ee9c1d2c36d99826b3c23c19ee18801f721dd3")
+                        isSmall = false,
+                        offset = Vec3(-0.125, -0.375, 0.0),
+                        hashString = "92fb1e0e18cadb45a4d96721a9ee9c1d2c36d99826b3c23c19ee18801f721dd3"
+                    )
                 ),
                 10..10
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = wheatState(4)
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        isSmall = false,
+                        offset = Vec3(0.0, -0.375, -0.125),
+                        headRotation = Rotations(20.0f, 0.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
+                        hashString = "92fb1e0e18cadb45a4d96721a9ee9c1d2c36d99826b3c23c19ee18801f721dd3"
+                    )
+                ),
+                13..13
             )
 
         ),

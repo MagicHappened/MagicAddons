@@ -22,7 +22,9 @@ object DoNotEatShroom : CropDefinitionProvider {
         skyblockId = SkyBlockItemId.item("DO_NOT_EAT_SHROOM"),
         /** Each skull's pose, found constant across every stage it appears in. */
         standPoses = mapOf(
-            "6a7ae95a8bb1fcdbf71385fe663c5647e0a5c32004db8c0313c2d45c94e3d1ad" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f))
+            "6a7ae95a8bb1fcdbf71385fe663c5647e0a5c32004db8c0313c2d45c94e3d1ad" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f)),
+            "77a99b274b5e21a3537469b2ae717bb4cedcacca76df7525092a99bc08ea8c9" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f)),
+            "3f22178e2e72d6929a6ef9199795a93cfbad999bbee0aba235b277d0b18e0e94" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f))
         ),
         stageDefs = listOf(
             CropStage(

@@ -7,6 +7,7 @@ import org.magic.magicaddons.data.greenhouse.CropStates.melonStemState
 import org.magic.magicaddons.data.greenhouse.CropStates.sunflowerState
 import org.magic.magicaddons.data.greenhouse.CropStates.wheatState
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
+import net.minecraft.core.Rotations
 
 object Cheesebite : CropDefinitionProvider {
     override val definition = CropDefinition(
@@ -16,6 +17,10 @@ object Cheesebite : CropDefinitionProvider {
             CropEffect.HarvestLoss
         ),
         skyblockId = SkyBlockItemId.item("CHEESEBITE"),
+        /** Each skull's pose, found constant across every stage it appears in. */
+        standPoses = mapOf(
+            "411f19c783959807338e2bf7080b1e34abb8c452464c0dce5bdf434cdc250717" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f))
+        ),
         stageDefs = listOf(
             CropStage(
                 blocks = listOf(
@@ -27,7 +32,8 @@ object Cheesebite : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.9375, 0.0),
-                        hashString = "411f19c783959807338e2bf7080b1e34abb8c452464c0dce5bdf434cdc250717"
+                        hashString = "411f19c783959807338e2bf7080b1e34abb8c452464c0dce5bdf434cdc250717",
+                        isSmall = false
                     )
                 ),
                 1..1
@@ -42,7 +48,8 @@ object Cheesebite : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.75, 0.0),
-                        hashString = "411f19c783959807338e2bf7080b1e34abb8c452464c0dce5bdf434cdc250717"
+                        hashString = "411f19c783959807338e2bf7080b1e34abb8c452464c0dce5bdf434cdc250717",
+                        isSmall = false
                     )
                 ),
                 2..2
@@ -57,7 +64,8 @@ object Cheesebite : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.65625, 0.0),
-                        hashString = "411f19c783959807338e2bf7080b1e34abb8c452464c0dce5bdf434cdc250717"
+                        hashString = "411f19c783959807338e2bf7080b1e34abb8c452464c0dce5bdf434cdc250717",
+                        isSmall = false
                     )
                 ),
                 3..3
@@ -73,6 +81,7 @@ object Cheesebite : CropDefinitionProvider {
                     CropArmorStand(
                         offset = Vec3(0.0, -0.65625, 0.0),
                         hashString = "411f19c783959807338e2bf7080b1e34abb8c452464c0dce5bdf434cdc250717",
+                        isSmall = false
                     )
                 ),
                 4..4 //todo figure out rats thing
@@ -89,6 +98,7 @@ object Cheesebite : CropDefinitionProvider {
                         CropArmorStand(
                             offset = Vec3(0.0, -0.4375, 0.0),
                             hashString = "411f19c783959807338e2bf7080b1e34abb8c452464c0dce5bdf434cdc250717",
+                            isSmall = false
                         )
                     )
                 ,
@@ -104,7 +114,8 @@ object Cheesebite : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.15625, 0.0),
-                        hashString = "411f19c783959807338e2bf7080b1e34abb8c452464c0dce5bdf434cdc250717"
+                        hashString = "411f19c783959807338e2bf7080b1e34abb8c452464c0dce5bdf434cdc250717",
+                        isSmall = false
                     )
                 ),
                 8..8
@@ -119,7 +130,8 @@ object Cheesebite : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, 0.15625, 0.0),
-                        hashString = "411f19c783959807338e2bf7080b1e34abb8c452464c0dce5bdf434cdc250717"
+                        hashString = "411f19c783959807338e2bf7080b1e34abb8c452464c0dce5bdf434cdc250717",
+                        isSmall = false
                     )
                 ),
                 9..9
@@ -134,7 +146,8 @@ object Cheesebite : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, 0.34375, 0.0),
-                        hashString = "411f19c783959807338e2bf7080b1e34abb8c452464c0dce5bdf434cdc250717"
+                        hashString = "411f19c783959807338e2bf7080b1e34abb8c452464c0dce5bdf434cdc250717",
+                        isSmall = false
                     )
                 ),
                 10..10

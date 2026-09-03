@@ -43,8 +43,21 @@ object ChorusFruit : CropDefinitionProvider {
                 ),
                 armorStands = listOf(
                     CropArmorStand(
+                        offset = Vec3(0.0, -0.65625, 0.0),
+                        hashString = "c5214cc92140cdf9b402b3e7ed1fa0bac7fb4b39e39b46d11b06301caf0f9c3d",
+                        isSmall = false
+                    )
+                ),
+                2..2
+            ),
+            CropStage(
+                blocks = listOf(
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
                         offset = Vec3(0.0, -0.53125, 0.0),
                         hashString = "c5214cc92140cdf9b402b3e7ed1fa0bac7fb4b39e39b46d11b06301caf0f9c3d",
+                        isSmall = false
                     )
                 ),
                 3..3
@@ -57,6 +70,7 @@ object ChorusFruit : CropDefinitionProvider {
                         CropArmorStand(
                             offset = Vec3(0.0, -0.4375, 0.0),
                             hashString = "c5214cc92140cdf9b402b3e7ed1fa0bac7fb4b39e39b46d11b06301caf0f9c3d",
+                            isSmall = false
                         )
                     ),
                 4..4
@@ -68,10 +82,12 @@ object ChorusFruit : CropDefinitionProvider {
                     CropArmorStand(
                         offset = Vec3(0.0, -0.75, 0.0),
                         hashString = "c5214cc92140cdf9b402b3e7ed1fa0bac7fb4b39e39b46d11b06301caf0f9c3d",
+                        isSmall = false
                     ),
                     CropArmorStand(
                         offset = Vec3(0.0, -0.21875, 0.0),
                         hashString = "c5214cc92140cdf9b402b3e7ed1fa0bac7fb4b39e39b46d11b06301caf0f9c3d",
+                        isSmall = false
                     )
                 ),
                 5..5
@@ -83,10 +99,12 @@ object ChorusFruit : CropDefinitionProvider {
                     CropArmorStand(
                         offset = Vec3(0.0, -0.125, 0.0),
                         hashString = "c5214cc92140cdf9b402b3e7ed1fa0bac7fb4b39e39b46d11b06301caf0f9c3d",
+                        isSmall = false
                     ),
                     CropArmorStand(
                         offset = Vec3(0.0, -0.65625, 0.0),
                         hashString = "c5214cc92140cdf9b402b3e7ed1fa0bac7fb4b39e39b46d11b06301caf0f9c3d",
+                        isSmall = false
                     )
                 ),
                 6..6
@@ -100,7 +118,8 @@ object ChorusFruit : CropDefinitionProvider {
                             Vec3(0.0, 0.0, 0.0),
                             Vec3(0.0, -0.5625, 0.0)
                         ),
-                        hashString = "c5214cc92140cdf9b402b3e7ed1fa0bac7fb4b39e39b46d11b06301caf0f9c3d"
+                        hashString = "c5214cc92140cdf9b402b3e7ed1fa0bac7fb4b39e39b46d11b06301caf0f9c3d",
+                        isSmall = false
                     ),
                 7..7
             ),
@@ -113,7 +132,8 @@ object ChorusFruit : CropDefinitionProvider {
                             Vec3(0.0, 0.09375, 0.0),
                             Vec3(0.0, -0.5, 0.0)
                         ),
-                        hashString = "c5214cc92140cdf9b402b3e7ed1fa0bac7fb4b39e39b46d11b06301caf0f9c3d"
+                        hashString = "c5214cc92140cdf9b402b3e7ed1fa0bac7fb4b39e39b46d11b06301caf0f9c3d",
+                        isSmall = false
                     ),
                 8..8
             ),
@@ -126,7 +146,8 @@ object ChorusFruit : CropDefinitionProvider {
                             Vec3(0.0, 0.1875, 0.0),
                             Vec3(0.0, -0.40625, 0.0)
                         ),
-                        hashString = "c5214cc92140cdf9b402b3e7ed1fa0bac7fb4b39e39b46d11b06301caf0f9c3d"
+                        hashString = "c5214cc92140cdf9b402b3e7ed1fa0bac7fb4b39e39b46d11b06301caf0f9c3d",
+                        isSmall = false
                     ),
                 9..9
             ),
@@ -149,7 +170,8 @@ object ChorusFruit : CropDefinitionProvider {
                                     Vec3(0.0, 0.125, 0.0),
                                     Vec3(0.0, -0.46875, 0.0)
                                 ),
-                                hashString = "c5214cc92140cdf9b402b3e7ed1fa0bac7fb4b39e39b46d11b06301caf0f9c3d"
+                                hashString = "c5214cc92140cdf9b402b3e7ed1fa0bac7fb4b39e39b46d11b06301caf0f9c3d",
+                                isSmall = false
                             ),
                 10..10,
             ),
@@ -162,7 +184,8 @@ object ChorusFruit : CropDefinitionProvider {
                             Vec3(0.0, 0.125, 0.0),
                             Vec3(0.0, -0.46875, 0.0)
                         ),
-                        hashString = "c5214cc92140cdf9b402b3e7ed1fa0bac7fb4b39e39b46d11b06301caf0f9c3d"
+                        hashString = "c5214cc92140cdf9b402b3e7ed1fa0bac7fb4b39e39b46d11b06301caf0f9c3d",
+                        isSmall = false
                     )
                             +
                             CropArmorStand.matcherPattern(
@@ -188,7 +211,8 @@ object ChorusFruit : CropDefinitionProvider {
                         Vec3(0.0, 0.125, 0.0)
                     ),
 
-                    hashString = "c5214cc92140cdf9b402b3e7ed1fa0bac7fb4b39e39b46d11b06301caf0f9c3d"
+                    hashString = "c5214cc92140cdf9b402b3e7ed1fa0bac7fb4b39e39b46d11b06301caf0f9c3d",
+                    isSmall = false
                 ) + CropArmorStand.matcherPattern(
                     offsets = listOf(
                         Vec3(0.1875, 0.53125, 0.21875),
