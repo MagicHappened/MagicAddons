@@ -1,11 +1,17 @@
 package org.magic.magicaddons.features.debug
 
+import com.google.gson.GsonBuilder
+import com.google.gson.JsonArray
+import com.google.gson.JsonObject
 import net.minecraft.ChatFormatting
 import net.minecraft.client.Minecraft
+import net.minecraft.core.component.DataComponents
 import net.minecraft.network.chat.ClickEvent
 import net.minecraft.network.chat.Component
 import net.minecraft.network.chat.HoverEvent
+import net.minecraft.network.chat.MutableComponent
 import net.minecraft.network.chat.Style
+import net.minecraft.network.chat.TextColor
 import net.minecraft.world.entity.Display
 import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.EquipmentSlot
@@ -23,8 +29,8 @@ import org.magic.magicaddons.util.PlayerUtils
 import java.net.URI
 
 /**
- * Prints what the client knows about whatever was hit. Type, custom name and skin hash always,
- * since a dump without them is useless; the rest is behind settings, being long enough to fill chat.
+ * Prints what the client knows about whatever was hit, as one chat line whose hover carries the
+ * detail and whose click copies the whole thing as json.
  */
 object MobHitDebugInfo : Feature() {
     init {
@@ -36,164 +42,228 @@ object MobHitDebugInfo : Feature() {
     override val tooltipMessage: String = "On next mob hit will cancel the actual event and print debug information"
     override val category: String = "debug"
 
-    private val showEquipment = BooleanSetting(
-        key = "ShowEquipment",
-        displayName = "Equipment",
-        tooltip = "Adds every worn and held item, with the skin hash of each.",
-        value = false
-    )
-
-    private val showNearbyEntities = BooleanSetting(
-        key = "ShowNearbyEntities",
-        displayName = "Nearby Entities",
-        tooltip = "Adds the named armor stands and displays standing next to the target, which is " +
-                "where most mobs keep the only information they have.",
-        value = false
-    )
-
-    private val showPosition = BooleanSetting(
-        key = "ShowPosition",
-        displayName = "Position",
-        tooltip = "Adds the block position of the target, for matching against a fixed area.",
-        value = false
-    )
-
     override val baseSetting: BooleanSetting = BooleanSetting(
         displayName = displayName,
         tooltip = tooltipMessage,
-        value = false,
-        children = listOf(
-            showEquipment,
-            showNearbyEntities,
-            showPosition
-        )
+        value = false
+        //todo add the select option to return
     )
+
+    /** How far around the hit entity to look for the stands and displays that belong to it. */
+    private const val NEARBY_RADIUS: Double = 0.5
+    private const val NEARBY_HEIGHT: Double = 2.0
+
+    private val GSON = GsonBuilder().setPrettyPrinting().create()
 
     @EventHandler
     fun onAttackEntity(event: OnAttackEntityEvent) {
         if (!baseSetting.value) return
         event.canceled = true
 
-        val target = event.target
-
-        ChatUtils.sendWithPrefix(
-            Component.literal(describeKind(target)).withStyle(ChatFormatting.GOLD)
-        )
-
-        describe(target).forEach { ChatUtils.send(it) }
-
-        if (showNearbyEntities.value) {
-            printNearbyInfoEntities(target)
-        }
+        report(event.target)
     }
 
-    /** The short word for what was hit, which is the first thing worth knowing about it. */
-    private fun describeKind(entity: Entity): String = when (entity) {
-        is Player -> "Player"
-        is ArmorStand -> "Armor Stand"
-        is Display.ItemDisplay -> "Item Display"
-        is Display -> "Display"
-        is LivingEntity -> "Mob"
-        else -> "Entity"
-    }
+    /** One item of an entity's equipment, as the debug cares about it. */
+    private data class ItemLine(
+        val slot: String,
+        val id: String,
+        val dyeColor: Int?,
+        val skullHash: String?
+    )
 
-    /** Everything worth knowing about one entity, as the lines to print under its heading. */
-    private fun describe(entity: Entity): List<Component> = buildList {
-        add(field("type", entity.type.toString()))
+    /** One entity, the hit one or something standing in it. */
+    private data class EntityLine(
+        val type: String,
+        val name: String?,
+        val invisible: Boolean,
+        val marker: Boolean?,
+        val skinHash: String?,
+        val items: List<ItemLine>
+    )
 
-        entity.customName?.string?.let { add(field("name", it)) }
+    private fun report(entity: Entity) {
+        val subject = describe(entity)
+        val nearby = nearbyEntities(entity)
+        val neighbours = nearby.map(::describe)
+
+        val summary = Component.literal(summaryText(subject, neighbours.size))
+            .setStyle(
+                Style.EMPTY.withHoverEvent(HoverEvent.ShowText(detailText(subject, neighbours)))
+            )
+
+        summary.append(clickable("[copy]", ChatFormatting.GREEN, "Copies the full dump as json",
+            ClickEvent.CopyToClipboard(json(entity, subject, neighbours))))
 
         if (entity is Player) {
-            PlayerUtils.getSkinHash(entity)?.let { add(hashField("skin", it)) }
             PlayerUtils.getSkinUrl(entity)?.let { url ->
-                add(
-                    Component.literal("  skin url").withStyle(
-                        Style.EMPTY.withColor(ChatFormatting.AQUA)
-                            .withClickEvent(ClickEvent.OpenUrl(URI(url)))
-                    )
-                )
+                summary.append(clickable("[skin]", ChatFormatting.AQUA, url, ClickEvent.OpenUrl(URI(url))))
+            }
+            subject.skinHash?.let { hash ->
+                summary.append(clickable("[Skin Hash]", ChatFormatting.YELLOW, hash,
+                    ClickEvent.CopyToClipboard(hash)))
             }
         }
 
-        if (entity is Display.ItemDisplay) {
-            addAll(describeStack("item", entity.itemStack))
+        ChatUtils.sendWithPrefix(summary)
+    }
+
+    /** Name, type, whether it can be seen, what it wears and how much is standing in it. */
+    private fun summaryText(subject: EntityLine, neighbours: Int): String = buildString {
+        append(subject.name ?: subject.type)
+        append(" · ").append(subject.type)
+        append(" · ").append(if (subject.invisible) "invisible" else "visible")
+        if (subject.items.isNotEmpty()) append(" · ").append("${subject.items.size} worn")
+        append(" · ").append("$neighbours nearby")
+        append(" ")
+    }
+
+    private fun clickable(
+        label: String,
+        color: ChatFormatting,
+        hover: String,
+        click: ClickEvent
+    ): Component = Component.literal(" $label").setStyle(
+        Style.EMPTY
+            .withColor(color)
+            .withClickEvent(click)
+            .withHoverEvent(HoverEvent.ShowText(Component.literal(hover)))
+    )
+
+    /** The hover: the hit entity in full, then a line for each thing standing in it. */
+    private fun detailText(subject: EntityLine, neighbours: List<EntityLine>): Component {
+        val text = Component.literal("")
+
+        appendEntity(text, subject)
+
+        text.append(Component.literal("\nNearby (${neighbours.size})").withStyle(ChatFormatting.GRAY))
+        neighbours.forEach { neighbour ->
+            text.append(Component.literal("\n  "))
+            appendEntity(text, neighbour, short = true)
         }
 
-        if (showPosition.value) {
-            val pos = entity.blockPosition()
-            add(field("at", "${pos.x} ${pos.y} ${pos.z}"))
+        return text
+    }
+
+    private fun appendEntity(text: MutableComponent, line: EntityLine, short: Boolean = false) {
+        if (short) {
+            text.append(Component.literal(line.type).withStyle(ChatFormatting.WHITE))
+            line.name?.let { text.append(Component.literal("  \"$it\"").withStyle(ChatFormatting.GRAY)) }
+            if (line.invisible) text.append(Component.literal("  invisible").withStyle(ChatFormatting.DARK_GRAY))
+        } else {
+            text.append(Component.literal(line.name ?: "no name").withStyle(ChatFormatting.WHITE))
+            text.append(Component.literal(" — ${line.type}").withStyle(ChatFormatting.GRAY))
+            text.append(Component.literal("\ninvisible: ${yesNo(line.invisible)}").withStyle(ChatFormatting.GRAY))
+            line.marker?.let {
+                text.append(Component.literal("   marker: ${yesNo(it)}").withStyle(ChatFormatting.GRAY))
+            }
+            line.skinHash?.let {
+                text.append(Component.literal("\nskin  ${shorten(it)}").withStyle(ChatFormatting.GRAY))
+            }
         }
 
-        if (showEquipment.value && entity is LivingEntity) {
-            EQUIPMENT_SLOTS.forEach { slot ->
-                addAll(describeStack(slot.name.lowercase(), entity.getItemBySlot(slot)))
+        line.items.forEach { item ->
+            text.append(Component.literal("\n${if (short) "    " else "  "}${item.slot}  ${item.id}")
+                .withStyle(ChatFormatting.WHITE))
+
+            item.dyeColor?.let { rgb ->
+                text.append(Component.literal("  ■").setStyle(Style.EMPTY.withColor(TextColor.fromRgb(rgb))))
+                text.append(Component.literal(" #%06X".format(rgb and 0xFFFFFF)).withStyle(ChatFormatting.GRAY))
+            }
+
+            item.skullHash?.let {
+                text.append(Component.literal("  ${shorten(it)}").withStyle(ChatFormatting.GRAY))
             }
         }
     }
 
-    /** An item slot, skipped entirely when it is empty so empty slots do not fill the chat. */
-    private fun describeStack(label: String, stack: ItemStack): List<Component> {
-        if (stack.isEmpty) return emptyList()
+    private fun describe(entity: Entity): EntityLine = EntityLine(
+        type = entity.type.toString().removePrefix("entity.minecraft."),
+        name = entity.customName?.string,
+        invisible = entity.isInvisible,
+        marker = (entity as? ArmorStand)?.isMarker,
+        skinHash = (entity as? Player)?.let { PlayerUtils.getSkinHash(it) },
+        items = items(entity)
+    )
 
-        return buildList {
-            add(field(label, stack.item.toString()))
-            PlayerUtils.getSkinHash(stack)?.let { add(hashField("$label hash", it)) }
+    private fun items(entity: Entity): List<ItemLine> = when (entity) {
+        is LivingEntity -> ARMOR_SLOTS.mapNotNull { slot ->
+            itemLine(slot.getName(), entity.getItemBySlot(slot))
         }
+
+        is Display.ItemDisplay -> listOfNotNull(itemLine("item", entity.itemStack))
+
+        else -> emptyList()
     }
 
-    private fun field(label: String, value: String): Component =
-        Component.literal("  $label: ").withStyle(ChatFormatting.DARK_GRAY)
-            .append(Component.literal(value).withStyle(ChatFormatting.WHITE))
+    private fun itemLine(slot: String, stack: ItemStack): ItemLine? {
+        if (stack.isEmpty) return null
 
-    /**
-     * A hash, which is the value most matchers are written against, so it is worth being able to
-     * take it out of the game without reading it off the screen character by character.
-     */
-    private fun hashField(label: String, hash: String): Component =
-        Component.literal("  $label: ").withStyle(ChatFormatting.DARK_GRAY)
-            .append(
-                Component.literal(hash).withStyle(
-                    Style.EMPTY
-                        .withColor(ChatFormatting.YELLOW)
-                        .withClickEvent(ClickEvent.CopyToClipboard(hash))
-                        .withHoverEvent(HoverEvent.ShowText(Component.literal("Click to copy")))
-                )
-            )
-
-    /**
-     * A lot of mobs are an item display with a name tag next to it and nothing else, so what stands
-     * around the target is often the only thing that identifies it.
-     */
-    private fun printNearbyInfoEntities(entity: Entity, radius: Double = 0.5, height: Double = 2.0) {
-        val level = Minecraft.getInstance().level ?: return
-
-        val entities = level.getEntities(
-            null,
-            entity.boundingBox.inflate(radius, height, radius)
-        ).filter {
-            it !== entity && ((it is ArmorStand && it.hasCustomName()) || it is Display)
-        }
-
-        if (entities.isEmpty()) return
-
-        ChatUtils.send(
-            Component.literal("  nearby (${entities.size}):").withStyle(ChatFormatting.GOLD)
+        return ItemLine(
+            slot = slot,
+            id = stack.item.toString(),
+            dyeColor = stack.get(DataComponents.DYED_COLOR)?.rgb,
+            skullHash = PlayerUtils.getSkinHash(stack)
         )
-
-        entities.forEach { nearby ->
-            ChatUtils.send(
-                Component.literal("  - ${describeKind(nearby)}").withStyle(ChatFormatting.GRAY)
-            )
-            describe(nearby).forEach { ChatUtils.send(Component.literal("  ").append(it)) }
-        }
     }
 
-    private val EQUIPMENT_SLOTS = listOf(
-        EquipmentSlot.MAINHAND,
-        EquipmentSlot.OFFHAND,
+    private fun nearbyEntities(entity: Entity): List<Entity> {
+        val level = Minecraft.getInstance().level ?: return emptyList()
+
+        return level.getEntities(
+            entity,
+            entity.boundingBox.inflate(NEARBY_RADIUS, NEARBY_HEIGHT, NEARBY_RADIUS)
+        ).filter { it !== entity }
+    }
+
+    /** The whole dump, for the clipboard: full hashes, positions and every flag. */
+    private fun json(entity: Entity, subject: EntityLine, neighbours: List<EntityLine>): String {
+        val root = entityJson(subject)
+
+        root.addProperty("uuid", entity.uuid.toString())
+        root.addProperty("pos", "%.2f %.2f %.2f".format(entity.x, entity.y, entity.z))
+
+        val nearbyArray = JsonArray()
+        neighbours.forEach { nearbyArray.add(entityJson(it)) }
+        root.add("nearby", nearbyArray)
+
+        return GSON.toJson(root)
+    }
+
+    private fun entityJson(line: EntityLine): JsonObject {
+        val obj = JsonObject()
+
+        obj.addProperty("type", line.type)
+        obj.addProperty("name", line.name)
+        obj.addProperty("invisible", line.invisible)
+        line.marker?.let { obj.addProperty("marker", it) }
+        line.skinHash?.let { obj.addProperty("skinHash", it) }
+
+        val items = JsonArray()
+        line.items.forEach { item ->
+            val itemObj = JsonObject()
+            itemObj.addProperty("slot", item.slot)
+            itemObj.addProperty("id", item.id)
+            item.dyeColor?.let { itemObj.addProperty("dye", "#%06X".format(it and 0xFFFFFF)) }
+            item.skullHash?.let { itemObj.addProperty("skullHash", it) }
+            items.add(itemObj)
+        }
+        obj.add("equipment", items)
+
+        return obj
+    }
+
+    private val ARMOR_SLOTS = listOf(
         EquipmentSlot.HEAD,
         EquipmentSlot.CHEST,
         EquipmentSlot.LEGS,
-        EquipmentSlot.FEET
+        EquipmentSlot.FEET,
+        EquipmentSlot.MAINHAND,
+        EquipmentSlot.OFFHAND
     )
+
+    /** A hash as the hover shows one: enough of both ends to recognise it. */
+    private fun shorten(hash: String): String =
+        if (hash.length <= 20) hash else "${hash.take(8)}…${hash.takeLast(6)}"
+
+    private fun yesNo(value: Boolean): String = if (value) "yes" else "no"
 }
