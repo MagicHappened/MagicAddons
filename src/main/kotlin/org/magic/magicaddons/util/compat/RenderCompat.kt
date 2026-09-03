@@ -13,10 +13,8 @@ import net.minecraft.world.phys.shapes.VoxelShape
  */
 object RenderCompat {
 
-    //? if >=26.2 {
-    /*/** How thick a mark's edges are drawn, where the version lets that be asked for. */
+    /** How thick a mark's edges are drawn. */
     private const val OUTLINE_WIDTH: Float = 3f
-    *///?}
 
     /** Draws the edges of [shape], already positioned by [poseStack], in [color]. */
     fun outline(
@@ -35,7 +33,10 @@ object RenderCompat {
     }
 
     //? if <26.2 {
-    /** A line per edge, the line's own direction as its normal, as vanilla writes them. */
+    /**
+     * A line per edge, the line's own direction as its normal, as vanilla writes them. The line
+     * format carries a width per vertex, and a vertex without one is rejected.
+     */
     private fun VertexConsumer.edges(pose: PoseStack.Pose, shape: VoxelShape, color: Int) {
         shape.forAllEdges { x0, y0, z0, x1, y1, z1 ->
             var nx = (x1 - x0).toFloat()
@@ -52,9 +53,11 @@ object RenderCompat {
             this.addVertex(pose, x0.toFloat(), y0.toFloat(), z0.toFloat())
                 .setColor(color)
                 .setNormal(pose, nx, ny, nz)
+                .setLineWidth(OUTLINE_WIDTH)
             this.addVertex(pose, x1.toFloat(), y1.toFloat(), z1.toFloat())
                 .setColor(color)
                 .setNormal(pose, nx, ny, nz)
+                .setLineWidth(OUTLINE_WIDTH)
         }
     }
     //?}
