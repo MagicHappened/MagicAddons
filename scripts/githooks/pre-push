@@ -1,0 +1,44 @@
+#!/bin/sh
+# Refuses a push to master that does not carry a version bump with release notes.
+# Installed by the installGitHooks gradle task; skip once with git push --no-verify.
+
+remote="$1"
+
+while read -r _local_ref local_sha remote_ref _remote_sha; do
+    [ "$remote_ref" = "refs/heads/master" ] || continue
+    [ "$local_sha" = "0000000000000000000000000000000000000000" ] && continue
+
+    local_version=$(git show "$local_sha:gradle.properties" | sed -n 's/^mod_version=//p')
+    remote_version=$(git show "$remote/master:gradle.properties" 2>/dev/null | sed -n 's/^mod_version=//p')
+
+    if [ -z "$local_version" ]; then
+        echo "MagicAddons: no mod_version in gradle.properties"
+        exit 1
+    fi
+
+    if [ "$local_version" = "$remote_version" ]; then
+        echo "MagicAddons: mod_version is still $local_version on $remote/master"
+        echo "push rejected - bump the version, or push with --no-verify"
+        exit 1
+    fi
+
+    # a lower number than what is published is a typo rather than a release
+    lowest=$(printf '%s\n%s\n' "$local_version" "$remote_version" | sort -V | head -1)
+    if [ -n "$remote_version" ] && [ "$lowest" = "$local_version" ]; then
+        echo "MagicAddons: $local_version is older than $remote_version on $remote/master"
+        echo "push rejected - version went backwards"
+        exit 1
+    fi
+
+    # the release notes come from the bumping commit's body
+    bump_commit=$(git log --format=%H "$remote/master..$local_sha" -- gradle.properties 2>/dev/null | head -1)
+    [ -z "$bump_commit" ] && bump_commit="$local_sha"
+
+    if ! git log -1 --format=%b "$bump_commit" | grep -q '^- '; then
+        echo "MagicAddons: $(git log -1 --format=%s "$bump_commit")"
+        echo "push rejected - the version commit has no '- ' bullets for the release notes"
+        exit 1
+    fi
+done
+
+exit 0
