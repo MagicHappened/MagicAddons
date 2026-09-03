@@ -46,6 +46,11 @@ abstract class SettingWidget<T>(
 
     val textYPad: Int = 10
 
+    /** The height a setting has before its wrapped text asks for more. */
+    protected val baseHeight: Int = 40
+
+    protected val font get() = Minecraft.getInstance().font
+
 
     open fun initChildren() {
         // built fresh: a second call would otherwise leave the first set alive and clickable
@@ -66,7 +71,7 @@ abstract class SettingWidget<T>(
     fun detailHeight(): Int {
         val detail = node.detail?.invoke() ?: return 0
 
-        return detail.height(Minecraft.getInstance().font) + detailPadding
+        return detail.height(Minecraft.getInstance().font, width - textXPad * 2) + detailPadding
     }
 
     /** Draws the live line in the strip under the row, if there is one to draw. */

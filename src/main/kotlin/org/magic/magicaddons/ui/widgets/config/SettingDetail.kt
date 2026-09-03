@@ -2,6 +2,9 @@ package org.magic.magicaddons.ui.widgets.config
 
 import net.minecraft.client.gui.Font
 import net.minecraft.client.gui.GuiGraphicsExtractor
+import net.minecraft.network.chat.Component
+import org.magic.magicaddons.util.ScreenUtil.drawWrappedText
+import org.magic.magicaddons.util.ScreenUtil.wrappedHeight
 
 /**
  * Something drawn under a setting's row that the setting does not store: what the chosen value
@@ -11,19 +14,20 @@ import net.minecraft.client.gui.GuiGraphicsExtractor
  */
 sealed interface SettingDetail {
 
-    /** How tall this wants to be drawn, in pixels. */
-    fun height(font: Font): Int
+    /** How tall this wants to be drawn when given [width] to wrap in. */
+    fun height(font: Font, width: Int): Int
 
     /** Draws itself into the strip a row has set aside for it. */
     fun render(graphics: GuiGraphicsExtractor, font: Font, x: Int, y: Int, width: Int)
 
-    /** One line of plain text, the ordinary case. */
+    /** Plain text, wrapped to the strip's width. */
     data class Text(val text: String, val color: Int = GRAY) : SettingDetail {
 
-        override fun height(font: Font): Int = font.lineHeight
+        override fun height(font: Font, width: Int): Int =
+            wrappedHeight(font, Component.literal(text), width)
 
         override fun render(graphics: GuiGraphicsExtractor, font: Font, x: Int, y: Int, width: Int) {
-            graphics.text(font, text, x, y, color, false)
+            graphics.drawWrappedText(font, Component.literal(text), x, y, width, color)
         }
     }
 

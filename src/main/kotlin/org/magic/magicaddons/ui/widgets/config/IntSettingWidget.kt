@@ -11,6 +11,8 @@ import org.lwjgl.glfw.GLFW
 import org.magic.magicaddons.Common
 import org.magic.magicaddons.data.config.IntSetting
 import org.magic.magicaddons.util.ScreenUtil.drawBorder
+import org.magic.magicaddons.util.ScreenUtil.drawWrappedText
+import org.magic.magicaddons.util.ScreenUtil.wrappedHeight
 import kotlin.math.roundToInt
 
 /**
@@ -44,16 +46,26 @@ class IntSettingWidget(
         }
     }
 
-    /** The top half of the box, which the name and the number share. */
-    private fun rowHeight(): Int = height / 2 - borderSize * 2
+    /** The number box is as tall as half the base height leaves after the borders. */
+    private fun rowHeight(): Int = baseHeight / 2 - borderSize * 2
 
-    private fun barTop(): Int = y + height / 2 + (height / 2 - barHeight) / 2
+    private val label: Component get() = Component.literal(setting.displayName)
+
+    private fun labelWidth(): Int = width - boxWidth - textXPad * 3 - borderSize * 2
+
+    /** The top part holds the name and the box; it grows when the name wraps. */
+    private fun topHeight(): Int =
+        (wrappedHeight(font, label, labelWidth()) + textXPad).coerceAtLeast(baseHeight / 2)
+
+    private fun barTop(): Int = y + topHeight() + (baseHeight / 2 - barHeight) / 2
     private fun barLeft(): Int = x + textXPad
     private fun barWidth(): Int = width - textXPad * 2
 
     override fun layout() {
+        height = topHeight() + baseHeight / 2
+
         valueBox.x = x + width - borderSize - textXPad - boxWidth
-        valueBox.y = y + borderSize + textXPad / 2
+        valueBox.y = y + (topHeight() - rowHeight()) / 2
         valueBox.width = boxWidth
         valueBox.height = rowHeight()
 
@@ -89,21 +101,21 @@ class IntSettingWidget(
 
     private fun overBar(mouseX: Double, mouseY: Double): Boolean =
         mouseX >= barLeft() && mouseX <= barLeft() + barWidth() &&
-                mouseY >= y + height / 2 && mouseY <= y + height
+                mouseY >= y + topHeight() && mouseY <= y + height
 
     override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
-        val font = Minecraft.getInstance().font
-
         graphics.fill(x, y, x + width, y + height, backgroundColor)
         graphics.drawBorder(x, y, x + width, y + height, borderSize, borderColor)
 
-        graphics.text(
+        val labelHeight = wrappedHeight(font, label, labelWidth())
+
+        graphics.drawWrappedText(
             font,
-            Component.literal(setting.displayName),
+            label,
             x + textXPad + borderSize,
-            y + borderSize + textXPad / 2 + (rowHeight() - font.lineHeight) / 2,
-            Common.UI.TEXT_COLOR,
-            false
+            y + (topHeight() - labelHeight) / 2,
+            labelWidth(),
+            Common.UI.TEXT_COLOR
         )
 
         valueBox.extractRenderState(graphics, mouseX, mouseY, delta)
