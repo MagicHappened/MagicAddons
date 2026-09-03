@@ -2,7 +2,7 @@ name: build
 
 on:
   push:
-    branches: [ "master" ]
+    branches: [ "beta" ]
 
 jobs:
   build:
@@ -24,7 +24,7 @@ jobs:
           run: chmod +x ./gradlew
 
         - name: Build with Gradle
-          run: ./gradlew build
+          run: ./gradlew build -Pbuild_id=${GITHUB_SHA::7}
 
         # with archive false each jar arrives as its own artifact, named after the file itself
         - name: Upload 26.1.2 jar
