@@ -394,7 +394,7 @@ object SafariHelper : HighlightFeature() {
         }
     }
 
-    override fun shouldHighlight(info: EntityInfo): Boolean {
+    override fun highlightTarget(info: EntityInfo): Entity? {
         val sparkling = isSparkling(info)
         val highlight = matchesHighlight(info, sparkling)
 
@@ -404,7 +404,7 @@ object SafariHelper : HighlightFeature() {
             sparklingEntities.remove(info.entity)
         }
 
-        return highlight
+        return info.entity.takeIf { highlight }
     }
 
     private fun matchesHighlight(info: EntityInfo, sparkling: Boolean): Boolean {

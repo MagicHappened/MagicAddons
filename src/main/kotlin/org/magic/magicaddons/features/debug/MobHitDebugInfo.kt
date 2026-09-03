@@ -1,17 +1,24 @@
 package org.magic.magicaddons.features.debug
 
+import com.google.gson.GsonBuilder
+import com.google.gson.JsonArray
+import com.google.gson.JsonObject
+import net.minecraft.ChatFormatting
 import net.minecraft.client.Minecraft
+import net.minecraft.core.component.DataComponents
 import net.minecraft.network.chat.ClickEvent
 import net.minecraft.network.chat.Component
+import net.minecraft.network.chat.HoverEvent
+import net.minecraft.network.chat.MutableComponent
 import net.minecraft.network.chat.Style
+import net.minecraft.network.chat.TextColor
 import net.minecraft.world.entity.Display
 import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.EquipmentSlot
-import net.minecraft.world.entity.Interaction
 import net.minecraft.world.entity.LivingEntity
-import net.minecraft.world.entity.animal.parrot.Parrot
 import net.minecraft.world.entity.decoration.ArmorStand
 import net.minecraft.world.entity.player.Player
+import net.minecraft.world.item.ItemStack
 import org.magic.magicaddons.data.config.BooleanSetting
 import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.events.EventHandler
@@ -21,6 +28,10 @@ import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.PlayerUtils
 import java.net.URI
 
+/**
+ * Prints what the client knows about whatever was hit, as one chat line whose hover carries the
+ * detail and whose click copies the whole thing as json.
+ */
 object MobHitDebugInfo : Feature() {
     init {
         EventBus.register(this)
@@ -38,158 +49,221 @@ object MobHitDebugInfo : Feature() {
         //todo add the select option to return
     )
 
+    /** How far around the hit entity to look for the stands and displays that belong to it. */
+    private const val NEARBY_RADIUS: Double = 0.5
+    private const val NEARBY_HEIGHT: Double = 2.0
+
+    private val GSON = GsonBuilder().setPrettyPrinting().create()
+
     @EventHandler
     fun onAttackEntity(event: OnAttackEntityEvent) {
         if (!baseSetting.value) return
         event.canceled = true
 
-        when (val target = event.target) {
-            is Player -> attackPlayerDebug(target)
-            is ArmorStand -> attackArmorStandDebug(target)
-            is LivingEntity -> attackMobDebug(target)
-            is Display -> attackDisplayDebug(target)
-            is Interaction -> attackInteractionDebug(target)
-            else -> attackUnknownDebug(target)
+        report(event.target)
+    }
+
+    /** One item of an entity's equipment, as the debug cares about it. */
+    private data class ItemLine(
+        val slot: String,
+        val id: String,
+        val dyeColor: Int?,
+        val skullHash: String?
+    )
+
+    /** One entity, the hit one or something standing in it. */
+    private data class EntityLine(
+        val type: String,
+        val name: String?,
+        val invisible: Boolean,
+        val marker: Boolean?,
+        val skinHash: String?,
+        val items: List<ItemLine>
+    )
+
+    private fun report(entity: Entity) {
+        val subject = describe(entity)
+        val nearby = nearbyEntities(entity)
+        val neighbours = nearby.map(::describe)
+
+        val summary = Component.literal(summaryText(subject, neighbours.size))
+            .setStyle(
+                Style.EMPTY.withHoverEvent(HoverEvent.ShowText(detailText(subject, neighbours)))
+            )
+
+        summary.append(clickable("[copy]", ChatFormatting.GREEN, "Copies the full dump as json",
+            ClickEvent.CopyToClipboard(json(entity, subject, neighbours))))
+
+        if (entity is Player) {
+            PlayerUtils.getSkinUrl(entity)?.let { url ->
+                summary.append(clickable("[skin]", ChatFormatting.AQUA, url, ClickEvent.OpenUrl(URI(url))))
+            }
+            subject.skinHash?.let { hash ->
+                summary.append(clickable("[Skin Hash]", ChatFormatting.YELLOW, hash,
+                    ClickEvent.CopyToClipboard(hash)))
+            }
+        }
+
+        ChatUtils.sendWithPrefix(summary)
+    }
+
+    /** Name, type, whether it can be seen, what it wears and how much is standing in it. */
+    private fun summaryText(subject: EntityLine, neighbours: Int): String = buildString {
+        append(subject.name ?: subject.type)
+        append(" · ").append(subject.type)
+        append(" · ").append(if (subject.invisible) "invisible" else "visible")
+        if (subject.items.isNotEmpty()) append(" · ").append("${subject.items.size} worn")
+        append(" · ").append("$neighbours nearby")
+        append(" ")
+    }
+
+    private fun clickable(
+        label: String,
+        color: ChatFormatting,
+        hover: String,
+        click: ClickEvent
+    ): Component = Component.literal(" $label").setStyle(
+        Style.EMPTY
+            .withColor(color)
+            .withClickEvent(click)
+            .withHoverEvent(HoverEvent.ShowText(Component.literal(hover)))
+    )
+
+    /** The hover: the hit entity in full, then a line for each thing standing in it. */
+    private fun detailText(subject: EntityLine, neighbours: List<EntityLine>): Component {
+        val text = Component.literal("")
+
+        appendEntity(text, subject)
+
+        text.append(Component.literal("\nNearby (${neighbours.size})").withStyle(ChatFormatting.GRAY))
+        neighbours.forEach { neighbour ->
+            text.append(Component.literal("\n  "))
+            appendEntity(text, neighbour, short = true)
+        }
+
+        return text
+    }
+
+    private fun appendEntity(text: MutableComponent, line: EntityLine, short: Boolean = false) {
+        if (short) {
+            text.append(Component.literal(line.type).withStyle(ChatFormatting.WHITE))
+            line.name?.let { text.append(Component.literal("  \"$it\"").withStyle(ChatFormatting.GRAY)) }
+            if (line.invisible) text.append(Component.literal("  invisible").withStyle(ChatFormatting.DARK_GRAY))
+        } else {
+            text.append(Component.literal(line.name ?: "no name").withStyle(ChatFormatting.WHITE))
+            text.append(Component.literal(" — ${line.type}").withStyle(ChatFormatting.GRAY))
+            text.append(Component.literal("\ninvisible: ${yesNo(line.invisible)}").withStyle(ChatFormatting.GRAY))
+            line.marker?.let {
+                text.append(Component.literal("   marker: ${yesNo(it)}").withStyle(ChatFormatting.GRAY))
+            }
+            line.skinHash?.let {
+                text.append(Component.literal("\nskin  ${shorten(it)}").withStyle(ChatFormatting.GRAY))
+            }
+        }
+
+        line.items.forEach { item ->
+            text.append(Component.literal("\n${if (short) "    " else "  "}${item.slot}  ${item.id}")
+                .withStyle(ChatFormatting.WHITE))
+
+            item.dyeColor?.let { rgb ->
+                text.append(Component.literal("  ■").setStyle(Style.EMPTY.withColor(TextColor.fromRgb(rgb))))
+                text.append(Component.literal(" #%06X".format(rgb and 0xFFFFFF)).withStyle(ChatFormatting.GRAY))
+            }
+
+            item.skullHash?.let {
+                text.append(Component.literal("  ${shorten(it)}").withStyle(ChatFormatting.GRAY))
+            }
         }
     }
 
+    private fun describe(entity: Entity): EntityLine = EntityLine(
+        type = entity.type.toString().removePrefix("entity.minecraft."),
+        name = entity.customName?.string,
+        invisible = entity.isInvisible,
+        marker = (entity as? ArmorStand)?.isMarker,
+        skinHash = (entity as? Player)?.let { PlayerUtils.getSkinHash(it) },
+        items = items(entity)
+    )
 
-    fun attackPlayerDebug(player: Player) {
-        val url = PlayerUtils.getSkinUrl(player)
-        val hash = PlayerUtils.getSkinHash(player)
-
-        if (url == null || hash == null) {
-            ChatUtils.sendWithPrefix("No skin data")
-            return
+    private fun items(entity: Entity): List<ItemLine> = when (entity) {
+        is LivingEntity -> ARMOR_SLOTS.mapNotNull { slot ->
+            itemLine(slot.getName(), entity.getItemBySlot(slot))
         }
 
-        val clickableText = Component.literal("Click for skin url").setStyle(
-            Style.EMPTY.withClickEvent(ClickEvent.OpenUrl(URI(url)))
+        is Display.ItemDisplay -> listOfNotNull(itemLine("item", entity.itemStack))
+
+        else -> emptyList()
+    }
+
+    private fun itemLine(slot: String, stack: ItemStack): ItemLine? {
+        if (stack.isEmpty) return null
+
+        return ItemLine(
+            slot = slot,
+            id = stack.item.toString(),
+            dyeColor = stack.get(DataComponents.DYED_COLOR)?.rgb,
+            skullHash = PlayerUtils.getSkinHash(stack)
         )
-
-        ChatUtils.sendWithPrefix("=== Player Debug ===")
-        ChatUtils.sendWithPrefix(clickableText)
-        ChatUtils.sendWithPrefix("Skin hash: $hash")
-
-        printNearbyInfoEntities(player)
     }
 
-    fun attackArmorStandDebug(stand: ArmorStand) {
-        ChatUtils.sendWithPrefix("=== Armor Stand Debug ===")
+    private fun nearbyEntities(entity: Entity): List<Entity> {
+        val level = Minecraft.getInstance().level ?: return emptyList()
 
-        val name = stand.customName?.string ?: "No custom name"
-        ChatUtils.sendWithPrefix("Name: $name")
-
-        sendEntityDebug(stand)
-
+        return level.getEntities(
+            entity,
+            entity.boundingBox.inflate(NEARBY_RADIUS, NEARBY_HEIGHT, NEARBY_RADIUS)
+        ).filter { it !== entity }
     }
 
-    fun attackMobDebug(mob: LivingEntity) {
-        ChatUtils.sendWithPrefix("=== Mob Debug ===")
+    /** The whole dump, for the clipboard: full hashes, positions and every flag. */
+    private fun json(entity: Entity, subject: EntityLine, neighbours: List<EntityLine>): String {
+        val root = entityJson(subject)
 
-        val name = mob.customName?.string ?: mob.name.string
-        ChatUtils.sendWithPrefix("Name: $name")
+        root.addProperty("uuid", entity.uuid.toString())
+        root.addProperty("pos", "%.2f %.2f %.2f".format(entity.x, entity.y, entity.z))
 
-        val type = mob.type.toString()
-        ChatUtils.sendWithPrefix("Type: $type")
-        sendEntityDebug(mob)
+        val nearbyArray = JsonArray()
+        neighbours.forEach { nearbyArray.add(entityJson(it)) }
+        root.add("nearby", nearbyArray)
 
-        printNearbyInfoEntities(mob)
+        return GSON.toJson(root)
     }
-    fun attackDisplayDebug(entity: Display){
-        when (entity) {
-            is Display.ItemDisplay -> {
-                val stack = entity.itemStack
-                if (stack.isEmpty) return
-                ChatUtils.sendWithPrefix("=== ItemDisplay ===")
-                ChatUtils.sendWithPrefix("  -> ITEM: ${stack.item}")
-                ChatUtils.sendWithPrefix(PlayerUtils.getSkinHash(stack) ?: "No skin hash")
-            }
-            else -> {
-                ChatUtils.sendWithPrefix("Class ${entity.type}")
-            }
+
+    private fun entityJson(line: EntityLine): JsonObject {
+        val obj = JsonObject()
+
+        obj.addProperty("type", line.type)
+        obj.addProperty("name", line.name)
+        obj.addProperty("invisible", line.invisible)
+        line.marker?.let { obj.addProperty("marker", it) }
+        line.skinHash?.let { obj.addProperty("skinHash", it) }
+
+        val items = JsonArray()
+        line.items.forEach { item ->
+            val itemObj = JsonObject()
+            itemObj.addProperty("slot", item.slot)
+            itemObj.addProperty("id", item.id)
+            item.dyeColor?.let { itemObj.addProperty("dye", "#%06X".format(it and 0xFFFFFF)) }
+            item.skullHash?.let { itemObj.addProperty("skullHash", it) }
+            items.add(itemObj)
         }
+        obj.add("equipment", items)
+
+        return obj
     }
 
-    fun attackInteractionDebug(entity: Interaction){
-        ChatUtils.sendWithPrefix("=== Interaction ===")
-        printNearbyInfoEntities(entity)
-    }
+    private val ARMOR_SLOTS = listOf(
+        EquipmentSlot.HEAD,
+        EquipmentSlot.CHEST,
+        EquipmentSlot.LEGS,
+        EquipmentSlot.FEET,
+        EquipmentSlot.MAINHAND,
+        EquipmentSlot.OFFHAND
+    )
 
-    fun attackUnknownDebug(entity: Entity) {
-        ChatUtils.sendWithPrefix("=== Unknown Entity Debug ===")
-        ChatUtils.sendWithPrefix("Class: ${entity.type}")
-    }
+    /** A hash as the hover shows one: enough of both ends to recognise it. */
+    private fun shorten(hash: String): String =
+        if (hash.length <= 20) hash else "${hash.take(8)}…${hash.takeLast(6)}"
 
-    private fun printNearbyInfoEntities(entity: Entity, radius: Double = 0.5, height: Double = 2.0) {
-        val level = Minecraft.getInstance().level ?: return
-
-        val entities = level.getEntities(
-            null,
-            entity.boundingBox.inflate(radius, height, radius)
-        ).filter {
-            it !== entity && (
-                    (it is ArmorStand && it.hasCustomName()) ||
-                            it is Display
-                    )
-        }
-
-        if (entities.isEmpty()) return
-
-        ChatUtils.sendWithPrefix("=== Nearby Info Entities: ===")
-
-        entities.forEach { 
-            val name = it.customName?.string ?: "No custom name"
-            ChatUtils.sendWithPrefix("Name: $name")
-            ChatUtils.sendWithPrefix("Type: ${it.type}")
-            sendEntityDebug(it)
-        }
-    }
-
-
-    fun sendEntityDebug(entity: Entity) {
-
-        when (entity) {
-
-            is LivingEntity -> {
-                ChatUtils.sendWithPrefix("=== Equipment ===")
-
-                val slots = listOf(
-                    EquipmentSlot.MAINHAND,
-                    EquipmentSlot.OFFHAND,
-                    EquipmentSlot.FEET,
-                    EquipmentSlot.LEGS,
-                    EquipmentSlot.CHEST,
-                    EquipmentSlot.HEAD
-                )
-
-                for (slot in slots) {
-                    val stack = entity.getItemBySlot(slot)
-                    if (stack.isEmpty) continue
-
-                    ChatUtils.sendWithPrefix("  -> ITEM ($slot): ${stack.item}")
-                    ChatUtils.sendWithPrefix(PlayerUtils.getSkinHash(stack) ?: "No skin hash")
-                }
-            }
-
-            is Display.ItemDisplay -> {
-                val stack = entity.itemStack
-                if (stack.isEmpty) return
-
-                ChatUtils.sendWithPrefix("=== ItemDisplay ===")
-                ChatUtils.sendWithPrefix("  -> ITEM: ${stack.item}")
-                ChatUtils.sendWithPrefix(PlayerUtils.getSkinHash(stack) ?: "No skin hash")
-            }
-
-        }
-    }
-
-
-
-
-
-
-
-
-
+    private fun yesNo(value: Boolean): String = if (value) "yes" else "no"
 }
