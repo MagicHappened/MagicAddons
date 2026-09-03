@@ -7,7 +7,9 @@ import net.minecraft.client.gui.components.events.GuiEventListener
 import net.minecraft.client.gui.narration.NarratableEntry
 import net.minecraft.client.gui.narration.NarrationElementOutput
 import net.minecraft.client.input.MouseButtonEvent
+import net.minecraft.network.chat.Component
 import org.magic.magicaddons.features.Feature
+import org.magic.magicaddons.util.ScreenUtil.wrappedHeight
 
 class ConfigCategoryWidget(
     val categoryName: String,
@@ -25,32 +27,40 @@ class ConfigCategoryWidget(
     val categoryTitlePadding: Int = 5
     val featurePadding = 10
 
+    private val font get() = Minecraft.getInstance().font
+
+    private val title: Component get() = Component.literal(categoryName)
+
     init {
         categoryFeatures.forEach { feature ->
             categoryFeatureWidgets.add(FeatureToggleWidget(feature))
         }
     }
 
-    fun init(baseX: Int, baseY: Int) {
+    /** The narrowest column that still holds every feature row. */
+    fun minWidth(): Int = categoryFeatureWidgets.maxOfOrNull { it.minWidth() } ?: 100
+
+    /** The tallest row any feature here needs at [columnWidth] with a checkbox of [rowHeight]. */
+    fun neededRowHeight(columnWidth: Int, rowHeight: Int): Int {
+        categoryFeatureWidgets.forEach { it.width = columnWidth }
+        return categoryFeatureWidgets.maxOfOrNull { it.neededHeight(rowHeight) } ?: 0
+    }
+
+    fun init(baseX: Int, baseY: Int, columnWidth: Int, rowHeight: Int) {
         x = baseX
         y = baseY
+        width = columnWidth
 
-        val font = Minecraft.getInstance().font
-        val titleHeight = font.lineHeight + categoryTitlePadding * 2
-
-        val maxWidth = categoryFeatureWidgets.maxOfOrNull { it.getContentWidth() } ?: 200
-        width = maxWidth
+        val titleHeight = wrappedHeight(font, title, width) + categoryTitlePadding * 2
 
         // start below the title
         var currentY = y + titleHeight
 
         categoryFeatureWidgets.forEach {
-            it.init()
             it.x = x
             it.y = currentY
-            it.width = maxWidth
-            it.checkbox.x = x
-            it.checkbox.y = currentY
+            it.width = width
+            it.layout(rowHeight)
             currentY += it.height + featurePadding
         }
 
@@ -59,16 +69,20 @@ class ConfigCategoryWidget(
     }
 
     override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
+        val lines = font.split(title, width)
+        var titleY = y + categoryTitlePadding
 
-        val font = Minecraft.getInstance().font
-        graphics.text(
-            font,
-            categoryName,
-            x + (width - font.width(categoryName)) / 2,
-            y + (font.lineHeight) / 2,
-            0xFFFFFFFF.toInt(),
-            false
-        )
+        lines.forEach { line ->
+            graphics.text(
+                font,
+                line,
+                x + (width - font.width(line)) / 2,
+                titleY,
+                0xFFFFFFFF.toInt(),
+                false
+            )
+            titleY += font.lineHeight
+        }
 
         categoryFeatureWidgets.forEach {
             it.extractRenderState(graphics, mouseX, mouseY, delta)

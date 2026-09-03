@@ -1,6 +1,5 @@
 package org.magic.magicaddons.ui.widgets.config
 
-import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.network.chat.Component
@@ -8,6 +7,8 @@ import org.magic.magicaddons.data.config.EnumSetting
 import org.magic.magicaddons.ui.widgets.RemovableRowWidget
 import org.magic.magicaddons.util.ScreenUtil.drawBorder
 import org.magic.magicaddons.util.ScreenUtil.drawLine
+import org.magic.magicaddons.util.ScreenUtil.drawWrappedText
+import org.magic.magicaddons.util.ScreenUtil.wrappedHeight
 
 
 class EnumSettingWidget<T : Enum<T>>(
@@ -20,6 +21,24 @@ class EnumSettingWidget<T : Enum<T>>(
     override val hasChildren: Boolean = true
 
     private val selectionOptions: MutableList<RemovableRowWidget<T>> = mutableListOf()
+
+    private val arrow = "↓"
+
+    /** Each half keeps this much above and below its text, so one line of text fills half the base height. */
+    private val halfPad = (baseHeight / 2 - font.lineHeight) / 2
+
+    /** A dropdown row is at least this tall. */
+    private val rowMinHeight = baseHeight / 2
+
+    private val title: Component get() = Component.literal("${setting.displayName}:")
+    private val valueText: Component get() = Component.literal(setting.value.toString())
+
+    private fun titleWidth(): Int = width - textXPad * 2
+    private fun valueWidth(): Int = width - textXPad * 2 - font.width(arrow) - 4
+
+    /** The top half holds the name, the bottom half the value; both grow with their wrapped text. */
+    private fun titleHeight(): Int = wrappedHeight(font, title, titleWidth()) + halfPad * 2
+    private fun valueHeight(): Int = wrappedHeight(font, valueText, valueWidth()) + halfPad * 2
 
     override fun initChildren() {
         childrenWidgets.clear()
@@ -47,6 +66,7 @@ class EnumSettingWidget<T : Enum<T>>(
 
 
     override fun layout() { //delegate more into this function in future maybe?
+        height = (titleHeight() + valueHeight()).coerceAtLeast(baseHeight)
         initDropdown()
         layoutDropdown() //maybe arrow and text selection too :think:
     }
@@ -58,53 +78,51 @@ class EnumSettingWidget<T : Enum<T>>(
             it.x = x
             it.y = currentY
             it.width = width
-            it.height = height / 2
+            it.fitHeight(rowMinHeight)
             currentY += it.height
         }
     }
 
     override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
-        val font = Minecraft.getInstance().font
-        val halfHeight = height / 2
-
-        val titleY = y + (halfHeight - font.lineHeight) / 2
-        val valueY = y + halfHeight + (halfHeight - font.lineHeight) / 2
+        val divider = y + titleHeight()
 
         graphics.fill(x, y, x + width, y + height, backgroundColor)
         graphics.drawBorder(x, y, x + width, y + height, borderSize, borderColor)
 
         graphics.drawLine(
             x + borderSize,
-            y + halfHeight,
+            divider,
             x + width - borderSize,
-            y + halfHeight,
+            divider,
             1,
             borderColor
         )
 
-        graphics.text(
+        graphics.drawWrappedText(
             font,
-            Component.literal("${setting.displayName}:"),
+            title,
             x + textXPad,
-            titleY,
-            0xFFFFFFFF.toInt(),
-            false
+            y + halfPad,
+            titleWidth(),
+            0xFFFFFFFF.toInt()
+        )
+
+        val valueTop = divider + (height - titleHeight() - valueHeight()).coerceAtLeast(0) / 2
+
+        graphics.drawWrappedText(
+            font,
+            valueText,
+            x + textXPad,
+            valueTop + halfPad,
+            valueWidth(),
+            0xFFFFFFFF.toInt()
         )
 
         graphics.text(
             font,
-            Component.literal(setting.value.toString()),
-            x + textXPad,
-            valueY,
-            0xFFFFFFFF.toInt(),
-            false
-        )
-
-        graphics.text(
-            font,
-            Component.literal("↓"),
-            x + width - font.width("↓") - 4,
-            valueY,
+            Component.literal(arrow),
+            x + width - font.width(arrow) - 4,
+            valueTop + halfPad,
             0xFFFFFFFF.toInt(),
             false
         )

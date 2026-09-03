@@ -1,7 +1,6 @@
 package org.magic.magicaddons.ui.screens
 
 
-import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.input.MouseButtonEvent
@@ -15,7 +14,7 @@ import org.magic.magicaddons.util.ScreenUtil.drawMultilineBoxCentered
 import org.magic.magicaddons.util.VersionChecker
 import org.magic.magicaddons.util.compat.McCompat
 
-class ConfigScreen(title: Component, val parent: Screen?) : Screen(title) {
+class ConfigScreen(title: Component, val parent: Screen?) : ScrollableScreen(title) {
 
     val categoryWidgets = mutableListOf<ConfigCategoryWidget>()
     lateinit var categories: MutableMap<String, MutableList<Feature>>
@@ -28,9 +27,21 @@ class ConfigScreen(title: Component, val parent: Screen?) : Screen(title) {
         You can toggle in depth settings by right clicking the objects
     """.trimIndent()
 
+    /** The centre of the help box and, under it, of the update line when there is one. */
+    private val helpY = 35
+    private val noticeY = 58
 
+    private var columnsCenterX = 0
+
+    override var contentWidth: Int = 0
+        private set
+    override var contentHeight: Int = 0
+        private set
+
+    private fun showsNotice(): Boolean = VersionChecker.result?.outdated == true
 
     override fun init() {
+        super.init()
         MagicAddonsConfigJsonHandler.load()
         VersionChecker.check()
         categories = FeatureManager.features
@@ -49,27 +60,49 @@ class ConfigScreen(title: Component, val parent: Screen?) : Screen(title) {
             categoryWidgets.add(ConfigCategoryWidget(categoryName, featureList))
         }
 
-        var currentX = 50
-        val baseY = 60
-
-        categoryWidgets.forEach { category ->
-            category.init(currentX, baseY)
-
-            currentX += category.width + categoryPadding
-
-            addRenderableWidget(category)
-        }
+        layoutColumns()
     }
 
-    override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, deltaTick: Float) {
-        super.extractRenderState(graphics, mouseX, mouseY, deltaTick)
+    /** One column per category on a single row, sharing the width; too many scroll sideways. */
+    private fun layoutColumns() {
+        val count = categoryWidgets.size
+        val minWidth = categoryWidgets.maxOf { it.minWidth() }
+        val columnWidth = columnWidth(count, categoryPadding, minWidth)
+        val totalWidth = count * columnWidth + (count - 1) * categoryPadding
 
-        graphics.drawMultilineBoxCentered(helpText, width/2, 35)
+        var currentX = columnsStartX(totalWidth)
+        val baseY = if (showsNotice()) 75 else 60
+
+        columnsCenterX = currentX + totalWidth / 2
+
+        // every feature row shares the tallest height, so the columns line up. The checkbox is as
+        // tall as the row and takes width from the text, so the height is settled by repeating
+        var rowHeight = 0
+        repeat(5) {
+            val needed = categoryWidgets.maxOf { it.neededRowHeight(columnWidth, rowHeight) }
+            if (needed == rowHeight) return@repeat
+            rowHeight = needed
+        }
+
+        categoryWidgets.forEach { category ->
+            category.init(currentX, baseY, columnWidth, rowHeight)
+            currentX += columnWidth + categoryPadding
+        }
+
+        contentWidth = extentFor(currentX - categoryPadding, width)
+        contentHeight = extentFor(baseY + (categoryWidgets.maxOfOrNull { it.height } ?: 0), height)
+        clampScroll()
+    }
+
+    override fun extractContent(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
+        graphics.drawMultilineBoxCentered(helpText, columnsCenterX, helpY)
 
         // whatever the last check found, so opening the config says it as well as chat did
         VersionChecker.result?.takeIf { it.outdated }?.let { found ->
-            graphics.drawMultilineBoxCentered(found.headline(), width / 2, 58)
+            graphics.drawMultilineBoxCentered(found.headline(), columnsCenterX, noticeY)
         }
+
+        categoryWidgets.forEach { it.extractRenderState(graphics, mouseX, mouseY, delta) }
     }
 
     override fun extractBackground(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, deltaTick: Float) {
@@ -80,11 +113,12 @@ class ConfigScreen(title: Component, val parent: Screen?) : Screen(title) {
         McCompat.extractDeferredSubtitles(this.minecraft)
     }
 
-    override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
+    override fun contentMouseClicked(event: MouseButtonEvent, doubled: Boolean): Boolean {
+        var handled = false
         categoryWidgets.forEach {
-            it.mouseClicked(mouseButtonEvent, doubled)
+            if (it.mouseClicked(event, doubled)) handled = true
         }
-        return super.mouseClicked(mouseButtonEvent, doubled)
+        return handled
     }
 
     override fun onClose() {

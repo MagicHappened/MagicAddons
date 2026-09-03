@@ -6,6 +6,7 @@ import net.minecraft.client.gui.components.events.GuiEventListener
 import net.minecraft.client.input.CharacterEvent
 import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
+import org.magic.magicaddons.ui.screens.ScrollableScreen
 import org.magic.magicaddons.ui.widgets.AbstractContextMenu
 import org.magic.magicaddons.util.compat.McCompat
 
@@ -46,12 +47,17 @@ interface OverlayRenderable : GuiEventListener, HoverableContainer {
     companion object {
         /** Where a menu opened at a point should sit: at the cursor, folded back when it runs out. */
         fun placeOnScreen(x: Int, y: Int, menuWidth: Int, menuHeight: Int): Pair<Int, Int> {
-            val window = McCompat.currentScreen() ?: return x to y
-            val screenWidth = window.width
-            val screenHeight = window.height
+            val screen = McCompat.currentScreen() ?: return x to y
+            val scrolling = screen as? ScrollableScreen
 
-            return (if (x + menuWidth > screenWidth) x - menuWidth else x).coerceAtLeast(0) to
-                    (if (y + menuHeight > screenHeight) y - menuHeight else y).coerceAtLeast(0)
+            // on a scrolling screen the edges are those of the part on screen, in content coordinates
+            val left = scrolling?.viewLeft ?: 0
+            val top = scrolling?.viewTop ?: 0
+            val right = scrolling?.viewRight ?: screen.width
+            val bottom = scrolling?.viewBottom ?: screen.height
+
+            return (if (x + menuWidth > right) x - menuWidth else x).coerceAtLeast(left) to
+                    (if (y + menuHeight > bottom) y - menuHeight else y).coerceAtLeast(top)
         }
     }
 
