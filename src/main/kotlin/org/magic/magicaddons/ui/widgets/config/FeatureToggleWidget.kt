@@ -5,12 +5,16 @@ import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.components.Renderable
 import net.minecraft.client.gui.components.events.GuiEventListener
 import net.minecraft.client.input.MouseButtonEvent
+import net.minecraft.network.chat.Component
+import org.magic.magicaddons.Common
 import org.magic.magicaddons.ui.widgets.CheckboxWidget
 import org.magic.magicaddons.ui.screens.ConfigScreen
 import org.magic.magicaddons.ui.screens.FeatureEditScreen
 import org.magic.magicaddons.features.Feature
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.ScreenUtil.drawBorder
+import org.magic.magicaddons.util.ScreenUtil.drawWrappedText
+import org.magic.magicaddons.util.ScreenUtil.wrappedHeight
 import org.magic.magicaddons.util.compat.McCompat
 
 class FeatureToggleWidget(
@@ -19,52 +23,67 @@ class FeatureToggleWidget(
     var x: Int = 0
     var y: Int = 0
 
-
     var width: Int = 100
 
-    var height: Int = 25
+    /** The row is this tall unless its name wraps to more lines. */
+    val baseHeight: Int = 25
+
+    var height: Int = baseHeight
 
     val borderSize = 2
 
-    val textXPad: Int = 10
+    /** Gap between the checkbox and the name, like the gap after a pack icon in vanilla lists. */
+    val textXPad: Int = 3
 
-
+    val textYPad: Int = 4
 
     val borderColor: Int = 0xFF000000.toInt()
 
+    val backgroundColor: Int = Common.UI.BACKGROUND_COLOR
+
     val checkbox = CheckboxWidget(checked = feature.baseSetting.value)
 
-    fun init(){
-        checkbox.size = height
+    private val font get() = Minecraft.getInstance().font
 
+    private val name: Component get() = Component.literal(feature.displayName)
+
+    /** The checkbox is as tall as the row, so the text starts past a square of the row's height. */
+    private fun textWidth(): Int = width - height - textXPad * 2
+
+    /** How tall the row must be for its name to fit beside a checkbox of [checkboxSize]. */
+    fun neededHeight(checkboxSize: Int): Int {
+        val textWidth = width - checkboxSize - textXPad * 2
+        return (wrappedHeight(font, name, textWidth) + textYPad * 2).coerceAtLeast(baseHeight)
+    }
+
+    /** Sizes the row to [rowHeight], with the checkbox filling the full height. */
+    fun layout(rowHeight: Int) {
+        height = rowHeight
+        checkbox.size = height
+        checkbox.x = x
+        checkbox.y = y
     }
 
     override fun extractRenderState(guiGraphics: GuiGraphicsExtractor, mouseY: Int, j: Int, delta: Float) {
+        guiGraphics.fill(x, y, x + width, y + height, backgroundColor)
         checkbox.render(guiGraphics)
 
         guiGraphics.drawBorder(x, y, x + width, y + height, borderSize, borderColor)
 
-        val font = Minecraft.getInstance().font
-        val textY = y + (height - font.lineHeight) / 2
+        val textHeight = wrappedHeight(font, name, textWidth())
 
-        guiGraphics.text(
+        guiGraphics.drawWrappedText(
             font,
-            feature.displayName,
+            name,
             x + checkbox.size + textXPad,
-            textY,
-            0xFFFFFFFF.toInt(),
-            false
+            y + (height - textHeight) / 2,
+            textWidth(),
+            0xFFFFFFFF.toInt()
         )
     }
 
-    fun getContentWidth(): Int {
-        val font = Minecraft.getInstance().font
-        val textWidth = font.width(feature.displayName)
-
-        val padding = checkbox.size + textXPad + 10
-
-        return maxOf(100, textWidth + padding)
-    }
+    /** The narrowest the row is allowed to be; a longer name wraps instead of widening it. */
+    fun minWidth(): Int = 100
 
     override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
         if (checkbox.mouseClicked(mouseButtonEvent, doubled)) {

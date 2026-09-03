@@ -39,6 +39,11 @@ abstract class SettingWidget<T>(
     protected val textXPad: Int = 4
     protected val textYPad: Int = 10
 
+    /** The height a setting has before its wrapped text asks for more. */
+    protected val baseHeight: Int = 40
+
+    protected val font get() = Minecraft.getInstance().font
+
 
     open fun initChildren() {
         // built fresh: a second call would otherwise leave the first set alive and clickable

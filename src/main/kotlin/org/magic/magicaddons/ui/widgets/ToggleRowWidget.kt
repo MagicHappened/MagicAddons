@@ -13,18 +13,21 @@ open class ToggleRowWidget<T>(
 
     private val checkbox = CheckboxWidget(checked = isEnabled())
 
-    /** Keeps the box off the row's own border on every side, so it sits centred in the row. */
+    /** Keeps the box off the row's own border on every side. */
     private val padding = 3
 
-    override fun getRightReservedWidth(): Int = height
+    /** The box stays this size however tall the wrapped text makes the row. */
+    private val boxSize = 14
+
+    override fun getRightReservedWidth(): Int = boxSize + padding * 2
 
     override fun getSprite(): Identifier = if (hovered) BUTTON_HOVERED else super.getSprite()
 
     override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int) {
         checkbox.checked = isEnabled()
-        checkbox.size = height - padding * 2
-        checkbox.x = x + width - checkbox.size - padding
-        checkbox.y = y + padding
+        checkbox.size = boxSize
+        checkbox.x = x + width - boxSize - padding
+        checkbox.y = y + (height - boxSize) / 2
 
         super.extractRenderState(graphics, mouseX, mouseY)
         checkbox.render(graphics)

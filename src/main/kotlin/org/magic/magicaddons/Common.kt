@@ -13,6 +13,18 @@ object Common {
         const val BORDER_COLOR: Int = 0xFF000000.toInt()
         const val TEXT_X_PAD: Int = 4
 
+        /** A column of settings or features never grows wider than this, however wide the screen. */
+        const val COLUMN_MAX_WIDTH: Int = 250
+
+        /** Space kept clear at each side of a screen, as a share of its width. */
+        const val SCREEN_SIDE_PAD_FRACTION: Float = 0.05f
+
+        /** Never less side space than this, even on a tiny window. */
+        const val SCREEN_SIDE_PAD_MIN: Int = 8
+
+        /** How far one wheel notch moves a scrolling screen. */
+        const val SCROLL_STEP: Int = 20
+
         /** The gaps of this ui: SPACING between things that belong together, SPACING_LARGE between groups. */
         const val SPACING_SMALL: Int = 2
         const val SPACING: Int = 4

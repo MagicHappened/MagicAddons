@@ -35,13 +35,13 @@ abstract class AbstractSelectorContextMenu<T>(
 
     open fun init(){
         buildWidgets()
-        valueWidgets.forEachIndexed { index, widget ->
-
+        var currentY = rowStartY
+        valueWidgets.forEach { widget ->
             widget.x = overlayX
-            widget.y = rowStartY + index * rowHeight
-
+            widget.y = currentY
             widget.width = overlayWidth
-            widget.height = rowHeight
+            widget.fitHeight(rowHeight)
+            currentY += widget.height
         }
     }
 

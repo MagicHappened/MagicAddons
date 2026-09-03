@@ -13,6 +13,7 @@ import org.magic.magicaddons.ui.Focusable
 import org.magic.magicaddons.Common
 import org.magic.magicaddons.ui.OverlayContext
 import org.magic.magicaddons.ui.OverlayRenderable
+import org.magic.magicaddons.ui.screens.ScrollableScreen
 import org.magic.magicaddons.util.ScreenUtil.drawBorder
 
 class EnumWidget<T>(
@@ -179,12 +180,16 @@ class EnumWidget<T>(
 
         /** Which way a list of [rowsWanted] rows would open: down when it fits, else the roomier side. */
         fun wouldOpenDown(rowsWanted: Int): Boolean {
-            val screenHeight = Minecraft.getInstance().window.guiScaledHeight
-            val spaceBelow = screenHeight - (this@EnumWidget.y + this@EnumWidget.height)
-            val spaceAbove = this@EnumWidget.y
+            val spaceBelow = viewBottom() - (this@EnumWidget.y + this@EnumWidget.height)
+            val spaceAbove = this@EnumWidget.y - viewTop()
 
             return rowsWanted * overlayRowHeight <= spaceBelow || spaceBelow >= spaceAbove
         }
+
+        /** The visible edges in the widget's own coordinates, which scroll on a scrolling screen. */
+        private fun viewTop(): Int = ScrollableScreen.current()?.viewTop ?: 0
+        private fun viewBottom(): Int =
+            ScrollableScreen.current()?.viewBottom ?: Minecraft.getInstance().window.guiScaledHeight
 
         /** Everything the search lets through, of which a scrolled window is on screen. */
         private var matching: List<T> = emptyList()
@@ -202,11 +207,10 @@ class EnumWidget<T>(
 
             opensDown = wouldOpenDown(matching.size)
 
-            val screenHeight = Minecraft.getInstance().window.guiScaledHeight
             val space = (if (opensDown) {
-                screenHeight - (this@EnumWidget.y + this@EnumWidget.height)
+                viewBottom() - (this@EnumWidget.y + this@EnumWidget.height)
             } else {
-                this@EnumWidget.y
+                this@EnumWidget.y - viewTop()
             }).coerceAtMost(overlayBudget ?: Int.MAX_VALUE)
 
             visibleRows = (space / overlayRowHeight).coerceAtLeast(1)
@@ -248,7 +252,7 @@ class EnumWidget<T>(
             get() = if (opensDown) {
                 this@EnumWidget.y + this@EnumWidget.height
             } else {
-                (this@EnumWidget.y - overlayHeight).coerceAtLeast(0)
+                (this@EnumWidget.y - overlayHeight).coerceAtLeast(viewTop())
             }
         override val overlayWidth: Int
             get() = this@EnumWidget.width
