@@ -8,6 +8,7 @@ import org.magic.magicaddons.commands.debug.MainDebug
 import org.magic.magicaddons.commands.features.EditFeature
 import org.magic.magicaddons.commands.foraging.SafariHelperCommand
 import org.magic.magicaddons.commands.misc.PlaySound
+import org.magic.magicaddons.commands.misc.VersionCommand
 import org.magic.magicaddons.commands.features.ToggleFeature
 import org.magic.magicaddons.ui.screens.ConfigScreen
 import org.magic.magicaddons.util.ScreenUtil
@@ -19,6 +20,7 @@ object MainCommand {
         EditFeature,
         MainDebug,
         PlaySound,
+        VersionCommand,
         SafariHelperCommand
     )
 
@@ -27,18 +29,25 @@ object MainCommand {
         ClientCommandRegistrationCallback.EVENT.register(
             ClientCommandRegistrationCallback { dispatcher, _ ->
 
-                val main = literal(Common.MOD_NAME)
-                    .executes {
+                val roots = listOf(
+                    literal(Common.MOD_NAME),
+                    literal("ma"),
+                    literal("MA")
+                )
+
+                roots.forEach { root ->
+                    root.executes {
                         val config = ConfigScreen(Component.literal("Magic Addons Config"), null)
                         ScreenUtil.setScreen(config)
-                        return@executes 1
+                        1
                     }
 
-                commandList.forEach { command ->
-                    main.then(command.build())
-                }
+                    commandList.forEach { command ->
+                        root.then(command.build())
+                    }
 
-                dispatcher.register(main)
+                    dispatcher.register(root)
+                }
             }
         )
     }
