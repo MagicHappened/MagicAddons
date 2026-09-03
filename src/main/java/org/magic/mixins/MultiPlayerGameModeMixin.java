@@ -74,7 +74,7 @@ public abstract class MultiPlayerGameModeMixin {
             )
     )
     private void onInteractAt(Player player, Entity entity, EntityHitResult entityHitResult, InteractionHand interactionHand, CallbackInfoReturnable<InteractionResult> cir){
-        OnInteractEntityEvent event = new OnInteractEntityEvent(player,entity);
+        OnInteractEntityEvent event = new OnInteractEntityEvent(player, entity, interactionHand);
         EventBus.post(event);
     }
 
