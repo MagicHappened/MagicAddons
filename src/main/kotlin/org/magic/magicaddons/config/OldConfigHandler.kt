@@ -1,5 +1,10 @@
 package org.magic.magicaddons.config
 
+import net.minecraft.ChatFormatting
+import net.minecraft.network.chat.ClickEvent
+import net.minecraft.network.chat.Component
+import net.minecraft.network.chat.HoverEvent
+import net.minecraft.network.chat.Style
 import org.magic.magicaddons.features.FeatureManager
 
 object OldConfigHandler {
@@ -61,6 +66,11 @@ object OldConfigHandler {
         if (version == "1.0.2") {
             updated = update_to_1_0_3(updated)
             version = "1.0.3"
+        }
+
+        if (version == "1.0.3") {
+            updated = update_to_1_0_4(updated)
+            version = "1.0.4"
         }
 
         // always update version at the end
@@ -146,4 +156,70 @@ object OldConfigHandler {
 
 
 
+
+    // change 1_0_3 -> 1_0_4 the entity type and helmet filters of the mob highlight moved under an
+    // Advanced Highlight toggle, and the player skin hash list became one text value with history
+    fun update_to_1_0_4(raw: MutableMap<String, Any>): MutableMap<String, Any> {
+        val configMap = raw[CONFIG_KEY] as? MutableMap<String, Any> ?: return raw
+        val combat = configMap["combat"] as? MutableMap<String, Any> ?: return raw
+        val highlightMobs = combat["HighlightMobs"] as? MutableMap<String, Any> ?: return raw
+
+        val movedRoots = listOf("EntityTypeEnabled", "EntityEquipmentDetectionEnabled")
+
+        // whoever had either filter on keeps highlighting: the new parent inherits their switch
+        val anyOn = movedRoots.any { highlightMobs[it] == true }
+
+        highlightMobs.keys.toList().forEach { key ->
+            if (movedRoots.any { key == it || key.startsWith("$it.") }) {
+                highlightMobs["AdvancedHighlightEnabled.$key"] = highlightMobs.remove(key)!!
+            }
+        }
+        highlightMobs["AdvancedHighlightEnabled"] = anyOn
+
+        val hashPath = "AdvancedHighlightEnabled.EntityTypeEnabled.EntityTypePlayerEnabled.EntityTypePlayerSkinHash"
+        val oldList = highlightMobs[hashPath] as? List<*> ?: return raw
+
+        val entries = oldList.mapNotNull { entry ->
+            val map = entry as? Map<*, *> ?: return@mapNotNull null
+            val value = map["value"]?.toString() ?: return@mapNotNull null
+            Triple(map["name"]?.toString() ?: "", value, map["enabled"] != false)
+        }
+        if (entries.isEmpty()) {
+            highlightMobs.remove(hashPath)
+            return raw
+        }
+
+        val kept = entries.firstOrNull { it.third } ?: entries.first()
+        val history = entries.map { it.second }.filter { it != kept.second }.distinct()
+
+        highlightMobs[hashPath] = mutableMapOf<String, Any>(
+            "current_value" to kept.second,
+            "history" to history
+        )
+
+        val listing = entries.joinToString("\n") { (name, value, _) ->
+            if (name.isBlank()) value else "$name: $value"
+        }
+        ConfigNotices.queue(
+            Component.literal("[MagicAddons] ").withStyle(ChatFormatting.GOLD)
+                .append(
+                    Component.literal(
+                        "Config update: the Player Entity skin hash list is now a single value " +
+                                "with history. Your first enabled hash was kept; "
+                    ).withStyle(ChatFormatting.YELLOW)
+                )
+                .append(
+                    Component.literal("click here").setStyle(
+                        Style.EMPTY
+                            .withColor(ChatFormatting.GREEN)
+                            .withUnderlined(true)
+                            .withClickEvent(ClickEvent.CopyToClipboard(listing))
+                            .withHoverEvent(HoverEvent.ShowText(Component.literal(listing)))
+                    )
+                )
+                .append(Component.literal(" to copy the full list with names.").withStyle(ChatFormatting.YELLOW))
+        )
+
+        return raw
+    }
 }

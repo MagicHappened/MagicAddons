@@ -11,7 +11,7 @@ import java.io.File
 
 object MagicAddonsConfigJsonHandler {
 
-    private const val CONFIG_VERSION_NUM = "1.0.3"
+    private const val CONFIG_VERSION_NUM = "1.0.4"
 
     private val gson = GsonBuilder().setPrettyPrinting().create()
     private val file = File("config/magicaddons/magicaddons.json")

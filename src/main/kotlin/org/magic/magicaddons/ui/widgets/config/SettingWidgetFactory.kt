@@ -13,7 +13,7 @@ object SettingWidgetFactory {
             is BooleanSetting -> BooleanSettingWidget(node)
             is TextSetting -> TextSettingWidget(node)
             is EnumSetting<*> -> EnumSettingWidget(node)
-            is ToggleListSetting -> TextListSettingWidget(node)
+            is ToggleListSetting -> ChoiceListSettingWidget(node)
         }
     }
 }
