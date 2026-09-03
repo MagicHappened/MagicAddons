@@ -3,6 +3,8 @@ name: release
 on:
   push:
     branches: [ "master" ]
+    # the version lives here, so a push that does not touch it cannot be a release
+    paths: [ "gradle.properties" ]
 
 jobs:
   release:
@@ -13,16 +15,16 @@ jobs:
     steps:
         - name: Checkout sources
           uses: actions/checkout@v6
-          with:
-            fetch-depth: 2
 
         - name: Read the version
           id: version
+          env:
+            GH_TOKEN: ${{ github.token }}
           run: |
             version=$(sed -n 's/^mod_version=//p' gradle.properties)
-            previous=$(git show HEAD^:gradle.properties 2>/dev/null | sed -n 's/^mod_version=//p')
             echo "version=$version" >> "$GITHUB_OUTPUT"
-            if [ "$version" = "$previous" ]; then
+            # published already means this push carried something else, whatever it touched
+            if gh release view "v$version" >/dev/null 2>&1; then
               echo "changed=false" >> "$GITHUB_OUTPUT"
             else
               echo "changed=true" >> "$GITHUB_OUTPUT"

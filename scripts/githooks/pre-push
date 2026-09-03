@@ -8,6 +8,17 @@ while read -r _local_ref local_sha remote_ref _remote_sha; do
     [ "$remote_ref" = "refs/heads/master" ] || continue
     [ "$local_sha" = "0000000000000000000000000000000000000000" ] && continue
 
+    # only the mod itself demands a release: workflows, hooks and notes push freely, while
+    # anything else, gradle.properties included, still has to carry a version bump
+    touches_mod=false
+    for file in $(git diff --name-only "$remote/master..$local_sha" 2>/dev/null); do
+        case "$file" in
+            .github/*|scripts/*|notes/*|.idea/*|*.md|.gitignore) ;;
+            *) touches_mod=true; break ;;
+        esac
+    done
+    [ "$touches_mod" = "false" ] && continue
+
     local_version=$(git show "$local_sha:gradle.properties" | sed -n 's/^mod_version=//p')
     remote_version=$(git show "$remote/master:gradle.properties" 2>/dev/null | sed -n 's/^mod_version=//p')
 
