@@ -111,9 +111,9 @@ object EntityUtils {
 
         level.entitiesForRendering().forEach { entity ->
 
-            val nearby = level.getEntities(entity,entity.boundingBox.inflate(0.5, 2.0, 0.5))
+            val nearby = level.getEntities(entity, entity.boundingBox.inflate(0.5, 2.0, 0.5))
 
-            if ((entity is ArmorStand || entity is Display) && isNearMeaningfulEntity(level,entity, nearby)) {
+            if ((entity is ArmorStand || entity is Display) && isNearMeaningfulEntity(entity, nearby)) {
                 return@forEach
             }
 
@@ -173,14 +173,21 @@ object EntityUtils {
         entityMapCurr = newMap
     }
 
-    private fun isNearMeaningfulEntity(world: ClientLevel, entity: Entity, nearby: List<Entity>): Boolean {
-        val box = entity.boundingBox.inflate(1.0)
+    /**
+     * Whether this stand or display is decoration belonging to a mob standing beside it, rather than
+     * a thing in its own right.
+     *
+     * A stand has to be invisible to count: a label is invisible and only its name or its head is
+     * drawn, while a mineshaft corpse is a visible stand wearing armour and stays its own entity
+     * however many mobs walk past it. The box is generous upwards, since a name tag floats over the
+     * mob's head, and tight sideways, so something merely standing next to a mob is left alone.
+     */
+    private fun isNearMeaningfulEntity(entity: Entity, nearby: List<Entity>): Boolean {
+        if (entity is ArmorStand && !entity.isInvisible) return false
 
-        return world.getEntities(
-            entity,
-            box
-        ).any { entity ->
-            when (entity) {
+        // the same neighbours the caller already asked the world for, rather than a second query
+        return nearby.any { other ->
+            when (other) {
                 is ArmorStand -> false
                 is Display -> false
                 is LocalPlayer -> false
