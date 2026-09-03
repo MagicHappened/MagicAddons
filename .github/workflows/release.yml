@@ -1,0 +1,56 @@
+name: release
+
+on:
+  push:
+    branches: [ "master" ]
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+        - name: Checkout sources
+          uses: actions/checkout@v6
+          with:
+            fetch-depth: 2
+
+        - name: Read the version
+          id: version
+          run: |
+            version=$(sed -n 's/^mod_version=//p' gradle.properties)
+            previous=$(git show HEAD^:gradle.properties 2>/dev/null | sed -n 's/^mod_version=//p')
+            echo "version=$version" >> "$GITHUB_OUTPUT"
+            if [ "$version" = "$previous" ]; then
+              echo "changed=false" >> "$GITHUB_OUTPUT"
+            else
+              echo "changed=true" >> "$GITHUB_OUTPUT"
+            fi
+
+        - name: Setup Java
+          if: steps.version.outputs.changed == 'true'
+          uses: actions/setup-java@v5
+          with:
+            distribution: 'temurin'
+            java-version: 21
+
+        - name: Build with Gradle
+          if: steps.version.outputs.changed == 'true'
+          run: |
+            chmod +x ./gradlew
+            ./gradlew build
+
+        - name: Publish the release
+          if: steps.version.outputs.changed == 'true'
+          env:
+            GH_TOKEN: ${{ github.token }}
+            VERSION: ${{ steps.version.outputs.version }}
+          run: |
+            # title and notes come from the commit: subject as the title, bullet lines as the notes
+            git log -1 --format=%s > title.txt
+            git log -1 --format=%b | grep '^- ' > notes.txt || true
+            gh release create "v$VERSION" \
+              --title "$(cat title.txt)" \
+              --notes-file notes.txt \
+              versions/*/build/libs/magicaddons-*.jar

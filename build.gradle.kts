@@ -117,6 +117,18 @@ tasks.withType<KotlinCompile>().configureEach {
     compilerOptions.jvmTarget.set(JvmTarget.fromTarget(targetJavaVersion.toString()))
 }
 
+// hooks live outside the repository, so a fresh clone has none until this runs
+val installGitHooks by tasks.registering(Exec::class) {
+    description = "Points git at the hooks committed under scripts/githooks."
+    commandLine("git", "config", "core.hooksPath", "scripts/githooks")
+    isIgnoreExitValue = true
+    onlyIf { rootProject.file(".git").exists() }
+}
+
+tasks.named("build") {
+    dependsOn(installGitHooks)
+}
+
 tasks.jar {
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     from("LICENSE") {
