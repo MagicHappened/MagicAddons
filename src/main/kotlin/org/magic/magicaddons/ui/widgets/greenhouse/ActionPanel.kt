@@ -70,6 +70,9 @@ abstract class ActionPanel : Renderable, Focusable, HoverableContainer {
         }
     }
 
+    /** Whether anything is on show, so an empty panel can be left out of the layout entirely. */
+    fun hasShown(): Boolean = buttons.any { isShown(it) }
+
     /** How tall the panel's buttons actually came out, which a caller may want to lay out below. */
     val contentHeight: Int
         get() {

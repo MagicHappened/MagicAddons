@@ -74,6 +74,7 @@ class EnumSettingWidget<T : Enum<T>>(
                         .apply { selected = enumValue == setting.value }
                 )
             }
+        selectionOptions.lastOrNull()?.dividerBelow = false
     }
 
 

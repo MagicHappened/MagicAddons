@@ -98,8 +98,6 @@ class EnumWidget<T>(
     }
 
     override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, a: Float) {
-        graphics.drawButtonPanel(x, y, x + width, y + height, hovered, overlayOpen)
-
         val textY = y + (height - font.lineHeight) / 2
         val arrow = arrowText()
 
@@ -107,13 +105,15 @@ class EnumWidget<T>(
         // out of room before it runs into the arrow rather than under it
         val room = arrowLeft() - Common.UI.SPACING - (x + textPad)
 
+        // open, the whole box is the search field; closed, it is a button showing the pick
         if (overlayOpen) {
-            search.x = x + Common.UI.BORDER_SIZE
-            search.y = y + Common.UI.BORDER_SIZE
-            search.width = arrowLeft() - Common.UI.SPACING - search.x
-            search.height = height - Common.UI.BORDER_SIZE * 2
+            search.x = x
+            search.y = y
+            search.width = width
+            search.height = height
             search.render(graphics)
         } else {
+            graphics.drawButtonPanel(x, y, x + width, y + height, hovered)
             val name = currentValue?.toString() ?: PLACEHOLDER
             val shown = if (font.width(name) <= room) {
                 name
@@ -222,6 +222,7 @@ class EnumWidget<T>(
             matching.drop(scroll).take(visibleRows).forEach { value ->
                 valueWidgets.add(ClickableRowWidget(value).apply { selected = value == currentValue })
             }
+            valueWidgets.lastOrNull()?.dividerBelow = false
 
             layoutOverlay()
         }

@@ -25,6 +25,7 @@ import org.magic.magicaddons.ui.widgets.EnumWidget
 import org.magic.magicaddons.ui.widgets.config.ClickableButtonWidget
 import org.magic.magicaddons.ui.widgets.greenhouse.ElementWidget
 import org.magic.magicaddons.ui.widgets.greenhouse.GridWidget
+import org.magic.magicaddons.ui.widgets.greenhouse.ActionPanel
 import org.magic.magicaddons.ui.widgets.greenhouse.Bookmarks
 import org.magic.magicaddons.ui.widgets.greenhouse.HoverControls
 import org.magic.magicaddons.ui.widgets.greenhouse.ScrollHint
@@ -33,6 +34,7 @@ import org.magic.magicaddons.ui.widgets.greenhouse.PresetUI
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.ScreenUtil.boxHeight
 import org.magic.magicaddons.util.ScreenUtil.drawMultilineBoxCentered
+import org.magic.magicaddons.util.ScreenUtil.drawPanel
 import org.magic.magicaddons.util.ScreenUtil.drawWarningBadge
 import org.magic.magicaddons.util.ScreenUtil.drawSimpleTooltip
 import tech.thatgravyboat.skyblockapi.api.location.LocationAPI
@@ -96,6 +98,16 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
     /** Where a mode's own buttons begin, shared so the two modes line up with each other. */
     private var actionRowX: Int = 0
     private var actionRowY: Int = 0
+
+    /** The two shelves down the left: what is shown, and what can be done to it. */
+    private var shelfLeft: Int = 0
+    private var shelfWidth: Int = 0
+    private var viewShelfY: Int = 0
+    private var viewShelfHeight: Int = 0
+    private var actionShelfY: Int = 0
+
+    /** Whether the mouse is on the next tick box, which then explains the clock. */
+    private var timeHovered = false
 
     private var dynamicNameDisplay: ClickableButtonWidget? = null
     private var hoverWarning = false
@@ -206,21 +218,29 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         teleportButton.x = startX + (containerSize - teleportButton.width) / 2
         teleportButton.y = startY + containerSize + borderPadding - Common.UI.BORDER_SIZE
 
-        currentDisplayToggle.x = Common.UI.SPACING_LARGE
-        currentDisplayToggle.y = startY + borderPadding * 2
+        // the view shelf holds the mode toggle and, for presets, the selector; the action shelf
+        // under it holds whatever the mode can do
+        shelfLeft = Common.UI.SPACING_LARGE
+        shelfWidth = (startX - borderPadding - Common.UI.SPACING_LARGE - shelfLeft).coerceAtLeast(MIN_ACTION_ROW_WIDTH)
+        viewShelfY = startY - borderPadding
+
+        currentDisplayToggle.x = shelfLeft + ActionPanel.PADDING
+        currentDisplayToggle.y = viewShelfY + shelfTitleHeight() + ActionPanel.PADDING
 
         gridSelector.x = currentDisplayToggle.x + currentDisplayToggle.width + Common.UI.SPACING_LARGE
-        gridSelector.y = startY + borderPadding * 2
+        gridSelector.y = currentDisplayToggle.y
         gridSelector.height = currentDisplayToggle.height
         gridSelector.closeList()
 
-        // one row under the mode toggle, offered to whichever mode is on screen, so the two put
-        // their buttons in the same place without either working out where that is
-        actionRowX = currentDisplayToggle.x
-        actionRowY = currentDisplayToggle.y + currentDisplayToggle.height + Common.UI.SPACING_LARGE
+        viewShelfHeight = shelfTitleHeight() + ActionPanel.PADDING * 2 + currentDisplayToggle.height
+        actionShelfY = viewShelfY + viewShelfHeight + Common.UI.SPACING_LARGE
 
-        val rowWidth = (startX - actionRowX - Common.UI.SPACING_LARGE)
-            .coerceAtLeast(MIN_ACTION_ROW_WIDTH)
+        // one row under the title, offered to whichever mode is on screen, so the two put their
+        // buttons in the same place without either working out where that is
+        actionRowX = shelfLeft
+        actionRowY = actionShelfY + shelfTitleHeight()
+
+        val rowWidth = shelfWidth
         val rowHeight = height - actionRowY - Common.UI.SPACING_LARGE
 
         greenhousePanel.layoutIn(actionRowX, actionRowY, rowWidth, rowHeight)
@@ -351,7 +371,8 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
      * widget measures itself; the screen only knows how much room there is.
      */
     private fun relayoutSelector() {
-        gridSelector.fitToValues(startX - gridSelector.x - Common.UI.SPACING_LARGE)
+        val room = shelfLeft + shelfWidth - ActionPanel.PADDING - Common.UI.SPACING - ScrollHint.SIZE - gridSelector.x
+        gridSelector.fitToValues(room)
     }
 
     fun initDynamicName(){
@@ -378,6 +399,44 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         )
         dynamicNameDisplay?.x = (screenWidth-widgetWidth) / 2
         dynamicNameDisplay?.y = nameTop
+    }
+
+    /** A titled panel down the left; its contents are drawn by whoever owns them. */
+    private fun drawShelf(graphics: GuiGraphicsExtractor, title: String, top: Int, height: Int) {
+        graphics.drawPanel(shelfLeft, top, shelfLeft + shelfWidth, top + height)
+        graphics.text(
+            font,
+            Component.literal(title),
+            shelfLeft + Common.UI.TEXT_X_PAD,
+            top + Common.UI.SPACING,
+            Common.UI.TEXT_DIM_COLOR,
+            false
+        )
+    }
+
+    private fun shelfTitleHeight(): Int = font.lineHeight + Common.UI.SPACING * 2
+
+    /** Everything the tick period is made of, each level coloured by how far along it is. */
+    private fun clockTooltip(): String {
+        val misc = GreenhouseData.miscInfo
+
+        fun graded(value: Int?, max: Int): String {
+            value ?: return "§8?§7/$max"
+            val third = value * 3
+            val colour = when {
+                third < max -> "§c"
+                third < max * 2 -> "§e"
+                else -> "§a"
+            }
+            return "$colour$value§7/$max"
+        }
+
+        return listOf(
+            "§7Unique crops: " + graded(GreenhouseData.getCurrentUniques().size, MAX_UNIQUE_CROPS),
+            "§7Greenhouse speed upgrade: " + graded(misc.cropSpeedUpgradeValue, MAX_SPEED_UPGRADE),
+            "§7Crop growth: §f" + (misc.cropGrowthValue?.toString() ?: "§8?"),
+            "§7Greenhouse attribute: " + graded(GreenhouseData.greenhouseSpeedAttribute(), MAX_ATTRIBUTE)
+        ).joinToString("\n")
     }
 
     /** Where the badge beside the name starts, so its tooltip can hang under it. */
@@ -412,15 +471,24 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         dynamicNameDisplay?.extractRenderState(graphics,mouseX,mouseY,delta)
 
         val timeText = "Next tick: " + (GreenhouseData.miscInfo.nextTickTime?.toReadableDuration() ?: "unknown")
-        val timeWidth = font.width(timeText)
+        val timeBoxWidth = font.width(timeText) + Common.UI.TEXT_X_PAD * 2
+        val timeBoxHeight = boxHeight(timeText)
 
-        graphics.drawMultilineBoxCentered(
-            timeText,
-            10 + timeWidth/2, 18)
+        graphics.drawMultilineBoxCentered(timeText, TIME_LEFT + timeBoxWidth / 2, TIME_CENTER_Y)
+        timeHovered = mouseX in TIME_LEFT until TIME_LEFT + timeBoxWidth &&
+                mouseY in TIME_CENTER_Y - timeBoxHeight / 2 until TIME_CENTER_Y + timeBoxHeight / 2
 
         // presets are a plan rather than a greenhouse that exists, no plant in one has a stage,
         // a water level or an age to report
         displayedGridWidget?.extractRenderState(graphics, mouseX, mouseY, delta)
+
+        drawShelf(graphics, SHELF_VIEW, viewShelfY, viewShelfHeight)
+
+        val panel = if (currentDisplay == CurrentDisplay.Greenhouses) greenhousePanel else presetUI
+        if (panel.hasShown()) {
+            val title = if (currentDisplay == CurrentDisplay.Greenhouses) SHELF_GREENHOUSE else SHELF_PRESET
+            drawShelf(graphics, title, actionShelfY, shelfTitleHeight() + panel.contentHeight)
+        }
 
         when (currentDisplay) {
             CurrentDisplay.Greenhouses -> {
@@ -451,10 +519,6 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         scrollHint.extractRenderState(graphics, mouseX, mouseY)
 
         currentDisplayToggle.extractRenderState(graphics, mouseX, mouseY, delta)
-
-        // a line under the mode row, so the buttons beneath read as their own group
-        val dividerY = currentDisplayToggle.y + currentDisplayToggle.height + Common.UI.SPACING_LARGE / 2
-        graphics.fill(actionRowX, dividerY, startX - Common.UI.SPACING_LARGE, dividerY + 1, Common.UI.DIVIDER_COLOR)
         cropPreviewButton.extractRenderState(graphics, mouseX, mouseY, delta)
 
         // only where there is a plan to stop, since a button that does nothing is a question the
@@ -492,6 +556,10 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         if (currentDisplay == CurrentDisplay.Greenhouses) {
             plotTabs.renderTooltip(graphics, mouseX, mouseY)
             hoverControls.renderTooltip(graphics, mouseX, mouseY)
+        }
+
+        if (timeHovered) {
+            graphics.drawSimpleTooltip(clockTooltip(), TIME_LEFT, TIME_CENTER_Y + boxHeight(" ") / 2 + Common.UI.SPACING)
         }
 
         val hovered = hoveredElement
@@ -853,6 +921,19 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
 
         private const val TELEPORT_WIDTH: Int = 110
         private const val TELEPORT_HEIGHT: Int = 20
+
+        /** The next tick box, top left. */
+        private const val TIME_LEFT: Int = 10
+        private const val TIME_CENTER_Y: Int = 18
+
+        private const val SHELF_VIEW: String = "View"
+        private const val SHELF_GREENHOUSE: String = "Greenhouse"
+        private const val SHELF_PRESET: String = "Preset"
+
+        /** What each part of the tick period runs up to. */
+        private const val MAX_UNIQUE_CROPS: Int = 12
+        private const val MAX_SPEED_UPGRADE: Int = 9
+        private const val MAX_ATTRIBUTE: Int = 10
 
         private const val SCROLL_HINT_GREENHOUSES: String = "Scroll the mouse wheel to switch greenhouse"
         private const val SCROLL_HINT_PRESETS: String = "Scroll the mouse wheel to switch preset"

@@ -21,6 +21,9 @@ open class BaseRowWidget<T>(
     /** Whether this row is the value currently picked. */
     var selected = false
 
+    /** The line under the row; the last row of a list leaves it to the list's frame. */
+    var dividerBelow = true
+
     var width: Int = 200
     var height: Int = 20
 
@@ -60,7 +63,7 @@ open class BaseRowWidget<T>(
         } else if (highlighted()) {
             graphics.fill(x, y, x + width, y + height, Common.UI.HOVER_WASH)
         }
-        graphics.fill(x, y + height - 1, x + width, y + height, Common.UI.DIVIDER_COLOR)
+        if (dividerBelow) graphics.fill(x, y + height - 1, x + width, y + height, Common.UI.DIVIDER_COLOR)
 
         val text = label()
         val textHeight = wrappedHeight(font, text, textWidth())

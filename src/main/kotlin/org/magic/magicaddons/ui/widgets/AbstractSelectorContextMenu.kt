@@ -61,6 +61,7 @@ abstract class AbstractSelectorContextMenu<T>(
         values
             .filter { it.toString().contains(search.value.trim(), ignoreCase = true) }
             .forEach { valueWidgets.add(createRow(it)) }
+        valueWidgets.lastOrNull()?.dividerBelow = false
     }
 
     private fun layoutRows() {

@@ -564,7 +564,5 @@ class GreenhouseGrid(
         var completionMuted: Boolean = false
     )
 
-    override fun toString(): String {
-        return "${layout.name ?: "unnamed"}: ${layout.id}"
-    }
+    override fun toString(): String = layout.displayName()
 }

@@ -30,7 +30,8 @@ object Codecs {
             ).apply(instance) { id, nameOpt, slots, elements ->
                 GreenhouseLayout(
                     id = id,
-                    name = nameOpt.orElse(null),
+                    // older files carry "unnamed" as the name the mod itself wrote, which is no name
+                    name = nameOpt.orElse(null)?.takeUnless { it == "unnamed" },
                     slots = slots,
                     elementInstances = elements.toMutableList()
                 )

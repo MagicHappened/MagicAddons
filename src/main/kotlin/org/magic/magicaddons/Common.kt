@@ -10,7 +10,8 @@ object Common {
     object UI {
         const val BACKGROUND_COLOR: Int = 0xFF555555.toInt()
         const val BORDER_SIZE: Int = 2
-        const val BORDER_COLOR: Int = 0xFF000000.toInt()
+        /** A light frame, since panels sit over a darkened world where black would sink in. */
+        const val BORDER_COLOR: Int = 0xFF8C8C8C.toInt()
         const val TEXT_X_PAD: Int = 4
 
         /** A column of settings or features never grows wider than this, however wide the screen. */
@@ -37,7 +38,7 @@ object Common {
         const val SPACING_LARGE: Int = 10
 
         /** Laid over the world behind a screen, so the panels stand out without hiding it. */
-        const val SCREEN_DIM_COLOR: Int = 0xA0101010.toInt()
+        const val SCREEN_DIM_COLOR: Int = 0xB4101010.toInt()
 
         /** Text drawn over something busy needs its own ground to stay readable. */
         const val OVERLAY_TEXT_COLOR: Int = 0xFFFFFFFF.toInt()

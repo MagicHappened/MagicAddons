@@ -178,6 +178,7 @@ class TextSettingWidget(
                 currentY += row.height
                 rows.add(row)
             }
+            rows.lastOrNull()?.dividerBelow = false
         }
 
         override val overlayX: Int get() = textWidget.x
