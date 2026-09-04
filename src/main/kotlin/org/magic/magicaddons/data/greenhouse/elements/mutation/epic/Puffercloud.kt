@@ -166,7 +166,8 @@ object Puffercloud : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.59375, 0.0),
-                        hashString = "fb1e911b28a5bc539bba0e159256c415c6f74833cbee9c32fbcac4ca7b98a77b"
+                        hashString = "fb1e911b28a5bc539bba0e159256c415c6f74833cbee9c32fbcac4ca7b98a77b",
+                        isSmall = false
                     )
                 ),
                 10..10

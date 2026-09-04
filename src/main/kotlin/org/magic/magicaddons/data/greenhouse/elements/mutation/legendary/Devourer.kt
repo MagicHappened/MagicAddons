@@ -5,6 +5,7 @@ import net.minecraft.core.Rotations
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.*
 import org.magic.magicaddons.data.greenhouse.CropStates.melonStemState
+import org.magic.magicaddons.data.greenhouse.CropStates.wheatState
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
 object Devourer : CropDefinitionProvider {
@@ -21,6 +22,25 @@ object Devourer : CropDefinitionProvider {
             "d5dcd6e26e5ab3c3a60ccc824c05b0fd195f526961019d3249776e8d57399d27" to StandPose.Fixed(Rotations(0.0f, 45.0f, 0.0f), yRotation = 90.0f)
         ),
         stageDefs = listOf(
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = wheatState(3)
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, -0.4375, 0.0),
+                        headRotation = Rotations(0.0f, 45.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = 90.0f,
+                        hashString = "d5dcd6e26e5ab3c3a60ccc824c05b0fd195f526961019d3249776e8d57399d27",
+                        isSmall = false
+                    )
+                ),
+                5..5
+            ),
             CropStage(
                 blocks = listOf(
                     CropBlockState(

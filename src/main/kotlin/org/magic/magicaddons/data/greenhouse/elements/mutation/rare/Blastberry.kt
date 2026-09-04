@@ -22,6 +22,20 @@ object Blastberry : CropDefinitionProvider {
         ),
         stageDefs = listOf(
             CropStage(
+                blocks = listOf(),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, -0.71875, 0.0),
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
+                        hashString = "a3b6c45e028b8b70befb6feb9d320dbda86c6f925961e23babbc7ff250918d0f",
+                        isSmall = false
+                    )
+                ),
+                1..1
+            ),
+            CropStage(
                 blocks = listOf(
                     CropBlockState(
                         offset = BlockPos(0, 1, 0),

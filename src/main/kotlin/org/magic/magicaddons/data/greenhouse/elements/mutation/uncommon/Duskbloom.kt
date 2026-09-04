@@ -91,10 +91,30 @@ object Duskbloom : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.4375, 0.0),
-                        hashString = "b9410dd823e984f98c0572e48d3c07641dd89411ba2e4fc66bee4212c6b65f02"
+                        hashString = "b9410dd823e984f98c0572e48d3c07641dd89411ba2e4fc66bee4212c6b65f02",
+                        isSmall = false
                     )
                 ),
                 5..5
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = wheatState(3)
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, -0.4375, 0.0),
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
+                        hashString = "b9410dd823e984f98c0572e48d3c07641dd89411ba2e4fc66bee4212c6b65f02",
+                        isSmall = false
+                    )
+                ),
+                6..6
             ),
             CropStage(
                 blocks = listOf(

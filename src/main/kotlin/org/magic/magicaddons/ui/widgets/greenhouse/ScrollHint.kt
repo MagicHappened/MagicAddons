@@ -1,0 +1,44 @@
+package org.magic.magicaddons.ui.widgets.greenhouse
+
+import net.minecraft.client.gui.GuiGraphicsExtractor
+import org.magic.magicaddons.Common
+import org.magic.magicaddons.util.ScreenUtil.drawBorder
+import org.magic.magicaddons.util.ScreenUtil.drawSimpleTooltip
+
+/** A small mouse with its wheel marked, sat beside a selector the wheel can turn. */
+class ScrollHint(var tooltip: String) {
+
+    var x: Int = 0
+    var y: Int = 0
+    var size: Int = 0
+
+    /** Squares the hint to half the selector's height and centres it on the selector's middle. */
+    fun layoutBeside(selectorRight: Int, selectorTop: Int, selectorHeight: Int) {
+        size = selectorHeight / 2
+        x = selectorRight + Common.UI.SPACING
+        y = selectorTop + (selectorHeight - size) / 2
+    }
+
+    fun isMouseOver(mouseX: Int, mouseY: Int): Boolean =
+        mouseX in x until x + size && mouseY in y until y + size
+
+    fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int) {
+        if (size < 4) return
+
+        val color = Common.UI.TEXT_DIM_COLOR
+
+        // the body, its two buttons split by a line, and the wheel between them
+        graphics.drawBorder(x, y, x + size, y + size, 1, color)
+
+        val split = y + size * 2 / 5
+        graphics.fill(x, split, x + size, split + 1, color)
+
+        val wheelWidth = (size / 5).coerceAtLeast(1)
+        val wheelLeft = x + (size - wheelWidth) / 2
+        graphics.fill(wheelLeft, y + 2, wheelLeft + wheelWidth, split, Common.UI.TEXT_COLOR)
+
+        if (isMouseOver(mouseX, mouseY)) {
+            graphics.drawSimpleTooltip(tooltip, mouseX + 7, mouseY + 12)
+        }
+    }
+}

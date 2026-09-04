@@ -20,6 +20,10 @@ import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.CropDefinition
 import org.magic.magicaddons.data.greenhouse.GREENHOUSE_SOIL_Y
 import org.magic.magicaddons.data.greenhouse.CropRegistry
+import org.magic.magicaddons.util.getBuildableArea
+import tech.thatgravyboat.skyblockapi.api.location.LocationAPI
+import tech.thatgravyboat.skyblockapi.api.location.SkyBlockIsland
+import tech.thatgravyboat.skyblockapi.api.profile.garden.PlotAPI
 import org.magic.magicaddons.data.greenhouse.CropStagePattern
 import org.magic.magicaddons.data.greenhouse.GreenhouseGrid
 import org.magic.magicaddons.data.greenhouse.GrowthStageInfo
@@ -48,6 +52,10 @@ object CropCollector : EntityUtils.HighlightSource {
     override fun highlightColor(entity: Entity): Int = standColors[entity] ?: GRAY
 
     private const val GRID: Int = 10
+
+    /** The devourer's roots are their own element, though the diagnosis names the devourer. */
+    private const val DEVOURER: String = "Devourer"
+    private const val DEVOURER_ROOTS: String = "DevourerRoots"
 
     /** How far above the soil a plant can reach, for the stand search and the block columns. */
     private const val PLANT_HEIGHT: Int = 15
@@ -139,27 +147,30 @@ object CropCollector : EntityUtils.HighlightSource {
             }
         }
 
-        // north is the whole orientation contract, so standing any other way is an error now
-        // rather than a grid collected sideways
-        if (abs(Mth.wrapDegrees(player.yRot)) < 135f) {
-            ChatUtils.sendWithPrefix(
-                Component.literal("Face north (the grid ahead and to the left), then run this again.")
-                    .withStyle(ChatFormatting.RED)
-            )
-            return
+        // on the player's own garden the plot says where the grid is, so they may stand anywhere
+        val origin = ownPlotOrigin() ?: run {
+            // north is the whole orientation contract, so standing any other way is an error now
+            // rather than a grid collected sideways
+            if (abs(Mth.wrapDegrees(player.yRot)) < 135f) {
+                ChatUtils.sendWithPrefix(
+                    Component.literal("Face north (the grid ahead and to the left), then run this again.")
+                        .withStyle(ChatFormatting.RED)
+                )
+                return
+            }
+
+            // only x and z come from the player: greenhouse soil sits at one height, whatever the
+            // player happens to be standing on
+            val feet = player.blockPosition()
+            val actual = BlockPos(feet.x, GREENHOUSE_SOIL_Y, feet.z)
+            val standingOn = displacement?.let { (dx, dz) -> actual.offset(-dx, 0, -dz) } ?: actual
+
+            // one south of the south-eastern corner: the corner is a step north, and the grid runs
+            // nine further north and nine west from it
+            BlockPos(standingOn.x - (GRID - 1), standingOn.y, standingOn.z - GRID)
         }
 
         clear()
-
-        // only x and z come from the player: greenhouse soil sits at one height, whatever the player
-        // happens to be standing on
-        val feet = player.blockPosition()
-        val actual = BlockPos(feet.x, GREENHOUSE_SOIL_Y, feet.z)
-        val standingOn = displacement?.let { (dx, dz) -> actual.offset(-dx, 0, -dz) } ?: actual
-
-        // one south of the south-eastern corner: the corner is a step north, and the grid runs
-        // nine further north and nine west from it
-        val origin = BlockPos(standingOn.x - (GRID - 1), standingOn.y, standingOn.z - GRID)
 
         val s = Session(level, origin)
         session = s
@@ -404,6 +415,14 @@ object CropCollector : EntityUtils.HighlightSource {
         owners.filterValues { it.size == 1 }.mapValues { it.value.first() }
     }
 
+    /** The grid's corner on the player's own garden, or null anywhere else. */
+    private fun ownPlotOrigin(): BlockPos? {
+        if (LocationAPI.island != SkyBlockIsland.GARDEN || LocationAPI.isGuest) return null
+        val area = PlotAPI.getCurrentPlot()?.getBuildableArea() ?: return null
+
+        return BlockPos(area.minX.toInt(), GREENHOUSE_SOIL_Y, area.minZ.toInt())
+    }
+
     /**
      * The size status when a stand of [stands] is not the size the definition gives that skull at
      * [stage], or null when every size agrees. Remembered in the dex, so every listing says so.
@@ -607,7 +626,7 @@ object CropCollector : EntityUtils.HighlightSource {
         return BlockPos.containing(stand.position().add(turned))
     }
 
-    fun correct(def: CropDefinition, stage: Int) {
+    fun correct(diagnosed: CropDefinition, diagnosedStage: Int) {
         val s = session ?: return
         val client = Minecraft.getInstance()
         val player = client.player ?: return
@@ -618,8 +637,8 @@ object CropCollector : EntityUtils.HighlightSource {
         val feet = player.blockPosition()
         val standingOn = BlockPos(feet.x, GREENHOUSE_SOIL_Y, feet.z)
 
-        val w = def.footprint.width
-        val h = def.footprint.height
+        val w = diagnosed.footprint.width
+        val h = diagnosed.footprint.height
 
         // the same net the scan casts, but over this plant's whole footprint and blind to earlier
         // claims, and a block wider each way since a stand may reach in from next door
@@ -643,6 +662,19 @@ object CropCollector : EntityUtils.HighlightSource {
                 claimed.x in standingOn.x until standingOn.x + w &&
                         claimed.z in standingOn.z until standingOn.z + h
             }
+
+        // a diagnosis on a root names the devourer, but what stands there is the roots
+        val roots = CropRegistry.all.firstOrNull { it.name == DEVOURER_ROOTS }
+        val rootSkulls = roots?.stageDefs.orEmpty()
+            .flatMap { if (it is CropStagePattern) it.expand() else listOf(it) }
+            .flatMap { it.armorStands.orEmpty() }
+            .mapNotNull { it.hashString }
+            .toSet()
+        val onRoots = roots != null && diagnosed.name == DEVOURER &&
+                stands.any { PlayerUtils.getSkullHash(it) in rootSkulls }
+
+        val def = if (onRoots) roots!! else diagnosed
+        val stage = if (onRoots) 1 else diagnosedStage
 
         val absorbed = s.entries.filter { entry ->
             val ew = entry.def?.footprint?.width ?: 1

@@ -33,19 +33,26 @@ object Cactus : CropDefinitionProvider {
                 ),
                 1..1
             ),
-            CropStagePattern(
+            CropStage(
                 blocks = listOf(),
-                armorStands =
-                    CropArmorStand.matcherPattern(
-                        listOf(
-                            Vec3(0.0, -0.5, 0.0),
-                            Vec3(0.0, 0.78125, 0.0)
-                        ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, -0.5, 0.0),
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
                         hashString = "d4b3ea5cb6b6f046e326621ca11ffb7d6aec22d66c0d81e5039b19ee4400309f",
                         isSmall = false
                     ),
-                stageRange = 2..2,
-                baseStageStandOffset = Vec3(0.0, 0.59375, 0.0)
+                    CropArmorStand(
+                        offset = Vec3(0.0, 0.78125, 0.0),
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
+                        hashString = "d4b3ea5cb6b6f046e326621ca11ffb7d6aec22d66c0d81e5039b19ee4400309f"
+                    )
+                ),
+                2..2
             ),
             CropStage(
                 blocks = listOf(),

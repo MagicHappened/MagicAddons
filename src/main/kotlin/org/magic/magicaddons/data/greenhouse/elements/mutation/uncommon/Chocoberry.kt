@@ -1,6 +1,7 @@
 package org.magic.magicaddons.data.greenhouse.elements.mutation.uncommon
 
 import net.minecraft.core.BlockPos
+import net.minecraft.core.Rotations
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.*
 import org.magic.magicaddons.data.greenhouse.CropStates.melonStemState
@@ -36,7 +37,11 @@ object Chocoberry : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.34375, 0.0),
-                        hashString = "4478a25a4c5189aa292e6076ae5938cf6c8253b7719e310118fb8312a9b62470"
+                        headRotation = Rotations(0.0f, 0.0f, -45.0f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
+                        hashString = "4478a25a4c5189aa292e6076ae5938cf6c8253b7719e310118fb8312a9b62470",
+                        isSmall = false
                     )
                 ),
                 2..3
@@ -66,7 +71,11 @@ object Chocoberry : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.0625, 0.0),
-                        hashString = "167bb9880a3ab37435a21b1f135a01a96cca45b49daeb4a1e91baf358e37d89d"
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
+                        hashString = "167bb9880a3ab37435a21b1f135a01a96cca45b49daeb4a1e91baf358e37d89d",
+                        isSmall = false
                     )
                 ),
                 6..6

@@ -47,7 +47,8 @@ object Sunflower : CropDefinitionProvider {
                     CropArmorStand(
                         // re-recorded normalized; the old offset was this one turned a step
                         offset = Vec3(0.0, -0.5625, 0.1875),
-                        hashString = "b40d6fc1e1b67c58d7f82350bcac083f9e9547f9131236463164417fbdd3bee4"
+                        hashString = "b40d6fc1e1b67c58d7f82350bcac083f9e9547f9131236463164417fbdd3bee4",
+                        isSmall = false
                     )
                 ),
                 2..2,
