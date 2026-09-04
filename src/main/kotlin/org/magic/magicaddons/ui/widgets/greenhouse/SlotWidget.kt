@@ -59,10 +59,7 @@ class SlotWidget(
     }
 
     override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
-        if (!isMouseOver(mouseButtonEvent.x, mouseButtonEvent.y)) return false
-
-        ChatUtils.sendWithPrefix("Click at slot ${slot.x} , ${slot.y} on ${slot.placedBlock}")
-        return true
+        return isMouseOver(mouseButtonEvent.x, mouseButtonEvent.y)
     }
 
     override fun isMouseOver(mouseX: Double, mouseY: Double): Boolean {

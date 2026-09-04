@@ -1,5 +1,6 @@
 package org.magic.magicaddons.ui.screens
 
+import net.minecraft.world.level.block.Blocks
 import org.magic.magicaddons.data.greenhouse.transfer.LayoutTransferResult
 import org.magic.magicaddons.data.greenhouse.MasterLayout
 import net.minecraft.world.level.block.state.BlockState
@@ -135,9 +136,7 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
             assignPresetLayout(assignedLayout, selectedGrid)
         },
         onImported = { imported(it) },
-        onRemovePreset = {
-            removePresetLayout()
-        },
+        onRemove = { removePresetLayout(it) },
         shownLayout = { displayedGridWidget?.layout }
     )
 
@@ -499,7 +498,13 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
             return "$colour$value§7/$max"
         }
 
+        val tickTime = GreenhouseData.currentGrowthTickMs()?.let { ms ->
+            val seconds = ms / 1000
+            "§f%dh %dm %ds".format(seconds / 3600, seconds % 3600 / 60, seconds % 60)
+        } ?: "§8?"
+
         return listOf(
+            "§7Your tick time: $tickTime",
             "§7Unique crops: " + graded(GreenhouseData.getCurrentUniques().size, MAX_UNIQUE_CROPS),
             "§7Greenhouse speed upgrade: " + graded(misc.cropSpeedUpgradeValue, MAX_SPEED_UPGRADE),
             "§7Greenhouse attribute: " + graded(GreenhouseData.greenhouseSpeedAttribute(), MAX_ATTRIBUTE),
@@ -604,22 +609,33 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         grid.init()
     }
 
-    /** A base crop counts as unique once; a second of the same kind, or a mutation, adds nothing. */
+    /**
+     * A base crop counts as unique once across the whole preset: another plant of the same kind
+     * already marked unique, on any plot, means this one would add nothing. Mutations never count.
+     */
     private fun canBeUnique(layout: GreenhouseLayout, instance: GreenhouseElementInstance): Boolean {
         if (!instance.cropDef.isBaseCrop) return false
         val key = GreenhouseData.UniqueCropKey.from(instance.cropDef)
-        return layout.elementInstances.none { it !== instance && GreenhouseData.UniqueCropKey.from(it.cropDef) == key }
+        val plots = GreenhouseData.masterOf(layout)?.plots ?: listOf(layout)
+        return plots.flatMap { it.elementInstances }.none {
+            it !== instance &&
+                    it.slot.slotMark == LayoutSlot.Marking.UniqueCrop &&
+                    GreenhouseData.UniqueCropKey.from(it.cropDef) == key
+        }
     }
 
-    /** The preset as it was before the last change, and the change undone, for the two arrows. */
+    /**
+     * One plot as it stood before an action: placing, replacing, removing a plant or soil, or
+     * marking. The arrows walk these back and forward.
+     */
     private class PresetSnapshot(
         val layout: GreenhouseLayout,
         val elements: List<GreenhouseElementInstance>,
         val slots: List<Triple<LayoutSlot, BlockState?, LayoutSlot.Marking?>>
     )
 
-    private var undoSnapshot: PresetSnapshot? = null
-    private var redoSnapshot: PresetSnapshot? = null
+    private val undoStack = ArrayDeque<PresetSnapshot>()
+    private val redoStack = ArrayDeque<PresetSnapshot>()
 
     private fun snapshot(layout: GreenhouseLayout) = PresetSnapshot(
         layout,
@@ -627,10 +643,11 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         layout.slots.map { Triple(it, it.placedBlock, it.slotMark) }
     )
 
-    /** Called before a change, so one step back is always possible; a new change forgets the redo. */
+    /** Called before every action; a new action forgets whatever had been undone. */
     private fun remember(layout: GreenhouseLayout) {
-        undoSnapshot = snapshot(layout)
-        redoSnapshot = null
+        undoStack.addLast(snapshot(layout))
+        if (undoStack.size > HISTORY_LIMIT) undoStack.removeFirst()
+        redoStack.clear()
     }
 
     private fun restore(saved: PresetSnapshot) {
@@ -640,21 +657,29 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
             slot.placedBlock = block
             slot.slotMark = mark
         }
-        presetGridWidgets.find { it.layout === saved.layout }?.init()
+        // the plot may sit on another bookmark, or in another preset, than the one on show
+        if (presetGridWidgets.none { it.layout === saved.layout }) {
+            GreenhouseData.masterOf(saved.layout)?.let { master ->
+                GreenhouseData.currentPreset = master
+                shownPlot = saved.layout
+                presetCleared = false
+            }
+        } else if (displayedGridWidget?.layout !== saved.layout) {
+            shownPlot = saved.layout
+        }
+        initPresetLayout()
     }
 
     private fun undo() {
-        val saved = undoSnapshot ?: return
-        redoSnapshot = snapshot(saved.layout)
+        val saved = undoStack.removeLastOrNull() ?: return
+        redoStack.addLast(snapshot(saved.layout))
         restore(saved)
-        undoSnapshot = null
     }
 
     private fun redo() {
-        val saved = redoSnapshot ?: return
-        undoSnapshot = snapshot(saved.layout)
+        val saved = redoStack.removeLastOrNull() ?: return
+        undoStack.addLast(snapshot(saved.layout))
         restore(saved)
-        redoSnapshot = null
     }
 
     /** Puts the preset down and shows an empty grid; the preset itself keeps everything it had. */
@@ -892,6 +917,19 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
             }
 
             if (mouseButtonEvent.button() == 0) {
+                // with the switch on, a click on bare soil takes the soil off the preset
+                if (plantPalette.deleteMode && displayedGridWidget?.hoveredElement == null) {
+                    displayedGridWidget?.let { grid ->
+                        val (sx, sy) = grid.slotAt(mouseButtonEvent.x, mouseButtonEvent.y) ?: return@let
+                        val slot = grid.layout.getSlot(sx, sy) ?: return@let
+                        if (slot.placedBlock != null && !slot.placedBlock!!.isAir) {
+                            remember(grid.layout)
+                            slot.placedBlock = Blocks.AIR.defaultBlockState()
+                            grid.init()
+                            return true
+                        }
+                    }
+                }
                 (displayedGridWidget?.hoveredElement as? ElementWidget)?.let { element ->
                     // with the switch on, a click on a plant takes it off the preset
                     if (plantPalette.deleteMode) {
@@ -1228,10 +1266,9 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         initPresetLayout()
     }
 
-    fun removePresetLayout(){
-        // a plot of a preset with several goes on its own; the last plot takes the preset with it
+    /** Takes [plot] off the current preset, or with null the whole preset; the last plot takes the preset with it. */
+    fun removePresetLayout(plot: GreenhouseLayout?) {
         val master = GreenhouseData.currentPreset
-        val plot = displayedGridWidget?.layout
         if (master != null && plot != null && master.plots.size > 1) {
             master.plots.remove(plot)
             shownPlot = null
@@ -1309,8 +1346,12 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         private const val MAX_SPEED_UPGRADE: Int = 9
         private const val MAX_ATTRIBUTE: Int = 10
 
-        private const val SCROLL_HINT_GREENHOUSES: String = "Scroll the mouse wheel to switch greenhouse"
-        private const val SCROLL_HINT_PRESETS: String = "Scroll the mouse wheel to switch preset"
+        private const val RENAME_HINT: String = "\nRight click a name to rename it: greenhouses, presets and plots"
+        private const val SCROLL_HINT_GREENHOUSES: String = "Scroll the mouse wheel to switch greenhouse$RENAME_HINT"
+        private const val SCROLL_HINT_PRESETS: String = "Scroll the mouse wheel to switch preset$RENAME_HINT"
+
+        /** How many actions the arrows can walk back. */
+        private const val HISTORY_LIMIT: Int = 50
     }
 
 
