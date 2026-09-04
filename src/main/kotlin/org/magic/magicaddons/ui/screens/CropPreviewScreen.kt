@@ -158,7 +158,8 @@ class CropPreviewScreen(
         val w = footprint?.width ?: 1
         val h = footprint?.height ?: 1
 
-        val center = Vec3(ORIGIN.x + w / 2.0, (minY + maxY) / 2.0, ORIGIN.z + h / 2.0)
+        // the scene sits a little under the middle of the box, since a plant's own middle looks high
+        val center = Vec3(ORIGIN.x + w / 2.0, (minY + maxY) / 2.0 + SCENE_DROP, ORIGIN.z + h / 2.0)
         val extent = maxOf(maxY - minY, maxOf(w, h).toDouble(), 2.0)
 
         return center to extent
@@ -172,6 +173,7 @@ class CropPreviewScreen(
         val missing = mutableListOf<String>()
 
         if (PlantDex.needsRotation(def, stage)) missing += "rotation data"
+        if (PlantDex.needsSize(def, stage)) missing += "isSmall = false"
         if (stageDef.blocks.orEmpty().any { it.blockState == null }) missing += "block data"
 
         return missing
@@ -442,6 +444,9 @@ class CropPreviewScreen(
         val ORIGIN: BlockPos = BlockPos(0, 0, 0)
 
         const val FULL_BRIGHT: Int = 0xF000F0
+
+        /** How many blocks the scene is drawn below the box's middle. */
+        const val SCENE_DROP: Double = 0.75
 
         /** The same breathing room the greenhouse screen gives its grid inside the backdrop. */
         const val BORDER_PAD: Int = 6

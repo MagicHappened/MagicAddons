@@ -6,6 +6,10 @@ import com.mojang.brigadier.arguments.DoubleArgumentType
 import com.mojang.brigadier.arguments.StringArgumentType
 import com.mojang.brigadier.builder.LiteralArgumentBuilder
 import com.mojang.brigadier.builder.RequiredArgumentBuilder
+import com.mojang.brigadier.context.StringRange
+import com.mojang.brigadier.suggestion.Suggestion
+import com.mojang.brigadier.suggestion.Suggestions
+import java.util.concurrent.CompletableFuture
 import com.mojang.blaze3d.vertex.PoseStack
 import net.minecraft.client.renderer.SubmitNodeCollector
 import net.minecraft.world.phys.AABB
@@ -44,6 +48,9 @@ object FarmingDebug : AbstractCommand() {
     var footprint: Footprint = Footprint(1, 1)
 
     private const val DEFAULT_RADIUS: Double = 4.0
+
+    /** The plant dex word that lists every gap instead of one crop. */
+    private const val MISSING_WORD: String = "missing"
 
     /** How long a dump leaves its stands lit up for. */
     private val HIGHLIGHT_TIME: Duration = Duration.ofSeconds(30)
@@ -199,30 +206,72 @@ object FarmingDebug : AbstractCommand() {
     }
 
     /**
-     * The dex, and under it every crop as its own command word, so names are offered rather than
-     * typed out. Spaces and punctuation are stripped, since a word cannot hold a space.
+     * The dex, and under it "missing" then every crop as a command word, so names are offered rather
+     * than typed out. Spaces and punctuation are stripped, since a word cannot hold a space.
      */
-    private fun plantDexCommand(): LiteralArgumentBuilder<FabricClientCommandSource> {
-        val dex = LiteralArgumentBuilder.literal<FabricClientCommandSource>("plantDex")
+    private fun plantDexCommand(): LiteralArgumentBuilder<FabricClientCommandSource> =
+        LiteralArgumentBuilder.literal<FabricClientCommandSource>("plantDex")
             .executes {
                 dumpPlantDex()
                 return@executes 1
             }
+            .then(
+                RequiredArgumentBuilder.argument<FabricClientCommandSource, String>(
+                    "crop",
+                    StringArgumentType.word()
+                ).suggests { _, builder ->
+                    // built by hand rather than through the builder, which sorts alphabetically
+                    // and would bury "missing" among the crops
+                    val typed = builder.remainingLowerCase
+                    val suggestions = (listOf(MISSING_WORD) + CropRegistry.all.map { cropWord(it) }.distinct())
+                        .filter { it.lowercase().startsWith(typed) }
+                        .map { Suggestion(StringRange.between(builder.start, builder.input.length), it) }
 
-        CropRegistry.all
-            .distinctBy { it.name.filter { c -> c.isLetterOrDigit() } }
-            .forEach { def ->
-                dex.then(
-                    LiteralArgumentBuilder.literal<FabricClientCommandSource>(
-                        def.name.filter { c -> c.isLetterOrDigit() }
-                    ).executes {
-                        dumpPlantDexFor(def)
-                        return@executes 1
+                    CompletableFuture.completedFuture(
+                        Suggestions(StringRange.between(builder.start, builder.input.length), suggestions)
+                    )
+                }.executes {
+                    val word = StringArgumentType.getString(it, "crop")
+                    val def = CropRegistry.all.firstOrNull { def -> cropWord(def).equals(word, ignoreCase = true) }
+
+                    when {
+                        word.equals(MISSING_WORD, ignoreCase = true) -> dumpMissingPlants()
+                        def != null -> dumpPlantDexFor(def)
+                        else -> ChatUtils.sendWithPrefix("No crop called $word.")
                     }
-                )
+                    return@executes 1
+                }
+            )
+
+    private fun cropWord(def: CropDefinition): String = def.name.filter { c -> c.isLetterOrDigit() }
+
+    /** Every crop still missing something, one line per tier with the crops in its hover. */
+    private fun dumpMissingPlants() {
+        val gaps = PlantDex.gapsByTier()
+
+        if (gaps.isEmpty()) {
+            ChatUtils.sendWithPrefix("Nothing missing. The dex is complete.")
+            return
+        }
+
+        ChatUtils.sendWithPrefix(
+            Component.literal("Currently missing plants (hover):").withStyle(ChatFormatting.GOLD)
+        )
+
+        gaps.forEach { (tier, crops) ->
+            val hover = Component.empty()
+            crops.forEachIndexed { index, gap ->
+                if (index > 0) hover.append(Component.literal("\n"))
+                hover.append(Component.literal(gap.def.name).withStyle(ChatFormatting.WHITE))
+                    .append(Component.literal(" -> ${gap.parts.joinToString("; ")}").withStyle(ChatFormatting.GRAY))
             }
 
-        return dex
+            ChatUtils.send(
+                Component.literal("  ${PlantDex.TIER_TITLES[tier]} (${crops.size})")
+                    .withStyle(ChatFormatting.YELLOW)
+                    .withStyle { it.withHoverEvent(HoverEvent.ShowText(hover)) }
+            )
+        }
     }
 
     /** What one crop is still missing, said in chat rather than copied. */

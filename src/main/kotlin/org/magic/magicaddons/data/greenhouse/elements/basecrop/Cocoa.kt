@@ -59,7 +59,10 @@ object Cocoa : CropDefinitionProvider {
                     CropArmorStand(
                         offset = Vec3(0.0, -0.25, 0.0),
                         headRotation = Rotations(0.0f, 22.5f, 22.5f),
-                        hashString = "e1f5cb495ba97bf9c05c15b8c9cc866c14c1fe14807fed5802a0bf68deec8912"
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
+                        hashString = "e1f5cb495ba97bf9c05c15b8c9cc866c14c1fe14807fed5802a0bf68deec8912",
+                        isSmall = false
                     )
                 ),
                 2..2,

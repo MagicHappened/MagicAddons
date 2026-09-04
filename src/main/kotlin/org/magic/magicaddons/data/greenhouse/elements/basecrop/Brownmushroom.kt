@@ -26,7 +26,8 @@ object Brownmushroom : CropDefinitionProvider {
         skyblockId = SkyBlockItemId.item("BROWN_MUSHROOM"),
         /** Each skull's pose, found constant across every stage it appears in. */
         standPoses = mapOf(
-            "578897b83f51fb96b59ba418ff0868cef7bdf661e315ba5dbac51d876d1d15d" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f))
+            "578897b83f51fb96b59ba418ff0868cef7bdf661e315ba5dbac51d876d1d15d" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f)),
+            "7019992b5d440f85d2b05148aa9b85f450985d5f16ae960d1cdb32e06e3c896f" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f))
         ),
         stageDefs = listOf(
             CropStagePattern(

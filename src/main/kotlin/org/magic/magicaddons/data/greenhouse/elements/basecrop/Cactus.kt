@@ -16,6 +16,10 @@ object Cactus : CropDefinitionProvider {
             CropEffect.HarvestLoss
         ),
         skyblockId = SkyBlockItemId.item("CACTUS"),
+        /** Each skull's pose, found constant across every stage it appears in. */
+        standPoses = mapOf(
+            "d4b3ea5cb6b6f046e326621ca11ffb7d6aec22d66c0d81e5039b19ee4400309f" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f))
+        ),
         stageDefs = listOf(
             CropStage(
                 blocks = listOf(),
@@ -37,7 +41,8 @@ object Cactus : CropDefinitionProvider {
                             Vec3(0.0, -0.5, 0.0),
                             Vec3(0.0, 0.78125, 0.0)
                         ),
-                        hashString = "d4b3ea5cb6b6f046e326621ca11ffb7d6aec22d66c0d81e5039b19ee4400309f"
+                        hashString = "d4b3ea5cb6b6f046e326621ca11ffb7d6aec22d66c0d81e5039b19ee4400309f",
+                        isSmall = false
                     ),
                 stageRange = 2..2,
                 baseStageStandOffset = Vec3(0.0, 0.59375, 0.0)
