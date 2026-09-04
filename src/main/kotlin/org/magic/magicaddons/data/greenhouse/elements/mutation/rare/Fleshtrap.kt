@@ -72,10 +72,7 @@ object Fleshtrap : CropDefinitionProvider {
                     CropStandReader.bar(CropStandReader.HUNGER),
                     CropStandReader.percentLabel(CropStandReader.BONUS, "Bonus")
                 )
-            )
-
-
-        ,
+            ),
             // the skull changes with hunger, so either look is stage 14
             CropStage(
                 blocks = listOf(

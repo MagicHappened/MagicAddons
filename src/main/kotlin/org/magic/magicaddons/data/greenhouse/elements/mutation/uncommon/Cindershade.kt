@@ -94,8 +94,7 @@ object Cindershade : CropDefinitionProvider {
                     )
                 ),
                 5..5
-            )
-            ,
+            ),
             CropStage(
                 blocks = listOf(
                     CropBlockState(
@@ -133,8 +132,7 @@ object Cindershade : CropDefinitionProvider {
                     )
                 ),
                 7..7
-            )
-            ,
+            ),
             CropStage(
                 blocks = listOf(
                     CropBlockState(
