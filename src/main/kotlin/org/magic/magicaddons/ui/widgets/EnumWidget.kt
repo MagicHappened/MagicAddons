@@ -90,7 +90,7 @@ class EnumWidget<T>(
      * is only ellipsised when it is too long for the screen.
      */
     fun fitToValues(maxWidth: Int) {
-        val shown = values.map { it.toString() } + listOfNotNull(currentValue?.toString())
+        val shown = values.map { it.toString() } + listOfNotNull(currentValue?.toString()) + PLACEHOLDER
         val longest = shown.maxOfOrNull { font.width(it) } ?: 0
 
         width = (longest + textPad * 2 + font.width(ARROW) + Common.UI.SPACING)

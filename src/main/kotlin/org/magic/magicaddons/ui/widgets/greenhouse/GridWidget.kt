@@ -7,6 +7,8 @@ import net.minecraft.client.gui.narration.NarratableEntry
 import net.minecraft.client.gui.narration.NarrationElementOutput
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.world.item.ItemStack
+import org.magic.magicaddons.data.greenhouse.Footprint
+import org.magic.magicaddons.data.greenhouse.GreenhouseElementInstance
 import net.minecraft.world.item.Items
 import org.magic.magicaddons.Common
 import org.magic.magicaddons.ui.Focusable
@@ -39,6 +41,26 @@ class GridWidget(
 
     /** The fact pinned on the hover controls, written over every plant while it is set. */
     var pinnedInfo: ElementWidget.HoverInfo? = null
+
+    /** Plants placed since the last build, which arrive with a little pop. Cleared by [init]. */
+    val justPlaced: MutableSet<GreenhouseElementInstance> = mutableSetOf()
+
+    /** The slot under a point, or null off the grid. */
+    fun slotAt(mouseX: Double, mouseY: Double): Pair<Int, Int>? {
+        val step = slotSize + LINE_WIDTH
+        val sx = (mouseX.toInt() - widgetX) / step
+        val sy = (mouseY.toInt() - widgetY) / step
+        if (mouseX < widgetX || mouseY < widgetY || sx !in 0 until layout.size || sy !in 0 until layout.size) return null
+        return sx to sy
+    }
+
+    /** The screen rectangle a plant of [footprint] anchored at slot ([sx], [sy]) covers. */
+    fun footprintRect(sx: Int, sy: Int, footprint: Footprint): IntArray = intArrayOf(
+        widgetX + offsetOf(sx),
+        widgetY + offsetOf(sy),
+        widgetX + offsetOf(sx) + slotSize * footprint.width + (footprint.width - 1),
+        widgetY + offsetOf(sy) + slotSize * footprint.height + (footprint.height - 1)
+    )
 
     fun init() {
         slotWidgets.clear()
@@ -88,9 +110,10 @@ class GridWidget(
             widget.renderedStack = instance.cropDef.displayItem?.let { ItemStack(it) }
                 ?: instance.cropDef.skyblockId?.toItem()?.takeUnless { it.isEmpty }
                 ?: ItemStack(Items.BARRIER)
+            if (instance in justPlaced) widget.appearedAt = System.currentTimeMillis()
             elementWidgets.add(widget)
         }
-
+        justPlaced.clear()
     }
 
     override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {

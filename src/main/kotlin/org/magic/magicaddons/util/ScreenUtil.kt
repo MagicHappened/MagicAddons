@@ -144,17 +144,13 @@ object ScreenUtil {
         fill(x, thumbY, x + Common.UI.SCROLLBAR_WIDTH, thumbY + thumb, Common.UI.TEXT_COLOR)
     }
 
+    /** A frame just inside the rectangle: four strips that meet square at the corners. */
     fun GuiGraphicsExtractor.drawBorder(x1: Int, y1: Int, x2: Int, y2: Int, thickness: Int, color: Int) {
-        drawBorder(
-            x1.toFloat(),
-            y1.toFloat(),
-            x2.toFloat(),
-            y2.toFloat(),
-            thickness.toFloat(),
-            color
-        )
+        fill(x1, y1, x2, y1 + thickness, color)
+        fill(x1, y2 - thickness, x2, y2, color)
+        fill(x1, y1, x1 + thickness, y2, color)
+        fill(x2 - thickness, y1, x2, y2, color)
     }
-
 
     fun GuiGraphicsExtractor.drawBorder(
         x1: Float, y1: Float,
@@ -162,17 +158,20 @@ object ScreenUtil {
         thickness: Float,
         color: Int? = null
     ) {
-        // top
-        drawLine(x1, y1, x2, y1, thickness, color)
+        drawBorder(x1.toInt(), y1.toInt(), x2.toInt(), y2.toInt(), thickness.toInt(), color ?: Common.UI.TEXT_COLOR)
+    }
 
-        // bottom
-        drawLine(x1, y2, x2, y2, thickness, color)
-
-        // left
-        drawLine(x1, y1, x1, y2, thickness, color)
-
-        // right
-        drawLine(x2, y1, x2, y2, thickness, color)
+    /** A panel with a quiet title in its top left, for a group of controls that belong together. */
+    fun GuiGraphicsExtractor.drawShelf(x1: Int, y1: Int, x2: Int, y2: Int, title: String) {
+        drawPanel(x1, y1, x2, y2)
+        text(
+            Minecraft.getInstance().font,
+            Component.literal(title),
+            x1 + Common.UI.TEXT_X_PAD,
+            y1 + Common.UI.SPACING,
+            Common.UI.TEXT_DIM_COLOR,
+            false
+        )
     }
 
     /** A filled rectangle with its corners taken off: a full height middle band and two inset ones. */
