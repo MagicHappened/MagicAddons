@@ -118,31 +118,16 @@ class GridWidget(
     }
 
     override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
-        // draw grid lines
-        for (i in 1 until layout.size) {
-            // vertical
-            graphics.drawLine(
-                widgetX + offsetOf(i),
-                widgetY,
-                widgetX + offsetOf(i),
-                widgetY + gridSpan,
-                LINE_WIDTH,
-                Common.UI.GRID_LINE_COLOR
-            )
-
-            // horizontal
-            graphics.drawLine(
-                widgetX,
-                widgetY + offsetOf(i),
-                widgetX + gridSpan,
-                widgetY + offsetOf(i),
-                LINE_WIDTH,
-                Common.UI.GRID_LINE_COLOR
-            )
-        }
-
         slotWidgets.forEach {
             it.extractRenderState(graphics, mouseX, mouseY, delta)
+        }
+
+        // the lines live in the pixel between two slots, drawn over the soil so no slot covers them
+        // and under the plants so a wide plant covers them
+        for (i in 1 until layout.size) {
+            val at = offsetOf(i) - LINE_WIDTH
+            graphics.fill(widgetX + at, widgetY, widgetX + at + LINE_WIDTH, widgetY + gridSpan, Common.UI.GRID_LINE_COLOR)
+            graphics.fill(widgetX, widgetY + at, widgetX + gridSpan, widgetY + at + LINE_WIDTH, Common.UI.GRID_LINE_COLOR)
         }
 
         elementWidgets.forEach {
