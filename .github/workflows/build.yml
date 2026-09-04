@@ -1,47 +1,48 @@
-name: build
+name: beta title
 
-# the run is named after the pushed commits, so the list of builds reads as a changelog
-run-name: ${{ join(github.event.commits.*.message, ' | ') }}
+# a beta push must bring a new line in .github/beta-title; that line names the build it starts
+run-name: 'title check: ${{ github.event.head_commit.message }}'
 
 on:
   push:
     branches: [ "beta" ]
 
 jobs:
-  build:
+  gate:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      actions: write
 
     steps:
         - name: Checkout sources
           uses: actions/checkout@v6
-
-        - name: Setup Java
-          uses: actions/setup-java@v5
           with:
-            distribution: 'temurin'
-            java-version: 21
+            fetch-depth: 0
 
-        - name: Make gradle executable
-          run: chmod +x ./gradlew
+        - name: Require a new title
+          id: title
+          env:
+            BEFORE: ${{ github.event.before }}
+          run: |
+            title=$(head -n 1 .github/beta-title | tr -d '\r')
+            if [ -z "$title" ]; then
+              echo "::error::.github/beta-title is empty; write one line saying what this push carries"
+              exit 1
+            fi
+            # a brand new branch has no before to compare with
+            if [ "$BEFORE" != "0000000000000000000000000000000000000000" ] && git cat-file -e "$BEFORE" 2>/dev/null; then
+              if git diff --quiet "$BEFORE" HEAD -- .github/beta-title; then
+                echo "::error::.github/beta-title did not change in this push; give the build a new title"
+                exit 1
+              fi
+            fi
+            echo "title=$title" >> "$GITHUB_OUTPUT"
 
-        - name: Build with Gradle
-          run: ./gradlew build -Pbuild_id=${GITHUB_SHA::7}
-
-        # with archive false each jar arrives as its own artifact, named after the file itself
-        - name: Upload 26.1.2 jar
-          uses: actions/upload-artifact@v7
-          with:
-            path: |
-              versions/26.1.2/build/libs/*.jar
-              !versions/26.1.2/build/libs/*-sources.jar
-            archive: false
-
-        - name: Upload 26.2 jar
-          uses: actions/upload-artifact@v7
-          with:
-            path: |
-              versions/26.2/build/libs/*.jar
-              !versions/26.2/build/libs/*-sources.jar
-            archive: false
+        - name: Start the named build
+          env:
+            GH_TOKEN: ${{ github.token }}
+          run: |
+            gh workflow run beta-build.yml --ref beta \
+              -f title="${{ steps.title.outputs.title }}" \
+              -f sha="${{ github.sha }}"

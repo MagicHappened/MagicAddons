@@ -323,7 +323,8 @@ class GreenhouseGrid(
 
             // a plant in debt may be passed over entirely and nothing here can know, so the loss is
             // counted anyway and the plant remembers that it is a worst case
-            if ((instance.waterLevel ?: 0) < 0) instance.waterPredictedInDebt = true
+            val inDebt = (instance.waterLevel ?: 0) < 0
+            if (inDebt) instance.waterPredictedInDebt = true
 
             if (instance.isAsleep || cravingUnfulfilled || instance.isStarving) {
                 if (instance.cropDef.needsWater) {
@@ -356,7 +357,9 @@ class GreenhouseGrid(
             fun ceiling(from: Int): Int =
                 sleepStages.filter { it > from }.minOrNull()?.coerceAtMost(maxStage) ?: maxStage
 
-            val first = (range.first + ticks).coerceAtMost(ceiling(range.first))
+            // in debt every tick may have been skipped, so the low end stays where it was while the
+            // high end takes every tick: a 3 becomes 3 to 4
+            val first = if (inDebt) range.first else (range.first + ticks).coerceAtMost(ceiling(range.first))
             val last = (range.last + ticks).coerceAtMost(ceiling(range.last))
 
             instance.growthStage = GrowthStageInfo.Estimated(first..last)

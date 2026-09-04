@@ -170,6 +170,9 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
     /** The plants a preset can be built from, under the preset shelf. */
     private val plantPalette = PlantPalette(onClearAll = { event -> confirmClearAll(event) })
 
+    /** Grid lines with nothing on them, shown while there is no preset, so a plant has somewhere to land. */
+    private var emptyGridWidget: GridWidget? = null
+
     /** The plot's own name, or its number when it was never named. */
     private fun plotLabel(layout: GreenhouseLayout): String =
         layout.name ?: "Plot ${layout.id.removePrefix("plot_")}"
@@ -259,9 +262,18 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         greenhousePanel.layoutIn(actionRowX, actionRowY, rowWidth, rowHeight)
         presetUI.layoutIn(actionRowX, actionRowY, rowWidth, rowHeight)
 
-        // the plants shelf takes what is left under the preset buttons
+        // the plants shelf takes what is left under the preset buttons, ending with the grid's frame
         val paletteY = actionShelfY + shelfTitleHeight() + presetUI.contentHeight + Common.UI.SPACING_LARGE
-        plantPalette.layout(shelfLeft, paletteY, shelfWidth, height - paletteY - Common.UI.SPACING_LARGE)
+        val frameBottom = startY + containerSize + borderPadding
+        plantPalette.layout(shelfLeft, paletteY, shelfWidth, frameBottom - paletteY)
+
+        emptyGridWidget = GridWidget(GreenhouseLayout(id = EMPTY_GRID_ID), slotSize).apply {
+            widgetX = startX
+            widgetY = startY
+            widgetWidth = containerSize
+            widgetHeight = containerSize
+            init()
+        }
 
         hoverControls.layoutAgainstGrid(startX + containerSize, startY, containerSize)
 
@@ -459,7 +471,7 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
     /** Where the carried plant would land, green when it fits and red when it cannot. */
     private fun renderDropTarget(graphics: GuiGraphicsExtractor) {
         val def = plantPalette.dragging ?: return
-        val grid = displayedGridWidget ?: return
+        val grid = displayedGridWidget ?: emptyGridWidget ?: return
         val mouse = Minecraft.getInstance().mouseHandler
         val window = Minecraft.getInstance().window
         val mouseX = mouse.xpos() * window.guiScaledWidth / window.screenWidth / drawScale
@@ -484,10 +496,14 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         }
     }
 
-    /** Drops the carried plant onto the preset at the mouse, when it fits there. */
+    /** Drops the carried plant onto the preset at the mouse, when it fits there. With no preset, one is started. */
     private fun placeDragged(def: CropDefinition, mouseX: Double, mouseY: Double) {
-        val grid = displayedGridWidget ?: return
         if (currentDisplay != CurrentDisplay.Presets) return
+        if (displayedGridWidget == null) {
+            if (emptyGridWidget?.slotAt(mouseX, mouseY) == null) return
+            addPresetLayout(GreenhouseLayout(id = "preset_${GreenhouseData.computeNextAvailableId()}"))
+        }
+        val grid = displayedGridWidget ?: return
         val (sx, sy) = grid.slotAt(mouseX, mouseY) ?: return
         if (!canPlace(grid.layout, def, sx, sy)) return
         val slot = grid.layout.getSlot(sx, sy) ?: return
@@ -560,6 +576,9 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         // presets are a plan rather than a greenhouse that exists, no plant in one has a stage,
         // a water level or an age to report
         displayedGridWidget?.extractRenderState(graphics, mouseX, mouseY, delta)
+        if (displayedGridWidget == null && currentDisplay == CurrentDisplay.Presets) {
+            emptyGridWidget?.extractRenderState(graphics, mouseX, mouseY, delta)
+        }
 
         drawShelf(graphics, SHELF_VIEW, viewShelfY, viewShelfHeight)
 
@@ -1025,6 +1044,9 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
 
         private const val TELEPORT_WIDTH: Int = 110
         private const val TELEPORT_LABEL: String = "Teleport to Plot"
+
+        /** The layout behind the empty grid, never saved. */
+        private const val EMPTY_GRID_ID: String = "preset_none"
 
         /** The footprint a carried plant would take, seen through. */
         private const val DROP_OK: Int = 0x6000FF00

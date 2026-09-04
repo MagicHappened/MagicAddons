@@ -8,11 +8,11 @@ object Common {
     val LOGGER = LoggerFactory.getLogger(MagicAddons::class.java)
 
     object UI {
-        // a dark slate palette: panels, a darker inset for fields, slate frames, off-white text
-        const val BACKGROUND_COLOR: Int = 0xFF2B2F36.toInt()
+        // pine and amber: deep green panels, darker insets, moss frames, cream text, amber for the pick
+        const val BACKGROUND_COLOR: Int = 0xFF1F3330.toInt()
         const val BORDER_SIZE: Int = 2
-        /** A slate frame, lighter than the panel, since black sinks into the darkened world. */
-        const val BORDER_COLOR: Int = 0xFF4A5160.toInt()
+        /** A moss frame, lighter than the panel, since black sinks into the darkened world. */
+        const val BORDER_COLOR: Int = 0xFF4C7A63.toInt()
         const val TEXT_X_PAD: Int = 4
 
         /** A column of settings or features never grows wider than this, however wide the screen. */
@@ -39,26 +39,26 @@ object Common {
         const val SPACING_LARGE: Int = 10
 
         /** Laid over the world behind a screen, so the panels stand out without hiding it. */
-        const val SCREEN_DIM_COLOR: Int = 0xB40E1014.toInt()
+        const val SCREEN_DIM_COLOR: Int = 0xB40B1512.toInt()
 
         /** Text drawn over something busy needs its own ground to stay readable. */
         const val OVERLAY_TEXT_COLOR: Int = 0xFFFFFFFF.toInt()
         const val OVERLAY_BACKGROUND_COLOR: Int = 0xB0000000.toInt()
 
         /** Plain text on a panel of this mod. */
-        const val TEXT_COLOR: Int = 0xFFE6E8EB.toInt()
+        const val TEXT_COLOR: Int = 0xFFF2ECDC.toInt()
 
         /** Laid over a control the mouse is on, so it lifts rather than changes colour. */
-        const val HOVER_WASH: Int = 0x30FFFFFF
+        const val HOVER_WASH: Int = 0x28FFFFFF
 
         /** Laid over a control that is picked, so it sits pressed in. */
         const val PRESSED_SHADE: Int = 0x50000000
 
         /** The frame of a picked or focused control, the palette's one bright colour. */
-        const val SELECTED_FRAME_COLOR: Int = 0xFF6FA8DC.toInt()
+        const val SELECTED_FRAME_COLOR: Int = 0xFFE0A84A.toInt()
 
         /** The ground of a text field or checkbox, darker than the panel it sits in. */
-        const val FIELD_COLOR: Int = 0xFF1A1D22.toInt()
+        const val FIELD_COLOR: Int = 0xFF13221F.toInt()
 
         /** Room a text field keeps between its frame and the text. */
         const val FIELD_INSET: Int = 4
@@ -71,7 +71,7 @@ object Common {
         const val SCROLL_TRACK_COLOR: Int = 0x40000000
 
         /** Text on a control that does nothing at the moment. */
-        const val DISABLED_TEXT_COLOR: Int = 0xFF6B7280.toInt()
+        const val DISABLED_TEXT_COLOR: Int = 0xFF6E8577.toInt()
 
         /** Something the player should look at, such as a greenhouse running on guessed data. */
         const val WARNING_COLOR: Int = 0xFFAA0000.toInt()
@@ -80,7 +80,7 @@ object Common {
         const val GRID_LINE_COLOR: Int = 0x800683C1.toInt()
 
         /** A label beside the value it names, quieter than the value itself. */
-        const val TEXT_DIM_COLOR: Int = 0xFFA3A9B4.toInt()
+        const val TEXT_DIM_COLOR: Int = 0xFFB4C2AF.toInt()
 
         /** Something enabled or accepted. */
         const val SUCCESS_COLOR: Int = 0xFF00FF00.toInt()

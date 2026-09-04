@@ -200,7 +200,7 @@ class CropPreviewScreen(
 
         when {
             def == null -> graphics.drawMultilineBoxCentered(
-                "Pick a crop below",
+                "Pick a crop",
                 previewX + previewSize / 2,
                 previewY + previewSize / 2
             )

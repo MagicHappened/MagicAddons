@@ -1,0 +1,59 @@
+name: beta build
+
+# started by build.yml once a beta push carried a title; the title names the run
+run-name: ${{ inputs.title }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      title:
+        description: 'What this build carries, from .github/beta-title'
+        required: true
+        type: string
+      sha:
+        description: 'The commit to build'
+        required: true
+        type: string
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+        - name: Checkout sources
+          uses: actions/checkout@v6
+          with:
+            ref: ${{ inputs.sha }}
+
+        - name: Setup Java
+          uses: actions/setup-java@v5
+          with:
+            distribution: 'temurin'
+            java-version: 21
+
+        - name: Make gradle executable
+          run: chmod +x ./gradlew
+
+        - name: Build with Gradle
+          run: ./gradlew build -Pbuild_id=${INPUT_SHA::7}
+          env:
+            INPUT_SHA: ${{ inputs.sha }}
+
+        # with archive false each jar arrives as its own artifact, named after the file itself
+        - name: Upload 26.1.2 jar
+          uses: actions/upload-artifact@v7
+          with:
+            path: |
+              versions/26.1.2/build/libs/*.jar
+              !versions/26.1.2/build/libs/*-sources.jar
+            archive: false
+
+        - name: Upload 26.2 jar
+          uses: actions/upload-artifact@v7
+          with:
+            path: |
+              versions/26.2/build/libs/*.jar
+              !versions/26.2/build/libs/*-sources.jar
+            archive: false
