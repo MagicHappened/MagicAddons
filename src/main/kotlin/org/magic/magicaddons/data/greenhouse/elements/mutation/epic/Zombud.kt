@@ -32,8 +32,7 @@ object Zombud : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, 0.21875, 0.0),
-                        hashString = "de090b85462e85f7f44be07e55f1486602c141bb6fd0c277d5bb7c68deda265d",
-                        isSmall = false
+                        hashString = "de090b85462e85f7f44be07e55f1486602c141bb6fd0c277d5bb7c68deda265d"
                     )
                 ),
                 1..1
@@ -80,7 +79,8 @@ object Zombud : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.4375, 0.0),
-                        hashString = "29e27b7ee26e272ce53f19e169a593ea83cc120bfa3a209e1a8a279fcdf463e7"
+                        hashString = "29e27b7ee26e272ce53f19e169a593ea83cc120bfa3a209e1a8a279fcdf463e7",
+                        isSmall = false
                     )
                 ),
                 4..5

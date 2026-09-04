@@ -57,19 +57,25 @@ object StoplightPetal : CropDefinitionProvider {
             CropStage(
                 blocks = listOf(
                     CropBlockState(
-                        offset = BlockPos(0,1,0),
+                        offset = BlockPos(0, 1, 0),
                         blockState = melonStemState(5)
                     )
                 ),
                 armorStands = listOf(
                     CropArmorStand(
-                        offset = Vec3(-0.21875, 0.875, 0.0),
-                        hashString = "f15bd3a726eee1f2f8ffd3a92ae95c44a2f37f6b0345a795b44e0360564c67fe",
-                        isSmall = false
+                        offset = Vec3(0.0, 0.875, -0.21875),
+                        headRotation = Rotations(90.0f, 0.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
+                        hashString = "f15bd3a726eee1f2f8ffd3a92ae95c44a2f37f6b0345a795b44e0360564c67fe"
                     ),
                     CropArmorStand(
                         offset = Vec3(0.0, -0.4375, 0.0),
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
                         hashString = "57f6c922e742b5c571b1cf091d6d4bc06360f4f03443d79c5174097b0b373d7e",
+                        isSmall = false
                     )
                 ),
                 3..3
@@ -77,19 +83,25 @@ object StoplightPetal : CropDefinitionProvider {
             CropStage(
                 blocks = listOf(
                     CropBlockState(
-                        offset = BlockPos(0,1,0),
-                        blockState = melonStemState(5)
+                        offset = BlockPos(0, 1, 0),
+                        blockState = melonStemState(7)
                     )
                 ),
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, 0.75, 0.0),
-                        hashString = "f15bd3a726eee1f2f8ffd3a92ae95c44a2f37f6b0345a795b44e0360564c67fe",
-                        isSmall = false
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
+                        hashString = "f15bd3a726eee1f2f8ffd3a92ae95c44a2f37f6b0345a795b44e0360564c67fe"
                     ),
                     CropArmorStand(
                         offset = Vec3(0.0, -0.4375, 0.0),
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
                         hashString = "57f6c922e742b5c571b1cf091d6d4bc06360f4f03443d79c5174097b0b373d7e",
+                        isSmall = false
                     )
                 ),
                 4..4
@@ -139,27 +151,42 @@ object StoplightPetal : CropDefinitionProvider {
             CropStage(
                 blocks = CropBlockState.blockStatePattern(
                     listOf(
-                        BlockPos(0,1,0),
-                        BlockPos(0,2,0)
+                        BlockPos(0, 1, 0),
+                        BlockPos(0, 2, 0)
                     ),
                     blockState = melonStemState(5)
                 ),
-                armorStands = listOf(
-                    CropArmorStand(
-                        offset = Vec3(-0.21875, 1.4375, 0.0),
-                        hashString = "57f6c922e742b5c571b1cf091d6d4bc06360f4f03443d79c5174097b0b373d7e",
+                armorStands = CropArmorStand.matcherPattern(
+                    offsets = listOf(
+                        Vec3(0.0, 1.4375, -0.21875),
+                        Vec3(0.0, -0.4375, 0.0)
                     ),
+                    rotations = listOf(
+                        Rotations(90.0f, 0.0f, 0.0f),
+                        Rotations(0.0f, 0.0f, 0.0f)
+                    ),
+                    xRotations = listOf(
+                        0.0f,
+                        0.0f
+                    ),
+                    yRotations = listOf(
+                        0.0f,
+                        0.0f
+                    ),
+                    hashString = "57f6c922e742b5c571b1cf091d6d4bc06360f4f03443d79c5174097b0b373d7e",
+                    isSmall = false
+                ) +
+                listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, 0.15625, 0.0),
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
                         hashString = "f15bd3a726eee1f2f8ffd3a92ae95c44a2f37f6b0345a795b44e0360564c67fe",
                         isSmall = false
-                    ),
-                    CropArmorStand(
-                        offset = Vec3(0.0, -0.4375, 0.0),
-                        hashString = "57f6c922e742b5c571b1cf091d6d4bc06360f4f03443d79c5174097b0b373d7e",
                     )
                 ),
-                7..7,
+                7..7
             ),
             CropStage(
                 blocks = listOf(

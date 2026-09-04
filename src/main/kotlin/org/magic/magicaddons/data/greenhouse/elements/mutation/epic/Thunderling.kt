@@ -60,6 +60,27 @@ object Thunderling : CropDefinitionProvider {
                 blocks = listOf(),
                 armorStands = listOf(
                     CropArmorStand(
+                        offset = Vec3(-0.21875, 0.09375, 0.03125),
+                        headRotation = Rotations(22.5f, 22.5f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
+                        hashString = "b35914deb539a1fde1b1c473f8e05cacca257b959e7270d444c1dc5ad2bf7cc8"
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(0.0625, -0.71875, -0.25),
+                        headRotation = Rotations(-22.5f, 0.0f, 22.5f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
+                        hashString = "b68fb1ff4ecbf2e1c6e9f11c71f8f915f2d05e58a4ced08998f8b040bd671a08",
+                        isSmall = false
+                    )
+                ),
+                7..7
+            ),
+            CropStage(
+                blocks = listOf(),
+                armorStands = listOf(
+                    CropArmorStand(
                         isSmall = false,
                         offset = Vec3(0.0625, -0.71875, -0.25),
                         headRotation = Rotations(-22.5f, 0.0f, 22.5f),

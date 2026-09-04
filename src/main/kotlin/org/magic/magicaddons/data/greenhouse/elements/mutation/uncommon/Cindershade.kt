@@ -84,11 +84,13 @@ object Cindershade : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.25, 0.0),
-                        hashString = "7bd5a39c3f9b1f513ecc299afaa5f90040fdb7424a5cd592e9ff31de7a3aafb3"
+                        hashString = "7bd5a39c3f9b1f513ecc299afaa5f90040fdb7424a5cd592e9ff31de7a3aafb3",
+                        isSmall = false
                     ),
                     CropArmorStand(
                         offset = Vec3(0.0, -0.8125, 0.0),
-                        hashString = "66aa7b369efc0186937373242fe406e196281f0caf76899a4661c960b47fb74c"
+                        hashString = "66aa7b369efc0186937373242fe406e196281f0caf76899a4661c960b47fb74c",
+                        isSmall = false
                     )
                 ),
                 5..5
@@ -185,11 +187,13 @@ object Cindershade : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.5, 0.0),
-                        hashString = "66aa7b369efc0186937373242fe406e196281f0caf76899a4661c960b47fb74c"
+                        hashString = "66aa7b369efc0186937373242fe406e196281f0caf76899a4661c960b47fb74c",
+                        isSmall = false
                     ),
                     CropArmorStand(
                         offset = Vec3(0.0, 0.09375, 0.0),
-                        hashString = "a0646bc0558155207204711cf5d3d07920e0e98c9b2be0b6107becb409a97427"
+                        hashString = "a0646bc0558155207204711cf5d3d07920e0e98c9b2be0b6107becb409a97427",
+                        isSmall = false
                     )
                 ),
                 8..8

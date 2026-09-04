@@ -100,14 +100,39 @@ object AllinAloe : CropDefinitionProvider {
                 ),
                 armorStands = listOf(
                     CropArmorStand(
-                        offset = Vec3(0.09375, 0.15625, 0.0),
-                        hashString = "241163612258d30dc6ef63b21f61ba89c622e5dcebd99fd36a3b507e80cdc725"
+                        offset = Vec3(0.0, 0.15625, 0.09375),
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
+                        hashString = "241163612258d30dc6ef63b21f61ba89c622e5dcebd99fd36a3b507e80cdc725",
+                        isSmall = false
                     )
                 ),
-                7..7,
-            )
-
-        ),
+                7..7
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = melonStemState(7)
+                    ),
+                    CropBlockState(
+                        offset = BlockPos(0, 2, 0),
+                        blockState = melonStemState(5)
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, 0.25, 0.09375),
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
+                        hashString = "241163612258d30dc6ef63b21f61ba89c622e5dcebd99fd36a3b507e80cdc725",
+                        isSmall = false
+                    )
+                ),
+                8..8
+            )),
         decayTimeMs = NEVER_DECAYS,
         maxStage = 27,
         requiredSoil = setOf(Blocks.SAND),

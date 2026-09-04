@@ -143,7 +143,8 @@ object Soggybud : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, 0.15625, 0.0),
-                        hashString = "b4bdf477d2f417f75798ad6377b131aca787be9bc05a2fddc1972d81d40c7356"
+                        hashString = "b4bdf477d2f417f75798ad6377b131aca787be9bc05a2fddc1972d81d40c7356",
+                        isSmall = false
                     )
                 ),
                 10..10
