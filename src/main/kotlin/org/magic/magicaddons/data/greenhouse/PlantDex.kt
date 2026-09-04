@@ -13,15 +13,15 @@ object PlantDex {
         legacySeen.getOrPut(cropName) { mutableSetOf() }.addAll(range)
     }
 
-    /** Stage numbers per crop whose stands stood full sized where the definition says small. */
-    private val sizeSeen: MutableMap<String, MutableSet<Int>> = mutableMapOf()
+    /** Per crop, the stages whose stands stood at the other size, with the isSmall the definition needs. */
+    private val sizeSeen: MutableMap<String, MutableMap<Int, Boolean>> = mutableMapOf()
 
-    fun noteSize(cropName: String, stage: Int) {
-        sizeSeen.getOrPut(cropName) { mutableSetOf() }.add(stage)
+    fun noteSize(cropName: String, stage: Int, needsSmall: Boolean) {
+        sizeSeen.getOrPut(cropName) { mutableMapOf() }[stage] = needsSmall
     }
 
-    /** Whether a run this session found the stage [stage] of [def] needing isSmall = false. */
-    fun needsSize(def: CropDefinition, stage: Int): Boolean = stage in sizeSeen[def.name].orEmpty()
+    /** The isSmall a run this session found the stage [stage] of [def] needs, or null when none did. */
+    fun neededSize(def: CropDefinition, stage: Int): Boolean? = sizeSeen[def.name]?.get(stage)
 
     /** Reading order of the dex: base crops first, then mutations by rarity, then the rest. */
     private val TIER_NAMES = listOf(
@@ -92,13 +92,16 @@ object PlantDex {
         val missing = unrecorded(def)
         val legacy = legacySeen[def.name].orEmpty().filter { it in covered }.sorted()
         val unturned = rotationGaps(def)
-        val oversized = sizeSeen[def.name].orEmpty().sorted()
+        val sizes = sizeSeen[def.name].orEmpty()
+        val oversized = sizes.filterValues { !it }.keys.sorted()
+        val undersized = sizes.filterValues { it }.keys.sorted()
 
         val parts = mutableListOf<String>()
         if (missing.isNotEmpty()) parts += "stages ${ranges(missing)} unrecorded"
         if (legacy.isNotEmpty()) parts += "stages ${ranges(legacy)} need normalization"
         if (unturned.isNotEmpty()) parts += "stages ${ranges(unturned)} need rotation data"
         if (oversized.isNotEmpty()) parts += "stages ${ranges(oversized)} need isSmall = false"
+        if (undersized.isNotEmpty()) parts += "stages ${ranges(undersized)} need isSmall = true"
         return parts
     }
 
