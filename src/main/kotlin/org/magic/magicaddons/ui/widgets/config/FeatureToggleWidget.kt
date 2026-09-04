@@ -29,8 +29,8 @@ class FeatureToggleWidget(
 
     var width: Int = 100
 
-    /** The row is this tall unless its name wraps to more lines. */
-    val baseHeight: Int = 25
+    /** The row is this tall unless its name wraps to more lines; the height of a vanilla button. */
+    val baseHeight: Int = 20
 
     var height: Int = baseHeight
 
@@ -39,7 +39,7 @@ class FeatureToggleWidget(
     /** Gap between the checkbox and the name, like the gap after a pack icon in vanilla lists. */
     val textXPad: Int = 3
 
-    val textYPad: Int = 4
+    val textYPad: Int = 2
 
     val borderColor: Int = Common.UI.BORDER_COLOR
 
@@ -87,7 +87,10 @@ class FeatureToggleWidget(
     }
 
     /** The narrowest the row is allowed to be; a longer name wraps instead of widening it. */
-    fun minWidth(): Int = 100
+    fun minWidth(): Int = 80
+
+    /** The width that holds the whole name on one line beside a checkbox of [baseHeight]. */
+    fun naturalWidth(): Int = baseHeight + textXPad * 2 + font.width(name)
 
     override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
         if (checkbox.mouseClicked(mouseButtonEvent, doubled)) {

@@ -29,7 +29,7 @@ open class BaseRowWidget<T>(
     open val textLeftPadding = 4
 
     /** Room kept above and below the text when the row grows to fit it. */
-    open val textVerticalPadding = 4
+    open val textVerticalPadding = 2
 
     protected val font get() = Minecraft.getInstance().font
 

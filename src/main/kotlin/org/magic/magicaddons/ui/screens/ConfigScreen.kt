@@ -10,6 +10,7 @@ import org.magic.magicaddons.ui.widgets.config.ConfigCategoryWidget
 import org.magic.magicaddons.features.Feature
 import org.magic.magicaddons.features.FeatureManager
 import org.magic.magicaddons.util.ChatUtils
+import org.magic.magicaddons.util.ScreenUtil.boxHeight
 import org.magic.magicaddons.util.ScreenUtil.drawMultilineBoxCentered
 import org.magic.magicaddons.util.VersionChecker
 import org.magic.magicaddons.util.compat.McCompat
@@ -19,7 +20,8 @@ class ConfigScreen(title: Component, val parent: Screen?) : ScrollableScreen(tit
     val categoryWidgets = mutableListOf<ConfigCategoryWidget>()
     lateinit var categories: MutableMap<String, MutableList<Feature>>
 
-    val categoryPadding: Int = 20
+    private val categoryPadding: Int get() = scaled(10)
+    private val featurePadding: Int get() = scaled(5)
 
     val helpText: String = """
         Welcome to MagicAddons!
@@ -28,8 +30,8 @@ class ConfigScreen(title: Component, val parent: Screen?) : ScrollableScreen(tit
     """.trimIndent()
 
     /** The centre of the help box and, under it, of the update line when there is one. */
-    private val helpY = 35
-    private val noticeY = 58
+    private var helpY = 0
+    private var noticeY = 0
 
     private var columnsCenterX = 0
 
@@ -37,8 +39,6 @@ class ConfigScreen(title: Component, val parent: Screen?) : ScrollableScreen(tit
         private set
     override var contentHeight: Int = 0
         private set
-
-    private fun showsNotice(): Boolean = VersionChecker.result?.outdated == true
 
     override fun init() {
         super.init()
@@ -67,11 +67,23 @@ class ConfigScreen(title: Component, val parent: Screen?) : ScrollableScreen(tit
     private fun layoutColumns() {
         val count = categoryWidgets.size
         val minWidth = categoryWidgets.maxOf { it.minWidth() }
-        val columnWidth = columnWidth(count, categoryPadding, minWidth)
+        // columns stop growing once every name fits on one line, so wide screens get side space
+        val naturalWidth = categoryWidgets.maxOf { it.naturalWidth() }
+        val columnWidth = columnWidth(count, categoryPadding, minWidth).coerceAtMost(naturalWidth.coerceAtLeast(minWidth))
         val totalWidth = count * columnWidth + (count - 1) * categoryPadding
 
         var currentX = columnsStartX(totalWidth)
-        val baseY = if (showsNotice()) 75 else 60
+
+        // the help box, then the update line when there is one, then the columns
+        val helpHeight = boxHeight(helpText)
+        helpY = scaled(8) + helpHeight / 2
+        var baseY = helpY + helpHeight / 2
+        VersionChecker.result?.takeIf { it.outdated }?.let { found ->
+            val noticeHeight = boxHeight(found.headline())
+            noticeY = baseY + scaled(2) + noticeHeight / 2
+            baseY = noticeY + noticeHeight / 2
+        }
+        baseY += scaled(4)
 
         columnsCenterX = currentX + totalWidth / 2
 
@@ -85,7 +97,7 @@ class ConfigScreen(title: Component, val parent: Screen?) : ScrollableScreen(tit
         }
 
         categoryWidgets.forEach { category ->
-            category.init(currentX, baseY, columnWidth, rowHeight)
+            category.init(currentX, baseY, columnWidth, rowHeight, featurePadding)
             currentX += columnWidth + categoryPadding
         }
 

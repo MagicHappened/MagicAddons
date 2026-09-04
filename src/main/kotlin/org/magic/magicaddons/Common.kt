@@ -17,10 +17,13 @@ object Common {
         const val COLUMN_MAX_WIDTH: Int = 250
 
         /** Space kept clear at each side of a screen, as a share of its width. */
-        const val SCREEN_SIDE_PAD_FRACTION: Float = 0.05f
+        const val SCREEN_SIDE_PAD_FRACTION: Float = 0.025f
 
         /** Never less side space than this, even on a tiny window. */
-        const val SCREEN_SIDE_PAD_MIN: Int = 8
+        const val SCREEN_SIDE_PAD_MIN: Int = 4
+
+        /** Layout gaps are written for a screen this many units tall and stretch with the real height. */
+        const val LAYOUT_REFERENCE_HEIGHT: Int = 500
 
         /** How far one wheel notch moves a scrolling screen. */
         const val SCROLL_STEP: Int = 20

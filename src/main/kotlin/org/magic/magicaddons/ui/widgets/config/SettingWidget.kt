@@ -27,7 +27,7 @@ abstract class SettingWidget<T>(
     open var width: Int = 20
     open var height: Int = 40
 
-    protected val childPadding: Int = 4
+    protected val childPadding: Int = 2
 
     /** The gap between a row and the live line under it. */
     private val detailPadding: Int = 2
@@ -44,7 +44,7 @@ abstract class SettingWidget<T>(
     val backgroundColor: Int = Common.UI.BACKGROUND_COLOR
     val textXPad: Int = Common.UI.TEXT_X_PAD
 
-    val textYPad: Int = 10
+    val textYPad: Int = 5
 
     /** The height a setting has before its wrapped text asks for more. */
     protected val baseHeight: Int = 40

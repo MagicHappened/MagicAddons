@@ -227,6 +227,9 @@ object ScreenUtil {
         )
     }
 
+    /** How tall [drawMultilineBox] draws [text], so screens can stack boxes under each other. */
+    fun boxHeight(text: String): Int = computeLayout(text).boxHeight
+
     fun GuiGraphicsExtractor.drawMultilineBoxCentered(
         text: String,
         centerX: Int,
