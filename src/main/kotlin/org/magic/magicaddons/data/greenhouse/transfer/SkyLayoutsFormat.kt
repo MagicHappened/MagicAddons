@@ -1,5 +1,6 @@
 package org.magic.magicaddons.data.greenhouse.transfer
 
+import org.magic.magicaddons.data.greenhouse.MasterLayout
 import org.magic.magicaddons.data.greenhouse.CropDefinition
 import org.magic.magicaddons.data.greenhouse.CropRegistry
 import org.magic.magicaddons.data.greenhouse.GreenhouseElementInstance
@@ -79,11 +80,9 @@ object SkyLayoutsFormat : LayoutFormat {
         }
         if (boards.size > MAX_PLOTS) notes.add("Only the first $MAX_PLOTS plots were taken.")
 
-        val layout = layouts.first()
-        layout.parts.addAll(layouts.drop(1))
-        if (layouts.size > 1) notes.add("Imported ${layouts.size} plots as one master layout.")
+        if (layouts.size > 1) notes.add("Imported ${layouts.size} plots as one preset.")
 
-        return LayoutTransferResult.Imported(layout, notes)
+        return LayoutTransferResult.Imported(layouts.first(), notes, layouts.drop(1))
     }
 
     /** One plot's cells into a layout; a plant covering several cells is one plant here. */
@@ -145,17 +144,21 @@ object SkyLayoutsFormat : LayoutFormat {
         return layout
     }
 
-    override fun export(layout: GreenhouseLayout): LayoutTransferResult {
+    override fun export(layout: GreenhouseLayout): LayoutTransferResult = exportPlots(listOf(layout))
+
+    override fun exportAll(master: MasterLayout): LayoutTransferResult = exportPlots(master.plots)
+
+    private fun exportPlots(plots: List<GreenhouseLayout>): LayoutTransferResult {
         val notes = mutableListOf<String>()
 
         // the site files a layout under the mutation it grows: the plant marked as the target
-        val target = layout.elementInstances
+        val target = plots.flatMap { it.elementInstances }
             .firstOrNull { it.slot.slotMark == LayoutSlot.Marking.Target && it.cropDef.isMutation }
             ?.let { kindOf[it.cropDef] }
         val head = "1" + letter(target?.plus(1) ?: 0) + letter(VISIT_INTERVAL)
 
-        val boards = (listOf(layout) + layout.parts).take(MAX_PLOTS).map { writeBoard(it, notes) }
-        if (layout.parts.size + 1 > MAX_PLOTS) notes.add("Only the first $MAX_PLOTS plots were written.")
+        val boards = plots.take(MAX_PLOTS).map { writeBoard(it, notes) }
+        if (plots.size > MAX_PLOTS) notes.add("Only the first $MAX_PLOTS plots were written.")
 
         return LayoutTransferResult.Exported(URL + head + "~p" + boards.joinToString("~"), notes)
     }

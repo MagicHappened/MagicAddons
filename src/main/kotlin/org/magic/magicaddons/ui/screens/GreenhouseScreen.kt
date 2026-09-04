@@ -1,5 +1,7 @@
 package org.magic.magicaddons.ui.screens
 
+import org.magic.magicaddons.data.greenhouse.transfer.LayoutTransferResult
+import org.magic.magicaddons.data.greenhouse.MasterLayout
 import net.minecraft.world.level.block.state.BlockState
 import org.magic.magicaddons.data.greenhouse.LayoutSlot
 import org.magic.magicaddons.util.ScreenUtil
@@ -118,14 +120,12 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
     private var hoverWarning = false
 
     private val gridSelector = EnumWidget(
-        values = greenhouseGridWidgets.map { it.layout },
-        currentValue = displayedGridWidget?.layout,
-        onRightClickValue = { widget, event ->
-            openLayoutWidgetContext(widget, event) },
-        valueChanged = {
-            shownPart = null
-            gridWidgetChanged(it)
+        values = emptyList<MasterLayout>(),
+        currentValue = null as MasterLayout?,
+        onRightClickValue = { master, event ->
+            master?.let { openRenameContext(event, it.displayName()) { name -> it.name = name } }
         },
+        valueChanged = { presetChanged(it) },
         overlayContext = this
     )
 
@@ -134,9 +134,7 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         onAssignedLayout = { assignedLayout, selectedGrid ->
             assignPresetLayout(assignedLayout, selectedGrid)
         },
-        onAddPreset = {
-            addPresetLayout(it)
-        },
+        onImported = { imported(it) },
         onRemovePreset = {
             removePresetLayout()
         },
@@ -159,7 +157,11 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         side = Bookmarks.Side.Top,
         label = { it.displayName() },
         onPick = { layout, event ->
-            if (event.button() == 1) openLayoutWidgetContext(layout, event) else gridWidgetChanged(layout)
+            if (event.button() == 1) {
+                openRenameContext(event, layout.displayName()) { name -> layout.name = name }
+            } else {
+                gridWidgetChanged(layout)
+            }
         }
     )
 
@@ -177,24 +179,25 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
 
     /** A bookmark along the top of a preset: one of its plots, or the one that adds a plot. */
     private sealed interface PartTab {
-        data class Part(val layout: GreenhouseLayout) : PartTab
+        data class Part(val layout: GreenhouseLayout, val title: String) : PartTab
         data object Add : PartTab
     }
 
-    /** Which plot of the current preset is on show; null for the preset's own, first plot. */
-    private var shownPart: GreenhouseLayout? = null
+    /** Which plot of the current preset is on show; null for its first. */
+    private var shownPlot: GreenhouseLayout? = null
 
-    /** The plots of a master layout as bookmarks along the top, with a + at the end to add one. */
+    /** The plots of the preset as bookmarks along the top, with a + at the end to add one. */
     private val partTabs = Bookmarks<PartTab>(
         side = Bookmarks.Side.Top,
-        label = { tab -> if (tab is PartTab.Part) tab.layout.displayName() else "+" },
-        tooltip = { tab -> if (tab is PartTab.Part) "Right click to rename" else "Add a plot to this layout" },
+        label = { tab -> if (tab is PartTab.Part) tab.title else "+" },
+        tooltip = { tab -> if (tab is PartTab.Part) "Right click to rename" else "Add a plot to this preset" },
         onPick = { tab, event ->
             when {
-                tab is PartTab.Add -> addPart()
-                tab is PartTab.Part && event.button() == 1 -> openLayoutWidgetContext(tab.layout, event)
+                tab is PartTab.Add -> addPlot()
+                tab is PartTab.Part && event.button() == 1 ->
+                    openRenameContext(event, tab.title) { name -> tab.layout.name = name }
                 tab is PartTab.Part -> {
-                    shownPart = tab.layout.takeIf { it !== GreenhouseData.currentPreset }
+                    shownPlot = tab.layout
                     initPresetLayout()
                 }
             }
@@ -394,27 +397,14 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         hoveredElement = null
 
 
-        GreenhouseData.presetGrids.forEach { layout ->
-            val gridWidget = GridWidget(layout, slotSize).apply {
-                widgetX = startX
-                widgetY = startY
-                widgetWidth = containerSize
-                widgetHeight = containerSize
-                init()
-            }
-            presetGridWidgets.add(gridWidget)
-        }
         if (GreenhouseData.currentPreset == null && !presetCleared) {
             GreenhouseData.currentPreset = GreenhouseData.presetGrids.firstOrNull()
         }
-        displayedGridWidget = presetGridWidgets.find { GreenhouseData.currentPreset == it.layout }
-        if (!presetCleared) displayedGridWidget = displayedGridWidget ?: presetGridWidgets.firstOrNull()
+        val master = GreenhouseData.currentPreset?.takeUnless { presetCleared }
+        if (master != null && shownPlot !in master.plots) shownPlot = null
 
-        // the further plots of the preset on show get widgets of their own; the chosen one is displayed
-        val master = displayedGridWidget?.layout
-        if (shownPart != null && master?.parts?.contains(shownPart) != true) shownPart = null
-        master?.parts?.forEach { part ->
-            val gridWidget = GridWidget(part, slotSize).apply {
+        master?.plots?.forEach { plot ->
+            val gridWidget = GridWidget(plot, slotSize).apply {
                 widgetX = startX
                 widgetY = startY
                 widgetWidth = containerSize
@@ -422,17 +412,18 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
                 init()
             }
             presetGridWidgets.add(gridWidget)
-            if (part === shownPart) displayedGridWidget = gridWidget
         }
-        partTabs.items = if (master == null) emptyList() else buildList {
-            add(PartTab.Part(master))
-            master.parts.forEach { add(PartTab.Part(it)) }
-            if (master.parts.size + 1 < MAX_PARTS) add(PartTab.Add)
-        }
-        partTabs.selected = displayedGridWidget?.layout?.let { PartTab.Part(it) }
+        val shown = shownPlot ?: master?.plots?.firstOrNull()
+        displayedGridWidget = presetGridWidgets.find { it.layout === shown }
 
-        displayedName = displayedGridWidget?.layout?.displayName() ?: "Unknown Preset"
-        
+        partTabs.items = if (master == null) emptyList() else buildList {
+            master.plots.forEach { add(PartTab.Part(it, master.plotTitle(it))) }
+            if (master.plots.size < MasterLayout.MAX_PLOTS) add(PartTab.Add)
+        }
+        partTabs.selected = shown?.let { PartTab.Part(it, master?.plotTitle(it) ?: "") }
+
+        displayedName = master?.displayName() ?: "Unknown Preset"
+
         gridSelector.currentValue = master
         gridSelector.values = GreenhouseData.presetGrids.toList()
         relayoutSelector()
@@ -555,7 +546,7 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         if (displayedGridWidget == null) {
             if (emptyGridWidget?.slotAt(mouseX, mouseY) == null) return
             presetCleared = false
-            addPresetLayout(GreenhouseLayout(id = "preset_${GreenhouseData.computeNextAvailableId()}"))
+            addPresetLayout(MasterLayout.create(GreenhouseData.computeNextAvailableId()))
         }
         val grid = displayedGridWidget ?: return
         val (sx, sy) = grid.slotAt(mouseX, mouseY) ?: return
@@ -925,9 +916,16 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
             }
         }
 
-        // a right click on the name at the top renames what is shown
+        // a right click on the name at the top renames what is shown: the preset, or the greenhouse
         if (mouseButtonEvent.button() == 1 && dynamicNameDisplay?.isMouseOver(mouseButtonEvent.x, mouseButtonEvent.y) == true) {
-            openLayoutWidgetContext(displayedGridWidget?.layout, mouseButtonEvent)
+            when (currentDisplay) {
+                CurrentDisplay.Presets -> GreenhouseData.currentPreset?.let { master ->
+                    openRenameContext(mouseButtonEvent, master.displayName()) { name -> master.name = name }
+                }
+                CurrentDisplay.Greenhouses -> displayedGridWidget?.layout?.let { layout ->
+                    openRenameContext(mouseButtonEvent, layout.displayName()) { name -> layout.name = name }
+                }
+            }
             return true
         }
 
@@ -1067,19 +1065,64 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         return true
     }
 
-    /** Steps the shown grid to its neighbour in whichever list the mode is showing, wrapping. */
+    /** Steps to the neighbouring greenhouse, or the neighbouring preset, wrapping. */
     private fun cycleDisplayedGrid(forward: Boolean) {
-        val widgets = when (currentDisplay) {
-            CurrentDisplay.Greenhouses -> greenhouseGridWidgets
-            CurrentDisplay.Presets -> presetGridWidgets
+        val step = if (forward) 1 else -1
+        when (currentDisplay) {
+            CurrentDisplay.Greenhouses -> {
+                if (greenhouseGridWidgets.isEmpty()) return
+                val index = greenhouseGridWidgets.indexOf(displayedGridWidget)
+                gridWidgetChanged(greenhouseGridWidgets[Math.floorMod(index + step, greenhouseGridWidgets.size)].layout)
+            }
+            CurrentDisplay.Presets -> {
+                val presets = GreenhouseData.presetGrids
+                if (presets.isEmpty()) return
+                val index = presets.indexOf(GreenhouseData.currentPreset)
+                presetChanged(presets[Math.floorMod(index + step, presets.size)])
+            }
         }
-        if (widgets.isEmpty()) return
+    }
 
-        val index = widgets.indexOf(displayedGridWidget)
-        val next = widgets[Math.floorMod(index + if (forward) 1 else -1, widgets.size)]
+    /** Shows a preset from its first plot; apply, export and delete all read the current preset. */
+    private fun presetChanged(master: MasterLayout) {
+        GreenhouseData.currentPreset = master
+        shownPlot = null
+        presetCleared = false
+        initPresetLayout()
+    }
 
-        gridSelector.currentValue = next.layout
-        gridWidgetChanged(next.layout)
+    /** Puts an imported layout where it belongs: into the empty plot on show, or as a new preset. */
+    private fun imported(result: LayoutTransferResult.Imported) {
+        val master = GreenhouseData.currentPreset
+        val shown = displayedGridWidget?.layout
+
+        when {
+            // one plot into the empty plot on show, keeping the plot's place in its preset
+            master != null && shown != null && result.plots.size == 1 && shown.elementInstances.isEmpty() -> {
+                shown.takeContentsFrom(result.layout)
+                if (master.name == null) master.name = result.layout.name
+                initPresetLayout()
+                ChatUtils.sendWithPrefix("Imported into ${GreenhouseData.describe(shown)}")
+            }
+            // several plots into a preset with nothing in it, replacing its plots
+            master != null && master.isEmpty() && result.plots.size > 1 -> {
+                master.plots.clear()
+                result.plots.forEachIndexed { index, plot ->
+                    GreenhouseLayout(id = master.plotId(index), name = plot.name).also { it.takeContentsFrom(plot) }.let(master.plots::add)
+                }
+                if (master.name == null) master.name = result.layout.name
+                shownPlot = null
+                initPresetLayout()
+                ChatUtils.sendWithPrefix("Imported into ${master.displayName()}")
+            }
+            else -> {
+                val preset = MasterLayout(id = result.layout.id, name = result.layout.name)
+                result.plots.forEachIndexed { index, plot ->
+                    GreenhouseLayout(id = preset.plotId(index), name = plot.name.takeIf { index > 0 || result.plots.size > 1 }).also { it.takeContentsFrom(plot) }.let(preset.plots::add)
+                }
+                addPresetLayout(preset)
+            }
+        }
     }
 
     override fun keyPressed(keyEvent: KeyEvent): Boolean {
@@ -1090,9 +1133,8 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         return super.keyPressed(keyEvent)
     }
 
-    fun openLayoutWidgetContext(layout: GreenhouseLayout?, buttonEvent: MouseButtonEvent) {
-        if (layout == null) return
-        if (layout !in greenhouseGridWidgets.map { it.layout } && layout !in presetGridWidgets.map { it.layout }) return
+    /** The rename panel at the mouse; [apply] writes the name, then everything sized from names relays out. */
+    private fun openRenameContext(buttonEvent: MouseButtonEvent, currentName: String, apply: (String) -> Unit) {
         val (menuX, menuY) = OverlayRenderable.placeOnScreen(
             buttonEvent.x.toInt(),
             buttonEvent.y.toInt(),
@@ -1100,20 +1142,16 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
             EditLayoutContextMenu.HEIGHT
         )
 
-        val menu = EditLayoutContextMenu(
-            menuX,
-            menuY,
-            layout,
-            this,
-            onLayoutRenamed = { renamed ->
-                if (displayedGridWidget?.layout === renamed) {
-                    displayedName = renamed.displayName()
+        val menu = EditLayoutContextMenu(menuX, menuY, currentName, this) { name ->
+            apply(name)
+            when (currentDisplay) {
+                CurrentDisplay.Presets -> initPresetLayout()
+                CurrentDisplay.Greenhouses -> {
+                    displayedName = displayedGridWidget?.layout?.displayName() ?: displayedName
+                    initDynamicName()
                 }
-                // the selector was sized to fit the old names
-                relayoutSelector()
-                initDynamicName()
             }
-        )
+        }
         addContext(menu)
     }
 
@@ -1133,10 +1171,6 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
             .indexOfFirst { it.layout === widget.layout }
             .takeIf { it >= 0 }
             ?.let { GreenhouseData.currentGridIndex = it }
-
-        // apply, export and delete all read currentPreset, so selecting one has to move it
-        GreenhouseData.currentPreset =
-            widget.layout.takeIf { currentDisplay == CurrentDisplay.Presets }
 
         displayedGridWidget = widget
         plotTabs.selected = widget.layout
@@ -1168,48 +1202,39 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         }
         grid.state.assignedLayout = layout
         grid.state.completionMuted = false
-
-        // the further plots of a master layout go to the other greenhouses, in the order they are listed
-        val others = GreenhouseData.greenhouseGrids.filter { it !== grid }
-        layout.parts.forEachIndexed { index, part ->
-            val target = others.getOrNull(index) ?: run {
-                ChatUtils.sendWithPrefix("No greenhouse left for ${part.displayName()} of ${layout.displayName()}")
-                return@forEachIndexed
-            }
-            target.state.assignedLayout = part
-            target.state.completionMuted = false
-            ChatUtils.sendWithPrefix("Planner active on ${target.layout.displayName()} for ${part.displayName()} of ${layout.displayName()}")
-        }
         GreenhouseData.regenRender()
 
         ChatUtils.sendWithPrefix(
-            "Planner active on ${grid.layout.displayName()} for ${layout.displayName()}"
+            "Planner active on ${grid.layout.displayName()} for ${GreenhouseData.describe(layout)}"
         )
     }
 
     /** Gives the current preset one more plot, shown at once. */
-    private fun addPart() {
+    private fun addPlot() {
         val master = GreenhouseData.currentPreset ?: return
-        if (master.parts.size + 1 >= MAX_PARTS) {
-            ChatUtils.sendWithPrefix("A layout holds at most $MAX_PARTS plots, one a greenhouse.")
+        if (master.plots.size >= MasterLayout.MAX_PLOTS) {
+            ChatUtils.sendWithPrefix("A preset holds at most ${MasterLayout.MAX_PLOTS} plots, one a greenhouse.")
             return
         }
-        val part = GreenhouseLayout(id = "${master.id}_part${master.parts.size + 2}")
-        master.parts.add(part)
-        shownPart = part
+        shownPlot = master.addPlot()
         initPresetLayout()
     }
 
-    fun addPresetLayout(layout: GreenhouseLayout){
-        GreenhouseData.presetGrids.add(layout)
-        GreenhouseData.currentPreset = layout
+    fun addPresetLayout(master: MasterLayout){
+        GreenhouseData.presetGrids.add(master)
+        GreenhouseData.currentPreset = master
+        shownPlot = null
+        presetCleared = false
         initPresetLayout()
     }
 
     fun removePresetLayout(){
-        shownPart?.let { part ->
-            GreenhouseData.currentPreset?.parts?.remove(part)
-            shownPart = null
+        // a plot of a preset with several goes on its own; the last plot takes the preset with it
+        val master = GreenhouseData.currentPreset
+        val plot = displayedGridWidget?.layout
+        if (master != null && plot != null && master.plots.size > 1) {
+            master.plots.remove(plot)
+            shownPlot = null
             initPresetLayout()
             return
         }
@@ -1262,8 +1287,6 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         /** The layout behind the empty grid, never saved. */
         private const val EMPTY_GRID_ID: String = "preset_none"
 
-        /** How many plots a master layout may hold: one a greenhouse. */
-        private const val MAX_PARTS: Int = 3
 
         /** About what the mark menu takes, for keeping it on screen. */
         private const val MARK_MENU_WIDTH: Int = 80

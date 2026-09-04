@@ -8,46 +8,66 @@ import org.magic.magicaddons.data.greenhouse.CropRegistry
 import org.magic.magicaddons.data.greenhouse.GreenhouseElementInstance
 import org.magic.magicaddons.data.greenhouse.GreenhouseLayout
 import org.magic.magicaddons.data.greenhouse.LayoutSlot
+import org.magic.magicaddons.data.greenhouse.MasterLayout
 
 /**
  * This mod's own layout format: plain json, one line per plant, meant to be read and hand-corrected.
- * A plant is written once at the slot it starts from, and the version is carried for later shapes.
+ * A plant is written once at the slot it starts from. Version 1 holds one plot under `plants`,
+ * version 2 holds several under `plots`, each with its own name and plants.
  */
 object MagicAddonsFormat : LayoutFormat {
 
     override val displayName: String = "MagicAddons"
 
     /** Raise when the shape below changes in a way an older reader would get wrong. */
-    private const val VERSION: Int = 1
+    private const val VERSION: Int = 2
 
     private val GSON = GsonBuilder().setPrettyPrinting().create()
 
     override fun canImport(text: String): Boolean =
         runCatching {
-            JsonParser.parseString(text).asJsonObject.has(PLANTS)
+            val root = JsonParser.parseString(text).asJsonObject
+            root.has(PLANTS) || root.has(PLOTS)
         }.getOrDefault(false)
 
     override fun import(text: String, layoutId: String): LayoutTransferResult {
         val root = runCatching { JsonParser.parseString(text).asJsonObject }.getOrNull()
             ?: return LayoutTransferResult.Failure("That is not a MagicAddons layout.")
 
-        val version = root.get(VERSION_KEY)?.asInt ?: VERSION
+        val version = root.get(VERSION_KEY)?.asInt ?: 1
         if (version > VERSION) {
             return LayoutTransferResult.Failure(
                 "That layout was written by a newer version of the mod."
             )
         }
 
+        val notes = mutableListOf<String>()
+        val presetName = root.get(NAME)?.asString
+
+        val plotsJson = runCatching { root.getAsJsonArray(PLOTS) }.getOrNull()
+        if (plotsJson != null) {
+            val plots = plotsJson.mapIndexedNotNull { index, element ->
+                val plot = runCatching { element.asJsonObject }.getOrNull() ?: return@mapIndexedNotNull null
+                val plants = runCatching { plot.getAsJsonArray(PLANTS) }.getOrNull() ?: JsonArray()
+                val id = if (index == 0) layoutId else "${layoutId}_p${index + 1}"
+                GreenhouseLayout(id = id, name = plot.get(NAME)?.asString).also { readPlants(plants, it, notes) }
+            }.take(MasterLayout.MAX_PLOTS)
+            if (plots.isEmpty()) return LayoutTransferResult.Failure("That layout lists no plots.")
+            if (plotsJson.size() > MasterLayout.MAX_PLOTS) notes.add("Only the first ${MasterLayout.MAX_PLOTS} plots were taken.")
+
+            return LayoutTransferResult.Imported(plots.first(), notes, plots.drop(1))
+        }
+
         val plants = runCatching { root.getAsJsonArray(PLANTS) }.getOrNull()
             ?: return LayoutTransferResult.Failure("That layout lists no plants.")
 
-        val layout = GreenhouseLayout(
-            id = layoutId,
-            name = root.get(NAME)?.asString
-        )
+        val layout = GreenhouseLayout(id = layoutId, name = presetName)
+        readPlants(plants, layout, notes)
+        return LayoutTransferResult.Imported(layout, notes)
+    }
 
-        val notes = mutableListOf<String>()
-
+    /** Puts the plants of one json list onto [layout], noting whatever could not be placed. */
+    private fun readPlants(plants: JsonArray, layout: GreenhouseLayout, notes: MutableList<String>) {
         plants.forEach { element ->
             val plant = runCatching { element.asJsonObject }.getOrNull() ?: return@forEach
 
@@ -97,11 +117,9 @@ object MagicAddonsFormat : LayoutFormat {
                 )
             )
         }
-
-        return LayoutTransferResult.Imported(layout, notes)
     }
 
-    override fun export(layout: GreenhouseLayout): LayoutTransferResult {
+    private fun plantsOf(layout: GreenhouseLayout): JsonArray {
         val plants = JsonArray()
 
         layout.elementInstances
@@ -114,12 +132,39 @@ object MagicAddonsFormat : LayoutFormat {
                     instance.slot.slotMark?.let { addProperty(ROLE, it.name) }
                 })
             }
+        return plants
+    }
+
+    override fun export(layout: GreenhouseLayout): LayoutTransferResult = exportOne(layout, layout.name)
+
+    /** One plot written the old way, so older versions of the mod can still read it. */
+    private fun exportOne(layout: GreenhouseLayout, name: String?): LayoutTransferResult {
+        val root = JsonObject().apply {
+            addProperty(VERSION_KEY, 1)
+            name?.let { addProperty(NAME, it) }
+            addProperty(SIZE, layout.size)
+            add(PLANTS, plantsOf(layout))
+        }
+
+        return LayoutTransferResult.Exported(GSON.toJson(root))
+    }
+
+    override fun exportAll(master: MasterLayout): LayoutTransferResult {
+        if (master.plots.size == 1) return exportOne(master.plots.first(), master.name)
+
+        val plots = JsonArray()
+        master.plots.forEach { plot ->
+            plots.add(JsonObject().apply {
+                plot.name?.let { addProperty(NAME, it) }
+                add(PLANTS, plantsOf(plot))
+            })
+        }
 
         val root = JsonObject().apply {
             addProperty(VERSION_KEY, VERSION)
-            layout.name?.let { addProperty(NAME, it) }
-            addProperty(SIZE, layout.size)
-            add(PLANTS, plants)
+            master.name?.let { addProperty(NAME, it) }
+            addProperty(SIZE, master.plots.first().size)
+            add(PLOTS, plots)
         }
 
         return LayoutTransferResult.Exported(GSON.toJson(root))
@@ -129,6 +174,7 @@ object MagicAddonsFormat : LayoutFormat {
     private const val NAME: String = "name"
     private const val SIZE: String = "size"
     private const val PLANTS: String = "plants"
+    private const val PLOTS: String = "plots"
     private const val CROP: String = "crop"
     private const val X: String = "x"
     private const val Y: String = "y"

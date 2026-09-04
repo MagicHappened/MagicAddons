@@ -8,7 +8,6 @@ import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.network.chat.Component
 import org.magic.magicaddons.Common
-import org.magic.magicaddons.data.greenhouse.GreenhouseLayout
 import org.magic.magicaddons.ui.OverlayContext
 import org.magic.magicaddons.ui.widgets.AbstractContextMenu
 import org.magic.magicaddons.ui.widgets.TextField
@@ -16,14 +15,15 @@ import org.magic.magicaddons.ui.widgets.config.ClickableButtonWidget
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.ScreenUtil.drawPanel
 
-/** A small panel for renaming a layout: a field, Submit and Cancel. */
+/** A small panel for renaming a plot or a preset: a field, Submit and Cancel. */
 class EditLayoutContextMenu(
     override val overlayX: Int,
     override val overlayY: Int,
-    var layout: GreenhouseLayout,
+    /** What is being renamed, as the player knows it now. */
+    private val currentName: String,
     private val overlayContext: OverlayContext,
-    /** The owner has a header and a selector sized from the old name, both need rebuilding. */
-    private val onLayoutRenamed: (GreenhouseLayout) -> Unit
+    /** Given the new name once submitted; the owner writes it where it belongs and relays out. */
+    private val onRename: (String) -> Unit
 ) : AbstractContextMenu() {
     val font = Minecraft.getInstance().font
     override val overlayWidth: Int = WIDTH
@@ -63,7 +63,7 @@ class EditLayoutContextMenu(
 
         graphics.text(
             font,
-            Component.literal("Editing ${layout.id}:"),
+            Component.literal("Renaming $currentName:"),
             overlayX + pad,
             overlayY + pad,
             Common.UI.TEXT_COLOR,
@@ -90,8 +90,7 @@ class EditLayoutContextMenu(
                 ChatUtils.sendWithPrefix("Please enter a value to submit.")
                 return true
             }
-            layout.name = textField.value.trim()
-            onLayoutRenamed(layout)
+            onRename(textField.value.trim())
             overlayContext.removeOverlay(this)
             return true
         }

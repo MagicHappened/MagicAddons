@@ -1,5 +1,6 @@
 package org.magic.magicaddons.data.greenhouse
 
+import com.mojang.datafixers.util.Either
 import com.mojang.serialization.Codec
 import com.mojang.serialization.codecs.RecordCodecBuilder
 import net.minecraft.world.level.block.state.BlockState
@@ -12,8 +13,6 @@ import java.util.*
 
 object Codecs {
     val GREENHOUSE_LAYOUT_CODEC: Codec<GreenhouseLayout> by lazy {
-        // a master layout holds further layouts, so the codec refers to itself
-        Codec.recursive("GreenhouseLayout") { self ->
         RecordCodecBuilder.create { instance ->
             instance.group(
                 Codec.STRING.fieldOf("layout_id").forGetter { it.id },
@@ -28,23 +27,35 @@ object Codecs {
 
                 GREENHOUSE_ELEMENT_INSTANCE_CODEC.listOf()
                     .fieldOf("element_instances")
-                    .forGetter { it.elementInstances },
-
-                self.listOf()
-                    .optionalFieldOf("parts", emptyList())
-                    .forGetter { it.parts }
-            ).apply(instance) { id, nameOpt, slots, elements, parts ->
+                    .forGetter { it.elementInstances }
+            ).apply(instance) { id, nameOpt, slots, elements ->
                 GreenhouseLayout(
                     id = id,
                     // older files carry "unnamed" as the name the mod itself wrote, which is no name
                     name = nameOpt.orElse(null)?.takeUnless { it == "unnamed" },
                     slots = slots,
-                    elementInstances = elements.toMutableList(),
-                    parts = parts.toMutableList()
+                    elementInstances = elements.toMutableList()
                 )
             }
         }
+    }
+
+    val MASTER_LAYOUT_CODEC: Codec<MasterLayout> by lazy {
+        val master = RecordCodecBuilder.create<MasterLayout> { instance ->
+            instance.group(
+                Codec.STRING.fieldOf("preset_id").forGetter { it.id },
+                Codec.STRING.optionalFieldOf("preset_name").forGetter { Optional.ofNullable(it.name) },
+                GREENHOUSE_LAYOUT_CODEC.listOf().fieldOf("plots").forGetter { it.plots }
+            ).apply(instance) { id, nameOpt, plots ->
+                MasterLayout(id, nameOpt.orElse(null), plots.toMutableList())
+            }
         }
+
+        // older files hold a bare plot where a preset is; it comes back as a preset of one plot
+        Codec.either(master, GREENHOUSE_LAYOUT_CODEC).xmap(
+            { either -> either.map({ it }, { MasterLayout.of(it) }) },
+            { Either.left(it) }
+        )
     }
 
 
@@ -129,7 +140,7 @@ object Codecs {
             ).apply(instance) { lastUpdate, assignedLayout ->
                 GridState(
                     lastUpdateTimestamp = lastUpdate.orElse(null)?.let { Instant.ofEpochMilli(it) },
-                    assignedLayout = GreenhouseData.presetGrids.find { it.id == assignedLayout.orElse(null) }
+                    assignedLayout = GreenhouseData.allPlots().find { it.id == assignedLayout.orElse(null) }
                 )
             }
         }

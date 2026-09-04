@@ -1,5 +1,6 @@
 package org.magic.magicaddons.features.farming.greenhousePresets
 
+import org.magic.magicaddons.data.greenhouse.MasterLayout
 import org.magic.magicaddons.data.greenhouse.GrowthStageInfo
 import org.magic.magicaddons.commands.debug.CropCollector
 import org.magic.magicaddons.data.config.BooleanSetting
@@ -89,11 +90,22 @@ object GreenhouseData {
     var checkGreenhouses = false
     var greenhousesInitialized = false
     var greenhouseGrids = mutableListOf<GreenhouseGrid>()
-    var presetGrids = mutableListOf<GreenhouseLayout>()
+    var presetGrids = mutableListOf<MasterLayout>()
+
+    /** Every plot of every preset, the things a greenhouse can be assigned. */
+    fun allPlots(): List<GreenhouseLayout> = presetGrids.flatMap { it.plots }
+
+    fun masterOf(plot: GreenhouseLayout): MasterLayout? = presetGrids.find { plot in it.plots }
+
+    /** A plot as the player knows it: the preset's name, and which plot when the preset has several. */
+    fun describe(plot: GreenhouseLayout): String {
+        val master = masterOf(plot) ?: return plot.displayName()
+        return if (master.plots.size > 1) "${master.plotTitle(plot)} of ${master.displayName()}" else master.displayName()
+    }
     var miscInfo = MiscGreenhouseInfo()
     var lastGridLayouts = mutableListOf<GreenhouseLayout>()
 
-    var currentPreset: GreenhouseLayout? = null
+    var currentPreset: MasterLayout? = null
     var currentGridIndex: Int = 0
 
     var lastCheckTime: Instant? = null
