@@ -1,6 +1,5 @@
 package org.magic.magicaddons.ui.screens
 
-import net.minecraft.ChatFormatting
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
@@ -10,7 +9,8 @@ import org.lwjgl.glfw.GLFW
 import org.magic.magicaddons.Common
 import org.magic.magicaddons.commands.debug.CropCollector
 import org.magic.magicaddons.ui.widgets.CheckboxWidget
-import org.magic.magicaddons.util.ScreenUtil.drawBorder
+import org.magic.magicaddons.util.ScreenUtil.drawButtonPanel
+import org.magic.magicaddons.util.ScreenUtil.drawPanel
 
 /**
  * The collector's checklist, docked right so the garden stays visible behind it. Opened with G
@@ -27,8 +27,8 @@ class CollectScreen : Screen(Component.literal("Crop Collection")) {
         const val PAD: Int = 4
         const val EDGE_GAP: Int = 6
 
-        /** The panel's own ground, translucent so the garden reads through it. */
-        const val PANEL_COLOR: Int = 0x90101010.toInt()
+        /** The two verdict buttons stand a little taller than a list row. */
+        const val BUTTON_HEIGHT: Int = ROW_HEIGHT + 4
 
         const val MAX_PANEL_WIDTH: Int = 260
     }
@@ -52,7 +52,7 @@ class CollectScreen : Screen(Component.literal("Crop Collection")) {
         panelWidth = (CHECKBOX + PAD * 3 + widest).coerceIn(120, MAX_PANEL_WIDTH)
         panelX = width - panelWidth - EDGE_GAP
 
-        val buttonSpace = ROW_HEIGHT * 2 + PAD * 2
+        val buttonSpace = BUTTON_HEIGHT * 2 + Common.UI.SPACING + PAD * 2
         val headerSpace = ROW_HEIGHT + PAD
 
         visibleRows = ((height - EDGE_GAP * 2 - buttonSpace - headerSpace - PAD * 2) / ROW_HEIGHT)
@@ -63,7 +63,7 @@ class CollectScreen : Screen(Component.literal("Crop Collection")) {
         listTop = panelY + PAD + headerSpace
 
         finishY = listTop + visibleRows * ROW_HEIGHT + PAD
-        quitY = finishY + ROW_HEIGHT
+        quitY = finishY + BUTTON_HEIGHT + Common.UI.SPACING
     }
 
     override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
@@ -72,24 +72,25 @@ class CollectScreen : Screen(Component.literal("Crop Collection")) {
 
         scroll = scroll.coerceIn(0, (rows.size - visibleRows).coerceAtLeast(0))
 
-        graphics.fill(panelX, panelY, panelX + panelWidth, panelY + panelHeight, PANEL_COLOR)
-        graphics.drawBorder(
-            panelX, panelY, panelX + panelWidth, panelY + panelHeight,
-            1, Common.UI.BORDER_COLOR
-        )
+        graphics.drawPanel(panelX, panelY, panelX + panelWidth, panelY + panelHeight)
 
         graphics.text(
             font,
-            Component.literal("Collect — G closes").withStyle(ChatFormatting.GOLD),
+            Component.literal("Collect — G closes"),
             panelX + PAD,
             panelY + PAD,
-            Common.UI.TEXT_COLOR,
+            Common.UI.ACCENT_COLOR,
             false
         )
 
         rows.drop(scroll).take(visibleRows).forEachIndexed { i, row ->
             val rowY = listTop + i * ROW_HEIGHT
             val textX: Int
+
+            // a row that can be ticked lights up under the mouse, like any other row on the kit
+            if (row.collectable && mouseX in panelX until panelX + panelWidth && mouseY in rowY until rowY + ROW_HEIGHT) {
+                graphics.fill(panelX + Common.UI.BORDER_SIZE, rowY, panelX + panelWidth - Common.UI.BORDER_SIZE, rowY + ROW_HEIGHT, Common.UI.HOVER_WASH)
+            }
 
             if (row.collectable) {
                 checkbox.x = panelX + PAD
@@ -119,27 +120,26 @@ class CollectScreen : Screen(Component.literal("Crop Collection")) {
                 Component.literal("… ${scroll + visibleRows}/${rows.size}"),
                 panelX + PAD,
                 finishY - ROW_HEIGHT - PAD,
-                0xFFAAAAAA.toInt(),
+                Common.UI.TEXT_DIM_COLOR,
                 false
             )
         }
 
         button(graphics, finishY, "Write the file", Common.UI.SUCCESS_COLOR, mouseX, mouseY)
-        button(graphics, quitY, "Dismiss without writing", 0xFFFF6655.toInt(), mouseX, mouseY)
+        button(graphics, quitY, "Dismiss without writing", Common.UI.DANGER_COLOR, mouseX, mouseY)
     }
 
     private fun button(graphics: GuiGraphicsExtractor, y: Int, label: String, color: Int, mouseX: Int, mouseY: Int) {
-        val hovered = mouseX in panelX until panelX + panelWidth && mouseY in y until y + ROW_HEIGHT
+        val left = panelX + PAD
+        val right = panelX + panelWidth - PAD
+        val hovered = mouseX in left until right && mouseY in y until y + BUTTON_HEIGHT
 
-        if (hovered) {
-            graphics.fill(panelX + 1, y, panelX + panelWidth - 1, y + ROW_HEIGHT, 0x40FFFFFF)
-        }
-
+        graphics.drawButtonPanel(left, y, right, y + BUTTON_HEIGHT, hovered)
         graphics.text(
             font,
             Component.literal(label),
-            panelX + PAD,
-            y + (ROW_HEIGHT - font.lineHeight) / 2,
+            left + (right - left - font.width(label)) / 2,
+            y + (BUTTON_HEIGHT - font.lineHeight) / 2,
             color,
             false
         )
@@ -154,13 +154,13 @@ class CollectScreen : Screen(Component.literal("Crop Collection")) {
             return super.mouseClicked(mouseButtonEvent, doubled)
         }
 
-        if (y in finishY until finishY + ROW_HEIGHT) {
+        if (y in finishY until finishY + BUTTON_HEIGHT) {
             CropCollector.finish()
             onClose()
             return true
         }
 
-        if (y in quitY until quitY + ROW_HEIGHT) {
+        if (y in quitY until quitY + BUTTON_HEIGHT) {
             CropCollector.quit()
             onClose()
             return true

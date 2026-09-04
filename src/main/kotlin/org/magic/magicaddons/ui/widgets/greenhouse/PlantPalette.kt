@@ -176,10 +176,13 @@ class PlantPalette(
             val bottom = cellY + cellHeight - 1
 
             graphics.fill(cellX + 1, cellY + 1, right, bottom, rarityColour(def))
-            if (def == hovered) graphics.fill(cellX + 1, cellY + 1, right, bottom, Common.UI.HOVER_WASH)
-            // the picked one is framed in the palette's bright colour until it is put down
-            val frame = if (def == selected) Common.UI.SELECTED_FRAME_COLOR else Common.UI.BORDER_COLOR
-            graphics.drawBorder(cellX + 1, cellY + 1, right, bottom, 1, frame)
+            if (def == hovered || def == selected) graphics.fill(cellX + 1, cellY + 1, right, bottom, Common.UI.HOVER_WASH)
+            // the picked one is lit and framed twice as thick in the bright colour until it is put down
+            if (def == selected) {
+                graphics.drawBorder(cellX + 1, cellY + 1, right, bottom, Common.UI.BORDER_SIZE, Common.UI.SELECTED_FRAME_COLOR)
+            } else {
+                graphics.drawBorder(cellX + 1, cellY + 1, right, bottom, 1, Common.UI.BORDER_COLOR)
+            }
 
             val icon = iconSize()
             graphics.renderFakeItem(stackFor(def), cellX + (cellWidth - icon) / 2, cellY + (cellHeight - icon) / 2, icon, icon)
@@ -227,6 +230,11 @@ class PlantPalette(
     }
 
     fun mouseClicked(event: MouseButtonEvent, doubled: Boolean): Boolean {
+        // a right click puts a picked plant down wherever the mouse is, another cell included
+        if (event.button() == 1 && selected != null) {
+            selected = null
+            return true
+        }
         if (search.mouseClicked(event, doubled)) return true
         if (!isMouseOver(event.x, event.y)) return false
 

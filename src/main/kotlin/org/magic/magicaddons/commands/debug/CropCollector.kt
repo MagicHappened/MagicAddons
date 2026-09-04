@@ -788,7 +788,14 @@ object CropCollector : EntityUtils.HighlightSource {
 
         val dir = File("config/magicaddons/collected")
         dir.mkdirs()
-        val file = File(dir, "collect-${System.currentTimeMillis()}.txt")
+        // a file of one crop is named after it, so a run per crop stays easy to tell apart
+        val crops = confirmed.mapNotNull { it.def?.name }.toSet()
+        val stamp = System.currentTimeMillis()
+        val file = if (crops.size == 1) {
+            File(dir, "collected_${crops.first().replace(' ', '_')}_$stamp.txt")
+        } else {
+            File(dir, "collect-$stamp.txt")
+        }
         file.writeText(text)
 
         s.finishedAt = Instant.now()
