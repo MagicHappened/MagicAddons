@@ -147,8 +147,8 @@ object CropCollector : EntityUtils.HighlightSource {
             }
         }
 
-        // on the player's own garden the plot says where the grid is, so they may stand anywhere
-        val origin = ownPlotOrigin() ?: run {
+        // on any garden the plot under the player says where the grid is, so they may stand anywhere
+        val origin = plotOrigin() ?: run {
             // north is the whole orientation contract, so standing any other way is an error now
             // rather than a grid collected sideways
             if (abs(Mth.wrapDegrees(player.yRot)) < 135f) {
@@ -415,10 +415,14 @@ object CropCollector : EntityUtils.HighlightSource {
         owners.filterValues { it.size == 1 }.mapValues { it.value.first() }
     }
 
-    /** The grid's corner on the player's own garden, or null anywhere else. */
-    private fun ownPlotOrigin(): BlockPos? {
-        if (LocationAPI.island != SkyBlockIsland.GARDEN || LocationAPI.isGuest) return null
-        val area = PlotAPI.getCurrentPlot()?.getBuildableArea() ?: return null
+    /**
+     * The grid's corner of the plot the player stands in, or null off a garden or outside every
+     * plot. Plots sit at the same coordinates on every garden, so this holds for a guest as well.
+     */
+    private fun plotOrigin(): BlockPos? {
+        if (LocationAPI.island != SkyBlockIsland.GARDEN) return null
+        val plot = PlotAPI.getCurrentPlot()?.takeUnless { it.isBarn } ?: return null
+        val area = plot.getBuildableArea()
 
         return BlockPos(area.minX.toInt(), GREENHOUSE_SOIL_Y, area.minZ.toInt())
     }
