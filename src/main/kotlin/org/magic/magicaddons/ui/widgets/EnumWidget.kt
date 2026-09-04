@@ -14,6 +14,7 @@ import org.magic.magicaddons.Common
 import org.magic.magicaddons.ui.OverlayContext
 import org.magic.magicaddons.ui.OverlayRenderable
 import org.magic.magicaddons.ui.screens.ScrollableScreen
+import org.magic.magicaddons.util.compat.McCompat
 import org.magic.magicaddons.util.ScreenUtil.drawBorder
 
 class EnumWidget<T>(
@@ -183,7 +184,9 @@ class EnumWidget<T>(
         /** The visible edges in the widget's own coordinates, which scroll on a scrolling screen. */
         private fun viewTop(): Int = ScrollableScreen.current()?.viewTop ?: 0
         private fun viewBottom(): Int =
-            ScrollableScreen.current()?.viewBottom ?: Minecraft.getInstance().window.guiScaledHeight
+            ScrollableScreen.current()?.viewBottom
+                ?: McCompat.currentScreen()?.height
+                ?: Minecraft.getInstance().window.guiScaledHeight
 
         /** Everything the search lets through, of which a scrolled window is on screen. */
         private var matching: List<T> = emptyList()

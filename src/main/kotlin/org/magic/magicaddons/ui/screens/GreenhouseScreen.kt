@@ -9,6 +9,7 @@ import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.input.CharacterEvent
 import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
+import net.minecraft.client.input.MouseButtonInfo
 import net.minecraft.client.renderer.RenderPipelines
 import net.minecraft.network.chat.Component
 import net.minecraft.resources.Identifier
@@ -64,6 +65,9 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
                 (GreenhouseData.greenhouseGrids.getOrNull(GreenhouseData.currentGridIndex)
                     ?.state?.pendingGrowthTicks ?: 1) > 0
     var borderPadding: Int = 6
+
+    /** 0.5 when the window has too few gui units for the panels, so everything is drawn half size. */
+    private var drawScale: Float = 1f
 
     override var hoveredElement: GuiEventListener? = null
 
@@ -131,6 +135,12 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
 
     override fun init() {
         super.init()
+
+        // a cramped window is laid out as if it had twice the units, then drawn at half size
+        drawScale = if (width < COMFORTABLE_WIDTH || height < COMFORTABLE_HEIGHT) 0.5f else 1f
+        width = (width / drawScale).toInt()
+        height = (height / drawScale).toInt()
+
         initBaseLayout()
 
         // opening this screen is the player asking about their greenhouses, which is the one moment a
@@ -343,6 +353,14 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
     }
 
     override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
+        graphics.pose().pushMatrix()
+        graphics.pose().scale(drawScale, drawScale)
+        extractScaled(graphics, (mouseX / drawScale).toInt(), (mouseY / drawScale).toInt(), delta)
+        graphics.pose().popMatrix()
+    }
+
+    /** The whole screen, in layout units. */
+    private fun extractScaled(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
         // background
         graphics.blitSprite(
             RenderPipelines.GUI_TEXTURED,
@@ -437,7 +455,13 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         McCompat.extractDeferredSubtitles(this.minecraft)
     }
 
-    override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
+    /** The event in layout units. */
+    private fun scaled(event: MouseButtonEvent): MouseButtonEvent =
+        MouseButtonEvent(event.x / drawScale, event.y / drawScale, MouseButtonInfo(event.button(), event.modifiers()))
+
+    override fun mouseClicked(event: MouseButtonEvent, doubled: Boolean): Boolean {
+        val mouseButtonEvent = scaled(event)
+
         // a handler may open or close an overlay, so the list being walked is a copy of it
         overlays.toList().forEach {
             if (it.mouseClicked(mouseButtonEvent, doubled)) {
@@ -506,7 +530,9 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         return super.mouseClicked(mouseButtonEvent, doubled)
     }
 
-    override fun mouseMoved(mouseX: Double, mouseY: Double) {
+    override fun mouseMoved(realX: Double, realY: Double) {
+        val mouseX = realX / drawScale
+        val mouseY = realY / drawScale
 
         hoveredElement?.isFocused = false
         hoveredElement = null
@@ -561,7 +587,10 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         return super.charTyped(characterEvent)
     }
 
-    override fun mouseScrolled(mouseX: Double, mouseY: Double, scrollX: Double, scrollY: Double): Boolean {
+    override fun mouseScrolled(realX: Double, realY: Double, scrollX: Double, scrollY: Double): Boolean {
+        val mouseX = realX / drawScale
+        val mouseY = realY / drawScale
+
         // an open list takes the wheel before the screen's own scrolling does
         overlays.toList().forEach {
             if (it.mouseScrolled(mouseX, mouseY, scrollX, scrollY)) return true
@@ -725,6 +754,10 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
 
         /** Below this the item art rounds away to nothing, so the grid stops shrinking instead. */
         private const val MIN_SLOT_SIZE: Int = 8
+
+        /** A window with fewer gui units than this is drawn at half size, as gui scale 4 at 1080p is. */
+        private const val COMFORTABLE_WIDTH: Int = 600
+        private const val COMFORTABLE_HEIGHT: Int = 300
     }
 
 }
