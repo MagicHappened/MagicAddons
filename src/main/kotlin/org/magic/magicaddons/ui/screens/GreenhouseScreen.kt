@@ -30,6 +30,7 @@ import org.magic.magicaddons.ui.widgets.greenhouse.Bookmarks
 import org.magic.magicaddons.data.greenhouse.GreenhouseElementInstance
 import org.magic.magicaddons.data.greenhouse.CropDefinition
 import org.magic.magicaddons.ui.widgets.ConfirmContext
+import org.magic.magicaddons.ui.widgets.greenhouse.MarkContext
 import org.magic.magicaddons.ui.widgets.greenhouse.PlantPalette
 import org.magic.magicaddons.ui.widgets.greenhouse.HoverControls
 import org.magic.magicaddons.ui.widgets.greenhouse.ScrollHint
@@ -242,7 +243,7 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         currentDisplayToggle.x = shelfLeft + ActionPanel.PADDING
         currentDisplayToggle.y = viewShelfY + shelfTitleHeight() + ActionPanel.PADDING
 
-        gridSelector.x = currentDisplayToggle.x + currentDisplayToggle.width + Common.UI.SPACING_LARGE
+        gridSelector.x = currentDisplayToggle.x + currentDisplayToggle.width + Common.UI.SPACING
         gridSelector.y = currentDisplayToggle.y
         gridSelector.height = currentDisplayToggle.height
         gridSelector.closeList()
@@ -465,7 +466,7 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
 
     /** Where the carried plant would land, green when it fits and red when it cannot. */
     private fun renderDropTarget(graphics: GuiGraphicsExtractor) {
-        val def = plantPalette.dragging ?: return
+        val def = plantPalette.carried ?: return
         val grid = displayedGridWidget ?: emptyGridWidget ?: return
         val mouse = Minecraft.getInstance().mouseHandler
         val window = Minecraft.getInstance().window
@@ -517,6 +518,19 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         grid.layout.elementInstances.add(instance)
         grid.justPlaced.add(instance)
         grid.init()
+    }
+
+    /** Lets the player say what a plant in the plan stands for, written onto its slot. */
+    private fun openMarkContext(instance: GreenhouseElementInstance, event: MouseButtonEvent) {
+        val grid = displayedGridWidget ?: return
+        val (menuX, menuY) = OverlayRenderable.placeOnScreen(event.x.toInt(), event.y.toInt(), MARK_MENU_WIDTH, MARK_MENU_HEIGHT)
+
+        val menu = MarkContext(menuX, menuY, this) { marking ->
+            instance.slot.slotMark = marking
+            grid.init()
+        }
+        menu.init()
+        addContext(menu)
     }
 
     /** Takes a plant off the preset, for the Delete switch. */
@@ -682,7 +696,7 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         hovered.renderTooltip(
             graphics,
             hoverControls.x + hoverControls.width + Common.UI.SPACING_LARGE,
-            startY + borderPadding *2)
+            startY)
 
     }
 
@@ -739,10 +753,31 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         if (currentDisplay == CurrentDisplay.Presets) {
             if (plantPalette.mouseClicked(mouseButtonEvent, doubled)) return true
 
+            // a picked plant lands on the slot clicked; a right click puts it down instead
+            plantPalette.selected?.let { picked ->
+                val overSlot = (displayedGridWidget ?: emptyGridWidget)?.slotAt(mouseButtonEvent.x, mouseButtonEvent.y) != null
+                if (mouseButtonEvent.button() == 0 && overSlot) {
+                    placeDragged(picked, mouseButtonEvent.x, mouseButtonEvent.y)
+                    return true
+                }
+                if (mouseButtonEvent.button() == 1) {
+                    plantPalette.dropSelection()
+                    return true
+                }
+            }
+
             // with the switch on, a click on a plant takes it off the preset instead of asking about it
             if (plantPalette.deleteMode && mouseButtonEvent.button() == 0) {
                 (displayedGridWidget?.hoveredElement as? ElementWidget)?.let {
                     removeFromPreset(it.instance)
+                    return true
+                }
+            }
+
+            // a right click on a plant says what it stands for in the plan
+            if (mouseButtonEvent.button() == 1) {
+                (displayedGridWidget?.hoveredElement as? ElementWidget)?.let {
+                    openMarkContext(it.instance, mouseButtonEvent)
                     return true
                 }
             }
@@ -1045,6 +1080,10 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
 
         /** The layout behind the empty grid, never saved. */
         private const val EMPTY_GRID_ID: String = "preset_none"
+
+        /** About what the mark menu takes, for keeping it on screen. */
+        private const val MARK_MENU_WIDTH: Int = 80
+        private const val MARK_MENU_HEIGHT: Int = 100
 
         /** The footprint a carried plant would take, seen through. */
         private const val DROP_OK: Int = 0x6000FF00

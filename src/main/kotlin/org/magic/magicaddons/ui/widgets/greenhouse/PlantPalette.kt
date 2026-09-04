@@ -18,6 +18,7 @@ import org.magic.magicaddons.util.ScreenUtil.drawScrollBar
 import org.magic.magicaddons.util.ScreenUtil.renderFakeItem
 import org.magic.magicaddons.util.ScreenUtil.drawShelf
 import org.magic.magicaddons.util.ScreenUtil.drawSimpleTooltip
+import kotlin.math.abs
 import kotlin.math.roundToInt
 
 /**
@@ -52,21 +53,39 @@ class PlantPalette(
     private var lastMouseX = 0.0
     private var lastMouseY = 0.0
 
-    /** The plant being carried, and where the mouse has it. */
+    /** The plant being dragged, and where the mouse has it. */
     var dragging: CropDefinition? = null
         private set
     private var dragX = 0
     private var dragY = 0
 
+    /** The plant picked with a plain click, placed by the next click on a slot. */
+    var selected: CropDefinition? = null
+        private set
+
+    /** The plant under the mouse button since it went down, until it moves enough to be a drag. */
+    private var pressed: CropDefinition? = null
+    private var pressX = 0.0
+    private var pressY = 0.0
+
+    /** Whatever is on the way to the grid, dragged or picked. */
+    val carried: CropDefinition? get() = dragging ?: selected
+
     private var scroll = 0
     private var columns = 1
     private var visibleRows = 1
-    private var cell = MIN_CELL
 
-    /** Plants a player can place, by rarity then name. Roots and fire have no seed to place. */
+    /** A cell's width and height: the width shares the shelf, the height shares the room under the buttons. */
+    private var cellWidth = MIN_CELL
+    private var cellHeight = MIN_CELL
+
+    /** Plants a player can place, by rarity then name, the dead plant right after the base crops. */
     private val crops: List<CropDefinition> = CropRegistry.all
         .filter { it.skyblockId != null }
-        .sortedWith(compareBy({ CropRegistry.tierOf[it] ?: 7 }, { it.name.lowercase() }))
+        .sortedWith(compareBy({ sortTier(it) }, { it.name.lowercase() }))
+
+    private fun sortTier(def: CropDefinition): Double =
+        if (def.name == DEAD_PLANT) 0.5 else (CropRegistry.tierOf[def] ?: 7).toDouble()
 
     private fun shown(): List<CropDefinition> {
         val typed = search.value.trim()
@@ -75,11 +94,11 @@ class PlantPalette(
 
     private fun titleHeight(): Int = font.lineHeight + Common.UI.SPACING * 2
     private fun gridTop(): Int = y + titleHeight() + ROW + Common.UI.SPACING + ROW + Common.UI.SPACING
-    /** The cells sit centred in the shelf's width. */
-    private fun gridLeft(): Int = x + (width - columns * cell) / 2
+    /** The cells start where the search and the buttons start. */
+    private fun gridLeft(): Int = x + EDGE_PAD
 
     /** The icon inside a cell: a whole multiple of sixteen, so its pixels land square. */
-    private fun iconSize(): Int = ((cell - ICON_PAD * 2) / 16 * 16).coerceAtLeast(16)
+    private fun iconSize(): Int = ((minOf(cellWidth, cellHeight) - ICON_PAD * 2) / 16 * 16).coerceAtLeast(16)
 
     /** The ground under an icon, in the colour of the plant's rarity, or its own for base and rare crops. */
     private fun rarityColour(def: CropDefinition): Int = when (CropRegistry.tierOf[def] ?: 7) {
@@ -113,8 +132,9 @@ class PlantPalette(
         val inner = width - EDGE_PAD * 2
         val room = (y + height - EDGE_PAD - gridTop()).coerceAtLeast(MIN_CELL)
         visibleRows = (room.toFloat() / TARGET_CELL).roundToInt().coerceAtLeast(1)
-        cell = (room / visibleRows).coerceIn(MIN_CELL, MAX_CELL)
-        columns = (inner / cell).coerceAtLeast(1)
+        cellHeight = (room / visibleRows).coerceIn(MIN_CELL, MAX_CELL)
+        columns = (inner / cellHeight).coerceAtLeast(1)
+        cellWidth = inner / columns
     }
 
     private fun totalRows(): Int = (shown().size + columns - 1) / columns
@@ -123,10 +143,10 @@ class PlantPalette(
     private fun cropAt(mouseX: Double, mouseY: Double): CropDefinition? {
         val mx = mouseX.toInt()
         val my = mouseY.toInt()
-        if (mx < gridLeft() || my < gridTop() || my >= gridTop() + visibleRows * cell) return null
+        if (mx < gridLeft() || my < gridTop() || my >= gridTop() + visibleRows * cellHeight) return null
 
-        val column = (mx - gridLeft()) / cell
-        val row = (my - gridTop()) / cell + scroll
+        val column = (mx - gridLeft()) / cellWidth
+        val row = (my - gridTop()) / cellHeight + scroll
         if (column >= columns) return null
 
         return shown().getOrNull(row * columns + column)
@@ -150,22 +170,26 @@ class PlantPalette(
         scroll = scroll.coerceIn(0, (rows - visibleRows).coerceAtLeast(0))
 
         list.drop(scroll * columns).take(visibleRows * columns).forEachIndexed { index, def ->
-            val cellX = gridLeft() + index % columns * cell
-            val cellY = gridTop() + index / columns * cell
+            val cellX = gridLeft() + index % columns * cellWidth
+            val cellY = gridTop() + index / columns * cellHeight
+            val right = cellX + cellWidth - 1
+            val bottom = cellY + cellHeight - 1
 
-            graphics.fill(cellX + 1, cellY + 1, cellX + cell - 1, cellY + cell - 1, rarityColour(def))
-            if (def == hovered) graphics.fill(cellX + 1, cellY + 1, cellX + cell - 1, cellY + cell - 1, Common.UI.HOVER_WASH)
-            graphics.drawBorder(cellX + 1, cellY + 1, cellX + cell - 1, cellY + cell - 1, 1, Common.UI.BORDER_COLOR)
+            graphics.fill(cellX + 1, cellY + 1, right, bottom, rarityColour(def))
+            if (def == hovered) graphics.fill(cellX + 1, cellY + 1, right, bottom, Common.UI.HOVER_WASH)
+            // the picked one is framed in the palette's bright colour until it is put down
+            val frame = if (def == selected) Common.UI.SELECTED_FRAME_COLOR else Common.UI.BORDER_COLOR
+            graphics.drawBorder(cellX + 1, cellY + 1, right, bottom, 1, frame)
 
             val icon = iconSize()
-            graphics.renderFakeItem(stackFor(def), cellX + (cell - icon) / 2, cellY + (cell - icon) / 2, icon, icon)
+            graphics.renderFakeItem(stackFor(def), cellX + (cellWidth - icon) / 2, cellY + (cellHeight - icon) / 2, icon, icon)
         }
 
         if (rows > visibleRows) {
             graphics.drawScrollBar(
                 x + width - EDGE_PAD - Common.UI.SCROLLBAR_WIDTH,
                 gridTop(),
-                visibleRows * cell,
+                visibleRows * cellHeight,
                 rows,
                 visibleRows,
                 scroll
@@ -175,17 +199,18 @@ class PlantPalette(
 
     /** The carried plant under the mouse, seen through, so the slot it is over stays visible. */
     fun renderDrag(graphics: GuiGraphicsExtractor) {
-        val def = dragging ?: return
+        val def = carried ?: return
         val icon = iconSize()
-        val left = dragX - icon / 2
-        val top = dragY - icon / 2
+        val (atX, atY) = if (dragging != null) dragX to dragY else lastMouseX.toInt() to lastMouseY.toInt()
+        val left = atX - icon / 2
+        val top = atY - icon / 2
 
         graphics.renderFakeItem(stackFor(def), left, top, icon, icon)
         graphics.fill(left, top, left + icon, top + icon, DRAG_VEIL)
     }
 
     fun renderTooltip(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int) {
-        if (dragging != null) return
+        if (carried != null) return
         val def = hovered ?: return
         graphics.drawSimpleTooltip(def.name, mouseX + 7, mouseY + 12)
     }
@@ -214,26 +239,45 @@ class PlantPalette(
             return true
         }
 
-        cropAt(event.x, event.y)?.let {
-            dragging = it
-            dragX = event.x.toInt()
-            dragY = event.y.toInt()
-        }
+        // the button is down on a plant: a move makes it a drag, a release in place makes it a pick
+        pressed = cropAt(event.x, event.y)
+        pressX = event.x
+        pressY = event.y
         return true
     }
 
     fun mouseDragged(mouseX: Double, mouseY: Double): Boolean {
-        if (dragging == null) return false
+        val held = pressed ?: dragging ?: return false
+
+        if (dragging == null && (abs(mouseX - pressX) > DRAG_SLACK || abs(mouseY - pressY) > DRAG_SLACK)) {
+            dragging = held
+            selected = null
+        }
+        if (dragging == null) return true
+
         dragX = mouseX.toInt()
         dragY = mouseY.toInt()
         return true
     }
 
-    /** Lets go of the carried plant and says which it was, for the owner to place. */
+    /**
+     * Lets go: a dragged plant is handed back for the owner to place, a plain click picks the plant
+     * up (or puts a picked one down again) and hands back nothing.
+     */
     fun mouseReleased(): CropDefinition? {
-        val def = dragging
+        val dragged = dragging
+        val clicked = pressed
         dragging = null
-        return def
+        pressed = null
+
+        if (dragged != null) return dragged
+        if (clicked != null) selected = if (selected == clicked) null else clicked
+        return null
+    }
+
+    /** Puts a picked plant down without placing it. */
+    fun dropSelection() {
+        selected = null
     }
 
     fun mouseScrolled(mouseX: Double, mouseY: Double, scrollY: Double): Boolean {
@@ -255,6 +299,11 @@ class PlantPalette(
 
         /** How far the search and the cells sit from the shelf's frame. */
         private const val EDGE_PAD: Int = 4
+
+        /** How far the mouse may move with the button down before a click becomes a drag. */
+        private const val DRAG_SLACK: Double = 1.0
+
+        private const val DEAD_PLANT: String = "Dead Plant"
 
         /** About the cell at 1080p on gui scale 2, and how far from it the fit may stray. */
         private const val TARGET_CELL: Int = 40

@@ -112,15 +112,14 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, Focus
     }
 
     override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, deltaTick: Float) {
-        markingColor?.let {
-            graphics.drawBorder(
-                widgetX + 1,
-                widgetY + 1,
-                widgetX + width - 1,
-                widgetY + height - 1,
-                1,
-                it
-            )
+        markingColor?.let { colour ->
+            graphics.drawBorder(widgetX + 1, widgetY + 1, widgetX + width - 1, widgetY + height - 1, Common.UI.BORDER_SIZE, colour)
+
+            // a tag folded over the top right corner, hard to miss at any slot size
+            val tag = (width / 3).coerceAtLeast(5)
+            for (row in 0 until tag) {
+                graphics.fill(widgetX + width - 1 - tag + row, widgetY + 1 + row, widgetX + width - 1, widgetY + 2 + row, colour)
+            }
         }
         if (instance.elementId == "Fire") {
             renderFire(graphics)

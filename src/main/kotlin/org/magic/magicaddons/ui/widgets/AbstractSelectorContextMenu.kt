@@ -103,7 +103,13 @@ abstract class AbstractSelectorContextMenu<T>(
             false
         )
 
-        if (withSearch) search.render(graphics)
+        if (withSearch) {
+            search.render(graphics)
+        } else {
+            // the search field used to part the title from the rows; a line does it now
+            val lineY = overlayY + titleHeight - 1
+            graphics.fill(overlayX, lineY, overlayX + overlayWidth, lineY + 1, Common.UI.DIVIDER_COLOR)
+        }
         valueWidgets.forEach { it.extractRenderState(graphics, mouseX, mouseY) }
         graphics.drawBorder(overlayX, overlayY, overlayX + overlayWidth, overlayY + overlayHeight, Common.UI.BORDER_SIZE, Common.UI.BORDER_COLOR)
     }
