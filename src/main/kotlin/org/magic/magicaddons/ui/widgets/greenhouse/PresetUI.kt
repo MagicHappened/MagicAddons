@@ -27,7 +27,7 @@ import org.magic.magicaddons.util.ChatUtils
 class PresetUI(
     val overlayContext: OverlayContext,
     val onAssignedLayout: (assignedLayout: GreenhouseLayout?, selectedGrid: GreenhouseGrid) -> Unit,
-    val onAddPreset: (GreenhouseLayout) -> Unit,
+    val onImported: (LayoutTransferResult.Imported) -> Unit,
     val onRemovePreset: () -> Unit,
     /** What the Delete button is about: the shown plot of a master layout, or the preset itself. */
     val shownLayout: () -> GreenhouseLayout?,
@@ -91,7 +91,7 @@ class PresetUI(
                 mouseButtonEvent.x.toInt(),
                 mouseButtonEvent.y.toInt(),
                 overlayContext,
-                { onAssignedLayout.invoke(GreenhouseData.currentPreset, it) }
+                { onAssignedLayout.invoke(shownLayout(), it) }
             )
             context.init()
             overlayContext.addContext(context)
@@ -102,7 +102,12 @@ class PresetUI(
                 ChatUtils.sendWithPrefix("No preset to remove.")
                 return true
             }
-            val question = if (preset.id.contains("_part")) "Delete ${preset.displayName()} from this layout?" else "Delete preset ${preset.displayName()}?"
+            val master = GreenhouseData.masterOf(preset)
+            val question = if (master != null && master.plots.size > 1) {
+                "Delete ${master.plotTitle(preset)} from ${master.displayName()}?"
+            } else {
+                "Delete preset ${GreenhouseData.describe(preset)}?"
+            }
             val (menuX, menuY) = OverlayRenderable.placeOnScreen(
                 mouseButtonEvent.x.toInt(),
                 mouseButtonEvent.y.toInt(),
@@ -162,10 +167,10 @@ class PresetUI(
         when (result) {
             is LayoutTransferResult.Failure -> ChatUtils.sendWithPrefix(result.reason)
             is LayoutTransferResult.Imported -> {
-                ChatUtils.sendWithPrefix(
-                    "Imported ${result.layout.elementInstances.size} plants from ${format.displayName}"
-                )
-                onAddPreset.invoke(result.layout)
+                val plants = result.plots.sumOf { it.elementInstances.size }
+                val plots = if (result.plots.size > 1) " over ${result.plots.size} plots" else ""
+                ChatUtils.sendWithPrefix("Imported $plants plants$plots from ${format.displayName}")
+                onImported.invoke(result)
             }
             is LayoutTransferResult.Exported -> Unit
         }
@@ -180,7 +185,12 @@ class PresetUI(
         }
 
         val format = formatFor(type)
-        val result = format.export(preset)
+        val shown = shownLayout()
+        val result = if (preset.plots.size > 1 && shown != null && !format.isSinglePlot()) {
+            format.exportAll(preset)
+        } else {
+            format.export(shown ?: preset.plots.first())
+        }
 
         result.notes.forEach { ChatUtils.sendWithPrefix(it) }
 
@@ -195,6 +205,9 @@ class PresetUI(
             is LayoutTransferResult.Imported -> Unit
         }
     }
+
+    /** Whether a format writes one plot only, in which case the shown plot is what goes out. */
+    private fun LayoutFormat.isSinglePlot(): Boolean = this === SkyMutationsFormat || this === SkyShardsFormat
 
     /** The format behind a menu entry. */
     private fun formatFor(type: ImportExportFormatContext.LayoutFormatType): LayoutFormat =

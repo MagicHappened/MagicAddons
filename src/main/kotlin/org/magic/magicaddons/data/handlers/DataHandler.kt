@@ -4,6 +4,7 @@ import net.fabricmc.loader.api.FabricLoader
 import org.magic.magicaddons.Common
 import org.magic.magicaddons.data.greenhouse.Codecs.GREENHOUSE_GRID_CODEC
 import org.magic.magicaddons.data.greenhouse.Codecs.GREENHOUSE_LAYOUT_CODEC
+import org.magic.magicaddons.data.greenhouse.Codecs.MASTER_LAYOUT_CODEC
 import org.magic.magicaddons.data.greenhouse.Codecs.MISC_GREENHOUSE_INFO_CODEC
 import org.magic.magicaddons.data.greenhouse.MiscGreenhouseInfo
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData
@@ -49,7 +50,7 @@ object DataHandler {
 
         GreenhouseData.presetGrids = CodecStorage.load(
             greenhouseFile,
-            GREENHOUSE_LAYOUT_CODEC.listOf(),
+            MASTER_LAYOUT_CODEC.listOf(),
             wrapperKey = "presets"
         )?.toMutableList() ?: run {
             Common.LOGGER.error("Failed to load preset data")
@@ -79,7 +80,7 @@ object DataHandler {
 
         CodecStorage.save(
             path = greenhouseFile,
-            codec = GREENHOUSE_LAYOUT_CODEC.listOf(),
+            codec = MASTER_LAYOUT_CODEC.listOf(),
             value = GreenhouseData.presetGrids,
             wrapperKey = "presets"
         )
