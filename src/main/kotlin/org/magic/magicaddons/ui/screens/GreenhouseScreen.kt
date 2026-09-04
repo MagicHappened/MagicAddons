@@ -152,7 +152,7 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
     /** The greenhouses as bookmarks along the top of the grid; a right click renames one. */
     private val plotTabs = Bookmarks<GreenhouseLayout>(
         side = Bookmarks.Side.Top,
-        label = { plotLabel(it) },
+        label = { it.displayName() },
         onPick = { layout, event ->
             if (event.button() == 1) openLayoutWidgetContext(layout, event) else gridWidgetChanged(layout)
         }
@@ -168,14 +168,13 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
     ).apply { items = listOf(TELEPORT_LABEL) }
 
     /** The plants a preset can be built from, under the preset shelf. */
-    private val plantPalette = PlantPalette(onClearAll = { event -> confirmClearAll(event) })
+    private val plantPalette = PlantPalette(onClearAll = { clearCanvas() })
 
     /** Grid lines with nothing on them, shown while there is no preset, so a plant has somewhere to land. */
     private var emptyGridWidget: GridWidget? = null
 
-    /** The plot's own name, or its number when it was never named. */
-    private fun plotLabel(layout: GreenhouseLayout): String =
-        layout.name ?: "Plot ${layout.id.removePrefix("plot_")}"
+    /** Whether the preset canvas was cleared: an empty grid with nothing picked, until a plant lands. */
+    private var presetCleared = false
 
     private val cropPreviewButton = ClickableButtonWidget(
         100,
@@ -346,9 +345,7 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         // No greenhouse scanned yet: nothing to show, the warning above already covers it.
         if (displayedGridWidget == null) return
 
-        displayedName = displayedGridWidget?.layout?.name
-            ?: displayedGridWidget?.layout?.id
-            ?: "Unknown Plot"
+        displayedName = displayedGridWidget?.layout?.displayName() ?: "Unknown Plot"
 
 
 
@@ -375,15 +372,13 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
             }
             presetGridWidgets.add(gridWidget)
         }
-        if (GreenhouseData.currentPreset == null){
+        if (GreenhouseData.currentPreset == null && !presetCleared) {
             GreenhouseData.currentPreset = GreenhouseData.presetGrids.firstOrNull()
         }
-        displayedGridWidget = presetGridWidgets.find { GreenhouseData.currentPreset == it.layout  }
-        displayedGridWidget = displayedGridWidget ?: presetGridWidgets.firstOrNull()
+        displayedGridWidget = presetGridWidgets.find { GreenhouseData.currentPreset == it.layout }
+        if (!presetCleared) displayedGridWidget = displayedGridWidget ?: presetGridWidgets.firstOrNull()
 
-        displayedName = displayedGridWidget?.layout?.name
-            ?: displayedGridWidget?.layout?.id
-                    ?: "Unknown Preset"
+        displayedName = displayedGridWidget?.layout?.displayName() ?: "Unknown Preset"
         
         gridSelector.currentValue = displayedGridWidget?.layout
         gridSelector.values = presetGridWidgets.map { it.layout }
@@ -501,12 +496,22 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         if (currentDisplay != CurrentDisplay.Presets) return
         if (displayedGridWidget == null) {
             if (emptyGridWidget?.slotAt(mouseX, mouseY) == null) return
+            presetCleared = false
             addPresetLayout(GreenhouseLayout(id = "preset_${GreenhouseData.computeNextAvailableId()}"))
         }
         val grid = displayedGridWidget ?: return
         val (sx, sy) = grid.slotAt(mouseX, mouseY) ?: return
         if (!canPlace(grid.layout, def, sx, sy)) return
         val slot = grid.layout.getSlot(sx, sy) ?: return
+
+        // the plant brings the first soil it accepts with it, under every slot it covers
+        def.requiredSoil.firstOrNull()?.let { soil ->
+            for (dx in 0 until def.footprint.width) {
+                for (dy in 0 until def.footprint.height) {
+                    grid.layout.getSlot(sx + dx, sy + dy)?.placedBlock = soil.defaultBlockState()
+                }
+            }
+        }
 
         val instance = GreenhouseElementInstance(def.skyblockId?.id ?: def.name, slot, null, null, cropDef = def)
         grid.layout.elementInstances.add(instance)
@@ -521,16 +526,11 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         grid.init()
     }
 
-    private fun confirmClearAll(event: MouseButtonEvent) {
-        val grid = displayedGridWidget ?: return
-        val question = "Clear every plant from ${grid.layout.displayName()}?"
-        val (menuX, menuY) = OverlayRenderable.placeOnScreen(
-            event.x.toInt(), event.y.toInt(), ConfirmContext.widthFor(question), ConfirmContext.HEIGHT
-        )
-        addContext(ConfirmContext(menuX, menuY, question, this) {
-            grid.layout.elementInstances.clear()
-            grid.init()
-        })
+    /** Puts the preset down and shows an empty grid; the preset itself keeps everything it had. */
+    private fun clearCanvas() {
+        GreenhouseData.currentPreset = null
+        presetCleared = true
+        initPresetLayout()
     }
 
     /** Where the badge beside the name starts, so its tooltip can hang under it. */
@@ -594,11 +594,10 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
                 // not a movement, so the plants kept showing the last fact
                 displayedGridWidget?.pinnedInfo = hoverControls.selectedInfo
 
-                // at the right end of the bookmark strip, above the frame, its left edge on the
-                // line the right hand bookmarks start from
+                // at the right end of the bookmark strip, above the frame, ending where the frame ends
                 scrollHint.tooltip = SCROLL_HINT_GREENHOUSES
                 scrollHint.layoutAt(
-                    startX + containerSize + borderPadding - Common.UI.BORDER_SIZE,
+                    startX + containerSize + borderPadding - ScrollHint.SIZE,
                     startY - borderPadding - Bookmarks.THICKNESS,
                     Bookmarks.THICKNESS
                 )
@@ -957,9 +956,8 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
 
         displayedGridWidget = widget
         plotTabs.selected = widget.layout
-        displayedName = displayedGridWidget?.layout?.name
-            ?: displayedGridWidget?.layout?.id
-                    ?: "Unknown Preset"
+        presetCleared = false
+        displayedName = widget.layout.displayName()
 
         dynamicNameDisplay = null
         initDynamicName()
