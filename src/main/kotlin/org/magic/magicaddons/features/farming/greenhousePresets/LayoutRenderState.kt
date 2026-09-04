@@ -256,7 +256,7 @@ object LayoutRenderState {
                 if (isOccupied(level, soil, instance.cropDef.footprint)) return@forEach
 
                 val stage = ghostStageOf(instance.cropDef) ?: return@forEach
-                val render = stage.toRenderData(level, soil, instance.cropDef.footprint, instance.cropDef.standPoses)
+                val render = stage.toRenderData(level, soil, instance.cropDef.footprint, instance.cropDef.standPoses, instance.cropDef.rotatesWithPlot)
 
                 render.blockMap.forEach { (pos, state) ->
                     compare(level, pos, state, marks, ghosts)

@@ -699,7 +699,7 @@ object CropCollector : EntityUtils.HighlightSource {
         val recorded = def.stageDefs
             .flatMap { if (it is CropStagePattern) it.expand() else listOf(it) }
             .filter { stage in it.stageRange }
-            .map { it.matchesStage(standingOn, stands, def.footprint) }
+            .map { it.matchesStage(standingOn, stands, def.footprint, def.rotatesWithPlot) }
             .firstOrNull { it.matched }
 
         val status = when {

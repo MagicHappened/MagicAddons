@@ -8,6 +8,7 @@ import org.magic.magicaddons.ui.Focusable
 import org.magic.magicaddons.Common
 import org.magic.magicaddons.ui.HoverableContainer
 import org.magic.magicaddons.util.ScreenUtil.drawBorder
+import org.magic.magicaddons.util.ScreenUtil.drawSimpleTooltip
 
 /**
  * The coloured swatches beside the grid: picking one writes its fact onto every plant at once.
@@ -48,13 +49,18 @@ class HoverControls : Renderable, Focusable, HoverableContainer {
         forEachSwatch { info, top, bottom ->
             graphics.fill(x, top, x + width, bottom, info.color)
 
-            // every swatch is framed like a button; the picked one in white, a hovered one lightened
-            val frame = if (info == selectedInfo) SELECTED_FRAME_COLOR else Common.UI.BORDER_COLOR
-            if (info == hoveredInfo && info != selectedInfo) {
+            // every swatch is framed like a button: the picked one darkened and framed in white
+            // like a held button, a hovered one lightened
+            if (info == selectedInfo) {
+                graphics.fill(x, top, x + width, bottom, PRESSED_SHADE)
+            } else if (info == hoveredInfo) {
                 graphics.fill(x, top, x + width, bottom, HOVER_WASH)
             }
+            val frame = if (info == selectedInfo) SELECTED_FRAME_COLOR else Common.UI.BORDER_COLOR
             graphics.drawBorder(x, top, x + width, bottom, Common.UI.BORDER_SIZE, frame)
         }
+
+        hoveredInfo?.let { graphics.drawSimpleTooltip(it.label, mouseX + 7, mouseY + 12) }
     }
 
     override fun mouseMoved(mouseX: Double, mouseY: Double) {
@@ -120,6 +126,9 @@ class HoverControls : Renderable, Focusable, HoverableContainer {
 
         /** Laid over the swatch the mouse is on, so it lifts rather than changes colour. */
         private const val HOVER_WASH: Int = 0x40FFFFFF
+
+        /** Laid over the picked swatch, so it sits pressed in. */
+        private const val PRESSED_SHADE: Int = 0x60000000
 
         /** The frame of the picked swatch, white against the black frames of the rest. */
         private const val SELECTED_FRAME_COLOR: Int = Common.UI.TEXT_COLOR

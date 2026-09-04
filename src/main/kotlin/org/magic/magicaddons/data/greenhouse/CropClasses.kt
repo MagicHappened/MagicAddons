@@ -127,6 +127,7 @@ open class CropStage(
         origin: BlockPos,
         remainingStands: List<ArmorStand>,
         footprint: Footprint,
+        rotatesWithPlot: Boolean = true,
         debug: Boolean = false
     ): StageMatchResult {
         val level = Minecraft.getInstance().level ?: return StageMatchResult(
@@ -179,7 +180,7 @@ open class CropStage(
             val worldStep = WorldRotation.step(origin.x, origin.z)
 
             val candidateSteps = when {
-                this.armorStands.isNullOrEmpty() -> listOf(0)
+                this.armorStands.isNullOrEmpty() || !rotatesWithPlot -> listOf(0)
                 else -> listOf(worldStep, 0).distinct()
             }
 
@@ -267,13 +268,14 @@ open class CropStage(
         level: Level,
         baseBlock: BlockPos,
         footprint: Footprint,
-        standPoses: Map<String, StandPose> = emptyMap()
+        standPoses: Map<String, StandPose> = emptyMap(),
+        rotatesWithPlot: Boolean = true
     ): RenderData{
         val renderStands = mutableListOf<ArmorStand>()
         val blockMap = mutableMapOf<BlockPos, BlockState>()
 
         // definitions describe the plant at rotation zero; the world decides how this one stands
-        val worldStep = WorldRotation.step(baseBlock.x, baseBlock.z)
+        val worldStep = if (rotatesWithPlot) WorldRotation.step(baseBlock.x, baseBlock.z) else 0
         val center = Vec3(
             baseBlock.x + footprint.width / 2.0,
             baseBlock.y.toDouble(),
@@ -472,7 +474,9 @@ data class CropDefinition(
      * Stages this crop drops asleep on arriving at, so a prediction stops there instead of walking
      * it past a sleep it could not have slept through. A snoozling sleeps at 5, 10 and 15.
      */
-    val sleepStages: Set<Int> = emptySet()
+    val sleepStages: Set<Int> = emptySet(),
+    /** Whether the plant turns with its plot. PlantBoy Advance stands the same way in every plot. */
+    val rotatesWithPlot: Boolean = true
 ){
     fun matchesId(id: SkyBlockId): Boolean{
         return skyblockId == id || (aliases?.any { it == id } ?: false)

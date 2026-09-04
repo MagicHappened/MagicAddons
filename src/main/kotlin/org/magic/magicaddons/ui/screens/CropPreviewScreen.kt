@@ -126,7 +126,7 @@ class CropPreviewScreen(
             .firstOrNull { stage in it.stageRange } ?: return
 
         sceneStage = stageDef
-        sceneData = stageDef.toRenderData(level, ORIGIN, def.footprint, def.standPoses)
+        sceneData = stageDef.toRenderData(level, ORIGIN, def.footprint, def.standPoses, def.rotatesWithPlot)
 
         // so the plant is not left floating in a void: the ground it grows from, drawn under it
         soilBlocks = def.requiredSoil.firstOrNull()?.defaultBlockState()?.let { soil ->

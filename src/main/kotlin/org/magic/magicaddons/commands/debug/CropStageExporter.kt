@@ -109,7 +109,7 @@ object CropStageExporter {
 
         // how far the world has turned this plant, undone so the stage exports identically wherever
         // it stands. The head pose rides on the body and needs nothing
-        val worldStep = WorldRotation.step(basePos.x, basePos.z)
+        val worldStep = if (foundDefinition?.rotatesWithPlot == false) 0 else WorldRotation.step(basePos.x, basePos.z)
         val unturn = Math.floorMod(-worldStep, 4)
 
         // the middle of the footprint on both axes, which is what the mirroring check measures

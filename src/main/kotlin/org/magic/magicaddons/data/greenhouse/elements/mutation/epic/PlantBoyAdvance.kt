@@ -233,6 +233,7 @@ object PlantBoyAdvance : CropDefinitionProvider {
         // five days decay time
         maxStage = 12,
         footprint = Footprint(2, 2),
+        rotatesWithPlot = false,
         needsWater = false,
         isMutation = true
     )

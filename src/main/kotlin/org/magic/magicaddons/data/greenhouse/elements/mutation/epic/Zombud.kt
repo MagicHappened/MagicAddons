@@ -19,7 +19,8 @@ object Zombud : CropDefinitionProvider {
         /** Each skull's pose, found constant across every stage it appears in. */
         standPoses = mapOf(
             "de090b85462e85f7f44be07e55f1486602c141bb6fd0c277d5bb7c68deda265d" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f)),
-            "b2c4994b7a1c45231b623b8245c117382b267c8856c57cffa2d808c241027a51" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f))
+            "b2c4994b7a1c45231b623b8245c117382b267c8856c57cffa2d808c241027a51" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f)),
+            "29e27b7ee26e272ce53f19e169a593ea83cc120bfa3a209e1a8a279fcdf463e7" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f))
         ),
         stageDefs = listOf(
             CropStage(
@@ -84,6 +85,25 @@ object Zombud : CropDefinitionProvider {
                     )
                 ),
                 4..5
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = netherwartState(0)
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, -0.40625, 0.0),
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
+                        hashString = "29e27b7ee26e272ce53f19e169a593ea83cc120bfa3a209e1a8a279fcdf463e7",
+                        isSmall = false
+                    )
+                ),
+                6..6
             ),
             CropStage(
                 blocks = listOf(
