@@ -10,6 +10,7 @@ import org.magic.magicaddons.util.ScreenUtil
 object GreenhouseScreenCommand : AbstractCommand() {
     override val argument: String = "GreenhouseScreen"
     override val description: String = "Opens the Greenhouse Screen"
+    override val aliases: List<String> = listOf("gh")
     override fun build(): LiteralArgumentBuilder<FabricClientCommandSource> {
         return LiteralArgumentBuilder.literal<FabricClientCommandSource>(argument).executes {
             ScreenUtil.setScreen(GreenhouseScreen(Component.literal("GreenhouseScreen")))

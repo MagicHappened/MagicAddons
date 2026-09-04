@@ -4,6 +4,7 @@ package org.magic.magicaddons
 import net.fabricmc.api.ClientModInitializer
 import net.fabricmc.fabric.api.client.rendering.v1.PictureInPictureRendererRegistry
 import org.magic.magicaddons.commands.MainCommand
+import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseKey
 import org.magic.magicaddons.config.ConfigNotices
 import org.magic.magicaddons.config.MagicAddonsConfigJsonHandler
 import org.magic.magicaddons.data.handlers.DataHandler
@@ -30,6 +31,7 @@ class MagicAddons : ClientModInitializer {
         PictureInPictureRendererRegistry.register { ItemIconRenderer(it.bufferSource()) }
         //?}
         MainCommand
+        GreenhouseKey
         DataHandler.init()
         // listening before the config loads, since a migration may have something to say
         ConfigNotices
