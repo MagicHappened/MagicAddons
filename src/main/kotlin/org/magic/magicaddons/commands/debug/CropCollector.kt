@@ -77,6 +77,9 @@ object CropCollector : EntityUtils.HighlightSource {
         /** Matched, and described, but recorded without the way its stands are turned. */
         Unturned("needs rotation data"),
 
+        /** Matched, but a stand stood full sized where its definition says small. */
+        Oversized("needs isSmall = false"),
+
         /** Named for a crop we know, standing at a stage nobody has recorded. */
         Unrecorded("unrecorded"),
 
@@ -206,6 +209,7 @@ object CropCollector : EntityUtils.HighlightSource {
                 // without the way its stands are turned, so worth taking again
                 val status = when {
                     found.rotationLegacy -> Status.Legacy
+                    num != null && oversized(def, num, stands) -> Status.Oversized
                     num != null && PlantDex.needsRotation(def, num) -> Status.Unturned
                     else -> Status.Current
                 }
@@ -396,6 +400,24 @@ object CropCollector : EntityUtils.HighlightSource {
         }
 
         owners.filterValues { it.size == 1 }.mapValues { it.value.first() }
+    }
+
+    /**
+     * Whether a stand of [stands] is full sized while the definition's stand with that skull at
+     * [stage] says small. Remembered in the dex, so every listing of the crop says so.
+     */
+    private fun oversized(def: CropDefinition, stage: Int, stands: List<ArmorStand>): Boolean {
+        val small = def.stageDefs
+            .flatMap { if (it is CropStagePattern) it.expand() else listOf(it) }
+            .filter { stage in it.stageRange }
+            .flatMap { it.armorStands.orEmpty() }
+            .filter { it.isSmall }
+            .mapNotNull { it.hashString }
+            .toSet()
+
+        val found = stands.any { !it.isSmall && PlayerUtils.getSkullHash(it) in small }
+        if (found) PlantDex.noteSize(def.name, stage)
+        return found
     }
 
     private fun identify(stand: ArmorStand): CropDefinition? =
@@ -611,17 +633,6 @@ object CropCollector : EntityUtils.HighlightSource {
                         claimed.z in standingOn.z until standingOn.z + h
             }
 
-        // a full sized stand is a fact its definition has to state, and the plant has just been named,
-        // so the report names it too
-        val fullSized = stands.filterNot { it.isSmall }
-
-        if (fullSized.isNotEmpty()) {
-            ChatUtils.sendWithPrefix(
-                "${fullSized.size} of ${def.name}'s stands are not small, " +
-                        "its definition needs isSmall = false"
-            )
-        }
-
         val absorbed = s.entries.filter { entry ->
             val ew = entry.def?.footprint?.width ?: 1
             val eh = entry.def?.footprint?.height ?: 1
@@ -651,6 +662,7 @@ object CropCollector : EntityUtils.HighlightSource {
         val status = when {
             recorded == null -> Status.Unrecorded
             recorded.rotationLegacy -> Status.Legacy
+            oversized(def, stage, stands) -> Status.Oversized
             else -> Status.Current
         }
 

@@ -13,11 +13,36 @@ object PlantDex {
         legacySeen.getOrPut(cropName) { mutableSetOf() }.addAll(range)
     }
 
+    /** Stage numbers per crop whose stands stood full sized where the definition says small. */
+    private val sizeSeen: MutableMap<String, MutableSet<Int>> = mutableMapOf()
+
+    fun noteSize(cropName: String, stage: Int) {
+        sizeSeen.getOrPut(cropName) { mutableSetOf() }.add(stage)
+    }
+
+    /** Whether a run this session found the stage [stage] of [def] needing isSmall = false. */
+    fun needsSize(def: CropDefinition, stage: Int): Boolean = stage in sizeSeen[def.name].orEmpty()
+
     /** Reading order of the dex: base crops first, then mutations by rarity, then the rest. */
     private val TIER_NAMES = listOf(
         "base crops", "common mutations", "uncommon mutations", "rare mutations",
         "epic mutations", "legendary mutations", "rare crops", "other"
     )
+
+    /** The same tiers as chat headings. */
+    val TIER_TITLES: List<String> = listOf(
+        "Base Crops", "Common", "Uncommon", "Rare", "Epic", "Legendary", "Rare Crops", "Misc"
+    )
+
+    /** One crop with something still missing, in the listing's words. */
+    class Gap(val def: CropDefinition, val parts: List<String>)
+
+    /** Every crop with a gap, grouped by tier in reading order. */
+    fun gapsByTier(): Map<Int, List<Gap>> = CropRegistry.all
+        .sortedWith(compareBy({ CropRegistry.tierOf[it] ?: 7 }, { it.name }))
+        .mapNotNull { def -> partsFor(def).takeIf { it.isNotEmpty() }?.let { Gap(def, it) } }
+        .groupBy { CropRegistry.tierOf[it.def] ?: 7 }
+        .toSortedMap()
 
     class Report(val recorded: Int, val total: Int, val incompleteCrops: Int, val missingList: String) {
         val percent: Int get() = if (total == 0) 100 else recorded * 100 / total
@@ -32,22 +57,13 @@ object PlantDex {
         CropRegistry.all
             .sortedWith(compareBy({ CropRegistry.tierOf[it] ?: 7 }, { it.name }))
             .forEach { def ->
-                val covered = def.stageDefs.flatMap { it.stageRange }.toSet()
-                val missing = (1..def.maxStage).filterNot { it in covered }
-                val legacy = legacySeen[def.name].orEmpty().filter { it in covered }.sorted()
-                val unturned = rotationGaps(def)
-
                 total += def.maxStage
-                recorded += def.maxStage - missing.size
+                recorded += def.maxStage - unrecorded(def).size
 
                 // a crop wanting for nothing, rotations included, is left out of the listing
-                if (missing.isEmpty() && legacy.isEmpty() && unturned.isEmpty()) return@forEach
+                val parts = partsFor(def)
+                if (parts.isEmpty()) return@forEach
                 incomplete++
-
-                val parts = mutableListOf<String>()
-                if (missing.isNotEmpty()) parts += "stages ${ranges(missing)} unrecorded"
-                if (legacy.isNotEmpty()) parts += "stages ${ranges(legacy)} need normalization"
-                if (unturned.isNotEmpty()) parts += "stages ${ranges(unturned)} need rotation data"
 
                 sections.getOrPut(CropRegistry.tierOf[def] ?: 7) { mutableListOf() }
                     .add("${def.name} -> ${parts.joinToString("; ")}")
@@ -64,7 +80,27 @@ object PlantDex {
         return Report(recorded, total, incomplete, text)
     }
 
-    /** What one crop is missing, in the listing's own words, or null when it wants for nothing. */
+    /** The stages of [def] no recording covers. */
+    private fun unrecorded(def: CropDefinition): List<Int> {
+        val covered = def.stageDefs.flatMap { it.stageRange }.toSet()
+        return (1..def.maxStage).filterNot { it in covered }
+    }
+
+    /** What one crop is missing, one part per kind of gap; empty when it wants for nothing. */
+    private fun partsFor(def: CropDefinition): List<String> {
+        val covered = def.stageDefs.flatMap { it.stageRange }.toSet()
+        val missing = unrecorded(def)
+        val legacy = legacySeen[def.name].orEmpty().filter { it in covered }.sorted()
+        val unturned = rotationGaps(def)
+        val oversized = sizeSeen[def.name].orEmpty().sorted()
+
+        val parts = mutableListOf<String>()
+        if (missing.isNotEmpty()) parts += "stages ${ranges(missing)} unrecorded"
+        if (legacy.isNotEmpty()) parts += "stages ${ranges(legacy)} need normalization"
+        if (unturned.isNotEmpty()) parts += "stages ${ranges(unturned)} need rotation data"
+        if (oversized.isNotEmpty()) parts += "stages ${ranges(oversized)} need isSmall = false"
+        return parts
+    }
 
     /**
      * Whether a stage knows how every stand is turned, role poses counted: one good sample of a
@@ -87,19 +123,9 @@ object PlantDex {
     fun needsRotation(def: CropDefinition, stage: Int): Boolean = def.stageDefs
         .any { stage in it.stageRange && !hasRotation(def, it) }
 
-    fun reportFor(def: CropDefinition): String? {
-        val covered = def.stageDefs.flatMap { it.stageRange }.toSet()
-        val missing = (1..def.maxStage).filterNot { it in covered }
-        val legacy = legacySeen[def.name].orEmpty().filter { it in covered }.sorted()
-        val unturned = rotationGaps(def)
-
-        val parts = mutableListOf<String>()
-        if (missing.isNotEmpty()) parts += "stages ${ranges(missing)} unrecorded"
-        if (legacy.isNotEmpty()) parts += "stages ${ranges(legacy)} need normalization"
-        if (unturned.isNotEmpty()) parts += "stages ${ranges(unturned)} need rotation data"
-
-        return parts.joinToString("; ").takeIf { it.isNotEmpty() }
-    }
+    /** What one crop is missing, in the listing's own words, or null when it wants for nothing. */
+    fun reportFor(def: CropDefinition): String? =
+        partsFor(def).joinToString("; ").takeIf { it.isNotEmpty() }
 
     /** How much of one crop is described, as a percentage of the stages it has. */
     fun percentFor(def: CropDefinition): Int {
