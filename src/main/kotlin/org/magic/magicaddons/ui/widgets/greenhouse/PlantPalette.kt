@@ -78,14 +78,19 @@ class PlantPalette(
     /** The cells sit centred in the shelf's width. */
     private fun gridLeft(): Int = x + (width - columns * cell) / 2
 
-    /** The ground under an icon, in the colour of the plant's rarity. Base crops sit with the common ones. */
+    /** The icon inside a cell: a whole multiple of sixteen, so its pixels land square. */
+    private fun iconSize(): Int = ((cell - ICON_PAD * 2) / 16 * 16).coerceAtLeast(16)
+
+    /** The ground under an icon, in the colour of the plant's rarity, or its own for base and rare crops. */
     private fun rarityColour(def: CropDefinition): Int = when (CropRegistry.tierOf[def] ?: 7) {
-        0, 1 -> RARITY_COMMON
+        1 -> RARITY_COMMON
         2 -> RARITY_UNCOMMON
-        3, 6 -> RARITY_RARE
+        3 -> RARITY_RARE
         4 -> RARITY_EPIC
         5 -> RARITY_LEGENDARY
-        else -> RARITY_COMMON
+        6 -> RARE_CROP
+        // the base crops, and the dead plant that players know from among them
+        else -> BASE_CROP
     }
 
     fun layout(x: Int, y: Int, width: Int, height: Int) {
@@ -94,9 +99,9 @@ class PlantPalette(
         this.width = width
         this.height = height
 
-        search.x = x + ActionPanel.PADDING
+        search.x = x + EDGE_PAD
         search.y = y + titleHeight()
-        search.width = width - ActionPanel.PADDING * 2
+        search.width = width - EDGE_PAD * 2
 
         clearButton.x = search.x
         clearButton.y = search.y + ROW + Common.UI.SPACING
@@ -105,8 +110,8 @@ class PlantPalette(
 
         // the cells fill the room under the buttons exactly: as many rows of about the usual size
         // as fit, each row then stretched to use the whole height, within sane bounds
-        val inner = width - ActionPanel.PADDING * 2
-        val room = (y + height - ActionPanel.PADDING - gridTop()).coerceAtLeast(MIN_CELL)
+        val inner = width - EDGE_PAD * 2
+        val room = (y + height - EDGE_PAD - gridTop()).coerceAtLeast(MIN_CELL)
         visibleRows = (room.toFloat() / TARGET_CELL).roundToInt().coerceAtLeast(1)
         cell = (room / visibleRows).coerceIn(MIN_CELL, MAX_CELL)
         columns = (inner / cell).coerceAtLeast(1)
@@ -151,12 +156,14 @@ class PlantPalette(
             graphics.fill(cellX + 1, cellY + 1, cellX + cell - 1, cellY + cell - 1, rarityColour(def))
             if (def == hovered) graphics.fill(cellX + 1, cellY + 1, cellX + cell - 1, cellY + cell - 1, Common.UI.HOVER_WASH)
             graphics.drawBorder(cellX + 1, cellY + 1, cellX + cell - 1, cellY + cell - 1, 1, Common.UI.BORDER_COLOR)
-            graphics.renderFakeItem(stackFor(def), cellX + ICON_PAD, cellY + ICON_PAD, cell - ICON_PAD * 2, cell - ICON_PAD * 2)
+
+            val icon = iconSize()
+            graphics.renderFakeItem(stackFor(def), cellX + (cell - icon) / 2, cellY + (cell - icon) / 2, icon, icon)
         }
 
         if (rows > visibleRows) {
             graphics.drawScrollBar(
-                x + width - ActionPanel.PADDING - Common.UI.SCROLLBAR_WIDTH,
+                x + width - EDGE_PAD - Common.UI.SCROLLBAR_WIDTH,
                 gridTop(),
                 visibleRows * cell,
                 rows,
@@ -169,11 +176,12 @@ class PlantPalette(
     /** The carried plant under the mouse, seen through, so the slot it is over stays visible. */
     fun renderDrag(graphics: GuiGraphicsExtractor) {
         val def = dragging ?: return
-        val left = dragX - cell / 2
-        val top = dragY - cell / 2
+        val icon = iconSize()
+        val left = dragX - icon / 2
+        val top = dragY - icon / 2
 
-        graphics.renderFakeItem(stackFor(def), left, top, cell, cell)
-        graphics.fill(left, top, left + cell, top + cell, DRAG_VEIL)
+        graphics.renderFakeItem(stackFor(def), left, top, icon, icon)
+        graphics.fill(left, top, left + icon, top + icon, DRAG_VEIL)
     }
 
     fun renderTooltip(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int) {
@@ -245,13 +253,18 @@ class PlantPalette(
 
         private const val ROW: Int = 20
 
+        /** How far the search and the cells sit from the shelf's frame. */
+        private const val EDGE_PAD: Int = 4
+
         /** About the cell at 1080p on gui scale 2, and how far from it the fit may stray. */
-        private const val TARGET_CELL: Int = 28
-        private const val MIN_CELL: Int = 22
-        private const val MAX_CELL: Int = 40
-        private const val ICON_PAD: Int = 4
+        private const val TARGET_CELL: Int = 40
+        private const val MIN_CELL: Int = 36
+        private const val MAX_CELL: Int = 56
+        private const val ICON_PAD: Int = 2
 
         /** The game's rarity colours, toned down, on the ground under each icon. */
+        private const val BASE_CROP: Int = 0xFF6B4A2B.toInt()
+        private const val RARE_CROP: Int = 0xFF1F6F6B.toInt()
         private const val RARITY_COMMON: Int = 0xFF5C5C5C.toInt()
         private const val RARITY_UNCOMMON: Int = 0xFF2E7D32.toInt()
         private const val RARITY_RARE: Int = 0xFF2F4FA3.toInt()

@@ -11,7 +11,7 @@ class ApplyToContext(
     override var overlayY: Int,
     private val overlayContext: OverlayContext,
     val gridSelected: (grid: GreenhouseGrid) -> Unit
-) : AbstractSelectorContextMenu<GreenhouseGrid>(GreenhouseData.greenhouseGrids, "Assign To:") {
+) : AbstractSelectorContextMenu<GreenhouseGrid>(GreenhouseData.greenhouseGrids, "Assign To:", withSearch = false) {
 
     override fun onValueSelected(value: GreenhouseGrid) {
         overlayContext.removeOverlay(this)
