@@ -1,5 +1,6 @@
 package org.magic.magicaddons.ui.screens
 
+import org.magic.magicaddons.Common
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.input.CharacterEvent
@@ -126,7 +127,7 @@ class FeatureEditScreen(
         if (this.minecraft.level == null) {
             this.extractPanorama(graphics, deltaTick)
         }
-        this.extractMenuBackground(graphics)
+        graphics.fill(0, 0, width, height, Common.UI.SCREEN_DIM_COLOR)
         McCompat.extractDeferredSubtitles(this.minecraft)
     }
 

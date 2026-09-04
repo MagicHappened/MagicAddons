@@ -33,7 +33,8 @@ class ScrollHint(var tooltip: String) {
         val split = y + size * 2 / 5
         graphics.fill(x, split, x + size, split + 1, color)
 
-        val wheelWidth = (size / 5).coerceAtLeast(1)
+        // as wide as keeps it centred: an odd body takes an odd wheel
+        val wheelWidth = if (size % 2 == 0) 2 else 3
         val wheelLeft = x + (size - wheelWidth) / 2
         graphics.fill(wheelLeft, y + 2, wheelLeft + wheelWidth, split, Common.UI.TEXT_COLOR)
 

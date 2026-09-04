@@ -1,5 +1,8 @@
 name: build
 
+# the run is named after the pushed commits, so the list of builds reads as a changelog
+run-name: ${{ join(github.event.commits.*.message, ' | ') }}
+
 on:
   push:
     branches: [ "beta" ]

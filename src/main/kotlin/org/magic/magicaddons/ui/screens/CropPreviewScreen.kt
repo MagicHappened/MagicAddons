@@ -56,6 +56,9 @@ class CropPreviewScreen(
     private var pitch: Float = -20f
 
     private var draggingView = false
+
+    /** The slow turn runs until the player turns the plant themselves, and again for the next crop. */
+    private var spinning = true
     private var draggingSlider = false
 
     private val selector = EnumWidget(
@@ -99,6 +102,7 @@ class CropPreviewScreen(
 
     private fun picked(def: CropDefinition) {
         selectedDef = def
+        spinning = true
         stage = stage.coerceIn(1, def.maxStage)
         rebuildScene()
     }
@@ -182,8 +186,7 @@ class CropPreviewScreen(
     override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
         val def = selectedDef
 
-        // the slow turn, resting while the player is the one turning it
-        if (!draggingView) yaw = (yaw + delta * 1.2f) % 360f
+        if (spinning && !draggingView) yaw = (yaw + delta * 1.2f) % 360f
 
         // the same backdrop the greenhouse screen boxes its grid with
         graphics.blitSprite(
@@ -332,7 +335,7 @@ class CropPreviewScreen(
         if (this.minecraft.level == null) {
             this.extractPanorama(graphics, a)
         }
-        this.extractMenuBackground(graphics)
+        graphics.fill(0, 0, width, height, Common.UI.SCREEN_DIM_COLOR)
     }
 
     override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
@@ -373,6 +376,7 @@ class CropPreviewScreen(
         }
 
         if (draggingView) {
+            spinning = false
             // sideways dragging turned out to feel right the way it first was
             yaw = (yaw + dragX.toFloat() * 0.8f) % 360f
             pitch = (pitch - dragY.toFloat() * 0.5f).coerceIn(-75f, 30f)

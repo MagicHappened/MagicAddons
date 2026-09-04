@@ -121,10 +121,15 @@ object ScreenUtil {
         val mark = "!"
         val scale = size * 0.7f / font.lineHeight
 
+        // the glyph's own middle, not the advance's: a glyph carries a spacing column on its right
+        // and sits above the line's descent row
+        val glyphCenterX = (font.width(mark) - 1) / 2f
+        val glyphCenterY = (font.lineHeight - 2) / 2f
+
         pose().pushMatrix()
-        pose().translate(x + size / 2f, y + size / 2f)
+        pose().translate(x + size / 2f - glyphCenterX * scale, y + size / 2f - glyphCenterY * scale)
         pose().scale(scale, scale)
-        text(font, Component.literal(mark), -font.width(mark) / 2, -font.lineHeight / 2, Common.UI.TEXT_COLOR, false)
+        text(font, Component.literal(mark), 0, 0, Common.UI.TEXT_COLOR, false)
         pose().popMatrix()
     }
 
