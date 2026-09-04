@@ -989,25 +989,18 @@ object GreenhouseData {
     /**
      * A mutation found where nothing stood at the last look. It spawned dry at stage one, and a
      * plant with no water debt takes every tick, so each stage it has climbed cost exactly one
-     * tick of water and one tick of time.
+     * tick of water. Its age is counted from the garden loading, whatever stage it is at: the
+     * game starts a mutation that spawned while the player was away at zero.
      */
     fun claimSpawnedMutation(instance: GreenhouseElementInstance, layout: GreenhouseLayout) {
         val grown = ((instance.lowestStage ?: 1) - 1).coerceAtLeast(0)
-        val tickMs = currentGrowthTickMs()
         val now = Instant.now()
 
         if (instance.cropDef.needsWater) {
             instance.waterLevel = WaterModel.after(0, grown, layout.waterEffectAt(instance.slot))
         }
 
-        // still at stage one: it appeared some time since the garden loaded. Further on: the ticks
-        // it took, plus what has passed of the current one
-        instance.age = if (grown == 0 || tickMs == null) {
-            Duration.between(gardenArrivedAt ?: now, now).toMillis().coerceAtLeast(0L)
-        } else {
-            grown * tickMs + (tickMs - (remainingTickMs() ?: tickMs))
-        }
-
+        instance.age = Duration.between(gardenArrivedAt ?: now, now).toMillis().coerceAtLeast(0L)
         instance.firstSeenStage = 1
     }
 
