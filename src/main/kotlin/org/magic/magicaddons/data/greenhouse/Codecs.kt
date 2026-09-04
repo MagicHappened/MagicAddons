@@ -12,6 +12,8 @@ import java.util.*
 
 object Codecs {
     val GREENHOUSE_LAYOUT_CODEC: Codec<GreenhouseLayout> by lazy {
+        // a master layout holds further layouts, so the codec refers to itself
+        Codec.recursive("GreenhouseLayout") { self ->
         RecordCodecBuilder.create { instance ->
             instance.group(
                 Codec.STRING.fieldOf("layout_id").forGetter { it.id },
@@ -26,16 +28,22 @@ object Codecs {
 
                 GREENHOUSE_ELEMENT_INSTANCE_CODEC.listOf()
                     .fieldOf("element_instances")
-                    .forGetter { it.elementInstances }
-            ).apply(instance) { id, nameOpt, slots, elements ->
+                    .forGetter { it.elementInstances },
+
+                self.listOf()
+                    .optionalFieldOf("parts", emptyList())
+                    .forGetter { it.parts }
+            ).apply(instance) { id, nameOpt, slots, elements, parts ->
                 GreenhouseLayout(
                     id = id,
                     // older files carry "unnamed" as the name the mod itself wrote, which is no name
                     name = nameOpt.orElse(null)?.takeUnless { it == "unnamed" },
                     slots = slots,
-                    elementInstances = elements.toMutableList()
+                    elementInstances = elements.toMutableList(),
+                    parts = parts.toMutableList()
                 )
             }
+        }
         }
     }
 

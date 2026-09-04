@@ -18,6 +18,8 @@ data class GreenhouseLayout(
         )
     },
     val elementInstances: MutableList<GreenhouseElementInstance> = mutableListOf(),
+    /** The further plots of a master layout, the layout itself being the first. */
+    val parts: MutableList<GreenhouseLayout> = mutableListOf(),
 ){
     private val slotIndex = slots.associateBy { it.x to it.y }
     fun getSlot(x: Int, y: Int) = slotIndex[x to y]
@@ -25,6 +27,7 @@ data class GreenhouseLayout(
 
     /** The given name, or the plot or preset number when it was never named. */
     fun displayName(): String = name
+        ?: id.substringAfter("_part", "").takeIf { it.isNotEmpty() }?.let { "Plot $it" }
         ?: id.removePrefix("plot_").takeIf { it != id }?.let { "Plot $it" }
         ?: id.removePrefix("preset_").takeIf { it != id }?.let { "Preset $it" }
         ?: id

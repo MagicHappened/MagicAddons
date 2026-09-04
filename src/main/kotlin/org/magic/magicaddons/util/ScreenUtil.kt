@@ -98,7 +98,8 @@ object ScreenUtil {
         x1: Int, y1: Int, x2: Int, y2: Int,
         hovered: Boolean,
         pressed: Boolean = false,
-        fill: Int = Common.UI.BACKGROUND_COLOR
+        fill: Int = Common.UI.BACKGROUND_COLOR,
+        frame: Int = Common.UI.BORDER_COLOR
     ) {
         fill(x1, y1, x2, y2, fill)
         if (pressed) {
@@ -106,7 +107,7 @@ object ScreenUtil {
         } else if (hovered) {
             fill(x1, y1, x2, y2, Common.UI.HOVER_WASH)
         }
-        drawBorder(x1, y1, x2, y2, Common.UI.BORDER_SIZE, if (pressed) Common.UI.SELECTED_FRAME_COLOR else Common.UI.BORDER_COLOR)
+        drawBorder(x1, y1, x2, y2, Common.UI.BORDER_SIZE, if (pressed) Common.UI.SELECTED_FRAME_COLOR else frame)
     }
 
     /** The ground of a text field or checkbox: a dark inset, framed white only while it has the keyboard. */
