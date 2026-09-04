@@ -24,8 +24,7 @@ class ConfigCategoryWidget(
     var width: Int = 200
     var height: Int = 0
 
-    val categoryTitlePadding: Int = 5
-    val featurePadding = 10
+    val categoryTitlePadding: Int = 3
 
     private val font get() = Minecraft.getInstance().font
 
@@ -38,7 +37,10 @@ class ConfigCategoryWidget(
     }
 
     /** The narrowest column that still holds every feature row. */
-    fun minWidth(): Int = categoryFeatureWidgets.maxOfOrNull { it.minWidth() } ?: 100
+    fun minWidth(): Int = categoryFeatureWidgets.maxOfOrNull { it.minWidth() } ?: 80
+
+    /** The width at which no feature name in this column wraps. */
+    fun naturalWidth(): Int = categoryFeatureWidgets.maxOfOrNull { it.naturalWidth() } ?: 0
 
     /** The tallest row any feature here needs at [columnWidth] with a checkbox of [rowHeight]. */
     fun neededRowHeight(columnWidth: Int, rowHeight: Int): Int {
@@ -46,7 +48,8 @@ class ConfigCategoryWidget(
         return categoryFeatureWidgets.maxOfOrNull { it.neededHeight(rowHeight) } ?: 0
     }
 
-    fun init(baseX: Int, baseY: Int, columnWidth: Int, rowHeight: Int) {
+    /** Lays the title and rows out from [baseX], [baseY], with [rowGap] between rows. */
+    fun init(baseX: Int, baseY: Int, columnWidth: Int, rowHeight: Int, rowGap: Int) {
         x = baseX
         y = baseY
         width = columnWidth
@@ -61,7 +64,7 @@ class ConfigCategoryWidget(
             it.y = currentY
             it.width = width
             it.layout(rowHeight)
-            currentY += it.height + featurePadding
+            currentY += it.height + rowGap
         }
 
         // total height includes title

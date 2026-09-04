@@ -10,6 +10,7 @@ import net.minecraft.network.chat.Component
 import org.lwjgl.glfw.GLFW
 import org.magic.magicaddons.Common
 import org.magic.magicaddons.util.compat.McCompat
+import kotlin.math.roundToInt
 
 /**
  * A screen whose content may be larger than the window. The content is drawn shifted by the scroll
@@ -44,6 +45,10 @@ abstract class ScrollableScreen(title: Component) : Screen(title) {
         scrollX = scrollX.coerceIn(0, maxScrollX)
         scrollY = scrollY.coerceIn(0, maxScrollY)
     }
+
+    /** A gap of [units] on a screen of the reference height, scaled to this screen's height. */
+    fun scaled(units: Int): Int =
+        (units * height / Common.UI.LAYOUT_REFERENCE_HEIGHT.toFloat()).roundToInt().coerceAtLeast(1)
 
     /** Side space that grows with the screen, so wide windows do not press content to the edge. */
     val sidePadding: Int

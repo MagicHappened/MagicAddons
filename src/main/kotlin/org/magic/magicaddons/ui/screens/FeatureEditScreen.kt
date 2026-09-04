@@ -13,6 +13,7 @@ import org.magic.magicaddons.ui.OverlayRenderable
 import org.magic.magicaddons.ui.widgets.config.SettingWidget
 import org.magic.magicaddons.ui.widgets.config.SettingWidgetFactory
 import org.magic.magicaddons.features.Feature
+import org.magic.magicaddons.util.ScreenUtil.boxHeight
 import org.magic.magicaddons.util.ScreenUtil.drawMultilineBoxCentered
 import org.magic.magicaddons.util.compat.McCompat
 
@@ -34,9 +35,11 @@ class FeatureEditScreen(
 
     val screenDisplayTitle: String = "Editing ${feature.displayName}"
 
-    val screenPaddingY: Int = 50
+    /** The centre of the title box; the settings start under it. */
+    private var titleY = 0
+    private var settingsTop = 0
 
-    val settingSpacingX: Int = 20 // setting childs CANNOT be larger than the base
+    private val settingSpacingX: Int get() = scaled(10) // setting childs CANNOT be larger than the base
 
     /** A column is never squeezed below this, however many settings share the screen. */
     private val columnMinWidth: Int = 120
@@ -70,6 +73,10 @@ class FeatureEditScreen(
         val count = childrenSettings.size
         if (count == 0) return
 
+        val titleHeight = boxHeight(screenDisplayTitle)
+        titleY = scaled(6) + titleHeight / 2
+        settingsTop = titleY + titleHeight / 2 + scaled(10)
+
         val widgetWidth = columnWidth(count, settingSpacingX, columnMinWidth)
         val totalWidth = count * widgetWidth + (count - 1) * settingSpacingX
         val startX = columnsStartX(totalWidth)
@@ -87,7 +94,7 @@ class FeatureEditScreen(
 
             widget.width = widgetWidth
             widget.x = startX + xOffset
-            widget.y = screenPaddingY
+            widget.y = settingsTop
             widget.baseWidget = true
             widget.layout()
             baseChildrenWidgets.add(widget)
@@ -99,7 +106,7 @@ class FeatureEditScreen(
         graphics.drawMultilineBoxCentered(
             screenDisplayTitle,
             columnsCenterX,
-            20
+            titleY
         )
 
         baseChildrenWidgets.forEach { it.extractRenderState(graphics, mouseX, mouseY, delta) }
