@@ -45,7 +45,7 @@ abstract class ActionPanel : Renderable, Focusable, HoverableContainer {
     protected abstract fun onPressed(button: ClickableButtonWidget, event: MouseButtonEvent): Boolean
 
     /** Puts the panel in the given box, buttons in a row along the top, wrapping when room runs out. */
-    fun layoutIn(x: Int, y: Int, width: Int, height: Int) {
+    open fun layoutIn(x: Int, y: Int, width: Int, height: Int) {
         this.x = x
         this.y = y
         this.width = width
@@ -74,7 +74,7 @@ abstract class ActionPanel : Renderable, Focusable, HoverableContainer {
     fun hasShown(): Boolean = buttons.any { isShown(it) }
 
     /** How tall the panel's buttons actually came out, which a caller may want to lay out below. */
-    val contentHeight: Int
+    open val contentHeight: Int
         get() {
             val bottom = buttons.maxOfOrNull { it.y + it.height } ?: return 0
 

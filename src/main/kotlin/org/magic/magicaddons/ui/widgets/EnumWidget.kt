@@ -33,6 +33,8 @@ class EnumWidget<T>(
     val onLeftClickValue: ((T?, MouseButtonEvent) -> Unit)? = null,
     val onRightClickValue: ((T?, MouseButtonEvent) -> Unit)? = null,
     val valueChanged: ((T) -> Unit)? = null,
+    /** Whether the open box turns into a search field; a short list has nothing to search. */
+    val searchable: Boolean = true,
 ) : Renderable, Focusable {
     val overlay = EnumOverlay(1)
 
@@ -64,7 +66,7 @@ class EnumWidget<T>(
 
     private fun open() {
         search.value = ""
-        search.focused = true
+        search.focused = searchable
         overlayOpen = true
         overlay.rebuildRows()
         overlayContext.addOverlay(overlay)
@@ -106,14 +108,14 @@ class EnumWidget<T>(
         val room = arrowLeft() - Common.UI.SPACING - (x + textPad)
 
         // open, the whole box is the search field; closed, it is a button showing the pick
-        if (overlayOpen) {
+        if (overlayOpen && searchable) {
             search.x = x
             search.y = y
             search.width = width
             search.height = height
             search.render(graphics)
         } else {
-            graphics.drawButtonPanel(x, y, x + width, y + height, hovered)
+            graphics.drawButtonPanel(x, y, x + width, y + height, hovered, pressed = overlayOpen)
             val name = currentValue?.toString() ?: PLACEHOLDER
             val shown = if (font.width(name) <= room) {
                 name
@@ -136,7 +138,7 @@ class EnumWidget<T>(
         when (mouseButtonEvent.button()) {
             0 -> {
                 // open, a click in the field moves the caret; only the arrow's side shuts the list
-                if (overlayOpen && search.mouseClicked(mouseButtonEvent, false)) return true
+                if (overlayOpen && searchable && search.mouseClicked(mouseButtonEvent, false)) return true
                 if (overlayOpen) close() else open()
                 onLeftClickValue?.invoke(currentValue, mouseButtonEvent)
             }
@@ -283,9 +285,9 @@ class EnumWidget<T>(
             }
         }
 
-        override fun charTyped(characterEvent: CharacterEvent): Boolean = search.charTyped(characterEvent)
+        override fun charTyped(characterEvent: CharacterEvent): Boolean = searchable && search.charTyped(characterEvent)
 
-        override fun keyPressed(keyEvent: KeyEvent): Boolean = search.keyPressed(keyEvent)
+        override fun keyPressed(keyEvent: KeyEvent): Boolean = searchable && search.keyPressed(keyEvent)
 
         override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
             valueWidgets.toList().forEach {

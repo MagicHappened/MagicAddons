@@ -29,6 +29,9 @@ class EditLayoutContextMenu(
     override val overlayWidth: Int = WIDTH
     override val overlayHeight: Int = HEIGHT
 
+    /** Opened from a selector's list, so it has to draw over that list. */
+    override val renderPriority: Int = 2
+
     override var hoveredElement: GuiEventListener? = null
 
     private val pad = Common.UI.SPACING_LARGE

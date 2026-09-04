@@ -9,8 +9,9 @@ class MarkContext(
     override val overlayX: Int,
     override val overlayY: Int,
     private val overlayContext: OverlayContext,
+    options: List<Option>,
     private val onPick: (LayoutSlot.Marking?) -> Unit
-) : AbstractSelectorContextMenu<MarkContext.Option>(Option.entries, "Mark as:", withSearch = false) {
+) : AbstractSelectorContextMenu<MarkContext.Option>(options, "Mark as:", withSearch = false) {
 
     enum class Option(private val label: String, val marking: LayoutSlot.Marking?) {
         Target("Target", LayoutSlot.Marking.Target),

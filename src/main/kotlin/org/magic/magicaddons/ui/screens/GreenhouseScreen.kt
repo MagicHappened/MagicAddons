@@ -1,5 +1,7 @@
 package org.magic.magicaddons.ui.screens
 
+import net.minecraft.world.level.block.state.BlockState
+import org.magic.magicaddons.data.greenhouse.LayoutSlot
 import org.magic.magicaddons.util.ScreenUtil
 import org.magic.magicaddons.util.toReadableDuration
 import net.minecraft.client.Minecraft
@@ -134,6 +136,8 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         onAddPreset = {
             addPresetLayout(it)
         },
+        onUndo = { undo() },
+        onRedo = { redo() },
         onRemovePreset = {
             removePresetLayout()
         }
@@ -279,7 +283,7 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
 
         // bottom centre, in the margin the grid already leaves under itself
         cropPreviewButton.x = (width - cropPreviewButton.width) / 2
-        cropPreviewButton.y = height - cropPreviewButton.height - Common.UI.SPACING_LARGE
+        cropPreviewButton.y = height - cropPreviewButton.height - Common.UI.SPACING_LARGE - 2
         
         when (currentDisplay) {
             CurrentDisplay.Greenhouses -> {
@@ -480,11 +484,16 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
     }
 
     /** Whether a plant of that size fits at the slot without leaving the grid or covering another. */
+    /** Whether the footprint fits inside the grid; whatever stands there already is replaced. */
     private fun canPlace(layout: GreenhouseLayout, def: CropDefinition, sx: Int, sy: Int): Boolean {
         val footprint = def.footprint
-        if (sx + footprint.width > layout.size || sy + footprint.height > layout.size) return false
+        return sx + footprint.width <= layout.size && sy + footprint.height <= layout.size
+    }
 
-        return layout.elementInstances.none { other ->
+    /** Every plant whose footprint shares a slot with the one about to be placed. */
+    private fun overlapping(layout: GreenhouseLayout, def: CropDefinition, sx: Int, sy: Int): List<GreenhouseElementInstance> {
+        val footprint = def.footprint
+        return layout.elementInstances.filter { other ->
             val ow = other.cropDef.footprint.width
             val oh = other.cropDef.footprint.height
             sx < other.slot.x + ow && other.slot.x < sx + footprint.width &&
@@ -504,6 +513,9 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         val (sx, sy) = grid.slotAt(mouseX, mouseY) ?: return
         if (!canPlace(grid.layout, def, sx, sy)) return
         val slot = grid.layout.getSlot(sx, sy) ?: return
+
+        remember(grid.layout)
+        grid.layout.elementInstances.removeAll(overlapping(grid.layout, def, sx, sy))
 
         // the plant brings the first soil it accepts with it, under every slot it covers
         def.requiredSoil.firstOrNull()?.let { soil ->
@@ -525,10 +537,10 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         val grid = displayedGridWidget ?: return
         val (menuX, menuY) = OverlayRenderable.placeOnScreen(event.x.toInt(), event.y.toInt(), MARK_MENU_WIDTH, MARK_MENU_HEIGHT)
 
-        val menu = MarkContext(menuX, menuY, this) { marking ->
-            instance.slot.slotMark = marking
-            grid.init()
+        val options = MarkContext.Option.entries.filter {
+            it != MarkContext.Option.Unique || canBeUnique(grid.layout, instance)
         }
+        val menu = MarkContext(menuX, menuY, this, options) { marking -> applyMark(instance, marking) }
         menu.init()
         addContext(menu)
     }
@@ -536,8 +548,74 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
     /** Takes a plant off the preset, for the Delete switch. */
     private fun removeFromPreset(instance: GreenhouseElementInstance) {
         val grid = displayedGridWidget ?: return
+        remember(grid.layout)
         grid.layout.elementInstances.remove(instance)
         grid.init()
+    }
+
+    /** Writes a mark onto a plant's slot; unique crop only where it would count as one. */
+    private fun applyMark(instance: GreenhouseElementInstance, marking: LayoutSlot.Marking?) {
+        val grid = displayedGridWidget ?: return
+        if (marking == LayoutSlot.Marking.UniqueCrop && !canBeUnique(grid.layout, instance)) {
+            ChatUtils.sendWithPrefix("${instance.cropDef.name} would not count as a unique crop here.")
+            return
+        }
+        remember(grid.layout)
+        instance.slot.slotMark = marking
+        grid.init()
+    }
+
+    /** A base crop counts as unique once; a second of the same kind, or a mutation, adds nothing. */
+    private fun canBeUnique(layout: GreenhouseLayout, instance: GreenhouseElementInstance): Boolean {
+        if (!instance.cropDef.isBaseCrop) return false
+        val key = GreenhouseData.UniqueCropKey.from(instance.cropDef)
+        return layout.elementInstances.none { it !== instance && GreenhouseData.UniqueCropKey.from(it.cropDef) == key }
+    }
+
+    /** The preset as it was before the last change, and the change undone, for the two arrows. */
+    private class PresetSnapshot(
+        val layout: GreenhouseLayout,
+        val elements: List<GreenhouseElementInstance>,
+        val slots: List<Triple<LayoutSlot, BlockState?, LayoutSlot.Marking?>>
+    )
+
+    private var undoSnapshot: PresetSnapshot? = null
+    private var redoSnapshot: PresetSnapshot? = null
+
+    private fun snapshot(layout: GreenhouseLayout) = PresetSnapshot(
+        layout,
+        layout.elementInstances.toList(),
+        layout.slots.map { Triple(it, it.placedBlock, it.slotMark) }
+    )
+
+    /** Called before a change, so one step back is always possible; a new change forgets the redo. */
+    private fun remember(layout: GreenhouseLayout) {
+        undoSnapshot = snapshot(layout)
+        redoSnapshot = null
+    }
+
+    private fun restore(saved: PresetSnapshot) {
+        saved.layout.elementInstances.clear()
+        saved.layout.elementInstances.addAll(saved.elements)
+        saved.slots.forEach { (slot, block, mark) ->
+            slot.placedBlock = block
+            slot.slotMark = mark
+        }
+        presetGridWidgets.find { it.layout === saved.layout }?.init()
+    }
+
+    private fun undo() {
+        val saved = undoSnapshot ?: return
+        redoSnapshot = snapshot(saved.layout)
+        restore(saved)
+        undoSnapshot = null
+    }
+
+    private fun redo() {
+        val saved = redoSnapshot ?: return
+        undoSnapshot = snapshot(saved.layout)
+        restore(saved)
+        redoSnapshot = null
     }
 
     /** Puts the preset down and shows an empty grid; the preset itself keeps everything it had. */
@@ -751,26 +829,36 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         }
 
         if (currentDisplay == CurrentDisplay.Presets) {
+            // a right click puts a picked plant down, wherever the mouse is
+            if (mouseButtonEvent.button() == 1 && plantPalette.selected != null) {
+                plantPalette.dropSelection()
+                return true
+            }
+
             if (plantPalette.mouseClicked(mouseButtonEvent, doubled)) return true
 
-            // a picked plant lands on the slot clicked; a right click puts it down instead
+            // a picked plant lands on the slot clicked
             plantPalette.selected?.let { picked ->
                 val overSlot = (displayedGridWidget ?: emptyGridWidget)?.slotAt(mouseButtonEvent.x, mouseButtonEvent.y) != null
                 if (mouseButtonEvent.button() == 0 && overSlot) {
                     placeDragged(picked, mouseButtonEvent.x, mouseButtonEvent.y)
                     return true
                 }
-                if (mouseButtonEvent.button() == 1) {
-                    plantPalette.dropSelection()
-                    return true
-                }
             }
 
-            // with the switch on, a click on a plant takes it off the preset instead of asking about it
-            if (plantPalette.deleteMode && mouseButtonEvent.button() == 0) {
-                (displayedGridWidget?.hoveredElement as? ElementWidget)?.let {
-                    removeFromPreset(it.instance)
-                    return true
+            if (mouseButtonEvent.button() == 0) {
+                (displayedGridWidget?.hoveredElement as? ElementWidget)?.let { element ->
+                    // with the switch on, a click on a plant takes it off the preset
+                    if (plantPalette.deleteMode) {
+                        removeFromPreset(element.instance)
+                        return true
+                    }
+                    // with the mark selector on something, a click on a plant marks it
+                    val choice = presetUI.markChoice
+                    if (choice.applies) {
+                        applyMark(element.instance, choice.marking)
+                        return true
+                    }
                 }
             }
 
@@ -781,6 +869,12 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
                     return true
                 }
             }
+        }
+
+        // a right click on the name at the top renames what is shown
+        if (mouseButtonEvent.button() == 1 && dynamicNameDisplay?.isMouseOver(mouseButtonEvent.x, mouseButtonEvent.y) == true) {
+            openLayoutWidgetContext(displayedGridWidget?.layout, mouseButtonEvent)
+            return true
         }
 
         if (cropPreviewButton.mouseClicked(mouseButtonEvent, doubled)) {
