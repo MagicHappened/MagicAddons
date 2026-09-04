@@ -48,6 +48,9 @@ class EnumWidget<T>(
     var overlayOpen = false
     var hovered = false
 
+    /** A frame colour of the owner's choosing, when the pick is worth showing on the box itself. */
+    var frameColor: Int? = null
+
     /** How many pixels the open list may take, null for whatever the screen has. */
     var overlayBudget: Int? = null
 
@@ -115,7 +118,7 @@ class EnumWidget<T>(
             search.height = height
             search.render(graphics)
         } else {
-            graphics.drawButtonPanel(x, y, x + width, y + height, hovered, pressed = overlayOpen)
+            graphics.drawButtonPanel(x, y, x + width, y + height, hovered, pressed = overlayOpen, frame = frameColor ?: Common.UI.BORDER_COLOR)
             val name = currentValue?.toString() ?: PLACEHOLDER
             val shown = if (font.width(name) <= room) {
                 name

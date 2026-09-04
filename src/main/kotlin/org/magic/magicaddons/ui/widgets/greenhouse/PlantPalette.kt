@@ -1,5 +1,8 @@
 package org.magic.magicaddons.ui.widgets.greenhouse
 
+import org.magic.magicaddons.data.greenhouse.LayoutSlot
+import org.magic.magicaddons.ui.widgets.EnumWidget
+import org.magic.magicaddons.ui.OverlayContext
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.input.CharacterEvent
@@ -26,8 +29,34 @@ import kotlin.math.roundToInt
  * Also holds the Clear all button and the Delete switch, which the owning screen acts on.
  */
 class PlantPalette(
-    private val onClearAll: () -> Unit
+    overlayContext: OverlayContext,
+    private val onClearAll: () -> Unit,
+    private val onUndo: () -> Unit,
+    private val onRedo: () -> Unit
 ) {
+
+    /** What a click on a plant does while the selector is on something other than Off. */
+    enum class MarkChoice(private val label: String, val marking: LayoutSlot.Marking?, val applies: Boolean) {
+        Off("Mark: off", null, false),
+        Target("Mark: Target", LayoutSlot.Marking.Target, true),
+        Ingredient("Mark: Ingredient", LayoutSlot.Marking.Ingredient, true),
+        Unique("Mark: Unique crop", LayoutSlot.Marking.UniqueCrop, true),
+        Clear("Mark: clear", null, true);
+
+        override fun toString(): String = label
+    }
+
+    private val markSelector = EnumWidget(
+        values = MarkChoice.entries,
+        currentValue = MarkChoice.Off,
+        overlayContext = overlayContext,
+        searchable = false
+    )
+
+    val markChoice: MarkChoice get() = markSelector.currentValue ?: MarkChoice.Off
+
+    private val undoButton = ClickableButtonWidget(ROW, ROW, Component.literal("←"))
+    private val redoButton = ClickableButtonWidget(ROW, ROW, Component.literal("→"))
     var x: Int = 0
     var y: Int = 0
     var width: Int = 0
@@ -93,7 +122,8 @@ class PlantPalette(
     }
 
     private fun titleHeight(): Int = font.lineHeight + Common.UI.SPACING * 2
-    private fun gridTop(): Int = y + titleHeight() + ROW + Common.UI.SPACING + ROW + Common.UI.SPACING
+    /** Under the title come the search, the two buttons, then the mark row, each a row and a gap. */
+    private fun gridTop(): Int = y + titleHeight() + (ROW + Common.UI.SPACING) * 3
     /** The cells start where the search and the buttons start. */
     private fun gridLeft(): Int = x + EDGE_PAD
 
@@ -126,6 +156,15 @@ class PlantPalette(
         clearButton.y = search.y + ROW + Common.UI.SPACING
         deleteButton.x = clearButton.x + clearButton.width + Common.UI.SPACING
         deleteButton.y = clearButton.y
+
+        redoButton.x = x + width - EDGE_PAD - ROW
+        redoButton.y = clearButton.y + ROW + Common.UI.SPACING
+        undoButton.x = redoButton.x - Common.UI.SPACING - ROW
+        undoButton.y = redoButton.y
+        markSelector.x = search.x
+        markSelector.y = redoButton.y
+        markSelector.height = ROW
+        markSelector.width = (undoButton.x - Common.UI.SPACING - markSelector.x).coerceAtLeast(40)
 
         // the cells fill the room under the buttons exactly: as many rows of about the usual size
         // as fit, each row then stretched to use the whole height, within sane bounds
@@ -164,6 +203,15 @@ class PlantPalette(
         deleteButton.pressed = deleteMode
         clearButton.extractRenderState(graphics, mouseX, mouseY, delta)
         deleteButton.extractRenderState(graphics, mouseX, mouseY, delta)
+
+        // the box wears the colour of the mark it would give, and red while set to clear marks
+        markSelector.frameColor = when (markChoice) {
+            MarkChoice.Clear -> Common.UI.DANGER_COLOR
+            else -> markChoice.marking?.color
+        }
+        markSelector.extractRenderState(graphics, mouseX, mouseY, delta)
+        undoButton.extractRenderState(graphics, mouseX, mouseY, delta)
+        redoButton.extractRenderState(graphics, mouseX, mouseY, delta)
 
         val list = shown()
         val rows = totalRows()
@@ -227,6 +275,9 @@ class PlantPalette(
         hovered = cropAt(mouseX, mouseY)
         clearButton.mouseMoved(mouseX, mouseY)
         deleteButton.mouseMoved(mouseX, mouseY)
+        markSelector.mouseMoved(mouseX, mouseY)
+        undoButton.mouseMoved(mouseX, mouseY)
+        redoButton.mouseMoved(mouseX, mouseY)
     }
 
     fun mouseClicked(event: MouseButtonEvent, doubled: Boolean): Boolean {
@@ -236,7 +287,17 @@ class PlantPalette(
             return true
         }
         if (search.mouseClicked(event, doubled)) return true
+        if (markSelector.mouseClicked(event, doubled)) return true
         if (!isMouseOver(event.x, event.y)) return false
+
+        if (undoButton.mouseClicked(event, doubled)) {
+            onUndo()
+            return true
+        }
+        if (redoButton.mouseClicked(event, doubled)) {
+            onRedo()
+            return true
+        }
 
         if (clearButton.mouseClicked(event, doubled)) {
             onClearAll()
