@@ -77,10 +77,10 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, Focus
     override var focusedState: Boolean = false
 
     /** One fact about a plant, small enough to write over it. The colour is how the controls stand for it. */
-    enum class HoverInfo(val color: Int) {
-        GrowthStage(0xFF3FBF3F.toInt()),
-        WaterLevel(0xFF3F7FDF.toInt()),
-        DecayTime(0xFFCC3333.toInt());
+    enum class HoverInfo(val color: Int, val label: String) {
+        GrowthStage(0xFF3FBF3F.toInt(), "Growth stage"),
+        WaterLevel(0xFF3F7FDF.toInt(), "Water level"),
+        DecayTime(0xFFCC3333.toInt(), "Decay time");
 
         /** This fact about [instance], or null while the game has not told us the value yet. */
         fun valueFor(instance: GreenhouseElementInstance): String? = when (this) {

@@ -415,7 +415,7 @@ class GreenhouseGrid(
                 }
 
                 for (stage in stages) {
-                    val result = stage.matchesStage(origin, remainingStands, candidate.footprint)
+                    val result = stage.matchesStage(origin, remainingStands, candidate.footprint, candidate.rotatesWithPlot)
 
                     if (!result.matched) continue
                     if (result.score <= bestScore) continue
