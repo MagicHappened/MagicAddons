@@ -86,11 +86,11 @@ object Noctilume : CropDefinitionProvider {
         ),
         skyblockId = SkyBlockItemId.item("NOCTILUME"),
         stageDefs = listOf(
-            // the seedling's skull says nothing about day or night
+            // the only seedling recorded so far craves night; a day one is expected
             look(
                 stage = 1,
                 hash = "281e8164cf7af240cc235d4826996013bd045de20d40abd262145dc24c790a09",
-                craving = null,
+                craving = CropStandReader.CRAVES_NIGHT,
                 wheatAge = 3,
                 offsets = seedOffsets
             ),
