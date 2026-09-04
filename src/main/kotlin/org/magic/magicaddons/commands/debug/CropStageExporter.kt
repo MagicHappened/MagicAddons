@@ -25,9 +25,11 @@ import org.magic.magicaddons.util.isCardinalYaw
  */
 object CropStageExporter {
 
-    /** The skull the plot's own marker stand carries, which belongs to no crop. */
-    const val PLOT_MARKER_SKIN: String =
-        "4099589796de185787ab92c3066d0d0af832ffad7153a42bb2e2d23598e7ea60"
+    /** The skulls the plot's own marker stands carry, which belong to no crop. */
+    val PLOT_MARKER_SKINS: Set<String> = setOf(
+        "4099589796de185787ab92c3066d0d0af832ffad7153a42bb2e2d23598e7ea60",
+        "df03ad96092f3f789902436709cdf69de6b727c121b3c2daef9ffa1ccaed186c"
+    )
 
     fun copyCropStageData(
         basePos: BlockPos,
@@ -137,7 +139,7 @@ object CropStageExporter {
 
             // every greenhouse carries these, one per plot, and one standing high above a crop was
             // being written into that crop's stage as a stand nine blocks in the air
-            if (hash == PLOT_MARKER_SKIN) continue
+            if (hash in PLOT_MARKER_SKINS) continue
             val headRotations = entity.headPose
             val customName = if (entity.hasCustomName()) {
                 entity.name.string.replace("\"", "\\\"")
