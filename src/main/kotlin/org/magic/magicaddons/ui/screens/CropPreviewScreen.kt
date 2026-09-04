@@ -1,7 +1,5 @@
 package org.magic.magicaddons.ui.screens
 
-import net.minecraft.resources.Identifier
-import net.minecraft.client.renderer.RenderPipelines
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
@@ -29,6 +27,8 @@ import org.magic.magicaddons.util.ScreenUtil
 import org.magic.magicaddons.util.ScreenUtil.drawBorder
 import org.magic.magicaddons.util.ScreenUtil.drawSimpleTooltip
 import org.magic.magicaddons.util.ScreenUtil.drawWarningBadge
+import org.magic.magicaddons.util.ScreenUtil.drawPanel
+import org.magic.magicaddons.util.ScreenUtil.drawButtonPanel
 import org.magic.magicaddons.util.ScreenUtil.drawMultilineBoxCentered
 
 /**
@@ -204,14 +204,12 @@ class CropPreviewScreen(
 
         if (spinning && !draggingView) yaw = (yaw + delta * 1.2f) % 360f
 
-        // the same backdrop the greenhouse screen boxes its grid with
-        graphics.blitSprite(
-            RenderPipelines.GUI_TEXTURED,
-            Identifier.fromNamespaceAndPath("minecraft", "popup/background"),
+        // the same panel every other screen boxes its content with
+        graphics.drawPanel(
             previewX - BORDER_PAD,
             previewY - BORDER_PAD,
-            previewSize + BORDER_PAD * 2,
-            previewSize + BORDER_PAD * 2
+            previewX + previewSize + BORDER_PAD,
+            previewY + previewSize + BORDER_PAD
         )
 
         when {
@@ -227,7 +225,7 @@ class CropPreviewScreen(
         }
 
         if (def != null) {
-            drawSlider(graphics, def)
+            drawSlider(graphics, def, mouseX, mouseY)
             drawIncompleteMark(graphics, mouseX, mouseY)
         }
 
@@ -299,7 +297,7 @@ class CropPreviewScreen(
         pose.popMatrix()
     }
 
-    private fun drawSlider(graphics: GuiGraphicsExtractor, def: CropDefinition) {
+    private fun drawSlider(graphics: GuiGraphicsExtractor, def: CropDefinition, mouseX: Int, mouseY: Int) {
         if (def.maxStage <= 1) return
 
         val trackY = sliderY + SLIDER_HEIGHT / 2
@@ -307,11 +305,15 @@ class CropPreviewScreen(
         graphics.fill(sliderX, trackY - 1, sliderX + sliderW, trackY + 1, Common.UI.BORDER_COLOR)
 
         val handleX = sliderX + ((stage - 1) * (sliderW - HANDLE_WIDTH)) / (def.maxStage - 1)
+        val onHandle = mouseX in handleX until handleX + HANDLE_WIDTH && mouseY in sliderY until sliderY + SLIDER_HEIGHT
 
-        graphics.fill(
+        // the handle is a small button: washed under the mouse, shaded while it is being dragged
+        graphics.drawButtonPanel(
             handleX, sliderY,
             handleX + HANDLE_WIDTH, sliderY + SLIDER_HEIGHT,
-            Common.UI.TEXT_COLOR
+            hovered = onHandle || draggingSlider,
+            pressed = draggingSlider,
+            fill = Common.UI.ACCENT_COLOR
         )
 
         val label = "Stage $stage / ${def.maxStage}"
@@ -464,7 +466,7 @@ class CropPreviewScreen(
         const val BORDER_PAD: Int = 6
 
         const val SLIDER_HEIGHT: Int = 10
-        const val HANDLE_WIDTH: Int = 5
+        const val HANDLE_WIDTH: Int = 8
 
         const val BADGE_SIZE: Int = 16
 
