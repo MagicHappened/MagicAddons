@@ -52,8 +52,8 @@ object CropCollector : EntityUtils.HighlightSource {
     /** How far above the soil a plant can reach, for the stand search and the block columns. */
     private const val PLANT_HEIGHT: Int = 15
 
-    /** The skull the plot marker stand carries on every greenhouse, never part of a plant. */
-    private val PLOT_MARKER_SKIN: String = CropStageExporter.PLOT_MARKER_SKIN
+    /** The skulls the plot marker stands carry on every greenhouse, never part of a plant. */
+    private val PLOT_MARKER_SKINS: Set<String> = CropStageExporter.PLOT_MARKER_SKINS
 
     private const val GRAY: Int = 0xFF9E9E9E.toInt()
     private const val UNKNOWN_WHITE: Int = 0xFFFFFFFF.toInt()
@@ -177,7 +177,7 @@ object CropCollector : EntityUtils.HighlightSource {
             .filterNot { PlayerUtils.getSkullHash(it) == null && !it.hasCustomName() }
             // the plot's own marker head hovers high over every greenhouse without being flagged
             // a marker, and once floated seven blocks up into a snoozling export
-            .filterNot { PlayerUtils.getSkullHash(it) == PLOT_MARKER_SKIN }
+            .filterNot { PlayerUtils.getSkullHash(it) in PLOT_MARKER_SKINS }
             .toMutableList()
 
         // first pass: everything the definitions already recognise, wherever its origin lies
@@ -623,7 +623,7 @@ object CropCollector : EntityUtils.HighlightSource {
             .filterNot { PlayerUtils.getSkullHash(it) == null && !it.hasCustomName() }
             // the plot's own marker head hovers high over every greenhouse without being flagged
             // a marker, and once floated seven blocks up into a snoozling export
-            .filterNot { PlayerUtils.getSkullHash(it) == PLOT_MARKER_SKIN }
+            .filterNot { PlayerUtils.getSkullHash(it) in PLOT_MARKER_SKINS }
             // a stand holding an item belongs where the item hangs, not where its feet are: the
             // jellybean's smallest looks stand in the next block over with an arm reached out
             .filter { stand ->
