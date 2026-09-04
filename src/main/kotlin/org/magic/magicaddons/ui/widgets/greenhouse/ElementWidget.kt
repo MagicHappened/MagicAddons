@@ -7,8 +7,7 @@ import org.magic.magicaddons.Common
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.components.Renderable
 import net.minecraft.client.gui.components.events.GuiEventListener
-import net.minecraft.client.gui.screens.inventory.tooltip.ClientTooltipComponent
-import net.minecraft.client.gui.screens.inventory.tooltip.DefaultTooltipPositioner
+import org.magic.magicaddons.util.ScreenUtil.drawTooltipLines
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.client.renderer.RenderPipelines
 import net.minecraft.client.renderer.texture.TextureAtlasSprite
@@ -37,6 +36,9 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, Focus
 
     /** When this plant was dropped into its slot, for the pop it makes on arriving; zero for none. */
     var appearedAt: Long = 0L
+
+    /** Whether this plant stands in a plan rather than a greenhouse, so it has no stage or water. */
+    var inPreset: Boolean = false
     var width = 50
     var height = 50
     /** Resolved on demand: only the fire element draws one, and resolving can throw. */
@@ -378,14 +380,16 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, Focus
                 null -> null
             }
 
-            growthText?.let { add(labelled("Growth", it)) }
+            if (!inPreset) {
+                growthText?.let { add(labelled("Growth", it)) }
 
-            // a plant that never drinks has no water level worth a line of its own
-            if (cropDefinition.needsWater) {
-                add(labelled("Water", instance.waterLevel?.let { "$it%" } ?: "Unknown"))
+                // a plant that never drinks has no water level worth a line of its own
+                if (cropDefinition.needsWater) {
+                    add(labelled("Water", instance.waterLevel?.let { "$it%" } ?: "Unknown"))
+                }
+
+                decayRemainingMs(instance)?.let { add(labelled("Decays in", readableDuration(it))) }
             }
-
-            decayRemainingMs(instance)?.let { add(labelled("Decays in", readableDuration(it))) }
 
             val footprint = cropDefinition.footprint
             if (footprint.width > 1 || footprint.height > 1) {
@@ -393,16 +397,7 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, Focus
             }
         }
 
-        val components = lines.map { ClientTooltipComponent.create(it.visualOrderText) }
-
-        graphics.tooltip(
-            font,
-            components,
-            mouseX,
-            mouseY,
-            DefaultTooltipPositioner.INSTANCE,
-            null
-        )
+        graphics.drawTooltipLines(lines.map { it.visualOrderText }, mouseX, mouseY)
     }
 
 

@@ -23,7 +23,11 @@ data class GreenhouseLayout(
     fun getSlot(x: Int, y: Int) = slotIndex[x to y]
     override fun toString(): String = displayName()
 
-    fun displayName(): String = name ?: id
+    /** The given name, or the plot or preset number when it was never named. */
+    fun displayName(): String = name
+        ?: id.removePrefix("plot_").takeIf { it != id }?.let { "Plot $it" }
+        ?: id.removePrefix("preset_").takeIf { it != id }?.let { "Preset $it" }
+        ?: id
 
     /** The water effects reaching a slot, as a total signed percentage. Only direct neighbours count. */
 

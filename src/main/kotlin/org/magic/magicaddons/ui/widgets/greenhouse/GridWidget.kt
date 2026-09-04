@@ -111,6 +111,7 @@ class GridWidget(
                 ?: instance.cropDef.skyblockId?.toItem()?.takeUnless { it.isEmpty }
                 ?: ItemStack(Items.BARRIER)
             if (instance in justPlaced) widget.appearedAt = System.currentTimeMillis()
+            widget.inPreset = layout.id.startsWith("preset_")
             elementWidgets.add(widget)
         }
         justPlaced.clear()

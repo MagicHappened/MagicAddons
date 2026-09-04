@@ -18,13 +18,14 @@ import org.magic.magicaddons.util.ScreenUtil.drawScrollBar
 import org.magic.magicaddons.util.ScreenUtil.renderFakeItem
 import org.magic.magicaddons.util.ScreenUtil.drawShelf
 import org.magic.magicaddons.util.ScreenUtil.drawSimpleTooltip
+import kotlin.math.roundToInt
 
 /**
  * Every plant as an icon on a shelf, searched from the top, dragged from here onto a preset's grid.
  * Also holds the Clear all button and the Delete switch, which the owning screen acts on.
  */
 class PlantPalette(
-    private val onClearAll: (MouseButtonEvent) -> Unit
+    private val onClearAll: () -> Unit
 ) {
     var x: Int = 0
     var y: Int = 0
@@ -46,6 +47,10 @@ class PlantPalette(
 
     var hovered: CropDefinition? = null
         private set
+
+    /** Where the mouse last was, so a scroll can work out what is under it now. */
+    private var lastMouseX = 0.0
+    private var lastMouseY = 0.0
 
     /** The plant being carried, and where the mouse has it. */
     var dragging: CropDefinition? = null
@@ -70,9 +75,10 @@ class PlantPalette(
 
     private fun titleHeight(): Int = font.lineHeight + Common.UI.SPACING * 2
     private fun gridTop(): Int = y + titleHeight() + ROW + Common.UI.SPACING + ROW + Common.UI.SPACING
-    private fun gridLeft(): Int = x + ActionPanel.PADDING
+    /** The cells sit centred in the shelf's width. */
+    private fun gridLeft(): Int = x + (width - columns * cell) / 2
 
-    /** The frame around an icon, in the colour of the plant's rarity. Base crops sit with the common ones. */
+    /** The ground under an icon, in the colour of the plant's rarity. Base crops sit with the common ones. */
     private fun rarityColour(def: CropDefinition): Int = when (CropRegistry.tierOf[def] ?: 7) {
         0, 1 -> RARITY_COMMON
         2 -> RARITY_UNCOMMON
@@ -97,11 +103,13 @@ class PlantPalette(
         deleteButton.x = clearButton.x + clearButton.width + Common.UI.SPACING
         deleteButton.y = clearButton.y
 
-        // four to six across, each as big as that leaves; the rows are whatever fits under
+        // the cells fill the room under the buttons exactly: as many rows of about the usual size
+        // as fit, each row then stretched to use the whole height, within sane bounds
         val inner = width - ActionPanel.PADDING * 2
-        columns = (inner / MIN_CELL).coerceIn(MIN_COLUMNS, MAX_COLUMNS)
-        cell = (inner / columns).coerceAtLeast(MIN_CELL)
-        visibleRows = ((y + height - ActionPanel.PADDING - gridTop()) / cell).coerceAtLeast(1)
+        val room = (y + height - ActionPanel.PADDING - gridTop()).coerceAtLeast(MIN_CELL)
+        visibleRows = (room.toFloat() / TARGET_CELL).roundToInt().coerceAtLeast(1)
+        cell = (room / visibleRows).coerceIn(MIN_CELL, MAX_CELL)
+        columns = (inner / cell).coerceAtLeast(1)
     }
 
     private fun totalRows(): Int = (shown().size + columns - 1) / columns
@@ -140,9 +148,9 @@ class PlantPalette(
             val cellX = gridLeft() + index % columns * cell
             val cellY = gridTop() + index / columns * cell
 
-            graphics.fill(cellX + 1, cellY + 1, cellX + cell - 1, cellY + cell - 1, Common.UI.FIELD_COLOR)
+            graphics.fill(cellX + 1, cellY + 1, cellX + cell - 1, cellY + cell - 1, rarityColour(def))
             if (def == hovered) graphics.fill(cellX + 1, cellY + 1, cellX + cell - 1, cellY + cell - 1, Common.UI.HOVER_WASH)
-            graphics.drawBorder(cellX + 1, cellY + 1, cellX + cell - 1, cellY + cell - 1, 1, rarityColour(def))
+            graphics.drawBorder(cellX + 1, cellY + 1, cellX + cell - 1, cellY + cell - 1, 1, Common.UI.BORDER_COLOR)
             graphics.renderFakeItem(stackFor(def), cellX + ICON_PAD, cellY + ICON_PAD, cell - ICON_PAD * 2, cell - ICON_PAD * 2)
         }
 
@@ -178,6 +186,8 @@ class PlantPalette(
         mouseX.toInt() in x until x + width && mouseY.toInt() in y until y + height
 
     fun mouseMoved(mouseX: Double, mouseY: Double) {
+        lastMouseX = mouseX
+        lastMouseY = mouseY
         hovered = cropAt(mouseX, mouseY)
         clearButton.mouseMoved(mouseX, mouseY)
         deleteButton.mouseMoved(mouseX, mouseY)
@@ -188,7 +198,7 @@ class PlantPalette(
         if (!isMouseOver(event.x, event.y)) return false
 
         if (clearButton.mouseClicked(event, doubled)) {
-            onClearAll(event)
+            onClearAll()
             return true
         }
         if (deleteButton.mouseClicked(event, doubled)) {
@@ -221,6 +231,7 @@ class PlantPalette(
     fun mouseScrolled(mouseX: Double, mouseY: Double, scrollY: Double): Boolean {
         if (!isMouseOver(mouseX, mouseY)) return false
         scroll = (scroll - scrollY.toInt().coerceIn(-1, 1)).coerceIn(0, (totalRows() - visibleRows).coerceAtLeast(0))
+        hovered = cropAt(lastMouseX, lastMouseY)
         return true
     }
 
@@ -233,17 +244,19 @@ class PlantPalette(
         private const val SEARCH_HINT: String = "Search…"
 
         private const val ROW: Int = 20
-        private const val MIN_CELL: Int = 24
-        private const val MIN_COLUMNS: Int = 4
-        private const val MAX_COLUMNS: Int = 6
+
+        /** About the cell at 1080p on gui scale 2, and how far from it the fit may stray. */
+        private const val TARGET_CELL: Int = 28
+        private const val MIN_CELL: Int = 22
+        private const val MAX_CELL: Int = 40
         private const val ICON_PAD: Int = 4
 
-        /** The game's rarity colours, on the frame around each icon. */
-        private const val RARITY_COMMON: Int = 0xFFAAAAAA.toInt()
-        private const val RARITY_UNCOMMON: Int = 0xFF55FF55.toInt()
-        private const val RARITY_RARE: Int = 0xFF5555FF.toInt()
-        private const val RARITY_EPIC: Int = 0xFFAA00AA.toInt()
-        private const val RARITY_LEGENDARY: Int = 0xFFFFAA00.toInt()
+        /** The game's rarity colours, toned down, on the ground under each icon. */
+        private const val RARITY_COMMON: Int = 0xFF5C5C5C.toInt()
+        private const val RARITY_UNCOMMON: Int = 0xFF2E7D32.toInt()
+        private const val RARITY_RARE: Int = 0xFF2F4FA3.toInt()
+        private const val RARITY_EPIC: Int = 0xFF7B1F8A.toInt()
+        private const val RARITY_LEGENDARY: Int = 0xFFB07A14.toInt()
         private const val CLEAR_WIDTH: Int = 60
         private const val DELETE_WIDTH: Int = 50
 
