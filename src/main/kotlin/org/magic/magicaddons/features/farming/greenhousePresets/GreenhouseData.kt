@@ -83,6 +83,9 @@ object GreenhouseData {
 
     var lastPlot: Plot? = null
 
+    /** When the garden last loaded around the player, the earliest a spawned mutation can be from. */
+    private var gardenArrivedAt: Instant? = null
+
     var checkGreenhouses = false
     var greenhousesInitialized = false
     var greenhouseGrids = mutableListOf<GreenhouseGrid>()
@@ -593,6 +596,9 @@ object GreenhouseData {
     fun onTick(event: TickEvent) {
         val now = Instant.now()
         val last = lastCheckTime
+
+        // the game may already be on the garden when the mod starts, which no island change reports
+        if (gardenArrivedAt == null && LocationAPI.island == SkyBlockIsland.GARDEN) gardenArrivedAt = now
         if (
             last == null ||
             last.plusSeconds(60).isBefore(now) ||
@@ -646,6 +652,8 @@ object GreenhouseData {
         // returning to the garden just after a dehydration warning is treated as a response to it,
         // so a teleport to the plot is offered two seconds later, once the world has loaded
         if (event.new == SkyBlockIsland.GARDEN) {
+            gardenArrivedAt = Instant.now()
+
             awayWarning?.let { (at, plant) ->
                 if (Duration.between(at, Instant.now()) <= TELEPORT_OFFER_WINDOW) {
                     teleportOffer = plant
@@ -972,7 +980,35 @@ object GreenhouseData {
         element.instance.age = 0L
         if (definition.needsWater) element.instance.waterLevel = 0
 
+        // placed at whatever stage it was bought at, so it never counts as grown here
+        element.instance.firstSeenStage = element.instance.lowestStage
+
         forgetPlacedCrop()
+    }
+
+    /**
+     * A mutation found where nothing stood at the last look. It spawned dry at stage one, and a
+     * plant with no water debt takes every tick, so each stage it has climbed cost exactly one
+     * tick of water and one tick of time.
+     */
+    fun claimSpawnedMutation(instance: GreenhouseElementInstance, layout: GreenhouseLayout) {
+        val grown = ((instance.lowestStage ?: 1) - 1).coerceAtLeast(0)
+        val tickMs = currentGrowthTickMs()
+        val now = Instant.now()
+
+        if (instance.cropDef.needsWater) {
+            instance.waterLevel = WaterModel.after(0, grown, layout.waterEffectAt(instance.slot))
+        }
+
+        // still at stage one: it appeared some time since the garden loaded. Further on: the ticks
+        // it took, plus what has passed of the current one
+        instance.age = if (grown == 0 || tickMs == null) {
+            Duration.between(gardenArrivedAt ?: now, now).toMillis().coerceAtLeast(0L)
+        } else {
+            grown * tickMs + (tickMs - (remainingTickMs() ?: tickMs))
+        }
+
+        instance.firstSeenStage = 1
     }
 
     /** What the server says when a placement did not happen, so the claim is dropped rather than reused. */

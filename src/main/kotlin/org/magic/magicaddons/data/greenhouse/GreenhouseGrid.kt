@@ -222,6 +222,11 @@ class GreenhouseGrid(
                     carryOver(standing, found)
                 } else {
                     if (standing != null) result.replaced++ else result.added++
+
+                    // a mutation where nothing stood at the last look grew there on its own
+                    if (standing == null && def.isMutation && state.lastUpdateTimestamp != null) {
+                        GreenhouseData.claimSpawnedMutation(found.instance, layout)
+                    }
                     found
                 }
 
