@@ -42,8 +42,7 @@ object Pumpkin : CropDefinitionProvider {
                     )
                 ),
                 1..1
-            )
-            ,
+            ),
             CropStage(
                 blocks = listOf(
                     CropBlockState(

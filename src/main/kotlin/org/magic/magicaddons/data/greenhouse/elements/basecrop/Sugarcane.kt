@@ -82,6 +82,23 @@ object Sugarcane : CropDefinitionProvider {
             ),
             CropStage(
                 blocks = CropBlockState.blockStatePattern(
+                    listOf(
+                        BlockPos(0, 1, 0),
+                        BlockPos(0, 2, 0),
+                        BlockPos(0, 3, 0)
+                    ),
+                    blockState = sugarcaneState()
+                ) + listOf(
+                    CropBlockState(
+                        offset = BlockPos(0, 4, 0),
+                        blockState = wheatState(3)
+                    )
+                ),
+                armorStands = null,
+                6..6
+            ),
+            CropStage(
+                blocks = CropBlockState.blockStatePattern(
                     positions = listOf(
                         BlockPos(0,1,0),
                         BlockPos(0,2,0),

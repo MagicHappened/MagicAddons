@@ -87,17 +87,40 @@ object Sunflower : CropDefinitionProvider {
             CropStage(
                 blocks = listOf(
                     CropBlockState(
-                        offset = BlockPos(0,1,0),
+                        offset = BlockPos(0, 1, 0),
                         blockState = melonStemState(4)
                     )
                 ),
                 armorStands = listOf(
                     CropArmorStand(
-                        offset = Vec3(-0.1875, 0.03125, 0.0),
+                        offset = Vec3(0.0, 0.03125, 0.1875),
+                        headRotation = Rotations(-10.0f, 0.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
                         hashString = "b40d6fc1e1b67c58d7f82350bcac083f9e9547f9131236463164417fbdd3bee4",
+                        isSmall = false
                     )
                 ),
-                5..5,
+                5..5
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = melonStemState(5)
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, 0.0625, 0.1875),
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
+                        hashString = "8082ca3aa210204d1daa8a3b737f594e102daf3c87b776530d49ba79b9b22e71",
+                        isSmall = false
+                    )
+                ),
+                6..6
             ),
             CropStage(
                 blocks = listOf(
@@ -129,8 +152,7 @@ object Sunflower : CropDefinitionProvider {
                     )
                 ),
                 9..9,
-            )
-            ,
+            ),
             CropStage(
                 blocks = listOf(
                     CropBlockState(

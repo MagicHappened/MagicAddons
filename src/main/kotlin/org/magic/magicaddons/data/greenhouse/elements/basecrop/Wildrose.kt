@@ -220,8 +220,7 @@ object Wildrose : CropDefinitionProvider {
                     )
                 ),
                 14..14
-            )
-            ,
+            ),
             CropStage(
                 blocks = listOf(
                     CropBlockState(

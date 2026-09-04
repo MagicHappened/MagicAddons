@@ -62,8 +62,7 @@ object Soggybud : CropDefinitionProvider {
                     )
                 ),
                 4..4
-            )
-            ,
+            ),
             CropStage(
                 blocks = listOf(
                 ),
@@ -100,8 +99,7 @@ object Soggybud : CropDefinitionProvider {
                     )
                 ),
                 7..7
-            )
-            ,
+            ),
             CropStage(
                 blocks = listOf(
                     CropBlockState(
