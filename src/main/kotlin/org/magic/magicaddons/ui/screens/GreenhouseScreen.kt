@@ -136,8 +136,9 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
     override fun init() {
         super.init()
 
-        // a cramped window is laid out as if it had twice the units, then drawn at half size
-        drawScale = if (width < COMFORTABLE_WIDTH || height < COMFORTABLE_HEIGHT) 0.5f else 1f
+        // a cramped window is laid out as if it had more units, then drawn smaller to fit them in
+        drawScale = DRAW_SCALES.first { it == DRAW_SCALES.last() ||
+                width / it >= COMFORTABLE_WIDTH && height / it >= COMFORTABLE_HEIGHT }
         width = (width / drawScale).toInt()
         height = (height / drawScale).toInt()
 
@@ -755,9 +756,12 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         /** Below this the item art rounds away to nothing, so the grid stops shrinking instead. */
         private const val MIN_SLOT_SIZE: Int = 8
 
-        /** A window with fewer gui units than this is drawn at half size, as gui scale 4 at 1080p is. */
-        private const val COMFORTABLE_WIDTH: Int = 600
-        private const val COMFORTABLE_HEIGHT: Int = 300
+        /** The units the panels and grid need; a smaller window is drawn at the first scale that gives them. */
+        private const val COMFORTABLE_WIDTH: Int = 800
+        private const val COMFORTABLE_HEIGHT: Int = 400
+
+        /** Full size, then gui scale 3 at 1080p, then gui scale 4 at 1080p. */
+        private val DRAW_SCALES: List<Float> = listOf(1f, 0.75f, 0.5f)
     }
 
 }
