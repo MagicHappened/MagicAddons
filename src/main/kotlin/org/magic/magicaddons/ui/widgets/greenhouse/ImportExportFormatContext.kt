@@ -9,7 +9,7 @@ class ImportExportFormatContext(
     override val overlayY: Int,
     private val overlayContext: OverlayContext,
     val formatSelected: (LayoutFormatType) -> Unit
-) : AbstractSelectorContextMenu<ImportExportFormatContext.LayoutFormatType>(LayoutFormatType.entries, "Format:") {
+) : AbstractSelectorContextMenu<ImportExportFormatContext.LayoutFormatType>(LayoutFormatType.entries, "Format:", withSearch = false) {
 
     enum class LayoutFormatType {
         SkyMutations,

@@ -1,18 +1,18 @@
-name: beta title
+name: build
 
-# a beta push must bring a new line in .github/beta-title; that line names the build it starts
-run-name: 'title check: ${{ github.event.head_commit.message }}'
+# the run is named after the head commit, whose title has to be the line in .github/beta-title:
+# one summary per push, written once in the file and once on the last real commit
+run-name: ${{ github.event.head_commit.message }}
 
 on:
   push:
     branches: [ "beta" ]
 
 jobs:
-  gate:
+  build:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      actions: write
 
     steps:
         - name: Checkout sources
@@ -20,14 +20,19 @@ jobs:
           with:
             fetch-depth: 0
 
-        - name: Require a new title
-          id: title
+        - name: Require a fresh title
           env:
             BEFORE: ${{ github.event.before }}
+            HEAD_TITLE: ${{ github.event.head_commit.message }}
           run: |
             title=$(head -n 1 .github/beta-title | tr -d '\r')
+            head_title=$(printf '%s' "$HEAD_TITLE" | head -n 1 | tr -d '\r')
             if [ -z "$title" ]; then
               echo "::error::.github/beta-title is empty; write one line saying what this push carries"
+              exit 1
+            fi
+            if [ "$title" != "$head_title" ]; then
+              echo "::error::the last commit is titled '$head_title' but .github/beta-title says '$title'; they must match"
               exit 1
             fi
             # a brand new branch has no before to compare with
@@ -37,12 +42,32 @@ jobs:
                 exit 1
               fi
             fi
-            echo "title=$title" >> "$GITHUB_OUTPUT"
 
-        - name: Start the named build
-          env:
-            GH_TOKEN: ${{ github.token }}
-          run: |
-            gh workflow run beta-build.yml --ref beta \
-              -f title="${{ steps.title.outputs.title }}" \
-              -f sha="${{ github.sha }}"
+        - name: Setup Java
+          uses: actions/setup-java@v5
+          with:
+            distribution: 'temurin'
+            java-version: 21
+
+        - name: Make gradle executable
+          run: chmod +x ./gradlew
+
+        - name: Build with Gradle
+          run: ./gradlew build -Pbuild_id=${GITHUB_SHA::7}
+
+        # with archive false each jar arrives as its own artifact, named after the file itself
+        - name: Upload 26.1.2 jar
+          uses: actions/upload-artifact@v7
+          with:
+            path: |
+              versions/26.1.2/build/libs/*.jar
+              !versions/26.1.2/build/libs/*-sources.jar
+            archive: false
+
+        - name: Upload 26.2 jar
+          uses: actions/upload-artifact@v7
+          with:
+            path: |
+              versions/26.2/build/libs/*.jar
+              !versions/26.2/build/libs/*-sources.jar
+            archive: false

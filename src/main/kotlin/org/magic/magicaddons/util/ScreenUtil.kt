@@ -26,6 +26,8 @@ import net.minecraft.util.FormattedCharSequence
 import net.minecraft.world.item.ItemDisplayContext
 import org.joml.Matrix3x2f
 import org.joml.Matrix4f
+import net.minecraft.client.renderer.item.TrackingItemStackRenderState
+import org.magic.magicaddons.render.ItemIconRenderState
 import org.magic.magicaddons.util.compat.McCompat
 
 object ScreenUtil {
@@ -273,6 +275,9 @@ object ScreenUtil {
     /** Tooltips wrap at this width, the same as vanilla's own widget tooltips. */
     private const val TOOLTIP_MAX_WIDTH = 170
 
+    /** An item drawn larger than this is rendered at size rather than stretched from sixteen. */
+    private const val CRISP_ITEM_ABOVE = 16
+
     /** A tooltip split on newlines and wrapped at vanilla's width, colour codes honoured. */
     fun GuiGraphicsExtractor.drawSimpleTooltip(text: String, mouseX: Int, mouseY: Int) {
         val font = Minecraft.getInstance().font
@@ -393,6 +398,18 @@ object ScreenUtil {
         if (stack.isEmpty) return
 
         val mc = Minecraft.getInstance()
+
+        // the gui draws every item at sixteen units and stretches the picture, which blurs a big
+        // one, so anything larger is drawn into its own texture at the size it shows at
+        val size = minOf(width, height)
+        if (size > CRISP_ITEM_ABOVE && !renderDecorations) {
+            val state = TrackingItemStackRenderState()
+            mc.itemModelResolver.updateForTopItem(state, stack, ItemDisplayContext.GUI, mc.level, null, 0)
+            guiRenderState.addPicturesInPictureState(
+                ItemIconRenderState(state, x, y, x + size, y + size, size.toFloat(), Matrix3x2f(pose()))
+            )
+            return
+        }
 
         val pose = this.pose()
 

@@ -17,7 +17,9 @@ import kotlin.math.max
  */
 abstract class AbstractSelectorContextMenu<T>(
     val values: List<T>,
-    private val title: String
+    private val title: String,
+    /** A handful of rows needs no search field; a long list gets one. */
+    private val withSearch: Boolean = true
 ) : AbstractContextMenu() {
 
     override var hoveredElement: GuiEventListener? = null
@@ -45,8 +47,10 @@ abstract class AbstractSelectorContextMenu<T>(
 
     private val titleHeight: Int get() = font.lineHeight + titlePad * 2
 
+    private val searchHeight: Int get() = if (withSearch) rowHeight else 0
+
     override val overlayHeight: Int
-        get() = titleHeight + rowHeight + valueWidgets.sumOf { it.height }
+        get() = titleHeight + searchHeight + valueWidgets.sumOf { it.height }
 
     open fun init() {
         search.value = ""
@@ -69,7 +73,7 @@ abstract class AbstractSelectorContextMenu<T>(
         search.y = overlayY + titleHeight
         search.width = overlayWidth
 
-        var currentY = search.y + rowHeight
+        var currentY = search.y + searchHeight
 
         valueWidgets.forEach { widget ->
             widget.x = overlayX
@@ -99,14 +103,14 @@ abstract class AbstractSelectorContextMenu<T>(
             false
         )
 
-        search.render(graphics)
+        if (withSearch) search.render(graphics)
         valueWidgets.forEach { it.extractRenderState(graphics, mouseX, mouseY) }
         graphics.drawBorder(overlayX, overlayY, overlayX + overlayWidth, overlayY + overlayHeight, Common.UI.BORDER_SIZE, Common.UI.BORDER_COLOR)
     }
 
     override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
         if (!isMouseOver(mouseButtonEvent.x.toInt(), mouseButtonEvent.y.toInt())) return false
-        if (search.mouseClicked(mouseButtonEvent, doubled)) return true
+        if (withSearch && search.mouseClicked(mouseButtonEvent, doubled)) return true
 
         valueWidgets.toList().forEach {
             if (it.mouseClicked(mouseButtonEvent, doubled)) return true
@@ -114,9 +118,9 @@ abstract class AbstractSelectorContextMenu<T>(
         return true
     }
 
-    override fun charTyped(characterEvent: CharacterEvent): Boolean = search.charTyped(characterEvent)
+    override fun charTyped(characterEvent: CharacterEvent): Boolean = withSearch && search.charTyped(characterEvent)
 
-    override fun keyPressed(keyEvent: KeyEvent): Boolean = search.keyPressed(keyEvent)
+    override fun keyPressed(keyEvent: KeyEvent): Boolean = withSearch && search.keyPressed(keyEvent)
 
     override fun mouseMoved(mouseX: Double, mouseY: Double) {
         hoveredElement = null

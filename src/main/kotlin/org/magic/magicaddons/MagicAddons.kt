@@ -8,6 +8,7 @@ import org.magic.magicaddons.config.ConfigNotices
 import org.magic.magicaddons.config.MagicAddonsConfigJsonHandler
 import org.magic.magicaddons.data.handlers.DataHandler
 import org.magic.magicaddons.render.CropPreviewRenderer
+import org.magic.magicaddons.render.ItemIconRenderer
 import org.magic.magicaddons.util.ScreenUtil
 import org.magic.magicaddons.util.EntityUtils
 import org.magic.magicaddons.util.ServerUtils
@@ -23,8 +24,10 @@ class MagicAddons : ClientModInitializer {
         // the gui only draws picture-in-picture states it was handed a renderer for at startup
         //? if >=26.2 {
         /*PictureInPictureRendererRegistry.register { CropPreviewRenderer() }
+        PictureInPictureRendererRegistry.register { ItemIconRenderer() }
         *///?} else {
         PictureInPictureRendererRegistry.register { CropPreviewRenderer(it.bufferSource()) }
+        PictureInPictureRendererRegistry.register { ItemIconRenderer(it.bufferSource()) }
         //?}
         MainCommand
         DataHandler.init()
