@@ -68,6 +68,13 @@ object GreenhousePresets : Feature() {
                 value = false
             ),
             BooleanSetting(
+                key = GreenhouseHud.KEY,
+                displayName = "Greenhouse HUD",
+                tooltip = "A small panel on screen while standing in a greenhouse: the next tick, " +
+                        "and how many plants are ready, dry, asleep or about to rot",
+                value = false
+            ),
+            BooleanSetting(
                 key = KEY_ANYWHERE,
                 displayName = "Greenhouse Key Anywhere",
                 tooltip = "Lets the greenhouse screen key (G unless rebound) open the screen " +
@@ -108,6 +115,7 @@ object GreenhousePresets : Feature() {
         GreenhouseData
         GreenhouseWatering
         PlantWarnings
+        GreenhouseHud
         CropRegistry
 
         // the attribute api only registers its listeners once something references it, so it is
