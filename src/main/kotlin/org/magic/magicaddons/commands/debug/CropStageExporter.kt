@@ -268,11 +268,15 @@ object CropStageExporter {
                 it.hash
             }
 
-            val singletons = grouped.values
-                .filter { it.size == 1 }
-                .map { it.first() }
+            // a pattern carries one size for the whole group, so stands of mixed size are
+            // written one by one instead
+            val (uniform, mixed) = grouped.values.partition { group -> group.map { it.isSmall }.distinct().size == 1 }
 
-            val patterns = grouped.values
+            val singletons = uniform
+                .filter { it.size == 1 }
+                .map { it.first() } + mixed.flatten()
+
+            val patterns = uniform
                 .filter { it.size > 1 }
 
             val patternSections = mutableListOf<String>()

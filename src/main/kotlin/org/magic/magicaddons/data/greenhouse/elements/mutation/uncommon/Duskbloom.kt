@@ -59,6 +59,7 @@ object Duskbloom : CropDefinitionProvider {
                     CropArmorStand(
                         offset = Vec3(0.0, -0.65625, 0.0),
                         hashString = "b9410dd823e984f98c0572e48d3c07641dd89411ba2e4fc66bee4212c6b65f02",
+                        isSmall = false,
                     )
                 ),
                 3..3
@@ -75,6 +76,7 @@ object Duskbloom : CropDefinitionProvider {
                         CropArmorStand(
                             offset = Vec3(0.0, -0.5625, 0.0),
                             hashString = "b9410dd823e984f98c0572e48d3c07641dd89411ba2e4fc66bee4212c6b65f02",
+                            isSmall = false,
                         )
                     ),
                 4..4

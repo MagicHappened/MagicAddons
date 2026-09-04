@@ -216,11 +216,13 @@ object PlantBoyAdvance : CropDefinitionProvider {
                         90.0f,
                         90.0f
                     ),
-                    hashString = "9eaf5fc0bf98649111f53d7516b18dec5d9d13f19273bef2b2b04f068ca9d337"
+                    hashString = "9eaf5fc0bf98649111f53d7516b18dec5d9d13f19273bef2b2b04f068ca9d337",
+                    isSmall = false
                 ) + listOf(
                     CropArmorStand(
                     offset = Vec3(0.0, -0.4375, 0.0),
-                    hashString = "765accb195aad0d7212eedd647e3f80ed5d4acdffe4329ead074f7587f366457"
+                    hashString = "765accb195aad0d7212eedd647e3f80ed5d4acdffe4329ead074f7587f366457",
+                    isSmall = false
                     )
                 ),
                 12..12,

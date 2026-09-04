@@ -75,7 +75,54 @@ object Fleshtrap : CropDefinitionProvider {
             )
 
 
-        ),
+        ,
+            // the skull changes with hunger, so either look is stage 14
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = melonStemState(7)
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, 0.25, 0.0),
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
+                        hashString = "c7f45f6cb2e4bbf45c5537c4dc3055a323021d62db7d91cc60beb02956401fb9",
+                        isSmall = false
+                    )
+                ),
+                14..14,
+                readers = listOf(
+                    CropStandReader.bar(CropStandReader.HUNGER),
+                    CropStandReader.percentLabel(CropStandReader.BONUS, "Bonus")
+                )
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = melonStemState(7)
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, 0.25, 0.0),
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
+                        hashString = "2d013e63bc607acdb07173b76fc336a058248fddbfbfabfd72f529f542f0e46b",
+                        isSmall = false
+                    )
+                ),
+                14..14,
+                readers = listOf(
+                    CropStandReader.bar(CropStandReader.HUNGER),
+                    CropStandReader.percentLabel(CropStandReader.BONUS, "Bonus")
+                )
+            )),
         maxStage = 14,
         decayTimeMs = NEVER_DECAYS,
         isMutation = true

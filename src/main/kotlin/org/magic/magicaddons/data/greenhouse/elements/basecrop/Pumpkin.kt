@@ -88,6 +88,7 @@ object Pumpkin : CropDefinitionProvider {
                     CropArmorStand(
                         offset = Vec3(0.0, -0.53125, 0.0),
                         hashString = "18bd4aa55673e90a3c611117277d94f6ce185b5d13d2a862a3376f50a6139c4f",
+                        isSmall = false,
                     )
                 ),
                 5..5

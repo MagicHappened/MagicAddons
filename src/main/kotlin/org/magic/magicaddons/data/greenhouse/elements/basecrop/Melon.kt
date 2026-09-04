@@ -99,10 +99,37 @@ object Melon : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.53125, 0.0),
-                        hashString = "afa92dd43afed9e640cf3d3b008ca5199634ec8512de5e1f5eeaecd761296cb9"
+                        hashString = "afa92dd43afed9e640cf3d3b008ca5199634ec8512de5e1f5eeaecd761296cb9",
+                        isSmall = false
                     )
                 ),
                 5..5,
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = melonStemState(6)
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, -0.53125, 0.0),
+                        headRotation = Rotations(0.0f, 0.0f, -22.5f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
+                        hashString = "afa92dd43afed9e640cf3d3b008ca5199634ec8512de5e1f5eeaecd761296cb9",
+                        isSmall = false
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(0.21875, 0.1875, 0.1875),
+                        headRotation = Rotations(22.5f, 0.0f, 22.5f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
+                        hashString = "360549bf880605bba628e89b1cca4b8a0e428b61d879f45edd9f45469d87aec4"
+                    )
+                ),
+                6..6
             ),
             CropStage(
                 blocks = listOf(
@@ -156,11 +183,13 @@ object Melon : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(-0.0625, -0.46875, 0.0),
-                        hashString = "192600cad8dbec5b6a6ec4dcf9bb4e9cd76190cad80aeee8b047de719cf5e36d"
+                        hashString = "192600cad8dbec5b6a6ec4dcf9bb4e9cd76190cad80aeee8b047de719cf5e36d",
+                        isSmall = false
                     ),
                     CropArmorStand(
                         offset = Vec3(0.09375, -0.625, 0.09375),
-                        hashString = "afa92dd43afed9e640cf3d3b008ca5199634ec8512de5e1f5eeaecd761296cb9"
+                        hashString = "afa92dd43afed9e640cf3d3b008ca5199634ec8512de5e1f5eeaecd761296cb9",
+                        isSmall = false
                     )
                 ),
                 9..9,

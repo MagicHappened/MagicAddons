@@ -20,7 +20,15 @@ object Noctilume : CropDefinitionProvider {
         BlockPos(1, 1, 1),
     )
 
-    private val standOffsets = listOf(
+    /** The four stands of a young plant sit high on the stalks, then settle as it grows. */
+    private val youngOffsets = listOf(
+        Vec3(-0.21875, 0.6875, 0.15625),
+        Vec3(0.375, 0.84375, -0.3125),
+        Vec3(0.28125, 0.78125, 0.125),
+        Vec3(-0.125, -0.03125, -0.40625)
+    )
+
+    private val grownOffsets = listOf(
         Vec3(-0.21875, -0.0625, 0.15625),
         Vec3(0.375, 0.09375, -0.3125),
         Vec3(0.28125, 0.03125, 0.125),
@@ -37,17 +45,25 @@ object Noctilume : CropDefinitionProvider {
     private val flatYaws = listOf(0.0f, 0.0f, 0.0f, 0.0f)
 
     /** One look of a stage: the shared geometry wearing the skull of what it craves. */
-    private fun look(stage: Int, hash: String, craving: Int): CropStage = CropStage(
+    private fun look(
+        stage: Int,
+        hash: String,
+        craving: Int,
+        wheatAge: Int,
+        offsets: List<Vec3>,
+        isSmall: Boolean = true
+    ): CropStage = CropStage(
         blocks = CropBlockState.blockStatePattern(
             positions = wheatPositions,
-            blockState = wheatState(6)
+            blockState = wheatState(wheatAge)
         ),
         armorStands = CropArmorStand.matcherPattern(
-            offsets = standOffsets,
+            offsets = offsets,
             rotations = standRotations,
             xRotations = flatYaws,
             yRotations = flatYaws,
-            hashString = hash
+            hashString = hash,
+            isSmall = isSmall
         ),
         stageRange = stage..stage,
         traits = mapOf(CropStandReader.CRAVES to craving)
@@ -63,14 +79,27 @@ object Noctilume : CropDefinitionProvider {
         skyblockId = SkyBlockItemId.item("NOCTILUME"),
         stageDefs = listOf(
             look(
+                stage = 2,
+                hash = "329aa65e77ecc216dbadc774121dec2f3d7267289462eb5d11d3bafa6f5996c8",
+                craving = CropStandReader.CRAVES_DAY,
+                wheatAge = 4,
+                offsets = youngOffsets,
+                isSmall = false
+            ),
+            look(
                 stage = 4,
                 hash = "5cdd8c3d5d76a1dc07cdbedc5fd0bb230852df9c1864896f8893f5bfdf3d4c96",
-                craving = CropStandReader.CRAVES_DAY
+                craving = CropStandReader.CRAVES_DAY,
+                wheatAge = 6,
+                offsets = grownOffsets
             ),
             look(
                 stage = 4,
                 hash = "b1b18493d50ff8972f7ef359893d9063fdc54cb822c679002957c294fc8b0005",
-                craving = CropStandReader.CRAVES_NIGHT
+                craving = CropStandReader.CRAVES_NIGHT,
+                wheatAge = 6,
+                offsets = grownOffsets,
+                isSmall = false
             )
         ),
         decayTimeMs = SIX_DAY_DECAY_TIME_MS,

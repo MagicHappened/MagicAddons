@@ -115,11 +115,13 @@ object Cocoa : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, 0.0, 0.0),
-                        hashString = "db8f7d08f93594e385058afda93b0a077b218345751c1b9415d2623110e6afbd"
+                        hashString = "db8f7d08f93594e385058afda93b0a077b218345751c1b9415d2623110e6afbd",
+                        isSmall = false
                     ),
                     CropArmorStand(
                         offset = Vec3(-0.125, 0.5625, 0.0625),
-                        hashString = "db8f7d08f93594e385058afda93b0a077b218345751c1b9415d2623110e6afbd"
+                        hashString = "db8f7d08f93594e385058afda93b0a077b218345751c1b9415d2623110e6afbd",
+                        isSmall = false
                     )
                 ),
                 5..5,

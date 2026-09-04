@@ -21,7 +21,8 @@ object Wildrose : CropDefinitionProvider {
         standPoses = mapOf(
             "f341905af17c74a1c6181a56c88d8f91853f2cff0a9a33aaa16c0d835fdceece" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f)),
             "4a99a01317a01f65f7a7610122bea792c22a771e7a48ce1a5b352bccc8335074" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f)),
-            "61a37adb8bcad712663771235feeb136ebe0f5c4d593070a5410ccb6f6706aa0" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f))
+            "61a37adb8bcad712663771235feeb136ebe0f5c4d593070a5410ccb6f6706aa0" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f)),
+            "816176a32c70d53e5aaade1f16e7d4ab6f5750e37d55b3e9e99977cbd5fa9f19" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f))
         ),
         stageDefs = listOf(
             CropStage(

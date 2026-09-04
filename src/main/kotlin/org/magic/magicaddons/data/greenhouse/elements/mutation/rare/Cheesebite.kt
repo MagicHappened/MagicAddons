@@ -89,6 +89,25 @@ object Cheesebite : CropDefinitionProvider {
             CropStage(
                 blocks = listOf(
                     CropBlockState(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = wheatState(3)
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, -0.5625, 0.0),
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
+                        hashString = "411f19c783959807338e2bf7080b1e34abb8c452464c0dce5bdf434cdc250717",
+                        isSmall = false
+                    )
+                ),
+                5..5
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
                         offset = BlockPos(0,1,0),
                         blockState = wheatState(4)
                     )

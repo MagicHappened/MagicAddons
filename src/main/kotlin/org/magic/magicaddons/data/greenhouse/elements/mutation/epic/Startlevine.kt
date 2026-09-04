@@ -8,6 +8,7 @@ import org.magic.magicaddons.data.greenhouse.CropBlockState
 import org.magic.magicaddons.data.greenhouse.CropDefinition
 import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
 import org.magic.magicaddons.data.greenhouse.CropStage
+import org.magic.magicaddons.data.greenhouse.CropStates.melonStemState
 import org.magic.magicaddons.data.greenhouse.CropStates.sunflowerState
 import org.magic.magicaddons.data.greenhouse.CropStates.wheatState
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
@@ -136,6 +137,44 @@ object Startlevine : CropDefinitionProvider {
                     )
                 ),
                 7..7
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = melonStemState(5)
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, -0.5, 0.0),
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
+                        hashString = "a7c545c10c035790615642a9ed6d689448b778cc16ac423c0f7fb19a0d057c6a",
+                        isSmall = false
+                    )
+                ),
+                9..9
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = melonStemState(7)
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, -0.4375, 0.0),
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
+                        hashString = "a7c545c10c035790615642a9ed6d689448b778cc16ac423c0f7fb19a0d057c6a",
+                        isSmall = false
+                    )
+                ),
+                11..11
             ),
             CropStage(
                 blocks = listOf(
