@@ -2,7 +2,6 @@ package org.magic.magicaddons.ui.widgets.greenhouse
 
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
-import net.minecraft.client.gui.components.EditBox
 import net.minecraft.client.gui.components.events.GuiEventListener
 import net.minecraft.client.input.CharacterEvent
 import net.minecraft.client.input.KeyEvent
@@ -12,10 +11,12 @@ import org.magic.magicaddons.Common
 import org.magic.magicaddons.data.greenhouse.GreenhouseLayout
 import org.magic.magicaddons.ui.OverlayContext
 import org.magic.magicaddons.ui.widgets.AbstractContextMenu
+import org.magic.magicaddons.ui.widgets.TextField
 import org.magic.magicaddons.ui.widgets.config.ClickableButtonWidget
 import org.magic.magicaddons.util.ChatUtils
-import org.magic.magicaddons.util.ScreenUtil.drawBorder
+import org.magic.magicaddons.util.ScreenUtil.drawPanel
 
+/** A small panel for renaming a layout: a field, Submit and Cancel. */
 class EditLayoutContextMenu(
     override val overlayX: Int,
     override val overlayY: Int,
@@ -28,100 +29,61 @@ class EditLayoutContextMenu(
     override val overlayWidth: Int = WIDTH
     override val overlayHeight: Int = HEIGHT
 
-
     override var hoveredElement: GuiEventListener? = null
 
+    private val pad = Common.UI.SPACING_LARGE
+
+    val textField = TextField(WIDTH - pad * 2, FIELD_HEIGHT, Component.literal("New name")).apply {
+        x = overlayX + pad
+        y = overlayY + pad + font.lineHeight + Common.UI.SPACING
+        focused = true
+    }
+
     val submitButton = ClickableButtonWidget(
-        overlayX + 20,
-        overlayY + 75,
-        40,
-        20,
+        overlayX + pad,
+        overlayY + HEIGHT - pad - BUTTON_HEIGHT,
+        BUTTON_WIDTH,
+        BUTTON_HEIGHT,
         Component.literal("Submit")
     )
 
     val cancelButton = ClickableButtonWidget(
-        overlayX + 140,
-        overlayY + 75,
-        40,
-        20,
+        overlayX + WIDTH - pad - BUTTON_WIDTH,
+        overlayY + HEIGHT - pad - BUTTON_HEIGHT,
+        BUTTON_WIDTH,
+        BUTTON_HEIGHT,
         Component.literal("Cancel")
     )
 
-    val textField = EditBox(
-        font,
-        overlayX + 10,
-        overlayY + 20,
-        100,
-        20,
-        Component.empty()
-    )
-
-
-    override fun renderOverlay(
-        graphics: GuiGraphicsExtractor,
-        mouseX: Int,
-        mouseY: Int,
-        delta: Float
-    ) {
-        graphics.fill(
-            overlayX,
-            overlayY,
-            overlayX+overlayWidth,
-            overlayY+overlayHeight,
-            Common.UI.BACKGROUND_COLOR
-        )
-
-        graphics.drawBorder(
-            overlayX,
-            overlayY,
-            overlayX+overlayWidth,
-            overlayY+overlayHeight,
-            4,
-            Common.UI.BORDER_COLOR
-        )
+    override fun renderOverlay(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
+        graphics.drawPanel(overlayX, overlayY, overlayX + overlayWidth, overlayY + overlayHeight)
 
         graphics.text(
             font,
-            "Editing ${layout.id}:",
-            overlayX + 10,
-            overlayY + 10,
-            Common.UI.TEXT_COLOR
+            Component.literal("Editing ${layout.id}:"),
+            overlayX + pad,
+            overlayY + pad,
+            Common.UI.TEXT_COLOR,
+            false
         )
-        textField.extractRenderState(graphics, mouseX, mouseY, delta)
 
+        textField.render(graphics)
         submitButton.extractRenderState(graphics, mouseX, mouseY, delta)
         cancelButton.extractRenderState(graphics, mouseX, mouseY, delta)
     }
 
-    override fun charTyped(characterEvent: CharacterEvent): Boolean {
-        if (textField.isFocused){
-            textField.charTyped(characterEvent)
-            return true
-        }
-        return super.charTyped(characterEvent)
-    }
+    override fun charTyped(characterEvent: CharacterEvent): Boolean =
+        textField.charTyped(characterEvent) || super.charTyped(characterEvent)
 
-
-
-    override fun keyPressed(keyEvent: KeyEvent): Boolean  {
-        if (textField.isFocused){
-            textField.keyPressed(keyEvent)
-            return true
-        }
-        return super.keyPressed(keyEvent)
-    }
-
-
+    override fun keyPressed(keyEvent: KeyEvent): Boolean =
+        textField.keyPressed(keyEvent) || super.keyPressed(keyEvent)
 
     override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
         if (!isMouseOver(mouseButtonEvent.x.toInt(), mouseButtonEvent.y.toInt())) return false
-        if (textField.mouseClicked(mouseButtonEvent,doubled)){
-            textField.isFocused = true
-            return true
-        }
-        textField.isFocused = false
+        if (textField.mouseClicked(mouseButtonEvent, doubled)) return true
+
         if (submitButton.mouseClicked(mouseButtonEvent, doubled)) {
-            if (textField.value.isBlank()){
+            if (textField.value.isBlank()) {
                 ChatUtils.sendWithPrefix("Please enter a value to submit.")
                 return true
             }
@@ -138,26 +100,21 @@ class EditLayoutContextMenu(
     }
 
     override fun mouseMoved(mouseX: Double, mouseY: Double) {
-        textField.mouseMoved(mouseX, mouseY)
         cancelButton.mouseMoved(mouseX, mouseY)
         submitButton.mouseMoved(mouseX, mouseY)
-        hoveredElement = null
-        if (hoveredElement == null){
-            if (cancelButton.isMouseOver(mouseX, mouseY)){
-                hoveredElement = cancelButton
-            }
-        }
-        if (hoveredElement == null){
-            if (submitButton.isMouseOver(mouseX, mouseY)){
-                hoveredElement = submitButton
-            }
-        }
 
+        hoveredElement = when {
+            cancelButton.isMouseOver(mouseX, mouseY) -> cancelButton
+            submitButton.isMouseOver(mouseX, mouseY) -> submitButton
+            else -> null
+        }
     }
 
     companion object {
         const val WIDTH: Int = 200
-        const val HEIGHT: Int = 100
+        const val HEIGHT: Int = 80
+        private const val FIELD_HEIGHT: Int = 20
+        private const val BUTTON_WIDTH: Int = 60
+        private const val BUTTON_HEIGHT: Int = 20
     }
-
 }

@@ -1,15 +1,14 @@
 package org.magic.magicaddons.ui.widgets.config
 
-import org.magic.magicaddons.Common
-import org.magic.magicaddons.ui.Focusable
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
-import net.minecraft.client.gui.components.events.GuiEventListener
 import net.minecraft.client.input.MouseButtonEvent
-import net.minecraft.client.renderer.RenderPipelines
 import net.minecraft.network.chat.Component
-import net.minecraft.resources.Identifier
+import org.magic.magicaddons.Common
+import org.magic.magicaddons.ui.Focusable
+import org.magic.magicaddons.util.ScreenUtil.drawButtonPanel
 
+/** A button drawn as a panel that lights under the mouse, with whatever [renderContent] puts on it. */
 class ClickableButtonWidget(
     var width: Int,
     var height: Int,
@@ -26,7 +25,7 @@ class ClickableButtonWidget(
         height: Int,
         renderContent: ClickableButtonWidget.(GuiGraphicsExtractor) -> Unit,
         shouldRenderButton: Boolean = true
-    ) : this(width, height, renderContent, shouldRenderButton){
+    ) : this(width, height, renderContent, shouldRenderButton) {
         this.x = x
         this.y = y
     }
@@ -38,7 +37,7 @@ class ClickableButtonWidget(
         height: Int,
         message: Component,
         shouldRenderButton: Boolean = true
-    ) : this(width, height, message, shouldRenderButton){
+    ) : this(width, height, message, shouldRenderButton) {
         this.x = x
         this.y = y
     }
@@ -63,38 +62,24 @@ class ClickableButtonWidget(
                     false
                 )
             }
-
         }
-    ){
+    ) {
         this.message = message
     }
 
     override var focusedState: Boolean = false
 
-    /** Set from [mouseMoved], so the button lights up under the mouse like a vanilla one. */
+    /** Set from [mouseMoved], so the button lights up under the mouse. */
     var hovered: Boolean = false
+
+    /** Drawn pressed in while true, for a button that stands for a state rather than an action. */
+    var pressed: Boolean = false
 
     var message: Component? = null
 
-
-    val BUTTON = Identifier.fromNamespaceAndPath("minecraft", "widget/button")
-    val BUTTON_HOVERED = Identifier.fromNamespaceAndPath("minecraft", "widget/button_highlighted")
-
     fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
         if (shouldRenderButton) {
-            val sprite = if (hovered || isFocused)
-                BUTTON_HOVERED
-            else
-                BUTTON
-
-            graphics.blitSprite(
-                RenderPipelines.GUI_TEXTURED,
-                sprite,
-                x,
-                y,
-                width,
-                height
-            )
+            graphics.drawButtonPanel(x, y, x + width, y + height, hovered || isFocused, pressed)
         }
 
         renderContent(graphics)
@@ -112,6 +97,4 @@ class ClickableButtonWidget(
         return mouseX.toInt() in x until (x + width) &&
                 mouseY.toInt() in y until (y + height)
     }
-
-
 }

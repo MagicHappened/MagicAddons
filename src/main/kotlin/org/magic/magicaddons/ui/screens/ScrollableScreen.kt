@@ -25,7 +25,7 @@ abstract class ScrollableScreen(title: Component) : Screen(title) {
     abstract val contentWidth: Int
     abstract val contentHeight: Int
 
-    private val barThickness = 3
+    private val barThickness = Common.UI.SCROLLBAR_WIDTH
     private var draggingVertical = false
     private var draggingHorizontal = false
 
@@ -90,7 +90,7 @@ abstract class ScrollableScreen(title: Component) : Screen(title) {
             val barHeight = (height * height / contentHeight).coerceAtLeast(6)
             val barY = (height - barHeight) * scrollY / maxScrollY
 
-            graphics.fill(barX, 0, width, height, 0x40000000)
+            graphics.fill(barX, 0, width, height, Common.UI.SCROLL_TRACK_COLOR)
             graphics.fill(barX, barY, width, barY + barHeight, Common.UI.TEXT_COLOR)
         }
         if (maxScrollX > 0) {
@@ -98,7 +98,7 @@ abstract class ScrollableScreen(title: Component) : Screen(title) {
             val barWidth = (width * width / contentWidth).coerceAtLeast(6)
             val barX = (width - barWidth) * scrollX / maxScrollX
 
-            graphics.fill(0, barY, width, height, 0x40000000)
+            graphics.fill(0, barY, width, height, Common.UI.SCROLL_TRACK_COLOR)
             graphics.fill(barX, barY, barX + barWidth, height, Common.UI.TEXT_COLOR)
         }
     }

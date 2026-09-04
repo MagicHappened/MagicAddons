@@ -43,6 +43,28 @@ object Common {
         /** Plain text on a panel of this mod. */
         const val TEXT_COLOR: Int = 0xFFFFFFFF.toInt()
 
+        /** Laid over a control the mouse is on, so it lifts rather than changes colour. */
+        const val HOVER_WASH: Int = 0x40FFFFFF
+
+        /** Laid over a control that is picked, so it sits pressed in. */
+        const val PRESSED_SHADE: Int = 0x60000000
+
+        /** The frame of a picked control, white against the black frames of the rest. */
+        const val SELECTED_FRAME_COLOR: Int = TEXT_COLOR
+
+        /** The ground of a text field or checkbox, darker than the panel it sits in. */
+        const val FIELD_COLOR: Int = 0xFF2A2A2A.toInt()
+
+        /** Room a text field keeps between its frame and the text. */
+        const val FIELD_INSET: Int = 4
+
+        /** The used part of a slider. */
+        const val ACCENT_COLOR: Int = 0xFF4C8FBF.toInt()
+
+        /** A scroll bar: its width and the track behind the white thumb. */
+        const val SCROLLBAR_WIDTH: Int = 3
+        const val SCROLL_TRACK_COLOR: Int = 0x40000000
+
         /** Text on a control that does nothing at the moment. */
         const val DISABLED_TEXT_COLOR: Int = 0xFF888888.toInt()
 

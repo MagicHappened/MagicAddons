@@ -1,24 +1,24 @@
 package org.magic.magicaddons.ui.widgets
 
-import org.magic.magicaddons.Common
-import org.magic.magicaddons.ui.Focusable
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
-import net.minecraft.client.renderer.RenderPipelines
 import net.minecraft.network.chat.Component
-import net.minecraft.resources.Identifier
+import org.magic.magicaddons.Common
+import org.magic.magicaddons.ui.Focusable
+import org.magic.magicaddons.util.ScreenUtil.drawButtonPanel
 import org.magic.magicaddons.util.ScreenUtil.drawWrappedText
 import org.magic.magicaddons.util.ScreenUtil.wrappedHeight
 
+/** One row of a list, drawn as a button: lit under the mouse, pressed in when it is the picked one. */
 open class BaseRowWidget<T>(
     val value: T
 ) : Focusable {
 
-
-    val BUTTON = Identifier.fromNamespaceAndPath("minecraft", "widget/button")
-
-
     var hovered = false
+
+    /** Whether this row is the value currently picked. */
+    var selected = false
+
     var width: Int = 200
     var height: Int = 20
 
@@ -26,7 +26,7 @@ open class BaseRowWidget<T>(
     var y: Int = 0
 
     override var focusedState: Boolean = false
-    open val textLeftPadding = 4
+    open val textLeftPadding = Common.UI.TEXT_X_PAD
 
     /** Room kept above and below the text when the row grows to fit it. */
     open val textVerticalPadding = 2
@@ -36,10 +36,6 @@ open class BaseRowWidget<T>(
     open fun getRightReservedWidth(): Int = 0
 
     open fun getLeftReservedWidth(): Int = 0
-
-    protected open fun getSprite(): Identifier {
-        return BUTTON
-    }
 
     protected open fun label(): Component = Component.literal(value.toString())
 
@@ -52,16 +48,11 @@ open class BaseRowWidget<T>(
         height = (wrappedHeight(font, label(), textWidth()) + textVerticalPadding * 2).coerceAtLeast(minHeight)
     }
 
+    /** Whether the row is lit: the mouse on it, or focus handed to it. */
+    protected open fun highlighted(): Boolean = hovered || isFocused
+
     open fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int) {
-        val usableWidth = width - getRightReservedWidth() - getLeftReservedWidth()
-        graphics.blitSprite(
-            RenderPipelines.GUI_TEXTURED,
-            getSprite(),
-            x + getLeftReservedWidth(),
-            y,
-            usableWidth,
-            height
-        )
+        graphics.drawButtonPanel(x, y, x + width, y + height, highlighted(), selected)
 
         val text = label()
         val textHeight = wrappedHeight(font, text, textWidth())
@@ -74,22 +65,17 @@ open class BaseRowWidget<T>(
             textWidth(),
             Common.UI.TEXT_COLOR
         )
-
     }
+
     override fun isMouseOver(mouseX: Double, mouseY: Double): Boolean {
-        return (mouseX.toInt() in x..x+width && mouseY.toInt() in y..y+height)
+        return (mouseX.toInt() in x..x + width && mouseY.toInt() in y..y + height)
     }
-
-
-
 
     open fun isMouseOverRow(mouseX: Double, mouseY: Double): Boolean {
-        return (mouseX.toInt() in x+getLeftReservedWidth()..x+width-getRightReservedWidth() && mouseY.toInt() in y..y+height)
+        return (mouseX.toInt() in x + getLeftReservedWidth()..x + width - getRightReservedWidth() && mouseY.toInt() in y..y + height)
     }
 
     override fun mouseMoved(mouseX: Double, mouseY: Double) {
         hovered = isMouseOverRow(mouseX, mouseY)
     }
-
-
 }

@@ -2,11 +2,11 @@ package org.magic.magicaddons.ui.widgets
 
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.input.MouseButtonEvent
-import net.minecraft.resources.Identifier
 import org.magic.magicaddons.Common
 import org.magic.magicaddons.ui.widgets.config.ClickableButtonWidget
 import org.magic.magicaddons.util.ScreenUtil.drawLine
 
+/** A row with a delete cross at its right edge, when it is given something to do on removal. */
 open class RemovableRowWidget<T>(
     value: T,
     onClick: (RemovableRowWidget<T>) -> Unit,
@@ -16,48 +16,27 @@ open class RemovableRowWidget<T>(
     { onClick.invoke(it as RemovableRowWidget<T>) }
 ) {
 
-    override fun getSprite(): Identifier {
-        return if (isFocused) BUTTON_HOVERED else super.getSprite()
-    }
     private val removeWidth = 20
 
     private val removeButton = ClickableButtonWidget(
         width = removeWidth,
         height = 20,
         { graphics ->
-
             val pad = 4
-
             val size = minOf(width, height) - pad * 2
 
             val startX = x + (width - size) / 2
             val startY = y + (height - size) / 2
-
             val endX = startX + size
             val endY = startY + size
 
-            graphics.drawLine(
-                startX,
-                startY,
-                endX,
-                endY,
-                2,
-                Common.UI.DANGER_COLOR
-            )
-
-            graphics.drawLine(
-                endX,
-                startY,
-                startX,
-                endY,
-                2,
-                Common.UI.DANGER_COLOR
-            )
+            graphics.drawLine(startX, startY, endX, endY, 2, Common.UI.DANGER_COLOR)
+            graphics.drawLine(endX, startY, startX, endY, 2, Common.UI.DANGER_COLOR)
         }
     )
 
     override fun getRightReservedWidth(): Int {
-        return super.getRightReservedWidth() + removeWidth
+        return super.getRightReservedWidth() + if (onRemove != null) removeWidth else 0
     }
 
     override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int) {
@@ -72,23 +51,13 @@ open class RemovableRowWidget<T>(
         }
     }
 
-    override fun mouseClicked(
-        mouseButtonEvent: MouseButtonEvent,
-        double: Boolean
-    ): Boolean {
-
-        if (onRemove != null &&
-            removeButton.mouseClicked(mouseButtonEvent, double)
-        ) {
+    override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, double: Boolean): Boolean {
+        if (onRemove != null && removeButton.mouseClicked(mouseButtonEvent, double)) {
             onRemove.invoke(this)
             return true
         }
 
-        if (super.mouseClicked(mouseButtonEvent, double)){
-            return true
-        }
-
-        return false
+        return super.mouseClicked(mouseButtonEvent, double)
     }
 
     override fun mouseMoved(mouseX: Double, mouseY: Double) {

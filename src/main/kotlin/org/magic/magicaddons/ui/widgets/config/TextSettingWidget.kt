@@ -1,8 +1,9 @@
 package org.magic.magicaddons.ui.widgets.config
 
+import org.magic.magicaddons.Common
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
-import net.minecraft.client.gui.components.EditBox
+import org.magic.magicaddons.ui.widgets.TextField
 import net.minecraft.client.gui.components.events.GuiEventListener
 import net.minecraft.client.input.CharacterEvent
 import net.minecraft.client.input.KeyEvent
@@ -44,12 +45,7 @@ class TextSettingWidget(
     private fun labelWidth(): Int = width - (textXPad + borderSize) * 2
 
     private val textWidget by lazy {
-        EditBox(
-            Minecraft.getInstance().font,
-            width - (borderSize + textFieldPadding) * 2,
-            boxHeight,
-            Component.literal("")
-        )
+        TextField(width - (borderSize + textFieldPadding) * 2, boxHeight)
     }
 
     private val history = HistoryOverlay()
@@ -71,6 +67,8 @@ class TextSettingWidget(
 
         textWidget.setResponder {
             setting.value = it
+            // what is typed doubles as the search through the old values
+            if (history.open) history.rebuild()
         }
 
         if (history.open) history.rebuild()
@@ -93,7 +91,7 @@ class TextSettingWidget(
         textWidget.value = value
         setting.history.remove(value)
         setting.history.add(previousValue)
-        textWidget.isFocused = false
+        textWidget.focused = false
         closeHistory()
     }
 
@@ -106,7 +104,7 @@ class TextSettingWidget(
         graphics.fill(x, y, x + width, y + height, backgroundColor)
         graphics.drawBorder(x, y, x + width, y + height, borderSize, borderColor)
 
-        textWidget.extractRenderState(graphics, mouseX, mouseY, delta)
+        textWidget.render(graphics)
 
         graphics.drawWrappedText(
             font,
@@ -114,22 +112,21 @@ class TextSettingWidget(
             x + textXPad + borderSize,
             y + textXPad + borderSize,
             labelWidth(),
-            0xFFCCCCCC.toInt()
+            Common.UI.TEXT_DIM_COLOR
         )
 
         renderDetail(graphics)
     }
 
     override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
+        val wasFocused = textWidget.focused
+
         if (textWidget.mouseClicked(mouseButtonEvent, doubled)) {
-            textWidget.isFocused = true
             openHistory()
             return true
         }
 
         // any other click: the screen has already closed the history, this only settles the text
-        val wasFocused = textWidget.isFocused
-        textWidget.isFocused = false
 
         if (wasFocused && textWidget.value != lastFocusedValue) {
             if (lastFocusedValue.isNotBlank()) {
@@ -141,19 +138,9 @@ class TextSettingWidget(
         return super.mouseClicked(mouseButtonEvent, doubled)
     }
 
-    override fun charTyped(characterEvent: CharacterEvent): Boolean {
-        if (textWidget.isFocused) {
-            return textWidget.charTyped(characterEvent)
-        }
-        return false
-    }
+    override fun charTyped(characterEvent: CharacterEvent): Boolean = textWidget.charTyped(characterEvent)
 
-    override fun keyPressed(keyEvent: KeyEvent): Boolean {
-        if (textWidget.isFocused) {
-            return textWidget.keyPressed(keyEvent)
-        }
-        return false
-    }
+    override fun keyPressed(keyEvent: KeyEvent): Boolean = textWidget.keyPressed(keyEvent)
 
     override fun getTotalHeight(): Int = height + detailHeight()
 
@@ -170,12 +157,16 @@ class TextSettingWidget(
 
         private val rows: MutableList<RemovableRowWidget<String>> = mutableListOf()
 
+        /** Rows overlap by one frame so the lines between them read as one. */
+        private val overlap = Common.UI.BORDER_SIZE
+
         fun rebuild() {
             rows.clear()
 
-            var currentY = textWidget.y + textWidget.height
+            var currentY = textWidget.y + textWidget.height - overlap
+            val typed = textWidget.value.trim()
 
-            setting.history.forEach { value ->
+            setting.history.filter { it.contains(typed, ignoreCase = true) }.forEach { value ->
                 val row = RemovableRowWidget(
                     value = value,
                     onClick = { applyHistoryValue(value) },
@@ -187,15 +178,15 @@ class TextSettingWidget(
                 row.width = textWidget.width
                 row.fitHeight(textWidget.height)
 
-                currentY += row.height
+                currentY += row.height - overlap
                 rows.add(row)
             }
         }
 
         override val overlayX: Int get() = textWidget.x
-        override val overlayY: Int get() = textWidget.y + textWidget.height
+        override val overlayY: Int get() = textWidget.y + textWidget.height - overlap
         override val overlayWidth: Int get() = textWidget.width
-        override val overlayHeight: Int get() = rows.sumOf { it.height }
+        override val overlayHeight: Int get() = rows.sumOf { row -> row.height - overlap } + overlap
 
         override fun renderOverlay(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
             rows.forEach { it.extractRenderState(graphics, mouseX, mouseY) }
