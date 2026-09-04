@@ -18,6 +18,8 @@ import org.magic.magicaddons.data.greenhouse.LayoutSlot
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData
 import org.magic.magicaddons.ui.HoverableContainer
 import org.magic.magicaddons.ui.OverlayContext
+import org.magic.magicaddons.ui.OverlayRenderable
+import org.magic.magicaddons.ui.widgets.ConfirmContext
 import org.magic.magicaddons.ui.widgets.config.ClickableButtonWidget
 import org.magic.magicaddons.util.ChatUtils
 
@@ -93,7 +95,18 @@ class PresetUI(
             return true
         }
         if (button === deleteButton) {
-            onRemovePreset()
+            val preset = GreenhouseData.currentPreset ?: run {
+                ChatUtils.sendWithPrefix("No preset to remove.")
+                return true
+            }
+            val question = "Delete preset ${preset.displayName()}?"
+            val (menuX, menuY) = OverlayRenderable.placeOnScreen(
+                mouseButtonEvent.x.toInt(),
+                mouseButtonEvent.y.toInt(),
+                ConfirmContext.widthFor(question),
+                ConfirmContext.HEIGHT
+            )
+            overlayContext.addContext(ConfirmContext(menuX, menuY, question, overlayContext) { onRemovePreset() })
             return true
         }
 

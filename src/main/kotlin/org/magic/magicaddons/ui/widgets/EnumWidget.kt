@@ -19,8 +19,8 @@ import org.magic.magicaddons.util.ScreenUtil.drawScrollBar
 import org.magic.magicaddons.util.compat.McCompat
 
 /**
- * A selector: a button showing the picked value that opens a list of every value under a search
- * field. The list scrolls when the screen runs out of room.
+ * A selector: a button showing the picked value. Open, the button becomes a search field with the
+ * list of values under it, narrowed by what is typed. The list scrolls when the screen runs out of room.
  */
 class EnumWidget<T>(
     var x: Int = 0,
@@ -51,6 +51,11 @@ class EnumWidget<T>(
 
     override var focusedState: Boolean = false
 
+    /** Typing here narrows the rows to the values containing the text. Shown in the box while open. */
+    private val search = TextField(0, 0, Component.literal(SEARCH_HINT)).apply {
+        setResponder { if (overlayOpen) overlay.rebuildRows() }
+    }
+
     private fun valueChanged(newValue: T) {
         currentValue = newValue
         close()
@@ -58,15 +63,24 @@ class EnumWidget<T>(
     }
 
     private fun open() {
-        overlay.rebuildRows(resetSearch = true)
+        search.value = ""
+        search.focused = true
         overlayOpen = true
+        overlay.rebuildRows()
         overlayContext.addOverlay(overlay)
     }
 
     private fun close() {
         overlayOpen = false
+        search.focused = false
         overlayContext.removeOverlay(overlay)
     }
+
+    /** Where the arrow sits, kept clear of the name and of the search field. */
+    private fun arrowText(): String =
+        if (if (overlayOpen) overlay.opensDown else overlay.wouldOpenDown(values.size)) ARROW else ARROW_UP
+
+    private fun arrowLeft(): Int = x + width - font.width(arrowText()) - textPad
 
     /** Shuts the list without picking anything, for a screen laying itself out again. */
     fun closeList() = close()
@@ -87,25 +101,29 @@ class EnumWidget<T>(
         graphics.drawButtonPanel(x, y, x + width, y + height, hovered, overlayOpen)
 
         val textY = y + (height - font.lineHeight) / 2
+        val arrow = arrowText()
 
         // the arrow keeps to the far side and the name is given what is left, so a long name runs
         // out of room before it runs into the arrow rather than under it
-        val arrow = if (
-            if (overlayOpen) overlay.opensDown else overlay.wouldOpenDown(values.size)
-        ) ARROW else ARROW_UP
+        val room = arrowLeft() - Common.UI.SPACING - (x + textPad)
 
-        val arrowWidth = font.width(arrow)
-        val room = width - textPad * 2 - arrowWidth - Common.UI.SPACING
-
-        val name = currentValue?.toString() ?: PLACEHOLDER
-        val shown = if (font.width(name) <= room) {
-            name
+        if (overlayOpen) {
+            search.x = x + Common.UI.BORDER_SIZE
+            search.y = y + Common.UI.BORDER_SIZE
+            search.width = arrowLeft() - Common.UI.SPACING - search.x
+            search.height = height - Common.UI.BORDER_SIZE * 2
+            search.render(graphics)
         } else {
-            font.plainSubstrByWidth(name, room - font.width(ELLIPSIS)) + ELLIPSIS
+            val name = currentValue?.toString() ?: PLACEHOLDER
+            val shown = if (font.width(name) <= room) {
+                name
+            } else {
+                font.plainSubstrByWidth(name, room - font.width(ELLIPSIS)) + ELLIPSIS
+            }
+            graphics.text(font, Component.literal(shown), x + textPad, textY, Common.UI.TEXT_COLOR, false)
         }
 
-        graphics.text(font, Component.literal(shown), x + textPad, textY, Common.UI.TEXT_COLOR, false)
-        graphics.text(font, Component.literal(arrow), x + width - arrowWidth - textPad, textY, Common.UI.TEXT_COLOR, false)
+        graphics.text(font, Component.literal(arrow), arrowLeft(), textY, Common.UI.TEXT_COLOR, false)
     }
 
     override fun mouseMoved(mouseX: Double, mouseY: Double) {
@@ -117,6 +135,8 @@ class EnumWidget<T>(
 
         when (mouseButtonEvent.button()) {
             0 -> {
+                // open, a click in the field moves the caret; only the arrow's side shuts the list
+                if (overlayOpen && search.mouseClicked(mouseButtonEvent, false)) return true
                 if (overlayOpen) close() else open()
                 onLeftClickValue?.invoke(currentValue, mouseButtonEvent)
             }
@@ -136,6 +156,7 @@ class EnumWidget<T>(
         // leave the widget believing it is still open and swallow the next click on it
         override fun onClosed() {
             overlayOpen = false
+            search.focused = false
         }
 
         override var focusedState: Boolean = false
@@ -147,11 +168,6 @@ class EnumWidget<T>(
             get() = this@EnumWidget.height
 
         val valueWidgets: MutableList<ClickableRowWidget<T>> = mutableListOf()
-
-        /** Typing here narrows the rows to the values containing the text. */
-        private val search = TextField(0, 0, Component.literal(SEARCH_HINT)).apply {
-            setResponder { rebuildRows(resetSearch = false) }
-        }
 
         /** Whether the list grows downward from the widget, settled when the rows are built. */
         var opensDown: Boolean = true
@@ -165,8 +181,7 @@ class EnumWidget<T>(
             return heightFor(rowsWanted) <= spaceBelow || spaceBelow >= spaceAbove
         }
 
-        /** The field and [rows] rows stacked. */
-        private fun heightFor(rows: Int): Int = overlayRowHeight * (rows + 1)
+        private fun heightFor(rows: Int): Int = overlayRowHeight * rows
 
         /** The visible edges in the widget's own coordinates, which scroll on a scrolling screen. */
         private fun viewTop(): Int = ScrollableScreen.current()?.viewTop ?: 0
@@ -182,13 +197,8 @@ class EnumWidget<T>(
         private var scroll: Int = 0
 
         /** Builds the rows the search lets through, no more than the room allows. The rest is scrolled. */
-        fun rebuildRows(resetSearch: Boolean) {
+        fun rebuildRows() {
             scroll = 0
-
-            if (resetSearch) {
-                search.value = ""
-                search.focused = true
-            }
 
             matching = values.filter { it.toString().contains(search.value.trim(), ignoreCase = true) }
 
@@ -200,7 +210,7 @@ class EnumWidget<T>(
                 this@EnumWidget.y - viewTop()
             }).coerceAtMost(overlayBudget ?: Int.MAX_VALUE)
 
-            visibleRows = (space / overlayRowHeight - 1).coerceAtLeast(1)
+            visibleRows = (space / overlayRowHeight).coerceAtLeast(1)
 
             buildWindow()
         }
@@ -242,15 +252,8 @@ class EnumWidget<T>(
         override val overlayHeight: Int
             get() = heightFor(valueWidgets.size)
 
-        private fun rowsTop(): Int = overlayY + overlayRowHeight
-
         fun layoutOverlay() {
-            search.x = overlayX
-            search.y = overlayY
-            search.width = overlayWidth
-            search.height = overlayRowHeight
-
-            var currentY = rowsTop()
+            var currentY = overlayY
 
             valueWidgets.forEach {
                 it.x = overlayX
@@ -264,16 +267,14 @@ class EnumWidget<T>(
         override fun renderOverlay(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
             layoutOverlay()
 
-            search.render(graphics)
             valueWidgets.forEach { it.extractRenderState(graphics, mouseX, mouseY) }
             graphics.drawBorder(overlayX, overlayY, overlayX + overlayWidth, overlayY + overlayHeight, Common.UI.BORDER_SIZE, Common.UI.BORDER_COLOR)
 
             if (matching.size > visibleRows) {
-                val listHeight = overlayHeight - overlayRowHeight
                 graphics.drawScrollBar(
                     overlayX + overlayWidth - Common.UI.SCROLLBAR_WIDTH - Common.UI.BORDER_SIZE,
-                    rowsTop(),
-                    listHeight,
+                    overlayY,
+                    overlayHeight,
                     matching.size,
                     visibleRows,
                     scroll
@@ -286,8 +287,6 @@ class EnumWidget<T>(
         override fun keyPressed(keyEvent: KeyEvent): Boolean = search.keyPressed(keyEvent)
 
         override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
-            if (search.mouseClicked(mouseButtonEvent, doubled)) return true
-
             valueWidgets.toList().forEach {
                 if (it.mouseClicked(mouseButtonEvent, doubled)) {
                     when (mouseButtonEvent.button()) {

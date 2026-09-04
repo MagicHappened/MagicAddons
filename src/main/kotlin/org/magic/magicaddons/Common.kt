@@ -36,6 +36,9 @@ object Common {
         const val SPACING: Int = 4
         const val SPACING_LARGE: Int = 10
 
+        /** Laid over the world behind a screen, so the panels stand out without hiding it. */
+        const val SCREEN_DIM_COLOR: Int = 0xA0101010.toInt()
+
         /** Text drawn over something busy needs its own ground to stay readable. */
         const val OVERLAY_TEXT_COLOR: Int = 0xFFFFFFFF.toInt()
         const val OVERLAY_BACKGROUND_COLOR: Int = 0xB0000000.toInt()

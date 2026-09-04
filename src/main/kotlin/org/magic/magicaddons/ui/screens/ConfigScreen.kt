@@ -144,7 +144,7 @@ class ConfigScreen(title: Component, val parent: Screen?) : ScrollableScreen(tit
         if (this.minecraft.level == null) {
             this.extractBackground(graphics, mouseX, mouseY, deltaTick)
         }
-        this.extractMenuBackground(graphics)
+        graphics.fill(0, 0, width, height, Common.UI.SCREEN_DIM_COLOR)
         McCompat.extractDeferredSubtitles(this.minecraft)
     }
 

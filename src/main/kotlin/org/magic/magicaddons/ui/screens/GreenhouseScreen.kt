@@ -25,6 +25,7 @@ import org.magic.magicaddons.ui.widgets.EnumWidget
 import org.magic.magicaddons.ui.widgets.config.ClickableButtonWidget
 import org.magic.magicaddons.ui.widgets.greenhouse.ElementWidget
 import org.magic.magicaddons.ui.widgets.greenhouse.GridWidget
+import org.magic.magicaddons.ui.widgets.greenhouse.Bookmarks
 import org.magic.magicaddons.ui.widgets.greenhouse.HoverControls
 import org.magic.magicaddons.ui.widgets.greenhouse.ScrollHint
 import org.magic.magicaddons.ui.widgets.greenhouse.GreenhousePanel
@@ -132,6 +133,25 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
     /** Sits beside the selector to say the wheel turns it too. */
     private val scrollHint = ScrollHint(SCROLL_HINT_GREENHOUSES)
 
+    /** The greenhouses as bookmarks along the top of the grid; a right click renames one. */
+    private val plotTabs = Bookmarks<GreenhouseLayout>(
+        side = Bookmarks.Side.Top,
+        label = { plotLabel(it) },
+        onPick = { layout, event ->
+            if (event.button() == 1) openLayoutWidgetContext(layout, event) else gridWidgetChanged(layout)
+        }
+    )
+
+    private val teleportButton = ClickableButtonWidget(
+        TELEPORT_WIDTH,
+        TELEPORT_HEIGHT,
+        Component.literal("Teleport to Plot")
+    )
+
+    /** The plot's own name, or its number when it was never named. */
+    private fun plotLabel(layout: GreenhouseLayout): String =
+        layout.name ?: "Plot ${layout.id.removePrefix("plot_")}"
+
     private val cropPreviewButton = ClickableButtonWidget(
         100,
         22,
@@ -160,10 +180,14 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
 
         paddingY = height / 10
 
-        // the toolbar down the left and the swatches plus a tooltip down the right have to fit
-        // beside the grid, so the grid takes whichever of the two axes runs out first
+        // the name box and the bookmarks sit above the grid, the teleport and preview buttons under
+        // it, and the toolbar down the left and the bookmarks plus a tooltip down the right beside
+        // it, so the grid takes whichever axis runs out first
+        startY = maxOf(paddingY, NAME_TOP + boxHeight(" ") + Common.UI.SPACING + Bookmarks.REACH + borderPadding)
+        val bottomRoom = TELEPORT_HEIGHT + Common.UI.SPACING + cropPreviewButton.height + Common.UI.SPACING_LARGE
+
         val sideRoom = TOOLBAR_WIDTH + HoverControls.TOTAL_WIDTH + Common.UI.SPACING_LARGE * 2
-        val heightRoom = height - paddingY * 2 - borderPadding * 2
+        val heightRoom = height - startY - borderPadding * 2 - bottomRoom
         val widthRoom = width - sideRoom - borderPadding * 2
 
         // the room decides the slot and the slot decides everything else, so the division
@@ -175,7 +199,12 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
 
         // never left of the toolbar, however narrow the window gets
         startX = ((width - containerSize) / 2).coerceAtLeast(TOOLBAR_WIDTH + Common.UI.SPACING_LARGE)
-        startY = paddingY
+
+        plotTabs.layoutAlong(startX - borderPadding, startY - borderPadding, containerSize + borderPadding * 2)
+
+        // hung off the bottom of the frame, over its line
+        teleportButton.x = startX + (containerSize - teleportButton.width) / 2
+        teleportButton.y = startY + containerSize + borderPadding - Common.UI.BORDER_SIZE
 
         currentDisplayToggle.x = Common.UI.SPACING_LARGE
         currentDisplayToggle.y = startY + borderPadding * 2
@@ -275,10 +304,8 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
 
 
 
-        gridSelector.currentValue = displayedGridWidget!!.layout
-        gridSelector.values = greenhouseGridWidgets.map { it.layout }
-
-        relayoutSelector()
+        plotTabs.items = greenhouseGridWidgets.map { it.layout }
+        plotTabs.selected = displayedGridWidget?.layout
 
         initDynamicName()
     }
@@ -366,6 +393,12 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
 
     /** The whole screen, in layout units. */
     private fun extractScaled(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
+        // the bookmarks first, so the frame drawn next covers where they tuck under it
+        if (currentDisplay == CurrentDisplay.Greenhouses && displayedGridWidget != null) {
+            plotTabs.render(graphics)
+            hoverControls.extractRenderState(graphics, mouseX, mouseY, delta)
+        }
+
         // background
         graphics.blitSprite(
             RenderPipelines.GUI_TEXTURED,
@@ -389,24 +422,39 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         // a water level or an age to report
         displayedGridWidget?.extractRenderState(graphics, mouseX, mouseY, delta)
 
-        if (currentDisplay == CurrentDisplay.Greenhouses) {
-            // read here rather than only on mouse movement: a pick is a click, and a click is not a
-            // movement, so the plants kept showing the last fact
-            displayedGridWidget?.pinnedInfo = hoverControls.selectedInfo
+        when (currentDisplay) {
+            CurrentDisplay.Greenhouses -> {
+                // read here rather than only on mouse movement: a pick is a click, and a click is
+                // not a movement, so the plants kept showing the last fact
+                displayedGridWidget?.pinnedInfo = hoverControls.selectedInfo
 
-            hoverControls.extractRenderState(graphics, mouseX, mouseY, delta)
-        }
-        gridSelector.extractRenderState(graphics, mouseX, mouseY, delta)
+                if (displayedGridWidget != null) {
+                    teleportButton.extractRenderState(graphics, mouseX, mouseY, delta)
+                }
 
-        // placed every frame, since the selector is refitted whenever its list changes
-        scrollHint.tooltip = when (currentDisplay) {
-            CurrentDisplay.Greenhouses -> SCROLL_HINT_GREENHOUSES
-            CurrentDisplay.Presets -> SCROLL_HINT_PRESETS
+                // at the right end of the bookmark strip, above the frame
+                scrollHint.tooltip = SCROLL_HINT_GREENHOUSES
+                scrollHint.layoutBeside(
+                    startX + containerSize + borderPadding,
+                    startY - borderPadding - Bookmarks.THICKNESS,
+                    Bookmarks.THICKNESS
+                )
+            }
+            CurrentDisplay.Presets -> {
+                gridSelector.extractRenderState(graphics, mouseX, mouseY, delta)
+
+                // placed every frame, since the selector is refitted whenever its list changes
+                scrollHint.tooltip = SCROLL_HINT_PRESETS
+                scrollHint.layoutBeside(gridSelector.x + gridSelector.width, gridSelector.y, gridSelector.height)
+            }
         }
-        scrollHint.layoutBeside(gridSelector.x + gridSelector.width, gridSelector.y, gridSelector.height)
         scrollHint.extractRenderState(graphics, mouseX, mouseY)
 
         currentDisplayToggle.extractRenderState(graphics, mouseX, mouseY, delta)
+
+        // a line under the mode row, so the buttons beneath read as their own group
+        val dividerY = currentDisplayToggle.y + currentDisplayToggle.height + Common.UI.SPACING_LARGE / 2
+        graphics.fill(actionRowX, dividerY, startX - Common.UI.SPACING_LARGE, dividerY + 1, Common.UI.DIVIDER_COLOR)
         cropPreviewButton.extractRenderState(graphics, mouseX, mouseY, delta)
 
         // only where there is a plan to stop, since a button that does nothing is a question the
@@ -440,6 +488,12 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         overlays.asReversed().forEach {
             it.renderOverlay(graphics, mouseX, mouseY, delta)
         }
+
+        if (currentDisplay == CurrentDisplay.Greenhouses) {
+            plotTabs.renderTooltip(graphics, mouseX, mouseY)
+            hoverControls.renderTooltip(graphics, mouseX, mouseY)
+        }
+
         val hovered = hoveredElement
         if (hovered !is ElementWidget) return
 
@@ -466,7 +520,7 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         if (this.minecraft.level == null) {
             this.extractPanorama(graphics, a)
         }
-        this.extractMenuBackground(graphics)
+        graphics.fill(0, 0, width, height, Common.UI.SCREEN_DIM_COLOR)
         McCompat.extractDeferredSubtitles(this.minecraft)
     }
 
@@ -486,7 +540,7 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
 
         // asked before the sweep below, which had already shut this widget's list: it found it closed
         // and opened it again, so a second click never collapsed anything
-        if (gridSelector.mouseClicked(mouseButtonEvent, doubled)) {
+        if (currentDisplay == CurrentDisplay.Presets && gridSelector.mouseClicked(mouseButtonEvent, doubled)) {
             return true
         }
 
@@ -504,6 +558,17 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
             greenhousePanel.mouseClicked(mouseButtonEvent, doubled)
         ) {
             return true
+        }
+
+        if (currentDisplay == CurrentDisplay.Greenhouses && displayedGridWidget != null) {
+            if (plotTabs.mouseClicked(mouseButtonEvent)) return true
+
+            if (teleportButton.mouseClicked(mouseButtonEvent, doubled)) {
+                displayedGridWidget?.layout?.id?.removePrefix("plot_")?.let {
+                    ChatUtils.sendCommand("tptoplot $it")
+                }
+                return true
+            }
         }
 
         if (cropPreviewButton.mouseClicked(mouseButtonEvent, doubled)) {
@@ -564,6 +629,11 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         }
         if (currentDisplay == CurrentDisplay.Greenhouses) {
             hoverControls.mouseMoved(mouseX, mouseY)
+            plotTabs.mouseMoved(mouseX, mouseY)
+            teleportButton.mouseMoved(mouseX, mouseY)
+            if (hoveredElement == null && teleportButton.isMouseOver(mouseX, mouseY)) {
+                hoveredElement = teleportButton
+            }
         }
 
         displayedGridWidget?.mouseMoved(mouseX, mouseY)
@@ -695,6 +765,7 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
             widget.layout.takeIf { currentDisplay == CurrentDisplay.Presets }
 
         displayedGridWidget = widget
+        plotTabs.selected = widget.layout
         displayedName = displayedGridWidget?.layout?.name
             ?: displayedGridWidget?.layout?.id
                     ?: "Unknown Preset"
@@ -779,6 +850,9 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
 
         /** Where the name box sits from the top of the screen. */
         private const val NAME_TOP: Int = 9
+
+        private const val TELEPORT_WIDTH: Int = 110
+        private const val TELEPORT_HEIGHT: Int = 20
 
         private const val SCROLL_HINT_GREENHOUSES: String = "Scroll the mouse wheel to switch greenhouse"
         private const val SCROLL_HINT_PRESETS: String = "Scroll the mouse wheel to switch preset"
