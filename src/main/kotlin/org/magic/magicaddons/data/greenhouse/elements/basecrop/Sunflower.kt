@@ -5,6 +5,7 @@ import org.magic.magicaddons.data.greenhouse.CropEffect
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Rotations
 import net.minecraft.world.phys.Vec3
+import net.minecraft.world.level.block.state.properties.DoubleBlockHalf
 import org.magic.magicaddons.data.greenhouse.DEFAULT_DECAY_TIME_MS
 import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
 import org.magic.magicaddons.data.greenhouse.CropArmorStand
@@ -189,17 +190,20 @@ object Sunflower : CropDefinitionProvider {
                 blocks = listOf(
                     CropBlockState(
                         offset = BlockPos(0, 1, 0),
-                        blockState = sunflowerState()
+                        blockState = sunflowerState(DoubleBlockHalf.LOWER)
                     )
                 ),
                 armorStands = listOf(
                     CropArmorStand(
-                        isSmall = false,
                         offset = Vec3(0.0, 0.4375, 0.1875),
-                        hashString = "f942c5e8426609a132549b7df5300739fade9122dad08a1d0265347795cf51ad"
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
+                        hashString = "f942c5e8426609a132549b7df5300739fade9122dad08a1d0265347795cf51ad",
+                        isSmall = false
                     )
                 ),
-                13..13,
+                13..13
             ),
             CropStage(
                 blocks = listOf(

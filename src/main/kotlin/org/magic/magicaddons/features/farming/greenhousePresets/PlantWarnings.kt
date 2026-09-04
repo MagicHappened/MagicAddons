@@ -39,6 +39,7 @@ object PlantWarnings {
     private const val DECAY_KEY: String = "DecayWarning"
     private const val SNOOZLING_KEY: String = "SnoozlingAsleepWarning"
     private const val NOCTILUME_KEY: String = "NoctilumeTimeWarning"
+    const val OTHER_PROFILES_KEY: String = "OtherProfileWarnings"
 
     /** Decay is measured in hours rather than minutes, so it climbs a ladder of its own. */
     private val DECAY_THRESHOLDS: List<Duration> = listOf(
@@ -112,11 +113,22 @@ object PlantWarnings {
         }
     }
 
+    /** A greenhouse and its name as a warning says it: the plot, and the profile when it is another's. */
+    private data class House(val grid: GreenhouseGrid, val name: String)
+
+    /** The greenhouses worth warning about: this profile's, and the other profiles' when asked for. */
+    private fun houses(): List<House> {
+        val own = GreenhouseData.greenhouseGrids.map { House(it, it.layout.displayName()) }
+        if (!enabled(OTHER_PROFILES_KEY)) return own
+
+        return own + OtherProfiles.profiles.flatMap { profile ->
+            profile.grids.map { House(it, "${it.layout.displayName()} (${profile.name})") }
+        }
+    }
+
     /** Everything with a decay clock running, mutation or not, soonest first. */
     private fun decayingPlants(): List<DecayingPlant> =
-        GreenhouseData.greenhouseGrids.flatMap { grid ->
-            val house = grid.layout.displayName()
-
+        houses().flatMap { (grid, house) ->
             grid.layout.elementInstances.mapNotNull { instance ->
                 val remaining = decayRemainingMs(instance) ?: return@mapNotNull null
 
@@ -219,7 +231,7 @@ object PlantWarnings {
     /** Groups the plants each greenhouse should report, counting repeats instead of listing them. */
     private fun notes(
         label: (GreenhouseElementInstance) -> Pair<String, String?>?
-    ): List<HouseNote> = GreenhouseData.greenhouseGrids.mapNotNull { grid ->
+    ): List<HouseNote> = houses().mapNotNull { (grid, house) ->
         val counted = grid.layout.elementInstances
             .mapNotNull(label)
             .groupingBy { it }
@@ -228,7 +240,7 @@ object PlantWarnings {
         if (counted.isEmpty()) return@mapNotNull null
 
         HouseNote(
-            grid.layout.displayName(),
+            house,
             counted.map { (plant, count) ->
                 val (name, state) = plant
 
