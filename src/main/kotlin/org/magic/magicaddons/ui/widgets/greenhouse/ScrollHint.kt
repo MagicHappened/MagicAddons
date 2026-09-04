@@ -19,6 +19,13 @@ class ScrollHint(var tooltip: String) {
         y = controlTop + (controlHeight - size) / 2
     }
 
+    /** Sits the hint with its left edge at [left], centred on a strip of [stripHeight] from [stripTop]. */
+    fun layoutAt(left: Int, stripTop: Int, stripHeight: Int) {
+        size = SIZE
+        x = left
+        y = stripTop + (stripHeight - size) / 2
+    }
+
     fun isMouseOver(mouseX: Int, mouseY: Int): Boolean =
         mouseX in x until x + size && mouseY in y until y + size
 

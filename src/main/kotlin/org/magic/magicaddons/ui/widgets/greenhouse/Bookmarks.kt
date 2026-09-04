@@ -21,7 +21,7 @@ class Bookmarks<T>(
     private val tooltip: (T) -> String? = { null },
     private val onPick: (T, MouseButtonEvent) -> Unit
 ) {
-    enum class Side { Top, Right }
+    enum class Side { Top, Right, Bottom }
 
     var items: List<T> = emptyList()
     var selected: T? = null
@@ -40,7 +40,7 @@ class Bookmarks<T>(
     private val lifts = mutableMapOf<T, Float>()
     private var lastNanos = 0L
 
-    /** Along the top the corner is the frame's top left, along the right it is the top right. */
+    /** The frame's corner the strip starts from: top left for the top, top right for the right, bottom left for the bottom. */
     fun layoutAlong(edgeX: Int, edgeY: Int, length: Int) {
         this.edgeX = edgeX
         this.edgeY = edgeY
@@ -70,6 +70,12 @@ class Bookmarks<T>(
                 edgeY + index * size,
                 edgeX + THICKNESS + lift,
                 edgeY + (index + 1) * size
+            )
+            Side.Bottom -> intArrayOf(
+                edgeX + index * size,
+                edgeY - TUCK,
+                edgeX + (index + 1) * size,
+                edgeY + THICKNESS + lift
             )
         }
     }
@@ -105,14 +111,17 @@ class Bookmarks<T>(
             if (item == hovered && !picked) graphics.fill(x1, y1, x2, y2, Common.UI.HOVER_WASH)
             graphics.drawBorder(x1, y1, x2, y2, Common.UI.BORDER_SIZE, Common.UI.BORDER_COLOR)
 
-            if (side == Side.Top) {
+            if (side != Side.Right) {
                 val room = x2 - x1 - Common.UI.TEXT_X_PAD * 2
                 val shown = shortened(label(item), room)
+                // the text sits in the part that shows: above the frame for the top, under it for the bottom
+                val textTop = if (side == Side.Top) y1 + (THICKNESS - font.lineHeight) / 2 + Common.UI.BORDER_SIZE / 2
+                else y1 + TUCK + (THICKNESS - font.lineHeight) / 2 + Common.UI.BORDER_SIZE / 2
                 graphics.text(
                     font,
                     Component.literal(shown),
                     x1 + (x2 - x1 - font.width(shown)) / 2,
-                    y1 + (THICKNESS - font.lineHeight) / 2 + Common.UI.BORDER_SIZE / 2,
+                    textTop,
                     Common.UI.TEXT_COLOR,
                     false
                 )
@@ -124,7 +133,7 @@ class Bookmarks<T>(
     fun renderTooltip(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int) {
         val item = hovered ?: return
         val text = tooltip(item)
-            ?: label(item).takeIf { side == Side.Top && shortened(it, tabSize() - Common.UI.TEXT_X_PAD * 2) != it }
+            ?: label(item).takeIf { side != Side.Right && shortened(it, tabSize() - Common.UI.TEXT_X_PAD * 2) != it }
             ?: return
 
         graphics.drawSimpleTooltip(text, mouseX + 7, mouseY + 12)

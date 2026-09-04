@@ -111,6 +111,6 @@ abstract class ActionPanel : Renderable, Focusable, HoverableContainer {
 
     companion object {
         /** How far the buttons sit inside the room the panel was given. */
-        const val PADDING: Int = 10
+        const val PADDING: Int = 6
     }
 }

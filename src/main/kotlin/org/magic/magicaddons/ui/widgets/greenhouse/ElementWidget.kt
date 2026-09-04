@@ -34,6 +34,9 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, Focus
     var widgetX: Int = 0
     var widgetY: Int = 0
     var padding: Int = 0
+
+    /** When this plant was dropped into its slot, for the pop it makes on arriving; zero for none. */
+    var appearedAt: Long = 0L
     var width = 50
     var height = 50
     /** Resolved on demand: only the fire element draws one, and resolving can throw. */
@@ -63,6 +66,10 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, Focus
 
     /** Worn in the corner of a plant the worst case has already killed. */
     private val DEAD_MARK: ItemStack = ItemStack(Items.DEAD_BUSH)
+
+    /** The pop on arriving: how small it starts and how long it takes. */
+    private val POP_MS: Long = 150
+    private val POP_FROM: Float = 0.5f
 
     /** Behind the bush, so a slot that might already be dead reads as such at a glance. */
     private val DEAD_MARK_BACKGROUND: Int = 0xC0201010.toInt()
@@ -117,6 +124,14 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, Focus
             renderFire(graphics)
             return
         }
+        // a plant just dropped in grows from small to full over its first moments
+        val elapsed = System.currentTimeMillis() - appearedAt
+        val scale = if (appearedAt == 0L || elapsed >= POP_MS) 1f else POP_FROM + (1f - POP_FROM) * elapsed / POP_MS
+
+        graphics.pose().pushMatrix()
+        graphics.pose().translate(widgetX + width / 2f, widgetY + height / 2f)
+        graphics.pose().scale(scale, scale)
+        graphics.pose().translate(-(widgetX + width / 2f), -(widgetY + height / 2f))
         graphics.renderFakeItem(
             renderedStack,
             widgetX + padding,
@@ -124,6 +139,7 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, Focus
             width - padding * 2,
             height - padding * 2
         )
+        graphics.pose().popMatrix()
 
         deadMarkBox = null
 
