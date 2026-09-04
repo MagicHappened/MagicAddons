@@ -80,6 +80,9 @@ object CropCollector : EntityUtils.HighlightSource {
         /** Matched, but a stand stood full sized where its definition says small. */
         Oversized("needs isSmall = false"),
 
+        /** Matched, but a stand stood small where its definition says full sized. */
+        Undersized("needs isSmall = true"),
+
         /** Named for a crop we know, standing at a stage nobody has recorded. */
         Unrecorded("unrecorded"),
 
@@ -209,10 +212,9 @@ object CropCollector : EntityUtils.HighlightSource {
                 // without the way its stands are turned, so worth taking again
                 val status = when {
                     found.rotationLegacy -> Status.Legacy
-                    num != null && oversized(def, num, stands) -> Status.Oversized
                     num != null && PlantDex.needsRotation(def, num) -> Status.Unturned
                     else -> Status.Current
-                }
+                }.let { if (num != null) sizeMismatch(def, num, stands) ?: it else it }
 
                 addEntry(def, slotPos, stands, status, text, num, stands.standNames())
             }
@@ -403,21 +405,30 @@ object CropCollector : EntityUtils.HighlightSource {
     }
 
     /**
-     * Whether a stand of [stands] is full sized while the definition's stand with that skull at
-     * [stage] says small. Remembered in the dex, so every listing of the crop says so.
+     * The size status when a stand of [stands] is not the size the definition gives that skull at
+     * [stage], or null when every size agrees. Remembered in the dex, so every listing says so.
+     * A skull the stage lists at both sizes is left alone, since either stand could be the one.
      */
-    private fun oversized(def: CropDefinition, stage: Int, stands: List<ArmorStand>): Boolean {
-        val small = def.stageDefs
+    private fun sizeMismatch(def: CropDefinition, stage: Int, stands: List<ArmorStand>): Status? {
+        val sizeOf = def.stageDefs
             .flatMap { if (it is CropStagePattern) it.expand() else listOf(it) }
             .filter { stage in it.stageRange }
             .flatMap { it.armorStands.orEmpty() }
-            .filter { it.isSmall }
-            .mapNotNull { it.hashString }
-            .toSet()
+            .filter { it.hashString != null }
+            .groupBy({ it.hashString!! }, { it.isSmall })
+            .filterValues { sizes -> sizes.distinct().size == 1 }
+            .mapValues { it.value.first() }
 
-        val found = stands.any { !it.isSmall && PlayerUtils.getSkullHash(it) in small }
-        if (found) PlantDex.noteSize(def.name, stage)
-        return found
+        val status = stands.firstNotNullOfOrNull { stand ->
+            when (sizeOf[PlayerUtils.getSkullHash(stand)]) {
+                true -> if (stand.isSmall) null else Status.Oversized
+                false -> if (stand.isSmall) Status.Undersized else null
+                null -> null
+            }
+        }
+
+        if (status != null) PlantDex.noteSize(def.name, stage, needsSmall = status == Status.Undersized)
+        return status
     }
 
     private fun identify(stand: ArmorStand): CropDefinition? =
@@ -662,8 +673,7 @@ object CropCollector : EntityUtils.HighlightSource {
         val status = when {
             recorded == null -> Status.Unrecorded
             recorded.rotationLegacy -> Status.Legacy
-            oversized(def, stage, stands) -> Status.Oversized
-            else -> Status.Current
+            else -> sizeMismatch(def, stage, stands) ?: Status.Current
         }
 
         if (status == Status.Legacy) PlantDex.noteLegacy(def.name, stage..stage)
