@@ -1,5 +1,6 @@
 package org.magic.magicaddons.features.farming.greenhousePresets
 
+import tech.thatgravyboat.skyblockapi.api.profile.profile.ProfileAPI
 import org.magic.magicaddons.data.greenhouse.MasterLayout
 import org.magic.magicaddons.data.greenhouse.GrowthStageInfo
 import org.magic.magicaddons.commands.debug.CropCollector
@@ -140,6 +141,7 @@ object GreenhouseData {
 
     private fun initKnownIds() {
         if (checkGreenhouses) return
+        if (DataHandler.activeProfile == null) return
         if (PlotAPI.plots.any { it.data == null }) return
 
         PlotAPI.plots.forEach { plot ->
@@ -606,8 +608,29 @@ object GreenhouseData {
         EventBus.post(GrowthTickEvent(elapsedTicks, growthTickMs))
     }
 
+    /** Loads the profile the game says is being played, the first time and on every switch. */
+    private fun ensureProfile() {
+        if (!ProfileAPI.isLoaded) return
+        val id = runCatching { ProfileAPI.profileId }.getOrNull() ?: return
+        DataHandler.switchProfile(id, ProfileAPI.profileName ?: return)
+    }
+
+    /** Forgets what was learned about the last profile's garden, so the new one is read afresh. */
+    fun resetForProfile() {
+        checkGreenhouses = false
+        currentPreset = null
+        lastCheckTime = null
+        lastServerTick = null
+        gardenArrivedAt = null
+        regenRender()
+    }
+
     @Subscription
     fun onTick(event: TickEvent) {
+        ensureProfile()
+        if (DataHandler.activeProfile == null) return
+        OtherProfiles.advance()
+
         val now = Instant.now()
         val last = lastCheckTime
 

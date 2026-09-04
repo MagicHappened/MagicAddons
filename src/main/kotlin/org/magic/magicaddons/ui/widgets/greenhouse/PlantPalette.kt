@@ -37,11 +37,11 @@ class PlantPalette(
 
     /** What a click on a plant does while the selector is on something other than Off. */
     enum class MarkChoice(private val label: String, val marking: LayoutSlot.Marking?, val applies: Boolean) {
-        Off("Mark: off", null, false),
-        Target("Mark: Target", LayoutSlot.Marking.Target, true),
-        Ingredient("Mark: Ingredient", LayoutSlot.Marking.Ingredient, true),
-        Unique("Mark: Unique crop", LayoutSlot.Marking.UniqueCrop, true),
-        Clear("Mark: clear", null, true);
+        Off("Mark off", null, false),
+        Target("Target", LayoutSlot.Marking.Target, true),
+        Ingredient("Ingredient", LayoutSlot.Marking.Ingredient, true),
+        Unique("Unique crop", LayoutSlot.Marking.UniqueCrop, true),
+        Clear("Clear mark", null, true);
 
         override fun toString(): String = label
     }
@@ -55,8 +55,8 @@ class PlantPalette(
 
     val markChoice: MarkChoice get() = markSelector.currentValue ?: MarkChoice.Off
 
-    private val undoButton = ClickableButtonWidget(ROW, ROW, Component.literal("←"))
-    private val redoButton = ClickableButtonWidget(ROW, ROW, Component.literal("→"))
+    private val undoButton = ClickableButtonWidget(ARROW_WIDTH, ROW, Component.literal("←"))
+    private val redoButton = ClickableButtonWidget(ARROW_WIDTH, ROW, Component.literal("→"))
     var x: Int = 0
     var y: Int = 0
     var width: Int = 0
@@ -68,8 +68,11 @@ class PlantPalette(
         setResponder { scroll = 0 }
     }
 
-    private val clearButton = ClickableButtonWidget(CLEAR_WIDTH, ROW, Component.literal("Clear all"))
-    private val deleteButton = ClickableButtonWidget(DELETE_WIDTH, ROW, Component.literal("Delete"))
+    private val clearButton = ClickableButtonWidget(buttonWidth("Clear all"), ROW, Component.literal("Clear all"))
+    private val deleteButton = ClickableButtonWidget(buttonWidth("Delete"), ROW, Component.literal("Delete"))
+
+    /** A button as wide as its word and the usual padding, so a row of them wastes nothing. */
+    private fun buttonWidth(label: String): Int = font.width(label) + (Common.UI.TEXT_X_PAD + Common.UI.BORDER_SIZE) * 2
 
     /** While on, clicking a plant on the grid takes it off the preset. */
     var deleteMode: Boolean = false
@@ -160,20 +163,22 @@ class PlantPalette(
         deleteButton.x = clearButton.x + clearButton.width + Common.UI.SPACING
         deleteButton.y = clearButton.y
 
-        // the mark selector and the arrows follow Delete on the same row when they fit, else take the next
+        // the mark selector, as wide as its longest word, and the arrows follow Delete on the same
+        // row when they fit, else take the next row
         val afterDelete = deleteButton.x + deleteButton.width + Common.UI.SPACING
-        val arrows = ROW * 2 + Common.UI.SPACING * 2
-        val fitsBeside = x + width - EDGE_PAD - afterDelete - arrows >= MIN_MARK_WIDTH
+        val arrows = ARROW_WIDTH * 2 + Common.UI.SPACING * 2
+        val right = x + width - EDGE_PAD
+        markSelector.fitToValues(right - search.x - arrows)
+        val fitsBeside = afterDelete + markSelector.width + arrows <= right
         buttonRows = if (fitsBeside) 1 else 2
 
         markSelector.x = if (fitsBeside) afterDelete else search.x
         markSelector.y = if (fitsBeside) clearButton.y else clearButton.y + ROW + Common.UI.SPACING
         markSelector.height = ROW
-        redoButton.x = x + width - EDGE_PAD - ROW
-        redoButton.y = markSelector.y
-        undoButton.x = redoButton.x - Common.UI.SPACING - ROW
+        undoButton.x = markSelector.x + markSelector.width + Common.UI.SPACING
         undoButton.y = markSelector.y
-        markSelector.width = (undoButton.x - Common.UI.SPACING - markSelector.x).coerceAtLeast(MIN_MARK_WIDTH)
+        redoButton.x = undoButton.x + ARROW_WIDTH + Common.UI.SPACING
+        redoButton.y = markSelector.y
 
         // the cells fill the room under the buttons exactly: as many rows of about the usual size
         // as fit, each row then stretched to use the whole height, within sane bounds
@@ -397,11 +402,7 @@ class PlantPalette(
         private const val RARITY_RARE: Int = 0xFF2F4FA3.toInt()
         private const val RARITY_EPIC: Int = 0xFF7B1F8A.toInt()
         private const val RARITY_LEGENDARY: Int = 0xFFB07A14.toInt()
-        private const val CLEAR_WIDTH: Int = 60
-
-        /** Room the mark selector needs to read "Mark: Ingredient" with its arrow. */
-        private const val MIN_MARK_WIDTH: Int = 96
-        private const val DELETE_WIDTH: Int = 50
+        private const val ARROW_WIDTH: Int = 16
 
         /** Laid over the carried plant so it reads as not yet placed. */
         private const val DRAG_VEIL: Int = 0x70101010

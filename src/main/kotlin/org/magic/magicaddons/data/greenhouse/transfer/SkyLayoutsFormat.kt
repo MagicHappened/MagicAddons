@@ -74,9 +74,13 @@ object SkyLayoutsFormat : LayoutFormat {
         val boards = code.substringAfter('~').drop(1).split('~').filter { it.isNotEmpty() }
         if (boards.isEmpty()) return LayoutTransferResult.Failure("The SkyLayouts link holds no plot.")
 
+        // the link names the mutation the layout grows; the site shows it at every empty cell
+        val head = code.substringBefore('~')
+        val target = KINDS.getOrNull(index(head[1]) - 1)?.let { byKey[key(it)] }
+
         val layouts = boards.take(MAX_PLOTS).mapIndexed { number, board ->
-            val id = if (number == 0) layoutId else "${layoutId}_part${number + 1}"
-            readBoard(board, id, notes) ?: return LayoutTransferResult.Failure("Could not read plot ${number + 1} of the SkyLayouts link.")
+            val id = if (number == 0) layoutId else "${layoutId}_p${number + 1}"
+            readBoard(board, id, target, notes) ?: return LayoutTransferResult.Failure("Could not read plot ${number + 1} of the SkyLayouts link.")
         }
         if (boards.size > MAX_PLOTS) notes.add("Only the first $MAX_PLOTS plots were taken.")
 
@@ -85,8 +89,11 @@ object SkyLayoutsFormat : LayoutFormat {
         return LayoutTransferResult.Imported(layouts.first(), notes, layouts.drop(1))
     }
 
-    /** One plot's cells into a layout; a plant covering several cells is one plant here. */
-    private fun readBoard(board: String, id: String, notes: MutableList<String>): GreenhouseLayout? {
+    /**
+     * One plot's cells into a layout; a plant covering several cells is one plant here. Every
+     * empty cell gets the [target] mutation, marked as the target, the way the site shows spawn spots.
+     */
+    private fun readBoard(board: String, id: String, target: CropDefinition?, notes: MutableList<String>): GreenhouseLayout? {
         if (board.length < 3 || board[0] != '3') return null
         val size = index(board[1])
         val kindCount = index(board[2])
@@ -141,6 +148,20 @@ object SkyLayoutsFormat : LayoutFormat {
             }
         }
         unknown.forEach { notes.add("Unknown crop: $it") }
+
+        if (target != null && target.footprint.width == 1 && target.footprint.height == 1) {
+            for (y in 0 until layout.size) {
+                for (x in 0 until layout.size) {
+                    if (taken[x][y]) continue
+                    val slot = layout.getSlot(x, y) ?: continue
+                    slot.slotMark = LayoutSlot.Marking.Target
+                    target.requiredSoil.firstOrNull()?.let { slot.placedBlock = it.defaultBlockState() }
+                    layout.elementInstances.add(GreenhouseElementInstance(target.skyblockId?.id ?: target.name, slot, null, null, cropDef = target))
+                }
+            }
+        } else if (target != null) {
+            notes.add("${target.name} spawn spots were left empty: it is wider than one cell.")
+        }
         return layout
     }
 
@@ -168,6 +189,9 @@ object SkyLayoutsFormat : LayoutFormat {
         val cells = IntArray(layout.size * layout.size) { -1 }
 
         layout.elementInstances.forEach { instance ->
+            // the site keeps the target's spots empty and names the mutation in the link instead
+            if (instance.slot.slotMark == LayoutSlot.Marking.Target && instance.cropDef.isMutation) return@forEach
+
             val kind = kindOf[instance.cropDef] ?: run {
                 notes.add("${instance.cropDef.name} is not on SkyLayouts and was left out.")
                 return@forEach

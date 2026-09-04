@@ -68,6 +68,13 @@ object GreenhousePresets : Feature() {
                 value = false
             ),
             BooleanSetting(
+                key = PlantWarnings.OTHER_PROFILES_KEY,
+                displayName = "Warnings From Other Profiles",
+                tooltip = "Lets the greenhouses of your other profiles warn too, moved on by their " +
+                        "own clocks as if you were away. Each warning says which profile it is about",
+                value = false
+            ),
+            BooleanSetting(
                 key = GreenhouseHud.KEY,
                 displayName = "Greenhouse HUD",
                 tooltip = "A small panel on screen while standing in a greenhouse: the next tick, " +
