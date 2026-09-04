@@ -30,7 +30,9 @@ import org.magic.magicaddons.ui.widgets.greenhouse.ScrollHint
 import org.magic.magicaddons.ui.widgets.greenhouse.GreenhousePanel
 import org.magic.magicaddons.ui.widgets.greenhouse.PresetUI
 import org.magic.magicaddons.util.ChatUtils
+import org.magic.magicaddons.util.ScreenUtil.boxHeight
 import org.magic.magicaddons.util.ScreenUtil.drawMultilineBoxCentered
+import org.magic.magicaddons.util.ScreenUtil.drawWarningBadge
 import org.magic.magicaddons.util.ScreenUtil.drawSimpleTooltip
 import tech.thatgravyboat.skyblockapi.api.location.LocationAPI
 import tech.thatgravyboat.skyblockapi.api.profile.garden.PlotAPI
@@ -181,7 +183,7 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         gridSelector.x = currentDisplayToggle.x + currentDisplayToggle.width + Common.UI.SPACING_LARGE
         gridSelector.y = startY + borderPadding * 2
         gridSelector.height = currentDisplayToggle.height
-        addOverlay(gridSelector.overlay)
+        gridSelector.closeList()
 
         // one row under the mode toggle, offered to whichever mode is on screen, so the two put
         // their buttons in the same place without either working out where that is
@@ -326,36 +328,34 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
     }
 
     fun initDynamicName(){
-        val iconWidth = 18
-        val widgetWidth = font.width(displayedName) + 10 //padding = 4 border size 1 x2 (from multiline box centered)
-        val widgetHeight = font.lineHeight + 10
+        val boxHeight = boxHeight(displayedName)
+        val widgetWidth = font.width(displayedName) + Common.UI.TEXT_X_PAD * 2
         val screenWidth = width
+        val nameTop = NAME_TOP
         dynamicNameDisplay = ClickableButtonWidget(
-            widgetWidth + iconWidth + 1, //icon padding + icon width
-            widgetHeight,
+            widgetWidth + Common.UI.SPACING + boxHeight,
+            boxHeight,
             {
                 it.drawMultilineBoxCentered(
                     displayedName,
                     screenWidth / 2,
-                    18,
+                    nameTop + boxHeight / 2,
                     if (shouldWarn) Common.UI.WARNING_COLOR else null
                 )
-                if (shouldWarn){
-                it.blitSprite(
-                    RenderPipelines.GUI_TEXTURED,
-                    Identifier.fromNamespaceAndPath("minecraft", "icon/unseen_notification"),
-                    ((screenWidth + widgetWidth) / 2) + 1,
-                    9,
-                    iconWidth,
-                    19, // why 19? idk height is randomly +1
-                )
+                // the badge sits beside the name, as tall as its box
+                if (shouldWarn) {
+                    it.drawWarningBadge(warningBadgeX(), nameTop, boxHeight)
                 }
             },
             false
         )
         dynamicNameDisplay?.x = (screenWidth-widgetWidth) / 2
-        dynamicNameDisplay?.y = 9
+        dynamicNameDisplay?.y = nameTop
     }
+
+    /** Where the badge beside the name starts, so its tooltip can hang under it. */
+    private fun warningBadgeX(): Int =
+        (width + font.width(displayedName) + Common.UI.TEXT_X_PAD * 2) / 2 + Common.UI.SPACING
 
     override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
         graphics.pose().pushMatrix()
@@ -426,13 +426,14 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
             }
         }
         if (hoverWarning) {
+            // under the badge rather than at the cursor, so it never covers the name it is about
             graphics.drawSimpleTooltip(
                 """
                     The displayed greenhouse uses prediction based data.
                     Enter it to update its state.
                     """.trimIndent(),
-                mouseX + 7,
-                mouseY + 30
+                warningBadgeX(),
+                NAME_TOP + boxHeight(displayedName) + Common.UI.SPACING
             )
         }
 
@@ -775,6 +776,9 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
 
         /** Full size, then gui scale 3 at 1080p, then gui scale 4 at 1080p. */
         private val DRAW_SCALES: List<Float> = listOf(1f, 0.75f, 0.5f)
+
+        /** Where the name box sits from the top of the screen. */
+        private const val NAME_TOP: Int = 9
 
         private const val SCROLL_HINT_GREENHOUSES: String = "Scroll the mouse wheel to switch greenhouse"
         private const val SCROLL_HINT_PRESETS: String = "Scroll the mouse wheel to switch preset"

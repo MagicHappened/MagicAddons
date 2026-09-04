@@ -12,6 +12,8 @@ import org.magic.magicaddons.features.FeatureManager
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.ScreenUtil.boxHeight
 import org.magic.magicaddons.util.ScreenUtil.drawMultilineBoxCentered
+import org.magic.magicaddons.util.ScreenUtil.drawTooltipLines
+import org.magic.magicaddons.Common
 import org.magic.magicaddons.util.VersionChecker
 import org.magic.magicaddons.util.compat.McCompat
 
@@ -34,6 +36,27 @@ class ConfigScreen(title: Component, val parent: Screen?) : ScrollableScreen(tit
     private var noticeY = 0
 
     private var columnsCenterX = 0
+
+    /** A short note shown at the bottom of the screen, such as a feature having no sub settings. */
+    private var note: String? = null
+    private var noteUntil: Long = 0
+
+    fun showNote(text: String) {
+        note = text
+        noteUntil = System.currentTimeMillis() + NOTE_MS
+    }
+
+    override fun extractFixed(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
+        val text = note ?: return
+        if (System.currentTimeMillis() > noteUntil) {
+            note = null
+            return
+        }
+
+        val line = Component.literal(text).visualOrderText
+        val boxWidth = font.width(line) + Common.UI.TEXT_X_PAD * 2
+        graphics.drawTooltipLines(listOf(line), (width - boxWidth) / 2, height - scaled(NOTE_BOTTOM_GAP))
+    }
 
     override var contentWidth: Int = 0
         private set
@@ -135,6 +158,13 @@ class ConfigScreen(title: Component, val parent: Screen?) : ScrollableScreen(tit
 
     override fun onClose() {
         McCompat.setScreen(parent)
+    }
+
+    private companion object {
+        const val NOTE_MS: Long = 2500
+
+        /** How far above the bottom edge the note sits, on the reference height. */
+        const val NOTE_BOTTOM_GAP: Int = 40
     }
 
     override fun removed() {

@@ -40,8 +40,8 @@ class ChoiceListSettingWidget(
     /** Room between the widget border and the search box or a row. */
     private val inset = 2
 
-    /** Rows overlap by one frame so the lines between them read as one. */
-    private val rowOverlap = Common.UI.BORDER_SIZE
+    /** Rows stack edge to edge; each draws the line under itself. */
+    private val rowOverlap = 0
 
     /** How many rows show at once, however long the catalogue gets. */
     private val visibleRows = 5

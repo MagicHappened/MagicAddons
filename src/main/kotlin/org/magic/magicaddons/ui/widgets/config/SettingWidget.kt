@@ -27,7 +27,7 @@ abstract class SettingWidget<T>(
     open var width: Int = 20
     open var height: Int = 40
 
-    protected val childPadding: Int = 2
+    protected val childPadding: Int = Common.UI.SPACING
 
     /** The gap between a row and the live line under it. */
     private val detailPadding: Int = 2

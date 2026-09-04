@@ -157,13 +157,10 @@ class TextSettingWidget(
 
         private val rows: MutableList<RemovableRowWidget<String>> = mutableListOf()
 
-        /** Rows overlap by one frame so the lines between them read as one. */
-        private val overlap = Common.UI.BORDER_SIZE
-
         fun rebuild() {
             rows.clear()
 
-            var currentY = textWidget.y + textWidget.height - overlap
+            var currentY = textWidget.y + textWidget.height
             val typed = textWidget.value.trim()
 
             setting.history.filter { it.contains(typed, ignoreCase = true) }.forEach { value ->
@@ -178,18 +175,20 @@ class TextSettingWidget(
                 row.width = textWidget.width
                 row.fitHeight(textWidget.height)
 
-                currentY += row.height - overlap
+                currentY += row.height
                 rows.add(row)
             }
         }
 
         override val overlayX: Int get() = textWidget.x
-        override val overlayY: Int get() = textWidget.y + textWidget.height - overlap
+        override val overlayY: Int get() = textWidget.y + textWidget.height
         override val overlayWidth: Int get() = textWidget.width
-        override val overlayHeight: Int get() = rows.sumOf { row -> row.height - overlap } + overlap
+        override val overlayHeight: Int get() = rows.sumOf { row -> row.height }
 
         override fun renderOverlay(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
+            if (rows.isEmpty()) return
             rows.forEach { it.extractRenderState(graphics, mouseX, mouseY) }
+            graphics.drawBorder(overlayX, overlayY, overlayX + overlayWidth, overlayY + overlayHeight, Common.UI.BORDER_SIZE, Common.UI.BORDER_COLOR)
         }
 
         override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean =

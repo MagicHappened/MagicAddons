@@ -68,8 +68,9 @@ class TextField(
         val text = value
         val caretX = font.width(text.substring(0, box.cursorPosition.coerceIn(0, text.length)))
 
-        // the text slides left only as far as it must for the caret to stay in view
-        val shift = (caretX - room() + 1).coerceAtLeast(0)
+        // while typing the text slides left only as far as it must for the caret to stay in view;
+        // at rest it shows its start
+        val shift = if (focused) (caretX - room() + 1).coerceAtLeast(0) else 0
         val left = textLeft() - shift
 
         graphics.enableScissor(textLeft(), y, textLeft() + room(), y + height)

@@ -12,7 +12,6 @@ import org.magic.magicaddons.ui.widgets.CheckboxWidget
 import org.magic.magicaddons.ui.screens.ConfigScreen
 import org.magic.magicaddons.ui.screens.FeatureEditScreen
 import org.magic.magicaddons.features.Feature
-import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.ScreenUtil.drawBorder
 import org.magic.magicaddons.util.ScreenUtil.drawWrappedText
 import org.magic.magicaddons.util.ScreenUtil.wrappedHeight
@@ -109,8 +108,8 @@ class FeatureToggleWidget(
                 if (currentScreen !is ConfigScreen) {
                     return false
                 }
-                if (feature.baseSetting.children == null){
-                    ChatUtils.sendWithPrefix("Feature ${feature.displayName} does not have sub settings.")
+                if (feature.baseSetting.children == null) {
+                    currentScreen.showNote("${feature.displayName} has no sub settings")
                     return true
                 }
                 val featureEditScreen = FeatureEditScreen(feature, currentScreen)

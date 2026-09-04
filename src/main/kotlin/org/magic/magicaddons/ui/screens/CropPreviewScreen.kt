@@ -28,6 +28,7 @@ import org.magic.magicaddons.ui.widgets.EnumWidget
 import org.magic.magicaddons.util.ScreenUtil
 import org.magic.magicaddons.util.ScreenUtil.drawBorder
 import org.magic.magicaddons.util.ScreenUtil.drawSimpleTooltip
+import org.magic.magicaddons.util.ScreenUtil.drawWarningBadge
 import org.magic.magicaddons.util.ScreenUtil.drawMultilineBoxCentered
 
 /**
@@ -311,26 +312,18 @@ class CropPreviewScreen(
         val missing = missingData()
         if (missing.isEmpty()) return
 
-        val markX = previewX + previewSize - 20
-        val markY = previewY + 6
+        val markX = previewX + previewSize - BORDER_PAD - BADGE_SIZE
+        val markY = previewY + BORDER_PAD
 
-        val pose = graphics.pose()
+        graphics.drawWarningBadge(markX, markY, BADGE_SIZE)
 
-        pose.pushMatrix()
-        pose.translate(markX.toFloat(), markY.toFloat())
-        pose.scale(2.5f, 2.5f)
-        graphics.text(font, Component.literal("!"), 0, 0, INCOMPLETE_COLOR, false)
-        pose.popMatrix()
-
-        val markW = (font.width("!") * 2.5f).toInt()
-        val markH = (font.lineHeight * 2.5f).toInt()
-
-        if (mouseX in markX - 3..markX + markW + 3 && mouseY in markY - 2..markY + markH + 2) {
+        if (mouseX in markX..markX + BADGE_SIZE && mouseY in markY..markY + BADGE_SIZE) {
+            // under the badge, so it never covers what it is about
             graphics.drawSimpleTooltip(
                 "Data is incomplete for this stage, may be inaccurate\n" +
                         "data missing: ${missing.joinToString(", ")}",
-                mouseX + 7,
-                mouseY + 12
+                markX + BADGE_SIZE - TOOLTIP_WIDTH_HINT,
+                markY + BADGE_SIZE + Common.UI.SPACING
             )
         }
     }
@@ -453,6 +446,9 @@ class CropPreviewScreen(
         const val SLIDER_HEIGHT: Int = 10
         const val HANDLE_WIDTH: Int = 5
 
-        val INCOMPLETE_COLOR: Int = 0xFFFF4444.toInt()
+        const val BADGE_SIZE: Int = 16
+
+        /** The badge is at the box's right edge, so the tooltip is pulled left to stay inside it. */
+        const val TOOLTIP_WIDTH_HINT: Int = 170
     }
 }

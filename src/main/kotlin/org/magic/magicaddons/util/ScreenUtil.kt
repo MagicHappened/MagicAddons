@@ -107,9 +107,25 @@ object ScreenUtil {
         drawBorder(x1, y1, x2, y2, Common.UI.BORDER_SIZE, if (pressed) Common.UI.SELECTED_FRAME_COLOR else Common.UI.BORDER_COLOR)
     }
 
-    /** The ground of a text field or checkbox, framed white while it has the keyboard. */
+    /** The ground of a text field or checkbox: a dark inset, framed white only while it has the keyboard. */
     fun GuiGraphicsExtractor.drawField(x1: Int, y1: Int, x2: Int, y2: Int, focused: Boolean) {
-        drawPanel(x1, y1, x2, y2, Common.UI.FIELD_COLOR, if (focused) Common.UI.SELECTED_FRAME_COLOR else Common.UI.BORDER_COLOR)
+        fill(x1, y1, x2, y2, Common.UI.FIELD_COLOR)
+        if (focused) drawBorder(x1, y1, x2, y2, Common.UI.BORDER_SIZE, Common.UI.SELECTED_FRAME_COLOR)
+    }
+
+    /** A red square with a white exclamation mark, for data that may be wrong. */
+    fun GuiGraphicsExtractor.drawWarningBadge(x: Int, y: Int, size: Int) {
+        drawPanel(x, y, x + size, y + size, Common.UI.WARNING_COLOR)
+
+        val font = Minecraft.getInstance().font
+        val mark = "!"
+        val scale = size * 0.7f / font.lineHeight
+
+        pose().pushMatrix()
+        pose().translate(x + size / 2f, y + size / 2f)
+        pose().scale(scale, scale)
+        text(font, Component.literal(mark), -font.width(mark) / 2, -font.lineHeight / 2, Common.UI.TEXT_COLOR, false)
+        pose().popMatrix()
     }
 
     /** A scroll bar down a list of [total] rows showing [visible] of them from [scroll]. Display only. */

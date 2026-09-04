@@ -80,6 +80,12 @@ object Common {
         /** Something enabled or accepted. */
         const val SUCCESS_COLOR: Int = 0xFF00FF00.toInt()
 
+        /** The tick in a checkbox, a step darker than [SUCCESS_COLOR] so it sits in the box. */
+        const val CHECK_COLOR: Int = 0xFF1FBF1F.toInt()
+
+        /** The line between two rows of one list. */
+        const val DIVIDER_COLOR: Int = BORDER_COLOR
+
         /** Something that removes or destroys, such as a delete cross. */
         const val DANGER_COLOR: Int = 0xFFFF0000.toInt()
 
