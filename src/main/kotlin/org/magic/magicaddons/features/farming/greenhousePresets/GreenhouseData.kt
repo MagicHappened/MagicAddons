@@ -448,6 +448,9 @@ object GreenhouseData {
         runDueReconcile()
     }
 
+    /** Whether the player stands in a greenhouse, their own or one they are visiting. */
+    fun inGreenhouse(): Boolean = PlotAPI.getCurrentPlot()?.takeUnless { it.isBarn } != null
+
     fun getCurrentGrid(): GreenhouseGrid? {
         val plotId = PlotAPI.getCurrentPlot()?.id ?: return null
         return greenhouseGrids.find { it.layout.id == "plot_$plotId" }
@@ -1193,9 +1196,15 @@ object GreenhouseData {
                 )
             }
 
+        val hit = plantDiagnosticHitBaseBlock
+        if (hit == null) {
+            ChatUtils.sendWithPrefix("Nothing was pointed at, so there is no plant to correct.")
+            return
+        }
+
         // the only caller left, and it rescans the whole footprint itself, so what the tool
-        // hands over is the crop and the stage the page just named
-        CropCollector.correct(def, stageRaw)
+        // hands over is the crop, the stage the page just named and where the tool was pointed
+        CropCollector.correct(def, stageRaw, hit)
     }
 
     /**

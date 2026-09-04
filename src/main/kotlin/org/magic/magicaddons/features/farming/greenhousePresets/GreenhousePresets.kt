@@ -21,9 +21,13 @@ import tech.thatgravyboat.skyblockapi.api.location.SkyBlockIsland
 
 object GreenhousePresets : Feature() {
 
+    private const val KEY_ANYWHERE = "GreenhouseKeyAnywhere"
+
     init {
         SkyBlockAPI.eventBus.register(this)
     }
+
+    fun keyWorksAnywhere(): Boolean = baseSetting.getChild<BooleanSetting>(KEY_ANYWHERE)?.value == true
     override val id = "GreenhousePresets"
     override val displayName = "Greenhouse Presets"
     override val tooltipMessage = "Enables Greenhouse Presets..."
@@ -61,6 +65,13 @@ object GreenhousePresets : Feature() {
                 displayName = "Noctilume Time Warning",
                 tooltip = "Warns while a noctilume craves a time of day the garden is not on, " +
                         "since it stalls every tick until the garden time is changed",
+                value = false
+            ),
+            BooleanSetting(
+                key = KEY_ANYWHERE,
+                displayName = "Greenhouse Key Anywhere",
+                tooltip = "Lets the greenhouse screen key (G unless rebound) open the screen " +
+                        "outside a greenhouse too. Off, it only works while standing in one",
                 value = false
             ),
             BooleanSetting(

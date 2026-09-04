@@ -630,16 +630,13 @@ object CropCollector : EntityUtils.HighlightSource {
         return BlockPos.containing(stand.position().add(turned))
     }
 
-    fun correct(diagnosed: CropDefinition, diagnosedStage: Int) {
+    /** [hit] is the block or stand the tool was pointed at; only its x and z are used. */
+    fun correct(diagnosed: CropDefinition, diagnosedStage: Int, hit: BlockPos) {
         val s = session ?: return
         val client = Minecraft.getInstance()
-        val player = client.player ?: return
         if (client.level !== s.level) return
 
-        // x and z from the player, y from the one height greenhouse soil sits at: reaching a tall
-        // plant can mean standing on it
-        val feet = player.blockPosition()
-        val standingOn = BlockPos(feet.x, GREENHOUSE_SOIL_Y, feet.z)
+        val standingOn = BlockPos(hit.x, GREENHOUSE_SOIL_Y, hit.z)
 
         val w = diagnosed.footprint.width
         val h = diagnosed.footprint.height

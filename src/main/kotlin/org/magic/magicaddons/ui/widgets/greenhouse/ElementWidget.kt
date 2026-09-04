@@ -113,12 +113,13 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, Focus
 
     override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, deltaTick: Float) {
         markingColor?.let { colour ->
-            graphics.drawBorder(widgetX + 1, widgetY + 1, widgetX + width - 1, widgetY + height - 1, Common.UI.BORDER_SIZE, colour)
+            // right up against the grid lines, with no soil showing between
+            graphics.drawBorder(widgetX, widgetY, widgetX + width, widgetY + height, Common.UI.BORDER_SIZE, colour)
 
             // a tag folded over the top right corner, hard to miss at any slot size
             val tag = (width / 3).coerceAtLeast(5)
             for (row in 0 until tag) {
-                graphics.fill(widgetX + width - 1 - tag + row, widgetY + 1 + row, widgetX + width - 1, widgetY + 2 + row, colour)
+                graphics.fill(widgetX + width - tag + row, widgetY + row, widgetX + width, widgetY + row + 1, colour)
             }
         }
         if (instance.elementId == "Fire") {
@@ -328,11 +329,7 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, Focus
     }
 
     override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, bl: Boolean): Boolean {
-        if (isMouseOver(mouseButtonEvent.x, mouseButtonEvent.y)) {
-            ChatUtils.sendWithPrefix("Clicked on ${instance.elementId} ")
-            return true
-        }
-        return false
+        return isMouseOver(mouseButtonEvent.x, mouseButtonEvent.y)
     }
 
     override fun isMouseOver(mouseX: Double, mouseY: Double): Boolean {
@@ -394,6 +391,8 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, Focus
             if (footprint.width > 1 || footprint.height > 1) {
                 add(labelled("Size", "${footprint.width}x${footprint.height}"))
             }
+
+            if (inPreset) add(Component.literal("Right click to mark").withStyle(ChatFormatting.GRAY))
         }
 
         graphics.drawTooltipLines(lines.map { it.visualOrderText }, mouseX, mouseY)

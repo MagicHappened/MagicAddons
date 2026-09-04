@@ -49,7 +49,11 @@ object MainCommand {
                     }
 
                     commandList.forEach { command ->
-                        root.then(command.build())
+                        val node = command.build().build()
+                        root.then(node)
+                        command.aliases.forEach { alias ->
+                            root.then(literal(alias).executes(node.command).redirect(node))
+                        }
                     }
 
                     dispatcher.register(root)

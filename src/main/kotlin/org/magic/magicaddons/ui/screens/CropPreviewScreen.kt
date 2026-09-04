@@ -52,6 +52,10 @@ class CropPreviewScreen(
     /** The ground under the plant: the first soil its definition asks for, one per footprint cell. */
     private var soilBlocks: Map<BlockPos, BlockState> = emptyMap()
 
+    /** The lowest and highest point over every stage of the crop, so all stages draw at one scale. */
+    private var cropMinY = 0.0
+    private var cropMaxY = 1.0
+
     private var yaw: Float = 45f
     private var pitch: Float = -20f
 
@@ -104,7 +108,28 @@ class CropPreviewScreen(
         selectedDef = def
         spinning = true
         stage = stage.coerceIn(1, def.maxStage)
+        measureCrop(def)
         rebuildScene()
+    }
+
+    private fun measureCrop(def: CropDefinition) {
+        cropMinY = 0.0
+        cropMaxY = 1.0
+        val level = Minecraft.getInstance().level ?: return
+
+        def.stageDefs
+            .flatMap { if (it is CropStagePattern) it.expand() else listOf(it) }
+            .mapNotNull { it.toRenderData(level, ORIGIN, def.footprint, def.standPoses, def.rotatesWithPlot) }
+            .forEach { data ->
+                data.blockMap.keys.forEach {
+                    cropMinY = minOf(cropMinY, it.y.toDouble())
+                    cropMaxY = maxOf(cropMaxY, it.y + 1.0)
+                }
+                data.stands.forEach {
+                    cropMinY = minOf(cropMinY, it.y)
+                    cropMaxY = maxOf(cropMaxY, it.y + 1.2)
+                }
+            }
     }
 
     private fun setStage(newStage: Int) {
@@ -144,19 +169,10 @@ class CropPreviewScreen(
         } ?: emptyMap()
     }
 
-    /** Where the middle of the scene sits, and how many blocks it spans at its widest. */
-    private fun centerAndExtent(data: CropStage.RenderData): Pair<Vec3, Double> {
-        var minY = 0.0
-        var maxY = 1.0
-
-        data.blockMap.keys.forEach {
-            minY = minOf(minY, it.y.toDouble())
-            maxY = maxOf(maxY, it.y + 1.0)
-        }
-        data.stands.forEach {
-            minY = minOf(minY, it.y)
-            maxY = maxOf(maxY, it.y + 1.2)
-        }
+    /** Where the middle of the scene sits, and how many blocks the crop spans at its widest stage. */
+    private fun centerAndExtent(): Pair<Vec3, Double> {
+        val minY = cropMinY
+        val maxY = cropMaxY
 
         val footprint = selectedDef?.footprint
         val w = footprint?.width ?: 1
@@ -225,7 +241,7 @@ class CropPreviewScreen(
     /** The plant itself, handed to the gui pipeline to draw with real depth. */
     private fun submitScene(graphics: GuiGraphicsExtractor, delta: Float) {
         val data = sceneData ?: return
-        val (center, extent) = centerAndExtent(data)
+        val (center, extent) = centerAndExtent()
 
         val dispatcher = Minecraft.getInstance().entityRenderDispatcher
 
