@@ -24,7 +24,7 @@ abstract class SettingWidget<T>(
     open var width: Int = 20
     open var height: Int = 40
 
-    protected val childPadding: Int = 4
+    protected val childPadding: Int = 2
     var baseWidget = false
     open var hovered: Boolean = false
     open var childrenExpanded: Boolean = false
@@ -37,7 +37,7 @@ abstract class SettingWidget<T>(
     protected val backgroundColor: Int = 0xFF555555.toInt()
 
     protected val textXPad: Int = 4
-    protected val textYPad: Int = 10
+    protected val textYPad: Int = 5
 
     /** The height a setting has before its wrapped text asks for more. */
     protected val baseHeight: Int = 40
