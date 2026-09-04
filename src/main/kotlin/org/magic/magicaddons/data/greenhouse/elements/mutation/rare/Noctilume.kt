@@ -42,29 +42,29 @@ object Noctilume : CropDefinitionProvider {
         Rotations(-22.5f, 0.0f, -22.5f)
     )
 
-    private val flatYaws = listOf(0.0f, 0.0f, 0.0f, 0.0f)
-
-    /** One look of a stage: the shared geometry wearing the skull of what it craves. */
+    /** One look of a stage: the shared geometry wearing the skull of what it craves. [fullSized] lists the stands not small. */
     private fun look(
         stage: Int,
         hash: String,
         craving: Int,
         wheatAge: Int,
         offsets: List<Vec3>,
-        isSmall: Boolean = true
+        fullSized: Set<Int> = emptySet()
     ): CropStage = CropStage(
         blocks = CropBlockState.blockStatePattern(
             positions = wheatPositions,
             blockState = wheatState(wheatAge)
         ),
-        armorStands = CropArmorStand.matcherPattern(
-            offsets = offsets,
-            rotations = standRotations,
-            xRotations = flatYaws,
-            yRotations = flatYaws,
-            hashString = hash,
-            isSmall = isSmall
-        ),
+        armorStands = offsets.indices.map { index ->
+            CropArmorStand(
+                offset = offsets[index],
+                headRotation = standRotations[index],
+                xRotation = 0f,
+                yRotation = 0f,
+                hashString = hash,
+                isSmall = index !in fullSized
+            )
+        },
         stageRange = stage..stage,
         traits = mapOf(CropStandReader.CRAVES to craving)
     )
@@ -84,7 +84,7 @@ object Noctilume : CropDefinitionProvider {
                 craving = CropStandReader.CRAVES_DAY,
                 wheatAge = 4,
                 offsets = youngOffsets,
-                isSmall = false
+                fullSized = setOf(3)
             ),
             look(
                 stage = 4,
@@ -99,7 +99,7 @@ object Noctilume : CropDefinitionProvider {
                 craving = CropStandReader.CRAVES_NIGHT,
                 wheatAge = 6,
                 offsets = grownOffsets,
-                isSmall = false
+                fullSized = setOf(3)
             )
         ),
         decayTimeMs = SIX_DAY_DECAY_TIME_MS,

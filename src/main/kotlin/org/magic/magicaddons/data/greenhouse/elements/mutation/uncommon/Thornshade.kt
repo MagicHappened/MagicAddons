@@ -74,7 +74,8 @@ object Thornshade : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.0625, 0.0),
-                        hashString = "f847308b40613358974ba94675da63759b442dc50a241a506a77e5ca446f130f"
+                        hashString = "f847308b40613358974ba94675da63759b442dc50a241a506a77e5ca446f130f",
+                        isSmall = false
                     )
                 ),
                 5..5
@@ -105,7 +106,8 @@ object Thornshade : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, 0.15625, 0.0),
-                        hashString = "f847308b40613358974ba94675da63759b442dc50a241a506a77e5ca446f130f"
+                        hashString = "f847308b40613358974ba94675da63759b442dc50a241a506a77e5ca446f130f",
+                        isSmall = false
                     )
                 ),
                 7..7

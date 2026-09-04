@@ -156,33 +156,28 @@ object StoplightPetal : CropDefinitionProvider {
                     ),
                     blockState = melonStemState(5)
                 ),
-                armorStands = CropArmorStand.matcherPattern(
-                    offsets = listOf(
-                        Vec3(0.0, 1.4375, -0.21875),
-                        Vec3(0.0, -0.4375, 0.0)
-                    ),
-                    rotations = listOf(
-                        Rotations(90.0f, 0.0f, 0.0f),
-                        Rotations(0.0f, 0.0f, 0.0f)
-                    ),
-                    xRotations = listOf(
-                        0.0f,
-                        0.0f
-                    ),
-                    yRotations = listOf(
-                        0.0f,
-                        0.0f
-                    ),
-                    hashString = "57f6c922e742b5c571b1cf091d6d4bc06360f4f03443d79c5174097b0b373d7e",
-                    isSmall = false
-                ) +
-                listOf(
+                armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, 0.15625, 0.0),
                         headRotation = Rotations(0.0f, 0.0f, 0.0f),
                         xRotation = 0.0f,
                         yRotation = 0.0f,
                         hashString = "f15bd3a726eee1f2f8ffd3a92ae95c44a2f37f6b0345a795b44e0360564c67fe",
+                        isSmall = false
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(0.0, 1.4375, -0.21875),
+                        headRotation = Rotations(90.0f, 0.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
+                        hashString = "57f6c922e742b5c571b1cf091d6d4bc06360f4f03443d79c5174097b0b373d7e"
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(0.0, -0.4375, 0.0),
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
+                        hashString = "57f6c922e742b5c571b1cf091d6d4bc06360f4f03443d79c5174097b0b373d7e",
                         isSmall = false
                     )
                 ),

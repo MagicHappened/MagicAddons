@@ -99,6 +99,30 @@ object Thunderling : CropDefinitionProvider {
                 blocks = listOf(),
                 armorStands = CropArmorStand.matcherPattern(
                     offsets = listOf(
+                        Vec3(-0.21875, -0.625, 0.03125),
+                        Vec3(0.0625, -0.71875, -0.25)
+                    ),
+                    rotations = listOf(
+                        Rotations(22.5f, 22.5f, 0.0f),
+                        Rotations(-22.5f, 0.0f, 22.5f)
+                    ),
+                    xRotations = listOf(
+                        0.0f,
+                        0.0f
+                    ),
+                    yRotations = listOf(
+                        0.0f,
+                        0.0f
+                    ),
+                    hashString = "b68fb1ff4ecbf2e1c6e9f11c71f8f915f2d05e58a4ced08998f8b040bd671a08",
+                    isSmall = false
+                ),
+                9..9
+            ),
+            CropStage(
+                blocks = listOf(),
+                armorStands = CropArmorStand.matcherPattern(
+                    offsets = listOf(
                         Vec3(0.15625, -0.5, 0.21875),
                         Vec3(0.0625, -0.625, -0.25),
                         Vec3(-0.21875, -0.5, 0.03125)

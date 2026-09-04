@@ -234,7 +234,8 @@ object ChorusFruit : CropDefinitionProvider {
                         0.0f,
                         0.0f
                     ),
-                    hashString = "e044238503102f64f30f4d58f0843b215d8dd54fc9f1f70cc17d8dd891bb3e5e"
+                    hashString = "e044238503102f64f30f4d58f0843b215d8dd54fc9f1f70cc17d8dd891bb3e5e",
+                    isSmall = false
                 ),
                 12..12
             )

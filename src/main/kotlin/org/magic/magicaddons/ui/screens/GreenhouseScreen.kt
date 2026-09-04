@@ -26,6 +26,7 @@ import org.magic.magicaddons.ui.widgets.config.ClickableButtonWidget
 import org.magic.magicaddons.ui.widgets.greenhouse.ElementWidget
 import org.magic.magicaddons.ui.widgets.greenhouse.GridWidget
 import org.magic.magicaddons.ui.widgets.greenhouse.HoverControls
+import org.magic.magicaddons.ui.widgets.greenhouse.ScrollHint
 import org.magic.magicaddons.ui.widgets.greenhouse.GreenhousePanel
 import org.magic.magicaddons.ui.widgets.greenhouse.PresetUI
 import org.magic.magicaddons.util.ChatUtils
@@ -125,6 +126,9 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
     var slotSize: Int = 20
 
     private val hoverControls = HoverControls()
+
+    /** Sits beside the selector to say the wheel turns it too. */
+    private val scrollHint = ScrollHint(SCROLL_HINT_GREENHOUSES)
 
     private val cropPreviewButton = ClickableButtonWidget(
         100,
@@ -374,7 +378,7 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
 
         dynamicNameDisplay?.extractRenderState(graphics,mouseX,mouseY,delta)
 
-        val timeText = GreenhouseData.miscInfo.nextTickTime?.toReadableDuration() ?: "Unknown Time"
+        val timeText = "Next tick: " + (GreenhouseData.miscInfo.nextTickTime?.toReadableDuration() ?: "unknown")
         val timeWidth = font.width(timeText)
 
         graphics.drawMultilineBoxCentered(
@@ -393,6 +397,15 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
             hoverControls.extractRenderState(graphics, mouseX, mouseY, delta)
         }
         gridSelector.extractRenderState(graphics, mouseX, mouseY, delta)
+
+        // placed every frame, since the selector is refitted whenever its list changes
+        scrollHint.tooltip = when (currentDisplay) {
+            CurrentDisplay.Greenhouses -> SCROLL_HINT_GREENHOUSES
+            CurrentDisplay.Presets -> SCROLL_HINT_PRESETS
+        }
+        scrollHint.layoutBeside(gridSelector.x + gridSelector.width, gridSelector.y, gridSelector.height)
+        scrollHint.extractRenderState(graphics, mouseX, mouseY)
+
         currentDisplayToggle.extractRenderState(graphics, mouseX, mouseY, delta)
         cropPreviewButton.extractRenderState(graphics, mouseX, mouseY, delta)
 
@@ -762,6 +775,9 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
 
         /** Full size, then gui scale 3 at 1080p, then gui scale 4 at 1080p. */
         private val DRAW_SCALES: List<Float> = listOf(1f, 0.75f, 0.5f)
+
+        private const val SCROLL_HINT_GREENHOUSES: String = "Scroll the mouse wheel to switch greenhouse"
+        private const val SCROLL_HINT_PRESETS: String = "Scroll the mouse wheel to switch preset"
     }
 
 }

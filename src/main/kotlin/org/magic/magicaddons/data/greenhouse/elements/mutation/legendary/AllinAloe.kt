@@ -55,6 +55,29 @@ object AllinAloe : CropDefinitionProvider {
                     ),
                     CropBlockState(
                         offset = BlockPos(0, 2, 0),
+                        blockState = melonStemState(1)
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, -0.0625, -0.125),
+                        headRotation = Rotations(22.5f, 0.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
+                        hashString = "dde18b1db0f938380dd8bed0c9189c3e62ea3acf900a19b2e95f52708c3ae3f2",
+                        isSmall = false
+                    )
+                ),
+                3..3
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = melonStemState(7)
+                    ),
+                    CropBlockState(
+                        offset = BlockPos(0, 2, 0),
                         blockState = melonStemState(2)
                     )
                 ),
@@ -132,6 +155,29 @@ object AllinAloe : CropDefinitionProvider {
                     )
                 ),
                 8..8
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = melonStemState(7)
+                    ),
+                    CropBlockState(
+                        offset = BlockPos(0, 2, 0),
+                        blockState = melonStemState(6)
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, 0.34375, 0.09375),
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
+                        hashString = "241163612258d30dc6ef63b21f61ba89c622e5dcebd99fd36a3b507e80cdc725",
+                        isSmall = false
+                    )
+                ),
+                9..9
             )),
         decayTimeMs = NEVER_DECAYS,
         maxStage = 27,

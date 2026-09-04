@@ -48,12 +48,12 @@ class HoverControls : Renderable, Focusable, HoverableContainer {
         forEachSwatch { info, top, bottom ->
             graphics.fill(x, top, x + width, bottom, info.color)
 
-            // the picked swatch is outlined; a swatch only hovered is lightened instead
-            if (info == selectedInfo) {
-                graphics.drawBorder(x, top, x + width, bottom, Common.UI.BORDER_SIZE, Common.UI.BORDER_COLOR)
-            } else if (info == hoveredInfo) {
+            // every swatch is framed like a button; the picked one in white, a hovered one lightened
+            val frame = if (info == selectedInfo) SELECTED_FRAME_COLOR else Common.UI.BORDER_COLOR
+            if (info == hoveredInfo && info != selectedInfo) {
                 graphics.fill(x, top, x + width, bottom, HOVER_WASH)
             }
+            graphics.drawBorder(x, top, x + width, bottom, Common.UI.BORDER_SIZE, frame)
         }
     }
 
@@ -121,7 +121,10 @@ class HoverControls : Renderable, Focusable, HoverableContainer {
         /** Laid over the swatch the mouse is on, so it lifts rather than changes colour. */
         private const val HOVER_WASH: Int = 0x40FFFFFF
 
-        private const val SWATCH_WIDTH: Int = 10
+        /** The frame of the picked swatch, white against the black frames of the rest. */
+        private const val SELECTED_FRAME_COLOR: Int = Common.UI.TEXT_COLOR
+
+        private const val SWATCH_WIDTH: Int = 15
         private const val SWATCH_SPACING: Int = Common.UI.SPACING_SMALL
 
         /** What the swatches take up beside the grid, gap included. */

@@ -239,56 +239,200 @@ object Snoozling : CropDefinitionProvider {
             ),
             CropStage(
                 blocks = CropBlockState.blockStatePattern(
-                    positions = wheatPositions,
-                    blockState = wheatState(5)
+                    listOf(
+                        BlockPos(0, 1, 0),
+                        BlockPos(0, 1, 2),
+                        BlockPos(2, 1, 0),
+                        BlockPos(2, 1, 2)
+                    ),
+                    blockState = wheatState(0)
                 ),
-                armorStands = CropArmorStand.matcherPattern(
-                    offsets = listOf(
-                        Vec3(0.0, 0.4375, 0.40625),
-                        Vec3(0.0, -0.5625, 0.0),
-                        Vec3(0.5, -0.65625, -0.375),
-                        Vec3(-0.46875, -0.59375, -0.375),
-                        Vec3(0.0, -0.25, -0.625),
-                        Vec3(0.0, 0.9375, -0.90625)
-                    ),
-                    rotations = listOf(
-                        Rotations(22.5f, 0.0f, 0.0f),
-                        Rotations(0.0f, 0.0f, 0.0f),
-                        Rotations(0.0f, 0.0f, 22.5f),
-                        Rotations(0.0f, 0.0f, -22.5f),
-                        Rotations(22.5f, 0.0f, 0.0f),
-                        Rotations(45.0f, 0.0f, 0.0f)
-                    ),
-                    xRotations = listOf(
-                        0.0f,
-                        0.0f,
-                        0.0f,
-                        0.0f,
-                        0.0f,
-                        0.0f
-                    ),
-                    yRotations = listOf(
-                        0.0f,
-                        -180.0f,
-                        0.0f,
-                        0.0f,
-                        -180.0f,
-                        -180.0f
-                    ),
-                    hashString = "b82d442528456547474dd88166a97818f057ecc4b3ed350ef9a5e4dbd27f98d7",
-                    isSmall = false
-                ) + listOf(
+                armorStands = listOf(
                     CropArmorStand(
-                        isSmall = false,
                         offset = Vec3(0.0, 0.0, 0.84375),
-                        hashString = "24c64afa58bef69ff567b012a2b1638cf475c5bdb050d382308399ffa0b06a8d"
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
+                        hashString = "77bb86dedeb827f2489aa0103d58d0e12e64a8152d5a0f5b1d4d208a3cb55999",
+                        isSmall = false
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(0.0, -0.5625, 0.0),
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = -180.0f,
+                        hashString = "b82d442528456547474dd88166a97818f057ecc4b3ed350ef9a5e4dbd27f98d7",
+                        isSmall = false
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(0.0, 0.4375, 0.40625),
+                        headRotation = Rotations(22.5f, 0.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
+                        hashString = "b82d442528456547474dd88166a97818f057ecc4b3ed350ef9a5e4dbd27f98d7"
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(0.4375, -0.84375, -0.375),
+                        headRotation = Rotations(0.0f, 0.0f, 22.5f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
+                        hashString = "b82d442528456547474dd88166a97818f057ecc4b3ed350ef9a5e4dbd27f98d7",
+                        isSmall = false
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(-0.46875, -0.78125, -0.375),
+                        headRotation = Rotations(0.0f, 0.0f, -22.5f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
+                        hashString = "b82d442528456547474dd88166a97818f057ecc4b3ed350ef9a5e4dbd27f98d7",
+                        isSmall = false
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(0.0, 0.15625, -0.40625),
+                        headRotation = Rotations(22.5f, 0.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = -180.0f,
+                        hashString = "b82d442528456547474dd88166a97818f057ecc4b3ed350ef9a5e4dbd27f98d7"
                     )
                 ),
-                20..20,
-            )
-
-
-        ),
+                11..11
+            ),
+            CropStage(
+                blocks = CropBlockState.blockStatePattern(
+                    listOf(
+                        BlockPos(0, 1, 0),
+                        BlockPos(0, 1, 2),
+                        BlockPos(2, 1, 0),
+                        BlockPos(2, 1, 2)
+                    ),
+                    blockState = wheatState(0)
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, 0.0, 0.84375),
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
+                        hashString = "77bb86dedeb827f2489aa0103d58d0e12e64a8152d5a0f5b1d4d208a3cb55999",
+                        isSmall = false
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(0.0, -0.5625, 0.0),
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = -180.0f,
+                        hashString = "b82d442528456547474dd88166a97818f057ecc4b3ed350ef9a5e4dbd27f98d7",
+                        isSmall = false
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(-0.46875, -0.59375, -0.375),
+                        headRotation = Rotations(0.0f, 0.0f, -22.5f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
+                        hashString = "b82d442528456547474dd88166a97818f057ecc4b3ed350ef9a5e4dbd27f98d7",
+                        isSmall = false
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(0.5, -0.65625, -0.375),
+                        headRotation = Rotations(0.0f, 0.0f, 22.5f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
+                        hashString = "b82d442528456547474dd88166a97818f057ecc4b3ed350ef9a5e4dbd27f98d7",
+                        isSmall = false
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(0.0, -0.4375, -0.625),
+                        headRotation = Rotations(22.5f, 0.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = -180.0f,
+                        hashString = "b82d442528456547474dd88166a97818f057ecc4b3ed350ef9a5e4dbd27f98d7",
+                        isSmall = false
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(0.0, 0.4375, 0.40625),
+                        headRotation = Rotations(22.5f, 0.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
+                        hashString = "b82d442528456547474dd88166a97818f057ecc4b3ed350ef9a5e4dbd27f98d7"
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(0.0, 0.25, -0.625),
+                        headRotation = Rotations(22.5f, 0.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = -180.0f,
+                        hashString = "b82d442528456547474dd88166a97818f057ecc4b3ed350ef9a5e4dbd27f98d7"
+                    )
+                ),
+                16..16
+            ),
+            CropStage(
+                blocks = CropBlockState.blockStatePattern(
+                    listOf(
+                        BlockPos(0, 1, 0),
+                        BlockPos(0, 1, 2),
+                        BlockPos(2, 1, 0),
+                        BlockPos(2, 1, 2)
+                    ),
+                    blockState = wheatState(5)
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, 0.0, 0.84375),
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
+                        hashString = "24c64afa58bef69ff567b012a2b1638cf475c5bdb050d382308399ffa0b06a8d",
+                        isSmall = false
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(0.0, -0.25, -0.625),
+                        headRotation = Rotations(22.5f, 0.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = -180.0f,
+                        hashString = "b82d442528456547474dd88166a97818f057ecc4b3ed350ef9a5e4dbd27f98d7",
+                        isSmall = false
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(0.0, 0.9375, -0.90625),
+                        headRotation = Rotations(45.0f, 0.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = -180.0f,
+                        hashString = "b82d442528456547474dd88166a97818f057ecc4b3ed350ef9a5e4dbd27f98d7"
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(0.0, 0.4375, 0.40625),
+                        headRotation = Rotations(22.5f, 0.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
+                        hashString = "b82d442528456547474dd88166a97818f057ecc4b3ed350ef9a5e4dbd27f98d7"
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(0.0, -0.5625, 0.0),
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = -180.0f,
+                        hashString = "b82d442528456547474dd88166a97818f057ecc4b3ed350ef9a5e4dbd27f98d7",
+                        isSmall = false
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(0.5, -0.65625, -0.375),
+                        headRotation = Rotations(0.0f, 0.0f, 22.5f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
+                        hashString = "b82d442528456547474dd88166a97818f057ecc4b3ed350ef9a5e4dbd27f98d7",
+                        isSmall = false
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(-0.46875, -0.59375, -0.375),
+                        headRotation = Rotations(0.0f, 0.0f, -22.5f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
+                        hashString = "b82d442528456547474dd88166a97818f057ecc4b3ed350ef9a5e4dbd27f98d7",
+                        isSmall = false
+                    )
+                ),
+                20..20
+            )),
         decayTimeMs = SIX_DAY_DECAY_TIME_MS,
         maxStage = 20,
         // it drops asleep on arriving at each of these and grows no further until it is woken

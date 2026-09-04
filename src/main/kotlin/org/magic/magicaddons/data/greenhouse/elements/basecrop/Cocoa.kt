@@ -133,31 +133,25 @@ object Cocoa : CropDefinitionProvider {
                         blockState = melonStemState(7)
                     )
                 ),
-                armorStands = CropArmorStand.matcherPattern(
-                    offsets = listOf(
-                        Vec3(0.0, 0.09375, 0.0),
-                        Vec3(-0.125, 0.65625, 0.0625)
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, 0.09375, 0.0),
+                        headRotation = Rotations(0.0f, 22.5f, 22.5f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
+                        hashString = "44d72eed58354ce14bfc497138a13564070fb4653898aeb3e66c73082ae1f993",
+                        isSmall = false
                     ),
-                    rotations = listOf(
-                        Rotations(0.0f, 22.5f, 22.5f),
-                        Rotations(0.0f, -22.5f, -22.5f)
-                    ),
-                    xRotations = listOf(
-                        0.0f,
-                        0.0f
-                    ),
-                    yRotations = listOf(
-                        0.0f,
-                        0.0f
-                    ),
-                    hashString = "44d72eed58354ce14bfc497138a13564070fb4653898aeb3e66c73082ae1f993",
-                    isSmall = false
+                    CropArmorStand(
+                        offset = Vec3(-0.125, 0.65625, 0.0625),
+                        headRotation = Rotations(0.0f, -22.5f, -22.5f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
+                        hashString = "44d72eed58354ce14bfc497138a13564070fb4653898aeb3e66c73082ae1f993"
+                    )
                 ),
-                6..6,
-            )
-
-
-        ),
+                6..6
+            )),
         maxStage = 6,
         needsWater = false,
         isBaseCrop = true
