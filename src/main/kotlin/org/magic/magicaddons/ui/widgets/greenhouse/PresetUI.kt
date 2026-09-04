@@ -1,5 +1,6 @@
 package org.magic.magicaddons.ui.widgets.greenhouse
 
+import org.magic.magicaddons.data.greenhouse.MasterLayout
 import org.magic.magicaddons.data.greenhouse.transfer.SkyLayoutsFormat
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
@@ -28,7 +29,8 @@ class PresetUI(
     val overlayContext: OverlayContext,
     val onAssignedLayout: (assignedLayout: GreenhouseLayout?, selectedGrid: GreenhouseGrid) -> Unit,
     val onImported: (LayoutTransferResult.Imported) -> Unit,
-    val onRemovePreset: () -> Unit,
+    /** Takes a plot off the preset, or with null the whole preset. */
+    val onRemove: (GreenhouseLayout?) -> Unit,
     /** What the Delete button is about: the shown plot of a master layout, or the preset itself. */
     val shownLayout: () -> GreenhouseLayout?,
 ) : ActionPanel() {
@@ -98,27 +100,39 @@ class PresetUI(
             return true
         }
         if (button === deleteButton) {
-            val preset = shownLayout() ?: run {
+            val master = GreenhouseData.currentPreset ?: run {
                 ChatUtils.sendWithPrefix("No preset to remove.")
                 return true
             }
-            val master = GreenhouseData.masterOf(preset)
-            val question = if (master != null && master.plots.size > 1) {
-                "Delete ${master.plotTitle(preset)} from ${master.displayName()}?"
+            val clickX = mouseButtonEvent.x.toInt()
+            val clickY = mouseButtonEvent.y.toInt()
+
+            // a preset of several plots is asked which; a preset of one goes straight to the question
+            if (master.plots.size > 1) {
+                val (menuX, menuY) = OverlayRenderable.placeOnScreen(clickX, clickY, CHOICE_WIDTH, CHOICE_HEIGHT)
+                val choice = DeleteChoiceContext(menuX, menuY, overlayContext, master) { plot ->
+                    confirmDelete(master, plot, clickX, clickY)
+                }
+                choice.init()
+                overlayContext.addContext(choice)
             } else {
-                "Delete preset ${GreenhouseData.describe(preset)}?"
+                confirmDelete(master, null, clickX, clickY)
             }
-            val (menuX, menuY) = OverlayRenderable.placeOnScreen(
-                mouseButtonEvent.x.toInt(),
-                mouseButtonEvent.y.toInt(),
-                ConfirmContext.widthFor(question),
-                ConfirmContext.HEIGHT
-            )
-            overlayContext.addContext(ConfirmContext(menuX, menuY, question, overlayContext) { onRemovePreset() })
             return true
         }
 
         return false
+    }
+
+    /** The yes or no before anything is deleted; no, or a click elsewhere, deletes nothing. */
+    private fun confirmDelete(master: MasterLayout, plot: GreenhouseLayout?, clickX: Int, clickY: Int) {
+        val question = if (plot != null) {
+            "Delete ${master.plotTitle(plot)} from ${master.displayName()}?"
+        } else {
+            "Delete preset ${master.displayName()}?"
+        }
+        val (menuX, menuY) = OverlayRenderable.placeOnScreen(clickX, clickY, ConfirmContext.widthFor(question), ConfirmContext.HEIGHT)
+        overlayContext.addContext(ConfirmContext(menuX, menuY, question, overlayContext) { onRemove(plot) })
     }
 
     override fun mouseMoved(mouseX: Double, mouseY: Double) {
@@ -219,4 +233,10 @@ class PresetUI(
         }
 
 
+
+    private companion object {
+        /** About what the plot list takes, for keeping it on screen. */
+        const val CHOICE_WIDTH: Int = 120
+        const val CHOICE_HEIGHT: Int = 100
+    }
 }

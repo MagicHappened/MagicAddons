@@ -122,8 +122,11 @@ class PlantPalette(
     }
 
     private fun titleHeight(): Int = font.lineHeight + Common.UI.SPACING * 2
-    /** Under the title come the search, the two buttons, then the mark row, each a row and a gap. */
-    private fun gridTop(): Int = y + titleHeight() + (ROW + Common.UI.SPACING) * 3
+    /** How many rows the buttons take under the search: one, or two when the shelf is too narrow. */
+    private var buttonRows: Int = 1
+
+    /** Under the title come the search and the button rows, each a row and a gap. */
+    private fun gridTop(): Int = y + titleHeight() + (ROW + Common.UI.SPACING) * (1 + buttonRows)
     /** The cells start where the search and the buttons start. */
     private fun gridLeft(): Int = x + EDGE_PAD
 
@@ -157,14 +160,20 @@ class PlantPalette(
         deleteButton.x = clearButton.x + clearButton.width + Common.UI.SPACING
         deleteButton.y = clearButton.y
 
-        redoButton.x = x + width - EDGE_PAD - ROW
-        redoButton.y = clearButton.y + ROW + Common.UI.SPACING
-        undoButton.x = redoButton.x - Common.UI.SPACING - ROW
-        undoButton.y = redoButton.y
-        markSelector.x = search.x
-        markSelector.y = redoButton.y
+        // the mark selector and the arrows follow Delete on the same row when they fit, else take the next
+        val afterDelete = deleteButton.x + deleteButton.width + Common.UI.SPACING
+        val arrows = ROW * 2 + Common.UI.SPACING * 2
+        val fitsBeside = x + width - EDGE_PAD - afterDelete - arrows >= MIN_MARK_WIDTH
+        buttonRows = if (fitsBeside) 1 else 2
+
+        markSelector.x = if (fitsBeside) afterDelete else search.x
+        markSelector.y = if (fitsBeside) clearButton.y else clearButton.y + ROW + Common.UI.SPACING
         markSelector.height = ROW
-        markSelector.width = (undoButton.x - Common.UI.SPACING - markSelector.x).coerceAtLeast(40)
+        redoButton.x = x + width - EDGE_PAD - ROW
+        redoButton.y = markSelector.y
+        undoButton.x = redoButton.x - Common.UI.SPACING - ROW
+        undoButton.y = markSelector.y
+        markSelector.width = (undoButton.x - Common.UI.SPACING - markSelector.x).coerceAtLeast(MIN_MARK_WIDTH)
 
         // the cells fill the room under the buttons exactly: as many rows of about the usual size
         // as fit, each row then stretched to use the whole height, within sane bounds
@@ -389,6 +398,9 @@ class PlantPalette(
         private const val RARITY_EPIC: Int = 0xFF7B1F8A.toInt()
         private const val RARITY_LEGENDARY: Int = 0xFFB07A14.toInt()
         private const val CLEAR_WIDTH: Int = 60
+
+        /** Room the mark selector needs to read "Mark: Ingredient" with its arrow. */
+        private const val MIN_MARK_WIDTH: Int = 96
         private const val DELETE_WIDTH: Int = 50
 
         /** Laid over the carried plant so it reads as not yet placed. */
