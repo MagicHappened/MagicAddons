@@ -2,7 +2,7 @@ package org.magic.magicaddons.ui.widgets.config
 
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
-import net.minecraft.client.gui.components.EditBox
+import org.magic.magicaddons.ui.widgets.TextField
 import net.minecraft.client.input.CharacterEvent
 import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
@@ -35,12 +35,7 @@ class IntSettingWidget(
     private var dragging: Boolean = false
 
     private val valueBox by lazy {
-        EditBox(
-            Minecraft.getInstance().font,
-            boxWidth,
-            rowHeight(),
-            Component.literal(setting.displayName)
-        ).also {
+        TextField(boxWidth, rowHeight()).also {
             it.setMaxLength(12)
             it.value = setting.value.toString()
         }
@@ -69,7 +64,7 @@ class IntSettingWidget(
         valueBox.width = boxWidth
         valueBox.height = rowHeight()
 
-        if (!valueBox.isFocused) valueBox.value = setting.value.toString()
+        if (!valueBox.focused) valueBox.value = setting.value.toString()
 
         valueBox.setResponder { typed ->
             // an empty box is somebody halfway through typing, not a request for zero
@@ -96,7 +91,7 @@ class IntSettingWidget(
 
         setting.value = (setting.range.first + steps * setting.step).coerceIn(setting.range)
 
-        if (!valueBox.isFocused) valueBox.value = setting.value.toString()
+        if (!valueBox.focused) valueBox.value = setting.value.toString()
     }
 
     private fun overBar(mouseX: Double, mouseY: Double): Boolean =
@@ -118,12 +113,12 @@ class IntSettingWidget(
             Common.UI.TEXT_COLOR
         )
 
-        valueBox.extractRenderState(graphics, mouseX, mouseY, delta)
+        valueBox.render(graphics)
 
         val filled = (barWidth() * fraction()).toInt()
 
-        graphics.fill(barLeft(), barTop(), barLeft() + barWidth(), barTop() + barHeight, TRACK_COLOR)
-        graphics.fill(barLeft(), barTop(), barLeft() + filled, barTop() + barHeight, FILL_COLOR)
+        graphics.fill(barLeft(), barTop(), barLeft() + barWidth(), barTop() + barHeight, Common.UI.FIELD_COLOR)
+        graphics.fill(barLeft(), barTop(), barLeft() + filled, barTop() + barHeight, Common.UI.ACCENT_COLOR)
 
         // the knob rides the end of the filled part, kept inside the track at either extreme
         val knobX = (barLeft() + filled - knobWidth / 2)
@@ -136,7 +131,6 @@ class IntSettingWidget(
 
     override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
         if (valueBox.mouseClicked(mouseButtonEvent, doubled)) {
-            valueBox.isFocused = true
             return true
         }
 
@@ -179,19 +173,19 @@ class IntSettingWidget(
 
         setting.value = (setting.value + direction * setting.step).coerceIn(setting.range)
 
-        if (!valueBox.isFocused) valueBox.value = setting.value.toString()
+        if (!valueBox.focused) valueBox.value = setting.value.toString()
 
         return true
     }
 
     override fun charTyped(characterEvent: CharacterEvent): Boolean {
-        if (!valueBox.isFocused) return false
+        if (!valueBox.focused) return false
 
         return valueBox.charTyped(characterEvent)
     }
 
     override fun keyPressed(keyEvent: KeyEvent): Boolean {
-        if (!valueBox.isFocused) return false
+        if (!valueBox.focused) return false
 
         if (keyEvent.key() == GLFW.GLFW_KEY_ENTER || keyEvent.key() == GLFW.GLFW_KEY_KP_ENTER) {
             commitTypedValue()
@@ -203,9 +197,9 @@ class IntSettingWidget(
 
     /** Takes the typed number, or puts the value back. Clamped to the range, never to the step. */
     private fun commitTypedValue() {
-        if (!valueBox.isFocused) return
+        if (!valueBox.focused) return
 
-        valueBox.isFocused = false
+        valueBox.focused = false
 
         val typed = valueBox.value.trim().toIntOrNull()
 
@@ -219,7 +213,5 @@ class IntSettingWidget(
     }
 
     private companion object {
-        const val TRACK_COLOR: Int = 0xFF2A2A2A.toInt()
-        const val FILL_COLOR: Int = 0xFF4C8FBF.toInt()
     }
 }

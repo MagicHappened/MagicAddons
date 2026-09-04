@@ -2,7 +2,8 @@ package org.magic.magicaddons.ui.widgets.config
 
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
-import net.minecraft.client.gui.components.EditBox
+import org.magic.magicaddons.ui.widgets.TextField
+import org.magic.magicaddons.util.ScreenUtil.drawScrollBar
 import net.minecraft.client.input.CharacterEvent
 import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
@@ -39,13 +40,13 @@ class ChoiceListSettingWidget(
     /** Room between the widget border and the search box or a row. */
     private val inset = 2
 
-    /** Rows overlap by one pixel so their borders meet as a single line. */
-    private val rowOverlap = 1
+    /** Rows overlap by one frame so the lines between them read as one. */
+    private val rowOverlap = Common.UI.BORDER_SIZE
 
     /** How many rows show at once, however long the catalogue gets. */
     private val visibleRows = 5
 
-    private val searchBox = EditBox(Minecraft.getInstance().font, 100, rowHeight, Component.literal(""))
+    private val searchBox = TextField(100, rowHeight, Component.literal(listSetting.searchLabel))
 
     private val rows = mutableListOf<ToggleRowWidget<String>>()
 
@@ -94,7 +95,6 @@ class ChoiceListSettingWidget(
         searchBox.width = width - inset * 2
         searchBox.height = rowHeight
         searchBox.setMaxLength(64)
-        searchBox.setHint(Component.literal(listSetting.searchLabel))
         searchBox.setResponder {
             scroll = 0
             rebuildRows(relayout = true)
@@ -157,7 +157,7 @@ class ChoiceListSettingWidget(
             Common.UI.TEXT_COLOR
         )
 
-        searchBox.extractRenderState(graphics, mouseX, mouseY, delta)
+        searchBox.render(graphics)
 
         rows.forEach { it.extractRenderState(graphics, mouseX, mouseY) }
 
@@ -180,14 +180,14 @@ class ChoiceListSettingWidget(
     private fun renderScrollBar(graphics: GuiGraphicsExtractor) {
         if (matching.size <= visibleRows) return
 
-        val listHeight = listHeight()
-        val barX = x + width - inset - 2
-        val barHeight = (listHeight * visibleRows / matching.size).coerceAtLeast(6)
-        val travel = listHeight - barHeight
-        val barY = rowY + travel * scroll / (matching.size - visibleRows)
-
-        graphics.fill(barX, rowY, barX + 2, rowY + listHeight, 0x40000000)
-        graphics.fill(barX, barY, barX + 2, barY + barHeight, Common.UI.TEXT_COLOR)
+        graphics.drawScrollBar(
+            x + width - inset - borderSize - Common.UI.SCROLLBAR_WIDTH,
+            rowY,
+            listHeight(),
+            matching.size,
+            visibleRows,
+            scroll
+        )
     }
 
     private fun overRows(mouseX: Double, mouseY: Double): Boolean =
@@ -213,11 +213,7 @@ class ChoiceListSettingWidget(
     }
 
     override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
-        if (searchBox.mouseClicked(mouseButtonEvent, doubled)) {
-            searchBox.isFocused = true
-            return true
-        }
-        searchBox.isFocused = false
+        if (searchBox.mouseClicked(mouseButtonEvent, doubled)) return true
 
         rows.forEach {
             if (it.mouseClicked(mouseButtonEvent, doubled)) return true
@@ -226,11 +222,9 @@ class ChoiceListSettingWidget(
         return false
     }
 
-    override fun charTyped(characterEvent: CharacterEvent): Boolean =
-        searchBox.isFocused && searchBox.charTyped(characterEvent)
+    override fun charTyped(characterEvent: CharacterEvent): Boolean = searchBox.charTyped(characterEvent)
 
-    override fun keyPressed(keyEvent: KeyEvent): Boolean =
-        searchBox.isFocused && searchBox.keyPressed(keyEvent)
+    override fun keyPressed(keyEvent: KeyEvent): Boolean = searchBox.keyPressed(keyEvent)
 
     override fun getTotalHeight(): Int = height
 }

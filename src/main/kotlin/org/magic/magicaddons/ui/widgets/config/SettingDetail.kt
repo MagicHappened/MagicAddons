@@ -1,5 +1,6 @@
 package org.magic.magicaddons.ui.widgets.config
 
+import org.magic.magicaddons.Common
 import net.minecraft.client.gui.Font
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.network.chat.Component
@@ -33,6 +34,6 @@ sealed interface SettingDetail {
 
     companion object {
         /** Quiet enough to read as a note rather than as another setting. */
-        const val GRAY: Int = 0xFFAAAAAA.toInt()
+        const val GRAY: Int = Common.UI.TEXT_DIM_COLOR
     }
 }

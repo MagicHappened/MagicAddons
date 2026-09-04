@@ -7,7 +7,7 @@ import net.minecraft.client.input.MouseButtonEvent
 import org.magic.magicaddons.ui.Focusable
 import org.magic.magicaddons.Common
 import org.magic.magicaddons.ui.HoverableContainer
-import org.magic.magicaddons.util.ScreenUtil.drawBorder
+import org.magic.magicaddons.util.ScreenUtil.drawButtonPanel
 import org.magic.magicaddons.util.ScreenUtil.drawSimpleTooltip
 
 /**
@@ -47,17 +47,8 @@ class HoverControls : Renderable, Focusable, HoverableContainer {
 
     override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
         forEachSwatch { info, top, bottom ->
-            graphics.fill(x, top, x + width, bottom, info.color)
-
-            // every swatch is framed like a button: the picked one darkened and framed in white
-            // like a held button, a hovered one lightened
-            if (info == selectedInfo) {
-                graphics.fill(x, top, x + width, bottom, PRESSED_SHADE)
-            } else if (info == hoveredInfo) {
-                graphics.fill(x, top, x + width, bottom, HOVER_WASH)
-            }
-            val frame = if (info == selectedInfo) SELECTED_FRAME_COLOR else Common.UI.BORDER_COLOR
-            graphics.drawBorder(x, top, x + width, bottom, Common.UI.BORDER_SIZE, frame)
+            // every swatch is a button in its own colour: pressed in while picked
+            graphics.drawButtonPanel(x, top, x + width, bottom, info == hoveredInfo, info == selectedInfo, info.color)
         }
 
         hoveredInfo?.let { graphics.drawSimpleTooltip(it.label, mouseX + 7, mouseY + 12) }
@@ -123,15 +114,6 @@ class HoverControls : Renderable, Focusable, HoverableContainer {
     companion object {
         /** What was last picked, remembered across screens for as long as the game is running. */
         private var lastPicked: ElementWidget.HoverInfo? = null
-
-        /** Laid over the swatch the mouse is on, so it lifts rather than changes colour. */
-        private const val HOVER_WASH: Int = 0x40FFFFFF
-
-        /** Laid over the picked swatch, so it sits pressed in. */
-        private const val PRESSED_SHADE: Int = 0x60000000
-
-        /** The frame of the picked swatch, white against the black frames of the rest. */
-        private const val SELECTED_FRAME_COLOR: Int = Common.UI.TEXT_COLOR
 
         private const val SWATCH_WIDTH: Int = 15
         private const val SWATCH_SPACING: Int = Common.UI.SPACING_SMALL

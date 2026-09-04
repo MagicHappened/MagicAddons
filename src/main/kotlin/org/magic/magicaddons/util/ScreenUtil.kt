@@ -22,6 +22,7 @@ import net.minecraft.client.renderer.item.ItemStackRenderState
 import net.minecraft.client.renderer.state.gui.ColoredRectangleRenderState
 import net.minecraft.client.renderer.state.gui.GuiTextRenderState
 import net.minecraft.network.chat.Component
+import net.minecraft.util.FormattedCharSequence
 import net.minecraft.world.item.ItemDisplayContext
 import org.joml.Matrix3x2f
 import org.joml.Matrix4f
@@ -78,6 +79,48 @@ object ScreenUtil {
                 newScreen = null
             }
         }
+    }
+
+    /** A panel: the fill with the standard frame around it. Every box of this mod is one. */
+    fun GuiGraphicsExtractor.drawPanel(
+        x1: Int, y1: Int, x2: Int, y2: Int,
+        fill: Int = Common.UI.BACKGROUND_COLOR,
+        frame: Int = Common.UI.BORDER_COLOR
+    ) {
+        fill(x1, y1, x2, y2, fill)
+        drawBorder(x1, y1, x2, y2, Common.UI.BORDER_SIZE, frame)
+    }
+
+    /** A panel that acts as a button: lit under the mouse, pressed in and framed white when picked. */
+    fun GuiGraphicsExtractor.drawButtonPanel(
+        x1: Int, y1: Int, x2: Int, y2: Int,
+        hovered: Boolean,
+        pressed: Boolean = false,
+        fill: Int = Common.UI.BACKGROUND_COLOR
+    ) {
+        fill(x1, y1, x2, y2, fill)
+        if (pressed) {
+            fill(x1, y1, x2, y2, Common.UI.PRESSED_SHADE)
+        } else if (hovered) {
+            fill(x1, y1, x2, y2, Common.UI.HOVER_WASH)
+        }
+        drawBorder(x1, y1, x2, y2, Common.UI.BORDER_SIZE, if (pressed) Common.UI.SELECTED_FRAME_COLOR else Common.UI.BORDER_COLOR)
+    }
+
+    /** The ground of a text field or checkbox, framed white while it has the keyboard. */
+    fun GuiGraphicsExtractor.drawField(x1: Int, y1: Int, x2: Int, y2: Int, focused: Boolean) {
+        drawPanel(x1, y1, x2, y2, Common.UI.FIELD_COLOR, if (focused) Common.UI.SELECTED_FRAME_COLOR else Common.UI.BORDER_COLOR)
+    }
+
+    /** A scroll bar down a list of [total] rows showing [visible] of them from [scroll]. Display only. */
+    fun GuiGraphicsExtractor.drawScrollBar(x: Int, y: Int, height: Int, total: Int, visible: Int, scroll: Int) {
+        if (total <= visible || height <= 0) return
+
+        val thumb = (height * visible / total).coerceAtLeast(6).coerceAtMost(height)
+        val thumbY = y + (height - thumb) * scroll / (total - visible)
+
+        fill(x, y, x + Common.UI.SCROLLBAR_WIDTH, y + height, Common.UI.SCROLL_TRACK_COLOR)
+        fill(x, thumbY, x + Common.UI.SCROLLBAR_WIDTH, thumbY + thumb, Common.UI.TEXT_COLOR)
     }
 
     fun GuiGraphicsExtractor.drawBorder(x1: Int, y1: Int, x2: Int, y2: Int, thickness: Int, color: Int) {
@@ -212,19 +255,34 @@ object ScreenUtil {
 
     /** A tooltip split on newlines and wrapped at vanilla's width, colour codes honoured. */
     fun GuiGraphicsExtractor.drawSimpleTooltip(text: String, mouseX: Int, mouseY: Int) {
-        val client = Minecraft.getInstance()
+        val font = Minecraft.getInstance().font
         val lines = text.split('\n').flatMap { line ->
-            client.font.split(Component.literal(line), TOOLTIP_MAX_WIDTH)
-        }.map { ClientTooltipComponent.create(it) }
+            font.split(Component.literal(line), TOOLTIP_MAX_WIDTH)
+        }
+        drawTooltipLines(lines, mouseX, mouseY)
+    }
 
-        this.tooltip(
-            client.font,
-            lines,
-            mouseX,
-            mouseY,
-            DefaultTooltipPositioner.INSTANCE,
-            null
-        )
+    /** Lines on a panel at the cursor, drawn at once and kept on screen. Call it last, it has no depth of its own. */
+    fun GuiGraphicsExtractor.drawTooltipLines(lines: List<FormattedCharSequence>, mouseX: Int, mouseY: Int) {
+        if (lines.isEmpty()) return
+        val font = Minecraft.getInstance().font
+        val pad = Common.UI.TEXT_X_PAD
+
+        val boxWidth = lines.maxOf { font.width(it) } + pad * 2
+        val boxHeight = lines.size * font.lineHeight + pad * 2
+
+        val screen = McCompat.currentScreen()
+        val screenWidth = screen?.width ?: Minecraft.getInstance().window.guiScaledWidth
+        val screenHeight = screen?.height ?: Minecraft.getInstance().window.guiScaledHeight
+
+        val x = mouseX.coerceAtMost(screenWidth - boxWidth).coerceAtLeast(0)
+        val y = mouseY.coerceAtMost(screenHeight - boxHeight).coerceAtLeast(0)
+
+        drawPanel(x, y, x + boxWidth, y + boxHeight)
+
+        lines.forEachIndexed { index, line ->
+            text(font, line, x + pad, y + pad + index * font.lineHeight, Common.UI.TEXT_COLOR, false)
+        }
     }
 
     /** How tall [drawMultilineBox] draws [text], so screens can stack boxes under each other. */
@@ -276,9 +334,7 @@ object ScreenUtil {
         val x2 = x + layout.boxWidth
         val y2 = y + layout.boxHeight
 
-        fill(x1.toInt(), y1.toInt(), x2.toInt(), y2.toInt(), Common.UI.OVERLAY_BACKGROUND_COLOR)
-
-        drawBorder(x1, y1, x2, y2, 1f, color)
+        drawPanel(x1.toInt(), y1.toInt(), x2.toInt(), y2.toInt(), frame = color ?: Common.UI.BORDER_COLOR)
 
         // text
         var currentY = y + padding

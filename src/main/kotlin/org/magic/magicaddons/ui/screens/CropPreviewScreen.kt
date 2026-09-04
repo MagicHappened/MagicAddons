@@ -60,7 +60,6 @@ class CropPreviewScreen(
     private val selector = EnumWidget(
         values = CropRegistry.all.sortedBy { it.name },
         currentValue = null as CropDefinition?,
-        includeSearch = true,
         overlayContext = this,
         valueChanged = { picked(it) }
     )

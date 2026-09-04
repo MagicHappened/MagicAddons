@@ -1,57 +1,84 @@
 package org.magic.magicaddons.ui.widgets
 
 import net.minecraft.client.Minecraft
+import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.components.events.GuiEventListener
+import net.minecraft.client.input.CharacterEvent
+import net.minecraft.client.input.KeyEvent
+import net.minecraft.client.input.MouseButtonEvent
+import net.minecraft.network.chat.Component
 import org.magic.magicaddons.Common
+import org.magic.magicaddons.util.ScreenUtil.drawPanel
+import kotlin.math.max
 
+/**
+ * A titled panel listing [values] as rows under a search field, the field narrowing the rows as
+ * the player types. Picking a row hands the value to [onValueSelected].
+ */
 abstract class AbstractSelectorContextMenu<T>(
-    val values: List<T>
+    val values: List<T>,
+    private val title: String
 ) : AbstractContextMenu() {
 
     override var hoveredElement: GuiEventListener? = null
 
-    /** Rows are rebuilt from scratch, a second init would otherwise list everything twice. */
-    protected fun clearWidgets() {
-        valueWidgets.clear()
-    }
-
-
-    protected open fun getMaxRowWidth(): Int {
-        val font = Minecraft.getInstance().font
-
-        val maxTextWidth = values.maxOfOrNull {
-            font.width(it.toString())
-        } ?: 0
-
-        return maxTextWidth + paddingLeft + paddingRight
-    }
+    protected val font = Minecraft.getInstance().font
 
     protected open val rowHeight = 20
     protected open val paddingLeft: Int = Common.UI.TEXT_X_PAD
     protected open val paddingRight: Int = Common.UI.TEXT_X_PAD
 
-    protected open val rowStartY = overlayY
+    private val titlePad = Common.UI.SPACING
 
+    private val search = TextField(0, rowHeight, Component.literal(SEARCH_HINT)).apply {
+        setResponder { buildWidgets(); layoutRows() }
+    }
 
-    open fun init(){
+    protected val valueWidgets: MutableList<ClickableRowWidget<T>> = mutableListOf()
+
+    /** Wide enough for the longest row and the title. */
+    override val overlayWidth: Int
+        get() {
+            val longest = values.maxOfOrNull { font.width(it.toString()) } ?: 0
+            return max(longest, font.width(title)) + paddingLeft + paddingRight
+        }
+
+    private val titleHeight: Int get() = font.lineHeight + titlePad * 2
+
+    /** Rows overlap by one frame so the lines between them read as one. */
+    private val overlap = Common.UI.BORDER_SIZE
+
+    override val overlayHeight: Int
+        get() = titleHeight + rowHeight + valueWidgets.sumOf { it.height - overlap }
+
+    open fun init() {
+        search.value = ""
+        search.focused = true
         buildWidgets()
-        var currentY = rowStartY
+        layoutRows()
+    }
+
+    private fun buildWidgets() {
+        valueWidgets.clear()
+
+        values
+            .filter { it.toString().contains(search.value.trim(), ignoreCase = true) }
+            .forEach { valueWidgets.add(createRow(it)) }
+    }
+
+    private fun layoutRows() {
+        search.x = overlayX
+        search.y = overlayY + titleHeight
+        search.width = overlayWidth
+
+        var currentY = search.y + rowHeight - overlap
+
         valueWidgets.forEach { widget ->
             widget.x = overlayX
             widget.y = currentY
             widget.width = overlayWidth
             widget.fitHeight(rowHeight)
-            currentY += widget.height
-        }
-    }
-
-    protected abstract val valueWidgets: MutableList<ClickableRowWidget<T>>
-
-    protected open fun buildWidgets(){
-        clearWidgets()
-
-        values.forEach {
-            valueWidgets.add(createRow(it))
+            currentY += widget.height - overlap
         }
     }
 
@@ -62,19 +89,49 @@ abstract class AbstractSelectorContextMenu<T>(
         )
     }
 
-    // every selector context menu gets the mouse move for its children widgets already
-    // then it can implement mouseMoved of its own and call this with super after.
+    override fun renderOverlay(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
+        graphics.drawPanel(overlayX, overlayY, overlayX + overlayWidth, overlayY + overlayHeight)
+
+        graphics.text(
+            font,
+            Component.literal(title),
+            overlayX + paddingLeft,
+            overlayY + titlePad,
+            Common.UI.TEXT_COLOR,
+            false
+        )
+
+        search.render(graphics)
+        valueWidgets.forEach { it.extractRenderState(graphics, mouseX, mouseY) }
+    }
+
+    override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
+        if (!isMouseOver(mouseButtonEvent.x.toInt(), mouseButtonEvent.y.toInt())) return false
+        if (search.mouseClicked(mouseButtonEvent, doubled)) return true
+
+        valueWidgets.toList().forEach {
+            if (it.mouseClicked(mouseButtonEvent, doubled)) return true
+        }
+        return true
+    }
+
+    override fun charTyped(characterEvent: CharacterEvent): Boolean = search.charTyped(characterEvent)
+
+    override fun keyPressed(keyEvent: KeyEvent): Boolean = search.keyPressed(keyEvent)
+
     override fun mouseMoved(mouseX: Double, mouseY: Double) {
         hoveredElement = null
         valueWidgets.forEach {
             it.mouseMoved(mouseX, mouseY)
-            if (hoveredElement == null) {
-                if (it.isMouseOver(mouseX, mouseY)) {
-                    hoveredElement = it
-                }
+            if (hoveredElement == null && it.isMouseOver(mouseX, mouseY)) {
+                hoveredElement = it
             }
         }
     }
 
     abstract fun onValueSelected(value: T)
+
+    companion object {
+        const val SEARCH_HINT: String = "Search…"
+    }
 }

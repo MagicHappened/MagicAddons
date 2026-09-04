@@ -1,11 +1,15 @@
 package org.magic.magicaddons.ui.widgets.config
 
+import net.minecraft.client.input.KeyEvent
+import net.minecraft.client.input.CharacterEvent
+import org.magic.magicaddons.ui.widgets.AbstractSelectorContextMenu
+import org.magic.magicaddons.ui.widgets.TextField
+import org.magic.magicaddons.ui.widgets.ClickableRowWidget
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.network.chat.Component
 import org.magic.magicaddons.Common
 import org.magic.magicaddons.data.config.EnumSetting
-import org.magic.magicaddons.ui.widgets.RemovableRowWidget
 import org.magic.magicaddons.util.ScreenUtil.drawBorder
 import org.magic.magicaddons.util.ScreenUtil.drawLine
 import org.magic.magicaddons.util.ScreenUtil.drawWrappedText
@@ -21,7 +25,15 @@ class EnumSettingWidget<T : Enum<T>>(
     override val childrenWidgets: MutableList<SettingWidget<*>> = mutableListOf()
     override val hasChildren: Boolean = true
 
-    private val selectionOptions: MutableList<RemovableRowWidget<T>> = mutableListOf()
+    private val selectionOptions: MutableList<ClickableRowWidget<T>> = mutableListOf()
+
+    /** Typing here narrows the dropdown to the values containing the text. */
+    private val search = TextField(0, 0, Component.literal(AbstractSelectorContextMenu.SEARCH_HINT)).apply {
+        setResponder { initDropdown(); layoutDropdown() }
+    }
+
+    /** Rows overlap by one frame so the lines between them read as one. */
+    private val overlap = Common.UI.BORDER_SIZE
 
     private val arrow = "↓"
 
@@ -52,17 +64,18 @@ class EnumSettingWidget<T : Enum<T>>(
 
     }
 
-    fun initDropdown(){ //call on widget creation (dont need to recreate dropdown option widgets)
+    fun initDropdown() {
         selectionOptions.clear()
 
-        val enumValues = setting.value.javaClass.enumConstants
-        enumValues.forEach { enumValue ->
-            val dropDown = RemovableRowWidget(
-                value = enumValue,
-                onClick = { valueChanged(it.value) }
-            )
-            selectionOptions.add(dropDown)
-        }
+        val typed = search.value.trim()
+        setting.value.javaClass.enumConstants
+            .filter { it.toString().contains(typed, ignoreCase = true) }
+            .forEach { enumValue ->
+                selectionOptions.add(
+                    ClickableRowWidget(value = enumValue, onClick = { valueChanged(it.value) })
+                        .apply { selected = enumValue == setting.value }
+                )
+            }
     }
 
 
@@ -75,14 +88,19 @@ class EnumSettingWidget<T : Enum<T>>(
     private fun layoutDropdown() {
         // below the live line, when there is one: the dropdown opens under the whole row rather
         // than over the note explaining it
-        var currentY = y + height + detailHeight()
+        search.x = x
+        search.y = y + height + detailHeight()
+        search.width = width
+        search.height = rowMinHeight
+
+        var currentY = search.y + rowMinHeight - overlap
 
         selectionOptions.forEach {
             it.x = x
             it.y = currentY
             it.width = width
             it.fitHeight(rowMinHeight)
-            currentY += it.height
+            currentY += it.height - overlap
         }
     }
 
@@ -135,9 +153,16 @@ class EnumSettingWidget<T : Enum<T>>(
         extractChildrenRenderStates(graphics, mouseX, mouseY, delta)
 
         if (selectionMenuExpanded) {
+            search.render(graphics)
             selectionOptions.forEach { it.extractRenderState(graphics, mouseX, mouseY) }
         }
     }
+
+    override fun charTyped(characterEvent: CharacterEvent): Boolean =
+        (selectionMenuExpanded && search.charTyped(characterEvent)) || super.charTyped(characterEvent)
+
+    override fun keyPressed(keyEvent: KeyEvent): Boolean =
+        (selectionMenuExpanded && search.keyPressed(keyEvent)) || super.keyPressed(keyEvent)
 
     private fun valueChanged(selectedValue: T) {
         val changed = setting.value != selectedValue
@@ -153,10 +178,11 @@ class EnumSettingWidget<T : Enum<T>>(
 
     override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
         if (selectionMenuExpanded) {
-            selectionOptions.forEach {
+            if (search.mouseClicked(mouseButtonEvent, doubled)) return true
+
+            selectionOptions.toList().forEach {
                 if (it.mouseClicked(mouseButtonEvent, doubled)) return true
             }
-
         }
 
         val inside = isMouseOver(mouseButtonEvent.x, mouseButtonEvent.y)
@@ -171,6 +197,11 @@ class EnumSettingWidget<T : Enum<T>>(
 
                 0 -> { // left click for dropdown
                     selectionMenuExpanded = !selectionMenuExpanded
+                    if (selectionMenuExpanded) {
+                        search.value = ""
+                        search.focused = true
+                        initDropdown()
+                    }
                     layoutDropdown()
                     return true
                 }
