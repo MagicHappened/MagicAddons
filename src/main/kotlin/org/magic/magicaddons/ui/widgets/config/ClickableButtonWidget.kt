@@ -58,7 +58,7 @@ class ClickableButtonWidget(
                     it,
                     this.x + (width - font.width(it)) / 2,
                     this.y + (height - font.lineHeight) / 2,
-                    (it.style.color?.value ?: Common.UI.TEXT_COLOR) or Common.UI.BORDER_COLOR,
+                    (it.style.color?.value ?: Common.UI.TEXT_COLOR) or OPAQUE,
                     false
                 )
             }
@@ -96,5 +96,10 @@ class ClickableButtonWidget(
     override fun isMouseOver(mouseX: Double, mouseY: Double): Boolean {
         return mouseX.toInt() in x until (x + width) &&
                 mouseY.toInt() in y until (y + height)
+    }
+
+    private companion object {
+        /** A style colour carries no alpha, and text drawn with none is invisible. */
+        const val OPAQUE: Int = 0xFF000000.toInt()
     }
 }

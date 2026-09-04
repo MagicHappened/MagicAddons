@@ -135,8 +135,7 @@ object GreenhouseData {
             val existingGrid = greenhouseGrids.find { "plot_${plot.id}" == it.layout.id }
             existingGrid ?: run {
                 val gridLayout = GreenhouseLayout(
-                    id = "plot_${plot.id}",
-                    name = "unnamed"
+                    id = "plot_${plot.id}"
                 )
                 val gridState = GreenhouseGrid.GridState(
                     null,

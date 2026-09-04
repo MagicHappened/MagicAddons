@@ -12,11 +12,11 @@ class ScrollHint(var tooltip: String) {
     var y: Int = 0
     var size: Int = 0
 
-    /** Squares the hint to half the selector's height and centres it on the selector's middle. */
-    fun layoutBeside(selectorRight: Int, selectorTop: Int, selectorHeight: Int) {
-        size = selectorHeight / 2
-        x = selectorRight + Common.UI.SPACING
-        y = selectorTop + (selectorHeight - size) / 2
+    /** Sits the hint beside a control, centred on the control's middle. */
+    fun layoutBeside(controlRight: Int, controlTop: Int, controlHeight: Int) {
+        size = SIZE
+        x = controlRight + Common.UI.SPACING
+        y = controlTop + (controlHeight - size) / 2
     }
 
     fun isMouseOver(mouseX: Int, mouseY: Int): Boolean =
@@ -41,5 +41,10 @@ class ScrollHint(var tooltip: String) {
         if (isMouseOver(mouseX, mouseY)) {
             graphics.drawSimpleTooltip(tooltip, mouseX + 7, mouseY + 12)
         }
+    }
+
+    companion object {
+        /** The same everywhere it appears, whatever it sits beside. */
+        const val SIZE: Int = 13
     }
 }

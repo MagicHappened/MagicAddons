@@ -132,6 +132,7 @@ class ChoiceListSettingWidget(
             rows.add(row)
             currentY += row.height - rowOverlap
         }
+        rows.lastOrNull()?.dividerBelow = false
 
         // an empty window still shows the "nothing matches" line, so it keeps one row of height
         val shown = if (rows.isEmpty()) rowHeight else listHeight()
