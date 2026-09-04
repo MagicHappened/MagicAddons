@@ -32,8 +32,6 @@ class EnumSettingWidget<T : Enum<T>>(
         setResponder { initDropdown(); layoutDropdown() }
     }
 
-    /** Rows overlap by one frame so the lines between them read as one. */
-    private val overlap = Common.UI.BORDER_SIZE
 
     private val arrow = "↓"
 
@@ -93,14 +91,14 @@ class EnumSettingWidget<T : Enum<T>>(
         search.width = width
         search.height = rowMinHeight
 
-        var currentY = search.y + rowMinHeight - overlap
+        var currentY = search.y + rowMinHeight
 
         selectionOptions.forEach {
             it.x = x
             it.y = currentY
             it.width = width
             it.fitHeight(rowMinHeight)
-            currentY += it.height - overlap
+            currentY += it.height
         }
     }
 
@@ -155,6 +153,9 @@ class EnumSettingWidget<T : Enum<T>>(
         if (selectionMenuExpanded) {
             search.render(graphics)
             selectionOptions.forEach { it.extractRenderState(graphics, mouseX, mouseY) }
+
+            val bottom = selectionOptions.lastOrNull()?.let { it.y + it.height } ?: (search.y + search.height)
+            graphics.drawBorder(x, search.y, x + width, bottom, borderSize, borderColor)
         }
     }
 

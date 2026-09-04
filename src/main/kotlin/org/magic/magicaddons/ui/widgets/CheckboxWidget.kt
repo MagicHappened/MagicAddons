@@ -5,8 +5,8 @@ import net.minecraft.client.input.MouseButtonEvent
 import org.magic.magicaddons.Common
 import org.magic.magicaddons.ui.Focusable
 import org.magic.magicaddons.util.ScreenUtil.drawField
-import org.magic.magicaddons.util.ScreenUtil.drawLine
-import kotlin.math.sqrt
+import kotlin.math.abs
+import kotlin.math.roundToInt
 
 /** A square field with a green tick in it when checked. */
 class CheckboxWidget(
@@ -30,28 +30,25 @@ class CheckboxWidget(
         }
     }
 
+    /** The tick as whole pixels: squares walked along its two strokes, so it never shimmers. */
     private fun drawCheckmark(graphics: GuiGraphicsExtractor) {
-        fun sx(px: Float) = x + (px / baseSize * size)
-        fun sy(py: Float) = y + (py / baseSize * size)
-
-        val x1 = sx(12f)
-        val y1 = sy(24f)
-        val x2 = sx(20f)
-        val y2 = sy(32f)
-        val x3 = sx(36f)
-        val y3 = sy(12f)
+        fun sx(px: Float) = x + px / baseSize * size
+        fun sy(py: Float) = y + py / baseSize * size
 
         // a small box still gets a mark two pixels thick, or the tick reads as a faint scratch
-        val thickness = (size / 8f).coerceAtLeast(2f)
+        val thickness = (size / 8).coerceAtLeast(2)
 
-        // the first stroke runs a little past the corner so the two meet without a notch
-        val dx = x2 - x1
-        val dy = y2 - y1
-        val len = sqrt(dx * dx + dy * dy)
-        val extend = thickness * 0.5f
+        fun stroke(x1: Float, y1: Float, x2: Float, y2: Float) {
+            val steps = (maxOf(abs(x2 - x1), abs(y2 - y1))).toInt().coerceAtLeast(1)
+            for (step in 0..steps) {
+                val px = (x1 + (x2 - x1) * step / steps).roundToInt()
+                val py = (y1 + (y2 - y1) * step / steps).roundToInt()
+                graphics.fill(px, py, px + thickness, py + thickness, Common.UI.CHECK_COLOR)
+            }
+        }
 
-        graphics.drawLine(x1, y1, x2 + dx / len * extend, y2 + dy / len * extend, thickness, Common.UI.SUCCESS_COLOR)
-        graphics.drawLine(x2, y2, x3, y3, thickness, Common.UI.SUCCESS_COLOR)
+        stroke(sx(11f), sy(23f), sx(19f), sy(31f))
+        stroke(sx(19f), sy(31f), sx(35f), sy(11f))
     }
 
     override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {

@@ -13,6 +13,7 @@ import org.magic.magicaddons.ui.Focusable
 import org.magic.magicaddons.ui.OverlayContext
 import org.magic.magicaddons.ui.OverlayRenderable
 import org.magic.magicaddons.ui.screens.ScrollableScreen
+import org.magic.magicaddons.util.ScreenUtil.drawBorder
 import org.magic.magicaddons.util.ScreenUtil.drawButtonPanel
 import org.magic.magicaddons.util.ScreenUtil.drawScrollBar
 import org.magic.magicaddons.util.compat.McCompat
@@ -66,6 +67,9 @@ class EnumWidget<T>(
         overlayOpen = false
         overlayContext.removeOverlay(overlay)
     }
+
+    /** Shuts the list without picking anything, for a screen laying itself out again. */
+    fun closeList() = close()
 
     /**
      * Sets the width from the longest value it might show. Measured rather than guessed, so a name
@@ -142,9 +146,6 @@ class EnumWidget<T>(
         val overlayRowHeight: Int
             get() = this@EnumWidget.height
 
-        /** Rows overlap by one frame so the lines between them read as one. */
-        private val overlap = Common.UI.BORDER_SIZE
-
         val valueWidgets: MutableList<ClickableRowWidget<T>> = mutableListOf()
 
         /** Typing here narrows the rows to the values containing the text. */
@@ -164,8 +165,8 @@ class EnumWidget<T>(
             return heightFor(rowsWanted) <= spaceBelow || spaceBelow >= spaceAbove
         }
 
-        /** The field and [rows] rows stacked, frames shared. */
-        private fun heightFor(rows: Int): Int = overlayRowHeight + rows * (overlayRowHeight - overlap)
+        /** The field and [rows] rows stacked. */
+        private fun heightFor(rows: Int): Int = overlayRowHeight * (rows + 1)
 
         /** The visible edges in the widget's own coordinates, which scroll on a scrolling screen. */
         private fun viewTop(): Int = ScrollableScreen.current()?.viewTop ?: 0
@@ -199,7 +200,7 @@ class EnumWidget<T>(
                 this@EnumWidget.y - viewTop()
             }).coerceAtMost(overlayBudget ?: Int.MAX_VALUE)
 
-            visibleRows = ((space - overlayRowHeight) / (overlayRowHeight - overlap)).coerceAtLeast(1)
+            visibleRows = (space / overlayRowHeight - 1).coerceAtLeast(1)
 
             buildWindow()
         }
@@ -241,7 +242,7 @@ class EnumWidget<T>(
         override val overlayHeight: Int
             get() = heightFor(valueWidgets.size)
 
-        private fun rowsTop(): Int = overlayY + overlayRowHeight - overlap
+        private fun rowsTop(): Int = overlayY + overlayRowHeight
 
         fun layoutOverlay() {
             search.x = overlayX
@@ -256,7 +257,7 @@ class EnumWidget<T>(
                 it.y = currentY
                 it.width = overlayWidth
                 it.height = overlayRowHeight
-                currentY += overlayRowHeight - overlap
+                currentY += overlayRowHeight
             }
         }
 
@@ -265,9 +266,10 @@ class EnumWidget<T>(
 
             search.render(graphics)
             valueWidgets.forEach { it.extractRenderState(graphics, mouseX, mouseY) }
+            graphics.drawBorder(overlayX, overlayY, overlayX + overlayWidth, overlayY + overlayHeight, Common.UI.BORDER_SIZE, Common.UI.BORDER_COLOR)
 
             if (matching.size > visibleRows) {
-                val listHeight = overlayHeight - overlayRowHeight + overlap
+                val listHeight = overlayHeight - overlayRowHeight
                 graphics.drawScrollBar(
                     overlayX + overlayWidth - Common.UI.SCROLLBAR_WIDTH - Common.UI.BORDER_SIZE,
                     rowsTop(),

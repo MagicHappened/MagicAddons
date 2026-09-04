@@ -5,11 +5,14 @@ import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.network.chat.Component
 import org.magic.magicaddons.Common
 import org.magic.magicaddons.ui.Focusable
-import org.magic.magicaddons.util.ScreenUtil.drawButtonPanel
+import org.magic.magicaddons.util.ScreenUtil.drawBorder
 import org.magic.magicaddons.util.ScreenUtil.drawWrappedText
 import org.magic.magicaddons.util.ScreenUtil.wrappedHeight
 
-/** One row of a list, drawn as a button: lit under the mouse, pressed in when it is the picked one. */
+/**
+ * One row of a list: lit under the mouse, pressed in and framed white when it is the picked one.
+ * Rows carry no frame of their own, only the line under them; the list's panel frames them all.
+ */
 open class BaseRowWidget<T>(
     val value: T
 ) : Focusable {
@@ -52,7 +55,16 @@ open class BaseRowWidget<T>(
     protected open fun highlighted(): Boolean = hovered || isFocused
 
     open fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int) {
-        graphics.drawButtonPanel(x, y, x + width, y + height, highlighted(), selected)
+        graphics.fill(x, y, x + width, y + height, Common.UI.BACKGROUND_COLOR)
+        if (selected) {
+            graphics.fill(x, y, x + width, y + height, Common.UI.PRESSED_SHADE)
+        } else if (highlighted()) {
+            graphics.fill(x, y, x + width, y + height, Common.UI.HOVER_WASH)
+        }
+        graphics.fill(x, y + height - 1, x + width, y + height, Common.UI.DIVIDER_COLOR)
+        if (selected) {
+            graphics.drawBorder(x, y, x + width, y + height, Common.UI.BORDER_SIZE, Common.UI.SELECTED_FRAME_COLOR)
+        }
 
         val text = label()
         val textHeight = wrappedHeight(font, text, textWidth())

@@ -8,7 +8,7 @@ import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.network.chat.Component
 import org.magic.magicaddons.Common
-import org.magic.magicaddons.util.ScreenUtil.drawPanel
+import org.magic.magicaddons.util.ScreenUtil.drawBorder
 import kotlin.math.max
 
 /**
@@ -45,11 +45,8 @@ abstract class AbstractSelectorContextMenu<T>(
 
     private val titleHeight: Int get() = font.lineHeight + titlePad * 2
 
-    /** Rows overlap by one frame so the lines between them read as one. */
-    private val overlap = Common.UI.BORDER_SIZE
-
     override val overlayHeight: Int
-        get() = titleHeight + rowHeight + valueWidgets.sumOf { it.height - overlap }
+        get() = titleHeight + rowHeight + valueWidgets.sumOf { it.height }
 
     open fun init() {
         search.value = ""
@@ -71,14 +68,14 @@ abstract class AbstractSelectorContextMenu<T>(
         search.y = overlayY + titleHeight
         search.width = overlayWidth
 
-        var currentY = search.y + rowHeight - overlap
+        var currentY = search.y + rowHeight
 
         valueWidgets.forEach { widget ->
             widget.x = overlayX
             widget.y = currentY
             widget.width = overlayWidth
             widget.fitHeight(rowHeight)
-            currentY += widget.height - overlap
+            currentY += widget.height
         }
     }
 
@@ -90,7 +87,7 @@ abstract class AbstractSelectorContextMenu<T>(
     }
 
     override fun renderOverlay(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
-        graphics.drawPanel(overlayX, overlayY, overlayX + overlayWidth, overlayY + overlayHeight)
+        graphics.fill(overlayX, overlayY, overlayX + overlayWidth, overlayY + overlayHeight, Common.UI.BACKGROUND_COLOR)
 
         graphics.text(
             font,
@@ -103,6 +100,7 @@ abstract class AbstractSelectorContextMenu<T>(
 
         search.render(graphics)
         valueWidgets.forEach { it.extractRenderState(graphics, mouseX, mouseY) }
+        graphics.drawBorder(overlayX, overlayY, overlayX + overlayWidth, overlayY + overlayHeight, Common.UI.BORDER_SIZE, Common.UI.BORDER_COLOR)
     }
 
     override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
