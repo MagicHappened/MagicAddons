@@ -960,6 +960,9 @@ object GreenhouseData {
 
 
     fun warnUnknownValues(sendWarning: Boolean = true): Boolean {
+        // the numbers only matter once there is a greenhouse for them to time
+        if (greenhouseGrids.isEmpty() && PlotAPI.plots.none { it.data?.isGreenhouse == true }) return false
+
         val warnings = mutableListOf<Component>()
         if (miscInfo.cropGrowthValue == null) {
             warnings.add(
@@ -1031,7 +1034,10 @@ object GreenhouseData {
     fun claimPlacedPlant(instance: GreenhouseElementInstance) {
         instance.placed = true
         instance.age = 0L
-        if (instance.cropDef.needsWater) instance.waterLevel = 0
+        if (instance.cropDef.needsWater) {
+            instance.waterLevel = 0
+            instance.waterExact = true
+        }
         instance.firstSeenStage = instance.lowestStage
     }
 
@@ -1047,6 +1053,7 @@ object GreenhouseData {
 
         if (instance.cropDef.needsWater) {
             instance.waterLevel = WaterModel.after(0, grown, layout.waterEffectAt(instance.slot))
+            instance.waterExact = true
         }
 
         instance.age = Duration.between(gardenArrivedAt ?: now, now).toMillis().coerceAtLeast(0L)
@@ -1201,6 +1208,7 @@ object GreenhouseData {
             waterLevel?.let {
                 element.instance.waterLevel = it
                 element.instance.waterPredictedInDebt = false
+                element.instance.waterExact = true
             }
         }
 

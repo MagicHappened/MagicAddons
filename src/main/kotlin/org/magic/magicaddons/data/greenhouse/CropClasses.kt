@@ -540,6 +540,9 @@ data class GreenhouseElementInstance(
      */
     var waterPredictedInDebt: Boolean = false
 
+    /** Whether the level is known to the point, from a diagnosis or a count of spray ticks, rather than read off a bar. */
+    var waterExact: Boolean = false
+
     /**
      * The lowest stage this plant was ever seen at. A plant that climbed away from it grew here; one
      * still sitting at it was placed, which is what tells a grown jellybean from a bought one.

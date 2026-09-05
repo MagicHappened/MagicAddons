@@ -125,8 +125,15 @@ object GreenhouseWatering {
             if (lastNotches[stand.uuid] == notches) return@forEach
             lastNotches[stand.uuid] = notches
 
+            // a level known to the point stays exact: the bar is too coarse to correct it, and a bar
+            // that failed to move must not drag the count back onto it. A level only ever read off
+            // bars stays a bar reading, corrected by the bar when the count drifts from it
             val counted = ((element.instance.waterLevel ?: 0) + gain).coerceAtMost(100)
-            element.instance.waterLevel = if (abs(counted - bar.percent) <= NOTCH_PERCENT) counted else bar.percent
+            element.instance.waterLevel = when {
+                element.instance.waterExact -> counted
+                abs(counted - bar.percent) <= NOTCH_PERCENT -> counted
+                else -> bar.percent
+            }
             element.instance.waterPredictedInDebt = false
         }
     }
