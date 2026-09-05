@@ -31,6 +31,8 @@ class PresetUI(
     val onImported: (LayoutTransferResult.Imported) -> Unit,
     /** Takes a plot off the preset, or with null the whole preset. */
     val onRemove: (GreenhouseLayout?) -> Unit,
+    /** Starts a preset with one empty plot. */
+    val onNewPreset: () -> Unit,
     /** What the Delete button is about: the shown plot of a master layout, or the preset itself. */
     val shownLayout: () -> GreenhouseLayout?,
 ) : ActionPanel() {
@@ -60,10 +62,16 @@ class PresetUI(
     )
 
 
+    private val newButton = ClickableButtonWidget(26, 26, Component.literal("+"))
+
     override val buttons: List<ClickableButtonWidget> =
-        listOf(importButton, exportButton, applyToButton, deleteButton)
+        listOf(newButton, importButton, exportButton, applyToButton, deleteButton)
 
     override fun onPressed(button: ClickableButtonWidget, mouseButtonEvent: MouseButtonEvent): Boolean {
+        if (button === newButton) {
+            onNewPreset()
+            return true
+        }
         if (button === importButton) {
             val context = ImportExportFormatContext(
                 mouseButtonEvent.x.toInt(),
@@ -141,6 +149,7 @@ class PresetUI(
         exportButton.mouseMoved(mouseX, mouseY)
         applyToButton.mouseMoved(mouseX, mouseY)
         deleteButton.mouseMoved(mouseX, mouseY)
+        newButton.mouseMoved(mouseX, mouseY)
         if (hoveredElement == null) {
             if (importButton.isMouseOver(mouseX, mouseY)) {
                 hoveredElement = importButton
