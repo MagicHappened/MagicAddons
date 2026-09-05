@@ -36,10 +36,10 @@ abstract class Placed {
 }
 
 class ElementState : Placed() {
-    /** The box width in pixels, or null for as wide as the content. */
-    var width: Int? = null
+    /** Whether the box follows its content; off, [width] and [height] hold what it was dragged to. */
+    var dynamic: Boolean = true
 
-    /** The box height in pixels when dragged taller than its content, else null. */
+    var width: Int? = null
     var height: Int? = null
     var scale: Float = 1f
     var alpha: Float = 1f
@@ -51,6 +51,9 @@ class AnchorState(val id: String) : Placed() {
 }
 
 class GroupState(val id: String, val members: MutableList<String>, var stacking: Stacking) : Placed() {
+    /** Whether the box follows its members' content; off, the sizes dragged to are kept. */
+    var dynamic: Boolean = true
+
     var width: Int? = null
     var height: Int? = null
     var alpha: Float = 1f

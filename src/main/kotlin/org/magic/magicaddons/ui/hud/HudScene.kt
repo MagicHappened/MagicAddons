@@ -130,10 +130,13 @@ class HudScene(val boxes: List<HudBox>, val anchors: List<HudAnchorPoint>) {
         /** Half the side of the box an anchor is drawn and grabbed as, in the editor. */
         const val ANCHOR_HALF: Int = 6
 
-        /** Lays the whole hud out for a screen of [screenWidth] by [screenHeight]; with [sample], every element shows its sample. */
+        /**
+         * Lays the whole hud out for a screen of [screenWidth] by [screenHeight]. With [sample], an
+         * element with nothing to show is laid out with its sample instead of left out.
+         */
         fun build(layout: HudLayout, screenWidth: Int, screenHeight: Int, sample: Boolean, include: (HudElement) -> Boolean = { true }): HudScene {
             val contents = HudElements.all.filter(include).mapNotNull { element ->
-                val content = if (sample) element.sample() else element.content()
+                val content = element.content() ?: if (sample) element.sample() else null
                 content?.let { element to it }
             }.toMap()
 
@@ -150,8 +153,9 @@ class HudScene(val boxes: List<HudBox>, val anchors: List<HudAnchorPoint>) {
             contents.forEach { (element, content) ->
                 if (element.id in grouped) return@forEach
                 val state = layout.stateOf(element)
-                val width = (state.width ?: HudPainter.naturalWidth(content, state.scale)).coerceAtLeast(HudPainter.minWidth(state.scale))
-                val part = part(element, state, content, width, state.height)
+                val fixedWidth = state.width.takeUnless { state.dynamic }
+                val width = (fixedWidth ?: HudPainter.naturalWidth(content, state.scale)).coerceAtLeast(HudPainter.minWidth(state.scale))
+                val part = part(element, state, content, width, state.height.takeUnless { state.dynamic })
                 boxes.add(HudBox(element.id, state, null, listOf(part), width, part.height, state.alpha))
             }
 
@@ -180,17 +184,17 @@ class HudScene(val boxes: List<HudBox>, val anchors: List<HudAnchorPoint>) {
                 // one width for all, each part as tall as it is
                 val natural = members.maxOf { (element, content) -> HudPainter.naturalWidth(content, layout.stateOf(element).scale) }
                 val minimum = members.maxOf { (element, _) -> HudPainter.minWidth(layout.stateOf(element).scale) }
-                width = (group.width ?: natural).coerceAtLeast(minimum)
-                parts = members.map { (element, content) -> part(element, layout.stateOf(element), content, width, layout.stateOf(element).height) }
+                width = (group.width.takeUnless { group.dynamic } ?: natural).coerceAtLeast(minimum)
+                parts = members.map { (element, content) -> part(element, layout.stateOf(element), content, width, layout.stateOf(element).height.takeUnless { group.dynamic }) }
                 height = parts.sumOf { it.height } + (parts.size - 1) * DIVIDER
             } else {
                 // each part as wide as it is, one height for all
                 parts = members.map { (element, content) ->
                     val state = layout.stateOf(element)
-                    val own = (state.width ?: HudPainter.naturalWidth(content, state.scale)).coerceAtLeast(HudPainter.minWidth(state.scale))
+                    val own = (state.width.takeUnless { group.dynamic } ?: HudPainter.naturalWidth(content, state.scale)).coerceAtLeast(HudPainter.minWidth(state.scale))
                     part(element, state, content, own, null)
                 }
-                val shared = (group.height ?: parts.maxOf { it.height }).coerceAtLeast(parts.maxOf { it.minHeight })
+                val shared = (group.height.takeUnless { group.dynamic } ?: parts.maxOf { it.height }).coerceAtLeast(parts.maxOf { it.minHeight })
                 parts.forEach { it.height = shared }
                 width = parts.sumOf { it.width } + (parts.size - 1) * DIVIDER
                 height = shared
