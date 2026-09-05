@@ -1,5 +1,6 @@
 package org.magic.mixins;
 
+import org.magic.magicaddons.util.ErrorReporter;
 import net.minecraft.client.KeyboardHandler;
 import net.minecraft.client.input.KeyEvent;
 import org.lwjgl.glfw.GLFW;
@@ -24,9 +25,13 @@ public class KeyboardHandlerMixin {
         if (event.key() != GLFW.GLFW_KEY_G) return;
 
         if (McCompat.INSTANCE.currentScreen() != null) return;
-        if (!CropCollector.INSTANCE.isActive()) return;
-
-        McCompat.INSTANCE.setScreen(new CollectScreen());
+        try {
+            if (!CropCollector.INSTANCE.isActive()) return;
+            McCompat.INSTANCE.setScreen(new CollectScreen());
+        } catch (Throwable error) {
+            ErrorReporter.INSTANCE.report("the collector key", error);
+            return;
+        }
         ci.cancel();
     }
 }

@@ -1,8 +1,9 @@
 package org.magic.magicaddons.features.farming.greenhousePresets
 
-import org.magic.magicaddons.util.ErrorReporter.guard
+import org.magic.magicaddons.events.world.OnWorldTickEvent
+import org.magic.magicaddons.events.EventHandler
+import org.magic.magicaddons.events.EventBus
 import com.mojang.blaze3d.platform.InputConstants
-import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper
 import net.minecraft.client.KeyMapping
 import net.minecraft.client.Minecraft
@@ -25,9 +26,13 @@ object GreenhouseKey {
     )
 
     init {
-        ClientTickEvents.END_CLIENT_TICK.register { mc ->
-            guard("the greenhouse key") { while (key.consumeClick()) open(mc) }
-        }
+        EventBus.register(this)
+    }
+
+    @EventHandler
+    fun onTick(event: OnWorldTickEvent) {
+        val mc = Minecraft.getInstance()
+        while (key.consumeClick()) open(mc)
     }
 
     private fun open(mc: Minecraft) {

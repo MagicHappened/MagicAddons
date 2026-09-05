@@ -1,6 +1,5 @@
 package org.magic.magicaddons.ui.screens
 
-import org.magic.magicaddons.util.ErrorReporter.guard
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.input.CharacterEvent
@@ -33,7 +32,7 @@ import org.magic.magicaddons.util.compat.McCompat
  * The config, filling the window: a header with the search, the categories down the left, and the
  * picked category's features as blocks in a scrolling view on the right.
  */
-class ConfigScreen(title: Component, val parent: Screen?) : Screen(title), OverlayContext, ScrollView {
+class ConfigScreen(title: Component, val parent: Screen?) : MagicScreen(title, "the config screen"), OverlayContext, ScrollView {
 
     /** Open lists and histories, drawn over the blocks and offered every input first. */
     override val overlays: MutableList<OverlayRenderable> = mutableListOf()
@@ -106,18 +105,16 @@ class ConfigScreen(title: Component, val parent: Screen?) : Screen(title), Overl
 
     private var categoryRows: List<CategoryRow> = emptyList()
 
-    override fun init() {
-        guard("the config screen") {
-            super.init()
-            if (!loaded) {
-                MagicAddonsConfigJsonHandler.load()
-                loaded = true
-            }
-            VersionChecker.check()
-            closeOverlays()
-            closeDropdown()
-            layoutPanels()
+    override fun onInit() {
+        super.onInit()
+        if (!loaded) {
+            MagicAddonsConfigJsonHandler.load()
+            loaded = true
         }
+        VersionChecker.check()
+        closeOverlays()
+        closeDropdown()
+        layoutPanels()
     }
 
     private fun layoutPanels() {
@@ -305,16 +302,14 @@ class ConfigScreen(title: Component, val parent: Screen?) : Screen(title), Overl
         McCompat.extractDeferredSubtitles(this.minecraft)
     }
 
-    override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
-        guard("the config screen") {
-            super.extractRenderState(graphics, mouseX, mouseY, delta)
-            layoutBlocks()
+    override fun onRender(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
+        super.onRender(graphics, mouseX, mouseY, delta)
+        layoutBlocks()
 
-            renderHeader(graphics, mouseX, mouseY)
-            renderSidePanel(graphics, mouseX, mouseY)
-            renderMain(graphics, mouseX, mouseY, delta)
-            renderDropdown(graphics, mouseX, mouseY)
-        }
+        renderHeader(graphics, mouseX, mouseY)
+        renderSidePanel(graphics, mouseX, mouseY)
+        renderMain(graphics, mouseX, mouseY, delta)
+        renderDropdown(graphics, mouseX, mouseY)
     }
 
     private fun renderHeader(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int) {
@@ -425,134 +420,122 @@ class ConfigScreen(title: Component, val parent: Screen?) : Screen(title), Overl
     private fun shifted(event: MouseButtonEvent): MouseButtonEvent =
         MouseButtonEvent(event.x, event.y + scroll, MouseButtonInfo(event.button(), event.modifiers()))
 
-    override fun mouseClicked(event: MouseButtonEvent, doubled: Boolean): Boolean {
-        return guard("the config screen", false) {
-            // the second event of a double click is the same click again; acting on it would undo the first
-            if (doubled) return true
+    override fun onMouseClicked(event: MouseButtonEvent, doubled: Boolean): Boolean {
+        // the second event of a double click is the same click again; acting on it would undo the first
+        if (doubled) return true
 
-            hitAt(event.x, event.y)?.let {
-                navigate(it)
-                return true
-            }
-            if (overDropdown(event.x, event.y)) return true
-
-            if (search.mouseClicked(event, doubled)) {
-                if (search.value.isNotBlank()) openDropdown()
-                return true
-            }
-            closeDropdown()
-
-            if (event.x.toInt() in closeLeft until closeLeft + closeSize && event.y.toInt() in closeTop until closeTop + closeSize) {
-                onClose()
-                return true
-            }
-
-            categoryRows.firstOrNull {
-                event.x.toInt() in sideLeft until sideRight && event.y.toInt() in it.top until it.top + CATEGORY_ROW_HEIGHT
-            }?.let {
-                select(it.category)
-                return true
-            }
-
-            if (event.button() == 0 && overBar(event.x, event.y)) {
-                draggingBar = true
-                return true
-            }
-
-            if (!overMain(event.x, event.y)) {
-                // a click off the blocks still lets a focused field go
-                shownBlocks().forEach { it.dropFocus() }
-                return super.mouseClicked(event, doubled)
-            }
-
-            val content = shifted(event)
-            // an open list takes the click if it lands inside it; anywhere else closes every list and
-            // the click goes on to the settings underneath
-            if (overlays.toList().any { it.mouseClicked(content, doubled) }) return true
-            if (overlays.isNotEmpty()) closeOverlays()
-
-            var handled = false
-            shownBlocks().forEach { if (it.mouseClicked(content, doubled)) handled = true }
-            return handled
+        hitAt(event.x, event.y)?.let {
+            navigate(it)
+            return true
         }
+        if (overDropdown(event.x, event.y)) return true
+
+        if (search.mouseClicked(event, doubled)) {
+            if (search.value.isNotBlank()) openDropdown()
+            return true
+        }
+        closeDropdown()
+
+        if (event.x.toInt() in closeLeft until closeLeft + closeSize && event.y.toInt() in closeTop until closeTop + closeSize) {
+            onClose()
+            return true
+        }
+
+        categoryRows.firstOrNull {
+            event.x.toInt() in sideLeft until sideRight && event.y.toInt() in it.top until it.top + CATEGORY_ROW_HEIGHT
+        }?.let {
+            select(it.category)
+            return true
+        }
+
+        if (event.button() == 0 && overBar(event.x, event.y)) {
+            draggingBar = true
+            return true
+        }
+
+        if (!overMain(event.x, event.y)) {
+            // a click off the blocks still lets a focused field go
+            shownBlocks().forEach { it.dropFocus() }
+            return super.onMouseClicked(event, doubled)
+        }
+
+        val content = shifted(event)
+        // an open list takes the click if it lands inside it; anywhere else closes every list and
+        // the click goes on to the settings underneath
+        if (overlays.toList().any { it.mouseClicked(content, doubled) }) return true
+        if (overlays.isNotEmpty()) closeOverlays()
+
+        var handled = false
+        shownBlocks().forEach { if (it.mouseClicked(content, doubled)) handled = true }
+        return handled
     }
 
-    override fun mouseReleased(event: MouseButtonEvent): Boolean {
-        return guard("the config screen", false) {
-            if (draggingBar) {
-                draggingBar = false
-                return true
-            }
-            return shownBlocks().any { it.mouseReleased(shifted(event)) }
+    override fun onMouseReleased(event: MouseButtonEvent): Boolean {
+        if (draggingBar) {
+            draggingBar = false
+            return true
         }
+        return shownBlocks().any { it.mouseReleased(shifted(event)) }
     }
 
-    override fun mouseDragged(event: MouseButtonEvent, dragX: Double, dragY: Double): Boolean {
-        return guard("the config screen", false) {
-            if (draggingBar) {
-                scroll = (((event.y - clipTop) / viewHeight) * contentHeight - viewHeight / 2).toInt().coerceIn(0, maxScroll)
-                return true
-            }
-            return shownBlocks().any { it.mouseDragged(shifted(event), dragX, dragY) }
+    override fun onMouseDragged(event: MouseButtonEvent, dragX: Double, dragY: Double): Boolean {
+        if (draggingBar) {
+            scroll = (((event.y - clipTop) / viewHeight) * contentHeight - viewHeight / 2).toInt().coerceIn(0, maxScroll)
+            return true
         }
+        return shownBlocks().any { it.mouseDragged(shifted(event), dragX, dragY) }
     }
 
-    override fun mouseMoved(mouseX: Double, mouseY: Double) {
+    override fun onMouseMoved(mouseX: Double, mouseY: Double) {
         val contentY = mouseY + scroll
         overlays.forEach { it.mouseMoved(mouseX, contentY) }
         shownBlocks().forEach { it.mouseMoved(mouseX, contentY) }
     }
 
-    override fun mouseScrolled(mouseX: Double, mouseY: Double, scrollX: Double, scrollY: Double): Boolean {
-        return guard("the config screen", false) {
-            if (overDropdown(mouseX, mouseY)) {
-                dropdownScroll = (dropdownScroll - scrollY.toInt().coerceIn(-1, 1)).coerceIn(0, (hits.size - DROPDOWN_MAX_ROWS).coerceAtLeast(0))
-                return true
-            }
-            if (!overMain(mouseX, mouseY)) return false
-
-            val contentY = mouseY + scroll
-            if (overlays.any { it.mouseScrolled(mouseX, contentY, scrollX, scrollY) }) return true
-            if (shownBlocks().any { it.mouseScrolled(mouseX, contentY, scrollX, scrollY) }) return true
-
-            scroll = (scroll - (scrollY * Common.UI.SCROLL_STEP).toInt()).coerceIn(0, maxScroll)
+    override fun onMouseScrolled(mouseX: Double, mouseY: Double, scrollX: Double, scrollY: Double): Boolean {
+        if (overDropdown(mouseX, mouseY)) {
+            dropdownScroll = (dropdownScroll - scrollY.toInt().coerceIn(-1, 1)).coerceIn(0, (hits.size - DROPDOWN_MAX_ROWS).coerceAtLeast(0))
             return true
         }
+        if (!overMain(mouseX, mouseY)) return false
+
+        val contentY = mouseY + scroll
+        if (overlays.any { it.mouseScrolled(mouseX, contentY, scrollX, scrollY) }) return true
+        if (shownBlocks().any { it.mouseScrolled(mouseX, contentY, scrollX, scrollY) }) return true
+
+        scroll = (scroll - (scrollY * Common.UI.SCROLL_STEP).toInt()).coerceIn(0, maxScroll)
+        return true
     }
 
-    override fun charTyped(characterEvent: CharacterEvent): Boolean {
-        return guard("the config screen", false) {
-            if (search.charTyped(characterEvent)) return true
-            if (overlays.any { it.charTyped(characterEvent) }) return true
-            return shownBlocks().any { it.charTyped(characterEvent) }
-        }
+    override fun onCharTyped(characterEvent: CharacterEvent): Boolean {
+        if (search.charTyped(characterEvent)) return true
+        if (overlays.any { it.charTyped(characterEvent) }) return true
+        return shownBlocks().any { it.charTyped(characterEvent) }
     }
 
-    override fun keyPressed(keyEvent: KeyEvent): Boolean {
-        return guard("the config screen", false) {
-            if (keyEvent.key() == GLFW.GLFW_KEY_ESCAPE) {
-                // escape backs out one step: the search, then the open lists, then the screen
-                if (search.focused) {
-                    search.focused = false
-                    closeDropdown()
-                    return true
-                }
-                if (overlays.isNotEmpty()) {
-                    closeOverlays()
-                    return true
-                }
-            }
+    override fun onKeyPressed(keyEvent: KeyEvent): Boolean {
+        if (keyEvent.key() == GLFW.GLFW_KEY_ESCAPE) {
+            // escape backs out one step: the search, then the open lists, then the screen
             if (search.focused) {
-                if (keyEvent.key() == GLFW.GLFW_KEY_ENTER || keyEvent.key() == GLFW.GLFW_KEY_KP_ENTER) {
-                    hits.firstOrNull()?.let { navigate(it) }
-                    return true
-                }
-                if (search.keyPressed(keyEvent)) return true
+                search.focused = false
+                closeDropdown()
+                return true
             }
-            if (overlays.any { it.keyPressed(keyEvent) }) return true
-            if (shownBlocks().any { it.keyPressed(keyEvent) }) return true
-            return super.keyPressed(keyEvent)
+            if (overlays.isNotEmpty()) {
+                closeOverlays()
+                return true
+            }
         }
+        if (search.focused) {
+            if (keyEvent.key() == GLFW.GLFW_KEY_ENTER || keyEvent.key() == GLFW.GLFW_KEY_KP_ENTER) {
+                hits.firstOrNull()?.let { navigate(it) }
+                return true
+            }
+            if (search.keyPressed(keyEvent)) return true
+        }
+        if (overlays.any { it.keyPressed(keyEvent) }) return true
+        if (shownBlocks().any { it.keyPressed(keyEvent) }) return true
+        return super.onKeyPressed(keyEvent)
     }
 
     override fun onClose() {

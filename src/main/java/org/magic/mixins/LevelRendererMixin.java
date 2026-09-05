@@ -1,5 +1,6 @@
 package org.magic.mixins;
 
+import org.magic.magicaddons.util.ErrorReporter;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.mojang.blaze3d.buffers.GpuBufferSlice;
@@ -122,26 +123,31 @@ public abstract class LevelRendererMixin {
         }
 
         // the layout plan, drawn from this pass so it is placed against the camera the frame is
-        // actually drawn with rather than one read at some other moment
-        LayoutRenderState.INSTANCE.submit(
-                poseStack,
-                submitNodeCollector,
-                levelRenderState.cameraRenderState.pos
-        );
+        // actually drawn with rather than one read at some other moment. An error in it is said
+        // once in chat rather than ending the frame
+        try {
+            LayoutRenderState.INSTANCE.submit(
+                    poseStack,
+                    submitNodeCollector,
+                    levelRenderState.cameraRenderState.pos
+            );
 
-        // whatever the farming debug last listed, lit up so it can be counted by eye
-        FarmingDebug.INSTANCE.submitHighlights(
-                poseStack,
-                submitNodeCollector,
-                levelRenderState.cameraRenderState.pos
-        );
+            // whatever the farming debug last listed, lit up so it can be counted by eye
+            FarmingDebug.INSTANCE.submitHighlights(
+                    poseStack,
+                    submitNodeCollector,
+                    levelRenderState.cameraRenderState.pos
+            );
 
-        // whatever the crop collector last grouped, held up for confirmation
-        CropCollector.INSTANCE.submitHighlights(
-                poseStack,
-                submitNodeCollector,
-                levelRenderState.cameraRenderState.pos
-        );
+            // whatever the crop collector last grouped, held up for confirmation
+            CropCollector.INSTANCE.submitHighlights(
+                    poseStack,
+                    submitNodeCollector,
+                    levelRenderState.cameraRenderState.pos
+            );
+        } catch (Throwable error) {
+            ErrorReporter.INSTANCE.report("the hologram", error);
+        }
 
         // the stands a ghosted crop is made of, drawn alongside its blocks
         for (ArmorStand stand : LayoutRenderState.INSTANCE.getGhostStands()) {

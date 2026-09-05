@@ -1,8 +1,9 @@
 package org.magic.magicaddons.ui.hud
 
-import org.magic.magicaddons.util.ErrorReporter.guard
+import org.magic.magicaddons.events.world.OnWorldTickEvent
+import org.magic.magicaddons.events.EventHandler
+import org.magic.magicaddons.events.EventBus
 import com.mojang.blaze3d.platform.InputConstants
-import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper
 import net.minecraft.client.KeyMapping
 import org.lwjgl.glfw.GLFW
@@ -19,12 +20,13 @@ object HudEditorKey {
     )
 
     init {
-        ClientTickEvents.END_CLIENT_TICK.register {
-            guard("the hud editor key") {
-                while (key.consumeClick()) {
-                    if (McCompat.currentScreen() == null) ScreenUtil.setScreen(HudEditorScreen())
-                }
-            }
+        EventBus.register(this)
+    }
+
+    @EventHandler
+    fun onTick(event: OnWorldTickEvent) {
+        while (key.consumeClick()) {
+            if (McCompat.currentScreen() == null) ScreenUtil.setScreen(HudEditorScreen())
         }
     }
 }

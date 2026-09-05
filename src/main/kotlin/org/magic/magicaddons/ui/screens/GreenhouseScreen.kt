@@ -1,6 +1,5 @@
 package org.magic.magicaddons.ui.screens
 
-import org.magic.magicaddons.util.ErrorReporter.guard
 import org.magic.magicaddons.data.greenhouse.Footprint
 import org.magic.magicaddons.ui.widgets.greenhouse.PaletteItem
 import org.magic.magicaddons.util.ScreenUtil.renderFakeItem
@@ -18,7 +17,6 @@ import org.magic.magicaddons.util.toReadableDuration
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.components.events.GuiEventListener
-import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.input.CharacterEvent
 import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
@@ -57,7 +55,7 @@ import tech.thatgravyboat.skyblockapi.api.location.LocationAPI
 import tech.thatgravyboat.skyblockapi.api.profile.garden.PlotAPI
 import org.magic.magicaddons.util.compat.McCompat
 
-class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, OverlayContext {
+class GreenhouseScreen(title: Component) : MagicScreen(title, "the greenhouse screen"), HoverableContainer, OverlayContext {
 
     enum class CurrentDisplay {
         Greenhouses,
@@ -237,23 +235,21 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
     )
 
 
-    override fun init() {
-        guard("the greenhouse screen") {
-            super.init()
+    override fun onInit() {
+        super.onInit()
 
-            // a cramped window is laid out as if it had more units, then drawn smaller to fit them in
-            drawScale = DRAW_SCALES.first { it == DRAW_SCALES.last() ||
-                    width / it >= COMFORTABLE_WIDTH && height / it >= COMFORTABLE_HEIGHT }
-            width = (width / drawScale).toInt()
-            height = (height / drawScale).toInt()
+        // a cramped window is laid out as if it had more units, then drawn smaller to fit them in
+        drawScale = DRAW_SCALES.first { it == DRAW_SCALES.last() ||
+                width / it >= COMFORTABLE_WIDTH && height / it >= COMFORTABLE_HEIGHT }
+        width = (width / drawScale).toInt()
+        height = (height / drawScale).toInt()
 
-            initBaseLayout()
+        initBaseLayout()
 
-            // opening this screen is the player asking about their greenhouses, which is the one moment a
-            // missing number is worth interrupting them for
-            if (!GreenhouseData.miscInfo.shouldIgnoreWarning) {
-                GreenhouseData.warnUnknownValues()
-            }
+        // opening this screen is the player asking about their greenhouses, which is the one moment a
+        // missing number is worth interrupting them for
+        if (!GreenhouseData.miscInfo.shouldIgnoreWarning) {
+            GreenhouseData.warnUnknownValues()
         }
     }
     fun initBaseLayout(){
@@ -810,13 +806,11 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
     private fun warningBadgeX(): Int =
         (width + font.width(displayedName) + Common.UI.TEXT_X_PAD * 2) / 2 + Common.UI.SPACING
 
-    override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
-        guard("the greenhouse screen") {
-            graphics.pose().pushMatrix()
-            graphics.pose().scale(drawScale, drawScale)
-            extractScaled(graphics, (mouseX / drawScale).toInt(), (mouseY / drawScale).toInt(), delta)
-            graphics.pose().popMatrix()
-        }
+    override fun onRender(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
+        graphics.pose().pushMatrix()
+        graphics.pose().scale(drawScale, drawScale)
+        extractScaled(graphics, (mouseX / drawScale).toInt(), (mouseY / drawScale).toInt(), delta)
+        graphics.pose().popMatrix()
     }
 
     /** The whole screen, in layout units. */
@@ -1005,166 +999,164 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
     private fun scaled(event: MouseButtonEvent): MouseButtonEvent =
         MouseButtonEvent(event.x / drawScale, event.y / drawScale, MouseButtonInfo(event.button(), event.modifiers()))
 
-    override fun mouseClicked(event: MouseButtonEvent, doubled: Boolean): Boolean {
-        return guard("the greenhouse screen", false) {
-            val mouseButtonEvent = scaled(event)
+    override fun onMouseClicked(event: MouseButtonEvent, doubled: Boolean): Boolean {
+        val mouseButtonEvent = scaled(event)
 
-            // a handler may open or close an overlay, so the list being walked is a copy of it
-            overlays.toList().forEach {
-                if (it.mouseClicked(mouseButtonEvent, doubled)) {
-                    return true
-                }
-            }
-
-            // asked before the sweep below, which had already shut this widget's list: it found it closed
-            // and opened it again, so a second click never collapsed anything
-            if (currentDisplay == CurrentDisplay.Presets && gridSelector.mouseClicked(mouseButtonEvent, doubled)) {
+        // a handler may open or close an overlay, so the list being walked is a copy of it
+        overlays.toList().forEach {
+            if (it.mouseClicked(mouseButtonEvent, doubled)) {
                 return true
             }
-
-            // the click landed outside every overlay, which is what closes them
-            closeOverlays()
-
-            // the next tick box pins its breakdown, and unpins it
-            if (mouseButtonEvent.button() == 0 && mouseButtonEvent.x.toInt() in timeBox[0] until timeBox[2] &&
-                mouseButtonEvent.y.toInt() in timeBox[1] until timeBox[3]
-            ) {
-                timePinned = !timePinned
-                return true
-            }
-
-            // the wheel's other job: a middle click in greenhouse mode makes it walk the swatches
-            // instead of the plots, and another puts it back. Remembered past the screen, not to disk
-            if (currentDisplay == CurrentDisplay.Greenhouses && mouseButtonEvent.button() == 2) {
-                scrollPicksInfo = !scrollPicksInfo
-                return true
-            }
-
-            if (currentDisplay == CurrentDisplay.Greenhouses &&
-                greenhousePanel.mouseClicked(mouseButtonEvent, doubled)
-            ) {
-                return true
-            }
-
-            if (currentDisplay == CurrentDisplay.Greenhouses && displayedGridWidget != null) {
-                if (plotTabs.mouseClicked(mouseButtonEvent)) return true
-                if (teleportTab.mouseClicked(mouseButtonEvent)) return true
-            }
-
-            if (currentDisplay == CurrentDisplay.Presets && displayedGridWidget != null && partTabs.mouseClicked(mouseButtonEvent)) {
-                return true
-            }
-
-            if (currentDisplay == CurrentDisplay.Presets) {
-                // a right click puts a picked plant down, wherever the mouse is
-                if (mouseButtonEvent.button() == 1 && plantPalette.selected != null) {
-                    plantPalette.dropSelection()
-                    return true
-                }
-
-                if (plantPalette.mouseClicked(mouseButtonEvent, doubled)) return true
-
-                // a picked plant lands on the slot clicked
-                plantPalette.selected?.let { picked ->
-                    val overSlot = (displayedGridWidget ?: emptyGridWidget)?.slotAt(mouseButtonEvent.x, mouseButtonEvent.y) != null
-                    if (mouseButtonEvent.button() == 0 && overSlot) {
-                        placeDragged(picked, mouseButtonEvent.x, mouseButtonEvent.y)
-                        return true
-                    }
-                }
-
-                if (mouseButtonEvent.button() == 0) {
-                    // with the switch on, a click on bare soil takes the soil off the preset
-                    if (plantPalette.deleteMode && displayedGridWidget?.hoveredElement == null) {
-                        displayedGridWidget?.let { grid ->
-                            val (sx, sy) = grid.slotAt(mouseButtonEvent.x, mouseButtonEvent.y) ?: return@let
-                            val slot = grid.layout.getSlot(sx, sy) ?: return@let
-                            if (slot.placedBlock != null) {
-                                remember(grid.layout)
-                                slot.placedBlock = null
-                                grid.init()
-                                return true
-                            }
-                        }
-                    }
-                    (displayedGridWidget?.hoveredElement as? ElementWidget)?.let { element ->
-                        // with the switch on, a click on a plant takes it off the preset
-                        if (plantPalette.deleteMode) {
-                            removeFromPreset(element.instance)
-                            return true
-                        }
-                        // with the mark selector on something, a click on a plant marks it
-                        val choice = plantPalette.markChoice
-                        if (choice.applies) {
-                            applyMark(element.instance, choice.marking)
-                            return true
-                        }
-                    }
-                }
-
-                // a right click on a plant says what it stands for in the plan
-                if (mouseButtonEvent.button() == 1) {
-                    (displayedGridWidget?.hoveredElement as? ElementWidget)?.let {
-                        openMarkContext(it.instance, mouseButtonEvent)
-                        return true
-                    }
-                }
-            }
-
-            // a right click on the name at the top renames what is shown: the preset, or the greenhouse
-            if (mouseButtonEvent.button() == 1 && dynamicNameDisplay?.isMouseOver(mouseButtonEvent.x, mouseButtonEvent.y) == true) {
-                when (currentDisplay) {
-                    CurrentDisplay.Presets -> GreenhouseData.currentPreset?.let { master ->
-                        openRenameContext(mouseButtonEvent, master.displayName()) { name -> master.name = name }
-                    }
-                    CurrentDisplay.Greenhouses -> displayedGridWidget?.layout?.let { layout ->
-                        openRenameContext(mouseButtonEvent, layout.displayName()) { name -> layout.name = name }
-                    }
-                }
-                return true
-            }
-
-            if (cropPreviewButton.mouseClicked(mouseButtonEvent, doubled)) {
-                ScreenUtil.setScreen(CropPreviewScreen(this))
-                return true
-            }
-
-            if (currentDisplayToggle.mouseClicked(mouseButtonEvent,doubled)) {
-                when (currentDisplay) {
-                    CurrentDisplay.Greenhouses -> {
-                        currentDisplay = CurrentDisplay.Presets
-                        initPresetLayout()
-                    }
-                    CurrentDisplay.Presets -> {
-                        currentDisplay = CurrentDisplay.Greenhouses
-                        initGreenhouseLayout()
-                    }
-                }
-                return true
-            }
-            // the swatches are only beside a greenhouse, and off screen they still sit where they
-            // were last laid out, so they are asked before the grid but only where they exist
-            if (currentDisplay == CurrentDisplay.Greenhouses &&
-                hoverControls.mouseClicked(mouseButtonEvent, doubled)
-            ) {
-                return true
-            }
-
-            if (displayedGridWidget?.mouseClicked(mouseButtonEvent, doubled) == true) {
-                return true
-            }
-            // the preset ui is only laid out in preset mode, off screen its buttons still sit at 0,0
-            // and would take clicks meant for the corner of the screen
-            if (currentDisplay == CurrentDisplay.Presets &&
-                presetUI.mouseClicked(mouseButtonEvent, doubled)
-            ) {
-                return true
-            }
-            return super.mouseClicked(mouseButtonEvent, doubled)
         }
+
+        // asked before the sweep below, which had already shut this widget's list: it found it closed
+        // and opened it again, so a second click never collapsed anything
+        if (currentDisplay == CurrentDisplay.Presets && gridSelector.mouseClicked(mouseButtonEvent, doubled)) {
+            return true
+        }
+
+        // the click landed outside every overlay, which is what closes them
+        closeOverlays()
+
+        // the next tick box pins its breakdown, and unpins it
+        if (mouseButtonEvent.button() == 0 && mouseButtonEvent.x.toInt() in timeBox[0] until timeBox[2] &&
+            mouseButtonEvent.y.toInt() in timeBox[1] until timeBox[3]
+        ) {
+            timePinned = !timePinned
+            return true
+        }
+
+        // the wheel's other job: a middle click in greenhouse mode makes it walk the swatches
+        // instead of the plots, and another puts it back. Remembered past the screen, not to disk
+        if (currentDisplay == CurrentDisplay.Greenhouses && mouseButtonEvent.button() == 2) {
+            scrollPicksInfo = !scrollPicksInfo
+            return true
+        }
+
+        if (currentDisplay == CurrentDisplay.Greenhouses &&
+            greenhousePanel.mouseClicked(mouseButtonEvent, doubled)
+        ) {
+            return true
+        }
+
+        if (currentDisplay == CurrentDisplay.Greenhouses && displayedGridWidget != null) {
+            if (plotTabs.mouseClicked(mouseButtonEvent)) return true
+            if (teleportTab.mouseClicked(mouseButtonEvent)) return true
+        }
+
+        if (currentDisplay == CurrentDisplay.Presets && displayedGridWidget != null && partTabs.mouseClicked(mouseButtonEvent)) {
+            return true
+        }
+
+        if (currentDisplay == CurrentDisplay.Presets) {
+            // a right click puts a picked plant down, wherever the mouse is
+            if (mouseButtonEvent.button() == 1 && plantPalette.selected != null) {
+                plantPalette.dropSelection()
+                return true
+            }
+
+            if (plantPalette.mouseClicked(mouseButtonEvent, doubled)) return true
+
+            // a picked plant lands on the slot clicked
+            plantPalette.selected?.let { picked ->
+                val overSlot = (displayedGridWidget ?: emptyGridWidget)?.slotAt(mouseButtonEvent.x, mouseButtonEvent.y) != null
+                if (mouseButtonEvent.button() == 0 && overSlot) {
+                    placeDragged(picked, mouseButtonEvent.x, mouseButtonEvent.y)
+                    return true
+                }
+            }
+
+            if (mouseButtonEvent.button() == 0) {
+                // with the switch on, a click on bare soil takes the soil off the preset
+                if (plantPalette.deleteMode && displayedGridWidget?.hoveredElement == null) {
+                    displayedGridWidget?.let { grid ->
+                        val (sx, sy) = grid.slotAt(mouseButtonEvent.x, mouseButtonEvent.y) ?: return@let
+                        val slot = grid.layout.getSlot(sx, sy) ?: return@let
+                        if (slot.placedBlock != null) {
+                            remember(grid.layout)
+                            slot.placedBlock = null
+                            grid.init()
+                            return true
+                        }
+                    }
+                }
+                (displayedGridWidget?.hoveredElement as? ElementWidget)?.let { element ->
+                    // with the switch on, a click on a plant takes it off the preset
+                    if (plantPalette.deleteMode) {
+                        removeFromPreset(element.instance)
+                        return true
+                    }
+                    // with the mark selector on something, a click on a plant marks it
+                    val choice = plantPalette.markChoice
+                    if (choice.applies) {
+                        applyMark(element.instance, choice.marking)
+                        return true
+                    }
+                }
+            }
+
+            // a right click on a plant says what it stands for in the plan
+            if (mouseButtonEvent.button() == 1) {
+                (displayedGridWidget?.hoveredElement as? ElementWidget)?.let {
+                    openMarkContext(it.instance, mouseButtonEvent)
+                    return true
+                }
+            }
+        }
+
+        // a right click on the name at the top renames what is shown: the preset, or the greenhouse
+        if (mouseButtonEvent.button() == 1 && dynamicNameDisplay?.isMouseOver(mouseButtonEvent.x, mouseButtonEvent.y) == true) {
+            when (currentDisplay) {
+                CurrentDisplay.Presets -> GreenhouseData.currentPreset?.let { master ->
+                    openRenameContext(mouseButtonEvent, master.displayName()) { name -> master.name = name }
+                }
+                CurrentDisplay.Greenhouses -> displayedGridWidget?.layout?.let { layout ->
+                    openRenameContext(mouseButtonEvent, layout.displayName()) { name -> layout.name = name }
+                }
+            }
+            return true
+        }
+
+        if (cropPreviewButton.mouseClicked(mouseButtonEvent, doubled)) {
+            ScreenUtil.setScreen(CropPreviewScreen(this))
+            return true
+        }
+
+        if (currentDisplayToggle.mouseClicked(mouseButtonEvent,doubled)) {
+            when (currentDisplay) {
+                CurrentDisplay.Greenhouses -> {
+                    currentDisplay = CurrentDisplay.Presets
+                    initPresetLayout()
+                }
+                CurrentDisplay.Presets -> {
+                    currentDisplay = CurrentDisplay.Greenhouses
+                    initGreenhouseLayout()
+                }
+            }
+            return true
+        }
+        // the swatches are only beside a greenhouse, and off screen they still sit where they
+        // were last laid out, so they are asked before the grid but only where they exist
+        if (currentDisplay == CurrentDisplay.Greenhouses &&
+            hoverControls.mouseClicked(mouseButtonEvent, doubled)
+        ) {
+            return true
+        }
+
+        if (displayedGridWidget?.mouseClicked(mouseButtonEvent, doubled) == true) {
+            return true
+        }
+        // the preset ui is only laid out in preset mode, off screen its buttons still sit at 0,0
+        // and would take clicks meant for the corner of the screen
+        if (currentDisplay == CurrentDisplay.Presets &&
+            presetUI.mouseClicked(mouseButtonEvent, doubled)
+        ) {
+            return true
+        }
+        return super.onMouseClicked(mouseButtonEvent, doubled)
     }
 
-    override fun mouseMoved(realX: Double, realY: Double) {
+    override fun onMouseMoved(realX: Double, realY: Double) {
         val mouseX = realX / drawScale
         val mouseY = realY / drawScale
 
@@ -1220,53 +1212,45 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
 
 
 
-    override fun charTyped(characterEvent: CharacterEvent): Boolean {
-        return guard("the greenhouse screen", false) {
-            overlays.toList().forEach {
-                if (it.charTyped(characterEvent)) return true
-            }
-            if (currentDisplay == CurrentDisplay.Presets && plantPalette.charTyped(characterEvent)) return true
-            return super.charTyped(characterEvent)
+    override fun onCharTyped(characterEvent: CharacterEvent): Boolean {
+        overlays.toList().forEach {
+            if (it.charTyped(characterEvent)) return true
         }
+        if (currentDisplay == CurrentDisplay.Presets && plantPalette.charTyped(characterEvent)) return true
+        return super.onCharTyped(characterEvent)
     }
 
-    override fun mouseDragged(event: MouseButtonEvent, dragX: Double, dragY: Double): Boolean {
-        return guard("the greenhouse screen", false) {
-            if (currentDisplay == CurrentDisplay.Presets && plantPalette.mouseDragged(event.x / drawScale, event.y / drawScale)) return true
-            return super.mouseDragged(event, dragX, dragY)
-        }
+    override fun onMouseDragged(event: MouseButtonEvent, dragX: Double, dragY: Double): Boolean {
+        if (currentDisplay == CurrentDisplay.Presets && plantPalette.mouseDragged(event.x / drawScale, event.y / drawScale)) return true
+        return super.onMouseDragged(event, dragX, dragY)
     }
 
-    override fun mouseReleased(event: MouseButtonEvent): Boolean {
-        return guard("the greenhouse screen", false) {
-            plantPalette.mouseReleased()?.let { placeDragged(it, event.x / drawScale, event.y / drawScale) }
-            return super.mouseReleased(event)
-        }
+    override fun onMouseReleased(event: MouseButtonEvent): Boolean {
+        plantPalette.mouseReleased()?.let { placeDragged(it, event.x / drawScale, event.y / drawScale) }
+        return super.onMouseReleased(event)
     }
 
-    override fun mouseScrolled(realX: Double, realY: Double, scrollX: Double, scrollY: Double): Boolean {
-        return guard("the greenhouse screen", false) {
-            val mouseX = realX / drawScale
-            val mouseY = realY / drawScale
+    override fun onMouseScrolled(realX: Double, realY: Double, scrollX: Double, scrollY: Double): Boolean {
+        val mouseX = realX / drawScale
+        val mouseY = realY / drawScale
 
-            // an open list takes the wheel before the screen's own scrolling does
-            overlays.toList().forEach {
-                if (it.mouseScrolled(mouseX, mouseY, scrollX, scrollY)) return true
-            }
-
-            if (scrollY == 0.0) return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY)
-            if (currentDisplay == CurrentDisplay.Presets && plantPalette.mouseScrolled(mouseX, mouseY, scrollY)) return true
-
-            // the wheel walks the plots or presets; in greenhouse mode a middle click points it at
-            // the swatches instead, and presets never care which way that switch is left
-            if (currentDisplay == CurrentDisplay.Greenhouses && scrollPicksInfo) {
-                hoverControls.cycle(down = scrollY < 0)
-            } else {
-                cycleDisplayedGrid(forward = scrollY < 0)
-            }
-
-            return true
+        // an open list takes the wheel before the screen's own scrolling does
+        overlays.toList().forEach {
+            if (it.mouseScrolled(mouseX, mouseY, scrollX, scrollY)) return true
         }
+
+        if (scrollY == 0.0) return super.onMouseScrolled(mouseX, mouseY, scrollX, scrollY)
+        if (currentDisplay == CurrentDisplay.Presets && plantPalette.mouseScrolled(mouseX, mouseY, scrollY)) return true
+
+        // the wheel walks the plots or presets; in greenhouse mode a middle click points it at
+        // the swatches instead, and presets never care which way that switch is left
+        if (currentDisplay == CurrentDisplay.Greenhouses && scrollPicksInfo) {
+            hoverControls.cycle(down = scrollY < 0)
+        } else {
+            cycleDisplayedGrid(forward = scrollY < 0)
+        }
+
+        return true
     }
 
     /** Steps to the neighbouring greenhouse, or the neighbouring preset, wrapping. */
@@ -1329,14 +1313,12 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         }
     }
 
-    override fun keyPressed(keyEvent: KeyEvent): Boolean {
-        return guard("the greenhouse screen", false) {
-            overlays.toList().forEach {
-                if (it.keyPressed(keyEvent)) return true
-            }
-            if (currentDisplay == CurrentDisplay.Presets && plantPalette.keyPressed(keyEvent)) return true
-            return super.keyPressed(keyEvent)
+    override fun onKeyPressed(keyEvent: KeyEvent): Boolean {
+        overlays.toList().forEach {
+            if (it.keyPressed(keyEvent)) return true
         }
+        if (currentDisplay == CurrentDisplay.Presets && plantPalette.keyPressed(keyEvent)) return true
+        return super.onKeyPressed(keyEvent)
     }
 
     /** The rename panel at the mouse; [apply] writes the name, then everything sized from names relays out. */

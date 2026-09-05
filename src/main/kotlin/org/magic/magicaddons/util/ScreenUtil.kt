@@ -1,12 +1,14 @@
 package org.magic.magicaddons.util
 
+import org.magic.magicaddons.events.world.OnWorldTickEvent
+import org.magic.magicaddons.events.EventHandler
+import org.magic.magicaddons.events.EventBus
 import org.joml.Matrix3x2fc
 import net.minecraft.client.renderer.state.gui.GuiElementRenderState
 import net.minecraft.client.gui.navigation.ScreenRectangle
 import com.mojang.blaze3d.vertex.VertexConsumer
 import org.magic.magicaddons.Common
 import com.mojang.blaze3d.pipeline.RenderPipeline
-import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.Font
 import net.minecraft.client.gui.GuiGraphicsExtractor
@@ -76,14 +78,17 @@ object ScreenUtil {
     }
 
     fun register() {
-        ClientTickEvents.END_CLIENT_TICK.register { _ ->
-            val target = newScreen ?: return@register
+        EventBus.register(this)
+    }
 
-            if (McCompat.currentScreen() !== target) {
-                McCompat.setScreen(target)
-            } else {
-                newScreen = null
-            }
+    @EventHandler
+    fun onTick(event: OnWorldTickEvent) {
+        val target = newScreen ?: return
+
+        if (McCompat.currentScreen() !== target) {
+            McCompat.setScreen(target)
+        } else {
+            newScreen = null
         }
     }
 
