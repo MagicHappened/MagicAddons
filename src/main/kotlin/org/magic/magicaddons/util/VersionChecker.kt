@@ -23,7 +23,7 @@ object VersionChecker {
 
     private const val REPO = "MagicHappened/MagicAddons"
     private const val RELEASES_URL = "https://api.github.com/repos/$REPO/releases"
-    private const val BETA_COMMIT_URL = "https://api.github.com/repos/$REPO/commits/beta"
+    private const val BETA_COMPARE_URL = "https://api.github.com/repos/$REPO/compare/%s...beta"
 
     const val RELEASES_PAGE = "https://github.com/$REPO/releases/latest"
     const val BETA_PAGE = "https://github.com/$REPO/actions?query=branch%3Abeta"
@@ -49,6 +49,7 @@ object VersionChecker {
 
         /** "(1.2.1 -> 1.5.3 - 5 version changes)", the count dropped when only one version passed. */
         fun span(): String = when {
+            beta && versionsBehind > 1 -> "($current -> $latest - $versionsBehind commits behind)"
             beta || versionsBehind <= 1 -> "($current -> $latest)"
             else -> "($current -> $latest - $versionsBehind version changes)"
         }
@@ -72,8 +73,8 @@ object VersionChecker {
     /** The release number without the Minecraft version and build tag: 1.2.1+26.1.2 is 1.2.1. */
     private fun releaseNumber(version: String): String = version.substringBefore('+')
 
-    /** The commit a beta build came from: 1.2.1+26.1.2.beta.c1e57d1 is c1e57d1. */
-    private fun betaCommit(version: String): String = version.substringAfter(".beta.", "")
+    /** The commit a beta build came from: 1.2.1+26.1.2.beta.c1e57d1 is c1e57d1, a local build's "-dirty" dropped. */
+    private fun betaCommit(version: String): String = version.substringAfter(".beta.", "").removeSuffix("-dirty")
 
     /**
      * Asks GitHub what the newest build is, once. Runs off the game thread and hands the answer
@@ -122,21 +123,26 @@ object VersionChecker {
         return Result(current, latest, behind, beta = false)
     }
 
-    /** The beta branch head, since beta builds are told apart by the commit they were built from. */
+    /**
+     * Whether the beta branch has moved on past the commit being run. A build ahead of the branch,
+     * or of a commit GitHub does not know, is not behind; only commits the branch added count.
+     */
     private fun fetchBeta(): Result? {
-        val body = get(BETA_COMMIT_URL) ?: return null
-        val head = JsonParser.parseString(body).asJsonObject.get("sha")?.asString ?: return null
-
         val current = currentVersion()
         val running = betaCommit(current)
         if (running.isEmpty()) return null
 
-        val shortHead = head.take(running.length)
+        val body = get(BETA_COMPARE_URL.format(running)) ?: return null
+        val compared = JsonParser.parseString(body).asJsonObject
+        val commits = compared.getAsJsonArray("commits")
+        val behind = compared.get("status")?.asString == "ahead" && commits != null && commits.size() > 0
+
+        val latest = if (behind) commits.last().asJsonObject.get("sha").asString.take(running.length) else running
 
         return Result(
             current = "${releaseNumber(current)}.$running",
-            latest = "${releaseNumber(current)}.$shortHead",
-            versionsBehind = if (running == shortHead) 0 else 1,
+            latest = "${releaseNumber(current)}.$latest",
+            versionsBehind = if (behind) compared.get("ahead_by")?.asInt ?: 1 else 0,
             beta = true
         )
     }
