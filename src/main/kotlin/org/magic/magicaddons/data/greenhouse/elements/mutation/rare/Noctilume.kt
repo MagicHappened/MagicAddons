@@ -36,6 +36,14 @@ object Noctilume : CropDefinitionProvider {
         Vec3(-0.125, -0.03125, -0.40625)
     )
 
+    /** At the third stage three stands have settled and the third still rides high. */
+    private val settlingOffsets = listOf(
+        Vec3(-0.21875, -0.0625, 0.15625),
+        Vec3(0.375, 0.09375, -0.3125),
+        Vec3(0.28125, 0.78125, 0.125),
+        Vec3(-0.125, -0.03125, -0.40625)
+    )
+
     private val grownOffsets = listOf(
         Vec3(-0.21875, -0.0625, 0.15625),
         Vec3(0.375, 0.09375, -0.3125),
@@ -108,6 +116,22 @@ object Noctilume : CropDefinitionProvider {
                 wheatAge = 4,
                 offsets = youngOffsets,
                 fullSized = setOf(3)
+            ),
+            look(
+                stage = 2,
+                hash = "281e8164cf7af240cc235d4826996013bd045de20d40abd262145dc24c790a09",
+                craving = CropStandReader.CRAVES_NIGHT,
+                wheatAge = 4,
+                offsets = youngOffsets,
+                fullSized = setOf(3)
+            ),
+            look(
+                stage = 3,
+                hash = "281e8164cf7af240cc235d4826996013bd045de20d40abd262145dc24c790a09",
+                craving = CropStandReader.CRAVES_NIGHT,
+                wheatAge = 5,
+                offsets = settlingOffsets,
+                fullSized = setOf(0, 1, 3)
             ),
             look(
                 stage = 4,

@@ -130,7 +130,28 @@ object Thornshade : CropDefinitionProvider {
                 ,
                 8..8
             )
-        ),
+        ,
+            // as bought: the page says stage eight, the stem is still the seventh
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = melonStemState(7)
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, 0.15625, 0.0),
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
+                        hashString = "dcc9a4a7aadb373adc3be05242924c8985e2f993dd8e4d96f20721052ff7e7a8",
+                        isSmall = false
+                    )
+                ),
+                8..8,
+                placed = true
+            )),
         maxStage = 8,
         isMutation = true
     )

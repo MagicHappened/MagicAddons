@@ -1,9 +1,5 @@
 package org.magic.magicaddons.features.farming.greenhousePresets
 
-import org.magic.magicaddons.data.greenhouse.GREENHOUSE_SOIL_Y
-import net.minecraft.world.phys.Vec3
-import net.minecraft.core.registries.BuiltInRegistries
-import org.magic.magicaddons.events.world.AddParticleEvent
 import kotlin.math.abs
 import java.util.UUID
 import org.magic.magicaddons.Common
@@ -92,66 +88,9 @@ object GreenhouseWatering {
     /** Reads any bar standing over a plant of the current grid, for every batch of new entities. */
     @EventHandler
     fun onWorldTick(event: OnWorldTickEvent) {
-        flushParticles()
         readWaterStands()
     }
 
-    /** Particles seen in the plot this tick, by type, to find the spray's own shape. */
-    private val particlesThisTick = mutableMapOf<String, MutableList<Vec3>>()
-    private var particleTick: Long = -1
-
-    /** The burst a spray makes where it lands: this many effect particles in one tick at plant height. */
-    private const val CONE_MIN: Int = 8
-    private const val LANDING_PARTICLE: String = "minecraft:entity_effect"
-
-    /** How many ticks after a landing its bars may still come, and how long a bar may trail one. */
-    private const val LANDING_SLACK: Long = 3
-
-    /** The last landing seen, and whether any bar has changed since it, so the two can be compared. */
-    private var lastLandingTick: Long = -1
-    private var landingConfirmed: Boolean = true
-
-    /**
-     * Every particle the server sends into the plot while the window is open, logged by kind so the
-     * spray's own particle can be told apart. Read off the packet, so it comes even with particles off.
-     */
-    @EventHandler
-    fun onAddParticle(event: AddParticleEvent) {
-        if (wateringUntil == null) return
-        val grid = GreenhouseData.getCurrentGrid() ?: return
-        val area = grid.plot?.getBuildableArea() ?: return
-        val packet = event.packet
-        val at = Vec3(packet.x, packet.y, packet.z)
-        if (!area.contains(at)) return
-
-        val tick = Minecraft.getInstance().level?.gameTime ?: return
-        if (tick != particleTick) {
-            flushParticles()
-            particleTick = tick
-        }
-        val type = BuiltInRegistries.PARTICLE_TYPE.getKey(packet.particle.type)?.toString() ?: packet.particle.type.toString()
-        particlesThisTick.getOrPut(type) { mutableListOf() }.add(at)
-    }
-
-    /**
-     * Looks through the tick's particles for a landing: a burst of effect particles at plant height.
-     * A landing that the bars never answered is said out loud when the next one comes.
-     */
-    private fun flushParticles() {
-        if (particlesThisTick.isEmpty()) return
-        val spots = particlesThisTick[LANDING_PARTICLE].orEmpty().filter { it.y < GREENHOUSE_SOIL_Y + 3 }
-        particlesThisTick.clear()
-        if (spots.size < CONE_MIN) return
-
-        if (!landingConfirmed) {
-            Common.LOGGER.info("[water] mismatch: landing at tick $lastLandingTick changed no bar")
-        }
-
-        val centre = spots.reduce { a, b -> a.add(b) }.scale(1.0 / spots.size)
-        Common.LOGGER.info("[water] landing tick=$particleTick x${spots.size} at (%.1f, %.1f, %.1f)".format(centre.x, centre.y, centre.z))
-        lastLandingTick = particleTick
-        landingConfirmed = false
-    }
 
     /**
      * Polled rather than driven by entity events: the game reuses a bar it already has, and a stand
@@ -197,8 +136,14 @@ object GreenhouseWatering {
             // a level known to the point stays exact: the bar is too coarse to correct it, and a bar
             // that failed to move must not drag the count back onto it. A level only ever read off
             // bars stays a bar reading, corrected by the bar when the count drifts from it
+            // a bar does not move on every spray tick: sprayed without pause, one plant's bar showed
+            // two and three ticks at a time. So the bar is read as a count of ticks, at least one
+            // more than before, and the level is that many gains, capped where the game caps it
             val before = element.instance.waterLevel
-            val counted = ((before ?: 0) + gain).coerceAtMost(100)
+            val held = before ?: 0
+            val ticksHeld = if (held <= 0) 0 else held / gain
+            val ticksShown = Math.round(bar.percent.toDouble() / gain).toInt()
+            val counted = (gain * maxOf(ticksHeld + 1, ticksShown)).coerceAtMost(100)
             element.instance.waterLevel = when {
                 element.instance.waterExact -> counted
                 abs(counted - bar.percent) <= NOTCH_PERCENT -> counted
@@ -206,15 +151,10 @@ object GreenhouseWatering {
             }
             element.instance.waterPredictedInDebt = false
 
-            // a bar that changes without a landing before it is a tick the particles never showed
-            val tick = level.gameTime
-            val landed = lastLandingTick >= 0 && tick - lastLandingTick <= LANDING_SLACK
-            if (landed) landingConfirmed = true
             Common.LOGGER.info(
-                "[water] spray tick: ${element.instance.cropDef.name} at (${slot.x}, ${slot.y}) " +
+                "[water] spray: ${element.instance.cropDef.name} at (${slot.x}, ${slot.y}) " +
                         "$before -> ${element.instance.waterLevel} (bar ${bar.percent}%, ${bar.notches} notches, " +
-                        "exact=${element.instance.waterExact}, can=$lastCan)" +
-                        if (landed) "" else " NO LANDING within $LANDING_SLACK ticks"
+                        "exact=${element.instance.waterExact}, can=$lastCan)"
             )
         }
     }
