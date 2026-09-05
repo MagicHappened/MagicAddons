@@ -51,6 +51,26 @@ data class GreenhouseLayout(
      * away. Spread passes on everything but itself, so a buff travels two plants and no further.
      */
     fun effectsAt(slot: LayoutSlot): Set<CropEffect> {
+        // asked for every plant every frame, so the answers are kept until the plants change
+        val now = plantsFingerprint()
+        if (now != effectsFingerprint) {
+            effectsCache.clear()
+            effectsFingerprint = now
+        }
+        return effectsCache.getOrPut(slot.x * SLOT_KEY_STRIDE + slot.y) { computeEffectsAt(slot) }
+    }
+
+    private val effectsCache = HashMap<Int, Set<CropEffect>>()
+    private var effectsFingerprint: Int = 0
+
+    /** A number that changes whenever a plant is added, removed or moved. */
+    private fun plantsFingerprint(): Int {
+        var hash = elementInstances.size
+        elementInstances.forEach { hash = hash * 31 + (it.slot.x * SLOT_KEY_STRIDE + it.slot.y) * 31 + it.cropDef.name.hashCode() }
+        return hash
+    }
+
+    private fun computeEffectsAt(slot: LayoutSlot): Set<CropEffect> {
         val neighbours = elementInstances.filter { !it.covers(slot) && it.touches(slot) }
 
         val granted = neighbours.flatMapTo(mutableSetOf()) { it.cropDef.effects }
@@ -94,5 +114,9 @@ data class GreenhouseLayout(
         }
 
         return false
+    }
+
+    private companion object {
+        const val SLOT_KEY_STRIDE: Int = 1024
     }
 }
