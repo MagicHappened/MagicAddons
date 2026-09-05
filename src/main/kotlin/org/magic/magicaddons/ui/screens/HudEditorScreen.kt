@@ -450,8 +450,10 @@ class HudEditorScreen : Screen(Component.literal("HUD Editor")), OverlayContext 
         val overTab = overTab(mouseX, mouseY)
         graphics.drawButtonPanel(tabLeft, 0, tabLeft + TAB_WIDTH, TAB_HEIGHT, overTab, pressed = panelOpen)
         val midX = tabLeft + TAB_WIDTH / 2
-        val tipY = if (panelOpen) 2 else TAB_HEIGHT - 2
-        val baseY = if (panelOpen) TAB_HEIGHT - 2 else 2
+        // a small chevron in the middle of the tab, whatever the tab's height
+        val midY = TAB_HEIGHT / 2
+        val tipY = if (panelOpen) midY - 3 else midY + 3
+        val baseY = if (panelOpen) midY + 3 else midY - 3
         graphics.drawLine(midX - 3, baseY, midX, tipY, 1, Common.UI.TEXT_COLOR)
         graphics.drawLine(midX, tipY, midX + 3, baseY, 1, Common.UI.TEXT_COLOR)
 
@@ -900,7 +902,7 @@ class HudEditorScreen : Screen(Component.literal("HUD Editor")), OverlayContext 
 
     private companion object {
         const val TAB_WIDTH: Int = 30
-        const val TAB_HEIGHT: Int = 8
+        const val TAB_HEIGHT: Int = 24
         const val PANEL_WIDTH: Int = 120
         const val PANEL_ROW: Int = 13
         const val PANEL_PAD: Int = 4
