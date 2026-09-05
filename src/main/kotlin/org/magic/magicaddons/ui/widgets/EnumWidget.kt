@@ -12,7 +12,7 @@ import org.magic.magicaddons.Common
 import org.magic.magicaddons.ui.Focusable
 import org.magic.magicaddons.ui.OverlayContext
 import org.magic.magicaddons.ui.OverlayRenderable
-import org.magic.magicaddons.ui.screens.ScrollableScreen
+import org.magic.magicaddons.ui.ScrollView
 import org.magic.magicaddons.util.ScreenUtil.drawBorder
 import org.magic.magicaddons.util.ScreenUtil.drawButtonPanel
 import org.magic.magicaddons.util.ScreenUtil.drawScrollBar
@@ -189,9 +189,9 @@ class EnumWidget<T>(
         private fun heightFor(rows: Int): Int = overlayRowHeight * rows
 
         /** The visible edges in the widget's own coordinates, which scroll on a scrolling screen. */
-        private fun viewTop(): Int = ScrollableScreen.current()?.viewTop ?: 0
+        private fun viewTop(): Int = (McCompat.currentScreen() as? ScrollView)?.viewTop ?: 0
         private fun viewBottom(): Int =
-            ScrollableScreen.current()?.viewBottom
+            (McCompat.currentScreen() as? ScrollView)?.viewBottom
                 ?: McCompat.currentScreen()?.height
                 ?: Minecraft.getInstance().window.guiScaledHeight
 

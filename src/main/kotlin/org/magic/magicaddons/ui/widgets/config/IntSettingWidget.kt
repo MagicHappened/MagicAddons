@@ -1,83 +1,54 @@
 package org.magic.magicaddons.ui.widgets.config
 
-import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
-import org.magic.magicaddons.ui.widgets.TextField
 import net.minecraft.client.input.CharacterEvent
 import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
-import net.minecraft.network.chat.Component
 import org.lwjgl.glfw.GLFW
 import org.magic.magicaddons.Common
 import org.magic.magicaddons.data.config.IntSetting
-import org.magic.magicaddons.util.ScreenUtil.drawBorder
-import org.magic.magicaddons.util.ScreenUtil.drawWrappedText
-import org.magic.magicaddons.util.ScreenUtil.wrappedHeight
+import org.magic.magicaddons.ui.OverlayContext
+import org.magic.magicaddons.ui.widgets.TextField
 import kotlin.math.roundToInt
 
 /**
- * A number picked either way round: dragged along a bar, or typed into the box beside its name.
- * Dragging and the wheel move by the setting's step; typing ignores it, so no number is out of reach.
+ * A number: a box on the right to type it, and a bar under the text to drag it. Dragging and the
+ * wheel move by the setting's step; typing ignores it, so no number is out of reach.
  */
 class IntSettingWidget(
-    private val setting: IntSetting
-) : SettingWidget<Int>(setting) {
+    private val setting: IntSetting,
+    overlays: OverlayContext
+) : SettingWidget<Int>(setting, overlays) {
 
-    override val hasChildren: Boolean = false
-    override val childrenWidgets: MutableList<SettingWidget<*>> = mutableListOf()
+    override val controlWidth: Int = BOX_WIDTH
+    override val controlHeight: Int = FIELD_HEIGHT
 
-    /** Room for a five figure number and a little air. */
-    private val boxWidth: Int = 46
+    private var dragging = false
 
-    private val barHeight: Int = 5
-    private val knobWidth: Int = 3
-
-    private var dragging: Boolean = false
-
-    private val valueBox by lazy {
-        TextField(boxWidth, rowHeight()).also {
-            it.setMaxLength(12)
-            it.value = setting.value.toString()
-        }
-    }
-
-    /** The number box is as tall as half the base height leaves after the borders. */
-    private fun rowHeight(): Int = baseHeight / 2 - borderSize * 2
-
-    private val label: Component get() = Component.literal(setting.displayName)
-
-    private fun labelWidth(): Int = width - boxWidth - textXPad * 3 - borderSize * 2
-
-    /** The top part holds the name and the box; it grows when the name wraps. */
-    private fun topHeight(): Int =
-        (wrappedHeight(font, label, labelWidth()) + textXPad).coerceAtLeast(baseHeight / 2)
-
-    private fun barTop(): Int = y + topHeight() + (baseHeight / 2 - barHeight) / 2
-    private fun barLeft(): Int = x + textXPad
-    private fun barWidth(): Int = width - textXPad * 2
-
-    override fun layout() {
-        height = topHeight() + baseHeight / 2
-
-        valueBox.x = x + width - borderSize - textXPad - boxWidth
-        valueBox.y = y + (topHeight() - rowHeight()) / 2
-        valueBox.width = boxWidth
-        valueBox.height = rowHeight()
-
-        if (!valueBox.focused) valueBox.value = setting.value.toString()
-
-        valueBox.setResponder { typed ->
+    private val valueBox = TextField(BOX_WIDTH, FIELD_HEIGHT).also {
+        it.setMaxLength(12)
+        it.value = setting.value.toString()
+        it.setResponder { typed ->
             // an empty box is somebody halfway through typing, not a request for zero
-            typed.trim().toIntOrNull()?.let { setting.value = it.coerceIn(setting.range) }
+            typed.trim().toIntOrNull()?.let { number -> setting.value = number.coerceIn(setting.range) }
         }
     }
 
-    /** Where the value sits between the ends of its range, as a fraction of the bar. */
+    override fun layoutControl() {
+        valueBox.x = controlLeft()
+        valueBox.y = controlTop()
+        if (!valueBox.focused) valueBox.value = setting.value.toString()
+    }
+
+    override fun extraHeight(): Int = BAR_HEIGHT + KNOB_OVERHANG * 2
+
+    private fun barTop(): Int = extraTop() + KNOB_OVERHANG
+    private fun barLeft(): Int = extraLeft()
+    private fun barWidth(): Int = extraWidth()
+
     private fun fraction(): Float {
         val span = (setting.range.last - setting.range.first).toFloat()
-
         if (span <= 0f) return 0f
-
         return ((setting.value - setting.range.first) / span).coerceIn(0f, 1f)
     }
 
@@ -88,7 +59,6 @@ class IntSettingWidget(
 
         val along = ((mouseX - barLeft()) / barWidth().toDouble()).coerceIn(0.0, 1.0)
         val steps = (along * span / setting.step).roundToInt()
-
         setting.value = (setting.range.first + steps * setting.step).coerceIn(setting.range)
 
         if (!valueBox.focused) valueBox.value = setting.value.toString()
@@ -96,122 +66,91 @@ class IntSettingWidget(
 
     private fun overBar(mouseX: Double, mouseY: Double): Boolean =
         mouseX >= barLeft() && mouseX <= barLeft() + barWidth() &&
-                mouseY >= y + topHeight() && mouseY <= y + height
+                mouseY >= extraTop() && mouseY <= extraTop() + extraHeight()
 
-    override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
-        graphics.fill(x, y, x + width, y + height, backgroundColor)
-        graphics.drawBorder(x, y, x + width, y + height, borderSize, borderColor)
-
-        val labelHeight = wrappedHeight(font, label, labelWidth())
-
-        graphics.drawWrappedText(
-            font,
-            label,
-            x + textXPad + borderSize,
-            y + (topHeight() - labelHeight) / 2,
-            labelWidth(),
-            Common.UI.TEXT_COLOR
-        )
-
+    override fun renderControl(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
         valueBox.render(graphics)
+    }
 
+    override fun renderExtra(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
         val filled = (barWidth() * fraction()).toInt()
+        val top = barTop()
 
-        graphics.fill(barLeft(), barTop(), barLeft() + barWidth(), barTop() + barHeight, Common.UI.FIELD_COLOR)
-        graphics.fill(barLeft(), barTop(), barLeft() + filled, barTop() + barHeight, Common.UI.ACCENT_COLOR)
+        graphics.fill(barLeft(), top, barLeft() + barWidth(), top + BAR_HEIGHT, Common.UI.FIELD_COLOR)
+        graphics.fill(barLeft(), top, barLeft() + filled, top + BAR_HEIGHT, Common.UI.ACCENT_COLOR)
 
         // the knob rides the end of the filled part, kept inside the track at either extreme
-        val knobX = (barLeft() + filled - knobWidth / 2)
-            .coerceIn(barLeft(), barLeft() + barWidth() - knobWidth)
-
-        graphics.fill(knobX, barTop() - 2, knobX + knobWidth, barTop() + barHeight + 2, borderColor)
-
-        renderDetail(graphics)
+        val knobX = (barLeft() + filled - KNOB_WIDTH / 2).coerceIn(barLeft(), barLeft() + barWidth() - KNOB_WIDTH)
+        graphics.fill(knobX, top - KNOB_OVERHANG, knobX + KNOB_WIDTH, top + BAR_HEIGHT + KNOB_OVERHANG, Common.UI.TEXT_COLOR)
     }
 
-    override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
-        if (valueBox.mouseClicked(mouseButtonEvent, doubled)) {
-            return true
-        }
+    override fun controlClicked(event: MouseButtonEvent, doubled: Boolean): Boolean {
+        if (valueBox.mouseClicked(event, doubled)) return true
 
-        // clicking anywhere else lets the box go, so what was typed is committed and the keyboard
-        // stops being eaten by a setting the player has moved on from
+        // a click anywhere else lets the box go, so what was typed is committed
         commitTypedValue()
 
-        if (mouseButtonEvent.button() == 0 && overBar(mouseButtonEvent.x, mouseButtonEvent.y)) {
+        if (event.button() == 0 && overBar(event.x, event.y)) {
             dragging = true
-            setFromMouse(mouseButtonEvent.x)
+            setFromMouse(event.x)
             return true
         }
-
-        return super.mouseClicked(mouseButtonEvent, doubled)
+        return false
     }
 
-    override fun mouseDragged(
-        mouseButtonEvent: MouseButtonEvent,
-        dragX: Double,
-        dragY: Double
-    ): Boolean {
-        if (!dragging) return false
-
-        setFromMouse(mouseButtonEvent.x)
+    override fun mouseDragged(event: MouseButtonEvent, dragX: Double, dragY: Double): Boolean {
+        if (!dragging) return super.mouseDragged(event, dragX, dragY)
+        setFromMouse(event.x)
         return true
     }
 
-    override fun mouseReleased(mouseButtonEvent: MouseButtonEvent): Boolean {
-        if (!dragging) return false
-
+    override fun mouseReleased(event: MouseButtonEvent): Boolean {
+        if (!dragging) return super.mouseReleased(event)
         dragging = false
         return true
     }
 
     override fun mouseScrolled(mouseX: Double, mouseY: Double, scrollX: Double, scrollY: Double): Boolean {
-        if (!isMouseOver(mouseX, mouseY)) return false
-        if (scrollY == 0.0) return false
+        if (super.mouseScrolled(mouseX, mouseY, scrollX, scrollY)) return true
+        if (!overBar(mouseX, mouseY) || scrollY == 0.0) return false
 
         val direction = if (scrollY > 0) 1 else -1
-
         setting.value = (setting.value + direction * setting.step).coerceIn(setting.range)
-
         if (!valueBox.focused) valueBox.value = setting.value.toString()
-
         return true
     }
 
-    override fun charTyped(characterEvent: CharacterEvent): Boolean {
-        if (!valueBox.focused) return false
-
-        return valueBox.charTyped(characterEvent)
+    override fun dropFocus() {
+        commitTypedValue()
+        super.dropFocus()
     }
 
-    override fun keyPressed(keyEvent: KeyEvent): Boolean {
-        if (!valueBox.focused) return false
+    override fun charTyped(event: CharacterEvent): Boolean =
+        valueBox.charTyped(event) || super.charTyped(event)
 
-        if (keyEvent.key() == GLFW.GLFW_KEY_ENTER || keyEvent.key() == GLFW.GLFW_KEY_KP_ENTER) {
+    override fun keyPressed(event: KeyEvent): Boolean {
+        if (valueBox.focused && (event.key() == GLFW.GLFW_KEY_ENTER || event.key() == GLFW.GLFW_KEY_KP_ENTER)) {
             commitTypedValue()
             return true
         }
-
-        return valueBox.keyPressed(keyEvent)
+        return valueBox.keyPressed(event) || super.keyPressed(event)
     }
 
     /** Takes the typed number, or puts the value back. Clamped to the range, never to the step. */
     private fun commitTypedValue() {
         if (!valueBox.focused) return
-
         valueBox.focused = false
 
         val typed = valueBox.value.trim().toIntOrNull()
-
-        if (typed == null) {
-            valueBox.value = setting.value.toString()
-            return
-        }
-
-        setting.value = typed.coerceIn(setting.range)
+        if (typed != null) setting.value = typed.coerceIn(setting.range)
         valueBox.value = setting.value.toString()
     }
 
     private companion object {
+        /** Room for a five figure number and a little air. */
+        const val BOX_WIDTH: Int = 46
+        const val BAR_HEIGHT: Int = 4
+        const val KNOB_WIDTH: Int = 3
+        const val KNOB_OVERHANG: Int = 2
     }
 }

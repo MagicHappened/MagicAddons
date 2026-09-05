@@ -228,6 +228,9 @@ class EnumSetting<T : Enum<T>>(
     private var activeChildren: List<SettingNode<*>>? =
         childrenProvider?.invoke(value)
 
+    /** The settings the current value brings with it, none when there is no provider. */
+    val providedChildren: List<SettingNode<*>> get() = activeChildren.orEmpty()
+
     override var value: T = value
         set(newValue) {
             if (field == newValue) {return}

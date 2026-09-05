@@ -6,16 +6,17 @@ import org.magic.magicaddons.data.config.IntSetting
 import org.magic.magicaddons.data.config.SettingNode
 import org.magic.magicaddons.data.config.TextSetting
 import org.magic.magicaddons.data.config.ToggleListSetting
+import org.magic.magicaddons.ui.OverlayContext
 
 object SettingWidgetFactory {
 
-    fun create(node: SettingNode<*>): SettingWidget<*> {
+    fun create(node: SettingNode<*>, overlays: OverlayContext): SettingWidget<*> {
         return when (node) {
-            is BooleanSetting -> BooleanSettingWidget(node)
-            is TextSetting -> TextSettingWidget(node)
-            is IntSetting -> IntSettingWidget(node)
-            is EnumSetting<*> -> EnumSettingWidget(node)
-            is ToggleListSetting -> ChoiceListSettingWidget(node)
+            is BooleanSetting -> BooleanSettingWidget(node, overlays)
+            is TextSetting -> TextSettingWidget(node, overlays)
+            is IntSetting -> IntSettingWidget(node, overlays)
+            is EnumSetting<*> -> EnumSettingWidget(node, overlays)
+            is ToggleListSetting -> ChoiceListSettingWidget(node, overlays)
         }
     }
 }
