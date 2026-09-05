@@ -143,7 +143,8 @@ object GreenhouseWatering {
             val held = before ?: 0
             val ticksHeld = if (held <= 0) 0 else held / gain
             val ticksShown = Math.round(bar.percent.toDouble() / gain).toInt()
-            val counted = (gain * maxOf(ticksHeld + 1, ticksShown)).coerceAtMost(100)
+            // the game caps at a hundred, and a full bar is that cap rather than fourteen sevens
+            val counted = if (bar.percent >= 100) 100 else (gain * maxOf(ticksHeld + 1, ticksShown)).coerceAtMost(100)
             element.instance.waterLevel = when {
                 element.instance.waterExact -> counted
                 abs(counted - bar.percent) <= NOTCH_PERCENT -> counted
