@@ -1,5 +1,8 @@
 package org.magic.magicaddons.ui.widgets.greenhouse
 
+import net.minecraft.ChatFormatting
+import org.magic.magicaddons.util.ScreenUtil.drawTooltipLines
+import org.magic.magicaddons.util.compat.McCompat
 import org.magic.magicaddons.data.greenhouse.LayoutSlot
 import org.magic.magicaddons.ui.widgets.EnumWidget
 import org.magic.magicaddons.ui.OverlayContext
@@ -128,8 +131,12 @@ class PlantPalette(
                 crops.filter { def -> def.effects.any { it.label.contains(term, ignoreCase = true) } }
             }
             typed.startsWith("#") -> {
-                val term = typed.drop(1).trim()
-                crops.filter { def -> def.requiredSoil.any { it.name.string.contains(term, ignoreCase = true) } }
+                // by how the soil's name starts, so "sand" is sand and not soul sand, and written
+                // without its space as well, so "endstone" finds end stone
+                val term = typed.drop(1).trim().replace(" ", "").lowercase()
+                crops.filter { def ->
+                    def.requiredSoil.any { it.name.string.replace(" ", "").lowercase().startsWith(term) }
+                }
             }
             else -> crops.filter { it.name.contains(typed, ignoreCase = true) }
         }
@@ -313,12 +320,20 @@ class PlantPalette(
 
     fun renderTooltip(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int) {
         if (infoHovered) {
-            graphics.drawSimpleTooltip(SEARCH_HELP, mouseX + 8, mouseY + 8)
+            // wrapped only where the screen itself runs out
+            val room = (McCompat.currentScreen()?.width ?: Int.MAX_VALUE) - (mouseX + 8) - Common.UI.TEXT_X_PAD * 2
+            graphics.drawSimpleTooltip(SEARCH_HELP, mouseX + 8, mouseY + 8, room)
             return
         }
         if (carried != null) return
         val def = hovered ?: return
-        graphics.drawSimpleTooltip(def.name, mouseX + 7, mouseY + 12)
+
+        // the name stands out over its effects, so a search for harvest tells the boost from the improved one
+        val lines = buildList {
+            add(Component.literal(def.name).withStyle(ChatFormatting.GREEN, ChatFormatting.BOLD))
+            def.effects.forEach { add(Component.literal(it.label).withStyle(ChatFormatting.GRAY)) }
+        }
+        graphics.drawTooltipLines(lines.map { it.visualOrderText }, mouseX + 7, mouseY + 12)
     }
 
     fun isMouseOver(mouseX: Double, mouseY: Double): Boolean =
@@ -447,7 +462,9 @@ class PlantPalette(
         private const val ARROW_WIDTH: Int = 16
 
         private const val INFO_RADIUS: Int = 5
-        private const val SEARCH_HELP: String = "Search by name\n@ before a word searches effects, such as @harvest\n# before a word searches the soil a crop grows on, such as #sand"
+        private const val SEARCH_HELP: String = "Search by name\n" +
+                "§b@§r before a word searches §beffects§r, such as §b@harvest§r\n" +
+                "§6#§r before a word searches the §6soil§r a crop grows on, such as §6#sand§r"
 
         /** Laid over the carried plant so it reads as not yet placed. */
         private const val DRAG_VEIL: Int = 0x70101010
