@@ -1,5 +1,7 @@
 package org.magic.mixins;
 
+import net.minecraft.client.renderer.rendertype.RenderTypes;
+import net.minecraft.client.renderer.PlayerSkinRenderCache;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.llamalad7.mixinextras.sugar.Local;
@@ -19,6 +21,29 @@ import org.spongepowered.asm.mixin.injection.At;
 
 @Mixin(CustomHeadLayer.class)
 public class CustomHeadLayerMixin {
+
+    /**
+     * A ghost head is drawn cutout rather than translucent. A translucent model is sorted and drawn
+     * in a pass of its own, which with a plan full of heads meant a pass a head; cutout models
+     * batch by skin. The skins are opaque, so nothing looks different.
+     */
+    @WrapOperation(
+            method = "resolveSkullRenderType",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/client/renderer/PlayerSkinRenderCache$RenderInfo;renderType()Lnet/minecraft/client/renderer/rendertype/RenderType;"
+            )
+    )
+    private RenderType cutoutForGhosts(
+            PlayerSkinRenderCache.RenderInfo info,
+            Operation<RenderType> original,
+            @Local(argsOnly = true) LivingEntityRenderState state
+    ) {
+        if (state instanceof WrappedEntityRenderState wrapped && wrapped.magicaddons$headOutlineColor() != 0) {
+            return RenderTypes.entityCutout(info.playerSkin().body().texturePath());
+        }
+        return original.call(info);
+    }
 
     @WrapOperation(
             method = "submit(Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/SubmitNodeCollector;ILnet/minecraft/client/renderer/entity/state/LivingEntityRenderState;FF)V",

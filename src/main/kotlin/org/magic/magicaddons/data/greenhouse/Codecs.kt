@@ -112,8 +112,11 @@ object Codecs {
                     .forGetter { Optional.ofNullable(it.firstSeenStage) },
 
                 Codec.BOOL.optionalFieldOf("placed", false)
-                    .forGetter { it.placed }
-            ).apply(instance) { id, slot, waterOpt, growthOpt, ageOpt, readingsOpt, firstSeenOpt, placed ->
+                    .forGetter { it.placed },
+
+                Codec.BOOL.optionalFieldOf("water_exact", false)
+                    .forGetter { it.waterExact }
+            ).apply(instance) { id, slot, waterOpt, growthOpt, ageOpt, readingsOpt, firstSeenOpt, placed, waterExact ->
                 GreenhouseElementInstance(
                     elementId = id,
                     slot = slot.orElse(null),
@@ -125,6 +128,7 @@ object Codecs {
                 ).also { plant ->
                     plant.firstSeenStage = firstSeenOpt.orElse(null)
                     plant.placed = placed
+                    plant.waterExact = waterExact
                 }
             }
         }

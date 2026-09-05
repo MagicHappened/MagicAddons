@@ -55,6 +55,18 @@ class ItemIconRenderer(
 
     override fun getTextureLabel(): String = "magicaddons_item_icon"
 
+    /** What the texture holds now: the item's model identity and the size it was drawn at. */
+    private var drawnIdentity: Any? = null
+    private var drawnSize: Float = 0f
+    private var drawnMatrix: Matrix3x2f? = null
+
+    /** The same item at the same size is already in the texture, so it is blitted rather than drawn again. */
+    override fun textureIsReadyToBlit(state: ItemIconRenderState): Boolean =
+        drawnIdentity != null &&
+                drawnIdentity == state.item.modelIdentity &&
+                drawnSize == state.scale() &&
+                drawnMatrix == state.pose()
+
     /** The base class parks the origin at the texture's bottom; the item is centred on its origin. */
     override fun getTranslateY(height: Int, guiScale: Int): Float = height / 2f
 
@@ -83,6 +95,10 @@ class ItemIconRenderer(
         // the gui's y runs down, so the item is flipped the way vanilla flips its oversized items
         poseStack.scale(1f, -1f, -1f)
         state.item.submit(poseStack, collector, FULL_BRIGHT, OverlayTexture.NO_OVERLAY, 0)
+
+        drawnIdentity = state.item.modelIdentity
+        drawnSize = state.scale()
+        drawnMatrix = Matrix3x2f(state.pose())
 
         //? if <26.2 {
         features.renderAllFeatures()

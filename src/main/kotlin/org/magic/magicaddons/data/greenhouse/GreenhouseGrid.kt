@@ -285,6 +285,7 @@ class GreenhouseGrid(
         } else {
             found.instance.waterLevel = water
             found.instance.waterPredictedInDebt = standing.waterPredictedInDebt
+            found.instance.waterExact = standing.waterExact
         }
 
         // a diagnostic pins a stage down to one number, a scan often cannot, so a reading already
