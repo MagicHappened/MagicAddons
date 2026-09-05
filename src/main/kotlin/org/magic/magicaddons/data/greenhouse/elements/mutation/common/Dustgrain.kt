@@ -43,7 +43,28 @@ object Dustgrain : CropDefinitionProvider {
                 1..1
             )
 
-        ),
+        ,
+            // as bought, the same as it grows to
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = wheatState(6)
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, 0.1875, 0.0),
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
+                        hashString = "8698331f183a586ae7258d6b3c83ccd3620bb2411d803123bd6706444c1efdf3",
+                        isSmall = false
+                    )
+                ),
+                1..1,
+                placed = true
+            )),
         needsWater = false,
         isMutation = true
     )

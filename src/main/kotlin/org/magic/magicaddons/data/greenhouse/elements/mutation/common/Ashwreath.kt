@@ -45,7 +45,28 @@ object Ashwreath : CropDefinitionProvider {
                 1..1
             )
 
-        ),
+        ,
+            // as bought, the same as it grows to
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = wheatState(6)
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, -0.375, 0.0),
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
+                        hashString = "5890f50780fdecedaa85aa40bf3399e9439ee68594c6d022688165608171681d",
+                        isSmall = false
+                    )
+                ),
+                1..1,
+                placed = true
+            )),
         requiredSoil = setOf(Blocks.SOUL_SAND),
         needsWater = false,
         isMutation = true

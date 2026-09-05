@@ -132,16 +132,8 @@ object Noctilume : CropDefinitionProvider {
                 wheatAge = 5,
                 offsets = settlingOffsets,
                 fullSized = setOf(0, 1, 3)
-            ),
-            // the day look at four was recorded wrong and waits to be taken again
-            look(
-                stage = 4,
-                hash = "b1b18493d50ff8972f7ef359893d9063fdc54cb822c679002957c294fc8b0005",
-                craving = CropStandReader.CRAVES_NIGHT,
-                wheatAge = 6,
-                offsets = grownOffsets,
-                fullSized = setOf(3)
             )
+            // both looks at four were recorded wrong and wait to be taken again
         ),
         decayTimeMs = SIX_DAY_DECAY_TIME_MS,
         maxStage = 4,

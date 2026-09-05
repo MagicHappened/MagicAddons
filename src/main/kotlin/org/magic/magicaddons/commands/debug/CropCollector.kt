@@ -61,6 +61,9 @@ object CropCollector : EntityUtils.HighlightSource {
     /** How far above the soil a plant can reach, for the stand search and the block columns. */
     private const val PLANT_HEIGHT: Int = 15
 
+    /** How far above the soil a plant's own stands reach; the aloe's labels are the highest, near three and a quarter. */
+    private const val MAX_STAND_ABOVE: Double = 4.0
+
     /** The skulls the plot marker stands carry on every greenhouse, never part of a plant. */
     private val PLOT_MARKER_SKINS: Set<String> = CropStageExporter.PLOT_MARKER_SKINS
 
@@ -200,6 +203,8 @@ object CropCollector : EntityUtils.HighlightSource {
             // the plot's own marker head hovers high over every greenhouse without being flagged
             // a marker, and once floated seven blocks up into a snoozling export
             .filterNot { PlayerUtils.getSkullHash(it) in PLOT_MARKER_SKINS }
+            // a pet and its name tag hover higher than any plant's own stands reach
+            .filter { it.y - origin.y <= MAX_STAND_ABOVE }
             .toMutableList()
 
         // first pass: everything the definitions already recognise, wherever its origin lies
@@ -663,6 +668,8 @@ object CropCollector : EntityUtils.HighlightSource {
             // the plot's own marker head hovers high over every greenhouse without being flagged
             // a marker, and once floated seven blocks up into a snoozling export
             .filterNot { PlayerUtils.getSkullHash(it) in PLOT_MARKER_SKINS }
+            // a pet and its name tag hover higher than any plant's own stands reach
+            .filter { it.y - standingOn.y <= MAX_STAND_ABOVE }
             // a stand holding an item belongs where the item hangs, not where its feet are: the
             // jellybean's smallest looks stand in the next block over with an arm reached out
             .filter { stand ->
@@ -689,7 +696,10 @@ object CropCollector : EntityUtils.HighlightSource {
         // recorded apart from the grown look of the same stage and matched apart from it
         val ownGarden = LocationAPI.island == SkyBlockIsland.GARDEN && !LocationAPI.isGuest
         val placedLook = ownGarden && def.isMutation && GreenhouseData.getCurrentGrid()?.let { grid ->
-            grid.getSlotAt(standingOn, false)?.let { grid.elementCovering(it) }?.instance?.placed
+            val plant = grid.getSlotAt(standingOn, false)?.let { grid.elementCovering(it) }?.instance
+            // flagged when it was put down, or first seen at the stage it is bought at and never
+            // grown since; a spawn is first seen at one, so a single-stage plant cannot be told this way
+            plant != null && (plant.placed || (def.stagePlacedAt > 1 && (plant.firstSeenStage ?: 0) >= def.stagePlacedAt))
         } == true
 
         val absorbed = s.entries.filter { entry ->
