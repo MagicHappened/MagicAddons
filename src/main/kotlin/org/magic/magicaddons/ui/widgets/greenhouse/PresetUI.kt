@@ -12,6 +12,7 @@ import org.magic.magicaddons.ui.Focusable
 import org.magic.magicaddons.data.greenhouse.GreenhouseGrid
 import org.magic.magicaddons.data.greenhouse.transfer.LayoutFormat
 import org.magic.magicaddons.data.greenhouse.transfer.MagicAddonsFormat
+import org.magic.magicaddons.data.greenhouse.transfer.ShareCodeFormat
 import org.magic.magicaddons.data.greenhouse.transfer.LayoutTransferResult
 import org.magic.magicaddons.data.greenhouse.transfer.SkyMutationsFormat
 import org.magic.magicaddons.data.greenhouse.transfer.SkyShardsFormat
@@ -239,6 +240,7 @@ class PresetUI(
             ImportExportFormatContext.LayoutFormatType.SkyShards -> SkyShardsFormat
             ImportExportFormatContext.LayoutFormatType.SkyLayouts -> SkyLayoutsFormat
             ImportExportFormatContext.LayoutFormatType.MagicAddons -> MagicAddonsFormat
+            ImportExportFormatContext.LayoutFormatType.ShareCode -> ShareCodeFormat
         }
 
 

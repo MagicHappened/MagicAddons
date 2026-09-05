@@ -1,5 +1,6 @@
 package org.magic.magicaddons.ui.widgets.greenhouse
 
+import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.level.block.Block
 import net.minecraft.ChatFormatting
 import org.magic.magicaddons.util.ScreenUtil.drawTooltipLines
@@ -129,7 +130,8 @@ class PlantPalette(
         .distinct()
         .sortedBy { it.name.string.lowercase() }
 
-    private val items: List<PaletteItem> = crops.map { PaletteItem.Crop(it) } + soils.map { PaletteItem.Soil(it) }
+    private val items: List<PaletteItem> =
+        crops.map { PaletteItem.Crop(it) } + soils.map { PaletteItem.Soil(it) } + PaletteItem.Soil(Blocks.AIR)
 
     private fun soilWord(block: Block): String = block.name.string.replace(" ", "").lowercase()
 
@@ -275,7 +277,8 @@ class PlantPalette(
 
     fun stackFor(item: PaletteItem): ItemStack = when (item) {
         is PaletteItem.Crop -> stackFor(item.def)
-        is PaletteItem.Soil -> ItemStack(item.block.asItem())
+        // air has no item, and an empty bottle says empty
+        is PaletteItem.Soil -> if (item.block == Blocks.AIR) ItemStack(Items.GLASS_BOTTLE) else ItemStack(item.block.asItem())
     }
 
     fun render(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
@@ -355,10 +358,14 @@ class PlantPalette(
 
         // the name stands out over its effects, so a search for harvest tells the boost from the improved one
         val lines = buildList {
-            add(Component.literal(item.name).withStyle(ChatFormatting.GREEN, ChatFormatting.BOLD))
-            (item as? PaletteItem.Crop)?.def?.effects?.forEach { add(Component.literal(it.label).withStyle(ChatFormatting.GRAY)) }
+            add(Component.literal(item.name).withStyle(ChatFormatting.GREEN, ChatFormatting.BOLD).visualOrderText)
+            (item as? PaletteItem.Crop)?.def?.effects?.forEach { add(Component.literal(it.label).withStyle(ChatFormatting.GRAY).visualOrderText) }
+            if (item is PaletteItem.Soil && item.block == Blocks.AIR) {
+                add(Component.empty().visualOrderText)
+                addAll(font.split(Component.literal(AIR_NOTE).withStyle(ChatFormatting.GRAY), NOTE_WIDTH))
+            }
         }
-        graphics.drawTooltipLines(lines.map { it.visualOrderText }, mouseX + 7, mouseY + 12)
+        graphics.drawTooltipLines(lines, mouseX + 7, mouseY + 12)
     }
 
     fun isMouseOver(mouseX: Double, mouseY: Double): Boolean =
@@ -487,6 +494,10 @@ class PlantPalette(
 
         /** A dusty rose, like no rarity and no soil block. */
         private const val SOIL_CELL: Int = 0xFF8A4A5E.toInt()
+
+        private const val AIR_NOTE: String = "Useful for separating a Devourer from eating your other crops: " +
+                "the hologram will ask for an air block here instead of allowing any block."
+        private const val NOTE_WIDTH: Int = 170
         private const val ARROW_WIDTH: Int = 16
 
         private const val INFO_RADIUS: Int = 5

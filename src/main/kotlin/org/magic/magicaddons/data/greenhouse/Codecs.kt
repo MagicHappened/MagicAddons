@@ -27,8 +27,14 @@ object Codecs {
 
                 GREENHOUSE_ELEMENT_INSTANCE_CODEC.listOf()
                     .fieldOf("element_instances")
-                    .forGetter { it.elementInstances }
-            ).apply(instance) { id, nameOpt, slots, elements ->
+                    .forGetter { it.elementInstances },
+
+                // written since air became something asked for; a file without it has air meaning nothing
+                Codec.BOOL.optionalFieldOf("explicit_air").forGetter { Optional.of(true) }
+            ).apply(instance) { id, nameOpt, slots, elements, explicitAir ->
+                if (!explicitAir.orElse(false)) {
+                    slots.forEach { slot -> if (slot.placedBlock?.isAir == true) slot.placedBlock = null }
+                }
                 GreenhouseLayout(
                     id = id,
                     // older files carry "unnamed" as the name the mod itself wrote, which is no name
