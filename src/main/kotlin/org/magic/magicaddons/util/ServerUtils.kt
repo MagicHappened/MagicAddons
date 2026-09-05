@@ -1,5 +1,6 @@
 package org.magic.magicaddons.util
 
+import org.magic.magicaddons.util.ErrorReporter.guard
 import org.magic.magicaddons.data.handlers.DataHandler
 import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.events.EventHandler
@@ -25,17 +26,19 @@ object ServerUtils {
 
     @Subscription
     fun onIslandChange(event: IslandChangeEvent) {
-        totalServerTicks = 0
-        lastGameTime = null
+        guard("the server watcher") {
+            totalServerTicks = 0
+            lastGameTime = null
 
-        if (event.new != SkyBlockIsland.GARDEN) {
-            DataHandler.saveGardenData()
-            greenhouseGrids.forEach {
-                it.state.hasRuntimeReferences = false
+            if (event.new != SkyBlockIsland.GARDEN) {
+                DataHandler.saveGardenData()
+                greenhouseGrids.forEach {
+                    it.state.hasRuntimeReferences = false
+                }
             }
-        }
-        checkForUpdate()
+            checkForUpdate()
 
+        }
     }
 
     @EventHandler

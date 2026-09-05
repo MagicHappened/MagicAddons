@@ -1,5 +1,6 @@
 package org.magic.magicaddons.events
 
+import org.magic.magicaddons.util.ErrorReporter
 import java.lang.reflect.Method
 import java.util.concurrent.ConcurrentHashMap
 
@@ -36,7 +37,11 @@ object EventBus {
         val eventListeners = listeners[event::class.java] ?: return
 
         for (listener in eventListeners) {
-            listener.method.invoke(listener.owner, event)
+            try {
+                listener.method.invoke(listener.owner, event)
+            } catch (error: Throwable) {
+                ErrorReporter.report("${listener.owner::class.simpleName}.${listener.method.name}", error)
+            }
 
             if (event is Cancellable && event.canceled) {
                 return

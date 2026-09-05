@@ -1,5 +1,6 @@
 package org.magic.magicaddons.ui.screens
 
+import org.magic.magicaddons.util.ErrorReporter.guard
 import org.magic.magicaddons.data.greenhouse.CropStandReader
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.client.Minecraft
@@ -124,36 +125,38 @@ class CropPreviewScreen(
     private var sliderW = 0
 
     override fun init() {
-        super.init()
-        if (selectedDef == null && initial != null) {
-            selector.currentValue = initial
-            picked(initial)
+        guard("the crop preview") {
+            super.init()
+            if (selectedDef == null && initial != null) {
+                selector.currentValue = initial
+                picked(initial)
+            }
+
+            // eight percent of the screen above and below; everything between is the preview's
+            previewY = height * 8 / 100
+            previewSize = height - previewY * 2
+            previewX = (width - previewSize) / 2
+
+            // label and track just inside the box's top edge, on the backdrop, reaching across
+            // until the incomplete-data mark's corner
+            sliderX = previewX + 10
+            sliderW = previewX + previewSize - 26 - sliderX
+            sliderY = previewY + font.lineHeight + 8
+
+            // the picker stands off to the left, its top lined up with the preview's
+            selector.height = 22
+            selector.fitToValues((previewX - Common.UI.SPACING_LARGE * 2).coerceAtLeast(80))
+            selector.x = Common.UI.SPACING_LARGE
+            selector.y = previewY
+
+            // the list stops short of the chat, give or take: about six rows above the bottom
+            selector.overlayBudget = height - (selector.y + selector.height) - selector.height * 6
+
+            variantSelector.height = selector.height
+            variantSelector.width = selector.width
+            variantSelector.x = selector.x
+            variantSelector.y = selector.y + selector.height + Common.UI.SPACING
         }
-
-        // eight percent of the screen above and below; everything between is the preview's
-        previewY = height * 8 / 100
-        previewSize = height - previewY * 2
-        previewX = (width - previewSize) / 2
-
-        // label and track just inside the box's top edge, on the backdrop, reaching across
-        // until the incomplete-data mark's corner
-        sliderX = previewX + 10
-        sliderW = previewX + previewSize - 26 - sliderX
-        sliderY = previewY + font.lineHeight + 8
-
-        // the picker stands off to the left, its top lined up with the preview's
-        selector.height = 22
-        selector.fitToValues((previewX - Common.UI.SPACING_LARGE * 2).coerceAtLeast(80))
-        selector.x = Common.UI.SPACING_LARGE
-        selector.y = previewY
-
-        // the list stops short of the chat, give or take: about six rows above the bottom
-        selector.overlayBudget = height - (selector.y + selector.height) - selector.height * 6
-
-        variantSelector.height = selector.height
-        variantSelector.width = selector.width
-        variantSelector.x = selector.x
-        variantSelector.y = selector.y + selector.height + Common.UI.SPACING
     }
 
     private fun picked(def: CropDefinition) {
@@ -256,40 +259,42 @@ class CropPreviewScreen(
     }
 
     override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
-        val def = selectedDef
+        guard("the crop preview") {
+            val def = selectedDef
 
-        if (spinning && !draggingView) yaw = (yaw + delta * 1.2f) % 360f
+            if (spinning && !draggingView) yaw = (yaw + delta * 1.2f) % 360f
 
-        // the same panel every other screen boxes its content with
-        graphics.drawPanel(
-            previewX - BORDER_PAD,
-            previewY - BORDER_PAD,
-            previewX + previewSize + BORDER_PAD,
-            previewY + previewSize + BORDER_PAD
-        )
-
-        when {
-            def == null -> graphics.drawMultilineBoxCentered(
-                "Pick a crop",
-                previewX + previewSize / 2,
-                previewY + previewSize / 2
+            // the same panel every other screen boxes its content with
+            graphics.drawPanel(
+                previewX - BORDER_PAD,
+                previewY - BORDER_PAD,
+                previewX + previewSize + BORDER_PAD,
+                previewY + previewSize + BORDER_PAD
             )
 
-            sceneStage == null || sceneData == null -> drawUnknown(graphics)
+            when {
+                def == null -> graphics.drawMultilineBoxCentered(
+                    "Pick a crop",
+                    previewX + previewSize / 2,
+                    previewY + previewSize / 2
+                )
 
-            else -> submitScene(graphics, delta)
-        }
+                sceneStage == null || sceneData == null -> drawUnknown(graphics)
 
-        if (def != null) {
-            drawSlider(graphics, def, mouseX, mouseY)
-            drawIncompleteMark(graphics, mouseX, mouseY)
-        }
+                else -> submitScene(graphics, delta)
+            }
 
-        selector.extractRenderState(graphics, mouseX, mouseY, delta)
-        if (variantSelector.values.isNotEmpty()) variantSelector.extractRenderState(graphics, mouseX, mouseY, delta)
+            if (def != null) {
+                drawSlider(graphics, def, mouseX, mouseY)
+                drawIncompleteMark(graphics, mouseX, mouseY)
+            }
 
-        overlays.asReversed().forEach {
-            it.renderOverlay(graphics, mouseX, mouseY, delta)
+            selector.extractRenderState(graphics, mouseX, mouseY, delta)
+            if (variantSelector.values.isNotEmpty()) variantSelector.extractRenderState(graphics, mouseX, mouseY, delta)
+
+            overlays.asReversed().forEach {
+                it.renderOverlay(graphics, mouseX, mouseY, delta)
+            }
         }
     }
 
@@ -414,59 +419,65 @@ class CropPreviewScreen(
     }
 
     override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
-        overlays.toList().forEach {
-            if (it.mouseClicked(mouseButtonEvent, doubled)) return true
+        return guard("the crop preview", false) {
+            overlays.toList().forEach {
+                if (it.mouseClicked(mouseButtonEvent, doubled)) return true
+            }
+
+            if (selector.mouseClicked(mouseButtonEvent, doubled)) return true
+            if (variantSelector.values.isNotEmpty() && variantSelector.mouseClicked(mouseButtonEvent, doubled)) return true
+
+            closeOverlays()
+
+            val mx = mouseButtonEvent.x.toInt()
+            val my = mouseButtonEvent.y.toInt()
+            val def = selectedDef
+
+            if (def != null && def.maxStage > 1 &&
+                my in sliderY - 2..sliderY + SLIDER_HEIGHT + 2 && mx in sliderX..sliderX + sliderW
+            ) {
+                draggingSlider = true
+                dragSliderTo(mouseButtonEvent.x)
+                return true
+            }
+
+            if (mouseButtonEvent.button() == 0 &&
+                mx in previewX..previewX + previewSize && my in previewY..previewY + previewSize
+            ) {
+                draggingView = true
+                return true
+            }
+
+            return super.mouseClicked(mouseButtonEvent, doubled)
         }
-
-        if (selector.mouseClicked(mouseButtonEvent, doubled)) return true
-        if (variantSelector.values.isNotEmpty() && variantSelector.mouseClicked(mouseButtonEvent, doubled)) return true
-
-        closeOverlays()
-
-        val mx = mouseButtonEvent.x.toInt()
-        val my = mouseButtonEvent.y.toInt()
-        val def = selectedDef
-
-        if (def != null && def.maxStage > 1 &&
-            my in sliderY - 2..sliderY + SLIDER_HEIGHT + 2 && mx in sliderX..sliderX + sliderW
-        ) {
-            draggingSlider = true
-            dragSliderTo(mouseButtonEvent.x)
-            return true
-        }
-
-        if (mouseButtonEvent.button() == 0 &&
-            mx in previewX..previewX + previewSize && my in previewY..previewY + previewSize
-        ) {
-            draggingView = true
-            return true
-        }
-
-        return super.mouseClicked(mouseButtonEvent, doubled)
     }
 
     override fun mouseDragged(mouseButtonEvent: MouseButtonEvent, dragX: Double, dragY: Double): Boolean {
-        if (draggingSlider) {
-            dragSliderTo(mouseButtonEvent.x)
-            return true
-        }
+        return guard("the crop preview", false) {
+            if (draggingSlider) {
+                dragSliderTo(mouseButtonEvent.x)
+                return true
+            }
 
-        if (draggingView) {
-            spinning = false
-            // sideways dragging turned out to feel right the way it first was
-            yaw = (yaw + dragX.toFloat() * 0.8f) % 360f
-            pitch = (pitch - dragY.toFloat() * 0.5f).coerceIn(-75f, 30f)
-            return true
-        }
+            if (draggingView) {
+                spinning = false
+                // sideways dragging turned out to feel right the way it first was
+                yaw = (yaw + dragX.toFloat() * 0.8f) % 360f
+                pitch = (pitch - dragY.toFloat() * 0.5f).coerceIn(-75f, 30f)
+                return true
+            }
 
-        return super.mouseDragged(mouseButtonEvent, dragX, dragY)
+            return super.mouseDragged(mouseButtonEvent, dragX, dragY)
+        }
     }
 
     override fun mouseReleased(mouseButtonEvent: MouseButtonEvent): Boolean {
-        draggingSlider = false
-        draggingView = false
+        return guard("the crop preview", false) {
+            draggingSlider = false
+            draggingView = false
 
-        return super.mouseReleased(mouseButtonEvent)
+            return super.mouseReleased(mouseButtonEvent)
+        }
     }
 
     private fun dragSliderTo(mouseX: Double) {
@@ -485,27 +496,33 @@ class CropPreviewScreen(
     }
 
     override fun mouseScrolled(mouseX: Double, mouseY: Double, scrollX: Double, scrollY: Double): Boolean {
-        overlays.toList().forEach {
-            if (it.mouseScrolled(mouseX, mouseY, scrollX, scrollY)) return true
-        }
+        return guard("the crop preview", false) {
+            overlays.toList().forEach {
+                if (it.mouseScrolled(mouseX, mouseY, scrollX, scrollY)) return true
+            }
 
-        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY)
+            return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY)
+        }
     }
 
     override fun charTyped(characterEvent: CharacterEvent): Boolean {
-        overlays.toList().forEach {
-            if (it.charTyped(characterEvent)) return true
-        }
+        return guard("the crop preview", false) {
+            overlays.toList().forEach {
+                if (it.charTyped(characterEvent)) return true
+            }
 
-        return super.charTyped(characterEvent)
+            return super.charTyped(characterEvent)
+        }
     }
 
     override fun keyPressed(keyEvent: KeyEvent): Boolean {
-        overlays.toList().forEach {
-            if (it.keyPressed(keyEvent)) return true
-        }
+        return guard("the crop preview", false) {
+            overlays.toList().forEach {
+                if (it.keyPressed(keyEvent)) return true
+            }
 
-        return super.keyPressed(keyEvent)
+            return super.keyPressed(keyEvent)
+        }
     }
 
     /** Escape goes back to the screen it came from, or out to the game when opened by command. */
