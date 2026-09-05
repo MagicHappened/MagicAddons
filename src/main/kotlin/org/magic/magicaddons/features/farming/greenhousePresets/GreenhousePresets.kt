@@ -68,36 +68,36 @@ object GreenhousePresets : Feature() {
         ?.value
     override val id = "GreenhousePresets"
     override val displayName = "Greenhouse Presets"
-    override val tooltipMessage = "Enables Greenhouse Presets..."
+    override val description = "Enables Greenhouse Presets..."
     override val category = "farming"
 
     override val baseSetting = BooleanSetting(
         displayName = displayName,
-        tooltip = tooltipMessage,
+        description = description,
         value = true,
         children = listOf(
             BooleanSetting(
                 key = WARNINGS_KEY,
                 displayName = "Warnings",
-                tooltip = "Chat warnings about the greenhouses: which ones, and how far ahead",
+                description = "Chat warnings about the greenhouses: which ones, and how far ahead",
                 value = false,
                 children = listOf(
                     BooleanSetting(
                         key = TYPES_KEY,
                         displayName = "Types",
-                        tooltip = "Which warnings are sent. Off, none are",
+                        description = "Which warnings are sent. Off, none are",
                         value = true,
                         children = listOf(
                             BooleanSetting(
                                 key = "ReadyToHarvestWarning",
                                 displayName = "Ready To Harvest",
-                                tooltip = "Tells you when a mutation you grew has nothing left to grow",
+                                description = "Tells you when a mutation you grew has nothing left to grow",
                                 value = false
                             ),
                             BooleanSetting(
                                 key = "DecayWarning",
                                 displayName = "Decay",
-                                tooltip = "Warns six hours, one hour, twenty, five and one minute before a plant " +
+                                description = "Warns six hours, one hour, twenty, five and one minute before a plant " +
                                         "rots away. Needs a plant diagnostic to have been used on the plant, " +
                                         "since nothing else says how old it is",
                                 value = false
@@ -105,28 +105,28 @@ object GreenhousePresets : Feature() {
                             BooleanSetting(
                                 key = "SnoozlingAsleepWarning",
                                 displayName = "Snoozling Asleep",
-                                tooltip = "Warns when a snoozling has dropped asleep, which it does on reaching " +
+                                description = "Warns when a snoozling has dropped asleep, which it does on reaching " +
                                         "stage 5, 10 and 15, and grows no further until it is woken",
                                 value = false
                             ),
                             BooleanSetting(
                                 key = "NoctilumeTimeWarning",
                                 displayName = "Noctilume Time",
-                                tooltip = "Warns while a noctilume craves a time of day the garden is not on, " +
+                                description = "Warns while a noctilume craves a time of day the garden is not on, " +
                                         "since it stalls every tick until the garden time is changed",
                                 value = false
                             ),
                             BooleanSetting(
                                 key = CHORUS_KEY,
                                 displayName = "Chorus Collision",
-                                tooltip = "Warns before a chorus fruit runs out of tiles to teleport into and " +
+                                description = "Warns before a chorus fruit runs out of tiles to teleport into and " +
                                         "starts destroying the plot around it",
                                 value = false,
                                 children = listOf(
                                     IntSetting(
                                         key = CHORUS_TICKS_KEY,
                                         displayName = "Ticks Away",
-                                        tooltip = "How many growth ticks you expect to be away for. The line " +
+                                        description = "How many growth ticks you expect to be away for. The line " +
                                                 "underneath says what that is in real time, counted from the tick " +
                                                 "already running",
                                         value = 5,
@@ -138,7 +138,7 @@ object GreenhousePresets : Feature() {
                             BooleanSetting(
                                 key = PlantWarnings.OTHER_PROFILES_KEY,
                                 displayName = "Other Profiles",
-                                tooltip = "Lets the greenhouses of your other profiles warn too, moved on by their " +
+                                description = "Lets the greenhouses of your other profiles warn too, moved on by their " +
                                         "own clocks as if you were away. Each warning says which profile it is about",
                                 value = false
                             )
@@ -147,31 +147,31 @@ object GreenhousePresets : Feature() {
                     BooleanSetting(
                         key = REMINDERS_KEY,
                         displayName = "Reminders",
-                        tooltip = "When a warning about the next tick is sent. Off, none are",
+                        description = "When a warning about the next tick is sent. Off, none are",
                         value = true,
                         children = listOf(
                             BooleanSetting(
                                 key = AT_TICK_KEY,
                                 displayName = "At The Tick",
-                                tooltip = "The moment a growth tick lands",
+                                description = "The moment a growth tick lands",
                                 value = false
                             ),
                             BooleanSetting(
                                 key = TEN_MINUTES_KEY,
                                 displayName = "10 Minutes Before",
-                                tooltip = "Ten minutes before the next growth tick",
+                                description = "Ten minutes before the next growth tick",
                                 value = false
                             ),
                             BooleanSetting(
                                 key = FIVE_MINUTES_KEY,
                                 displayName = "5 Minutes Before",
-                                tooltip = "Five minutes before the next growth tick",
+                                description = "Five minutes before the next growth tick",
                                 value = false
                             ),
                             BooleanSetting(
                                 key = ONE_MINUTE_KEY,
                                 displayName = "1 Minute Before",
-                                tooltip = "One minute before the next growth tick",
+                                description = "One minute before the next growth tick",
                                 value = false
                             )
                         )
@@ -181,21 +181,21 @@ object GreenhousePresets : Feature() {
             BooleanSetting(
                 key = GreenhouseHud.KEY,
                 displayName = "Greenhouse HUD",
-                tooltip = "A small panel on screen while standing in a greenhouse: the next tick, " +
+                description = "A small panel on screen while standing in a greenhouse: the next tick, " +
                         "and how many plants are ready, dry, asleep or about to rot",
                 value = false
             ),
             BooleanSetting(
                 key = KEY_ANYWHERE,
                 displayName = "Greenhouse Screen Anywhere",
-                tooltip = "Lets the greenhouse screen key (G unless rebound) open the screen " +
+                description = "Lets the greenhouse screen key (G unless rebound) open the screen " +
                         "outside the garden too. Off, it only works while on the garden",
                 value = false
             ),
             BooleanSetting(
                 key = TURN_GRID_KEY,
                 displayName = "Turn Grid With Player",
-                tooltip = "Turns the greenhouse screen's grid so the way you are facing is up. " +
+                description = "Turns the greenhouse screen's grid so the way you are facing is up. " +
                         "Only the picture turns: plans still go on the same tiles",
                 value = false
             )

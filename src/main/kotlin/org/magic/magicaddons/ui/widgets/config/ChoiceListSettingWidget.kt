@@ -11,7 +11,6 @@ import org.magic.magicaddons.data.config.ToggleListSetting
 import org.magic.magicaddons.ui.OverlayContext
 import org.magic.magicaddons.ui.widgets.TextField
 import org.magic.magicaddons.ui.widgets.ToggleRowWidget
-import org.magic.magicaddons.util.ScreenUtil.drawBorder
 import org.magic.magicaddons.util.ScreenUtil.drawScrollBar
 
 /**
@@ -28,6 +27,7 @@ class ChoiceListSettingWidget(
 
     private val searchBox = TextField(0, ROW_HEIGHT, Component.literal(listSetting.searchLabel)).also {
         it.setMaxLength(64)
+        it.framed = true
         it.setResponder {
             scroll = 0
             rebuildRows()
@@ -39,6 +39,12 @@ class ChoiceListSettingWidget(
     /** What the search lets through, of which a scrolled window is on screen. */
     private var matching: List<String> = emptyList()
     private var scroll: Int = 0
+
+    /** The width the rows were last built for; built again only when it changes. */
+    private var builtWidth: Int = -1
+
+    /** The list ends on the row's own edge, closed by whatever line follows the row. */
+    override val bottomPad: Int = 0
 
     private fun rowsTop(): Int = extraTop() + ROW_HEIGHT + Common.UI.SPACING_SMALL
     private fun listHeight(): Int = VISIBLE_ROWS * ROW_HEIGHT
@@ -71,10 +77,32 @@ class ChoiceListSettingWidget(
         searchBox.x = extraLeft()
         searchBox.y = extraTop()
         searchBox.width = extraWidth()
+
+        // the rows keep their order while a row is ticked, so it does not jump away from the mouse;
+        // they are built again on a search, a scroll, or the group opening
+        if (builtWidth != width) {
+            builtWidth = width
+            rebuildRows()
+        } else {
+            placeRows()
+        }
+    }
+
+    override fun onShown() {
         rebuildRows()
     }
 
-    /** The window of rows the scroll is looking at, laid out under the search box. */
+    private fun placeRows() {
+        var currentY = rowsTop()
+        rows.forEach { row ->
+            row.x = extraLeft()
+            row.y = currentY
+            row.width = extraWidth()
+            currentY += ROW_HEIGHT
+        }
+    }
+
+    /** The window of rows the scroll is looking at, in their order, laid out under the search box. */
     private fun rebuildRows() {
         matching = ordered()
         scroll = scroll.coerceIn(0, (matching.size - VISIBLE_ROWS).coerceAtLeast(0))
@@ -107,7 +135,11 @@ class ChoiceListSettingWidget(
         }
 
         graphics.drawScrollBar(extraLeft() + extraWidth() - Common.UI.SCROLLBAR_WIDTH - 1, top, listHeight(), matching.size, VISIBLE_ROWS, scroll)
-        graphics.drawBorder(extraLeft(), top, extraLeft() + extraWidth(), top + listHeight(), 1, Common.UI.THIN_DIVIDER_COLOR)
+
+        // framed on three sides; the line after the row is its bottom
+        graphics.fill(extraLeft(), top, extraLeft() + extraWidth(), top + 1, Common.UI.BORDER_COLOR)
+        graphics.fill(extraLeft(), top, extraLeft() + 1, top + listHeight(), Common.UI.BORDER_COLOR)
+        graphics.fill(extraLeft() + extraWidth() - 1, top, extraLeft() + extraWidth(), top + listHeight(), Common.UI.BORDER_COLOR)
     }
 
     private fun overRows(mouseX: Double, mouseY: Double): Boolean =

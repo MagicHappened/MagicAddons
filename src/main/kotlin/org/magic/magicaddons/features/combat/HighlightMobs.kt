@@ -45,21 +45,21 @@ object HighlightMobs : HighlightFeature() {
 
     override val id: String = "HighlightMobs"
     override val displayName: String = "Mob Highlight"
-    override val tooltipMessage: String = "§fHighlights mobs of your choosing.\n" +
+    override val description: String = "§fHighlights mobs of your choosing.\n" +
             "§fPresets, single mobs, a name, or advanced filters."
     override val category: String = "combat"
 
     val entityTypePlayerSkinHash = TextSetting(
         key = "EntityTypePlayerSkinHash",
         displayName = "Skin Hash Value",
-        tooltip = "§fThe skin hash to look for.\n§eGet it from the mob hit debug.",
+        description = "§fThe skin hash to look for.\n§eGet it from the mob hit debug.",
         value = "f2b33640bfb71557e0e1d852287263ceafc9bec205301acf046b7c29fe8cb37b"
     )
 
     val entityTypeMobPathValue = TextSetting(
         key = "EntityTypeMobPathValue",
         displayName = "Mob Path",
-        tooltip = "§fThe entity type path to look for, such as entity.minecraft.pig.\n" +
+        description = "§fThe entity type path to look for, such as entity.minecraft.pig.\n" +
                 "§eGet it from the mob hit debug.",
         value = "entity.minecraft.pig"
     )
@@ -67,40 +67,40 @@ object HighlightMobs : HighlightFeature() {
     val singleMobsList = ToggleListSetting(
         key = "SingleMobs",
         displayName = "Mobs",
-        tooltip = "§fTick the mobs to highlight.\n§fType to search the list.",
+        description = "",
         value = mutableListOf(),
         choices = { SingleMobs.names }
     )
 
     override val baseSetting: BooleanSetting = BooleanSetting(
         displayName = displayName,
-        tooltip = tooltipMessage,
+        description = description,
         value = false,
         children = listOf(
             BooleanSetting(
                 key = "PresetsEnabled",
                 displayName = "Mob Presets",
-                tooltip = "§fPreselect highlight options for different areas of the game.",
+                description = "§fPreselect highlight options for different areas of the game.",
                 value = false,
                 children = listOf(
                     BooleanSetting(
                         key = "PresetsForagingTreasure",
                         displayName = "Foraging Treasure",
-                        tooltip = "§fHighlights the grass hiding treasure or shards\n§fon the foraging islands.",
+                        description = "§fHighlights the grass hiding treasure or shards\n§fon the foraging islands.",
                         value = false
                     ),
                     BooleanSetting(
                         key = "PresetsShaftCorpses",
                         displayName = "Shaft Corpses",
                         // each corpse named in the colour it is outlined in, as near as chat colours get
-                        tooltip = "§fHighlights the §9lapis§f, §6umber§f and §btungsten§f corpses in mineshafts.\n" +
+                        description = "§fHighlights the §9lapis§f, §6umber§f and §btungsten§f corpses in mineshafts.\n" +
                                 "§fEach is outlined in its own colour.",
                         value = false,
                         children = listOf(
                             BooleanSetting(
                                 key = "HideLootedCorpses",
                                 displayName = "Hide Looted",
-                                tooltip = "§fStops highlighting a corpse once you have looted it.",
+                                description = "§fStops highlighting a corpse once you have looted it.",
                                 value = false
                             )
                         )
@@ -110,7 +110,7 @@ object HighlightMobs : HighlightFeature() {
             BooleanSetting(
                 key = "SingleMobsEnabled",
                 displayName = "Single Mobs",
-                tooltip = "§fHighlight specific mobs.\n" +
+                description = "§fHighlight specific mobs.\n" +
                         "§bIf a mob you want isn't added here, suggest it to a dev for implementation.",
                 value = false,
                 children = listOf(singleMobsList)
@@ -118,7 +118,7 @@ object HighlightMobs : HighlightFeature() {
             BooleanSetting(
                 key = "MobInfoEnabled",
                 displayName = "Mob Name",
-                tooltip = "§fHighlights mobs whose name contains this text.\n" +
+                description = "§fHighlights mobs whose name contains this text.\n" +
                         "\n" +
                         "§cNames usually sit on a separate armor stand above the mob,\n" +
                         "§cso the highlight is often shorter range than with the\n" +
@@ -128,7 +128,7 @@ object HighlightMobs : HighlightFeature() {
                     TextSetting(
                         key = "MobInfoContains",
                         displayName = "Mob Name Contains",
-                        tooltip = "§fThe text to look for in a mob's name.",
+                        description = "§fThe text to look for in a mob's name.",
                         value = "Littlefoot"
                     )
                 )
@@ -136,7 +136,7 @@ object HighlightMobs : HighlightFeature() {
             BooleanSetting(
                 key = "AdvancedHighlightEnabled",
                 displayName = "Advanced Highlight",
-                tooltip = "§fFilters by entity type, skin hash or helmet skull,\n" +
+                description = "§fFilters by entity type, skin hash or helmet skull,\n" +
                         "§ffor mobs no preset covers.\n" +
                         "§eValues come from the mob hit debug.",
                 value = false,
@@ -144,20 +144,20 @@ object HighlightMobs : HighlightFeature() {
                     BooleanSetting(
                         key = "EntityTypeEnabled",
                         displayName = "Entity Type",
-                        tooltip = "§fMatch on what the entity is.\n§fA player's skin hash, or a mob's type path.",
+                        description = "§fMatch on what the entity is.\n§fA player's skin hash, or a mob's type path.",
                         value = false,
                         children = listOf(
                             BooleanSetting(
                                 key = "EntityTypePlayerEnabled",
                                 displayName = "Player Entity",
-                                tooltip = "§fMatch players by skin hash.",
+                                description = "§fMatch players by skin hash.",
                                 value = false,
                                 children = listOf(entityTypePlayerSkinHash)
                             ),
                             BooleanSetting(
                                 key = "EntityTypeOtherEnabled",
                                 displayName = "Other Entities",
-                                tooltip = "§fMatch non-player entities by type path.",
+                                description = "§fMatch non-player entities by type path.",
                                 value = false,
                                 children = listOf(entityTypeMobPathValue)
                             )
@@ -166,14 +166,14 @@ object HighlightMobs : HighlightFeature() {
                     BooleanSetting(
                         key = "EntityEquipmentDetectionEnabled",
                         displayName = "Entity Helmet",
-                        tooltip = "§fMatch on the skull an entity wears,\n" +
+                        description = "§fMatch on the skull an entity wears,\n" +
                                 "§for one carried by a stand or display standing in it.",
                         value = false,
                         children = listOf(
                             TextSetting(
                                 key = "EntityEquipmentHelmetSkullHash",
                                 displayName = "Helmet Skull Hash",
-                                tooltip = "§fThe skull hash to look for.\n§eGet it from the mob hit debug.",
+                                description = "§fThe skull hash to look for.\n§eGet it from the mob hit debug.",
                                 value = "a8abb471db0ab78703011979dc8b40798a941f3a4dec3ec61cbeec2af8cffe8" //default rat helmet skin
                             )
                         )
