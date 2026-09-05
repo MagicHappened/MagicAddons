@@ -1,5 +1,9 @@
 package org.magic.magicaddons.util
 
+import org.joml.Matrix3x2fc
+import net.minecraft.client.renderer.state.gui.GuiElementRenderState
+import net.minecraft.client.gui.navigation.ScreenRectangle
+import com.mojang.blaze3d.vertex.VertexConsumer
 import org.magic.magicaddons.Common
 import com.mojang.blaze3d.pipeline.RenderPipeline
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
@@ -147,12 +151,73 @@ object ScreenUtil {
         fill(x, thumbY, x + Common.UI.SCROLLBAR_WIDTH, thumbY + thumb, Common.UI.TEXT_COLOR)
     }
 
-    /** A frame just inside the rectangle: four strips that meet square at the corners. */
+    /**
+     * A frame just inside the rectangle: four strips that meet square at the corners, handed to the
+     * gui as one element rather than four, since the gui checks every element against the others.
+     */
     fun GuiGraphicsExtractor.drawBorder(x1: Int, y1: Int, x2: Int, y2: Int, thickness: Int, color: Int) {
-        fill(x1, y1, x2, y1 + thickness, color)
-        fill(x1, y2 - thickness, x2, y2, color)
-        fill(x1, y1, x1 + thickness, y2, color)
-        fill(x2 - thickness, y1, x2, y2, color)
+        fillShape(
+            floatArrayOf(
+                x1f(x1), x1f(y1), x1f(x1), x1f(y1 + thickness), x1f(x2), x1f(y1 + thickness), x1f(x2), x1f(y1),
+                x1f(x1), x1f(y2 - thickness), x1f(x1), x1f(y2), x1f(x2), x1f(y2), x1f(x2), x1f(y2 - thickness),
+                x1f(x1), x1f(y1), x1f(x1), x1f(y2), x1f(x1 + thickness), x1f(y2), x1f(x1 + thickness), x1f(y1),
+                x1f(x2 - thickness), x1f(y1), x1f(x2 - thickness), x1f(y2), x1f(x2), x1f(y2), x1f(x2), x1f(y1)
+            ),
+            color
+        )
+    }
+
+    private fun x1f(n: Int): Float = n.toFloat()
+
+    /** A right angled triangle with the corner at ([cornerX], [cornerY]) and legs of [size], one element. */
+    fun GuiGraphicsExtractor.fillCornerTriangle(cornerX: Int, cornerY: Int, size: Int, color: Int) {
+        val cx = cornerX.toFloat()
+        val cy = cornerY.toFloat()
+        // a quad whose last two points coincide, which draws as a triangle
+        fillShape(floatArrayOf(cx - size, cy, cx, cy + size, cx, cy + size, cx, cy), color)
+    }
+
+    /**
+     * Any number of quads of one colour as a single gui element: four points a quad, walked top
+     * left, bottom left, bottom right, top right, as the gui's own rectangles are.
+     */
+    fun GuiGraphicsExtractor.fillShape(points: FloatArray, color: Int) {
+        if (points.size < 8) return
+        var minX = Float.MAX_VALUE
+        var minY = Float.MAX_VALUE
+        var maxX = -Float.MAX_VALUE
+        var maxY = -Float.MAX_VALUE
+        for (i in points.indices step 2) {
+            minX = minOf(minX, points[i]); maxX = maxOf(maxX, points[i])
+            minY = minOf(minY, points[i + 1]); maxY = maxOf(maxY, points[i + 1])
+        }
+        val pose = Matrix3x2f(this.pose())
+        val scissor = this.scissorStack.peek()
+        val bounds = ScreenRectangle(minX.toInt(), minY.toInt(), kotlin.math.ceil(maxX - minX).toInt(), kotlin.math.ceil(maxY - minY).toInt())
+            .transformAxisAligned(pose)
+            .let { if (scissor == null) it else scissor.intersection(it) }
+            ?: return
+        this.guiRenderState.addGuiElement(ShapeRenderState(pose, points, color, scissor, bounds))
+    }
+
+    /** Several quads of one colour that the gui lays out as one element. */
+    private class ShapeRenderState(
+        private val pose: Matrix3x2fc,
+        private val points: FloatArray,
+        private val color: Int,
+        private val scissor: ScreenRectangle?,
+        private val bounds: ScreenRectangle
+    ) : GuiElementRenderState {
+        override fun buildVertices(consumer: VertexConsumer) {
+            for (i in points.indices step 2) {
+                consumer.addVertexWith2DPose(pose, points[i], points[i + 1]).setColor(color)
+            }
+        }
+
+        override fun pipeline(): RenderPipeline = RenderPipelines.GUI
+        override fun textureSetup(): TextureSetup = TextureSetup.noTexture()
+        override fun scissorArea(): ScreenRectangle? = scissor
+        override fun bounds(): ScreenRectangle = bounds
     }
 
     fun GuiGraphicsExtractor.drawBorder(
