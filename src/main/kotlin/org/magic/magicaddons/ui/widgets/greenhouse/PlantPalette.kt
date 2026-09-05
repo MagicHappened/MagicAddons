@@ -1,5 +1,6 @@
 package org.magic.magicaddons.ui.widgets.greenhouse
 
+import net.minecraft.world.level.block.Block
 import net.minecraft.ChatFormatting
 import org.magic.magicaddons.util.ScreenUtil.drawTooltipLines
 import org.magic.magicaddons.util.compat.McCompat
@@ -81,30 +82,30 @@ class PlantPalette(
     var deleteMode: Boolean = false
         private set
 
-    var hovered: CropDefinition? = null
+    var hovered: PaletteItem? = null
         private set
 
     /** Where the mouse last was, so a scroll can work out what is under it now. */
     private var lastMouseX = 0.0
     private var lastMouseY = 0.0
 
-    /** The plant being dragged, and where the mouse has it. */
-    var dragging: CropDefinition? = null
+    /** The thing being dragged, and where the mouse has it. */
+    var dragging: PaletteItem? = null
         private set
     private var dragX = 0
     private var dragY = 0
 
-    /** The plant picked with a plain click, placed by the next click on a slot. */
-    var selected: CropDefinition? = null
+    /** The thing picked with a plain click, placed by the next click on a slot. */
+    var selected: PaletteItem? = null
         private set
 
-    /** The plant under the mouse button since it went down, until it moves enough to be a drag. */
-    private var pressed: CropDefinition? = null
+    /** The thing under the mouse button since it went down, until it moves enough to be a drag. */
+    private var pressed: PaletteItem? = null
     private var pressX = 0.0
     private var pressY = 0.0
 
     /** Whatever is on the way to the grid, dragged or picked. */
-    val carried: CropDefinition? get() = dragging ?: selected
+    val carried: PaletteItem? get() = dragging ?: selected
 
     private var scroll = 0
     private var columns = 1
@@ -122,23 +123,36 @@ class PlantPalette(
     private fun sortTier(def: CropDefinition): Double =
         if (def.name == DEAD_PLANT) 0.5 else (CropRegistry.tierOf[def] ?: 7).toDouble()
 
+    /** Every soil some crop grows on, after the plants, so a plot's ground can be laid by hand. */
+    private val soils: List<Block> = CropRegistry.all
+        .flatMap { it.requiredSoil }
+        .distinct()
+        .sortedBy { it.name.string.lowercase() }
+
+    private val items: List<PaletteItem> = crops.map { PaletteItem.Crop(it) } + soils.map { PaletteItem.Soil(it) }
+
+    private fun soilWord(block: Block): String = block.name.string.replace(" ", "").lowercase()
+
     /** Plain text finds names; an @ in front finds effects, a # in front finds the soil a crop grows on. */
-    private fun shown(): List<CropDefinition> {
+    private fun shown(): List<PaletteItem> {
         val typed = search.value.trim()
         return when {
             typed.startsWith("@") -> {
                 val term = typed.drop(1).trim()
-                crops.filter { def -> def.effects.any { it.label.contains(term, ignoreCase = true) } }
+                items.filter { item -> item is PaletteItem.Crop && item.def.effects.any { it.label.contains(term, ignoreCase = true) } }
             }
             typed.startsWith("#") -> {
                 // by how the soil's name starts, so "sand" is sand and not soul sand, and written
                 // without its space as well, so "endstone" finds end stone
                 val term = typed.drop(1).trim().replace(" ", "").lowercase()
-                crops.filter { def ->
-                    def.requiredSoil.any { it.name.string.replace(" ", "").lowercase().startsWith(term) }
+                items.filter { item ->
+                    when (item) {
+                        is PaletteItem.Crop -> item.def.requiredSoil.any { soilWord(it).startsWith(term) }
+                        is PaletteItem.Soil -> soilWord(item.block).startsWith(term)
+                    }
                 }
             }
-            else -> crops.filter { it.name.contains(typed, ignoreCase = true) }
+            else -> items.filter { it.name.contains(typed, ignoreCase = true) }
         }
     }
 
@@ -178,6 +192,12 @@ class PlantPalette(
 
     /** The icon inside a cell: a whole multiple of sixteen, so its pixels land square. */
     private fun iconSize(): Int = ((minOf(cellWidth, cellHeight) - ICON_PAD * 2) / 16 * 16).coerceAtLeast(16)
+
+    /** The ground under an icon: a plant's rarity colour, or the soils' own colour. */
+    private fun colourOf(item: PaletteItem): Int = when (item) {
+        is PaletteItem.Soil -> SOIL_CELL
+        is PaletteItem.Crop -> rarityColour(item.def)
+    }
 
     /** The ground under an icon, in the colour of the plant's rarity, or its own for base and rare crops. */
     private fun rarityColour(def: CropDefinition): Int = when (CropRegistry.tierOf[def] ?: 7) {
@@ -236,7 +256,7 @@ class PlantPalette(
     private fun totalRows(): Int = (shown().size + columns - 1) / columns
 
     /** The plant whose cell is under the mouse, when the mouse is on the grid. */
-    private fun cropAt(mouseX: Double, mouseY: Double): CropDefinition? {
+    private fun cropAt(mouseX: Double, mouseY: Double): PaletteItem? {
         val mx = mouseX.toInt()
         val my = mouseY.toInt()
         if (mx < gridLeft() || my < gridTop() || my >= gridTop() + visibleRows * cellHeight) return null
@@ -252,6 +272,11 @@ class PlantPalette(
         def.displayItem?.let { ItemStack(it) }
             ?: def.skyblockId?.toItem()?.takeUnless { it.isEmpty }
             ?: ItemStack(Items.BARRIER)
+
+    fun stackFor(item: PaletteItem): ItemStack = when (item) {
+        is PaletteItem.Crop -> stackFor(item.def)
+        is PaletteItem.Soil -> ItemStack(item.block.asItem())
+    }
 
     fun render(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
         graphics.drawShelf(x, y, x + width, y + height, TITLE)
@@ -281,7 +306,7 @@ class PlantPalette(
             val right = cellX + cellWidth - 1
             val bottom = cellY + cellHeight - 1
 
-            graphics.fill(cellX + 1, cellY + 1, right, bottom, rarityColour(def))
+            graphics.fill(cellX + 1, cellY + 1, right, bottom, colourOf(def))
             if (def == hovered || def == selected) graphics.fill(cellX + 1, cellY + 1, right, bottom, Common.UI.HOVER_WASH)
             // the picked one is lit and framed twice as thick in the bright colour until it is put down
             if (def == selected) {
@@ -326,12 +351,12 @@ class PlantPalette(
             return
         }
         if (carried != null) return
-        val def = hovered ?: return
+        val item = hovered ?: return
 
         // the name stands out over its effects, so a search for harvest tells the boost from the improved one
         val lines = buildList {
-            add(Component.literal(def.name).withStyle(ChatFormatting.GREEN, ChatFormatting.BOLD))
-            def.effects.forEach { add(Component.literal(it.label).withStyle(ChatFormatting.GRAY)) }
+            add(Component.literal(item.name).withStyle(ChatFormatting.GREEN, ChatFormatting.BOLD))
+            (item as? PaletteItem.Crop)?.def?.effects?.forEach { add(Component.literal(it.label).withStyle(ChatFormatting.GRAY)) }
         }
         graphics.drawTooltipLines(lines.map { it.visualOrderText }, mouseX + 7, mouseY + 12)
     }
@@ -404,7 +429,7 @@ class PlantPalette(
      * Lets go: a dragged plant is handed back for the owner to place, a plain click picks the plant
      * up (or puts a picked one down again) and hands back nothing.
      */
-    fun mouseReleased(): CropDefinition? {
+    fun mouseReleased(): PaletteItem? {
         val dragged = dragging
         val clicked = pressed
         dragging = null
@@ -459,6 +484,9 @@ class PlantPalette(
         private const val RARITY_RARE: Int = 0xFF2F4FA3.toInt()
         private const val RARITY_EPIC: Int = 0xFF7B1F8A.toInt()
         private const val RARITY_LEGENDARY: Int = 0xFFB07A14.toInt()
+
+        /** A dusty rose, like no rarity and no soil block. */
+        private const val SOIL_CELL: Int = 0xFF8A4A5E.toInt()
         private const val ARROW_WIDTH: Int = 16
 
         private const val INFO_RADIUS: Int = 5
@@ -468,5 +496,18 @@ class PlantPalette(
 
         /** Laid over the carried plant so it reads as not yet placed. */
         private const val DRAG_VEIL: Int = 0x70101010
+    }
+}
+
+/** Something the shelf hands out: a plant, or a soil block to lay under one. */
+sealed interface PaletteItem {
+    val name: String
+
+    data class Crop(val def: CropDefinition) : PaletteItem {
+        override val name: String get() = def.name
+    }
+
+    data class Soil(val block: Block) : PaletteItem {
+        override val name: String get() = block.name.string
     }
 }
