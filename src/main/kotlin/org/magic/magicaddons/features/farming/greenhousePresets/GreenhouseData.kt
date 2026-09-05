@@ -124,18 +124,28 @@ object GreenhouseData {
      * Every crop put down this session, by the soil block under it. A placed mutation with no
      * placed look recorded matches nothing, so this is how the scan still knows what stands there.
      */
-    private val placedHere = mutableMapOf<BlockPos, CropDefinition>()
+    private val placedHere = mutableMapOf<BlockPos, PlacedHere>()
+
+    private class PlacedHere(val def: CropDefinition, val at: Long)
 
     /** The crop the player put down on the soil at [soil] this session, if any. */
-    fun placedHereAt(soil: BlockPos): CropDefinition? = placedHere[BlockPos(soil.x, GREENHOUSE_SOIL_Y, soil.z)]
+    fun placedHereAt(soil: BlockPos): CropDefinition? = placedHere[BlockPos(soil.x, GREENHOUSE_SOIL_Y, soil.z)]?.def
 
     /**
      * The soil at [soil] no longer holds what was put down there: a recorded look has matched it,
      * or nothing stands there any more. Kept, the entry built phantoms out of the next plant's parts.
+     * A placement younger than [PLACE_SETTLE_MS] is kept: the scan on the tick of the click runs
+     * before the server has put the plant's stands down.
      */
     fun forgetPlacementAt(soil: BlockPos) {
-        placedHere.remove(BlockPos(soil.x, GREENHOUSE_SOIL_Y, soil.z))
+        val key = BlockPos(soil.x, GREENHOUSE_SOIL_Y, soil.z)
+        val placed = placedHere[key] ?: return
+        if (System.currentTimeMillis() - placed.at < PLACE_SETTLE_MS) return
+        placedHere.remove(key)
     }
+
+    /** How long after the click a placement's stands may still be on their way. */
+    private const val PLACE_SETTLE_MS: Long = 2_000
 
     /** Whether two plants' footprints share a slot, both given by their north-west soil block. */
     private fun overlaps(aOrigin: BlockPos, a: CropDefinition, bOrigin: BlockPos, b: CropDefinition): Boolean =
@@ -208,8 +218,7 @@ object GreenhouseData {
 
         // a merge, so whatever the plot cannot say for a plant that is still there is carried over,
         // and any stage predicted while away is corrected by what is actually standing
-        val result = grid.setPlantData()
-        Common.LOGGER.info("[reconcile] full scan of ${grid.layout.id}: +${result.added} -${result.removed} ~${result.replaced} =${result.kept}, ${grid.elements.size} plants")
+        grid.setPlantData()
 
         claimPlantedCrop(grid)
 
@@ -245,7 +254,6 @@ object GreenhouseData {
     /** Something in the plot changed at [positions], so what is stored around them can no longer be trusted. */
     fun requestReconcile(positions: Collection<BlockPos>) {
         if (positions.isEmpty()) return
-        Common.LOGGER.info("[reconcile] ${positions.size} changed at ${positions.take(3).joinToString { "(${it.x}, ${it.y}, ${it.z})" }}")
         touched.addAll(positions)
         lastChangeAt = System.currentTimeMillis()
     }
@@ -290,9 +298,7 @@ object GreenhouseData {
         grid.plot = plot
 
         grid.createSlotDataForGrid()
-        val region = grid.regionAround(positions)
-        val result = grid.setPlantData(region)
-        Common.LOGGER.info("[reconcile] rescan of ${region.size} slots: +${result.added} -${result.removed} ~${result.replaced} =${result.kept}, ${grid.elements.size} plants")
+        grid.setPlantData(grid.regionAround(positions))
         claimPlantedCrop(grid)
         LayoutRenderState.refresh()
     }
@@ -1024,12 +1030,11 @@ object GreenhouseData {
             val pos = aimed.offset(-((footprint.width - 1) / 2), 0, -((footprint.height - 1) / 2))
 
             placements.add(Placement(foundCrop, pos, Instant.now()))
-            Common.LOGGER.info("[reconcile] ${foundCrop.name} placed, filed at (${pos.x}, ${pos.z}) slot ${grid.getSlotAt(pos, false)?.let { "(${it.x}, ${it.y})" }}")
 
             // nothing can be placed over a plant, so whatever was remembered in the way is gone
             val soil = BlockPos(pos.x, GREENHOUSE_SOIL_Y, pos.z)
-            placedHere.entries.removeAll { (at, def) -> overlaps(at, def, soil, foundCrop) }
-            placedHere[soil] = foundCrop
+            placedHere.entries.removeAll { (at, placed) -> overlaps(at, placed.def, soil, foundCrop) }
+            placedHere[soil] = PlacedHere(foundCrop, System.currentTimeMillis())
             requestReconcile(pos)
 
             return
