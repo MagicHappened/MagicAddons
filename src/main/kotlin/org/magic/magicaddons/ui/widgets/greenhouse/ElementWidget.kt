@@ -26,6 +26,7 @@ import org.magic.magicaddons.data.greenhouse.GrowthStageInfo
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.ScreenUtil
 import org.magic.magicaddons.util.ScreenUtil.drawBorder
+import org.magic.magicaddons.util.ScreenUtil.fillCornerTriangle
 import org.magic.magicaddons.util.ScreenUtil.fillRounded
 import org.magic.magicaddons.util.ScreenUtil.renderFakeItem
 
@@ -118,9 +119,7 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, Focus
 
             // a tag folded over the top right corner, hard to miss at any slot size
             val tag = (width / 3).coerceAtLeast(5)
-            for (row in 0 until tag) {
-                graphics.fill(widgetX + width - tag + row, widgetY + row, widgetX + width, widgetY + row + 1, colour)
-            }
+            graphics.fillCornerTriangle(widgetX + width, widgetY, tag, colour)
         }
         if (instance.elementId == "Fire") {
             renderFire(graphics)
