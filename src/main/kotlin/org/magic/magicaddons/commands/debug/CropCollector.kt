@@ -682,7 +682,7 @@ object CropCollector : EntityUtils.HighlightSource {
         val onRoots = roots != null && diagnosed.name == DEVOURER &&
                 stands.any { PlayerUtils.getSkullHash(it) in rootSkulls }
 
-        val def = if (onRoots) roots!! else diagnosed
+        val def = if (onRoots) roots else diagnosed
         val stage = if (onRoots) 1 else diagnosedStage
 
         // a mutation the player put down in their own garden wears its placed look, which is

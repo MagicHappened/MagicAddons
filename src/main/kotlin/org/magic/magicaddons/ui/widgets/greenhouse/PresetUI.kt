@@ -67,15 +67,15 @@ class PresetUI(
     override val buttons: List<ClickableButtonWidget> =
         listOf(newButton, importButton, exportButton, applyToButton, deleteButton)
 
-    override fun onPressed(button: ClickableButtonWidget, mouseButtonEvent: MouseButtonEvent): Boolean {
+    override fun onPressed(button: ClickableButtonWidget, event: MouseButtonEvent): Boolean {
         if (button === newButton) {
             onNewPreset()
             return true
         }
         if (button === importButton) {
             val context = ImportExportFormatContext(
-                mouseButtonEvent.x.toInt(),
-                mouseButtonEvent.y.toInt(),
+                event.x.toInt(),
+                event.y.toInt(),
                 overlayContext,
                 {
                     importPreset(it)
@@ -87,8 +87,8 @@ class PresetUI(
         }
         if (button === exportButton) {
             val context = ImportExportFormatContext(
-                mouseButtonEvent.x.toInt(),
-                mouseButtonEvent.y.toInt(),
+                event.x.toInt(),
+                event.y.toInt(),
                 overlayContext,
                 { exportPreset(it)}
             )
@@ -98,8 +98,8 @@ class PresetUI(
         }
         if (button === applyToButton) {
             val context = ApplyToContext(
-                mouseButtonEvent.x.toInt(),
-                mouseButtonEvent.y.toInt(),
+                event.x.toInt(),
+                event.y.toInt(),
                 overlayContext,
                 { onAssignedLayout.invoke(shownLayout(), it) }
             )
@@ -112,8 +112,8 @@ class PresetUI(
                 ChatUtils.sendWithPrefix("No preset to remove.")
                 return true
             }
-            val clickX = mouseButtonEvent.x.toInt()
-            val clickY = mouseButtonEvent.y.toInt()
+            val clickX = event.x.toInt()
+            val clickY = event.y.toInt()
 
             // a preset of several plots is asked which; a preset of one goes straight to the question
             if (master.plots.size > 1) {

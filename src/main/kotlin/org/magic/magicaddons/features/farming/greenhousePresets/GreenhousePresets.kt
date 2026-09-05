@@ -208,6 +208,7 @@ object GreenhousePresets : Feature() {
     @Subscription
     @OnlyNonGuest
     @OnlyIn(SkyBlockIsland.GARDEN)
+    @Suppress("UNUSED_EXPRESSION")
     private fun onIslandChange(event: IslandChangeEvent){
         // an object only registers on the event bus once something touches it, and these three
         // are only ever reached from their own handlers, so nothing else would wake them
