@@ -78,7 +78,8 @@ object Creambloom : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.0625, 0.0),
-                        hashString = "c777c2f2d01bd8d93f8694d63e1fcbee74aef4664625720e9062c6c7675f35a"
+                        hashString = "c777c2f2d01bd8d93f8694d63e1fcbee74aef4664625720e9062c6c7675f35a",
+                        isSmall = false
                     )
                 ),
                 4..4
