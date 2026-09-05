@@ -495,6 +495,9 @@ data class CropDefinition(
     /** The stage a plant is placed at: the last for a mutation, the first for anything else. */
     val stagePlacedAt: Int get() = placedStage ?: if (isMutation) maxStage else 1
 
+    /** Every look this crop can have, patterns expanded to one stage each. Built once, read by every scan. */
+    val stages: List<CropStage> = stageDefs.flatMap { if (it is CropStagePattern) it.expand() else listOf(it) }
+
     fun matchesId(id: SkyBlockId): Boolean{
         return skyblockId == id || (aliases?.any { it == id } ?: false)
     }
