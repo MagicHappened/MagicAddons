@@ -231,7 +231,7 @@ class GreenhouseGrid(
                         // Anything else where nothing stood at the last look grew there on its own
                         val placedNow = GreenhouseData.takePlacement(def, found.instance.slot, this)
                         val watched = state.hasRuntimeReferences && (found.instance.lowestStage ?: 1) > 1
-                        if (placedNow || watched) {
+                        if (found.instance.placed || placedNow || watched) {
                             GreenhouseData.claimPlacedPlant(found.instance)
                         } else {
                             GreenhouseData.claimSpawnedMutation(found.instance, layout)
@@ -473,6 +473,11 @@ class GreenhouseGrid(
             // plant already standing here carried
             instance.firstSeenStage = instance.lowestStage
 
+            // matched through its placed look, so it was put down, whoever remembers it or not;
+            // and the memory of putting it down has served its purpose
+            if (bestStage?.placed == true) instance.placed = true
+            GreenhouseData.forgetPlacementAt(origin)
+
             // what winning this stage implies, filed before the stand readings: a noctilume's craving
             // is carried by which skull matched
             bestStage?.traits?.let { instance.readings.putAll(it) }
@@ -518,7 +523,10 @@ class GreenhouseGrid(
                     }
                 }
             }
-            if (stands.isEmpty() && blocks.isEmpty()) return null
+            if (stands.isEmpty() && blocks.isEmpty()) {
+                GreenhouseData.forgetPlacementAt(origin)
+                return null
+            }
 
             val instance = GreenhouseElementInstance(
                 definition.skyblockId?.id ?: definition.name,
