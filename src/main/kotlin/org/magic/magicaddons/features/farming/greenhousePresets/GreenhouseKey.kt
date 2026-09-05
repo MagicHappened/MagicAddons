@@ -16,7 +16,8 @@ import org.magic.magicaddons.util.ScreenUtil
 /** The key that opens the greenhouse screen, G unless rebound in the controls menu. */
 object GreenhouseKey {
 
-    private val category = KeyMapping.Category.register(Identifier.fromNamespaceAndPath(Common.MOD_ID, Common.MOD_ID))
+    /** The controls menu section every key of this mod sits in. */
+    val category: KeyMapping.Category = KeyMapping.Category.register(Identifier.fromNamespaceAndPath(Common.MOD_ID, Common.MOD_ID))
 
     private val key = KeyMappingHelper.registerKeyMapping(
         KeyMapping("key.magicaddons.greenhouse", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_G, category)

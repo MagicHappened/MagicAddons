@@ -1,71 +1,65 @@
 package org.magic.magicaddons.features.farming.greenhousePresets
 
-import org.magic.magicaddons.data.greenhouse.WaterModel
-import net.minecraft.client.Minecraft
 import net.minecraft.network.chat.Component
 import org.magic.magicaddons.Common
 import org.magic.magicaddons.data.config.BooleanSetting
 import org.magic.magicaddons.data.greenhouse.GreenhouseElementInstance
 import org.magic.magicaddons.data.greenhouse.GreenhouseGrid
 import org.magic.magicaddons.data.greenhouse.NEVER_DECAYS
-import org.magic.magicaddons.events.EventBus
-import org.magic.magicaddons.events.EventHandler
-import org.magic.magicaddons.events.render.OnHudRenderEvent
-import org.magic.magicaddons.ui.hud.HudPosition
-import org.magic.magicaddons.util.ScreenUtil.drawPanel
-import org.magic.magicaddons.util.compat.McCompat
+import org.magic.magicaddons.data.greenhouse.WaterModel
+import org.magic.magicaddons.ui.hud.ConfigTarget
+import org.magic.magicaddons.ui.hud.HudContent
+import org.magic.magicaddons.ui.hud.HudElement
+import org.magic.magicaddons.ui.hud.HudLine
 import org.magic.magicaddons.util.toReadableDuration
 
 /** A small panel on screen while standing in a greenhouse: the next tick and what the plants need. */
-object GreenhouseHud {
+object GreenhouseHud : HudElement("greenhouse", "Greenhouse") {
 
     const val KEY: String = "GreenhouseHud"
 
-    private val position = HudPosition(offsetX = 8, offsetY = 8, xFraction = 0f, yFraction = 0f)
+    override val defaultX: Int = 8
+    override val defaultY: Int = 8
 
-    private const val PAD: Int = 5
+    private fun setting(): BooleanSetting? = GreenhousePresets.baseSetting.getChild<BooleanSetting>(KEY)
 
-    init {
-        EventBus.register(this)
-    }
+    private fun enabled(): Boolean = GreenhousePresets.baseSetting.value && setting()?.value == true
 
-    private fun enabled(): Boolean =
-        GreenhousePresets.baseSetting.value &&
-                GreenhousePresets.baseSetting.getChild<BooleanSetting>(KEY)?.value == true
+    override val configTarget: ConfigTarget?
+        get() = setting()?.let { ConfigTarget(GreenhousePresets, listOf(GreenhousePresets.baseSetting, it)) }
 
     /** One line of the panel: a label and its value, each in its own colour. */
-    private data class Line(val label: String, val value: String, val valueColor: Int = Common.UI.TEXT_COLOR)
+    private class Line(val label: String, val value: String, val valueColor: Int = Common.UI.TEXT_COLOR)
 
-    @EventHandler
-    fun onHudRender(event: OnHudRenderEvent) {
-        if (!enabled()) return
-        if (McCompat.hudHidden() || McCompat.currentScreen() != null) return
-        if (!GreenhouseData.inGreenhouse()) return
-
+    override fun content(): HudContent? {
+        if (!enabled() || !GreenhouseData.inGreenhouse()) return null
         val grid = GreenhouseData.getCurrentGrid()
-        val lines = lines(grid)
-        val font = Minecraft.getInstance().font
-        val title = grid?.layout?.displayName() ?: "Greenhouse"
-
-        val labelWidth = lines.maxOfOrNull { font.width(it.label) } ?: 0
-        val valueWidth = lines.maxOfOrNull { font.width(it.value) } ?: 0
-        val width = maxOf(font.width(title), labelWidth + Common.UI.SPACING + valueWidth) + PAD * 2
-        val height = PAD * 2 + font.lineHeight + Common.UI.SPACING + lines.size * (font.lineHeight + 1)
-
-        val x = position.x()
-        val y = position.y()
-        val graphics = event.graphics
-
-        graphics.drawPanel(x, y, x + width, y + height)
-        graphics.text(font, Component.literal(title), x + PAD, y + PAD, Common.UI.ACCENT_COLOR, false)
-
-        var lineY = y + PAD + font.lineHeight + Common.UI.SPACING
-        lines.forEach { line ->
-            graphics.text(font, Component.literal(line.label), x + PAD, lineY, Common.UI.TEXT_DIM_COLOR, false)
-            graphics.text(font, Component.literal(line.value), x + width - PAD - font.width(line.value), lineY, line.valueColor, false)
-            lineY += font.lineHeight + 1
-        }
+        return content(grid?.layout?.displayName() ?: "Greenhouse", lines(grid))
     }
+
+    override fun sample(): HudContent = content(
+        "Greenhouse 1",
+        listOf(
+            Line("Next tick", "12m 30s"),
+            Line("Plants", "24"),
+            Line("Ready to harvest", "2", Common.UI.SUCCESS_COLOR),
+            Line("Dies of thirst in", "3h 10m", Common.UI.WARNING_COLOR),
+            Line("Next decay", "1d 4h")
+        )
+    )
+
+    private fun content(title: String, lines: List<Line>): HudContent = HudContent(buildList {
+        add(HudLine.Text(Component.literal(title).withColor(rgb(Common.UI.ACCENT_COLOR))))
+        lines.forEach { line ->
+            add(HudLine.Pair(
+                Component.literal(line.label).withColor(rgb(Common.UI.TEXT_DIM_COLOR)),
+                Component.literal(line.value).withColor(rgb(line.valueColor))
+            ))
+        }
+    })
+
+    /** A text colour carries no alpha. */
+    private fun rgb(color: Int): Int = color and 0xFFFFFF
 
     private fun lines(grid: GreenhouseGrid?): List<Line> = buildList {
         add(Line("Next tick", GreenhouseData.miscInfo.nextTickTime?.toReadableDuration() ?: "unknown"))

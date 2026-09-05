@@ -9,6 +9,7 @@ import org.magic.magicaddons.commands.features.EditFeature
 import org.magic.magicaddons.commands.foraging.SafariHelperCommand
 import org.magic.magicaddons.commands.misc.PlaySound
 import org.magic.magicaddons.commands.misc.VersionCommand
+import org.magic.magicaddons.commands.misc.HudCommand
 import org.magic.magicaddons.commands.features.ToggleFeature
 import org.magic.magicaddons.commands.features.farming.GreenhouseScreenCommand
 import org.magic.magicaddons.commands.internal.MainInternal
@@ -25,7 +26,8 @@ object MainCommand {
         MainDebug,
         PlaySound,
         VersionCommand,
-        SafariHelperCommand
+        SafariHelperCommand,
+        HudCommand
     )
 
     init {

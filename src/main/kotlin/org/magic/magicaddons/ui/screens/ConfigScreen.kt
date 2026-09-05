@@ -165,6 +165,14 @@ class ConfigScreen(title: Component, val parent: Screen?) : Screen(title), Overl
         scroll = scroll.coerceIn(0, maxScroll)
     }
 
+    /** Opens the screen on one setting of [feature], the rows above it unfolded and it scrolled to. */
+    fun showSetting(feature: Feature, path: List<SettingNode<*>>) {
+        selected = categories.firstOrNull { feature in it.features } ?: return
+        val widget = blockFor(feature).reveal(path) ?: return
+        widget.flashUntil = System.currentTimeMillis() + FLASH_MS
+        pendingReveal = widget
+    }
+
     /** Opens the screen on [feature]'s category with its settings unfolded, for the edit command. */
     fun showFeature(feature: Feature) {
         selected = categories.firstOrNull { feature in it.features } ?: return

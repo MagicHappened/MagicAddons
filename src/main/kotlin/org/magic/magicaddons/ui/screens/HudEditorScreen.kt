@@ -1,0 +1,581 @@
+package org.magic.magicaddons.ui.screens
+
+import com.mojang.blaze3d.platform.InputConstants
+import net.minecraft.client.Minecraft
+import net.minecraft.client.gui.GuiGraphicsExtractor
+import net.minecraft.client.gui.screens.Screen
+import net.minecraft.client.input.KeyEvent
+import net.minecraft.client.input.MouseButtonEvent
+import net.minecraft.network.chat.Component
+import org.lwjgl.glfw.GLFW
+import org.magic.magicaddons.Common
+import org.magic.magicaddons.ui.OverlayContext
+import org.magic.magicaddons.ui.OverlayRenderable
+import org.magic.magicaddons.ui.hud.AnchorState
+import org.magic.magicaddons.ui.hud.ElementState
+import org.magic.magicaddons.ui.hud.GroupState
+import org.magic.magicaddons.ui.hud.HudBox
+import org.magic.magicaddons.ui.hud.HudElements
+import org.magic.magicaddons.ui.hud.HudLayoutStore
+import org.magic.magicaddons.ui.hud.HudPainter
+import org.magic.magicaddons.ui.hud.HudPart
+import org.magic.magicaddons.ui.hud.HudScene
+import org.magic.magicaddons.ui.hud.Placed
+import org.magic.magicaddons.ui.hud.Positioning
+import org.magic.magicaddons.ui.hud.Stacking
+import org.magic.magicaddons.ui.hud.Tie
+import org.magic.magicaddons.ui.widgets.hud.HudMenu
+import org.magic.magicaddons.util.ScreenUtil.drawBorder
+import org.magic.magicaddons.util.ScreenUtil.drawLine
+import org.magic.magicaddons.util.ScreenUtil.drawPanel
+import org.magic.magicaddons.util.ScreenUtil.setScreen
+import org.magic.magicaddons.util.compat.McCompat
+import kotlin.math.abs
+import kotlin.math.roundToInt
+
+/**
+ * Every hud element on screen with its sample content, to be dragged, resized at the corners,
+ * faded with the wheel, scaled with shift and the wheel, merged by dropping one on another,
+ * tied to each other or to anchors through the right click menu, and reset with R.
+ */
+class HudEditorScreen : Screen(Component.literal("HUD Editor")), OverlayContext {
+
+    override val overlays: MutableList<OverlayRenderable> = mutableListOf()
+
+    private val layout get() = HudLayoutStore.layout
+
+    private var scene: HudScene = HudScene(emptyList(), emptyList())
+
+    private enum class Edge { TOP, BOTTOM, LEFT, RIGHT }
+
+    private sealed class Drag(val id: String) {
+        class Move(id: String, val offsetX: Int, val offsetY: Int) : Drag(id)
+        class Resize(id: String, val leftSide: Boolean, val fixedX: Int) : Drag(id)
+    }
+
+    private var drag: Drag? = null
+
+    /** The box a dragged element would merge into, and the edge it would join at. */
+    private var mergeTarget: Pair<HudBox, Edge>? = null
+
+    /** The thing waiting for a click on what to tie it to. */
+    private var picking: String? = null
+
+    private var mouseX = 0
+    private var mouseY = 0
+
+    private fun rebuild() {
+        scene = HudScene.build(layout, width, height, sample = true)
+    }
+
+    override fun init() {
+        super.init()
+        closeOverlays()
+        rebuild()
+    }
+
+    override fun isPauseScreen(): Boolean = false
+
+    // ------------------------------------------------------------------ what is under the mouse
+
+    private fun hoveredBox(): HudBox? = scene.boxAt(mouseX.toDouble(), mouseY.toDouble())
+    private fun hoveredPart(): HudPart? = scene.partAt(mouseX.toDouble(), mouseY.toDouble())
+
+    /** The box that drags as one: a lone element, or the group a part belongs to. */
+    private fun draggedBox(): HudBox? = drag?.let { scene.boxOf(it.id) }
+
+    private fun cornerAt(box: HudBox, x: Double, y: Double): Boolean? {
+        if (!box.resizable) return null
+        val corners = listOf(
+            Triple(box.x, box.y, true), Triple(box.x, box.y + box.height, true),
+            Triple(box.x + box.width, box.y, false), Triple(box.x + box.width, box.y + box.height, false)
+        )
+        return corners.firstOrNull { (cx, cy, _) -> abs(x - cx) <= HANDLE && abs(y - cy) <= HANDLE }?.third
+    }
+
+    private fun nameOf(id: String): String =
+        HudElements.byId(id)?.name
+            ?: layout.group(id)?.let { group -> group.members.mapNotNull { HudElements.byId(it)?.name }.joinToString(" + ") }
+            ?: layout.anchor(id)?.let { "Anchor ${it.id.substringAfter('-')}" }
+            ?: id
+
+    // ------------------------------------------------------------------ edits
+
+    private fun moveTo(id: String, left: Int, top: Int) {
+        val placed = layout.placed(id) ?: return
+        val rect = scene.rectOf(id) ?: return
+        val tie = placed.tie
+        val target = tie?.let { scene.rectOf(it.target) }
+        if (tie != null && target != null) {
+            tie.dx = left - target[0]
+            tie.dy = top - target[1]
+        } else {
+            placed.placeAt(left, top, rect[2], rect[3], width, height)
+        }
+        rebuild()
+    }
+
+    private fun minWidthOf(box: HudBox): Int = box.parts.maxOf { HudPainter.minWidth(it.state.scale) }
+
+    private fun resizeTo(box: HudBox, leftSide: Boolean, fixedX: Int, mouse: Int) {
+        val wanted = (if (leftSide) fixedX - mouse else mouse - box.x).coerceIn(minWidthOf(box), width)
+        val placed = box.placed
+        when (placed) {
+            is GroupState -> placed.width = wanted
+            is ElementState -> placed.width = wanted
+            else -> return
+        }
+        val left = if (leftSide) fixedX - wanted else box.x
+        val tie = placed.tie
+        val target = tie?.let { scene.rectOf(it.target) }
+        if (tie != null && target != null) {
+            tie.dx = left - target[0]
+        } else {
+            placed.placeAt(left, box.y, wanted, box.height, width, height)
+        }
+        rebuild()
+    }
+
+    /** Puts [elementId] into [target]'s box at [edge]: a new group of the two, or one more member of an existing group. */
+    private fun merge(elementId: String, target: HudBox, edge: Edge) {
+        val state = layout.elements[elementId] ?: return
+        val group = target.group
+        val atStart = edge == Edge.TOP || edge == Edge.LEFT
+        if (group != null) {
+            if (atStart) group.members.add(0, elementId) else group.members.add(elementId)
+        } else {
+            val stacking = if (edge == Edge.TOP || edge == Edge.BOTTOM) Stacking.VERTICAL else Stacking.HORIZONTAL
+            val members = if (atStart) listOf(elementId, target.id) else listOf(target.id, elementId)
+            val made = layout.newGroup(members, stacking)
+            val from = target.placed
+            made.positioning = from.positioning
+            made.x = from.x
+            made.y = from.y
+            made.fx = from.fx
+            made.fy = from.fy
+            made.tie = from.tie
+            (from as? ElementState)?.let {
+                made.alpha = it.alpha
+                made.width = it.width
+                it.tie = null
+            }
+            // whatever hung off the element now hangs off the box it is in
+            (layout.elements.values + layout.groups + layout.anchors).forEach { placed ->
+                if (placed.tie?.target == target.id) placed.tie?.target = made.id
+            }
+        }
+        state.tie = null
+        rebuild()
+    }
+
+    /** Takes [elementId] out of its group, leaving it where it was drawn. */
+    private fun split(elementId: String) {
+        val group = layout.groupOf(elementId) ?: return
+        val part = scene.boxOf(group.id)?.parts?.firstOrNull { it.element.id == elementId }
+        val state = layout.elements[elementId] ?: return
+
+        group.members.remove(elementId)
+        if (part != null) state.placeAt(part.x, part.y, part.width, part.height, width, height)
+        state.tie = null
+
+        if (group.members.size <= 1) {
+            val rects = scene.rects()
+            group.members.firstOrNull()?.let { lastId ->
+                val last = layout.elements[lastId] ?: return@let
+                last.positioning = group.positioning
+                last.x = group.x
+                last.y = group.y
+                last.fx = group.fx
+                last.fy = group.fy
+                last.tie = group.tie
+                last.alpha = group.alpha
+                last.width = group.width
+                (layout.elements.values + layout.groups + layout.anchors).forEach { placed ->
+                    if (placed.tie?.target == group.id) placed.tie?.target = lastId
+                }
+            }
+            layout.untieFrom(group.id, rects, width, height)
+            layout.groups.remove(group)
+        }
+        rebuild()
+    }
+
+    /** Back to how the element started: alone, untied, at its default place, size, scale and fade. */
+    private fun reset(elementId: String) {
+        val element = HudElements.byId(elementId) ?: return
+        split(elementId)
+        layout.untieFrom(elementId, scene.rects(), width, height)
+        layout.elements[elementId] = layout.defaults(element)
+        rebuild()
+    }
+
+    private fun untie(id: String) {
+        val placed = layout.placed(id) ?: return
+        val rect = scene.rectOf(id) ?: return
+        placed.placeAt(rect[0], rect[1], rect[2], rect[3], width, height)
+        placed.tie = null
+        rebuild()
+    }
+
+    private fun togglePositioning(id: String) {
+        val placed = layout.placed(id) ?: return
+        val rect = scene.rectOf(id) ?: return
+        placed.placeAt(rect[0], rect[1], rect[2], rect[3], width, height)
+        placed.positioning = if (placed.positioning == Positioning.ABSOLUTE) Positioning.RELATIVE else Positioning.ABSOLUTE
+        rebuild()
+    }
+
+    private fun tie(id: String, targetId: String) {
+        if (id == targetId || layout.wouldLoop(id, targetId)) return
+        val placed = layout.placed(id) ?: return
+        val rect = scene.rectOf(id) ?: return
+        val target = scene.rectOf(targetId) ?: return
+        placed.tie = Tie(targetId, rect[0] - target[0], rect[1] - target[1])
+        rebuild()
+    }
+
+    private fun removeAnchor(anchor: AnchorState) {
+        layout.untieFrom(anchor.id, scene.rects(), width, height)
+        layout.anchors.remove(anchor)
+        rebuild()
+    }
+
+    private fun addAnchor(x: Int, y: Int) {
+        layout.newAnchor().placeAt(x, y, 0, 0, width, height)
+        rebuild()
+    }
+
+    private fun openConfig(part: HudPart) {
+        val target = part.element.configTarget ?: return
+        HudLayoutStore.save()
+        setScreen(ConfigScreen(Component.literal("Magic Addons Config"), this).apply { showSetting(target.feature, target.path) })
+    }
+
+    // ------------------------------------------------------------------ the menu
+
+    private fun openMenu(x: Int, y: Int, title: String, entries: List<HudMenu.Entry>) {
+        val (menuX, menuY) = OverlayRenderable.placeOnScreen(x, y, HudMenu.widthFor(title, entries), HudMenu.heightFor(entries))
+        addContext(HudMenu(menuX, menuY, title, entries, this).also { it.init() })
+    }
+
+    private fun placementEntries(id: String): List<HudMenu.Entry> {
+        val placed = layout.placed(id) ?: return emptyList()
+        return buildList {
+            if (placed.tie != null) {
+                add(HudMenu.Entry("Untie from ${nameOf(placed.tie!!.target)}") { untie(id) })
+            } else {
+                val other = if (placed.positioning == Positioning.ABSOLUTE) "Relative" else "Absolute"
+                add(HudMenu.Entry("Position: $other") { togglePositioning(id) })
+            }
+            add(HudMenu.Entry("Tie to…") { picking = id })
+        }
+    }
+
+    private fun menuFor(part: HudPart, box: HudBox, x: Int, y: Int) {
+        val entries = buildList {
+            if (part.element.configTarget != null) add(HudMenu.Entry("Open config") { openConfig(part) })
+            addAll(placementEntries(box.id))
+            if (box.group != null) add(HudMenu.Entry("Split off") { split(part.element.id) })
+            add(HudMenu.Entry("Reset") { reset(part.element.id) })
+        }
+        openMenu(x, y, part.element.name, entries)
+    }
+
+    private fun menuForAnchor(anchor: AnchorState, x: Int, y: Int) {
+        val entries = placementEntries(anchor.id) + HudMenu.Entry("Remove") { removeAnchor(anchor) }
+        openMenu(x, y, nameOf(anchor.id), entries)
+    }
+
+    // ------------------------------------------------------------------ drawing
+
+    override fun extractBackground(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, deltaTick: Float) {
+        graphics.fill(0, 0, width, height, DIM)
+    }
+
+    override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
+        super.extractRenderState(graphics, mouseX, mouseY, delta)
+        this.mouseX = mouseX
+        this.mouseY = mouseY
+        rebuild()
+
+        scene.draw(graphics)
+
+        val hovered = if (overlays.isEmpty()) hoveredBox() else null
+        val shown = draggedBox() ?: hovered
+        shown?.let { drawHandles(graphics, it) }
+        drawAnchors(graphics)
+        drawTies(graphics, shown)
+        mergeTarget?.let { (box, edge) -> drawMergeEdge(graphics, box, edge) }
+
+        if (overlays.isEmpty()) {
+            val part = hoveredPart()
+            val anchor = scene.anchorAt(mouseX.toDouble(), mouseY.toDouble())
+            when {
+                shown != null && part != null -> drawReadout(graphics, shown, part)
+                anchor != null -> drawAnchorReadout(graphics, anchor.state, anchor.x, anchor.y)
+            }
+        }
+        drawHints(graphics)
+        overlays.asReversed().forEach { it.renderOverlay(graphics, mouseX, mouseY, delta) }
+    }
+
+    private fun drawHandles(graphics: GuiGraphicsExtractor, box: HudBox) {
+        graphics.drawBorder(box.x, box.y, box.x + box.width, box.y + box.height, 1, Common.UI.SELECTED_FRAME_COLOR)
+        if (!box.resizable) return
+        listOf(box.x to box.y, box.x + box.width to box.y, box.x to box.y + box.height, box.x + box.width to box.y + box.height).forEach { (cx, cy) ->
+            graphics.fill(cx - HANDLE, cy - HANDLE, cx + HANDLE + 1, cy + HANDLE + 1, Common.UI.SELECTED_FRAME_COLOR)
+        }
+    }
+
+    private fun drawAnchors(graphics: GuiGraphicsExtractor) {
+        scene.anchors.forEach { anchor ->
+            val over = scene.anchorAt(mouseX.toDouble(), mouseY.toDouble()) === anchor
+            val color = if (over) Common.UI.TEXT_COLOR else Common.UI.SELECTED_FRAME_COLOR
+            graphics.fill(anchor.x - ANCHOR_ARM, anchor.y, anchor.x + ANCHOR_ARM + 1, anchor.y + 1, color)
+            graphics.fill(anchor.x, anchor.y - ANCHOR_ARM, anchor.x + 1, anchor.y + ANCHOR_ARM + 1, color)
+            graphics.text(font, Component.literal(nameOf(anchor.state.id)), anchor.x + ANCHOR_ARM + 3, anchor.y - font.lineHeight / 2, Common.UI.TEXT_DIM_COLOR, true)
+        }
+    }
+
+    /** A line from a tied thing to what it hangs from, for the box under the mouse and every anchor. */
+    private fun drawTies(graphics: GuiGraphicsExtractor, shown: HudBox?) {
+        val ids = listOfNotNull(shown?.id) + scene.anchors.map { it.state.id }
+        ids.forEach { id ->
+            val tie = layout.placed(id)?.tie ?: return@forEach
+            val from = scene.rectOf(id) ?: return@forEach
+            val to = scene.rectOf(tie.target) ?: return@forEach
+            graphics.drawLine(from[0], from[1], to[0], to[1], 1, Common.UI.SELECTED_FRAME_COLOR)
+        }
+    }
+
+    private fun drawMergeEdge(graphics: GuiGraphicsExtractor, box: HudBox, edge: Edge) {
+        val t = 3
+        when (edge) {
+            Edge.TOP -> graphics.fill(box.x, box.y - t, box.x + box.width, box.y, Common.UI.SELECTED_FRAME_COLOR)
+            Edge.BOTTOM -> graphics.fill(box.x, box.y + box.height, box.x + box.width, box.y + box.height + t, Common.UI.SELECTED_FRAME_COLOR)
+            Edge.LEFT -> graphics.fill(box.x - t, box.y, box.x, box.y + box.height, Common.UI.SELECTED_FRAME_COLOR)
+            Edge.RIGHT -> graphics.fill(box.x + box.width, box.y, box.x + box.width + t, box.y + box.height, Common.UI.SELECTED_FRAME_COLOR)
+        }
+    }
+
+    /** How a placed thing's position reads: plain x and y, the nearest edges, or what it is tied to. */
+    private fun describe(placed: Placed, rect: IntArray): String {
+        val tie = placed.tie
+        if (tie != null && layout.placed(tie.target) != null) {
+            return "Tied to ${nameOf(tie.target)}: ${signed(tie.dx)}, ${signed(tie.dy)}"
+        }
+        if (placed.positioning == Positioning.ABSOLUTE) return "x ${rect[0]}, y ${rect[1]}"
+
+        val fromLeft = rect[0]
+        val fromRight = width - (rect[0] + rect[2])
+        val fromTop = rect[1]
+        val fromBottom = height - (rect[1] + rect[3])
+        val across = if (fromLeft <= fromRight) "$fromLeft px from left" else "$fromRight px from right"
+        val down = if (fromTop <= fromBottom) "$fromTop px from top" else "$fromBottom px from bottom"
+        return "$across, $down"
+    }
+
+    private fun signed(n: Int): String = if (n >= 0) "+$n" else "$n"
+
+    private fun drawReadout(graphics: GuiGraphicsExtractor, box: HudBox, part: HudPart) {
+        val lines = buildList {
+            add(part.element.name to Common.UI.ACCENT_COLOR)
+            if (box.group != null) add("In a box with ${box.parts.size - 1} other${if (box.parts.size == 2) "" else "s"}" to Common.UI.TEXT_DIM_COLOR)
+            add((if (box.placed.positioning == Positioning.RELATIVE && box.placed.tie == null) "Relative: " else "") + describe(box.placed, intArrayOf(box.x, box.y, box.width, box.height)) to Common.UI.TEXT_COLOR)
+            add("Scale ${"%.1f".format(part.state.scale)}" to Common.UI.TEXT_COLOR)
+            add("Background ${(box.alpha * 100).roundToInt()}%" to Common.UI.TEXT_COLOR)
+        }
+        drawLines(graphics, lines, box.x, box.y + box.height + Common.UI.SPACING, box.y)
+    }
+
+    private fun drawAnchorReadout(graphics: GuiGraphicsExtractor, anchor: AnchorState, x: Int, y: Int) {
+        val lines = listOf(
+            nameOf(anchor.id) to Common.UI.ACCENT_COLOR,
+            describe(anchor, intArrayOf(x, y, 0, 0)) to Common.UI.TEXT_COLOR
+        )
+        drawLines(graphics, lines, x + ANCHOR_ARM + 3, y + font.lineHeight, y)
+    }
+
+    /** A small panel of lines under something, or above it when the bottom of the screen is near. */
+    private fun drawLines(graphics: GuiGraphicsExtractor, lines: List<Pair<String, Int>>, atX: Int, below: Int, above: Int) {
+        val pad = Common.UI.SPACING
+        val boxWidth = lines.maxOf { font.width(it.first) } + pad * 2
+        val boxHeight = lines.size * (font.lineHeight + 1) + pad * 2
+        val left = atX.coerceIn(0, (width - boxWidth).coerceAtLeast(0))
+        val top = if (below + boxHeight <= height) below else (above - Common.UI.SPACING - boxHeight).coerceAtLeast(0)
+
+        graphics.drawPanel(left, top, left + boxWidth, top + boxHeight)
+        lines.forEachIndexed { index, (text, color) ->
+            graphics.text(font, Component.literal(text), left + pad, top + pad + index * (font.lineHeight + 1), color, false)
+        }
+    }
+
+    private fun drawHints(graphics: GuiGraphicsExtractor) {
+        val hint = when {
+            picking != null -> "Click what to tie ${nameOf(picking!!)} to, Escape to stop"
+            else -> "Drag to move · corners resize · drop on another to merge · wheel fades · shift wheel scales · right click for more · R resets"
+        }
+        val hintWidth = font.width(hint)
+        graphics.text(font, Component.literal(hint), (width - hintWidth) / 2, height - font.lineHeight - Common.UI.SPACING_LARGE, if (picking != null) Common.UI.SELECTED_FRAME_COLOR else Common.UI.TEXT_DIM_COLOR, true)
+    }
+
+    // ------------------------------------------------------------------ input
+
+    override fun mouseMoved(mouseX: Double, mouseY: Double) {
+        this.mouseX = mouseX.toInt()
+        this.mouseY = mouseY.toInt()
+        overlays.forEach { it.mouseMoved(mouseX, mouseY) }
+    }
+
+    override fun mouseClicked(event: MouseButtonEvent, doubled: Boolean): Boolean {
+        if (overlays.toList().any { it.mouseClicked(event, doubled) }) return true
+        if (overlays.isNotEmpty()) {
+            closeOverlays()
+            return true
+        }
+
+        val x = event.x
+        val y = event.y
+        val anchor = scene.anchorAt(x, y)
+        val box = scene.boxAt(x, y)
+
+        picking?.let { source ->
+            if (event.button() == 0) {
+                val targetId = anchor?.state?.id ?: box?.id
+                if (targetId != null) tie(source, targetId)
+            }
+            picking = null
+            return true
+        }
+
+        if (event.button() == 1) {
+            val part = scene.partAt(x, y)
+            when {
+                anchor != null -> menuForAnchor(anchor.state, x.toInt(), y.toInt())
+                box != null && part != null -> menuFor(part, box, x.toInt(), y.toInt())
+                else -> openMenu(x.toInt(), y.toInt(), "Here", listOf(HudMenu.Entry("Add anchor") { addAnchor(x.toInt(), y.toInt()) }))
+            }
+            return true
+        }
+        if (event.button() != 0) return false
+
+        if (anchor != null) {
+            drag = Drag.Move(anchor.state.id, x.toInt() - anchor.x, y.toInt() - anchor.y)
+            return true
+        }
+        box ?: return false
+
+        cornerAt(box, x, y)?.let { leftSide ->
+            drag = Drag.Resize(box.id, leftSide, if (leftSide) box.x + box.width else box.x)
+            return true
+        }
+        drag = Drag.Move(box.id, x.toInt() - box.x, y.toInt() - box.y)
+        return true
+    }
+
+    override fun mouseDragged(event: MouseButtonEvent, dragX: Double, dragY: Double): Boolean {
+        val current = drag ?: return false
+        when (current) {
+            is Drag.Move -> {
+                moveTo(current.id, event.x.toInt() - current.offsetX, event.y.toInt() - current.offsetY)
+                mergeTarget = mergeTargetFor(current.id, event.x, event.y)
+            }
+            is Drag.Resize -> scene.boxOf(current.id)?.let { resizeTo(it, current.leftSide, current.fixedX, event.x.toInt()) }
+        }
+        return true
+    }
+
+    /** The box a lone element being dragged would join, and the edge of it nearest the mouse. */
+    private fun mergeTargetFor(draggedId: String, x: Double, y: Double): Pair<HudBox, Edge>? {
+        val dragged = scene.boxOf(draggedId) ?: return null
+        if (dragged.group != null) return null
+        val target = scene.boxes.lastOrNull { it.id != draggedId && it.contains(x, y) } ?: return null
+        val distances = mapOf(
+            Edge.TOP to y - target.y,
+            Edge.BOTTOM to target.y + target.height - y,
+            Edge.LEFT to x - target.x,
+            Edge.RIGHT to target.x + target.width - x
+        )
+        return target to distances.minByOrNull { it.value }!!.key
+    }
+
+    override fun mouseReleased(event: MouseButtonEvent): Boolean {
+        val current = drag ?: return false
+        drag = null
+        mergeTarget?.let { (box, edge) -> if (current is Drag.Move) merge(current.id, box, edge) }
+        mergeTarget = null
+        HudLayoutStore.save()
+        return true
+    }
+
+    override fun mouseScrolled(mouseX: Double, mouseY: Double, scrollX: Double, scrollY: Double): Boolean {
+        if (overlays.any { it.mouseScrolled(mouseX, mouseY, scrollX, scrollY) }) return true
+        val box = scene.boxAt(mouseX, mouseY) ?: return false
+        val step = if (scrollY > 0) 1 else -1
+
+        if (shiftDown()) {
+            val part = scene.partAt(mouseX, mouseY) ?: return true
+            part.state.scale = (part.state.scale + step * SCALE_STEP).coerceIn(MIN_SCALE, MAX_SCALE).let { (it * 10).roundToInt() / 10f }
+        } else {
+            val placed = box.placed
+            val alpha = ((when (placed) {
+                is GroupState -> placed.alpha
+                is ElementState -> placed.alpha
+                else -> 1f
+            } + step * ALPHA_STEP) * 100).roundToInt().coerceIn(0, 100) / 100f
+            when (placed) {
+                is GroupState -> placed.alpha = alpha
+                is ElementState -> placed.alpha = alpha
+                else -> {}
+            }
+        }
+        rebuild()
+        HudLayoutStore.save()
+        return true
+    }
+
+    override fun keyPressed(keyEvent: KeyEvent): Boolean {
+        if (keyEvent.key() == GLFW.GLFW_KEY_ESCAPE) {
+            if (picking != null) {
+                picking = null
+                return true
+            }
+            if (overlays.isNotEmpty()) {
+                closeOverlays()
+                return true
+            }
+        }
+        if (keyEvent.key() == GLFW.GLFW_KEY_R && overlays.isEmpty()) {
+            hoveredPart()?.let {
+                reset(it.element.id)
+                HudLayoutStore.save()
+                return true
+            }
+        }
+        return super.keyPressed(keyEvent)
+    }
+
+    override fun onClose() {
+        HudLayoutStore.save()
+        McCompat.setScreen(null)
+    }
+
+    override fun removed() {
+        HudLayoutStore.save()
+    }
+
+    private fun shiftDown(): Boolean {
+        val window = Minecraft.getInstance().window
+        return InputConstants.isKeyDown(window, GLFW.GLFW_KEY_LEFT_SHIFT) || InputConstants.isKeyDown(window, GLFW.GLFW_KEY_RIGHT_SHIFT)
+    }
+
+    private companion object {
+        const val DIM: Int = 0x60000000
+        const val HANDLE: Int = 2
+        const val ANCHOR_ARM: Int = 4
+        const val ALPHA_STEP: Float = 0.05f
+        const val SCALE_STEP: Float = 0.1f
+        const val MIN_SCALE: Float = 0.5f
+        const val MAX_SCALE: Float = 3f
+    }
+}
