@@ -966,6 +966,7 @@ object GreenhouseData {
 
             placements.add(Placement(foundCrop, pos, Instant.now()))
             placedHere[BlockPos(pos.x, GREENHOUSE_SOIL_Y, pos.z)] = foundCrop
+            Common.LOGGER.info("[placement] ${foundCrop.name} aimed at (${aimed.x}, ${aimed.z}) filed at (${pos.x}, ${pos.z}) slot ${grid.getSlotAt(pos, false)?.let { "(${it.x}, ${it.y})" }}")
             requestReconcile()
 
             return

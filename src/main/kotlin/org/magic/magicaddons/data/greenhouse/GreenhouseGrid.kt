@@ -1,5 +1,6 @@
 package org.magic.magicaddons.data.greenhouse
 
+import org.magic.magicaddons.Common
 import org.magic.magicaddons.util.getBuildableArea
 import net.minecraft.client.Minecraft
 import net.minecraft.core.BlockPos
@@ -199,6 +200,7 @@ class GreenhouseGrid(
                 val slot = layout.getSlot(x, y) ?: continue
 
                 val found = findElementAtSlot(slot, remainingStands) ?: continue
+                Common.LOGGER.info("[scan] ${found.instance.cropDef.name} at slot (${slot.x}, ${slot.y}) stage ${found.instance.growthStage} placed=${found.instance.placed} stands=${found.standEntities?.size} blocks=${found.blocksMap?.size}")
                 //todo catch mutation specifics here, such as fleshtrap hunger and bonus data, and
                 // make sure they reach disk
 
