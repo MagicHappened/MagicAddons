@@ -1,6 +1,7 @@
 package org.magic.magicaddons.ui.widgets.greenhouse
 
 
+import org.magic.magicaddons.util.ScreenUtil.drawCheckerboard
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.components.Renderable
 import net.minecraft.client.input.MouseButtonEvent
@@ -31,21 +32,20 @@ class SlotWidget(
 
     override var focusedState: Boolean = false
     
+    /** Whether the slot asks for air, drawn as the checkerboard; a slot with nothing set draws nothing. */
+    private var air: Boolean = false
+
     fun init(){
-        if (slot.placedBlock == null){
-            slot.placedBlock = Blocks.PODZOL.defaultBlockState()
-            Common.LOGGER.warn("Encountered a null slot block. replacing with podzol")
-        }
-        if (slot.placedBlock?.block == Blocks.AIR){
-            sprite = null
-            return
-        }
-        sprite = ScreenUtil.getSpriteForState(slot.placedBlock!!, Direction.UP)
-
-
+        val block = slot.placedBlock
+        air = block?.block == Blocks.AIR
+        sprite = if (block == null || air) null else ScreenUtil.getSpriteForState(block, Direction.UP)
     }
 
     override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
+        if (air) {
+            graphics.drawCheckerboard(widgetX, widgetY, widgetX + widgetWidth, widgetY + widgetHeight)
+            return
+        }
         val sprite = sprite ?: return
         graphics.blitSprite(
             RenderPipelines.GUI_TEXTURED,

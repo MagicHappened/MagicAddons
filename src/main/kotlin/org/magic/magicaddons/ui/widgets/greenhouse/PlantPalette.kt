@@ -1,5 +1,6 @@
 package org.magic.magicaddons.ui.widgets.greenhouse
 
+import org.magic.magicaddons.util.ScreenUtil.drawCheckerboard
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.level.block.Block
 import net.minecraft.ChatFormatting
@@ -277,8 +278,7 @@ class PlantPalette(
 
     fun stackFor(item: PaletteItem): ItemStack = when (item) {
         is PaletteItem.Crop -> stackFor(item.def)
-        // air has no item, and an empty bottle says empty
-        is PaletteItem.Soil -> if (item.block == Blocks.AIR) ItemStack(Items.GLASS_BOTTLE) else ItemStack(item.block.asItem())
+        is PaletteItem.Soil -> ItemStack(item.block.asItem())
     }
 
     fun render(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
@@ -319,7 +319,7 @@ class PlantPalette(
             }
 
             val icon = iconSize()
-            graphics.renderFakeItem(stackFor(def), cellX + (cellWidth - icon) / 2, cellY + (cellHeight - icon) / 2, icon, icon)
+            drawIcon(graphics, def, cellX + (cellWidth - icon) / 2, cellY + (cellHeight - icon) / 2, icon)
         }
 
         if (rows > visibleRows) {
@@ -342,8 +342,19 @@ class PlantPalette(
         val left = atX - icon / 2
         val top = atY - icon / 2
 
-        graphics.renderFakeItem(stackFor(def), left, top, icon, icon)
+        drawIcon(graphics, def, left, top, icon)
         graphics.fill(left, top, left + icon, top + icon, DRAG_VEIL)
+    }
+
+    /** An item's picture, or for air the checkerboard with its name across it. */
+    private fun drawIcon(graphics: GuiGraphicsExtractor, item: PaletteItem, left: Int, top: Int, icon: Int) {
+        if (item is PaletteItem.Soil && item.block == Blocks.AIR) {
+            graphics.drawCheckerboard(left, top, left + icon, top + icon)
+            val label = Component.literal(item.name)
+            graphics.text(font, label, left + (icon - font.width(label)) / 2, top + (icon - font.lineHeight) / 2, Common.UI.TEXT_COLOR, true)
+            return
+        }
+        graphics.renderFakeItem(stackFor(item), left, top, icon, icon)
     }
 
     fun renderTooltip(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int) {

@@ -169,6 +169,38 @@ object ScreenUtil {
 
     private fun x1f(n: Int): Float = n.toFloat()
 
+    /**
+     * Two greys in small squares, the way image editors show see-through: what stands for air. Two
+     * gui elements however big, the dark ground and the light squares together.
+     */
+    fun GuiGraphicsExtractor.drawCheckerboard(x1: Int, y1: Int, x2: Int, y2: Int) {
+        if (x2 <= x1 || y2 <= y1) return
+        fill(x1, y1, x2, y2, CHECKER_DARK)
+        val squares = mutableListOf<Float>()
+        var row = 0
+        var top = y1
+        while (top < y2) {
+            val bottom = minOf(top + CHECKER_SQUARE, y2)
+            var column = 0
+            var left = x1
+            while (left < x2) {
+                val right = minOf(left + CHECKER_SQUARE, x2)
+                if ((row + column) % 2 == 0) {
+                    squares += listOf(left.toFloat(), top.toFloat(), left.toFloat(), bottom.toFloat(), right.toFloat(), bottom.toFloat(), right.toFloat(), top.toFloat())
+                }
+                left = right
+                column++
+            }
+            top = bottom
+            row++
+        }
+        fillShape(squares.toFloatArray(), CHECKER_LIGHT)
+    }
+
+    private const val CHECKER_SQUARE: Int = 4
+    private const val CHECKER_DARK: Int = 0xFF6E6E6E.toInt()
+    private const val CHECKER_LIGHT: Int = 0xFFB4B4B4.toInt()
+
     /** A right angled triangle with the corner at ([cornerX], [cornerY]) and legs of [size], one element. */
     fun GuiGraphicsExtractor.fillCornerTriangle(cornerX: Int, cornerY: Int, size: Int, color: Int) {
         val cx = cornerX.toFloat()
