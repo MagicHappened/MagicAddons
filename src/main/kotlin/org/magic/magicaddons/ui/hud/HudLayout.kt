@@ -38,6 +38,9 @@ abstract class Placed {
 class ElementState : Placed() {
     /** The box width in pixels, or null for as wide as the content. */
     var width: Int? = null
+
+    /** The box height in pixels when dragged taller than its content, else null. */
+    var height: Int? = null
     var scale: Float = 1f
     var alpha: Float = 1f
 }
@@ -46,6 +49,7 @@ class AnchorState(val id: String) : Placed()
 
 class GroupState(val id: String, val members: MutableList<String>, var stacking: Stacking) : Placed() {
     var width: Int? = null
+    var height: Int? = null
     var alpha: Float = 1f
 }
 
