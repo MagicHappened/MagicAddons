@@ -78,7 +78,8 @@ abstract class SettingWidget<T>(
 
     /** The group of unfolded settings: its top, and its height as far as it has opened. */
     private var groupTop = 0
-    private var groupShown = 0
+    var groupShown = 0
+        private set
 
     private fun rightColumnWidth(): Int = maxOf(controlWidth, if (hasChildren()) chevronWidthFor() else 0)
 
@@ -117,8 +118,8 @@ abstract class SettingWidget<T>(
     /** Whether the group is drawn at all: open, opening, or still closing. */
     private fun groupVisible(): Boolean = childrenWidgets.isNotEmpty() && (expanded || openness() > 0f)
 
-    private fun groupLeft(): Int = x + INDENT
-    private fun groupWidth(): Int = width - INDENT
+    /** The group starts in from the row and runs to the row's right edge. */
+    fun groupLeft(): Int = x + INDENT
 
     /** Lays the row and, unfolded, the group under it. Returns the height of it all. */
     fun layoutTree(x: Int, y: Int, width: Int): Int {
@@ -155,17 +156,18 @@ abstract class SettingWidget<T>(
             return treeHeight
         }
 
-        // the rows stack inside the group's frame, a line between each pair
-        groupTop = y + height + GROUP_GAP
+        // the group hangs right under the row: a line across its top, one down its left, and the
+        // rows stacked inside with a line between each pair. Whatever follows closes it at the bottom
+        groupTop = y + height
         var currentY = groupTop + GROUP_FRAME
         childrenWidgets.forEachIndexed { index, child ->
             if (index > 0) currentY += ROW_LINE
-            currentY += child.layoutTree(groupLeft() + GROUP_FRAME, currentY, groupWidth() - GROUP_FRAME * 2)
+            currentY += child.layoutTree(groupLeft() + GROUP_FRAME, currentY, x + width - groupLeft() - GROUP_FRAME)
         }
-        val fullHeight = currentY + GROUP_FRAME - groupTop
+        val fullHeight = currentY - groupTop
 
         groupShown = kotlin.math.round(fullHeight * openness()).toInt()
-        treeHeight = height + if (groupShown > 0) GROUP_GAP + groupShown else 0
+        treeHeight = height + groupShown
         return treeHeight
     }
 
@@ -207,23 +209,29 @@ abstract class SettingWidget<T>(
     }
 
     /**
-     * The unfolded settings in their frame, each in its own box with a line between. Clipped to
-     * how far the group has opened, so it slides out and back in.
+     * The unfolded settings under their top and left lines, a light line between rows and a full
+     * one where a row's own group ends. Clipped to how far the group has opened, so it slides.
      */
     private fun renderGroup(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
         val left = groupLeft()
-        val right = left + groupWidth()
+        val right = x + width
         val bottom = groupTop + groupShown
 
         graphics.enableScissor(left, groupTop, right, bottom)
         graphics.fill(left, groupTop, right, bottom, Common.UI.GROUP_SHADE)
         childrenWidgets.forEachIndexed { index, child ->
             if (index > 0) {
-                graphics.fill(left + GROUP_FRAME, child.y - ROW_LINE, right - GROUP_FRAME, child.y, Common.UI.THIN_DIVIDER_COLOR)
+                val above = childrenWidgets[index - 1]
+                if (above.groupShown > 0) {
+                    graphics.fill(above.groupLeft(), child.y - ROW_LINE, right, child.y, Common.UI.BORDER_COLOR)
+                } else {
+                    graphics.fill(left + GROUP_FRAME, child.y - ROW_LINE, right, child.y, Common.UI.THIN_DIVIDER_COLOR)
+                }
             }
             child.render(graphics, mouseX, mouseY, delta)
         }
-        graphics.drawBorder(left, groupTop, right, bottom, GROUP_FRAME, Common.UI.BORDER_COLOR)
+        graphics.fill(left, groupTop, right, groupTop + GROUP_FRAME, Common.UI.BORDER_COLOR)
+        graphics.fill(left, groupTop, left + GROUP_FRAME, bottom, Common.UI.BORDER_COLOR)
         graphics.disableScissor()
     }
 
@@ -325,8 +333,7 @@ abstract class SettingWidget<T>(
         /** How far the group under a row is pushed in. */
         const val INDENT: Int = 10
 
-        /** The gap between a row and its group, the group's frame, and the line between its rows. */
-        const val GROUP_GAP: Int = 3
+        /** The group's top and left lines, and the line between its rows. */
         const val GROUP_FRAME: Int = 1
         const val ROW_LINE: Int = 1
 

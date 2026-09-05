@@ -4,9 +4,21 @@ plugins {
     id("maven-publish")
 }
 
+/** What git says, or null when git is missing or this is not a checkout. */
+fun git(vararg args: String): String? = runCatching {
+    providers.exec { commandLine("git", *args) }.standardOutput.asText.get().trim()
+}.getOrNull()?.takeIf { it.isNotEmpty() }
+
+/** A local build on the beta branch takes its commit from git; "-dirty" marks uncommitted changes. */
+fun localBetaId(): String? {
+    if (git("rev-parse", "--abbrev-ref", "HEAD") != "beta") return null
+    val hash = git("rev-parse", "--short", "HEAD") ?: return null
+    return if (git("status", "--porcelain") == null) hash else "$hash-dirty"
+}
+
 // the jar says which Minecraft it is for, and a beta build says which commit it came from:
 // magicaddons-1.2.1+26.1.2.jar, magicaddons-1.2.1+26.1.2.beta.c1e57d1.jar
-val buildId: String? = (findProperty("build_id") as String?)?.takeIf { it.isNotBlank() }
+val buildId: String? = (findProperty("build_id") as String?)?.takeIf { it.isNotBlank() } ?: localBetaId()
 
 version = buildString {
     append(project.property("mod_version") as String)
