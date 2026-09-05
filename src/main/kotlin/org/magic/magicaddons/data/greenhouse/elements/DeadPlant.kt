@@ -27,7 +27,19 @@ object DeadPlant : CropDefinitionProvider {
                 armorStands = null,
                 1..1
             )
-        ),
+        ,
+            // as placed
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = deadBushState()
+                    )
+                ),
+                armorStands = listOf(),
+                1..1,
+                placed = true
+            )),
         decayTimeMs = NEVER_DECAYS,
         requiredSoil = setOf(Blocks.SAND, Blocks.DIRT, Blocks.FARMLAND, Blocks.MYCELIUM, Blocks.SOUL_SAND, Blocks.END_STONE),
         needsWater = false,

@@ -37,7 +37,23 @@ object Shellfruit : CropDefinitionProvider {
                 1..1
             )
 
-        ),
+        ,
+            // as placed
+            CropStage(
+                blocks = listOf(),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, -0.46875, 0.0),
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
+                        hashString = "72d802cd207f1971a2eb826f1a7477740833c920db00cd5c992176c67672dbf5",
+                        isSmall = false
+                    )
+                ),
+                1..1,
+                placed = true
+            )),
         needsWater = false,
         isMutation = true
     )

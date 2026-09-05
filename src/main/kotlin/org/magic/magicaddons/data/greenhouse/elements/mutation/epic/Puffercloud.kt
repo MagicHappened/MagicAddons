@@ -245,7 +245,28 @@ object Puffercloud : CropDefinitionProvider {
 
 
 
-        ),
+        ,
+            // as placed
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = wheatState(5)
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, -0.4375, 0.0),
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
+                        hashString = "9a488340c3d9131b6e97bae6279aac852037367cb93a6b50c60a7d328aec173e",
+                        isSmall = false
+                    )
+                ),
+                14..14,
+                placed = true
+            )),
         // five days decay time
         maxStage = 14,
         isMutation = true
