@@ -15,18 +15,6 @@ object Common {
         const val BORDER_COLOR: Int = 0xFF4C7A63.toInt()
         const val TEXT_X_PAD: Int = 4
 
-        /** A column of settings or features never grows wider than this, however wide the screen. */
-        const val COLUMN_MAX_WIDTH: Int = 250
-
-        /** Space kept clear at each side of a screen, as a share of its width. */
-        const val SCREEN_SIDE_PAD_FRACTION: Float = 0.025f
-
-        /** Never less side space than this, even on a tiny window. */
-        const val SCREEN_SIDE_PAD_MIN: Int = 4
-
-        /** Layout gaps are written for a screen this many units tall and stretch with the real height. */
-        const val LAYOUT_REFERENCE_HEIGHT: Int = 500
-
         /** How far one wheel notch moves a scrolling screen. */
         const val SCROLL_STEP: Int = 20
 
@@ -90,6 +78,12 @@ object Common {
 
         /** The line between two rows of one list. */
         const val DIVIDER_COLOR: Int = BORDER_COLOR
+
+        /** A fainter line, between the settings inside one block and between categories. */
+        const val THIN_DIVIDER_COLOR: Int = 0x604C7A63
+
+        /** The track of a switch that is off; on, it takes [ACCENT_COLOR]. */
+        const val SWITCH_OFF_COLOR: Int = FIELD_COLOR
 
         /** Something that removes or destroys, such as a delete cross. */
         const val DANGER_COLOR: Int = 0xFFFF0000.toInt()

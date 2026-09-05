@@ -18,6 +18,24 @@ object FeatureManager {
         MobHitDebugInfo
     ) // need to call objects somehow for initialization
 
+    /** A category of the config screen: its key, the name shown, and its features. */
+    data class Category(val key: String, val name: String, val features: List<Feature>, val dev: Boolean)
+
+    /** The side panel's order; a category not listed here comes after these, alphabetically. */
+    private val CATEGORY_ORDER = listOf("farming", "mining", "foraging", "combat", "kuudra")
+
+    /** Categories shown under the thick divider, for developers rather than players. */
+    private val DEV_CATEGORIES = setOf("debug")
+
+    fun categories(): List<Category> = features
+        .groupBy { it.category }
+        .map { (key, list) -> Category(key, key.replaceFirstChar { it.uppercase() }, list, key in DEV_CATEGORIES) }
+        .sortedWith(
+            compareBy<Category> { it.dev }
+                .thenBy { CATEGORY_ORDER.indexOf(it.key).let { index -> if (index < 0) CATEGORY_ORDER.size else index } }
+                .thenBy { it.key }
+        )
+
 
     fun syncToConfigJson() {
 

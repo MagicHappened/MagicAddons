@@ -2,66 +2,40 @@ package org.magic.magicaddons.ui.widgets.config
 
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.input.MouseButtonEvent
-import net.minecraft.network.chat.Component
-import org.magic.magicaddons.Common
 import org.magic.magicaddons.data.config.BooleanSetting
-import org.magic.magicaddons.ui.widgets.CheckboxWidget
-import org.magic.magicaddons.util.ScreenUtil.drawBorder
-import org.magic.magicaddons.util.ScreenUtil.drawWrappedText
-import org.magic.magicaddons.util.ScreenUtil.wrappedHeight
+import org.magic.magicaddons.ui.OverlayContext
+import org.magic.magicaddons.ui.widgets.SwitchWidget
 
+/** An on/off setting: a switch on the right of the row. */
 class BooleanSettingWidget(
-    private val setting: BooleanSetting
-) : SettingWidget<Boolean>(setting) {
+    private val setting: BooleanSetting,
+    overlays: OverlayContext
+) : SettingWidget<Boolean>(setting, overlays) {
 
-    override val childrenWidgets: MutableList<SettingWidget<*>> = mutableListOf()
-    override val hasChildren: Boolean = true
-    private val checkbox = CheckboxWidget(checked = setting.value)
+    private val switch = SwitchWidget(setting.value)
 
-    private val name: Component get() = Component.literal(setting.displayName)
+    override val controlWidth: Int = SwitchWidget.WIDTH
+    override val controlHeight: Int = SwitchWidget.HEIGHT
 
-    private fun textWidth(): Int = width - checkbox.size - textXPad * 2
-
-    override fun layout() {
-        checkbox.size = baseHeight
-        height = (wrappedHeight(font, name, textWidth()) + textYPad * 2).coerceAtLeast(baseHeight)
-        layoutCheckbox()
+    override fun layoutControl() {
+        switch.x = controlLeft()
+        switch.y = controlTop()
     }
 
-    private fun layoutCheckbox() {
-        checkbox.x = x
-        checkbox.y = y + (height - checkbox.size) / 2
-        checkbox.checked = setting.value
+    override fun renderControl(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
+        switch.set(setting.value)
+        switch.render(graphics)
     }
 
-    override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
-        graphics.fill(x, y, x + width, y + height, backgroundColor)
-
-        checkbox.render(graphics)
-
-        graphics.drawBorder(x, y, x + width, y + height, borderSize, borderColor)
-
-        val textHeight = wrappedHeight(font, name, textWidth())
-
-        graphics.drawWrappedText(
-            font,
-            name,
-            x + checkbox.size + textXPad,
-            y + (height - textHeight) / 2,
-            textWidth(),
-            Common.UI.TEXT_COLOR
-        )
-
-        renderDetail(graphics)
-
-        extractChildrenRenderStates(graphics, mouseX, mouseY, delta)
+    override fun controlClicked(event: MouseButtonEvent, doubled: Boolean): Boolean {
+        if (event.button() != 0 || !switch.isMouseOver(event.x, event.y)) return false
+        setting.value = !setting.value
+        switch.set(setting.value)
+        return true
     }
 
-    override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
-        if (checkbox.mouseClicked(mouseButtonEvent, doubled)) {
-            setting.value = !setting.value
-            return true
-        }
-        return super.mouseClicked(mouseButtonEvent, doubled)
+    override fun mouseMoved(mouseX: Double, mouseY: Double) {
+        super.mouseMoved(mouseX, mouseY)
+        switch.mouseMoved(mouseX, mouseY)
     }
 }

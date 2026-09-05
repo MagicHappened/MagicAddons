@@ -1,9 +1,6 @@
 package org.magic.magicaddons.ui.widgets.config
 
-import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
-import org.magic.magicaddons.ui.widgets.TextField
-import org.magic.magicaddons.util.ScreenUtil.drawScrollBar
 import net.minecraft.client.input.CharacterEvent
 import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
@@ -11,42 +8,31 @@ import net.minecraft.network.chat.Component
 import org.magic.magicaddons.Common
 import org.magic.magicaddons.data.ListEntry
 import org.magic.magicaddons.data.config.ToggleListSetting
+import org.magic.magicaddons.ui.OverlayContext
+import org.magic.magicaddons.ui.widgets.TextField
 import org.magic.magicaddons.ui.widgets.ToggleRowWidget
 import org.magic.magicaddons.util.ScreenUtil.drawBorder
-import org.magic.magicaddons.util.ScreenUtil.drawWrappedText
-import org.magic.magicaddons.util.ScreenUtil.wrappedHeight
+import org.magic.magicaddons.util.ScreenUtil.drawScrollBar
 
 /**
- * Every name in the catalogue as a row with a checkbox, a search box above narrowing them, and a
+ * Every name in the catalogue as a row with a checkbox, under a search box narrowing them, in a
  * window of a few rows the wheel moves through. A name is stored only while it is switched on.
  */
 class ChoiceListSettingWidget(
-    private val listSetting: ToggleListSetting
-) : SettingWidget<MutableList<ListEntry>>(listSetting) {
+    private val listSetting: ToggleListSetting,
+    overlays: OverlayContext
+) : SettingWidget<MutableList<ListEntry>>(listSetting, overlays) {
 
-    override val hasChildren: Boolean = false
-    override var childrenExpanded: Boolean = true
-    override var hovered: Boolean = false
+    override val controlWidth: Int = 0
+    override val controlHeight: Int = 0
 
-    override val childrenWidgets: MutableList<SettingWidget<*>> = mutableListOf()
-
-    /** The title strip is this tall for one line of text and grows when the name wraps. */
-    private val titleMinHeight = 20
-    private var titleHeight = titleMinHeight
-
-    /** A row is at least this tall; a wrapped name makes it taller. */
-    private val rowHeight = 20
-
-    /** Room between the widget border and the search box or a row. */
-    private val inset = 2
-
-    /** Rows stack edge to edge; each draws the line under itself. */
-    private val rowOverlap = 0
-
-    /** How many rows show at once, however long the catalogue gets. */
-    private val visibleRows = 5
-
-    private val searchBox = TextField(100, rowHeight, Component.literal(listSetting.searchLabel))
+    private val searchBox = TextField(0, ROW_HEIGHT, Component.literal(listSetting.searchLabel)).also {
+        it.setMaxLength(64)
+        it.setResponder {
+            scroll = 0
+            rebuildRows()
+        }
+    }
 
     private val rows = mutableListOf<ToggleRowWidget<String>>()
 
@@ -54,16 +40,10 @@ class ChoiceListSettingWidget(
     private var matching: List<String> = emptyList()
     private var scroll: Int = 0
 
-    private var rowY: Int = 0
-
-    private val title: Component get() = Component.literal(listSetting.displayName)
-
-    /** The rows on screen, top to bottom, overlaps counted. */
-    private fun listHeight(): Int = rows.sumOf { it.height - rowOverlap } + rowOverlap
-
+    private fun rowsTop(): Int = extraTop() + ROW_HEIGHT + Common.UI.SPACING_SMALL
+    private fun listHeight(): Int = VISIBLE_ROWS * ROW_HEIGHT
 
     private fun isOn(name: String): Boolean = listSetting.value.any { it.value == name }
-
 
     /**
      * Flips a name without moving its row: a row that jumped away the moment it was ticked would
@@ -80,152 +60,90 @@ class ChoiceListSettingWidget(
     /** Switched-on names first, each group alphabetical, narrowed to what the search contains. */
     private fun ordered(): List<String> {
         val search = searchBox.value.trim()
-
         return listSetting.choices()
             .filter { search.isEmpty() || it.contains(search, ignoreCase = true) }
             .sortedWith(compareByDescending<String> { isOn(it) }.thenBy { it.lowercase() })
     }
 
-    override fun layout() {
-        titleHeight = (wrappedHeight(font, title, width - textXPad * 2) + titleMinHeight - font.lineHeight)
-            .coerceAtLeast(titleMinHeight)
+    override fun extraHeight(): Int = ROW_HEIGHT + Common.UI.SPACING_SMALL + listHeight()
 
-        searchBox.x = x + inset
-        searchBox.y = y + borderSize + titleHeight
-        searchBox.width = width - inset * 2
-        searchBox.height = rowHeight
-        searchBox.setMaxLength(64)
-        searchBox.setResponder {
-            scroll = 0
-            rebuildRows(relayout = true)
-        }
-
-        rowY = searchBox.y + rowHeight + inset
-
-        rebuildRows(relayout = false)
+    override fun layoutControl() {
+        searchBox.x = extraLeft()
+        searchBox.y = extraTop()
+        searchBox.width = extraWidth()
+        rebuildRows()
     }
 
-    /**
-     * Rebuilds the window of rows and the widget's height to fit them. A search that changed the
-     * count asks the screen to move whatever sits below, a layout pass is already doing that.
-     */
-    private fun rebuildRows(relayout: Boolean) {
+    /** The window of rows the scroll is looking at, laid out under the search box. */
+    private fun rebuildRows() {
         matching = ordered()
-        scroll = scroll.coerceIn(0, (matching.size - visibleRows).coerceAtLeast(0))
+        scroll = scroll.coerceIn(0, (matching.size - VISIBLE_ROWS).coerceAtLeast(0))
 
         rows.clear()
-
-        var currentY = rowY
-
-        matching.drop(scroll).take(visibleRows).forEach { name ->
-            val row = ToggleRowWidget(
-                value = name,
-                isEnabled = { isOn(name) },
-                onToggle = { setOn(name, it) }
-            )
-
-            row.x = x + inset
+        var currentY = rowsTop()
+        matching.drop(scroll).take(VISIBLE_ROWS).forEach { name ->
+            val row = ToggleRowWidget(value = name, isEnabled = { isOn(name) }, onToggle = { setOn(name, it) })
+            row.x = extraLeft()
             row.y = currentY
-            row.width = width - inset * 2
-            row.fitHeight(rowHeight)
-
+            row.width = extraWidth()
+            row.height = ROW_HEIGHT
             rows.add(row)
-            currentY += row.height - rowOverlap
+            currentY += ROW_HEIGHT
         }
         rows.lastOrNull()?.dividerBelow = false
-
-        // an empty window still shows the "nothing matches" line, so it keeps one row of height
-        val shown = if (rows.isEmpty()) rowHeight else listHeight()
-        val newHeight = rowY + shown + inset + borderSize - y
-
-        if (newHeight != height) {
-            height = newHeight
-            if (relayout) requestRelayout?.invoke()
-        }
     }
 
-    override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
-        graphics.fill(x, y, x + width, y + height, backgroundColor)
+    override fun renderControl(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {}
 
-        val titleTextHeight = wrappedHeight(font, title, width - textXPad * 2)
-
-        graphics.drawWrappedText(
-            font,
-            title,
-            x + textXPad,
-            y + borderSize + (titleHeight - titleTextHeight) / 2,
-            width - textXPad * 2,
-            Common.UI.TEXT_COLOR
-        )
-
+    override fun renderExtra(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
         searchBox.render(graphics)
 
+        val top = rowsTop()
+        graphics.fill(extraLeft(), top, extraLeft() + extraWidth(), top + listHeight(), Common.UI.FIELD_COLOR)
         rows.forEach { it.extractRenderState(graphics, mouseX, mouseY) }
 
         if (rows.isEmpty()) {
-            graphics.text(
-                font,
-                Component.literal("Nothing matches"),
-                x + textXPad,
-                rowY + (rowHeight - font.lineHeight) / 2,
-                Common.UI.DISABLED_TEXT_COLOR,
-                false
-            )
+            graphics.text(font, Component.literal("Nothing matches"), extraLeft() + Common.UI.TEXT_X_PAD, top + (ROW_HEIGHT - font.lineHeight) / 2, Common.UI.DISABLED_TEXT_COLOR, false)
         }
 
-        renderScrollBar(graphics)
-        graphics.drawBorder(x, y, x + width, y + height, borderSize, borderColor)
-    }
-
-    /** A sliver on the right edge saying how deep the list goes and where the window sits in it. */
-    private fun renderScrollBar(graphics: GuiGraphicsExtractor) {
-        if (matching.size <= visibleRows) return
-
-        graphics.drawScrollBar(
-            x + width - inset - borderSize - Common.UI.SCROLLBAR_WIDTH,
-            rowY,
-            listHeight(),
-            matching.size,
-            visibleRows,
-            scroll
-        )
+        graphics.drawScrollBar(extraLeft() + extraWidth() - Common.UI.SCROLLBAR_WIDTH - 1, top, listHeight(), matching.size, VISIBLE_ROWS, scroll)
+        graphics.drawBorder(extraLeft(), top, extraLeft() + extraWidth(), top + listHeight(), 1, Common.UI.THIN_DIVIDER_COLOR)
     }
 
     private fun overRows(mouseX: Double, mouseY: Double): Boolean =
-        mouseX.toInt() in x..(x + width) && mouseY.toInt() in rowY..(rowY + listHeight())
+        mouseX.toInt() in extraLeft()..(extraLeft() + extraWidth()) && mouseY.toInt() in rowsTop()..(rowsTop() + listHeight())
 
     override fun mouseScrolled(mouseX: Double, mouseY: Double, scrollX: Double, scrollY: Double): Boolean {
-        if (!overRows(mouseX, mouseY) || matching.size <= visibleRows) return false
+        if (!overRows(mouseX, mouseY) || matching.size <= VISIBLE_ROWS) return false
 
-        scroll = (scroll - scrollY.toInt().coerceIn(-1, 1)).coerceIn(0, matching.size - visibleRows)
-        rebuildRows(relayout = false)
+        scroll = (scroll - scrollY.toInt().coerceIn(-1, 1)).coerceIn(0, matching.size - VISIBLE_ROWS)
+        rebuildRows()
         return true
     }
 
-    /**
-     * Only the title counts as hovering this setting: a tooltip over the rows would cover the very
-     * checkmarks the mouse is there to press.
-     */
     override fun mouseMoved(mouseX: Double, mouseY: Double) {
-        hovered = mouseX.toInt() in x..(x + width) &&
-                mouseY.toInt() in y..(y + borderSize + titleHeight)
-
+        // only the text counts as hovering this setting, a wash over the rows would cover the marks
+        hovered = isMouseOver(mouseX, mouseY) && mouseY.toInt() < extraTop()
         rows.forEach { it.mouseMoved(mouseX, mouseY) }
     }
 
-    override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
-        if (searchBox.mouseClicked(mouseButtonEvent, doubled)) return true
-
-        rows.forEach {
-            if (it.mouseClicked(mouseButtonEvent, doubled)) return true
-        }
-
-        return false
+    override fun controlClicked(event: MouseButtonEvent, doubled: Boolean): Boolean {
+        if (searchBox.mouseClicked(event, doubled)) return true
+        return rows.any { it.mouseClicked(event, doubled) }
     }
 
-    override fun charTyped(characterEvent: CharacterEvent): Boolean = searchBox.charTyped(characterEvent)
+    override fun dropFocus() {
+        searchBox.focused = false
+    }
 
-    override fun keyPressed(keyEvent: KeyEvent): Boolean = searchBox.keyPressed(keyEvent)
+    override fun charTyped(event: CharacterEvent): Boolean = searchBox.charTyped(event)
 
-    override fun getTotalHeight(): Int = height
+    override fun keyPressed(event: KeyEvent): Boolean = searchBox.keyPressed(event)
+
+    private companion object {
+        const val ROW_HEIGHT: Int = 16
+
+        /** How many rows show at once, however long the catalogue gets. */
+        const val VISIBLE_ROWS: Int = 5
+    }
 }
