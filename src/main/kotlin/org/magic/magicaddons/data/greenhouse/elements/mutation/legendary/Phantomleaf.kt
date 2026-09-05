@@ -95,7 +95,28 @@ object Phantomleaf : CropDefinitionProvider {
                 13..13
             )
 
-        ),
+        ,
+            // as placed
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = wheatState(5)
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, -0.375, -0.125),
+                        headRotation = Rotations(20.0f, 0.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
+                        hashString = "e1c206ab05cbac4a22f54f8778c3bfbd870f19c380176f288614c77d19b5d122",
+                        isSmall = false
+                    )
+                ),
+                15..15,
+                placed = true
+            )),
         //five days decay time
         maxStage = 15,
         requiredSoil = setOf(Blocks.SOUL_SAND),

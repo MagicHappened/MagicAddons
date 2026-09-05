@@ -133,6 +133,76 @@ object Glasscorn : CropDefinitionProvider {
                     isSmall = false
                 ),
                 5..5
+            ),
+            // as placed
+            CropStage(
+                blocks = CropBlockState.blockStatePattern(
+                    listOf(
+                        BlockPos(0, 1, 0),
+                        BlockPos(0, 1, 1),
+                        BlockPos(1, 1, 0),
+                        BlockPos(1, 1, 1)
+                    ),
+                    blockState = sunflowerState(DoubleBlockHalf.LOWER)
+                ),
+                armorStands = CropArmorStand.matcherPattern(
+                    offsets = listOf(
+                        Vec3(0.5, 0.5, 0.5),
+                        Vec3(-0.5, 0.5, 0.5),
+                        Vec3(-0.5, 0.5, -0.5),
+                        Vec3(0.5, 0.5, -0.5)
+                    ),
+                    rotations = listOf(
+                        Rotations(0.0f, 0.0f, 0.0f),
+                        Rotations(0.0f, 0.0f, 0.0f),
+                        Rotations(0.0f, 0.0f, 0.0f),
+                        Rotations(0.0f, 0.0f, 0.0f)
+                    ),
+                    xRotations = listOf(
+                        0.0f,
+                        0.0f,
+                        0.0f,
+                        0.0f
+                    ),
+                    yRotations = listOf(
+                        0.0f,
+                        0.0f,
+                        0.0f,
+                        0.0f
+                    ),
+                    hashString = "297de27338b9f876e570d1cc01fe1beccfc940467c5c97c467e93e79c81c25ee",
+                    isSmall = false
+                ) +
+                CropArmorStand.matcherPattern(
+                    offsets = listOf(
+                        Vec3(0.5, 1.03125, 0.5),
+                        Vec3(-0.5, 1.03125, 0.5),
+                        Vec3(-0.5, 1.03125, -0.5),
+                        Vec3(0.5, 1.03125, -0.5)
+                    ),
+                    rotations = listOf(
+                        Rotations(0.0f, 0.0f, 0.0f),
+                        Rotations(0.0f, 0.0f, 0.0f),
+                        Rotations(0.0f, 0.0f, 0.0f),
+                        Rotations(0.0f, 0.0f, 0.0f)
+                    ),
+                    xRotations = listOf(
+                        0.0f,
+                        0.0f,
+                        0.0f,
+                        0.0f
+                    ),
+                    yRotations = listOf(
+                        0.0f,
+                        0.0f,
+                        0.0f,
+                        0.0f
+                    ),
+                    hashString = "c85e9fa773337f43de3afc9e2a60b26299f5eea9fd8490d19ed2ab34fc0c9cbb",
+                    isSmall = false
+                ),
+                9..9,
+                placed = true
             )),
         maxStage = 9,
         footprint = Footprint(2, 2),
