@@ -1,5 +1,6 @@
 package org.magic.magicaddons.commands.debug
 
+import net.minecraft.world.entity.Entity
 import net.minecraft.util.Mth
 import org.magic.magicaddons.data.greenhouse.WorldRotation
 import net.minecraft.network.chat.Component
@@ -51,7 +52,9 @@ object CropStageExporter {
         stageNum: Int? = null,
         foundDefinition: CropDefinition? = null,
         discordFormat: Boolean = false,
-        quiet: Boolean = false
+        quiet: Boolean = false,
+        /** The stands seen when the plant was pinned, used when the world has none there any more. */
+        knownStands: List<Entity> = emptyList()
     ): String? {
         val world = Minecraft.getInstance().level ?: return null
         val sb = StringBuilder(2048)
@@ -105,7 +108,7 @@ object CropStageExporter {
             basePos.z + height.toDouble()
         )
 
-        val stands = world.getEntities(null, box)
+        val stands = world.getEntities(null, box).ifEmpty { knownStands }
 
         // how far the world has turned this plant, undone so the stage exports identically wherever
         // it stands. The head pose rides on the body and needs nothing

@@ -152,7 +152,9 @@ class CropPreviewScreen(
 
         val stageDef = def.stageDefs
             .flatMap { if (it is CropStagePattern) it.expand() else listOf(it) }
-            .firstOrNull { stage in it.stageRange } ?: return
+            .filter { stage in it.stageRange }
+            .let { looks -> looks.firstOrNull { !it.placed } ?: looks.firstOrNull() }
+            ?: return
 
         sceneStage = stageDef
         sceneData = stageDef.toRenderData(level, ORIGIN, def.footprint, def.standPoses, def.rotatesWithPlot)

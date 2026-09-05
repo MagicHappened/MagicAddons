@@ -789,6 +789,68 @@ object Snoozling : CropDefinitionProvider {
                 ),
                 14..14
             ),
+            // awake at stage 15: the skulls are the awake ones, so it files beside the sleeping look when that is recorded
+            CropStage(
+                blocks = CropBlockState.blockStatePattern(
+                    listOf(
+                        BlockPos(0, 1, 0),
+                        BlockPos(0, 1, 2),
+                        BlockPos(2, 1, 0),
+                        BlockPos(2, 1, 2)
+                    ),
+                    blockState = wheatState(4)
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, -0.125, 0.84375),
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
+                        hashString = "77bb86dedeb827f2489aa0103d58d0e12e64a8152d5a0f5b1d4d208a3cb55999",
+                        isSmall = false
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(0.0, 0.4375, 0.40625),
+                        headRotation = Rotations(22.5f, 0.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
+                        hashString = "b82d442528456547474dd88166a97818f057ecc4b3ed350ef9a5e4dbd27f98d7"
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(0.5, -0.84375, -0.375),
+                        headRotation = Rotations(0.0f, 0.0f, 22.5f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
+                        hashString = "b82d442528456547474dd88166a97818f057ecc4b3ed350ef9a5e4dbd27f98d7",
+                        isSmall = false
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(-0.46875, -0.78125, -0.375),
+                        headRotation = Rotations(0.0f, 0.0f, -22.5f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
+                        hashString = "b82d442528456547474dd88166a97818f057ecc4b3ed350ef9a5e4dbd27f98d7",
+                        isSmall = false
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(0.0, -0.75, 0.0),
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = -180.0f,
+                        hashString = "b82d442528456547474dd88166a97818f057ecc4b3ed350ef9a5e4dbd27f98d7",
+                        isSmall = false
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(0.0, -0.65625, -0.625),
+                        headRotation = Rotations(22.5f, 0.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = -180.0f,
+                        hashString = "b82d442528456547474dd88166a97818f057ecc4b3ed350ef9a5e4dbd27f98d7",
+                        isSmall = false
+                    )
+                ),
+                15..15
+            ),
             CropStage(
                 blocks = CropBlockState.blockStatePattern(
                     listOf(

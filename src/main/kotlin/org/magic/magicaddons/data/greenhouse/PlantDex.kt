@@ -80,6 +80,12 @@ object PlantDex {
         return Report(recorded, total, incomplete, text)
     }
 
+    /**
+     * Whether a mutation has no recording of how it looks when bought and put down. Not a stage of
+     * its own and not counted against the dex, only listed: only the hologram and the collector want it.
+     */
+    fun lacksPlacedLook(def: CropDefinition): Boolean = def.isMutation && def.stageDefs.none { it.placed }
+
     /** The stages of [def] no recording covers. */
     private fun unrecorded(def: CropDefinition): List<Int> {
         val covered = def.stageDefs.flatMap { it.stageRange }.toSet()
@@ -98,6 +104,7 @@ object PlantDex {
 
         val parts = mutableListOf<String>()
         if (missing.isNotEmpty()) parts += "stages ${ranges(missing)} unrecorded"
+        if (lacksPlacedLook(def)) parts += "placed look unrecorded"
         if (legacy.isNotEmpty()) parts += "stages ${ranges(legacy)} need normalization"
         if (unturned.isNotEmpty()) parts += "stages ${ranges(unturned)} need rotation data"
         if (oversized.isNotEmpty()) parts += "stages ${ranges(oversized)} need isSmall = false"
