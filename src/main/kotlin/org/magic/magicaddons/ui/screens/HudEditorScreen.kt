@@ -952,7 +952,7 @@ class HudEditorScreen : Screen(Component.literal("HUD Editor")), OverlayContext 
 
     private companion object {
         const val TAB_WIDTH: Int = 30
-        const val TAB_HEIGHT: Int = 24
+        const val TAB_HEIGHT: Int = 12
         const val PANEL_WIDTH: Int = 120
         const val PANEL_ROW: Int = 13
         const val PANEL_PAD: Int = 4
