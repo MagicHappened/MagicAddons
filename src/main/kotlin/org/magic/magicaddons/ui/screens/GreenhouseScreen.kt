@@ -1,5 +1,7 @@
 package org.magic.magicaddons.ui.screens
 
+import org.magic.magicaddons.data.greenhouse.Footprint
+import org.magic.magicaddons.ui.widgets.greenhouse.PaletteItem
 import org.magic.magicaddons.util.ScreenUtil.renderFakeItem
 import org.magic.magicaddons.data.greenhouse.CropRegistry
 import org.magic.magicaddons.util.ScreenUtil.drawButtonPanel
@@ -600,9 +602,9 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         ).joinToString("\n")
     }
 
-    /** Where the carried plant would land, green when it fits and red when it cannot. */
+    /** Where the carried plant or soil would land, green when it fits and red when it cannot. */
     private fun renderDropTarget(graphics: GuiGraphicsExtractor) {
-        val def = plantPalette.carried ?: return
+        val item = plantPalette.carried ?: return
         val grid = displayedGridWidget ?: emptyGridWidget ?: return
         val mouse = Minecraft.getInstance().mouseHandler
         val window = Minecraft.getInstance().window
@@ -610,9 +612,10 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         val mouseY = mouse.ypos() * window.guiScaledHeight / window.screenHeight / drawScale
         val (sx, sy) = grid.slotAt(mouseX, mouseY) ?: return
 
-        val (x1, y1, x2, y2) = grid.footprintRect(sx, sy, def.footprint)
-        val colour = if (canPlace(grid.layout, def, sx, sy)) DROP_OK else DROP_BLOCKED
-        graphics.fill(x1, y1, x2, y2, colour)
+        val footprint = (item as? PaletteItem.Crop)?.def?.footprint ?: Footprint(1, 1)
+        val (x1, y1, x2, y2) = grid.footprintRect(sx, sy, footprint)
+        val fits = item !is PaletteItem.Crop || canPlace(grid.layout, item.def, sx, sy)
+        graphics.fill(x1, y1, x2, y2, if (fits) DROP_OK else DROP_BLOCKED)
     }
 
     /** Whether a plant of that size fits at the slot without leaving the grid or covering another. */
@@ -633,8 +636,8 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         }
     }
 
-    /** Drops the carried plant onto the preset at the mouse, when it fits there. With no preset, one is started. */
-    private fun placeDragged(def: CropDefinition, mouseX: Double, mouseY: Double) {
+    /** Drops the carried plant or soil onto the preset at the mouse, when it fits there. With no preset, one is started. */
+    private fun placeDragged(item: PaletteItem, mouseX: Double, mouseY: Double) {
         if (currentDisplay != CurrentDisplay.Presets) return
         if (displayedGridWidget == null) {
             if (emptyGridWidget?.slotAt(mouseX, mouseY) == null) return
@@ -643,8 +646,17 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         }
         val grid = displayedGridWidget ?: return
         val (sx, sy) = grid.slotAt(mouseX, mouseY) ?: return
-        if (!canPlace(grid.layout, def, sx, sy)) return
         val slot = grid.layout.getSlot(sx, sy) ?: return
+
+        // soil goes under whatever stands there
+        if (item is PaletteItem.Soil) {
+            remember(grid.layout)
+            slot.placedBlock = item.block.defaultBlockState()
+            grid.init()
+            return
+        }
+        val def = (item as PaletteItem.Crop).def
+        if (!canPlace(grid.layout, def, sx, sy)) return
 
         remember(grid.layout)
         grid.layout.elementInstances.removeAll(overlapping(grid.layout, def, sx, sy))
