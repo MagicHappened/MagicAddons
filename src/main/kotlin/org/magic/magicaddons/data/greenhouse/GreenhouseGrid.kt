@@ -454,7 +454,7 @@ class GreenhouseGrid(
                 }
             }
 
-            val definition = bestDef ?: return null
+            val definition = bestDef ?: return placedWithoutLook(origin, soil, remainingStands, slot)
 
             // the dex cannot see from the data which stages predate normalized exports, so it
             // learns from every match that only got there through the rotation fallback
@@ -486,6 +486,48 @@ class GreenhouseGrid(
                 blocksMap = bestBlocks,
                 rotationLegacy = bestLegacy
             )
+        }
+
+        /**
+         * The crop the player put down here this session, when nothing recorded matches what stands
+         * on the soil: taken as that crop at its placed stage, flagged placed, with whatever stands
+         * and blocks sit in its footprint. Without this a placed mutation with no placed look
+         * recorded was invisible, and the collector could never learn it was placed.
+         */
+        private fun placedWithoutLook(
+            origin: BlockPos,
+            soil: Block,
+            remainingStands: MutableList<ArmorStand>,
+            slot: LayoutSlot
+        ): ElementRuntimeState? {
+            val definition = GreenhouseData.placedHereAt(origin) ?: return null
+            if (soil !in definition.requiredSoil) return null
+
+            val level = Minecraft.getInstance().level ?: return null
+            val footprint = definition.footprint
+            val stands = standsAround(origin, footprint).filter { it in remainingStands }
+            val blocks = mutableMapOf<BlockPos, BlockState>()
+            for (dx in 0 until footprint.width) {
+                for (dz in 0 until footprint.height) {
+                    for (dy in 1..READER_HEIGHT) {
+                        val pos = origin.offset(dx, dy, dz)
+                        val state = level.getBlockState(pos)
+                        if (!state.isAir) blocks[pos] = state
+                    }
+                }
+            }
+            if (stands.isEmpty() && blocks.isEmpty()) return null
+
+            val instance = GreenhouseElementInstance(
+                definition.skyblockId?.id ?: definition.name,
+                slot = slot,
+                growthStage = GrowthStageInfo.Known(definition.stagePlacedAt),
+                cropDef = definition
+            )
+            instance.placed = true
+            instance.firstSeenStage = definition.stagePlacedAt
+
+            return ElementRuntimeState(instance = instance, standEntities = stands, blocksMap = blocks)
         }
 
         /** Every stand sharing the space a crop of [footprint] occupies from [origin]. */

@@ -151,7 +151,28 @@ object Duskbloom : CropDefinitionProvider {
             )
 
 
-        ),
+        ,
+            // as placed, the stem still at four
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = wheatState(4)
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, -0.4375, 0.0),
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
+                        hashString = "7dca7951b36f5f749e883758b379c8008ca55f245987e4ef0c3788cf0c903d5",
+                        isSmall = false
+                    )
+                ),
+                8..8,
+                placed = true
+            )),
         maxStage = 8,
         isMutation = true
     )

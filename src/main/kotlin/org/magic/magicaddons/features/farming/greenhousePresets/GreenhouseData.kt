@@ -120,6 +120,15 @@ object GreenhouseData {
     /** Every placement still waiting on the plot: several go down in a row faster than a scan. */
     private val placements = mutableListOf<Placement>()
 
+    /**
+     * Every crop put down this session, by the soil block under it. A placed mutation with no
+     * placed look recorded matches nothing, so this is how the scan still knows what stands there.
+     */
+    private val placedHere = mutableMapOf<BlockPos, CropDefinition>()
+
+    /** The crop the player put down on the soil at [soil] this session, if any. */
+    fun placedHereAt(soil: BlockPos): CropDefinition? = placedHere[BlockPos(soil.x, GREENHOUSE_SOIL_Y, soil.z)]
+
     /** How long a placement the server never confirmed is still worth waiting for. */
     private val PLACE_WINDOW: Duration = Duration.ofSeconds(5)
 
@@ -950,6 +959,7 @@ object GreenhouseData {
             val pos = event.hit.blockPos.relative(event.hit.direction)
 
             placements.add(Placement(foundCrop, pos, Instant.now()))
+            placedHere[BlockPos(pos.x, GREENHOUSE_SOIL_Y, pos.z)] = foundCrop
             requestReconcile()
 
             return
