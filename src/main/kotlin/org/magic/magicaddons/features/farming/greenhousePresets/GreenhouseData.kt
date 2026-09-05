@@ -1068,9 +1068,14 @@ object GreenhouseData {
     fun claimPlacedPlant(instance: GreenhouseElementInstance) {
         instance.placed = true
         instance.age = 0L
-        // placed, it is finished and drinks nothing, so it carries no level at all
-        instance.waterLevel = null
-        instance.waterExact = false
+        // a placed mutation is finished and drinks nothing; a placed base crop starts dry and grows
+        if (instance.needsWater) {
+            instance.waterLevel = 0
+            instance.waterExact = true
+        } else {
+            instance.waterLevel = null
+            instance.waterExact = false
+        }
         instance.firstSeenStage = instance.lowestStage
     }
 

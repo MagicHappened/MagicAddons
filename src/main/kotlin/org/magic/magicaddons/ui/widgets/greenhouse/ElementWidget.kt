@@ -95,14 +95,14 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, Focus
         fun valueFor(instance: GreenhouseElementInstance): String? = when (this) {
             // a plant with one stage never grows, so there is no progress to report on it. Fire,
             // dead plants and the mutations placed by hand are all like this
-            GrowthStage -> if (instance.placed) "Placed" else if (instance.cropDef.maxStage <= 1) null else
+            GrowthStage -> if (instance.finishedByPlacing) "Placed" else if (instance.cropDef.maxStage <= 1) null else
                 when (val stage = instance.growthStage) {
                 is GrowthStageInfo.Known -> "${stage.stage}/${instance.cropDef.maxStage}"
                 // a guessed stage is worth showing, as long as it does not look measured
                 is GrowthStageInfo.Estimated -> "~${stage.range.first}-${stage.range.last}"
                 null -> null
             }
-            WaterLevel -> if (instance.placed) null else instance.waterLevel?.let { "$it%" }
+            WaterLevel -> if (!instance.needsWater) null else instance.waterLevel?.let { "$it%" }
             DecayTime -> decayRemainingMs(instance)?.let { readableDuration(it) }
         }
     }
@@ -379,7 +379,7 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, Focus
             }
 
             if (!inPreset) {
-                if (instance.placed) add(labelled("Growth", "Placed")) else growthText?.let { add(labelled("Growth", it)) }
+                if (instance.finishedByPlacing) add(labelled("Growth", "Placed")) else growthText?.let { add(labelled("Growth", it)) }
 
                 // a plant that never drinks has no water level worth a line of its own
                 if (instance.needsWater) {
