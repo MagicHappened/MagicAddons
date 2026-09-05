@@ -21,6 +21,9 @@ class HudPart(
     var width: Int = 0
     var height: Int = 0
 
+    val minWidth: Int get() = HudPainter.minWidth(state.scale)
+    val minHeight: Int get() = HudPainter.minHeight(state.scale)
+
     fun contains(mouseX: Double, mouseY: Double): Boolean =
         mouseX.toInt() in x until x + width && mouseY.toInt() in y until y + height
 }
@@ -33,32 +36,44 @@ class HudBox(
     val group: GroupState?,
     val parts: List<HudPart>,
     val width: Int,
-    /** As tall as the content makes it; the box itself may have been dragged taller. */
-    val contentHeight: Int,
+    val height: Int,
     val alpha: Float
 ) {
-    val height: Int = maxOf(contentHeight, when (placed) {
-        is GroupState -> placed.height
-        is ElementState -> placed.height
-        else -> null
-    } ?: 0)
+    var x: Int = 0
+    var y: Int = 0
 
     val centerX: Int get() = x + width / 2
     val centerY: Int get() = y + height / 2
 
-    var x: Int = 0
-    var y: Int = 0
+    val stacking: Stacking? get() = group?.stacking
 
-    /** Whether the corners may be dragged: a lone element, or a group stacked downward. */
-    val resizable: Boolean get() = group == null || group.stacking == Stacking.VERTICAL
+    /** The narrowest and shortest the box can be dragged, its parts at their own limits. */
+    val minWidth: Int
+        get() = if (stacking == Stacking.HORIZONTAL) parts.sumOf { it.minWidth } + (parts.size - 1) * HudScene.DIVIDER else parts.maxOf { it.minWidth }
+    val minHeight: Int
+        get() = if (stacking == Stacking.VERTICAL) parts.sumOf { it.minHeight } + (parts.size - 1) * HudScene.DIVIDER else parts.maxOf { it.minHeight }
 
     fun contains(mouseX: Double, mouseY: Double): Boolean =
         mouseX.toInt() in x until x + width && mouseY.toInt() in y until y + height
+
+    /** Which line between two parts the mouse is on, as the index of the part above or left of it. */
+    fun dividerAt(mouseX: Double, mouseY: Double): Int? {
+        if (!contains(mouseX, mouseY)) return null
+        for (index in 1 until parts.size) {
+            val part = parts[index]
+            val along = if (stacking == Stacking.HORIZONTAL) mouseX.toInt() - (part.x - HudScene.DIVIDER) else mouseY.toInt() - (part.y - HudScene.DIVIDER)
+            if (along in -HudScene.DIVIDER_REACH..HudScene.DIVIDER_REACH) return index - 1
+        }
+        return null
+    }
 }
 
 class HudAnchorPoint(val state: AnchorState) {
     var x: Int = 0
     var y: Int = 0
+
+    fun contains(mouseX: Double, mouseY: Double): Boolean =
+        mouseX.toInt() in x - HudScene.ANCHOR_HALF..x + HudScene.ANCHOR_HALF && mouseY.toInt() in y - HudScene.ANCHOR_HALF..y + HudScene.ANCHOR_HALF
 }
 
 /**
@@ -74,9 +89,7 @@ class HudScene(val boxes: List<HudBox>, val anchors: List<HudAnchorPoint>) {
     fun partAt(mouseX: Double, mouseY: Double): HudPart? =
         boxAt(mouseX, mouseY)?.parts?.firstOrNull { it.contains(mouseX, mouseY) }
 
-    fun anchorAt(mouseX: Double, mouseY: Double): HudAnchorPoint? = anchors.lastOrNull {
-        mouseX.toInt() in it.x - ANCHOR_REACH..it.x + ANCHOR_REACH && mouseY.toInt() in it.y - ANCHOR_REACH..it.y + ANCHOR_REACH
-    }
+    fun anchorAt(mouseX: Double, mouseY: Double): HudAnchorPoint? = anchors.lastOrNull { it.contains(mouseX, mouseY) }
 
     /** The rectangle of [id]: a box's, or an anchor's point with no size. */
     fun rectOf(id: String): IntArray? =
@@ -88,26 +101,34 @@ class HudScene(val boxes: List<HudBox>, val anchors: List<HudAnchorPoint>) {
         anchors.forEach { put(it.state.id, intArrayOf(it.x, it.y, 0, 0)) }
     }
 
+    /** The boxes and their content; a part's text is cut off at the part's own edge. */
     fun draw(graphics: GuiGraphicsExtractor) {
         boxes.forEach { box ->
             HudPainter.drawPanel(graphics, box.x, box.y, box.width, box.height, box.alpha)
             box.parts.forEachIndexed { index, part ->
                 if (index > 0 && box.alpha > 0f) {
                     val line = HudPainter.faded(Common.UI.BORDER_COLOR, box.alpha)
-                    if (box.group?.stacking == Stacking.HORIZONTAL) {
+                    if (box.stacking == Stacking.HORIZONTAL) {
                         graphics.fill(part.x - DIVIDER, box.y, part.x, box.y + box.height, line)
                     } else {
                         graphics.fill(box.x, part.y - DIVIDER, box.x + box.width, part.y, line)
                     }
                 }
+                graphics.enableScissor(part.x, part.y, part.x + part.width, part.y + part.height)
                 HudPainter.draw(graphics, part.laid, part.x + HudPainter.PAD, part.y + HudPainter.PAD, part.innerUnits, part.state.scale, part.element.shadow)
+                graphics.disableScissor()
             }
         }
     }
 
     companion object {
         const val DIVIDER: Int = 1
-        const val ANCHOR_REACH: Int = 5
+
+        /** How far from a divider line the mouse still counts as on it. */
+        const val DIVIDER_REACH: Int = 3
+
+        /** Half the side of the box an anchor is drawn and grabbed as, in the editor. */
+        const val ANCHOR_HALF: Int = 6
 
         /** Lays the whole hud out for a screen of [screenWidth] by [screenHeight]; with [sample], every element shows its sample. */
         fun build(layout: HudLayout, screenWidth: Int, screenHeight: Int, sample: Boolean): HudScene {
@@ -130,12 +151,7 @@ class HudScene(val boxes: List<HudBox>, val anchors: List<HudAnchorPoint>) {
                 if (element.id in grouped) return@forEach
                 val state = layout.stateOf(element)
                 val width = (state.width ?: HudPainter.naturalWidth(content, state.scale)).coerceAtLeast(HudPainter.minWidth(state.scale))
-                val inner = HudPainter.innerUnits(width, state.scale)
-                val laid = HudPainter.lay(content, inner)
-                val part = HudPart(element, state, laid, inner).also {
-                    it.width = width
-                    it.height = HudPainter.height(laid, state.scale)
-                }
+                val part = part(element, state, content, width, state.height)
                 boxes.add(HudBox(element.id, state, null, listOf(part), width, part.height, state.alpha))
             }
 
@@ -145,38 +161,39 @@ class HudScene(val boxes: List<HudBox>, val anchors: List<HudAnchorPoint>) {
             return scene
         }
 
+        /** A part [width] wide, as tall as [height] asks or as its content needs, never under a line of text. */
+        private fun part(element: HudElement, state: ElementState, content: HudContent, width: Int, height: Int?): HudPart {
+            val inner = HudPainter.innerUnits(width, state.scale)
+            val laid = HudPainter.lay(content, inner)
+            return HudPart(element, state, laid, inner).also {
+                it.width = width
+                it.height = (height ?: HudPainter.height(laid, state.scale)).coerceAtLeast(it.minHeight)
+            }
+        }
+
         private fun groupBox(layout: HudLayout, group: GroupState, members: List<Pair<HudElement, HudContent>>): HudBox {
             val parts: List<HudPart>
             val width: Int
             val height: Int
 
             if (group.stacking == Stacking.VERTICAL) {
+                // one width for all, each part as tall as it is
                 val natural = members.maxOf { (element, content) -> HudPainter.naturalWidth(content, layout.stateOf(element).scale) }
                 val minimum = members.maxOf { (element, _) -> HudPainter.minWidth(layout.stateOf(element).scale) }
                 width = (group.width ?: natural).coerceAtLeast(minimum)
-                parts = members.map { (element, content) ->
-                    val state = layout.stateOf(element)
-                    val inner = HudPainter.innerUnits(width, state.scale)
-                    val laid = HudPainter.lay(content, inner)
-                    HudPart(element, state, laid, inner).also {
-                        it.width = width
-                        it.height = HudPainter.height(laid, state.scale)
-                    }
-                }
+                parts = members.map { (element, content) -> part(element, layout.stateOf(element), content, width, layout.stateOf(element).height) }
                 height = parts.sumOf { it.height } + (parts.size - 1) * DIVIDER
             } else {
+                // each part as wide as it is, one height for all
                 parts = members.map { (element, content) ->
                     val state = layout.stateOf(element)
                     val own = (state.width ?: HudPainter.naturalWidth(content, state.scale)).coerceAtLeast(HudPainter.minWidth(state.scale))
-                    val inner = HudPainter.innerUnits(own, state.scale)
-                    val laid = HudPainter.lay(content, inner)
-                    HudPart(element, state, laid, inner).also {
-                        it.width = own
-                        it.height = HudPainter.height(laid, state.scale)
-                    }
+                    part(element, state, content, own, null)
                 }
+                val shared = (group.height ?: parts.maxOf { it.height }).coerceAtLeast(parts.maxOf { it.minHeight })
+                parts.forEach { it.height = shared }
                 width = parts.sumOf { it.width } + (parts.size - 1) * DIVIDER
-                height = parts.maxOf { it.height }
+                height = shared
             }
             return HudBox(group.id, group, group, parts, width, height, group.alpha)
         }
@@ -227,7 +244,7 @@ class HudScene(val boxes: List<HudBox>, val anchors: List<HudAnchorPoint>) {
             box.parts.forEach { part ->
                 part.x = partX
                 part.y = partY
-                if (box.group?.stacking == Stacking.HORIZONTAL) partX += part.width + DIVIDER else partY += part.height + DIVIDER
+                if (box.stacking == Stacking.HORIZONTAL) partX += part.width + DIVIDER else partY += part.height + DIVIDER
             }
         }
         anchors.forEach { anchor ->

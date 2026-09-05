@@ -57,6 +57,9 @@ object HudPainter {
 
     fun minWidth(scale: Float): Int = (MIN_INNER_UNITS * scale).roundToInt() + PAD * 2
 
+    /** One line of text and the padding: a box is never dragged shorter than that. */
+    fun minHeight(scale: Float): Int = (font.lineHeight * scale).roundToInt() + PAD * 2
+
     fun innerUnits(width: Int, scale: Float): Int = ((width - PAD * 2) / scale).toInt()
 
     fun height(laid: Laid, scale: Float): Int = (laid.heightUnits * scale).roundToInt() + PAD * 2

@@ -51,6 +51,9 @@ class HudEditorScreen : Screen(Component.literal("HUD Editor")), OverlayContext 
     private sealed class Drag(val id: String) {
         class Move(id: String, val offsetX: Int, val offsetY: Int) : Drag(id)
         class Resize(id: String, val leftSide: Boolean, val topSide: Boolean, val fixedX: Int, val fixedY: Int) : Drag(id)
+
+        /** The line between parts [index] and the next of a box, with where it started and how big each part was. */
+        class Divider(id: String, val index: Int, val start: Int, val sizeA: Int, val sizeB: Int) : Drag(id)
     }
 
     /** The box or anchor last clicked, framed and moved by the arrow keys until something else is. */
@@ -89,11 +92,10 @@ class HudEditorScreen : Screen(Component.literal("HUD Editor")), OverlayContext 
 
     /** Which corner dot the mouse is on, as whether it is a left one and whether a top one. */
     private fun cornerAt(box: HudBox, x: Double, y: Double): Pair<Boolean, Boolean>? {
-        if (!box.resizable) return null
         return listOf(true to true, true to false, false to true, false to false).firstOrNull { (left, top) ->
             val cx = if (left) box.x else box.x + box.width
             val cy = if (top) box.y else box.y + box.height
-            abs(x - cx) <= HANDLE && abs(y - cy) <= HANDLE
+            abs(x - cx) <= HANDLE_REACH && abs(y - cy) <= HANDLE_REACH
         }
     }
 
@@ -119,17 +121,26 @@ class HudEditorScreen : Screen(Component.literal("HUD Editor")), OverlayContext 
         rebuild()
     }
 
-    private fun minWidthOf(box: HudBox): Int = box.parts.maxOf { HudPainter.minWidth(it.state.scale) }
-
     private fun resizeTo(box: HudBox, drag: Drag.Resize, mouseX: Int, mouseY: Int) {
-        val wantedWidth = (if (drag.leftSide) drag.fixedX - mouseX else mouseX - box.x).coerceIn(minWidthOf(box), width)
-        // never shorter than what it holds; taller is kept for whatever fills it one day
-        val wantedHeight = (if (drag.topSide) drag.fixedY - mouseY else mouseY - box.y).coerceIn(box.contentHeight, height)
+        val wantedWidth = (if (drag.leftSide) drag.fixedX - mouseX else mouseX - box.x).coerceIn(box.minWidth, width)
+        val wantedHeight = (if (drag.topSide) drag.fixedY - mouseY else mouseY - box.y).coerceIn(box.minHeight, height)
         val placed = box.placed
-        val storedHeight = wantedHeight.takeIf { it > box.contentHeight }
         when (placed) {
-            is GroupState -> { placed.width = wantedWidth; placed.height = storedHeight }
-            is ElementState -> { placed.width = wantedWidth; placed.height = storedHeight }
+            is ElementState -> {
+                placed.width = wantedWidth
+                placed.height = wantedHeight
+            }
+            is GroupState -> when (placed.stacking) {
+                // the shared side is the group's; the stacked side is shared out in proportion
+                Stacking.VERTICAL -> {
+                    placed.width = wantedWidth
+                    share(box.parts, wantedHeight - (box.parts.size - 1) * HudScene.DIVIDER, { it.height }, { it.minHeight }) { part, size -> part.state.height = size }
+                }
+                Stacking.HORIZONTAL -> {
+                    placed.height = wantedHeight
+                    share(box.parts, wantedWidth - (box.parts.size - 1) * HudScene.DIVIDER, { it.width }, { it.minWidth }) { part, size -> part.state.width = size }
+                }
+            }
             else -> return
         }
         val left = if (drag.leftSide) drag.fixedX - wantedWidth else box.x
@@ -141,6 +152,36 @@ class HudEditorScreen : Screen(Component.literal("HUD Editor")), OverlayContext 
             tie.dy = top - target[1]
         } else {
             placed.placeAt(left, top, wantedWidth, wantedHeight, width, height)
+        }
+        rebuild()
+    }
+
+    /** Gives [parts] [total] between them in the proportion they have now, none under its minimum. */
+    private fun share(parts: List<HudPart>, total: Int, size: (HudPart) -> Int, minimum: (HudPart) -> Int, set: (HudPart, Int) -> Unit) {
+        val current = parts.sumOf { size(it) }.coerceAtLeast(1)
+        var left = total
+        parts.forEachIndexed { index, part ->
+            val wanted = if (index == parts.size - 1) left else (size(part).toFloat() / current * total).roundToInt()
+            val given = wanted.coerceAtLeast(minimum(part))
+            set(part, given)
+            left -= given
+        }
+    }
+
+    /** Slides the line between two parts, one growing by what the other gives up. */
+    private fun dragDivider(box: HudBox, drag: Drag.Divider, mouse: Int) {
+        val a = box.parts[drag.index]
+        val b = box.parts[drag.index + 1]
+        val vertical = box.stacking == Stacking.VERTICAL
+        val minA = if (vertical) a.minHeight else a.minWidth
+        val minB = if (vertical) b.minHeight else b.minWidth
+        val moved = (mouse - drag.start).coerceIn(minA - drag.sizeA, drag.sizeB - minB)
+        if (vertical) {
+            a.state.height = drag.sizeA + moved
+            b.state.height = drag.sizeB - moved
+        } else {
+            a.state.width = drag.sizeA + moved
+            b.state.width = drag.sizeB - moved
         }
         rebuild()
     }
@@ -198,14 +239,19 @@ class HudEditorScreen : Screen(Component.literal("HUD Editor")), OverlayContext 
             val rects = scene.rects()
             group.members.firstOrNull()?.let { lastId ->
                 val last = layout.elements[lastId] ?: return@let
+                val lastPart = scene.boxOf(group.id)?.parts?.firstOrNull { it.element.id == lastId }
                 last.positioning = group.positioning
-                last.x = group.x
-                last.y = group.y
-                last.fx = group.fx
-                last.fy = group.fy
-                last.tie = group.tie
                 last.alpha = group.alpha
-                last.width = group.width
+                if (lastPart != null) {
+                    last.placeAt(lastPart.x, lastPart.y, lastPart.width, lastPart.height, width, height)
+                    last.tie = group.tie?.let { Tie(it.target, it.dx + lastPart.x - group.x, it.dy + lastPart.y - group.y) }
+                } else {
+                    last.x = group.x
+                    last.y = group.y
+                    last.fx = group.fx
+                    last.fy = group.fy
+                    last.tie = group.tie
+                }
                 (layout.elements.values + layout.groups + layout.anchors).forEach { placed ->
                     if (placed.tie?.target == group.id) placed.tie?.target = lastId
                 }
@@ -261,6 +307,12 @@ class HudEditorScreen : Screen(Component.literal("HUD Editor")), OverlayContext 
         rebuild()
     }
 
+    /** Takes off every tie that hangs from [id]. */
+    private fun untieAllFrom(id: String) {
+        layout.untieFrom(id, scene.rects(), width, height)
+        rebuild()
+    }
+
     private fun openConfig(part: HudPart) {
         val target = part.element.configTarget ?: return
         HudLayoutStore.save()
@@ -305,7 +357,7 @@ class HudEditorScreen : Screen(Component.literal("HUD Editor")), OverlayContext 
     // ------------------------------------------------------------------ drawing
 
     override fun extractBackground(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, deltaTick: Float) {
-        graphics.fill(0, 0, width, height, DIM)
+        graphics.fill(0, 0, width, height, Common.UI.SCREEN_DIM_COLOR)
     }
 
     override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
@@ -323,6 +375,7 @@ class HudEditorScreen : Screen(Component.literal("HUD Editor")), OverlayContext 
         shown?.takeIf { it !== selected }?.let { drawHandles(graphics, it) }
         drawAnchors(graphics)
         drawTies(graphics, listOfNotNull(shown?.id, selectedId).distinct())
+        (draggedBox() ?: hovered)?.let { drawDividerHandle(graphics, it) }
         drawPicking(graphics)
         mergeTarget?.let { (box, edge) -> drawMergeEdge(graphics, box, edge) }
 
@@ -340,19 +393,46 @@ class HudEditorScreen : Screen(Component.literal("HUD Editor")), OverlayContext 
 
     private fun drawHandles(graphics: GuiGraphicsExtractor, box: HudBox) {
         graphics.drawBorder(box.x, box.y, box.x + box.width, box.y + box.height, 1, Common.UI.SELECTED_FRAME_COLOR)
-        if (!box.resizable) return
         listOf(box.x to box.y, box.x + box.width to box.y, box.x to box.y + box.height, box.x + box.width to box.y + box.height).forEach { (cx, cy) ->
             graphics.fill(cx - HANDLE, cy - HANDLE, cx + HANDLE + 1, cy + HANDLE + 1, Common.UI.SELECTED_FRAME_COLOR)
         }
     }
 
+    /** Each anchor as a small box with a cross in it, framed amber when it is hovered or selected. */
     private fun drawAnchors(graphics: GuiGraphicsExtractor) {
+        val half = HudScene.ANCHOR_HALF
         scene.anchors.forEach { anchor ->
             val over = scene.anchorAt(mouseX.toDouble(), mouseY.toDouble()) === anchor || anchor.state.id == selectedId
+            HudPainter.drawPanel(graphics, anchor.x - half, anchor.y - half, half * 2 + 1, half * 2 + 1, anchor.state.alpha)
+            if (over) graphics.drawBorder(anchor.x - half, anchor.y - half, anchor.x + half + 1, anchor.y + half + 1, 1, Common.UI.SELECTED_FRAME_COLOR)
             val color = if (over) Common.UI.TEXT_COLOR else Common.UI.SELECTED_FRAME_COLOR
             graphics.fill(anchor.x - ANCHOR_ARM, anchor.y, anchor.x + ANCHOR_ARM + 1, anchor.y + 1, color)
             graphics.fill(anchor.x, anchor.y - ANCHOR_ARM, anchor.x + 1, anchor.y + ANCHOR_ARM + 1, color)
-            graphics.text(font, Component.literal(nameOf(anchor.state.id)), anchor.x + ANCHOR_ARM + 3, anchor.y - font.lineHeight / 2, Common.UI.TEXT_DIM_COLOR, true)
+            graphics.text(font, Component.literal(nameOf(anchor.state.id)), anchor.x + half + 3, anchor.y - font.lineHeight / 2, Common.UI.TEXT_DIM_COLOR, true)
+        }
+    }
+
+    /** The line between two parts lit with arrows either way while the mouse is on it. */
+    private fun drawDividerHandle(graphics: GuiGraphicsExtractor, box: HudBox) {
+        val index = (drag as? Drag.Divider)?.index ?: box.dividerAt(mouseX.toDouble(), mouseY.toDouble()) ?: return
+        val next = box.parts.getOrNull(index + 1) ?: return
+        val color = Common.UI.SELECTED_FRAME_COLOR
+        if (box.stacking == Stacking.HORIZONTAL) {
+            val lineX = next.x - HudScene.DIVIDER
+            graphics.fill(lineX - 1, box.y, lineX + 2, box.y + box.height, color)
+            val cy = box.centerY
+            for (i in 0..2) {
+                graphics.fill(lineX - 4 - i, cy - i, lineX - 3 - i, cy + i + 1, color)
+                graphics.fill(lineX + 4 + i, cy - i, lineX + 5 + i, cy + i + 1, color)
+            }
+        } else {
+            val lineY = next.y - HudScene.DIVIDER
+            graphics.fill(box.x, lineY - 1, box.x + box.width, lineY + 2, color)
+            val cx = box.centerX
+            for (i in 0..2) {
+                graphics.fill(cx - i, lineY - 4 - i, cx + i + 1, lineY - 3 - i, color)
+                graphics.fill(cx - i, lineY + 4 + i, cx + i + 1, lineY + 5 + i, color)
+            }
         }
     }
 
@@ -361,9 +441,17 @@ class HudEditorScreen : Screen(Component.literal("HUD Editor")), OverlayContext 
         scene.boxOf(id)?.let { intArrayOf(it.centerX, it.centerY) }
             ?: scene.anchors.firstOrNull { it.state.id == id }?.let { intArrayOf(it.x, it.y) }
 
+    /** Everything tied to [id]. */
+    private fun tiedTo(id: String): List<String> = buildList {
+        layout.elements.forEach { (key, state) -> if (state.tie?.target == id) add(key) }
+        layout.groups.forEach { if (it.tie?.target == id) add(it.id) }
+        layout.anchors.forEach { if (it.tie?.target == id) add(it.id) }
+    }
+
     /** A line from the middle of a tied thing to the middle of what it hangs from, with a dot at that end. */
     private fun drawTies(graphics: GuiGraphicsExtractor, shownIds: List<String>) {
-        (shownIds + scene.anchors.map { it.state.id }).distinct().forEach { id ->
+        val both = shownIds + shownIds.flatMap { tiedTo(it) }
+        (both + scene.anchors.map { it.state.id }).distinct().forEach { id ->
             val tie = layout.placed(id)?.tie ?: return@forEach
             val from = centerOf(id) ?: return@forEach
             val to = centerOf(tie.target) ?: return@forEach
@@ -410,7 +498,7 @@ class HudEditorScreen : Screen(Component.literal("HUD Editor")), OverlayContext 
         if (tie != null && layout.placed(tie.target) != null) {
             return "Tied to ${nameOf(tie.target)}: ${signed(tie.dx)}, ${signed(tie.dy)}"
         }
-        if (placed.positioning == Positioning.ABSOLUTE) return "x ${rect[0]}, y ${rect[1]}"
+        if (placed.positioning == Positioning.ABSOLUTE) return "x - ${rect[0]}, y - ${rect[1]}"
 
         val fromLeft = rect[0]
         val fromRight = width - (rect[0] + rect[2])
@@ -423,23 +511,28 @@ class HudEditorScreen : Screen(Component.literal("HUD Editor")), OverlayContext 
 
     private fun signed(n: Int): String = if (n >= 0) "+$n" else "$n"
 
+    private fun transparency(alpha: Float): Int = ((1f - alpha) * 100).roundToInt()
+
     private fun drawReadout(graphics: GuiGraphicsExtractor, box: HudBox, part: HudPart) {
         val lines = buildList {
             add(part.element.name to Common.UI.ACCENT_COLOR)
             if (box.group != null) add("In a box with ${box.parts.size - 1} other${if (box.parts.size == 2) "" else "s"}" to Common.UI.TEXT_DIM_COLOR)
             add((if (box.placed.positioning == Positioning.RELATIVE && box.placed.tie == null) "Relative: " else "") + describe(box.placed, intArrayOf(box.x, box.y, box.width, box.height)) to Common.UI.TEXT_COLOR)
             add("Scale ${"%.1f".format(part.state.scale)}" to Common.UI.TEXT_COLOR)
-            add("Background ${(box.alpha * 100).roundToInt()}%" to Common.UI.TEXT_COLOR)
+            add("Transparency ${transparency(box.alpha)}%" to Common.UI.TEXT_COLOR)
+            tiedTo(box.id).takeIf { it.isNotEmpty() }?.let { add("Holds ${it.joinToString { name -> nameOf(name) }}" to Common.UI.TEXT_DIM_COLOR) }
         }
         drawLines(graphics, lines, box.x, box.y + box.height + Common.UI.SPACING, box.y)
     }
 
     private fun drawAnchorReadout(graphics: GuiGraphicsExtractor, anchor: AnchorState, x: Int, y: Int) {
-        val lines = listOf(
-            nameOf(anchor.id) to Common.UI.ACCENT_COLOR,
-            describe(anchor, intArrayOf(x, y, 0, 0)) to Common.UI.TEXT_COLOR
-        )
-        drawLines(graphics, lines, x + ANCHOR_ARM + 3, y + font.lineHeight, y)
+        val lines = buildList {
+            add(nameOf(anchor.id) to Common.UI.ACCENT_COLOR)
+            add(describe(anchor, intArrayOf(x, y, 0, 0)) to Common.UI.TEXT_COLOR)
+            add("Transparency ${transparency(anchor.alpha)}%" to Common.UI.TEXT_COLOR)
+            tiedTo(anchor.id).takeIf { it.isNotEmpty() }?.let { add("Holds ${it.joinToString { name -> nameOf(name) }}" to Common.UI.TEXT_DIM_COLOR) }
+        }
+        drawLines(graphics, lines, x + HudScene.ANCHOR_HALF + 3, y + HudScene.ANCHOR_HALF + Common.UI.SPACING, y - HudScene.ANCHOR_HALF)
     }
 
     /** A small panel of lines under something, or above it when the bottom of the screen is near. */
@@ -461,7 +554,7 @@ class HudEditorScreen : Screen(Component.literal("HUD Editor")), OverlayContext 
         val hint = when {
             picking != null && candidate != null -> "Click to tie ${nameOf(picking!!)} to ${nameOf(candidate)}"
             picking != null -> "Click what to tie ${nameOf(picking!!)} to, Escape to stop"
-            selectedId != null -> "Arrow keys nudge ${nameOf(selectedId!!)} · drag to move · corners resize · wheel fades · shift wheel scales · right click for more · R resets"
+            selectedId != null -> "Arrow keys nudge ${nameOf(selectedId!!)} · corners resize · wheel fades · shift wheel scales · middle click absolute or relative · shift middle click lets go · right click for more · R resets"
             else -> "Click to select · drag to move · corners resize · drop on another to merge · wheel fades · shift wheel scales · right click for more · R resets"
         }
         val hintWidth = font.width(hint)
@@ -503,6 +596,16 @@ class HudEditorScreen : Screen(Component.literal("HUD Editor")), OverlayContext 
             }
             return true
         }
+        if (event.button() == 2) {
+            val id = anchor?.state?.id ?: box?.id ?: return false
+            when {
+                shiftDown() -> untieAllFrom(id)
+                layout.placed(id)?.tie != null -> untie(id)
+                else -> togglePositioning(id)
+            }
+            HudLayoutStore.save()
+            return true
+        }
         if (event.button() != 0) return false
 
         if (anchor != null) {
@@ -520,6 +623,13 @@ class HudEditorScreen : Screen(Component.literal("HUD Editor")), OverlayContext 
             drag = Drag.Resize(box.id, leftSide, topSide, if (leftSide) box.x + box.width else box.x, if (topSide) box.y + box.height else box.y)
             return true
         }
+        box.dividerAt(x, y)?.let { index ->
+            val a = box.parts[index]
+            val b = box.parts[index + 1]
+            drag = if (box.stacking == Stacking.VERTICAL) Drag.Divider(box.id, index, y.toInt(), a.height, b.height)
+            else Drag.Divider(box.id, index, x.toInt(), a.width, b.width)
+            return true
+        }
         drag = Drag.Move(box.id, x.toInt() - box.x, y.toInt() - box.y)
         return true
     }
@@ -532,6 +642,7 @@ class HudEditorScreen : Screen(Component.literal("HUD Editor")), OverlayContext 
                 mergeTarget = mergeTargetFor(current.id, event.x, event.y)
             }
             is Drag.Resize -> scene.boxOf(current.id)?.let { resizeTo(it, current, event.x.toInt(), event.y.toInt()) }
+            is Drag.Divider -> scene.boxOf(current.id)?.let { dragDivider(it, current, if (it.stacking == Stacking.VERTICAL) event.y.toInt() else event.x.toInt()) }
         }
         return true
     }
@@ -561,8 +672,13 @@ class HudEditorScreen : Screen(Component.literal("HUD Editor")), OverlayContext 
 
     override fun mouseScrolled(mouseX: Double, mouseY: Double, scrollX: Double, scrollY: Double): Boolean {
         if (overlays.any { it.mouseScrolled(mouseX, mouseY, scrollX, scrollY) }) return true
-        val box = scene.boxAt(mouseX, mouseY) ?: return false
         val step = if (scrollY > 0) 1 else -1
+        scene.anchorAt(mouseX, mouseY)?.let { anchor ->
+            anchor.state.alpha = ((anchor.state.alpha + step * ALPHA_STEP) * 100).roundToInt().coerceIn(0, 100) / 100f
+            HudLayoutStore.save()
+            return true
+        }
+        val box = scene.boxAt(mouseX, mouseY) ?: return false
 
         if (shiftDown()) {
             val part = scene.partAt(mouseX, mouseY) ?: return true
@@ -635,8 +751,10 @@ class HudEditorScreen : Screen(Component.literal("HUD Editor")), OverlayContext 
     }
 
     private companion object {
-        const val DIM: Int = 0x60000000
         const val HANDLE: Int = 2
+
+        /** How far from a corner dot the mouse still grabs it. */
+        const val HANDLE_REACH: Int = 5
         const val ANCHOR_ARM: Int = 4
         const val ALPHA_STEP: Float = 0.05f
         const val SCALE_STEP: Float = 0.1f

@@ -40,7 +40,6 @@ object SafariHelper : HighlightFeature() {
     val hud: HudElement = object : HudElement("safari", "Safari Uniques") {
         override val defaultX: Int = 20
         override val defaultY: Int = 20
-        override val defaultAlpha: Float = 0f
         override val shadow: Boolean = true
 
         override val configTarget: ConfigTarget

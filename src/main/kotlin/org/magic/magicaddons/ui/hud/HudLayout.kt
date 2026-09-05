@@ -45,7 +45,10 @@ class ElementState : Placed() {
     var alpha: Float = 1f
 }
 
-class AnchorState(val id: String) : Placed()
+class AnchorState(val id: String) : Placed() {
+    /** How solid the anchor's box is drawn in the editor; it is never drawn in the game. */
+    var alpha: Float = 0.6f
+}
 
 class GroupState(val id: String, val members: MutableList<String>, var stacking: Stacking) : Placed() {
     var width: Int? = null
