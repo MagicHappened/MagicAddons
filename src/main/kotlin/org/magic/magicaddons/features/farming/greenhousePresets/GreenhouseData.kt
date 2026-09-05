@@ -129,6 +129,19 @@ object GreenhouseData {
     /** The crop the player put down on the soil at [soil] this session, if any. */
     fun placedHereAt(soil: BlockPos): CropDefinition? = placedHere[BlockPos(soil.x, GREENHOUSE_SOIL_Y, soil.z)]
 
+    /**
+     * The soil at [soil] no longer holds what was put down there: a recorded look has matched it,
+     * or nothing stands there any more. Kept, the entry built phantoms out of the next plant's parts.
+     */
+    fun forgetPlacementAt(soil: BlockPos) {
+        placedHere.remove(BlockPos(soil.x, GREENHOUSE_SOIL_Y, soil.z))
+    }
+
+    /** Whether two plants' footprints share a slot, both given by their north-west soil block. */
+    private fun overlaps(aOrigin: BlockPos, a: CropDefinition, bOrigin: BlockPos, b: CropDefinition): Boolean =
+        aOrigin.x < bOrigin.x + b.footprint.width && bOrigin.x < aOrigin.x + a.footprint.width &&
+                aOrigin.z < bOrigin.z + b.footprint.height && bOrigin.z < aOrigin.z + a.footprint.height
+
     /** How long a placement the server never confirmed is still worth waiting for. */
     private val PLACE_WINDOW: Duration = Duration.ofSeconds(5)
 
@@ -965,7 +978,11 @@ object GreenhouseData {
             val pos = aimed.offset(-((footprint.width - 1) / 2), 0, -((footprint.height - 1) / 2))
 
             placements.add(Placement(foundCrop, pos, Instant.now()))
-            placedHere[BlockPos(pos.x, GREENHOUSE_SOIL_Y, pos.z)] = foundCrop
+
+            // nothing can be placed over a plant, so whatever was remembered in the way is gone
+            val soil = BlockPos(pos.x, GREENHOUSE_SOIL_Y, pos.z)
+            placedHere.entries.removeAll { (at, def) -> overlaps(at, def, soil, foundCrop) }
+            placedHere[soil] = foundCrop
             Common.LOGGER.info("[placement] ${foundCrop.name} aimed at (${aimed.x}, ${aimed.z}) filed at (${pos.x}, ${pos.z}) slot ${grid.getSlotAt(pos, false)?.let { "(${it.x}, ${it.y})" }}")
             requestReconcile()
 

@@ -148,7 +148,9 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, Focus
         // the worst case has this plant dead already, and only a scan can settle it: it either finds
         // a dead bush or finds the plant standing, one tick from death
         if (instance.needsWater && (instance.waterLevel ?: 0) <= WaterModel.DEATH) {
-            val size = (width / 3).coerceAtLeast(8)
+            // a third of a single slot, half a slot on anything wider
+            val footprint = instance.cropDef.footprint
+            val size = (if (footprint.width > 1) width / footprint.width / 2 else width / 3).coerceAtLeast(8)
             val markX = widgetX + width - size
             val markY = widgetY
 
