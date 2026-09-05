@@ -141,6 +141,7 @@ class HudEditorScreen : Screen(Component.literal("HUD Editor")), OverlayContext 
         val wantedWidth = (if (drag.leftSide) drag.fixedX - mouseX else mouseX - box.x).coerceIn(box.minWidth, width)
         val wantedHeight = (if (drag.topSide) drag.fixedY - mouseY else mouseY - box.y).coerceIn(box.minHeight, height)
         val placed = box.placed
+        freeze(box)
         when (placed) {
             is ElementState -> {
                 placed.width = wantedWidth
@@ -184,8 +185,50 @@ class HudEditorScreen : Screen(Component.literal("HUD Editor")), OverlayContext 
         }
     }
 
+    /** Holds a box at the size it is drawn, so it no longer follows its content. */
+    private fun freeze(box: HudBox) {
+        when (val placed = box.placed) {
+            is ElementState -> if (placed.dynamic) {
+                placed.dynamic = false
+                placed.width = box.width
+                placed.height = box.height
+            }
+            is GroupState -> if (placed.dynamic) {
+                placed.dynamic = false
+                placed.width = box.width
+                placed.height = box.height
+                box.parts.forEach {
+                    it.state.width = it.width
+                    it.state.height = it.height
+                }
+            }
+            else -> {}
+        }
+    }
+
+    private fun isDynamic(box: HudBox): Boolean = when (val placed = box.placed) {
+        is ElementState -> placed.dynamic
+        is GroupState -> placed.dynamic
+        else -> true
+    }
+
+    /** Switches a box between following its content and holding the size it has now. */
+    private fun toggleDynamic(box: HudBox) {
+        if (isDynamic(box)) {
+            freeze(box)
+        } else {
+            when (val placed = box.placed) {
+                is ElementState -> placed.dynamic = true
+                is GroupState -> placed.dynamic = true
+                else -> {}
+            }
+        }
+        rebuild()
+    }
+
     /** Slides the line between two parts, one growing by what the other gives up. */
     private fun dragDivider(box: HudBox, drag: Drag.Divider, mouse: Int) {
+        freeze(box)
         val a = box.parts[drag.index]
         val b = box.parts[drag.index + 1]
         val vertical = box.stacking == Stacking.VERTICAL
@@ -375,14 +418,20 @@ class HudEditorScreen : Screen(Component.literal("HUD Editor")), OverlayContext 
         val entries = buildList {
             if (part.element.configTarget != null) add(HudMenu.Entry("Open config") { openConfig(part) })
             addAll(placementEntries(box.id))
+            add(HudMenu.Entry(if (isDynamic(box)) "Sizing: fixed" else "Sizing: dynamic") { toggleDynamic(box) })
             if (box.group != null) add(HudMenu.Entry("Split off") { split(part.element.id) })
             add(HudMenu.Entry("Reset") { reset(part.element.id) })
+            if (tiedTo(box.id).isNotEmpty()) add(HudMenu.Entry("Untie all from this") { untieAllFrom(box.id) })
         }
         openMenu(x, y, part.element.name, entries)
     }
 
     private fun menuForAnchor(anchor: AnchorState, x: Int, y: Int) {
-        val entries = placementEntries(anchor.id) + HudMenu.Entry("Remove") { removeAnchor(anchor) }
+        val entries = buildList {
+            addAll(placementEntries(anchor.id))
+            add(HudMenu.Entry("Remove") { removeAnchor(anchor) })
+            if (tiedTo(anchor.id).isNotEmpty()) add(HudMenu.Entry("Untie all from this") { untieAllFrom(anchor.id) })
+        }
         openMenu(x, y, nameOf(anchor.id), entries)
     }
 
@@ -663,6 +712,7 @@ class HudEditorScreen : Screen(Component.literal("HUD Editor")), OverlayContext 
             add((if (box.placed.positioning == Positioning.RELATIVE && box.placed.tie == null) "Relative: " else "") + describe(box.placed, intArrayOf(box.x, box.y, box.width, box.height)) to Common.UI.TEXT_COLOR)
             add("Scale ${"%.1f".format(part.state.scale)}" to Common.UI.TEXT_COLOR)
             add("Transparency ${transparency(box.alpha)}%" to Common.UI.TEXT_COLOR)
+            add((if (isDynamic(box)) "Sizing dynamic" else "Sizing fixed") to Common.UI.TEXT_COLOR)
             tiedTo(box.id).takeIf { it.isNotEmpty() }?.let { add("Holds ${it.joinToString { name -> nameOf(name) }}" to Common.UI.TEXT_DIM_COLOR) }
         }
         drawLines(graphics, lines, box.x, box.y + box.height + Common.UI.SPACING, box.y)
@@ -697,7 +747,7 @@ class HudEditorScreen : Screen(Component.literal("HUD Editor")), OverlayContext 
         val hint = when {
             picking != null && candidate != null -> "Click to tie ${nameOf(picking!!)} to ${nameOf(candidate)}"
             picking != null -> "Click what to tie ${nameOf(picking!!)} to, Escape to stop"
-            selectedId != null -> "Arrows nudge ${nameOf(selectedId!!)} · shift arrows resize from the bottom right, with ctrl from the top left · wheel fades · shift wheel scales · middle click absolute or relative · R resets"
+            selectedId != null -> "Arrows nudge ${nameOf(selectedId!!)} · shift arrows resize from the bottom right, with ctrl from the top left · wheel fades · shift wheel scales · middle click absolute or relative · shift middle click dynamic or fixed size · R resets"
             else -> "Click to select · drag to move · corners resize · drop on another to merge · wheel fades · shift wheel scales · right click for more · R resets"
         }
         val hintWidth = font.width(hint)
@@ -744,7 +794,7 @@ class HudEditorScreen : Screen(Component.literal("HUD Editor")), OverlayContext 
         if (event.button() == 2) {
             val id = anchor?.state?.id ?: box?.id ?: return false
             when {
-                shiftDown() -> untieAllFrom(id)
+                shiftDown() -> box?.let { toggleDynamic(it) }
                 layout.placed(id)?.tie != null -> untie(id)
                 else -> togglePositioning(id)
             }
