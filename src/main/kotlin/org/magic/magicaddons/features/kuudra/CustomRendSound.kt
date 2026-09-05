@@ -35,17 +35,17 @@ object CustomRendSound : Feature() {
 
     override val id: String = "CustomRendSound"
     override val displayName: String = "Custom Rend Sound"
-    override val tooltipMessage: String = "Plays a custom selected sound when a rend pull is detected"
+    override val description: String = "Plays a custom selected sound when a rend pull is detected"
     override val category: String = "kuudra"
     override val baseSetting: BooleanSetting = BooleanSetting(
         displayName = displayName,
-        tooltip = tooltipMessage,
+        description = description,
         value = false,
         children = listOf(
             TextSetting(
                 key = "RendPullSoundPath",
                 displayName = "Sound Path",
-                tooltip = "The sound path for the rend sound",
+                description = "The sound path for the rend sound",
                 value = "minecraft:entity.goat.screaming.death"
             )
         )

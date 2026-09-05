@@ -64,12 +64,12 @@ object HidePowderCoatingParticles : Feature() {
 
     override val id: String = "HidePowderCoatingParticles"
     override val displayName: String = "Powder Coating Hider"
-    override val tooltipMessage: String = "Hides powder coating particles when divan armor is equipped"
+    override val description: String = "Hides powder coating particles when divan armor is equipped"
     override val category: String = "mining"
 
     override val baseSetting: BooleanSetting = BooleanSetting(
             displayName = displayName,
-            tooltip = tooltipMessage,
+            description = description,
             value = false
         )
 

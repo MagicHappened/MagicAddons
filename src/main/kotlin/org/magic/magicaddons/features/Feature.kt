@@ -8,7 +8,7 @@ abstract class Feature {
 
     abstract val id: String
     abstract val displayName: String
-    abstract val tooltipMessage: String
+    abstract val description: String
     abstract val category: String
     abstract val baseSetting: BooleanSetting
 

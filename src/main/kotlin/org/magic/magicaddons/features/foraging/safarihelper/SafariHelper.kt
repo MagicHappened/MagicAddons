@@ -65,7 +65,7 @@ object SafariHelper : HighlightFeature() {
 
     override val id: String = "SafariHelper"
     override val displayName: String = "Safari Helper"
-    override val tooltipMessage: String = "Helpers for the safari island"
+    override val description: String = "Helpers for the safari island"
     override val category: String = "foraging"
 
     // above HighlightMobs so the zone specific coloring wins when both highlight the same entity
@@ -74,14 +74,14 @@ object SafariHelper : HighlightFeature() {
     private val onlyUncaught = BooleanSetting(
         key = "OnlyUncaught",
         displayName = "Only Uncaught",
-        tooltip = "Only highlights the uniques that have not been caught yet during this safari visit.",
+        description = "Only highlights the uniques that have not been caught yet during this safari visit.",
         value = false
     )
 
     private val mobHighlight = BooleanSetting(
         key = "MobHighlight",
         displayName = "Mob Highlight",
-        tooltip = "Highlights the mobs and the grass treasure belonging to the safari zone you are in.",
+        description = "Highlights the mobs and the grass treasure belonging to the safari zone you are in.",
         value = false,
         children = listOf(
             onlyUncaught
@@ -91,21 +91,21 @@ object SafariHelper : HighlightFeature() {
     private val sendToPartyChat = BooleanSetting(
         key = "SendToPartyChat",
         displayName = "Send To Party Chat",
-        tooltip = "Sends the done message to the party chat instead of only to yourself.",
+        description = "Sends the done message to the party chat instead of only to yourself.",
         value = false
     )
 
     private val ignoreMacaw = BooleanSetting(
         key = "IgnoreMacaw",
         displayName = "Ignore Macaw",
-        tooltip = "Adds a second done message for having caught everything except the macaw.",
+        description = "Adds a second done message for having caught everything except the macaw.",
         value = false
     )
 
     private val ownZoneOnly = BooleanSetting(
         key = "OwnZoneOnly",
         displayName = "Only Own Zone",
-        tooltip = "Only sends the zone done message for your own zone, the one you had spent the " +
+        description = "Only sends the zone done message for your own zone, the one you had spent the " +
                 "most time in when the first zone was finished.",
         value = false
     )
@@ -113,7 +113,7 @@ object SafariHelper : HighlightFeature() {
     private val zoneMessages = BooleanSetting(
         key = "ZoneMessages",
         displayName = "Zone Specific Messages",
-        tooltip = "Adds a done message for every safari zone that is finished before the last one.",
+        description = "Adds a done message for every safari zone that is finished before the last one.",
         value = false,
         children = listOf(
             ownZoneOnly
@@ -123,7 +123,7 @@ object SafariHelper : HighlightFeature() {
     private val doneMessage = BooleanSetting(
         key = "DoneMessage",
         displayName = "Done Message",
-        tooltip = "Sends a message when all unique critters have been caught.",
+        description = "Sends a message when all unique critters have been caught.",
         value = false,
         children = listOf(
             sendToPartyChat,
@@ -135,7 +135,7 @@ object SafariHelper : HighlightFeature() {
     private val uniqueTracking = BooleanSetting(
         key = "UniqueTracking",
         displayName = "Unique Tracking",
-        tooltip = "Shows which unique mobs are still left to catch in the safari zone you are in.",
+        description = "Shows which unique mobs are still left to catch in the safari zone you are in.",
         value = false,
         children = listOf(
             doneMessage
@@ -144,7 +144,7 @@ object SafariHelper : HighlightFeature() {
 
     override val baseSetting: BooleanSetting = BooleanSetting(
         displayName = displayName,
-        tooltip = tooltipMessage,
+        description = description,
         value = false,
         children = listOf(
             mobHighlight,

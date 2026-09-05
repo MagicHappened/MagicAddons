@@ -8,6 +8,7 @@ import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.network.chat.Component
 import org.magic.magicaddons.Common
+import org.magic.magicaddons.util.ScreenUtil.drawBorder
 import org.magic.magicaddons.util.ScreenUtil.drawField
 
 /**
@@ -35,6 +36,9 @@ class TextField(
         set(text) {
             box.value = text
         }
+
+    /** Framed in the panel colour while it does not have the keyboard, for a field standing alone. */
+    var framed: Boolean = false
 
     var focused: Boolean
         get() = box.isFocused
@@ -64,6 +68,7 @@ class TextField(
     fun render(graphics: GuiGraphicsExtractor) {
         place()
         graphics.drawField(x, y, x + width, y + height, focused)
+        if (framed && !focused) graphics.drawBorder(x, y, x + width, y + height, Common.UI.BORDER_SIZE, Common.UI.BORDER_COLOR)
 
         val text = value
         val caretX = font.width(text.substring(0, box.cursorPosition.coerceIn(0, text.length)))

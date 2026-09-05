@@ -7,7 +7,7 @@ import kotlin.collections.get
 sealed class SettingNode<T>(
     val key: String,
     val displayName: String,
-    val tooltip: String,
+    val description: String,
     open var value: T,
     /** Live text under this setting's row, asked afresh every frame rather than stored. */
     val detail: (() -> SettingDetail?)? = null
@@ -57,13 +57,13 @@ sealed class SettingNode<T>(
 class ToggleListSetting(
     key: String,
     displayName: String,
-    tooltip: String,
+    description: String,
     override var value: MutableList<ListEntry>,
     val choices: () -> List<String>,
     /** What the closed selector says. It searches the whole catalogue, listed and not. */
     val searchLabel: String = "Search",
     detail: (() -> SettingDetail?)? = null
-) : SettingNode<MutableList<ListEntry>>(key, displayName, tooltip, value, detail) {
+) : SettingNode<MutableList<ListEntry>>(key, displayName, description, value, detail) {
 
     override fun parseValue(value: Any): MutableList<ListEntry> {
         val list = value as? List<*> ?: return mutableListOf()
@@ -105,11 +105,11 @@ class ToggleListSetting(
 class BooleanSetting(
     key: String = "enabled",
     displayName: String,
-    tooltip: String,
+    description: String,
     override var value: Boolean,
     override var children: List<SettingNode<*>>? = null,
     detail: (() -> SettingDetail?)? = null
-) : SettingNode<Boolean>(key, displayName, tooltip, value, detail) {
+) : SettingNode<Boolean>(key, displayName, description, value, detail) {
 
     override fun serializeSettings(parentPath: String): MutableMap<String, Any> {
         val map = super.serializeSettings(parentPath)
@@ -152,12 +152,12 @@ class BooleanSetting(
 class IntSetting(
     key: String,
     displayName: String,
-    tooltip: String,
+    description: String,
     override var value: Int,
     val range: IntRange,
     val step: Int = 1,
     detail: (() -> SettingDetail?)? = null
-) : SettingNode<Int>(key, displayName, tooltip, value, detail) {
+) : SettingNode<Int>(key, displayName, description, value, detail) {
 
     /** Gson hands numbers back as doubles, and an older config may hold the number as text. */
     override fun parseValue(value: Any): Int {
@@ -174,10 +174,10 @@ class IntSetting(
 class TextSetting(
     key: String,
     displayName: String,
-    tooltip: String,
+    description: String,
     override var value: String,
     detail: (() -> SettingDetail?)? = null
-) : SettingNode<String>(key, displayName, tooltip, value, detail) {
+) : SettingNode<String>(key, displayName, description, value, detail) {
 
     val history: MutableSet<String> = mutableSetOf()
 
@@ -218,12 +218,12 @@ class TextSetting(
 class EnumSetting<T : Enum<T>>(
     key: String,
     displayName: String,
-    tooltip: String,
+    description: String,
     value: T,
     override val children: List<SettingNode<*>>? = null,
     val childrenProvider: ((T) -> List<SettingNode<*>>)? = null,
     detail: (() -> SettingDetail?)? = null
-) : SettingNode<T>(key, displayName, tooltip, value, detail) {
+) : SettingNode<T>(key, displayName, description, value, detail) {
 
     private var activeChildren: List<SettingNode<*>>? =
         childrenProvider?.invoke(value)

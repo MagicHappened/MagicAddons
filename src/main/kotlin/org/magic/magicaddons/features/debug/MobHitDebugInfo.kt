@@ -39,12 +39,12 @@ object MobHitDebugInfo : Feature() {
 
     override val id: String = "MobHitDebug"
     override val displayName: String = "Mob Hit Debug"
-    override val tooltipMessage: String = "On next mob hit will cancel the actual event and print debug information"
+    override val description: String = "On next mob hit will cancel the actual event and print debug information"
     override val category: String = "debug"
 
     override val baseSetting: BooleanSetting = BooleanSetting(
         displayName = displayName,
-        tooltip = tooltipMessage,
+        description = description,
         value = false
         //todo add the select option to return
     )

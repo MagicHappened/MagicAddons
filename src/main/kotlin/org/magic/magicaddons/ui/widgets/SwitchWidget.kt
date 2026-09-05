@@ -6,12 +6,10 @@ import org.magic.magicaddons.util.ScreenUtil.eased
 import org.magic.magicaddons.util.ScreenUtil.fillPill
 
 /** A pill switch: an amber track with the knob on the right when on, a dark one with it on the left when off. */
-class SwitchWidget(var on: Boolean) {
+class SwitchWidget(var on: Boolean, val width: Int = WIDTH, val height: Int = HEIGHT) {
 
     var x: Int = 0
     var y: Int = 0
-    val width: Int = WIDTH
-    val height: Int = HEIGHT
 
     var hovered: Boolean = false
 

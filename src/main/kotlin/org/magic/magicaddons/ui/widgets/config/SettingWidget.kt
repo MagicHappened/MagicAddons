@@ -89,7 +89,7 @@ abstract class SettingWidget<T>(
     protected fun textWidth(): Int = width - ROW_PAD * 2 - rightColumnWidth().let { if (it > 0) it + ROW_PAD else 0 }
 
     /** The description, the codes for plain text dropped so it stays in its own quiet colour. */
-    private fun description(): String = node.tooltip.replace("§f", "").replace("§r", "")
+    private fun description(): String = node.description.replace("§f", "").replace("§r", "")
 
     /** Where the control's top left goes: on the right, level with the name. */
     protected fun controlLeft(): Int = x + width - ROW_PAD - controlWidth
@@ -98,7 +98,13 @@ abstract class SettingWidget<T>(
     /** Whatever the type draws under the text and control, given the row width. Zero when nothing. */
     protected open fun extraHeight(): Int = 0
 
-    protected fun extraTop(): Int = y + ROW_PAD + topHeight
+    protected fun extraTop(): Int = y + ROW_PAD + topHeight + EXTRA_GAP
+
+    /** Room under the extra part; a type whose extra part ends on the row's edge has none. */
+    protected open val bottomPad: Int = ROW_PAD
+
+    /** Told when the group holding this row opens, for a type that tidies itself when shown. */
+    open fun onShown() {}
     protected fun extraLeft(): Int = x + ROW_PAD
     protected fun extraWidth(): Int = width - ROW_PAD * 2
 
@@ -148,7 +154,7 @@ abstract class SettingWidget<T>(
         topHeight = maxOf(textHeight, rightHeight)
 
         layoutControl()
-        height = ROW_PAD + topHeight + extraHeight().let { if (it > 0) it + Common.UI.SPACING else 0 } + detailHeight() + ROW_PAD
+        height = ROW_PAD + topHeight + extraHeight().let { if (it > 0) it + EXTRA_GAP else 0 } + detailHeight() + bottomPad
 
         if (!groupVisible()) {
             groupShown = 0
@@ -183,6 +189,8 @@ abstract class SettingWidget<T>(
     protected open fun renderExtra(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {}
 
     fun render(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
+        // an open row shares its group's shade, so the two read as one thing
+        if (groupShown > 0) graphics.fill(x, y, x + width, y + height, Common.UI.GROUP_SHADE)
         if (hovered) graphics.fill(x, y, x + width, y + height, Common.UI.HOVER_WASH)
         if (System.currentTimeMillis() < flashUntil) {
             graphics.drawBorder(x, y, x + width, y + height, 1, Common.UI.SELECTED_FRAME_COLOR)
@@ -209,9 +217,9 @@ abstract class SettingWidget<T>(
     }
 
     /**
-     * The unfolded settings under a line the row's full width and a line down the indent, a light
-     * line between rows and a full width one where a row's group ends. Clipped to how far the group
-     * has opened, so it slides.
+     * The unfolded settings under a light line and a line down the indent, a light line between
+     * rows and a full width one where a row's group ends. Clipped to how far the group has opened,
+     * so it slides.
      */
     private fun renderGroup(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
         val left = groupLeft()
@@ -231,7 +239,7 @@ abstract class SettingWidget<T>(
             }
             child.render(graphics, mouseX, mouseY, delta)
         }
-        graphics.fill(x, groupTop, right, groupTop + GROUP_FRAME, Common.UI.BORDER_COLOR)
+        graphics.fill(left + GROUP_FRAME, groupTop, right, groupTop + GROUP_FRAME, Common.UI.THIN_DIVIDER_COLOR)
         graphics.fill(left, groupTop, left + GROUP_FRAME, bottom, Common.UI.BORDER_COLOR)
         graphics.disableScissor()
     }
@@ -267,6 +275,7 @@ abstract class SettingWidget<T>(
     fun unfold(open: Boolean) {
         if (!hasChildren() || open == expanded) return
         if (open && childrenWidgets.isEmpty()) buildChildren()
+        if (open) childrenWidgets.forEach { it.onShown() }
         if (!open) overlays.closeOverlays()
         foldFrom = openness()
         foldStartedAt = System.currentTimeMillis()
@@ -333,6 +342,9 @@ abstract class SettingWidget<T>(
 
         /** How far the group under a row is pushed in. */
         const val INDENT: Int = 10
+
+        /** Room between the description and whatever the type draws under it. */
+        const val EXTRA_GAP: Int = 7
 
         /** The group's top and left lines, and the line between its rows. */
         const val GROUP_FRAME: Int = 1
