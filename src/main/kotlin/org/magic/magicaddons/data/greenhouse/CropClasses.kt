@@ -111,7 +111,7 @@ open class CropStage(
      * the same readings map the stand readers write to.
      */
     val traits: Map<String, Int> = emptyMap(),
-    /** The look a bought plant arrives with, when it differs from the grown look of the same stage. */
+    /** The look a placed plant arrives with, when it differs from the grown look of the same stage. */
     val placed: Boolean = false,
     /** Values taken off the stands after matching. They never decide whether it matched. */
     val readers: List<CropStandReader> = emptyList()
@@ -465,7 +465,7 @@ data class CropDefinition(
     val needsWater: Boolean = true,
     val isBaseCrop: Boolean = false,
     val isMutation: Boolean = false,
-    /** The stage a bought plant is put down at, when it is not the last for a mutation or the first otherwise. */
+    /** The stage a plant is placed at, when it is not the last for a mutation or the first otherwise. */
     val placedStage: Int? = null,
     val isRareCrop: Boolean = false,
     /** Shown in the ui when skyblock has no item of its own for this crop, a dead plant has none. */
@@ -482,7 +482,7 @@ data class CropDefinition(
     /** Whether the plant turns with its plot. PlantBoy Advance stands the same way in every plot. */
     val rotatesWithPlot: Boolean = true
 ){
-    /** The stage a bought plant is put down at: the last for a mutation, the first for anything else. */
+    /** The stage a plant is placed at: the last for a mutation, the first for anything else. */
     val stagePlacedAt: Int get() = placedStage ?: if (isMutation) maxStage else 1
 
     fun matchesId(id: SkyBlockId): Boolean{

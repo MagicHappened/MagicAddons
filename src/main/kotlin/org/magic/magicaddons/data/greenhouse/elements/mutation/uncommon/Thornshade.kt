@@ -150,7 +150,7 @@ object Thornshade : CropDefinitionProvider {
                 8..8
             )
         ,
-            // as bought: the page says stage eight, the stem is still the seventh
+            // as placed: the page says stage eight, the stem is still the seventh
             CropStage(
                 blocks = listOf(
                     CropBlockState(

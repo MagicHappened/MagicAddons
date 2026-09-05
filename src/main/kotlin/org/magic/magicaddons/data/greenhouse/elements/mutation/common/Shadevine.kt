@@ -40,7 +40,7 @@ object Shadevine : CropDefinitionProvider {
             )
 
         ,
-            // as bought, the same as it grows to
+            // as placed, the same as it grows to
             CropStage(
                 blocks = listOf(),
                 armorStands = listOf(
