@@ -1,5 +1,7 @@
 package org.magic.magicaddons.ui.screens
 
+import org.magic.magicaddons.features.farming.greenhousePresets.GreenhousePresets
+import net.minecraft.core.Direction
 import net.minecraft.world.level.block.Blocks
 import org.magic.magicaddons.data.greenhouse.transfer.LayoutTransferResult
 import org.magic.magicaddons.data.greenhouse.MasterLayout
@@ -301,6 +303,7 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         plantPalette.layout(shelfLeft, paletteY, shelfWidth, frameBottom - paletteY)
 
         emptyGridWidget = GridWidget(GreenhouseLayout(id = EMPTY_GRID_ID), slotSize).apply {
+            turns = gridTurns()
             widgetX = startX
             widgetY = startY
             widgetWidth = containerSize
@@ -359,6 +362,7 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         GreenhouseData.greenhouseGrids.forEachIndexed { index, grid ->
             if (grid.state.lastUpdateTimestamp == null) return@forEachIndexed
             val gridWidget = GridWidget(grid.layout, slotSize).apply {
+                turns = gridTurns()
                 widgetX = startX
                 widgetY = startY
                 widgetWidth = containerSize
@@ -404,6 +408,7 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
 
         master?.plots?.forEach { plot ->
             val gridWidget = GridWidget(plot, slotSize).apply {
+                turns = gridTurns()
                 widgetX = startX
                 widgetY = startY
                 widgetWidth = containerSize
@@ -701,7 +706,30 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
     }
 
     /** The whole screen, in layout units. */
+    /** Quarter turns the grid picture gets so the way the player faces is up; none unless asked for. */
+    private fun gridTurns(): Int {
+        if (!GreenhousePresets.turnsGridWithPlayer()) return 0
+        return when (Minecraft.getInstance().player?.direction) {
+            Direction.EAST -> 3
+            Direction.SOUTH -> 2
+            Direction.WEST -> 1
+            else -> 0
+        }
+    }
+
+    /** The player may turn while the screen is open, so the grids follow before each frame. */
+    private fun followPlayerTurn() {
+        val turns = gridTurns()
+        (greenhouseGridWidgets + presetGridWidgets + listOfNotNull(emptyGridWidget))
+            .filter { it.turns != turns }
+            .forEach {
+                it.turns = turns
+                it.init()
+            }
+    }
+
     private fun extractScaled(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
+        followPlayerTurn()
         // the bookmarks first, so the frame drawn next covers where they tuck under it
         if (currentDisplay == CurrentDisplay.Greenhouses && displayedGridWidget != null) {
             plotTabs.render(graphics)

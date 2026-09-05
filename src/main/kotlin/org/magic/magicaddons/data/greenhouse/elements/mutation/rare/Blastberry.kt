@@ -36,6 +36,35 @@ object Blastberry : CropDefinitionProvider {
                 1..1
             ),
             CropStage(
+                blocks = listOf(),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, -0.625, 0.0),
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
+                        hashString = "a3b6c45e028b8b70befb6feb9d320dbda86c6f925961e23babbc7ff250918d0f",
+                        isSmall = false
+                    )
+                ),
+                2..2
+            ),
+            // the run could not name the block at stage four, so the stand alone says the stage
+            CropStage(
+                blocks = null,
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, -0.5, 0.0),
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
+                        hashString = "ba199c78d912ac538f9c2b7994fe7a2918cfae95bcb82d6c4313ee0f2f7ed54d",
+                        isSmall = false
+                    )
+                ),
+                4..4
+            ),
+            CropStage(
                 blocks = listOf(
                     CropBlockState(
                         offset = BlockPos(0, 1, 0),

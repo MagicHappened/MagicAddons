@@ -14,7 +14,6 @@ import org.magic.magicaddons.data.greenhouse.NEVER_DECAYS
 import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.events.EventHandler
 import org.magic.magicaddons.events.greenhouse.GrowthTickEvent
-import org.magic.magicaddons.features.farming.greenhousePresets.GreenhousePresets.baseSetting
 import tech.thatgravyboat.skyblockapi.api.location.LocationAPI
 import tech.thatgravyboat.skyblockapi.api.location.SkyBlockIsland
 import java.time.Duration
@@ -63,8 +62,7 @@ object PlantWarnings {
         val remainingMs: Long
     )
 
-    private fun enabled(key: String): Boolean =
-        baseSetting.getChild<BooleanSetting>(key)?.value == true
+    private fun enabled(key: String): Boolean = GreenhousePresets.warningType(key)
 
     // ------------------------------------------------------------ what each warning is about
 
@@ -151,6 +149,8 @@ object PlantWarnings {
     /** Sends the harvest and attention warnings straight after a tick. Decay is on its own schedule. */
     @EventHandler
     fun onGrowthTick(event: GrowthTickEvent) {
+        if (!GreenhousePresets.reminder(GreenhousePresets.AT_TICK_KEY)) return
+
         if (enabled(HARVEST_KEY)) {
             harvestNotes().takeIf { it.isNotEmpty() }?.let {
                 send("Some plants are ready to harvest!", it)
@@ -181,7 +181,7 @@ object PlantWarnings {
         if (enabled(HARVEST_KEY)) {
             val notes = harvestNotes()
 
-            if (notes.isNotEmpty() && GreenhouseWarnings.shouldWarn(HARVEST, remainingMs)) {
+            if (notes.isNotEmpty() && GreenhouseWarnings.shouldWarn(HARVEST, remainingMs, GreenhousePresets.reminderThresholds())) {
                 send(
                     "Some plants are ready to harvest! Next tick in ${shortDuration(remainingMs)}",
                     notes
@@ -191,7 +191,7 @@ object PlantWarnings {
 
         val attention = attentionNotes()
 
-        if (attention.isNotEmpty() && GreenhouseWarnings.shouldWarn(ATTENTION, remainingMs)) {
+        if (attention.isNotEmpty() && GreenhouseWarnings.shouldWarn(ATTENTION, remainingMs, GreenhousePresets.reminderThresholds())) {
             send("Some plants need attention! Next tick in ${shortDuration(remainingMs)}", attention)
         }
     }

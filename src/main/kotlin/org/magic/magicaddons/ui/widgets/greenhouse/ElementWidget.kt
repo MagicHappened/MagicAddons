@@ -392,6 +392,7 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, Focus
                 add(labelled("Size", "${footprint.width}x${footprint.height}"))
             }
 
+            if (!inPreset && instance.placed) add(Component.literal("Placed here").withStyle(ChatFormatting.GRAY))
             if (inPreset) add(Component.literal("Right click to mark").withStyle(ChatFormatting.GRAY))
         }
 

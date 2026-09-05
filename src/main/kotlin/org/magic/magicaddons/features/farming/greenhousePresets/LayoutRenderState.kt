@@ -159,20 +159,13 @@ object LayoutRenderState {
     /** Draws the plan from the frame's own render pass, against the camera that frame uses. */
     fun submit(poseStack: PoseStack, collector: SubmitNodeCollector, cameraPos: Vec3) {
         val plan = this.plan
-        val marks = plan.marks
-        val ghosts = plan.ghosts
-        marks.forEach { (pos, mark) ->
-            WorldRender.mark(
-                poseStack, collector, cameraPos, pos, mark.first, mark.second.color, FILL_ALPHA
-            )
-        }
+        if (plan.marks.isEmpty() && plan.ghosts.isEmpty()) return
 
-        ghosts.forEach { (pos, state) ->
-            WorldRender.ghost(
-                poseStack, collector, cameraPos, pos, state,
-                GHOST_TINT, Mark.Missing.color, GHOST_ALPHA
-            )
-        }
+        // gathered first and handed over as one batch a render type; see WorldRender.Batch
+        val batch = WorldRender.Batch(cameraPos)
+        plan.marks.forEach { (pos, mark) -> batch.mark(pos, mark.first, mark.second.color, FILL_ALPHA) }
+        plan.ghosts.forEach { (pos, state) -> batch.ghost(pos, state, GHOST_TINT, Mark.Missing.color, GHOST_ALPHA) }
+        batch.submit(poseStack, collector)
     }
 
     /** Starts over on the plan of whichever greenhouse the player is in. */
@@ -443,18 +436,14 @@ object LayoutRenderState {
         val stages = definition.stageDefs
             .flatMap { if (it is CropStagePattern) it.expand() else listOf(it) }
 
-        val stage = if (definition.isMutation) {
-            stages.filter { definition.maxStage in it.stageRange }
-                .maxByOrNull { it.stageRange.last }
-        } else {
-            stages.filter { 1 in it.stageRange }
-                .minByOrNull { it.stageRange.first }
-        }
+        val at = definition.stagePlacedAt
+        val candidates = stages.filter { at in it.stageRange }
+        val stage = candidates.firstOrNull { it.placed } ?: candidates.firstOrNull()
 
         if (stage == null && reportedMissingStage.add(definition.name)) {
-            val which = if (definition.isMutation) "last" else "first"
+            val which = "stage $at"
 
-            ChatUtils.sendWithPrefix("No $which stage described for ${definition.name}, skipping it.")
+            ChatUtils.sendWithPrefix("No $which described for ${definition.name}, skipping it.")
         }
 
         return stage

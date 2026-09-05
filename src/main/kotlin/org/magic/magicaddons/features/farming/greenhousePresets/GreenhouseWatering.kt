@@ -1,5 +1,8 @@
 package org.magic.magicaddons.features.farming.greenhousePresets
 
+import kotlin.math.abs
+import java.util.UUID
+import org.magic.magicaddons.Common
 import net.minecraft.client.Minecraft
 import net.minecraft.network.chat.Component
 import net.minecraft.network.chat.Style
@@ -26,13 +29,30 @@ object GreenhouseWatering {
         EventBus.register(this)
     }
 
-    private val waterCanIds = setOf(
-        "HYDRO_CAN_1000",
-        "HYDRO_CAN_TURBO_2000",
-        "HYDRO_CAN_ULTRA_3000",
-        "AQUAMASTER_X",
-        "AQUAMASTER_HYDROMAX"
+    /**
+     * Every tier of can and what one spray tick of it adds to a plant's level. Only the top tier has
+     * been measured; the rest fall back to it until they are.
+     */
+    private val sprayGain: Map<String, Int?> = linkedMapOf(
+        "HYDRO_CAN_1000" to null,
+        "HYDRO_CAN_TURBO_2000" to null,
+        "HYDRO_CAN_ULTRA_3000" to null,
+        "AQUAMASTER_X" to null,
+        "AQUAMASTER_HYDROMAX" to 7
     )
+
+    private const val FALLBACK_GAIN: Int = 7
+
+    /** One notch of a bar, the most the bar can be off from the level behind it. */
+    private const val NOTCH_PERCENT: Int = 7
+
+    private val waterCanIds: Set<String> get() = sprayGain.keys
+
+    /** The can last used, which says how much each spray tick adds. */
+    private var lastCan: String? = null
+
+    /** How many notches each bar showed when last read, so a change counts as one spray tick. */
+    private val lastNotches = mutableMapOf<UUID, Int>()
 
     /** The character skyblock builds its bars out of, one per notch of the level. */
     private const val BAR_CHAR: Char = '|'
@@ -57,6 +77,7 @@ object GreenhouseWatering {
     fun startWateringWindow(heldId: SkyBlockId): Boolean {
         if (!isWaterCan(heldId)) return false
 
+        lastCan = heldId.id.substringAfter("item:").uppercase()
         wateringUntil = Instant.now().plus(WATERING_WINDOW)
         return true
     }
@@ -79,6 +100,7 @@ object GreenhouseWatering {
 
         if (Instant.now().isAfter(until)) {
             wateringUntil = null
+            lastNotches.clear()
             return
         }
 
@@ -88,14 +110,24 @@ object GreenhouseWatering {
         val area = grid.plot?.getBuildableArea() ?: return
         val level = Minecraft.getInstance().level ?: return
 
+        val gain = sprayGain[lastCan] ?: FALLBACK_GAIN
+
         level.getEntitiesOfClass(ArmorStand::class.java, area).forEach { stand ->
-            val waterLevel = stand.customName?.let { parseBar(it) } ?: return@forEach
+            val bar = stand.customName?.let { parseBar(it) } ?: return@forEach
             val slot = grid.getSlotAt(stand.blockPosition(), matchY = false) ?: return@forEach
             val element = grid.elementCovering(slot) ?: return@forEach
 
             if (!element.instance.cropDef.needsWater) return@forEach
 
-            element.instance.waterLevel = waterLevel
+            // a bar that changed is one spray tick landing, worth the can's gain over the level held;
+            // the bar itself is coarser than that, so it only overrules a count it disagrees with
+            val notches = bar.notches
+            if (lastNotches[stand.uuid] == notches) return@forEach
+            lastNotches[stand.uuid] = notches
+
+            val counted = ((element.instance.waterLevel ?: 0) + gain).coerceAtMost(100)
+            element.instance.waterLevel = if (abs(counted - bar.percent) <= NOTCH_PERCENT) counted else bar.percent
+            element.instance.waterPredictedInDebt = false
         }
     }
 
@@ -103,7 +135,10 @@ object GreenhouseWatering {
      * A water bar as a level between -100 and 100: blue notches are water held, red notches debt,
      * counted rather than taken as a leading run. Any other colour is somebody else's bar, refused.
      */
-    private fun parseBar(name: Component): Int? {
+    /** A bar as read: the level it shows, and its filled notches, to tell one bar from the next. */
+    private class Bar(val percent: Int, val notches: Int)
+
+    private fun parseBar(name: Component): Bar? {
         var filled = 0
         var debt = 0
         var total = 0
@@ -128,9 +163,12 @@ object GreenhouseWatering {
 
         if (foreign || total == 0) return null
 
-        // a bar cannot show both at once, and a negative level is the one worth reporting
-        if (debt > 0) return -(debt * 100 / total)
+        // logged while the model is still being fitted: the bar is coarser than the level behind it
+        Common.LOGGER.info("[water] bar filled=$filled debt=$debt total=$total text=\"${name.string}\"")
 
-        return filled * 100 / total
+        // a bar cannot show both at once, and a negative level is the one worth reporting
+        if (debt > 0) return Bar(-(debt * 100 / total), -debt)
+
+        return Bar(filled * 100 / total, filled)
     }
 }

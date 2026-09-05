@@ -95,6 +95,13 @@ object Noctilume : CropDefinitionProvider {
                 offsets = seedOffsets
             ),
             look(
+                stage = 1,
+                hash = "329aa65e77ecc216dbadc774121dec2f3d7267289462eb5d11d3bafa6f5996c8",
+                craving = CropStandReader.CRAVES_DAY,
+                wheatAge = 3,
+                offsets = seedOffsets
+            ),
+            look(
                 stage = 2,
                 hash = "329aa65e77ecc216dbadc774121dec2f3d7267289462eb5d11d3bafa6f5996c8",
                 craving = CropStandReader.CRAVES_DAY,

@@ -1,5 +1,6 @@
 package org.magic.magicaddons.util.compat
 
+import net.minecraft.world.phys.Vec3
 import com.mojang.blaze3d.vertex.PoseStack
 import com.mojang.blaze3d.vertex.VertexConsumer
 import net.minecraft.client.renderer.SubmitNodeCollector
@@ -28,6 +29,27 @@ object RenderCompat {
         *///?} else {
         collector.submitCustomGeometry(poseStack, RenderTypes.LINES) { transform, consumer ->
             consumer.edges(transform, shape, color)
+        }
+        //?}
+    }
+
+    /** One outlined shape of many: where it sits from the pose's origin, the shape, and its colour. */
+    class OutlineItem(val offset: Vec3, val shape: VoxelShape, val color: Int)
+
+    /** Every outline of a frame in one go, so the lines are one batch rather than one a shape. */
+    fun outlineAll(collector: SubmitNodeCollector, poseStack: PoseStack, items: List<OutlineItem>) {
+        //? if >=26.2 {
+        /*items.forEach { item ->
+            poseStack.pushPose()
+            poseStack.translate(item.offset.x, item.offset.y, item.offset.z)
+            collector.submitShapeOutline(poseStack, item.shape, RenderTypes.LINES, item.color, OUTLINE_WIDTH, false)
+            poseStack.popPose()
+        }
+        *///?} else {
+        collector.submitCustomGeometry(poseStack, RenderTypes.LINES) { transform, consumer ->
+            items.forEach { item ->
+                consumer.edges(transform, item.shape.move(item.offset.x, item.offset.y, item.offset.z), item.color)
+            }
         }
         //?}
     }
