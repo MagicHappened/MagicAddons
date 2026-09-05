@@ -14,7 +14,7 @@ import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.CropDefinition
-import org.magic.magicaddons.data.greenhouse.CropStates.toFunctionString
+import org.magic.magicaddons.data.greenhouse.CropStates.toCode
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.PlayerUtils
 import org.magic.magicaddons.util.isCardinalYaw
@@ -208,7 +208,7 @@ object CropStageExporter {
                 listOf(
                     $posList
                 ),
-                blockState = ${toFunctionString(it.first().blockState)}
+                blockState = ${toCode(it.first().blockState)}
             )
         """.trimIndent()
                 }
@@ -230,7 +230,7 @@ object CropStageExporter {
                     """
     CropBlockState(
         offset = BlockPos(${block.offset.x}, ${block.offset.y}, ${block.offset.z}),
-        blockState = ${toFunctionString(block.blockState)}
+        blockState = ${toCode(block.blockState)}
     )
     """.trimIndent()
                 }

@@ -375,6 +375,8 @@ object WorldRender {
                         stack.mulPose(transform.pose())
                         val quadInstance = QuadInstance()
                         val parts = mutableListOf<BlockStateModelPart>()
+                        val colors = Minecraft.getInstance().blockColors
+                        val level = Minecraft.getInstance().level
 
                         batch.forEach { ghost ->
                             parts.clear()
@@ -388,7 +390,21 @@ object WorldRender {
                             parts.forEach { part ->
                                 QUAD_SIDES.forEach { side ->
                                     part.getQuads(side).forEach { quad ->
-                                        quadInstance.setColor(ghost.color)
+                                        // a stem is yellow and grass green only through a tint the model
+                                        // does not carry itself; without it every tinted block came out white
+                                        val material = quad.materialInfo()
+                                        val color = if (material.isTinted) {
+                                            val source = colors.getTintSource(ghost.state, material.tintIndex())
+                                            val rgb = when {
+                                                source == null -> 0xFFFFFF
+                                                level != null -> source.colorInWorld(ghost.state, level, ghost.pos)
+                                                else -> source.color(ghost.state)
+                                            }
+                                            ARGB.multiply(ghost.color, ARGB.color(0xFF, rgb))
+                                        } else {
+                                            ghost.color
+                                        }
+                                        quadInstance.setColor(color)
                                         quadInstance.setLightCoords(FULL_BRIGHT)
                                         quadInstance.setOverlayCoords(NO_OVERLAY)
                                         consumer.putBakedQuad(pose, quad, quadInstance)
