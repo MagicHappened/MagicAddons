@@ -33,9 +33,19 @@ class HudBox(
     val group: GroupState?,
     val parts: List<HudPart>,
     val width: Int,
-    val height: Int,
+    /** As tall as the content makes it; the box itself may have been dragged taller. */
+    val contentHeight: Int,
     val alpha: Float
 ) {
+    val height: Int = maxOf(contentHeight, when (placed) {
+        is GroupState -> placed.height
+        is ElementState -> placed.height
+        else -> null
+    } ?: 0)
+
+    val centerX: Int get() = x + width / 2
+    val centerY: Int get() = y + height / 2
+
     var x: Int = 0
     var y: Int = 0
 
