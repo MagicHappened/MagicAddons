@@ -17,6 +17,8 @@ import org.magic.magicaddons.util.VersionAnnouncer
 
 class MagicAddons : ClientModInitializer {
 
+    // objects named here so they register; the names are the point, not their values
+    @Suppress("UNUSED_EXPRESSION")
     override fun onInitializeClient() {
         EntityUtils
         ServerUtils

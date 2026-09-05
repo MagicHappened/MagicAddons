@@ -7,6 +7,8 @@ import net.minecraft.network.chat.HoverEvent
 import net.minecraft.network.chat.Style
 import org.magic.magicaddons.features.FeatureManager
 
+// the old shapes are read as raw maps, which is what an unchecked cast says
+@Suppress("UNCHECKED_CAST")
 object OldConfigHandler {
 
     private const val INFO_KEY = "info"

@@ -244,7 +244,6 @@ class CropPreviewScreen(
 
         if (PlantDex.needsRotation(def, stage)) missing += "rotation data"
         PlantDex.neededSize(def, stage)?.let { missing += "isSmall = $it" }
-        if (stageDef.blocks.orEmpty().any { it.blockState == null }) missing += "block data"
 
         return missing
     }
