@@ -187,9 +187,9 @@ object GreenhousePresets : Feature() {
             ),
             BooleanSetting(
                 key = KEY_ANYWHERE,
-                displayName = "Greenhouse Key Anywhere",
+                displayName = "Greenhouse Screen Anywhere",
                 tooltip = "Lets the greenhouse screen key (G unless rebound) open the screen " +
-                        "outside a greenhouse too. Off, it only works while standing in one",
+                        "outside the garden too. Off, it only works while on the garden",
                 value = false
             ),
             BooleanSetting(
