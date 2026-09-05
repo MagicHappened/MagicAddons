@@ -62,6 +62,17 @@ class HudLayout {
     val anchors: MutableList<AnchorState> = mutableListOf()
     val groups: MutableList<GroupState> = mutableListOf()
 
+    /** Elements the editor leaves out per situation, by the situation's name. */
+    val hidden: MutableMap<String, MutableSet<String>> = mutableMapOf()
+
+    fun isHidden(situation: HudSituation, elementId: String): Boolean = hidden[situation.name]?.contains(elementId) == true
+
+    fun setHidden(situation: HudSituation, elementId: String, hide: Boolean) {
+        val set = hidden.getOrPut(situation.name) { mutableSetOf() }
+        if (hide) set.add(elementId) else set.remove(elementId)
+        if (set.isEmpty()) hidden.remove(situation.name)
+    }
+
     fun stateOf(element: HudElement): ElementState = elements.getOrPut(element.id) { defaults(element) }
 
     fun defaults(element: HudElement): ElementState = ElementState().also {

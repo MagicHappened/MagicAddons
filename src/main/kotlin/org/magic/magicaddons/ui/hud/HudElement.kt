@@ -33,6 +33,12 @@ abstract class HudElement(val id: String, val name: String) {
     abstract fun sample(): HudContent
 
     open val configTarget: ConfigTarget? = null
+
+    /** Where this element can show; none listed means anywhere. */
+    open val situations: Set<HudSituation> = emptySet()
+
+    fun showsIn(situation: HudSituation): Boolean =
+        situation == HudSituation.EVERYTHING || situations.isEmpty() || situation in situations
 }
 
 /** Every hud element there is, named here so each registers before the editor asks for them. */

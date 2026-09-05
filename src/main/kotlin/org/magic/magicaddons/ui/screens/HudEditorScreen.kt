@@ -15,7 +15,10 @@ import org.magic.magicaddons.ui.hud.AnchorState
 import org.magic.magicaddons.ui.hud.ElementState
 import org.magic.magicaddons.ui.hud.GroupState
 import org.magic.magicaddons.ui.hud.HudBox
+import org.magic.magicaddons.ui.hud.HudElement
 import org.magic.magicaddons.ui.hud.HudElements
+import org.magic.magicaddons.ui.hud.HudSituation
+import org.magic.magicaddons.ui.widgets.SwitchWidget
 import org.magic.magicaddons.ui.hud.HudLayoutStore
 import org.magic.magicaddons.ui.hud.HudPainter
 import org.magic.magicaddons.ui.hud.HudPart
@@ -26,6 +29,7 @@ import org.magic.magicaddons.ui.hud.Stacking
 import org.magic.magicaddons.ui.hud.Tie
 import org.magic.magicaddons.ui.widgets.hud.HudMenu
 import org.magic.magicaddons.util.ScreenUtil.drawBorder
+import org.magic.magicaddons.util.ScreenUtil.drawButtonPanel
 import org.magic.magicaddons.util.ScreenUtil.drawLine
 import org.magic.magicaddons.util.ScreenUtil.drawPanel
 import org.magic.magicaddons.util.ScreenUtil.setScreen
@@ -70,8 +74,16 @@ class HudEditorScreen : Screen(Component.literal("HUD Editor")), OverlayContext 
     private var mouseX = 0
     private var mouseY = 0
 
+    /** The place being laid out; only elements that can show there are drawn. */
+    private var situation: HudSituation = HudSituation.current()
+
+    /** Whether the tab at the right edge has its panel open. */
+    private var panelOpen = false
+
+    private fun shownHere(element: HudElement): Boolean = element.showsIn(situation) && !layout.isHidden(situation, element.id)
+
     private fun rebuild() {
-        scene = HudScene.build(layout, width, height, sample = true)
+        scene = HudScene.build(layout, width, height, sample = true, include = ::shownHere)
     }
 
     override fun init() {
@@ -84,7 +96,11 @@ class HudEditorScreen : Screen(Component.literal("HUD Editor")), OverlayContext 
 
     // ------------------------------------------------------------------ what is under the mouse
 
-    private fun hoveredBox(): HudBox? = scene.boxAt(mouseX.toDouble(), mouseY.toDouble())
+    /** The box under the mouse, or the one whose corner dot the mouse is on. */
+    private fun boxNear(x: Double, y: Double): HudBox? =
+        scene.boxAt(x, y) ?: scene.boxes.lastOrNull { cornerAt(it, x, y) != null }
+
+    private fun hoveredBox(): HudBox? = boxNear(mouseX.toDouble(), mouseY.toDouble())
     private fun hoveredPart(): HudPart? = scene.partAt(mouseX.toDouble(), mouseY.toDouble())
 
     /** The box that drags as one: a lone element, or the group a part belongs to. */
@@ -191,6 +207,22 @@ class HudEditorScreen : Screen(Component.literal("HUD Editor")), OverlayContext 
         val id = selectedId ?: return
         val rect = scene.rectOf(id) ?: return
         moveTo(id, rect[0] + dx, rect[1] + dy)
+    }
+
+    /**
+     * Resizes the selected box by a pixel: the bottom right corner moves the way the arrow points,
+     * or with control held the top left corner does, the other corner staying put.
+     */
+    private fun resizeByKey(dx: Int, dy: Int, topLeft: Boolean) {
+        val box = selectedId?.let { scene.boxOf(it) } ?: return
+        val drag = if (topLeft) {
+            Drag.Resize(box.id, leftSide = true, topSide = true, fixedX = box.x + box.width, fixedY = box.y + box.height)
+        } else {
+            Drag.Resize(box.id, leftSide = false, topSide = false, fixedX = box.x, fixedY = box.y)
+        }
+        val cornerX = if (topLeft) box.x else box.x + box.width
+        val cornerY = if (topLeft) box.y else box.y + box.height
+        resizeTo(box, drag, cornerX + dx, cornerY + dy)
     }
 
     /** Puts [elementId] into [target]'s box at [edge]: a new group of the two, or one more member of an existing group. */
@@ -388,7 +420,116 @@ class HudEditorScreen : Screen(Component.literal("HUD Editor")), OverlayContext 
             }
         }
         drawHints(graphics)
+        drawPanel(graphics)
         overlays.asReversed().forEach { it.renderOverlay(graphics, mouseX, mouseY, delta) }
+    }
+
+    // ------------------------------------------------------------------ the tab at the right edge
+
+    private fun panelRows(): Pair<List<HudSituation>, List<HudElement>> =
+        HudSituation.offered() to HudElements.all.filter { it.showsIn(situation) }
+
+    private fun panelHeight(): Int {
+        val (situations, elements) = panelRows()
+        return PANEL_PAD * 2 + PANEL_ROW * (1 + situations.size + elements.size) + PANEL_PAD * 2 + 1
+    }
+
+    private fun panelLeft(): Int = width - TAB_WIDTH - PANEL_WIDTH
+    private fun panelTop(): Int = ((height - panelHeight()) / 2).coerceAtLeast(0)
+    private fun tabTop(): Int = (height - TAB_HEIGHT) / 2
+
+    private fun overTab(x: Int, y: Int): Boolean = x >= width - TAB_WIDTH && y in tabTop() until tabTop() + TAB_HEIGHT
+
+    private fun overPanel(x: Int, y: Int): Boolean =
+        panelOpen && x in panelLeft() until width - TAB_WIDTH && y in panelTop() until panelTop() + panelHeight()
+
+    /** The tab, and the panel of situations and elements it opens. */
+    private fun drawPanel(graphics: GuiGraphicsExtractor) {
+        val tabLeft = width - TAB_WIDTH
+        val top = tabTop()
+        val overTab = overTab(mouseX, mouseY)
+        graphics.drawButtonPanel(tabLeft, top, width, top + TAB_HEIGHT, overTab, pressed = panelOpen)
+        val midY = top + TAB_HEIGHT / 2
+        val tipX = if (panelOpen) tabLeft + TAB_WIDTH - 2 else tabLeft + 2
+        val baseX = if (panelOpen) tabLeft + 2 else tabLeft + TAB_WIDTH - 2
+        graphics.drawLine(baseX, midY - 3, tipX, midY, 1, Common.UI.TEXT_COLOR)
+        graphics.drawLine(tipX, midY, baseX, midY + 3, 1, Common.UI.TEXT_COLOR)
+
+        if (!panelOpen) return
+        val left = panelLeft()
+        val panelTop = panelTop()
+        graphics.drawPanel(left, panelTop, width - TAB_WIDTH, panelTop + panelHeight())
+
+        val (situations, elements) = panelRows()
+        var rowY = panelTop + PANEL_PAD
+        graphics.text(font, Component.literal("Show"), left + PANEL_PAD, rowY + (PANEL_ROW - font.lineHeight) / 2, Common.UI.TEXT_DIM_COLOR, false)
+        rowY += PANEL_ROW
+
+        situations.forEach { candidate ->
+            val over = mouseX in left until width - TAB_WIDTH && mouseY in rowY until rowY + PANEL_ROW
+            if (candidate == situation) {
+                graphics.fill(left + Common.UI.BORDER_SIZE, rowY, width - TAB_WIDTH - Common.UI.BORDER_SIZE, rowY + PANEL_ROW, Common.UI.PRESSED_SHADE)
+                graphics.fill(left + Common.UI.BORDER_SIZE, rowY, left + Common.UI.BORDER_SIZE + 2, rowY + PANEL_ROW, Common.UI.SELECTED_FRAME_COLOR)
+            } else if (over) {
+                graphics.fill(left + Common.UI.BORDER_SIZE, rowY, width - TAB_WIDTH - Common.UI.BORDER_SIZE, rowY + PANEL_ROW, Common.UI.HOVER_WASH)
+            }
+            graphics.text(font, Component.literal(candidate.label), left + PANEL_PAD + 3, rowY + (PANEL_ROW - font.lineHeight) / 2, if (candidate == situation) Common.UI.TEXT_COLOR else Common.UI.TEXT_DIM_COLOR, false)
+            rowY += PANEL_ROW
+        }
+
+        rowY += PANEL_PAD
+        graphics.fill(left + PANEL_PAD, rowY, width - TAB_WIDTH - PANEL_PAD, rowY + 1, Common.UI.THIN_DIVIDER_COLOR)
+        rowY += 1 + PANEL_PAD
+
+        elements.forEach { element ->
+            val shown = !layout.isHidden(situation, element.id)
+            val over = mouseX in left until width - TAB_WIDTH && mouseY in rowY until rowY + PANEL_ROW
+            if (over) graphics.fill(left + Common.UI.BORDER_SIZE, rowY, width - TAB_WIDTH - Common.UI.BORDER_SIZE, rowY + PANEL_ROW, Common.UI.HOVER_WASH)
+            graphics.text(font, Component.literal(element.name), left + PANEL_PAD + 3, rowY + (PANEL_ROW - font.lineHeight) / 2, if (shown) Common.UI.TEXT_COLOR else Common.UI.DISABLED_TEXT_COLOR, false)
+            val switch = SwitchWidget(shown, 16, 9)
+            switch.x = width - TAB_WIDTH - PANEL_PAD - switch.width
+            switch.y = rowY + (PANEL_ROW - switch.height) / 2
+            switch.render(graphics)
+            rowY += PANEL_ROW
+        }
+    }
+
+    /** A click on the tab or its panel, taken before anything under them. */
+    private fun panelClicked(x: Int, y: Int, button: Int): Boolean {
+        if (overTab(x, y)) {
+            if (button == 0) panelOpen = !panelOpen
+            return true
+        }
+        if (!panelOpen) return false
+        if (!overPanel(x, y)) {
+            panelOpen = false
+            return true
+        }
+        if (button != 0) return true
+
+        val (situations, elements) = panelRows()
+        var rowY = panelTop() + PANEL_PAD + PANEL_ROW
+        situations.forEach { candidate ->
+            if (y in rowY until rowY + PANEL_ROW) {
+                situation = candidate
+                selectedId = null
+                rebuild()
+                return true
+            }
+            rowY += PANEL_ROW
+        }
+        rowY += PANEL_PAD * 2 + 1
+        elements.forEach { element ->
+            if (y in rowY until rowY + PANEL_ROW) {
+                layout.setHidden(situation, element.id, !layout.isHidden(situation, element.id))
+                if (selectedId == element.id) selectedId = null
+                rebuild()
+                HudLayoutStore.save()
+                return true
+            }
+            rowY += PANEL_ROW
+        }
+        return true
     }
 
     private fun drawHandles(graphics: GuiGraphicsExtractor, box: HudBox) {
@@ -554,7 +695,7 @@ class HudEditorScreen : Screen(Component.literal("HUD Editor")), OverlayContext 
         val hint = when {
             picking != null && candidate != null -> "Click to tie ${nameOf(picking!!)} to ${nameOf(candidate)}"
             picking != null -> "Click what to tie ${nameOf(picking!!)} to, Escape to stop"
-            selectedId != null -> "Arrow keys nudge ${nameOf(selectedId!!)} · corners resize · wheel fades · shift wheel scales · middle click absolute or relative · shift middle click lets go · right click for more · R resets"
+            selectedId != null -> "Arrows nudge ${nameOf(selectedId!!)} · shift arrows resize from the bottom right, with ctrl from the top left · wheel fades · shift wheel scales · middle click absolute or relative · R resets"
             else -> "Click to select · drag to move · corners resize · drop on another to merge · wheel fades · shift wheel scales · right click for more · R resets"
         }
         val hintWidth = font.width(hint)
@@ -579,7 +720,9 @@ class HudEditorScreen : Screen(Component.literal("HUD Editor")), OverlayContext 
         val x = event.x
         val y = event.y
         val anchor = scene.anchorAt(x, y)
-        val box = scene.boxAt(x, y)
+        val box = boxNear(x, y)
+
+        if (panelClicked(x.toInt(), y.toInt(), event.button())) return true
 
         picking?.let { source ->
             if (event.button() == 0) pickCandidate()?.let { tie(source, it) }
@@ -721,7 +864,7 @@ class HudEditorScreen : Screen(Component.literal("HUD Editor")), OverlayContext 
                 else -> null
             }
             if (step != null) {
-                nudge(step.first, step.second)
+                if (shiftDown()) resizeByKey(step.first, step.second, topLeft = controlDown()) else nudge(step.first, step.second)
                 HudLayoutStore.save()
                 return true
             }
@@ -745,12 +888,23 @@ class HudEditorScreen : Screen(Component.literal("HUD Editor")), OverlayContext 
         HudLayoutStore.save()
     }
 
+    private fun controlDown(): Boolean {
+        val window = Minecraft.getInstance().window
+        return InputConstants.isKeyDown(window, GLFW.GLFW_KEY_LEFT_CONTROL) || InputConstants.isKeyDown(window, GLFW.GLFW_KEY_RIGHT_CONTROL)
+    }
+
     private fun shiftDown(): Boolean {
         val window = Minecraft.getInstance().window
         return InputConstants.isKeyDown(window, GLFW.GLFW_KEY_LEFT_SHIFT) || InputConstants.isKeyDown(window, GLFW.GLFW_KEY_RIGHT_SHIFT)
     }
 
     private companion object {
+        const val TAB_WIDTH: Int = 8
+        const val TAB_HEIGHT: Int = 30
+        const val PANEL_WIDTH: Int = 120
+        const val PANEL_ROW: Int = 13
+        const val PANEL_PAD: Int = 4
+
         const val HANDLE: Int = 2
 
         /** How far from a corner dot the mouse still grabs it. */

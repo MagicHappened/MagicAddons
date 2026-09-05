@@ -25,6 +25,7 @@ import org.magic.magicaddons.ui.OverlayContext
 import org.magic.magicaddons.ui.OverlayRenderable
 import org.magic.magicaddons.ui.widgets.EnumWidget
 import org.magic.magicaddons.util.ScreenUtil
+import org.magic.magicaddons.util.compat.McCompat
 import org.magic.magicaddons.util.ScreenUtil.drawBorder
 import org.magic.magicaddons.util.ScreenUtil.drawSimpleTooltip
 import org.magic.magicaddons.util.ScreenUtil.drawWarningBadge
@@ -37,7 +38,9 @@ import org.magic.magicaddons.util.ScreenUtil.drawMultilineBoxCentered
  * walks the stages, and an unrecorded stage shows a question mark rather than a guess.
  */
 class CropPreviewScreen(
-    private val parent: Screen
+    private val parent: Screen?,
+    /** A crop to open on, or null for the empty stage. */
+    private val initial: CropDefinition? = null
 ) : Screen(Component.literal("Crop Preview")), OverlayContext, HoverableContainer {
 
     override val overlays: MutableList<OverlayRenderable> = mutableListOf()
@@ -122,6 +125,10 @@ class CropPreviewScreen(
 
     override fun init() {
         super.init()
+        if (selectedDef == null && initial != null) {
+            selector.currentValue = initial
+            picked(initial)
+        }
 
         // eight percent of the screen above and below; everything between is the preview's
         previewY = height * 8 / 100
@@ -501,9 +508,9 @@ class CropPreviewScreen(
         return super.keyPressed(keyEvent)
     }
 
-    /** Escape goes back to the greenhouse screen it came from, not out of everything. */
+    /** Escape goes back to the screen it came from, or out to the game when opened by command. */
     override fun onClose() {
-        ScreenUtil.setScreen(parent)
+        McCompat.setScreen(parent)
     }
 
     private companion object {

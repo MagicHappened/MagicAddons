@@ -11,6 +11,7 @@ import org.magic.magicaddons.ui.hud.ConfigTarget
 import org.magic.magicaddons.ui.hud.HudContent
 import org.magic.magicaddons.ui.hud.HudElement
 import org.magic.magicaddons.ui.hud.HudLine
+import org.magic.magicaddons.ui.hud.HudSituation
 import org.magic.magicaddons.util.toReadableDuration
 
 /** A small panel on screen while standing in a greenhouse: the next tick and what the plants need. */
@@ -20,6 +21,8 @@ object GreenhouseHud : HudElement("greenhouse", "Greenhouse") {
 
     override val defaultX: Int = 8
     override val defaultY: Int = 8
+
+    override val situations: Set<HudSituation> = setOf(HudSituation.GREENHOUSE)
 
     private fun setting(): BooleanSetting? = GreenhousePresets.baseSetting.getChild<BooleanSetting>(KEY)
 

@@ -21,6 +21,7 @@ import org.magic.magicaddons.ui.hud.ConfigTarget
 import org.magic.magicaddons.ui.hud.HudContent
 import org.magic.magicaddons.ui.hud.HudElement
 import org.magic.magicaddons.ui.hud.HudLine
+import org.magic.magicaddons.ui.hud.HudSituation
 import org.magic.magicaddons.util.ChatUtils
 import tech.thatgravyboat.skyblockapi.api.SkyBlockAPI
 import tech.thatgravyboat.skyblockapi.api.events.base.Subscription
@@ -41,6 +42,7 @@ object SafariHelper : HighlightFeature() {
         override val defaultX: Int = 20
         override val defaultY: Int = 20
         override val shadow: Boolean = true
+        override val situations: Set<HudSituation> = setOf(HudSituation.SAFARI)
 
         override val configTarget: ConfigTarget
             get() = ConfigTarget(SafariHelper, listOf(baseSetting, uniqueTracking))
