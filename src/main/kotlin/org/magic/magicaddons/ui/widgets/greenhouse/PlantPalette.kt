@@ -119,9 +119,45 @@ class PlantPalette(
     private fun sortTier(def: CropDefinition): Double =
         if (def.name == DEAD_PLANT) 0.5 else (CropRegistry.tierOf[def] ?: 7).toDouble()
 
+    /** Plain text finds names; an @ in front finds effects, a # in front finds the soil a crop grows on. */
     private fun shown(): List<CropDefinition> {
         val typed = search.value.trim()
-        return crops.filter { it.name.contains(typed, ignoreCase = true) }
+        return when {
+            typed.startsWith("@") -> {
+                val term = typed.drop(1).trim()
+                crops.filter { def -> def.effects.any { it.label.contains(term, ignoreCase = true) } }
+            }
+            typed.startsWith("#") -> {
+                val term = typed.drop(1).trim()
+                crops.filter { def -> def.requiredSoil.any { it.name.string.contains(term, ignoreCase = true) } }
+            }
+            else -> crops.filter { it.name.contains(typed, ignoreCase = true) }
+        }
+    }
+
+    /** Whether the mouse is on the little i in the shelf's corner. */
+    private var infoHovered = false
+
+    private fun infoCentre(): Pair<Int, Int> = (x + width - EDGE_PAD - INFO_RADIUS - 1) to (y + titleHeight() / 2)
+
+    /** A ring with an i in it, at the shelf's top right, so the two search prefixes can be found. */
+    private fun renderInfo(graphics: GuiGraphicsExtractor) {
+        val (cx, cy) = infoCentre()
+        for (dy in -INFO_RADIUS..INFO_RADIUS) {
+            val half = kotlin.math.sqrt((INFO_RADIUS * INFO_RADIUS - dy * dy).toDouble()).toInt()
+            graphics.fill(cx - half, cy + dy, cx + half + 1, cy + dy + 1, if (infoHovered) Common.UI.ACCENT_COLOR else Common.UI.BORDER_COLOR)
+        }
+        val inner = INFO_RADIUS - 1
+        for (dy in -inner..inner) {
+            val half = kotlin.math.sqrt((inner * inner - dy * dy).toDouble()).toInt()
+            graphics.fill(cx - half, cy + dy, cx + half + 1, cy + dy + 1, Common.UI.BACKGROUND_COLOR)
+        }
+        graphics.text(font, Component.literal("i"), cx - font.width("i") / 2 + 1, cy - font.lineHeight / 2 + 1, Common.UI.TEXT_COLOR, false)
+    }
+
+    private fun isOverInfo(mouseX: Double, mouseY: Double): Boolean {
+        val (cx, cy) = infoCentre()
+        return mouseX.toInt() in cx - INFO_RADIUS..cx + INFO_RADIUS && mouseY.toInt() in cy - INFO_RADIUS..cy + INFO_RADIUS
     }
 
     private fun titleHeight(): Int = font.lineHeight + Common.UI.SPACING * 2
@@ -212,6 +248,7 @@ class PlantPalette(
 
     fun render(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
         graphics.drawShelf(x, y, x + width, y + height, TITLE)
+        renderInfo(graphics)
 
         search.render(graphics)
         deleteButton.pressed = deleteMode
@@ -275,6 +312,10 @@ class PlantPalette(
     }
 
     fun renderTooltip(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int) {
+        if (infoHovered) {
+            graphics.drawSimpleTooltip(SEARCH_HELP, mouseX + 8, mouseY + 8)
+            return
+        }
         if (carried != null) return
         val def = hovered ?: return
         graphics.drawSimpleTooltip(def.name, mouseX + 7, mouseY + 12)
@@ -289,6 +330,7 @@ class PlantPalette(
         hovered = cropAt(mouseX, mouseY)
         clearButton.mouseMoved(mouseX, mouseY)
         deleteButton.mouseMoved(mouseX, mouseY)
+        infoHovered = isOverInfo(mouseX, mouseY)
         markSelector.mouseMoved(mouseX, mouseY)
         undoButton.mouseMoved(mouseX, mouseY)
         redoButton.mouseMoved(mouseX, mouseY)
@@ -403,6 +445,9 @@ class PlantPalette(
         private const val RARITY_EPIC: Int = 0xFF7B1F8A.toInt()
         private const val RARITY_LEGENDARY: Int = 0xFFB07A14.toInt()
         private const val ARROW_WIDTH: Int = 16
+
+        private const val INFO_RADIUS: Int = 5
+        private const val SEARCH_HELP: String = "Search by name\n@ before a word searches effects, such as @harvest\n# before a word searches the soil a crop grows on, such as #sand"
 
         /** Laid over the carried plant so it reads as not yet placed. */
         private const val DRAG_VEIL: Int = 0x70101010

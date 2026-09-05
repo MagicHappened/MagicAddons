@@ -1,5 +1,6 @@
 package org.magic.magicaddons.ui.screens
 
+import org.magic.magicaddons.util.ScreenUtil.renderFakeItem
 import org.magic.magicaddons.data.greenhouse.CropRegistry
 import org.magic.magicaddons.util.ScreenUtil.drawButtonPanel
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhousePresets
@@ -524,21 +525,50 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
 
         val box = uniqueLineBox ?: return
         if (mouseX in box[0] until box[2] && mouseY in box[1] until box[3]) {
-            graphics.drawSimpleTooltip(missingUniquesText(), mouseX + 8, mouseY + 8)
+            drawMissingUniques(graphics, mouseX + 8, mouseY + 8)
         }
     }
 
-    /** The uniques not yet growing, one a line; the ones that count as each other written as a pair. */
-    private fun missingUniquesText(): String {
-        val missing = GreenhouseData.getMissingUniques().map { key ->
-            when (key) {
-                is GreenhouseData.UniqueCropKey.Def -> CropRegistry.get(key.id)?.name ?: key.id
-                GreenhouseData.UniqueCropKey.Flower -> "Moonflower/Sunflower"
-                GreenhouseData.UniqueCropKey.Mushroom -> "Red Mushroom/Brown Mushroom"
+    /** One line of the missing uniques list: the crops it stands for, and how they are named. */
+    private class UniqueLine(val crops: List<CropDefinition>, val text: String)
+
+    /** The uniques not yet growing, the ones that count as each other written as a pair. */
+    private fun missingUniques(): List<UniqueLine> = GreenhouseData.getMissingUniques().map { key ->
+        fun named(vararg names: String) = names.mapNotNull { name -> CropRegistry.all.find { it.name == name } }
+        when (key) {
+            is GreenhouseData.UniqueCropKey.Def -> {
+                val def = CropRegistry.get(key.id)
+                UniqueLine(listOfNotNull(def), def?.name ?: key.id)
             }
-        }.sorted()
-        if (missing.isEmpty()) return "§aEvery unique crop is growing"
-        return "§7Missing unique crops:\n" + missing.joinToString("\n") { "§f$it" }
+            GreenhouseData.UniqueCropKey.Flower -> UniqueLine(named("Moonflower", "Sunflower"), "Moonflower/Sunflower")
+            GreenhouseData.UniqueCropKey.Mushroom -> UniqueLine(named("Red Mushroom", "Brown Mushroom"), "Red Mushroom/Brown Mushroom")
+        }
+    }.sortedBy { it.text }
+
+    /** The missing uniques as a panel at the mouse, each crop's icon drawn text-high before its name. */
+    private fun drawMissingUniques(graphics: GuiGraphicsExtractor, atX: Int, atY: Int) {
+        val lines = missingUniques()
+        val pad = Common.UI.SPACING_LARGE
+        val icon = font.lineHeight
+        val lineHeight = icon + 2
+
+        val heading = if (lines.isEmpty()) "§aEvery unique crop is growing" else "§7Missing unique crops:"
+        val width = maxOf(font.width(heading), lines.maxOfOrNull { it.crops.size * (icon + 2) + font.width(it.text) } ?: 0) + pad * 2
+        val height = (lines.size + 1) * lineHeight + pad * 2 - 2
+        val left = atX.coerceAtMost(this.width - width).coerceAtLeast(0)
+        val top = atY.coerceAtMost(this.height - height).coerceAtLeast(0)
+
+        graphics.drawPanel(left, top, left + width, top + height)
+        graphics.text(font, Component.literal(heading), left + pad, top + pad, Common.UI.TEXT_COLOR, false)
+        lines.forEachIndexed { index, line ->
+            val y = top + pad + (index + 1) * lineHeight
+            var x = left + pad
+            line.crops.forEach { def ->
+                graphics.renderFakeItem(plantPalette.stackFor(def), x, y, icon, icon)
+                x += icon + 2
+            }
+            graphics.text(font, Component.literal(line.text), x, y + (icon - font.lineHeight) / 2, Common.UI.TEXT_COLOR, false)
+        }
     }
 
     /** Everything the tick period is made of, each level coloured by how far along it is. */
