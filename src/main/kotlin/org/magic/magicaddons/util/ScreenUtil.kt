@@ -280,10 +280,10 @@ object ScreenUtil {
     private const val CRISP_ITEM_ABOVE = 16
 
     /** A tooltip split on newlines and wrapped at vanilla's width, colour codes honoured. */
-    fun GuiGraphicsExtractor.drawSimpleTooltip(text: String, mouseX: Int, mouseY: Int) {
+    fun GuiGraphicsExtractor.drawSimpleTooltip(text: String, mouseX: Int, mouseY: Int, maxWidth: Int = TOOLTIP_MAX_WIDTH) {
         val font = Minecraft.getInstance().font
         val lines = text.split('\n').flatMap { line ->
-            font.split(Component.literal(line), TOOLTIP_MAX_WIDTH)
+            font.split(Component.literal(line), maxWidth.coerceAtLeast(font.width("W")))
         }
         drawTooltipLines(lines, mouseX, mouseY)
     }
