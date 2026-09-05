@@ -274,7 +274,7 @@ class GreenhouseGrid(
         // it alive put it one tick from dying, so that is assumed and said out loud
         val water = standing.waterLevel
 
-        if (water != null && water <= WaterModel.DEATH && found.instance.cropDef.needsWater) {
+        if (water != null && water <= WaterModel.DEATH && found.instance.needsWater) {
             found.instance.waterLevel =
                 WaterModel.aliveFloor(water, layout.waterEffectAt(found.instance.slot))
             found.instance.waterPredictedInDebt = true
@@ -337,7 +337,7 @@ class GreenhouseGrid(
             if (inDebt) instance.waterPredictedInDebt = true
 
             if (instance.isAsleep || cravingUnfulfilled || instance.isStarving) {
-                if (instance.cropDef.needsWater) {
+                if (instance.needsWater) {
                     instance.waterLevel = instance.waterLevel?.let {
                         WaterModel.after(it, ticks, layout.waterEffectAt(instance.slot))
                     }
@@ -348,7 +348,7 @@ class GreenhouseGrid(
 
             instance.age = instance.age?.plus(ticks * tickMs)
 
-            if (instance.cropDef.needsWater) {
+            if (instance.needsWater) {
                 instance.waterLevel = instance.waterLevel?.let {
                     WaterModel.after(it, ticks, layout.waterEffectAt(instance.slot))
                 }

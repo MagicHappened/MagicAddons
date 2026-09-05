@@ -1,5 +1,6 @@
 package org.magic.magicaddons.data.greenhouse.elements.mutation.rare
 
+import net.minecraft.world.level.block.state.properties.DoubleBlockHalf
 import net.minecraft.core.BlockPos
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.*
@@ -191,7 +192,28 @@ object Cheesebite : CropDefinitionProvider {
                 10..10
             )
 
-        ),
+        ,
+            // as placed
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = sunflowerState(DoubleBlockHalf.LOWER)
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, 0.34375, 0.0),
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
+                        hashString = "411f19c783959807338e2bf7080b1e34abb8c452464c0dce5bdf434cdc250717",
+                        isSmall = false
+                    )
+                ),
+                10..10,
+                placed = true
+            )),
         maxStage = 10,
         isMutation = true
     )

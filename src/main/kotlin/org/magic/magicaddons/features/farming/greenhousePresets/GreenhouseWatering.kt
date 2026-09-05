@@ -118,7 +118,7 @@ object GreenhouseWatering {
             val slot = grid.getSlotAt(stand.blockPosition(), matchY = false) ?: return@forEach
             val element = grid.elementCovering(slot) ?: return@forEach
 
-            if (!element.instance.cropDef.needsWater) return@forEach
+            if (!element.instance.needsWater) return@forEach
 
             // a bar that changed is one spray tick landing, worth the can's gain over the level held;
             // the bar itself is coarser than that, so it only overrules a count it disagrees with

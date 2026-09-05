@@ -134,6 +134,83 @@ object MagicJellybean : CropDefinitionProvider {
         stageRange = MAX_STAGE..MAX_STAGE
     )
 
+    /** As placed: the whole cane at its full height, taken from a bought one put down. */
+    private val placedLook: CropStage = CropStage(
+            blocks = CropBlockState.blockStatePattern(
+                listOf(
+                    BlockPos(0, 1, 0),
+                    BlockPos(0, 2, 0),
+                    BlockPos(0, 3, 0),
+                    BlockPos(0, 4, 0),
+                    BlockPos(0, 5, 0),
+                    BlockPos(0, 6, 0),
+                    BlockPos(0, 7, 0),
+                    BlockPos(0, 8, 0),
+                    BlockPos(0, 9, 0)
+                ),
+                blockState = sugarcaneState()
+            ) + listOf(
+                CropBlockState(
+                    offset = BlockPos(0, 10, 0),
+                    blockState = melonStemState(6)
+                )
+            ),
+            armorStands = CropArmorStand.matcherPattern(
+                offsets = listOf(
+                    Vec3(0.0, -0.21875, 0.0),
+                    Vec3(0.0, 0.78125, 0.0),
+                    Vec3(0.0, 1.78125, 0.0),
+                    Vec3(0.0, 2.78125, 0.0),
+                    Vec3(0.0, 3.78125, 0.0),
+                    Vec3(0.0, 4.78125, 0.0),
+                    Vec3(0.0, 5.78125, 0.0),
+                    Vec3(0.0, 6.78125, 0.0),
+                    Vec3(0.0, 7.78125, 0.0),
+                    Vec3(0.0, 8.78125, 0.0)
+                ),
+                rotations = listOf(
+                    Rotations(-22.5f, 22.5f, -22.5f),
+                    Rotations(-22.5f, 0.0f, 22.5f),
+                    Rotations(22.5f, -22.5f, 0.0f),
+                    Rotations(-22.5f, 22.5f, -22.5f),
+                    Rotations(-22.5f, 0.0f, 22.5f),
+                    Rotations(22.5f, -22.5f, 0.0f),
+                    Rotations(-22.5f, 22.5f, -22.5f),
+                    Rotations(-22.5f, 0.0f, 22.5f),
+                    Rotations(22.5f, -22.5f, 0.0f),
+                    Rotations(22.5f, 22.5f, 22.5f)
+                ),
+                xRotations = listOf(
+                    0.0f,
+                    0.0f,
+                    0.0f,
+                    0.0f,
+                    0.0f,
+                    0.0f,
+                    0.0f,
+                    0.0f,
+                    0.0f,
+                    0.0f
+                ),
+                yRotations = listOf(
+                    0.0f,
+                    0.0f,
+                    0.0f,
+                    0.0f,
+                    0.0f,
+                    0.0f,
+                    0.0f,
+                    0.0f,
+                    0.0f,
+                    0.0f
+                ),
+                hashString = "c526a56b80f56a6870f891d1d46fa7f8c71494cad24e94326da84b3829417b81",
+                isSmall = false
+            ),
+            120..120,
+            placed = true
+        )
+
     override val definition = CropDefinition(
         name = "Magic Jellybean",
         effects = setOf(
@@ -141,7 +218,7 @@ object MagicJellybean : CropDefinitionProvider {
             CropEffect.HarvestLoss
         ),
         skyblockId = SkyBlockItemId.item("MAGIC_JELLYBEAN"),
-        stageDefs = generateStages(),
+        stageDefs = generateStages() + placedLook,
         standPoses = mapOf(
             CANE_HASH to StandPose.Cycle(CANE_POSES),
             MELON_HASH to StandPose.Fixed(Rotations(0.0f, 22.5f, 22.5f))

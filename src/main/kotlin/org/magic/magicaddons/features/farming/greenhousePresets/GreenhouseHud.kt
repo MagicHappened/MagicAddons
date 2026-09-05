@@ -74,7 +74,7 @@ object GreenhouseHud {
 
         val gardenTime = GreenhouseGrid.timeOfDayNow()
         val ready = plants.count { it.cropDef.isMutation && it.grewInPlace && (it.highestStage ?: 0) >= it.cropDef.maxStage }
-        val dry = plants.count { it.cropDef.needsWater && (it.waterLevel == 0 || it.waterPredictedInDebt) }
+        val dry = plants.count { it.needsWater && (it.waterLevel == 0 || it.waterPredictedInDebt) }
         val asleep = plants.count { it.isAsleep }
         val craving = plants.count { instance ->
             val wants = instance.craving ?: return@count false
