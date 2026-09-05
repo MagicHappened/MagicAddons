@@ -93,11 +93,14 @@ class CropPreviewScreen(
         else -> emptyList()
     }
 
-    /** Whether a look is the one the variant asks for; every look passes when nothing is asked. */
-    private fun CropStage.wears(variant: Variant?): Boolean = when (variant) {
+    /**
+     * Whether a look is the one the variant asks for; every look passes when nothing is asked.
+     * Asleep only means anything at the stages a plant sleeps at; elsewhere it is awake either way.
+     */
+    private fun CropStage.wears(variant: Variant?, def: CropDefinition, stage: Int): Boolean = when (variant) {
         Variant.Day -> traits[CropStandReader.CRAVES] == CropStandReader.CRAVES_DAY
         Variant.Night -> traits[CropStandReader.CRAVES] == CropStandReader.CRAVES_NIGHT
-        Variant.Asleep -> readers.any { it.key == CropStandReader.ASLEEP }
+        Variant.Asleep -> if (stage in def.sleepStages) readers.any { it.key == CropStandReader.ASLEEP } else readers.none { it.key == CropStandReader.ASLEEP }
         Variant.Awake -> readers.none { it.key == CropStandReader.ASLEEP }
         null -> true
     }
@@ -197,7 +200,7 @@ class CropPreviewScreen(
 
         val stageDef = def.stageDefs
             .flatMap { if (it is CropStagePattern) it.expand() else listOf(it) }
-            .filter { stage in it.stageRange && it.wears(variant) }
+            .filter { stage in it.stageRange && it.wears(variant, def, stage) }
             .let { looks -> looks.firstOrNull { !it.placed } ?: looks.firstOrNull() }
             ?: return
 

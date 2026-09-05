@@ -47,7 +47,38 @@ object Gloomgourd : CropDefinitionProvider {
             )
 
 
-        ),
+        ,
+            // as bought, the same as it grows to
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = wheatState(6)
+                    )
+                ),
+                armorStands = CropArmorStand.matcherPattern(
+                    offsets = listOf(
+                        Vec3(0.0, 0.78125, 0.0),
+                        Vec3(0.0, -0.40625, 0.0)
+                    ),
+                    rotations = listOf(
+                        Rotations(0.0f, 0.0f, -180.0f),
+                        Rotations(0.0f, 0.0f, 0.0f)
+                    ),
+                    xRotations = listOf(
+                        0.0f,
+                        0.0f
+                    ),
+                    yRotations = listOf(
+                        0.0f,
+                        0.0f
+                    ),
+                    hashString = "7f693e42ba3b763292e7de26fd2b0a08fcee3bec2e017075dc66dfc4a932aa64",
+                    isSmall = false
+                ),
+                1..1,
+                placed = true
+            )),
         needsWater = false,
         isMutation = true
     )

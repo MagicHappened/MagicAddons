@@ -41,7 +41,28 @@ object Choconut : CropDefinitionProvider {
                 1..1,
             )
 
-        ),
+        ,
+            // as bought, the same as it grows to
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = pumpkinStemState(7)
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(-0.15625, 0.28125, -0.15625),
+                        headRotation = Rotations(45.0f, 0.0f, 45.0f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
+                        hashString = "2a8d74b77a0e510d058c544c7292a8844e70b9293880caffc562ce5ab5a49ad8",
+                        isSmall = false
+                    )
+                ),
+                1..1,
+                placed = true
+            )),
         needsWater = false,
         isMutation = true
     )

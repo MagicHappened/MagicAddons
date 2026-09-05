@@ -46,7 +46,28 @@ object Witherbloom : CropDefinitionProvider {
             )
 
 
-        ),
+        ,
+            // as bought, the same as it grows to
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = deadBushState()
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, 0.40625, 0.0),
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
+                        hashString = "ef831051cf18a4c3ea7a2a83311f218f43b032712799cc81910ab67ee7397b32",
+                        isSmall = false
+                    )
+                ),
+                1..1,
+                placed = true
+            )),
         requiredSoil = setOf(Blocks.SOUL_SAND),
         needsWater = false,
         isMutation = true,

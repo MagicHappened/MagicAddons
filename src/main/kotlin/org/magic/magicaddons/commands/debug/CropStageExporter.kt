@@ -26,6 +26,10 @@ import org.magic.magicaddons.util.isCardinalYaw
  */
 object CropStageExporter {
 
+    /** How far above the soil a plant's own stands reach; the aloe's labels are the highest, near three and a quarter. */
+    private const val MAX_STAND_ABOVE: Double = 4.0
+
+
     /** The skulls the plot's own marker stands carry, which belong to no crop. */
     val PLOT_MARKER_SKINS: Set<String> = setOf(
         "4099589796de185787ab92c3066d0d0af832ffad7153a42bb2e2d23598e7ea60",
@@ -137,6 +141,12 @@ object CropStageExporter {
             }
 
             val offset = entity.position().subtract(originVec)
+
+            // a pet hovering over the plant, or its name tag, stands well above anything a plant carries
+            if (offset.y > MAX_STAND_ABOVE) {
+                skipped += "stand ${fmt(entity.position())} too high to be part of the plant"
+                continue
+            }
 
             val hash = PlayerUtils.getSkullHash(entity)
 

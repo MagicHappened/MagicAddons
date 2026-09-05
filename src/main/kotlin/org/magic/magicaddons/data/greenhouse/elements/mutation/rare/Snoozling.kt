@@ -939,14 +939,6 @@ object Snoozling : CropDefinitionProvider {
                         isSmall = false
                     ),
                     CropArmorStand(
-                        offset = Vec3(-0.4352728550689733, 6.164957682291671, -1.294365834600356),
-                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
-                        xRotation = 0.0f,
-                        yRotation = -9.714661f,
-                        hashString = "ecce076ab3ad6790b446b40e6d325346514774a8108b37e62514d1843c8858ce",
-                        isSmall = false
-                    ),
-                    CropArmorStand(
                         offset = Vec3(0.0, 0.9375, -0.90625),
                         headRotation = Rotations(45.0f, 0.0f, 0.0f),
                         xRotation = 0.0f,
@@ -1012,22 +1004,6 @@ object Snoozling : CropDefinitionProvider {
                         xRotation = 0.0f,
                         yRotation = 0.0f,
                         hashString = "77bb86dedeb827f2489aa0103d58d0e12e64a8152d5a0f5b1d4d208a3cb55999",
-                        isSmall = false
-                    ),
-                    CropArmorStand(
-                        offset = Vec3(-1.108154296875, 4.25, -0.83740234375),
-                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
-                        xRotation = 0.0f,
-                        yRotation = 95.625f,
-                        hashString = "b2d8c9dcb6a6c627cfd188098b6b1b732494b620847e1609a3b7926830c07498",
-                        isSmall = false
-                    ),
-                    CropArmorStand(
-                        offset = Vec3(-0.71728515625, 5.699951171875, -0.7451171875),
-                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
-                        xRotation = 0.0f,
-                        yRotation = 95.625f,
-                        containsCustomName = "[Lvl 200] [184✦] Rose Dragon",
                         isSmall = false
                     ),
                     CropArmorStand(
