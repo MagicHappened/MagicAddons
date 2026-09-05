@@ -125,12 +125,24 @@ open class CropStage(
     }.toMap()
 
     // for now leaving debug in just in case
+    /** What the matcher reads off a stand: read once per scan, not once per stage tried against it. */
+    class StandReadings {
+        class Reading(val position: Vec3, val skullHash: String?, val name: String?)
+
+        private val readings = HashMap<Int, Reading>()
+
+        fun of(stand: ArmorStand): Reading = readings.getOrPut(stand.id) {
+            Reading(stand.position(), PlayerUtils.getSkullHash(stand), stand.customName?.string)
+        }
+    }
+
     fun matchesStage(
         origin: BlockPos,
         remainingStands: List<ArmorStand>,
         footprint: Footprint,
         rotatesWithPlot: Boolean = true,
-        debug: Boolean = false
+        debug: Boolean = false,
+        readings: StandReadings = StandReadings()
     ): StageMatchResult {
         val level = Minecraft.getInstance().level ?: return StageMatchResult(
             false,
@@ -196,13 +208,11 @@ open class CropStage(
                     val expected = WorldRotation.rotate(standDef.offset, step)
 
                     val match = remainingStands.firstOrNull { entity ->
-                        val offset = entity.position().subtract(center)
-                        val hash = PlayerUtils.getSkullHash(entity)
-                        val name = entity.customName?.string
+                        val reading = readings.of(entity)
 
-                        isClose(offset, expected) &&
-                                (standDef.hashString?.let { it == hash } ?: true) &&
-                                (standDef.containsCustomName?.let { name?.contains(it) == true } ?: true)
+                        isClose(reading.position.subtract(center), expected) &&
+                                (standDef.hashString?.let { it == reading.skullHash } ?: true) &&
+                                (standDef.containsCustomName?.let { reading.name?.contains(it) == true } ?: true)
                     }
 
                     if (match == null) {
