@@ -434,31 +434,31 @@ class HudEditorScreen : Screen(Component.literal("HUD Editor")), OverlayContext 
         return PANEL_PAD * 2 + PANEL_ROW * (1 + situations.size + elements.size) + PANEL_PAD * 2 + 1
     }
 
-    private fun panelLeft(): Int = width - TAB_WIDTH - PANEL_WIDTH
-    private fun panelTop(): Int = ((height - panelHeight()) / 2).coerceAtLeast(0)
-    private fun tabTop(): Int = (height - TAB_HEIGHT) / 2
+    private fun panelLeft(): Int = (width - PANEL_WIDTH) / 2
+    private fun panelRight(): Int = panelLeft() + PANEL_WIDTH
+    private fun panelTop(): Int = TAB_HEIGHT
+    private fun tabLeft(): Int = (width - TAB_WIDTH) / 2
 
-    private fun overTab(x: Int, y: Int): Boolean = x >= width - TAB_WIDTH && y in tabTop() until tabTop() + TAB_HEIGHT
+    private fun overTab(x: Int, y: Int): Boolean = y < TAB_HEIGHT && x in tabLeft() until tabLeft() + TAB_WIDTH
 
     private fun overPanel(x: Int, y: Int): Boolean =
-        panelOpen && x in panelLeft() until width - TAB_WIDTH && y in panelTop() until panelTop() + panelHeight()
+        panelOpen && x in panelLeft() until panelRight() && y in panelTop() until panelTop() + panelHeight()
 
-    /** The tab, and the panel of situations and elements it opens. */
+    /** The tab at the top centre, and the panel of situations and elements it drops down. */
     private fun drawPanel(graphics: GuiGraphicsExtractor) {
-        val tabLeft = width - TAB_WIDTH
-        val top = tabTop()
+        val tabLeft = tabLeft()
         val overTab = overTab(mouseX, mouseY)
-        graphics.drawButtonPanel(tabLeft, top, width, top + TAB_HEIGHT, overTab, pressed = panelOpen)
-        val midY = top + TAB_HEIGHT / 2
-        val tipX = if (panelOpen) tabLeft + TAB_WIDTH - 2 else tabLeft + 2
-        val baseX = if (panelOpen) tabLeft + 2 else tabLeft + TAB_WIDTH - 2
-        graphics.drawLine(baseX, midY - 3, tipX, midY, 1, Common.UI.TEXT_COLOR)
-        graphics.drawLine(tipX, midY, baseX, midY + 3, 1, Common.UI.TEXT_COLOR)
+        graphics.drawButtonPanel(tabLeft, 0, tabLeft + TAB_WIDTH, TAB_HEIGHT, overTab, pressed = panelOpen)
+        val midX = tabLeft + TAB_WIDTH / 2
+        val tipY = if (panelOpen) 2 else TAB_HEIGHT - 2
+        val baseY = if (panelOpen) TAB_HEIGHT - 2 else 2
+        graphics.drawLine(midX - 3, baseY, midX, tipY, 1, Common.UI.TEXT_COLOR)
+        graphics.drawLine(midX, tipY, midX + 3, baseY, 1, Common.UI.TEXT_COLOR)
 
         if (!panelOpen) return
         val left = panelLeft()
         val panelTop = panelTop()
-        graphics.drawPanel(left, panelTop, width - TAB_WIDTH, panelTop + panelHeight())
+        graphics.drawPanel(left, panelTop, panelRight(), panelTop + panelHeight())
 
         val (situations, elements) = panelRows()
         var rowY = panelTop + PANEL_PAD
@@ -466,28 +466,28 @@ class HudEditorScreen : Screen(Component.literal("HUD Editor")), OverlayContext 
         rowY += PANEL_ROW
 
         situations.forEach { candidate ->
-            val over = mouseX in left until width - TAB_WIDTH && mouseY in rowY until rowY + PANEL_ROW
+            val over = mouseX in left until panelRight() && mouseY in rowY until rowY + PANEL_ROW
             if (candidate == situation) {
-                graphics.fill(left + Common.UI.BORDER_SIZE, rowY, width - TAB_WIDTH - Common.UI.BORDER_SIZE, rowY + PANEL_ROW, Common.UI.PRESSED_SHADE)
+                graphics.fill(left + Common.UI.BORDER_SIZE, rowY, panelRight() - Common.UI.BORDER_SIZE, rowY + PANEL_ROW, Common.UI.PRESSED_SHADE)
                 graphics.fill(left + Common.UI.BORDER_SIZE, rowY, left + Common.UI.BORDER_SIZE + 2, rowY + PANEL_ROW, Common.UI.SELECTED_FRAME_COLOR)
             } else if (over) {
-                graphics.fill(left + Common.UI.BORDER_SIZE, rowY, width - TAB_WIDTH - Common.UI.BORDER_SIZE, rowY + PANEL_ROW, Common.UI.HOVER_WASH)
+                graphics.fill(left + Common.UI.BORDER_SIZE, rowY, panelRight() - Common.UI.BORDER_SIZE, rowY + PANEL_ROW, Common.UI.HOVER_WASH)
             }
             graphics.text(font, Component.literal(candidate.label), left + PANEL_PAD + 3, rowY + (PANEL_ROW - font.lineHeight) / 2, if (candidate == situation) Common.UI.TEXT_COLOR else Common.UI.TEXT_DIM_COLOR, false)
             rowY += PANEL_ROW
         }
 
         rowY += PANEL_PAD
-        graphics.fill(left + PANEL_PAD, rowY, width - TAB_WIDTH - PANEL_PAD, rowY + 1, Common.UI.THIN_DIVIDER_COLOR)
+        graphics.fill(left + PANEL_PAD, rowY, panelRight() - PANEL_PAD, rowY + 1, Common.UI.THIN_DIVIDER_COLOR)
         rowY += 1 + PANEL_PAD
 
         elements.forEach { element ->
             val shown = !layout.isHidden(situation, element.id)
-            val over = mouseX in left until width - TAB_WIDTH && mouseY in rowY until rowY + PANEL_ROW
-            if (over) graphics.fill(left + Common.UI.BORDER_SIZE, rowY, width - TAB_WIDTH - Common.UI.BORDER_SIZE, rowY + PANEL_ROW, Common.UI.HOVER_WASH)
+            val over = mouseX in left until panelRight() && mouseY in rowY until rowY + PANEL_ROW
+            if (over) graphics.fill(left + Common.UI.BORDER_SIZE, rowY, panelRight() - Common.UI.BORDER_SIZE, rowY + PANEL_ROW, Common.UI.HOVER_WASH)
             graphics.text(font, Component.literal(element.name), left + PANEL_PAD + 3, rowY + (PANEL_ROW - font.lineHeight) / 2, if (shown) Common.UI.TEXT_COLOR else Common.UI.DISABLED_TEXT_COLOR, false)
             val switch = SwitchWidget(shown, 16, 9)
-            switch.x = width - TAB_WIDTH - PANEL_PAD - switch.width
+            switch.x = panelRight() - PANEL_PAD - switch.width
             switch.y = rowY + (PANEL_ROW - switch.height) / 2
             switch.render(graphics)
             rowY += PANEL_ROW
@@ -899,8 +899,8 @@ class HudEditorScreen : Screen(Component.literal("HUD Editor")), OverlayContext 
     }
 
     private companion object {
-        const val TAB_WIDTH: Int = 8
-        const val TAB_HEIGHT: Int = 30
+        const val TAB_WIDTH: Int = 30
+        const val TAB_HEIGHT: Int = 8
         const val PANEL_WIDTH: Int = 120
         const val PANEL_ROW: Int = 13
         const val PANEL_PAD: Int = 4
