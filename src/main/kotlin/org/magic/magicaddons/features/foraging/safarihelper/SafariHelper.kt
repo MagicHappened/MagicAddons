@@ -12,13 +12,15 @@ import org.magic.magicaddons.events.ConfigChangedEvent
 import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.events.EventHandler
 import org.magic.magicaddons.events.chat.OnSystemChatEvent
-import org.magic.magicaddons.events.render.OnHudRenderEvent
 import org.magic.magicaddons.events.world.OnEntityAdded
 import org.magic.magicaddons.events.world.OnEntityRemoved
 import org.magic.magicaddons.events.world.OnEntityUpdated
 import org.magic.magicaddons.events.world.OnWorldTickEvent
 import org.magic.magicaddons.features.HighlightFeature
-import org.magic.magicaddons.ui.hud.HudPosition
+import org.magic.magicaddons.ui.hud.ConfigTarget
+import org.magic.magicaddons.ui.hud.HudContent
+import org.magic.magicaddons.ui.hud.HudElement
+import org.magic.magicaddons.ui.hud.HudLine
 import org.magic.magicaddons.util.ChatUtils
 import tech.thatgravyboat.skyblockapi.api.SkyBlockAPI
 import tech.thatgravyboat.skyblockapi.api.events.base.Subscription
@@ -34,11 +36,29 @@ object SafariHelper : HighlightFeature() {
         SkyBlockAPI.eventBus.register(this)
     }
 
-    // TODO replace the fixed hud position with a hud position editor
-    private val hudPosition = HudPosition(offsetX = 20, offsetY = 20, xFraction = 0.02f, yFraction = 0.04f)
+    /** The list of uniques left, drawn as plain text with no panel unless the editor gives it one. */
+    val hud: HudElement = object : HudElement("safari", "Safari Uniques") {
+        override val defaultX: Int = 20
+        override val defaultY: Int = 20
+        override val defaultAlpha: Float = 0f
+        override val shadow: Boolean = true
 
-    /** Fallback for hud text that carries no style of its own. */
-    private const val HUD_TEXT_COLOR: Int = 0xFFFFFFFF.toInt()
+        override val configTarget: ConfigTarget
+            get() = ConfigTarget(SafariHelper, listOf(baseSetting, uniqueTracking))
+
+        override fun content(): HudContent? {
+            if (!baseSetting.value || !uniqueTracking.value) return null
+            val zone = currentZone ?: return null
+            return HudContent(hudLines(zone).map { HudLine.Text(it) })
+        }
+
+        override fun sample(): HudContent = HudContent(buildList {
+            add(HudLine.Text(Component.literal("Jungle Biome: ").withStyle(ChatFormatting.GOLD).append(Component.literal("3 left").withStyle(ChatFormatting.YELLOW))))
+            listOf("Macaw", "Woodchucker", "Treefrog").forEach { mob ->
+                add(HudLine.Text(Component.literal(" - ").withStyle(ChatFormatting.DARK_GRAY).append(Component.literal(mob).withStyle(ChatFormatting.GREEN))))
+            }
+        })
+    }
 
     private const val MOB_HIGHLIGHT_COLOR: Int = 0xFFFFC0CB.toInt()
     private const val SPARKLING_HIGHLIGHT_COLOR: Int = 0xFFFFAA00.toInt()
@@ -321,23 +341,6 @@ object SafariHelper : HighlightFeature() {
         }
 
         ChatUtils.sendWithPrefix(Component.literal(message).withStyle(ChatFormatting.GREEN))
-    }
-
-    @EventHandler
-    fun onHudRender(event: OnHudRenderEvent) {
-        if (!baseSetting.value || !uniqueTracking.value) return
-
-        val zone = currentZone ?: return
-        val client = Minecraft.getInstance()
-
-        // only while free walking around the island
-        if (McCompat.hudHidden() || McCompat.currentScreen() != null) return
-
-        var y = hudPosition.y()
-        hudLines(zone).forEach { line ->
-            event.graphics.text(client.font, line, hudPosition.x(), y, HUD_TEXT_COLOR, true)
-            y += client.font.lineHeight + 1
-        }
     }
 
     /** The uniques of [zone] that still have to be caught during this visit. */
