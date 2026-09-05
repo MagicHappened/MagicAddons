@@ -1,6 +1,5 @@
 package org.magic.magicaddons.features.mining
 
-import org.magic.magicaddons.util.ErrorReporter.guard
 import net.minecraft.client.Minecraft
 import net.minecraft.core.particles.ParticleTypes
 import net.minecraft.world.entity.EquipmentSlot
@@ -43,9 +42,7 @@ object HidePowderCoatingParticles : Feature() {
 
     @Subscription
     fun onContainerScreen(event: ContainerInitializedEvent){
-        guard("the powder coating hider") {
-            armorDirty = true
-        }
+        armorDirty = true
     }
 
     @EventHandler

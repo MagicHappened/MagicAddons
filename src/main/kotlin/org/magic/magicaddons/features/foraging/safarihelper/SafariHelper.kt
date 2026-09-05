@@ -1,6 +1,5 @@
 package org.magic.magicaddons.features.foraging.safarihelper
 
-import org.magic.magicaddons.util.ErrorReporter.guard
 import net.minecraft.ChatFormatting
 import net.minecraft.client.Minecraft
 import net.minecraft.network.chat.Component
@@ -263,15 +262,13 @@ object SafariHelper : HighlightFeature() {
 
     @Subscription
     fun onIslandChange(event: IslandChangeEvent) {
-        guard("the safari helper") {
-            // a fresh visit starts with nothing caught, leaving drops the state we can no longer trust
-            if (event.new == SkyBlockIsland.SAFARI || event.old == SkyBlockIsland.SAFARI) {
-                caughtUniques.clear()
-                safariDone.reset()
-                zoneDone.values.forEach { it.reset() }
-                zoneTicks.clear()
-                designatedZone = null
-            }
+        // a fresh visit starts with nothing caught, leaving drops the state we can no longer trust
+        if (event.new == SkyBlockIsland.SAFARI || event.old == SkyBlockIsland.SAFARI) {
+            caughtUniques.clear()
+            safariDone.reset()
+            zoneDone.values.forEach { it.reset() }
+            zoneTicks.clear()
+            designatedZone = null
         }
     }
 

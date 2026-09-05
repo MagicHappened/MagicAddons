@@ -1,5 +1,6 @@
 package org.magic.mixins;
 
+import org.magic.magicaddons.util.ErrorReporter;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 //? if >=26.2 {
@@ -43,9 +44,13 @@ public class LevelExtractorMixin {
     ) {
         EntityRenderState state = original.call(instance, entity, partialTickTime);
 
-        if (LayoutRenderState.INSTANCE.getBadStandsUUID().contains(entity.getUUID())){
-            ((WrappedEntityRenderState)state).magicaddons$setWrappedEntity(true);
-            ((WrappedEntityRenderState)state).magicaddons$setWrappedEntityTintColor(LayoutRenderState.RED_TINT);
+        try {
+            if (LayoutRenderState.INSTANCE.getBadStandsUUID().contains(entity.getUUID())){
+                ((WrappedEntityRenderState)state).magicaddons$setWrappedEntity(true);
+                ((WrappedEntityRenderState)state).magicaddons$setWrappedEntityTintColor(LayoutRenderState.RED_TINT);
+            }
+        } catch (Throwable error) {
+            ErrorReporter.INSTANCE.report("the stand tinting", error);
         }
         return state;
     }

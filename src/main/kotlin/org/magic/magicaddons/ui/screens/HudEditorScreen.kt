@@ -1,10 +1,8 @@
 package org.magic.magicaddons.ui.screens
 
-import org.magic.magicaddons.util.ErrorReporter.guard
 import com.mojang.blaze3d.platform.InputConstants
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
-import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.network.chat.Component
@@ -43,7 +41,7 @@ import kotlin.math.roundToInt
  * faded with the wheel, scaled with shift and the wheel, merged by dropping one on another,
  * tied to each other or to anchors through the right click menu, and reset with R.
  */
-class HudEditorScreen : Screen(Component.literal("HUD Editor")), OverlayContext {
+class HudEditorScreen : MagicScreen(Component.literal("HUD Editor"), "the hud editor"), OverlayContext {
 
     override val overlays: MutableList<OverlayRenderable> = mutableListOf()
 
@@ -87,12 +85,10 @@ class HudEditorScreen : Screen(Component.literal("HUD Editor")), OverlayContext 
         scene = HudScene.build(layout, width, height, sample = true, include = ::shownHere)
     }
 
-    override fun init() {
-        guard("the hud editor") {
-            super.init()
-            closeOverlays()
-            rebuild()
-        }
+    override fun onInit() {
+        super.onInit()
+        closeOverlays()
+        rebuild()
     }
 
     override fun isPauseScreen(): Boolean = false
@@ -444,38 +440,36 @@ class HudEditorScreen : Screen(Component.literal("HUD Editor")), OverlayContext 
         graphics.fill(0, 0, width, height, Common.UI.SCREEN_DIM_COLOR)
     }
 
-    override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
-        guard("the hud editor") {
-            super.extractRenderState(graphics, mouseX, mouseY, delta)
-            this.mouseX = mouseX
-            this.mouseY = mouseY
-            rebuild()
+    override fun onRender(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
+        super.onRender(graphics, mouseX, mouseY, delta)
+        this.mouseX = mouseX
+        this.mouseY = mouseY
+        rebuild()
 
-            scene.draw(graphics)
+        scene.draw(graphics)
 
-            val hovered = if (overlays.isEmpty()) hoveredBox() else null
-            val shown = draggedBox() ?: hovered
-            val selected = selectedId?.let { scene.boxOf(it) }
-            selected?.let { drawHandles(graphics, it) }
-            shown?.takeIf { it !== selected }?.let { drawHandles(graphics, it) }
-            drawAnchors(graphics)
-            drawTies(graphics, listOfNotNull(shown?.id, selectedId).distinct())
-            (draggedBox() ?: hovered)?.let { drawDividerHandle(graphics, it) }
-            drawPicking(graphics)
-            mergeTarget?.let { (box, edge) -> drawMergeEdge(graphics, box, edge) }
+        val hovered = if (overlays.isEmpty()) hoveredBox() else null
+        val shown = draggedBox() ?: hovered
+        val selected = selectedId?.let { scene.boxOf(it) }
+        selected?.let { drawHandles(graphics, it) }
+        shown?.takeIf { it !== selected }?.let { drawHandles(graphics, it) }
+        drawAnchors(graphics)
+        drawTies(graphics, listOfNotNull(shown?.id, selectedId).distinct())
+        (draggedBox() ?: hovered)?.let { drawDividerHandle(graphics, it) }
+        drawPicking(graphics)
+        mergeTarget?.let { (box, edge) -> drawMergeEdge(graphics, box, edge) }
 
-            if (overlays.isEmpty()) {
-                val part = hoveredPart()
-                val anchor = scene.anchorAt(mouseX.toDouble(), mouseY.toDouble())
-                when {
-                    shown != null && part != null -> drawReadout(graphics, shown, part)
-                    anchor != null -> drawAnchorReadout(graphics, anchor.state, anchor.x, anchor.y)
-                }
+        if (overlays.isEmpty()) {
+            val part = hoveredPart()
+            val anchor = scene.anchorAt(mouseX.toDouble(), mouseY.toDouble())
+            when {
+                shown != null && part != null -> drawReadout(graphics, shown, part)
+                anchor != null -> drawAnchorReadout(graphics, anchor.state, anchor.x, anchor.y)
             }
-            drawHints(graphics)
-            drawPanel(graphics)
-            overlays.asReversed().forEach { it.renderOverlay(graphics, mouseX, mouseY, delta) }
         }
+        drawHints(graphics)
+        drawPanel(graphics)
+        overlays.asReversed().forEach { it.renderOverlay(graphics, mouseX, mouseY, delta) }
     }
 
     // ------------------------------------------------------------------ the tab at the right edge
@@ -761,94 +755,90 @@ class HudEditorScreen : Screen(Component.literal("HUD Editor")), OverlayContext 
 
     // ------------------------------------------------------------------ input
 
-    override fun mouseMoved(mouseX: Double, mouseY: Double) {
+    override fun onMouseMoved(mouseX: Double, mouseY: Double) {
         this.mouseX = mouseX.toInt()
         this.mouseY = mouseY.toInt()
         overlays.forEach { it.mouseMoved(mouseX, mouseY) }
     }
 
-    override fun mouseClicked(event: MouseButtonEvent, doubled: Boolean): Boolean {
-        return guard("the hud editor", false) {
-            if (overlays.toList().any { it.mouseClicked(event, doubled) }) return true
-            if (overlays.isNotEmpty()) {
-                closeOverlays()
-                return true
-            }
-
-            val x = event.x
-            val y = event.y
-            val anchor = scene.anchorAt(x, y)
-            val box = boxNear(x, y)
-
-            if (panelClicked(x.toInt(), y.toInt(), event.button())) return true
-
-            picking?.let { source ->
-                if (event.button() == 0) pickCandidate()?.let { tie(source, it) }
-                picking = null
-                return true
-            }
-
-            if (event.button() == 1) {
-                val part = scene.partAt(x, y)
-                when {
-                    anchor != null -> menuForAnchor(anchor.state, x.toInt(), y.toInt())
-                    box != null && part != null -> menuFor(part, box, x.toInt(), y.toInt())
-                    else -> openMenu(x.toInt(), y.toInt(), "Here", listOf(HudMenu.Entry("Add anchor") { addAnchor(x.toInt(), y.toInt()) }))
-                }
-                return true
-            }
-            if (event.button() == 2) {
-                val id = anchor?.state?.id ?: box?.id ?: return false
-                when {
-                    shiftDown() -> box?.let { toggleDynamic(it) }
-                    layout.placed(id)?.tie != null -> untie(id)
-                    else -> togglePositioning(id)
-                }
-                HudLayoutStore.save()
-                return true
-            }
-            if (event.button() != 0) return false
-
-            if (anchor != null) {
-                selectedId = anchor.state.id
-                drag = Drag.Move(anchor.state.id, x.toInt() - anchor.x, y.toInt() - anchor.y)
-                return true
-            }
-            if (box == null) {
-                selectedId = null
-                return false
-            }
-            selectedId = box.id
-
-            cornerAt(box, x, y)?.let { (leftSide, topSide) ->
-                drag = Drag.Resize(box.id, leftSide, topSide, if (leftSide) box.x + box.width else box.x, if (topSide) box.y + box.height else box.y)
-                return true
-            }
-            box.dividerAt(x, y)?.let { index ->
-                val a = box.parts[index]
-                val b = box.parts[index + 1]
-                drag = if (box.stacking == Stacking.VERTICAL) Drag.Divider(box.id, index, y.toInt(), a.height, b.height)
-                else Drag.Divider(box.id, index, x.toInt(), a.width, b.width)
-                return true
-            }
-            drag = Drag.Move(box.id, x.toInt() - box.x, y.toInt() - box.y)
+    override fun onMouseClicked(event: MouseButtonEvent, doubled: Boolean): Boolean {
+        if (overlays.toList().any { it.mouseClicked(event, doubled) }) return true
+        if (overlays.isNotEmpty()) {
+            closeOverlays()
             return true
         }
+
+        val x = event.x
+        val y = event.y
+        val anchor = scene.anchorAt(x, y)
+        val box = boxNear(x, y)
+
+        if (panelClicked(x.toInt(), y.toInt(), event.button())) return true
+
+        picking?.let { source ->
+            if (event.button() == 0) pickCandidate()?.let { tie(source, it) }
+            picking = null
+            return true
+        }
+
+        if (event.button() == 1) {
+            val part = scene.partAt(x, y)
+            when {
+                anchor != null -> menuForAnchor(anchor.state, x.toInt(), y.toInt())
+                box != null && part != null -> menuFor(part, box, x.toInt(), y.toInt())
+                else -> openMenu(x.toInt(), y.toInt(), "Here", listOf(HudMenu.Entry("Add anchor") { addAnchor(x.toInt(), y.toInt()) }))
+            }
+            return true
+        }
+        if (event.button() == 2) {
+            val id = anchor?.state?.id ?: box?.id ?: return false
+            when {
+                shiftDown() -> box?.let { toggleDynamic(it) }
+                layout.placed(id)?.tie != null -> untie(id)
+                else -> togglePositioning(id)
+            }
+            HudLayoutStore.save()
+            return true
+        }
+        if (event.button() != 0) return false
+
+        if (anchor != null) {
+            selectedId = anchor.state.id
+            drag = Drag.Move(anchor.state.id, x.toInt() - anchor.x, y.toInt() - anchor.y)
+            return true
+        }
+        if (box == null) {
+            selectedId = null
+            return false
+        }
+        selectedId = box.id
+
+        cornerAt(box, x, y)?.let { (leftSide, topSide) ->
+            drag = Drag.Resize(box.id, leftSide, topSide, if (leftSide) box.x + box.width else box.x, if (topSide) box.y + box.height else box.y)
+            return true
+        }
+        box.dividerAt(x, y)?.let { index ->
+            val a = box.parts[index]
+            val b = box.parts[index + 1]
+            drag = if (box.stacking == Stacking.VERTICAL) Drag.Divider(box.id, index, y.toInt(), a.height, b.height)
+            else Drag.Divider(box.id, index, x.toInt(), a.width, b.width)
+            return true
+        }
+        drag = Drag.Move(box.id, x.toInt() - box.x, y.toInt() - box.y)
+        return true
     }
 
-    override fun mouseDragged(event: MouseButtonEvent, dragX: Double, dragY: Double): Boolean {
-        return guard("the hud editor", false) {
-            val current = drag ?: return false
-            when (current) {
-                is Drag.Move -> {
-                    moveTo(current.id, event.x.toInt() - current.offsetX, event.y.toInt() - current.offsetY)
-                    mergeTarget = mergeTargetFor(current.id, event.x, event.y)
-                }
-                is Drag.Resize -> scene.boxOf(current.id)?.let { resizeTo(it, current, event.x.toInt(), event.y.toInt()) }
-                is Drag.Divider -> scene.boxOf(current.id)?.let { dragDivider(it, current, if (it.stacking == Stacking.VERTICAL) event.y.toInt() else event.x.toInt()) }
+    override fun onMouseDragged(event: MouseButtonEvent, dragX: Double, dragY: Double): Boolean {
+        val current = drag ?: return false
+        when (current) {
+            is Drag.Move -> {
+                moveTo(current.id, event.x.toInt() - current.offsetX, event.y.toInt() - current.offsetY)
+                mergeTarget = mergeTargetFor(current.id, event.x, event.y)
             }
-            return true
+            is Drag.Resize -> scene.boxOf(current.id)?.let { resizeTo(it, current, event.x.toInt(), event.y.toInt()) }
+            is Drag.Divider -> scene.boxOf(current.id)?.let { dragDivider(it, current, if (it.stacking == Stacking.VERTICAL) event.y.toInt() else event.x.toInt()) }
         }
+        return true
     }
 
     /** The box a lone element being dragged would join, and the edge of it nearest the mouse. */
@@ -865,85 +855,79 @@ class HudEditorScreen : Screen(Component.literal("HUD Editor")), OverlayContext 
         return target to distances.minByOrNull { it.value }!!.key
     }
 
-    override fun mouseReleased(event: MouseButtonEvent): Boolean {
-        return guard("the hud editor", false) {
-            val current = drag ?: return false
-            drag = null
-            mergeTarget?.let { (box, edge) -> if (current is Drag.Move) merge(current.id, box, edge) }
-            mergeTarget = null
+    override fun onMouseReleased(event: MouseButtonEvent): Boolean {
+        val current = drag ?: return false
+        drag = null
+        mergeTarget?.let { (box, edge) -> if (current is Drag.Move) merge(current.id, box, edge) }
+        mergeTarget = null
+        HudLayoutStore.save()
+        return true
+    }
+
+    override fun onMouseScrolled(mouseX: Double, mouseY: Double, scrollX: Double, scrollY: Double): Boolean {
+        if (overlays.any { it.mouseScrolled(mouseX, mouseY, scrollX, scrollY) }) return true
+        val step = if (scrollY > 0) 1 else -1
+        scene.anchorAt(mouseX, mouseY)?.let { anchor ->
+            anchor.state.alpha = ((anchor.state.alpha + step * ALPHA_STEP) * 100).roundToInt().coerceIn(0, 100) / 100f
             HudLayoutStore.save()
             return true
         }
+        val box = scene.boxAt(mouseX, mouseY) ?: return false
+
+        if (shiftDown()) {
+            val part = scene.partAt(mouseX, mouseY) ?: return true
+            part.state.scale = (part.state.scale + step * SCALE_STEP).coerceIn(MIN_SCALE, MAX_SCALE).let { (it * 10).roundToInt() / 10f }
+        } else {
+            val placed = box.placed
+            val alpha = ((when (placed) {
+                is GroupState -> placed.alpha
+                is ElementState -> placed.alpha
+                else -> 1f
+            } + step * ALPHA_STEP) * 100).roundToInt().coerceIn(0, 100) / 100f
+            when (placed) {
+                is GroupState -> placed.alpha = alpha
+                is ElementState -> placed.alpha = alpha
+                else -> {}
+            }
+        }
+        rebuild()
+        HudLayoutStore.save()
+        return true
     }
 
-    override fun mouseScrolled(mouseX: Double, mouseY: Double, scrollX: Double, scrollY: Double): Boolean {
-        return guard("the hud editor", false) {
-            if (overlays.any { it.mouseScrolled(mouseX, mouseY, scrollX, scrollY) }) return true
-            val step = if (scrollY > 0) 1 else -1
-            scene.anchorAt(mouseX, mouseY)?.let { anchor ->
-                anchor.state.alpha = ((anchor.state.alpha + step * ALPHA_STEP) * 100).roundToInt().coerceIn(0, 100) / 100f
+    override fun onKeyPressed(keyEvent: KeyEvent): Boolean {
+        if (keyEvent.key() == GLFW.GLFW_KEY_ESCAPE) {
+            if (picking != null) {
+                picking = null
+                return true
+            }
+            if (overlays.isNotEmpty()) {
+                closeOverlays()
+                return true
+            }
+        }
+        if (overlays.isEmpty() && selectedId != null) {
+            val step = when (keyEvent.key()) {
+                GLFW.GLFW_KEY_LEFT -> -1 to 0
+                GLFW.GLFW_KEY_RIGHT -> 1 to 0
+                GLFW.GLFW_KEY_UP -> 0 to -1
+                GLFW.GLFW_KEY_DOWN -> 0 to 1
+                else -> null
+            }
+            if (step != null) {
+                if (shiftDown()) resizeByKey(step.first, step.second, topLeft = controlDown()) else nudge(step.first, step.second)
                 HudLayoutStore.save()
                 return true
             }
-            val box = scene.boxAt(mouseX, mouseY) ?: return false
-
-            if (shiftDown()) {
-                val part = scene.partAt(mouseX, mouseY) ?: return true
-                part.state.scale = (part.state.scale + step * SCALE_STEP).coerceIn(MIN_SCALE, MAX_SCALE).let { (it * 10).roundToInt() / 10f }
-            } else {
-                val placed = box.placed
-                val alpha = ((when (placed) {
-                    is GroupState -> placed.alpha
-                    is ElementState -> placed.alpha
-                    else -> 1f
-                } + step * ALPHA_STEP) * 100).roundToInt().coerceIn(0, 100) / 100f
-                when (placed) {
-                    is GroupState -> placed.alpha = alpha
-                    is ElementState -> placed.alpha = alpha
-                    else -> {}
-                }
-            }
-            rebuild()
-            HudLayoutStore.save()
-            return true
         }
-    }
-
-    override fun keyPressed(keyEvent: KeyEvent): Boolean {
-        return guard("the hud editor", false) {
-            if (keyEvent.key() == GLFW.GLFW_KEY_ESCAPE) {
-                if (picking != null) {
-                    picking = null
-                    return true
-                }
-                if (overlays.isNotEmpty()) {
-                    closeOverlays()
-                    return true
-                }
+        if (keyEvent.key() == GLFW.GLFW_KEY_R && overlays.isEmpty()) {
+            hoveredPart()?.let {
+                reset(it.element.id)
+                HudLayoutStore.save()
+                return true
             }
-            if (overlays.isEmpty() && selectedId != null) {
-                val step = when (keyEvent.key()) {
-                    GLFW.GLFW_KEY_LEFT -> -1 to 0
-                    GLFW.GLFW_KEY_RIGHT -> 1 to 0
-                    GLFW.GLFW_KEY_UP -> 0 to -1
-                    GLFW.GLFW_KEY_DOWN -> 0 to 1
-                    else -> null
-                }
-                if (step != null) {
-                    if (shiftDown()) resizeByKey(step.first, step.second, topLeft = controlDown()) else nudge(step.first, step.second)
-                    HudLayoutStore.save()
-                    return true
-                }
-            }
-            if (keyEvent.key() == GLFW.GLFW_KEY_R && overlays.isEmpty()) {
-                hoveredPart()?.let {
-                    reset(it.element.id)
-                    HudLayoutStore.save()
-                    return true
-                }
-            }
-            return super.keyPressed(keyEvent)
         }
+        return super.onKeyPressed(keyEvent)
     }
 
     override fun onClose() {

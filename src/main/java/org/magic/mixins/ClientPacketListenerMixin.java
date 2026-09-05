@@ -1,5 +1,6 @@
 package org.magic.mixins;
 
+import org.magic.magicaddons.util.ErrorReporter;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.multiplayer.ClientPacketListener;
@@ -103,15 +104,19 @@ public class ClientPacketListenerMixin {
         }
         BlockState currentState = level.getBlockState(pos);
         if (currentState.equals(packet.getBlockState())) return;
-        var removedElement = GreenhouseData.INSTANCE.getRemovedElementByAttack();
-        if (removedElement != null) {
+        try {
+            var removedElement = GreenhouseData.INSTANCE.getRemovedElementByAttack();
+            if (removedElement != null) {
 
-            Map<BlockPos, BlockState> blocksMap = removedElement.getBlocksMap();
+                Map<BlockPos, BlockState> blocksMap = removedElement.getBlocksMap();
 
-            if (blocksMap != null && blocksMap.containsKey(pos)) {
-                GreenhouseData.INSTANCE.setRemovedElementByAttack(null);
-                return;
+                if (blocksMap != null && blocksMap.containsKey(pos)) {
+                    GreenhouseData.INSTANCE.setRemovedElementByAttack(null);
+                    return;
+                }
             }
+        } catch (Throwable error) {
+            ErrorReporter.INSTANCE.report("the block update", error);
         }
         EventBus.post(new OnBlockChangedEvent(packet));
     }

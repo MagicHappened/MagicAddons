@@ -1,6 +1,5 @@
 package org.magic.magicaddons.util
 
-import org.magic.magicaddons.util.ErrorReporter.guard
 import net.minecraft.client.Minecraft
 import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.events.EventHandler
@@ -26,12 +25,10 @@ object VersionAnnouncer {
 
     @Subscription
     fun onIslandChange(event: IslandChangeEvent) {
-        guard("the version check") {
-            if (spoken) return
+        if (spoken) return
 
-            speakAt = Instant.now().plus(DELAY)
-            VersionChecker.check()
-        }
+        speakAt = Instant.now().plus(DELAY)
+        VersionChecker.check()
     }
 
     @EventHandler

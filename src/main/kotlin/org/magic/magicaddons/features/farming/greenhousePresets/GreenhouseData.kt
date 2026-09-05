@@ -1,6 +1,5 @@
 package org.magic.magicaddons.features.farming.greenhousePresets
 
-import org.magic.magicaddons.util.ErrorReporter.guard
 import org.magic.magicaddons.data.greenhouse.LayoutSlot
 import tech.thatgravyboat.skyblockapi.api.profile.profile.ProfileAPI
 import org.magic.magicaddons.data.greenhouse.MasterLayout
@@ -58,7 +57,6 @@ import tech.thatgravyboat.skyblockapi.api.events.info.ScoreboardUpdateEvent
 import tech.thatgravyboat.skyblockapi.api.events.location.IslandChangeEvent
 import tech.thatgravyboat.skyblockapi.api.events.location.ServerDisconnectEvent
 import tech.thatgravyboat.skyblockapi.api.events.screen.ContainerInitializedEvent
-import tech.thatgravyboat.skyblockapi.api.events.time.TickEvent
 import tech.thatgravyboat.skyblockapi.api.location.LocationAPI
 import tech.thatgravyboat.skyblockapi.api.location.SkyBlockIsland
 import tech.thatgravyboat.skyblockapi.api.profile.garden.Plot
@@ -705,33 +703,31 @@ object GreenhouseData {
         regenRender()
     }
 
-    @Subscription
-    fun onTick(event: TickEvent) {
-        guard("the greenhouse") {
-            ensureProfile()
-            if (DataHandler.activeProfile == null) return
-            OtherProfiles.advance()
+    @EventHandler
+    fun onTick(event: OnWorldTickEvent) {
+        ensureProfile()
+        if (DataHandler.activeProfile == null) return
+        OtherProfiles.advance()
 
-            val now = Instant.now()
-            val last = lastCheckTime
+        val now = Instant.now()
+        val last = lastCheckTime
 
-            // the game may already be on the garden when the mod starts, which no island change reports
-            if (gardenArrivedAt == null && LocationAPI.island == SkyBlockIsland.GARDEN) gardenArrivedAt = now
-            if (
-                last == null ||
-                last.plusSeconds(60).isBefore(now) ||
-                miscInfo.nextTickTime?.isBefore(now) ?: false
-            ) {
-                checkForUpdate()
-            }
-
-            // asked every tick rather than once a minute, so each threshold fires the moment it
-            // is crossed rather than up to a minute late
-            warnOfDyingPlants()
-            warnOfChorusCollision()
-            PlantWarnings.onTick()
-            offerTeleportIfArrived()
+        // the game may already be on the garden when the mod starts, which no island change reports
+        if (gardenArrivedAt == null && LocationAPI.island == SkyBlockIsland.GARDEN) gardenArrivedAt = now
+        if (
+            last == null ||
+            last.plusSeconds(60).isBefore(now) ||
+            miscInfo.nextTickTime?.isBefore(now) ?: false
+        ) {
+            checkForUpdate()
         }
+
+        // asked every tick rather than once a minute, so each threshold fires the moment it
+        // is crossed rather than up to a minute late
+        warnOfDyingPlants()
+        warnOfChorusCollision()
+        PlantWarnings.onTick()
+        offerTeleportIfArrived()
     }
 
     /** The promised ride to the dying plant, sent once the garden is loaded and still current. */
@@ -768,38 +764,34 @@ object GreenhouseData {
 
     @Subscription
     fun onIslandChange(event: IslandChangeEvent) {
-        guard("the greenhouse") {
-            // returning to the garden just after a dehydration warning is treated as a response to it,
-            // so a teleport to the plot is offered two seconds later, once the world has loaded
-            if (event.new == SkyBlockIsland.GARDEN) {
-                gardenArrivedAt = Instant.now()
+        // returning to the garden just after a dehydration warning is treated as a response to it,
+        // so a teleport to the plot is offered two seconds later, once the world has loaded
+        if (event.new == SkyBlockIsland.GARDEN) {
+            gardenArrivedAt = Instant.now()
 
-                awayWarning?.let { (at, plant) ->
-                    if (Duration.between(at, Instant.now()) <= TELEPORT_OFFER_WINDOW) {
-                        teleportOffer = plant
-                        teleportOfferAt = Instant.now().plusSeconds(2)
-                    }
+            awayWarning?.let { (at, plant) ->
+                if (Duration.between(at, Instant.now()) <= TELEPORT_OFFER_WINDOW) {
+                    teleportOffer = plant
+                    teleportOfferAt = Instant.now().plusSeconds(2)
                 }
-                awayWarning = null
             }
-
-            if (event.new != SkyBlockIsland.GARDEN) {
-                DataHandler.saveGardenData()
-                greenhouseGrids.forEach {
-                    it.state.hasRuntimeReferences = false
-                }
-                EventBus.post(PlotChangedEvent(lastPlot,null))
-                lastPlot = null
-            }
-            checkForUpdate()
+            awayWarning = null
         }
+
+        if (event.new != SkyBlockIsland.GARDEN) {
+            DataHandler.saveGardenData()
+            greenhouseGrids.forEach {
+                it.state.hasRuntimeReferences = false
+            }
+            EventBus.post(PlotChangedEvent(lastPlot,null))
+            lastPlot = null
+        }
+        checkForUpdate()
     }
 
     @Subscription
     fun onGameShutdown(event: ServerDisconnectEvent) {
-        guard("the greenhouse") {
-            DataHandler.saveGardenData()
-        }
+        DataHandler.saveGardenData()
     }
 
 
@@ -807,11 +799,9 @@ object GreenhouseData {
     @OnlyNonGuest
     @OnlyIn(SkyBlockIsland.GARDEN)
     fun onScoreboardUpdate(event: ScoreboardUpdateEvent) {
-        guard("the greenhouse") {
-            if (lastPlot != PlotAPI.getCurrentPlot()) {
-                EventBus.post(PlotChangedEvent(lastPlot,PlotAPI.getCurrentPlot()))
-                lastPlot = PlotAPI.getCurrentPlot()
-            }
+        if (lastPlot != PlotAPI.getCurrentPlot()) {
+            EventBus.post(PlotChangedEvent(lastPlot,PlotAPI.getCurrentPlot()))
+            lastPlot = PlotAPI.getCurrentPlot()
         }
     }
 
@@ -861,26 +851,24 @@ object GreenhouseData {
     @Subscription
     @OnlyIn(SkyBlockIsland.GARDEN)
     fun onInventory(event: ContainerInitializedEvent) {
-        guard("the greenhouse") {
-            val realItems = event.containerItems.filter { !it.isSkyblockFiller() }
-            if (event.title == "Crop Diagnostics") {
-                getDiagnosesData(realItems)
-                plantDiagnosticListeningElement = null
-                plantDiagnosticHitBaseBlock = null
-                return
-            }
+        val realItems = event.containerItems.filter { !it.isSkyblockFiller() }
+        if (event.title == "Crop Diagnostics") {
+            getDiagnosesData(realItems)
             plantDiagnosticListeningElement = null
             plantDiagnosticHitBaseBlock = null
-            if (event.title == "Desk") {
-                updateCropGrowth(realItems)
-                return
-            }
-
-            if (event.title == "Greenhouse Upgrades") {
-                updateUpgrades(realItems)
-            }
-
+            return
         }
+        plantDiagnosticListeningElement = null
+        plantDiagnosticHitBaseBlock = null
+        if (event.title == "Desk") {
+            updateCropGrowth(realItems)
+            return
+        }
+
+        if (event.title == "Greenhouse Upgrades") {
+            updateUpgrades(realItems)
+        }
+
     }
 
 

@@ -18,17 +18,6 @@ object ErrorReporter {
     /** The errors already said in chat this session, so one broken frame does not flood it. */
     private val seen: MutableSet<String> = HashSet()
 
-    /** Runs [block]; whatever it throws is reported and [fallback] returned. */
-    inline fun <T> guard(where: String, fallback: T, block: () -> T): T =
-        try {
-            block()
-        } catch (error: Throwable) {
-            report(where, error)
-            fallback
-        }
-
-    inline fun guard(where: String, block: () -> Unit) = guard(where, Unit, block)
-
     fun report(where: String, error: Throwable, vararg extra: Pair<String, Any?>) {
         val cause = unwrap(error)
         // the game itself is going down; nothing here can help

@@ -1,6 +1,5 @@
 package org.magic.magicaddons.features.combat
 
-import org.magic.magicaddons.util.ErrorReporter.guard
 import net.minecraft.client.player.LocalPlayer
 import net.minecraft.core.component.DataComponents
 import net.minecraft.world.entity.Display
@@ -266,10 +265,8 @@ object HighlightMobs : HighlightFeature() {
 
     @Subscription
     fun onIslandChange(event: IslandChangeEvent) {
-        guard("the mob highlighter") {
-            lootedCorpses.clear()
-            pendingCorpse = null
-        }
+        lootedCorpses.clear()
+        pendingCorpse = null
     }
 
     private fun hideLootedEnabled(): Boolean =
