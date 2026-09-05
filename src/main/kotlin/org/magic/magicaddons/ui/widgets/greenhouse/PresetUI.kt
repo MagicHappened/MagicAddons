@@ -11,7 +11,6 @@ import net.minecraft.network.chat.Component
 import org.magic.magicaddons.ui.Focusable
 import org.magic.magicaddons.data.greenhouse.GreenhouseGrid
 import org.magic.magicaddons.data.greenhouse.transfer.LayoutFormat
-import org.magic.magicaddons.data.greenhouse.transfer.MagicAddonsFormat
 import org.magic.magicaddons.data.greenhouse.transfer.ShareCodeFormat
 import org.magic.magicaddons.data.greenhouse.transfer.LayoutTransferResult
 import org.magic.magicaddons.data.greenhouse.transfer.SkyMutationsFormat
@@ -239,8 +238,7 @@ class PresetUI(
             ImportExportFormatContext.LayoutFormatType.SkyMutations -> SkyMutationsFormat
             ImportExportFormatContext.LayoutFormatType.SkyShards -> SkyShardsFormat
             ImportExportFormatContext.LayoutFormatType.SkyLayouts -> SkyLayoutsFormat
-            ImportExportFormatContext.LayoutFormatType.MagicAddons -> MagicAddonsFormat
-            ImportExportFormatContext.LayoutFormatType.ShareCode -> ShareCodeFormat
+            ImportExportFormatContext.LayoutFormatType.MagicAddons -> ShareCodeFormat
         }
 
 
