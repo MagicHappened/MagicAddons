@@ -190,6 +190,7 @@ class GreenhouseGrid(
         // from the instances, not the runtime wrappers: the wrappers are rebuilt every scan, while
         // the instances carry the age, water and stage, and are what goes to disk
         val previous = layout.elementInstances.associateBy { it.slot.x to it.slot.y }
+        val readings = CropStage.StandReadings()
         val reconciled = mutableListOf<ElementRuntimeState>()
         val result = ReconcileResult()
 
@@ -199,8 +200,7 @@ class GreenhouseGrid(
 
                 val slot = layout.getSlot(x, y) ?: continue
 
-                val found = findElementAtSlot(slot, remainingStands) ?: continue
-                Common.LOGGER.info("[scan] ${found.instance.cropDef.name} at slot (${slot.x}, ${slot.y}) stage ${found.instance.growthStage} placed=${found.instance.placed} stands=${found.standEntities?.size} blocks=${found.blocksMap?.size}")
+                val found = findElementAtSlot(slot, remainingStands, readings) ?: continue
                 //todo catch mutation specifics here, such as fleshtrap hunger and bonus data, and
                 // make sure they reach disk
 
@@ -414,7 +414,8 @@ class GreenhouseGrid(
             origin: BlockPos,
             soil: Block,
             remainingStands: MutableList<ArmorStand>,
-            slot: LayoutSlot
+            slot: LayoutSlot,
+            readings: CropStage.StandReadings = CropStage.StandReadings()
         ): ElementRuntimeState? {
             val candidates = elementsBySoil[soil] ?: return null
 
@@ -435,7 +436,7 @@ class GreenhouseGrid(
                 }
 
                 for (stage in stages) {
-                    val result = stage.matchesStage(origin, remainingStands, candidate.footprint, candidate.rotatesWithPlot)
+                    val result = stage.matchesStage(origin, remainingStands, candidate.footprint, candidate.rotatesWithPlot, readings = readings)
 
                     if (!result.matched) continue
                     if (result.score <= bestScore) continue
@@ -564,12 +565,13 @@ class GreenhouseGrid(
     /** The plant standing on [slot], through the one matcher. */
     fun findElementAtSlot(
         slot: LayoutSlot,
-        remainingStands: MutableList<ArmorStand>
+        remainingStands: MutableList<ArmorStand>,
+        readings: CropStage.StandReadings = CropStage.StandReadings()
     ): ElementRuntimeState? {
         val soil = slot.placedBlock?.block ?: return null
         val origin = getPosForSlot(slot) ?: return null
 
-        return findElementAt(origin, soil, remainingStands, slot)
+        return findElementAt(origin, soil, remainingStands, slot, readings)
     }
 
     fun getUnassignedBlockMap(): Map<BlockPos, BlockState> {
