@@ -149,7 +149,37 @@ object Thunderling : CropDefinitionProvider {
 
 
 
-        ),
+        ,
+            // as placed
+            CropStage(
+                blocks = listOf(),
+                armorStands = CropArmorStand.matcherPattern(
+                    offsets = listOf(
+                        Vec3(0.15625, -0.5, 0.21875),
+                        Vec3(0.0625, -0.625, -0.25),
+                        Vec3(-0.21875, -0.5, 0.03125)
+                    ),
+                    rotations = listOf(
+                        Rotations(22.5f, 22.5f, 22.5f),
+                        Rotations(-22.5f, 0.0f, 22.5f),
+                        Rotations(22.5f, 22.5f, 0.0f)
+                    ),
+                    xRotations = listOf(
+                        0.0f,
+                        0.0f,
+                        0.0f
+                    ),
+                    yRotations = listOf(
+                        0.0f,
+                        0.0f,
+                        0.0f
+                    ),
+                    hashString = "3724327576a20876fc95f41bb37fd0e2f2c79014455f19262f185ce88b155385",
+                    isSmall = false
+                ),
+                16..16,
+                placed = true
+            )),
         // five days decay timer
         maxStage = 16,
         needsWater = false,

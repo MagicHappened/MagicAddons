@@ -314,7 +314,57 @@ object StoplightPetal : CropDefinitionProvider {
 
 
 
-        ),
+        ,
+            // as placed
+            CropStage(
+                blocks = CropBlockState.blockStatePattern(
+                    listOf(
+                        BlockPos(0, 1, 0),
+                        BlockPos(0, 2, 0)
+                    ),
+                    blockState = melonStemState(5)
+                ) + listOf(
+                    CropBlockState(
+                        offset = BlockPos(0, 3, 0),
+                        blockState = melonStemState(3)
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, -0.4375, 0.0),
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
+                        hashString = "4c2b797e7172a05169e313739908515864d6b372f9a5ecc772f81d9c4e402a54",
+                        isSmall = false
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(0.0, 0.71875, 0.0),
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
+                        hashString = "d6653a481cc301bcf694a70bfb5969485dc42f1e6803288d24d31b7261b61811",
+                        isSmall = false
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(0.0, 0.15625, 0.0),
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
+                        hashString = "f15bd3a726eee1f2f8ffd3a92ae95c44a2f37f6b0345a795b44e0360564c67fe",
+                        isSmall = false
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(0.03125, 2.125, -0.21875),
+                        headRotation = Rotations(90.0f, 0.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
+                        hashString = "57f6c922e742b5c571b1cf091d6d4bc06360f4f03443d79c5174097b0b373d7e"
+                    )
+                ),
+                12..12,
+                placed = true
+            )),
         // five days decay timer
         maxStage = 12,
         isMutation = true

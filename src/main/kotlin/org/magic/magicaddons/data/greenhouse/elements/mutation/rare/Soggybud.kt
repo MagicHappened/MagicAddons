@@ -150,7 +150,28 @@ object Soggybud : CropDefinitionProvider {
 
 
 
-        ),
+        ,
+            // as placed
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = melonStemState(4)
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, 0.15625, 0.0),
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
+                        hashString = "b4bdf477d2f417f75798ad6377b131aca787be9bc05a2fddc1972d81d40c7356",
+                        isSmall = false
+                    )
+                ),
+                10..10,
+                placed = true
+            )),
         isMutation = true
     )
 }

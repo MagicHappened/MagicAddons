@@ -1,5 +1,6 @@
 package org.magic.magicaddons.data.greenhouse.elements.mutation.legendary
 
+import org.magic.magicaddons.data.greenhouse.CropStates.stateOf
 import org.magic.magicaddons.data.greenhouse.CropStandReader
 import net.minecraft.core.BlockPos
 import net.minecraft.world.level.block.Blocks
@@ -231,6 +232,31 @@ object AllinAloe : CropDefinitionProvider {
                     )
                 ),
                 9..9
+            ),
+            // as placed
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = stateOf("minecraft:spruce_fence[east=false,north=false,south=false,waterlogged=false,west=false]")
+                    ),
+                    CropBlockState(
+                        offset = BlockPos(0, 2, 0),
+                        blockState = melonStemState(7)
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, 1.25, 0.09375),
+                        headRotation = Rotations(-45.0f, 0.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
+                        hashString = "d846f1f7ea8b021e1feedb00811baa8d3eb4de88800a7ebd8f852e806e60af90",
+                        isSmall = false
+                    )
+                ),
+                27..27,
+                placed = true
             )),
         decayTimeMs = NEVER_DECAYS,
         maxStage = 27,

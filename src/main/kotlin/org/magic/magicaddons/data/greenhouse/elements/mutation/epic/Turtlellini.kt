@@ -35,7 +35,23 @@ object Turtlellini : CropDefinitionProvider {
                 ),
                 1..1
             )
-        ),
+        ,
+            // as placed
+            CropStage(
+                blocks = listOf(),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, -0.46875, 0.0),
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
+                        hashString = "1d1bd06a6738d0da5053eae49a1362b89489d1ac004c222504536f7bcd07679d",
+                        isSmall = false
+                    )
+                ),
+                1..1,
+                placed = true
+            )),
         needsWater = false,
         isMutation = true
     )
