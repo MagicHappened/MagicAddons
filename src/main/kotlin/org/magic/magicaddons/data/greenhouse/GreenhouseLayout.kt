@@ -2,7 +2,6 @@ package org.magic.magicaddons.data.greenhouse
 
 import kotlin.math.abs
 
-import net.minecraft.world.level.block.Blocks
 
 data class GreenhouseLayout(
     val id: String, // plot_# for grids, preset_# for presets
@@ -11,11 +10,8 @@ data class GreenhouseLayout(
     val slots: List<LayoutSlot> = List(100) { index ->
         val x = index % size
         val y = index / size
-        LayoutSlot(
-            x,
-            y,
-            Blocks.AIR.defaultBlockState()
-        )
+        // no soil said: anything may stand there. Air is asked for by placing it from the shelf
+        LayoutSlot(x, y, null)
     },
     val elementInstances: MutableList<GreenhouseElementInstance> = mutableListOf(),
 ){

@@ -791,7 +791,7 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
             remember(grid.layout)
             grid.layout.elementInstances.clear()
             grid.layout.slots.forEach {
-                it.placedBlock = Blocks.AIR.defaultBlockState()
+                it.placedBlock = null
                 it.slotMark = null
             }
             grid.init()
@@ -1073,9 +1073,9 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
                     displayedGridWidget?.let { grid ->
                         val (sx, sy) = grid.slotAt(mouseButtonEvent.x, mouseButtonEvent.y) ?: return@let
                         val slot = grid.layout.getSlot(sx, sy) ?: return@let
-                        if (slot.placedBlock != null && !slot.placedBlock!!.isAir) {
+                        if (slot.placedBlock != null) {
                             remember(grid.layout)
-                            slot.placedBlock = Blocks.AIR.defaultBlockState()
+                            slot.placedBlock = null
                             grid.init()
                             return true
                         }
@@ -1289,7 +1289,7 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
             // one plot into the empty plot on show, keeping the plot's place in its preset
             master != null && shown != null && result.plots.size == 1 && shown.elementInstances.isEmpty() -> {
                 shown.takeContentsFrom(result.layout)
-                if (master.name == null) master.name = result.layout.name
+                if (master.name == null) master.name = result.nameForPreset
                 initPresetLayout()
                 ChatUtils.sendWithPrefix("Imported into ${GreenhouseData.describe(shown)}")
             }
@@ -1299,13 +1299,13 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
                 result.plots.forEachIndexed { index, plot ->
                     GreenhouseLayout(id = master.plotId(index), name = plot.name).also { it.takeContentsFrom(plot) }.let(master.plots::add)
                 }
-                if (master.name == null) master.name = result.layout.name
+                if (master.name == null) master.name = result.nameForPreset
                 shownPlot = null
                 initPresetLayout()
                 ChatUtils.sendWithPrefix("Imported into ${master.displayName()}")
             }
             else -> {
-                val preset = MasterLayout(id = result.layout.id, name = result.layout.name)
+                val preset = MasterLayout(id = result.layout.id, name = result.nameForPreset)
                 result.plots.forEachIndexed { index, plot ->
                     GreenhouseLayout(id = preset.plotId(index), name = plot.name.takeIf { index > 0 || result.plots.size > 1 }).also { it.takeContentsFrom(plot) }.let(preset.plots::add)
                 }

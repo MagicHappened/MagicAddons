@@ -34,9 +34,14 @@ sealed interface LayoutTransferResult {
         val layout: GreenhouseLayout,
         override val notes: List<String> = emptyList(),
         /** Plots after the first, when the text held more than one. */
-        val extraPlots: List<GreenhouseLayout> = emptyList()
+        val extraPlots: List<GreenhouseLayout> = emptyList(),
+        /** The preset's name when the text carried one apart from the plots' own. */
+        val presetName: String? = null
     ) : LayoutTransferResult {
         val plots: List<GreenhouseLayout> get() = listOf(layout) + extraPlots
+
+        /** The name a preset made of this takes: the preset's, or the first plot's. */
+        val nameForPreset: String? get() = presetName ?: layout.name
     }
 
     data class Exported(

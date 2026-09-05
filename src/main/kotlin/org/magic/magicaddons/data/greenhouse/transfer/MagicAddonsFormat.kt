@@ -55,7 +55,7 @@ object MagicAddonsFormat : LayoutFormat {
             if (plots.isEmpty()) return LayoutTransferResult.Failure("That layout lists no plots.")
             if (plotsJson.size() > MasterLayout.MAX_PLOTS) notes.add("Only the first ${MasterLayout.MAX_PLOTS} plots were taken.")
 
-            return LayoutTransferResult.Imported(plots.first(), notes, plots.drop(1))
+            return LayoutTransferResult.Imported(plots.first(), notes, plots.drop(1), presetName)
         }
 
         val plants = runCatching { root.getAsJsonArray(PLANTS) }.getOrNull()
