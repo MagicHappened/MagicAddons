@@ -1,5 +1,6 @@
 package org.magic.magicaddons.ui.screens
 
+import org.magic.magicaddons.data.greenhouse.CropStandReader
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
@@ -65,6 +66,42 @@ class CropPreviewScreen(
     private var spinning = true
     private var draggingSlider = false
 
+    /** The looks a plant has more than one of at a stage: what it craves, or whether it sleeps. */
+    enum class Variant(private val label: String) {
+        Day("Day"), Night("Night"), Awake("Awake"), Asleep("Asleep");
+
+        override fun toString(): String = label
+    }
+
+    private var variant: Variant? = null
+
+    /** Shown under the crop picker only for crops with such looks, swapping the scene between them. */
+    private val variantSelector = EnumWidget(
+        values = emptyList<Variant>(),
+        currentValue = null as Variant?,
+        overlayContext = this,
+        searchable = false,
+        valueChanged = {
+            variant = it
+            rebuildScene()
+        }
+    )
+
+    private fun variantsFor(def: CropDefinition): List<Variant> = when {
+        def.stageDefs.any { CropStandReader.CRAVES in it.traits } -> listOf(Variant.Day, Variant.Night)
+        def.sleepStages.isNotEmpty() -> listOf(Variant.Awake, Variant.Asleep)
+        else -> emptyList()
+    }
+
+    /** Whether a look is the one the variant asks for; every look passes when nothing is asked. */
+    private fun CropStage.wears(variant: Variant?): Boolean = when (variant) {
+        Variant.Day -> traits[CropStandReader.CRAVES] == CropStandReader.CRAVES_DAY
+        Variant.Night -> traits[CropStandReader.CRAVES] == CropStandReader.CRAVES_NIGHT
+        Variant.Asleep -> readers.any { it.key == CropStandReader.ASLEEP }
+        Variant.Awake -> readers.none { it.key == CropStandReader.ASLEEP }
+        null -> true
+    }
+
     private val selector = EnumWidget(
         values = CropRegistry.all.sortedBy { it.name },
         currentValue = null as CropDefinition?,
@@ -102,11 +139,19 @@ class CropPreviewScreen(
 
         // the list stops short of the chat, give or take: about six rows above the bottom
         selector.overlayBudget = height - (selector.y + selector.height) - selector.height * 6
+
+        variantSelector.height = selector.height
+        variantSelector.width = selector.width
+        variantSelector.x = selector.x
+        variantSelector.y = selector.y + selector.height + Common.UI.SPACING
     }
 
     private fun picked(def: CropDefinition) {
         selectedDef = def
         spinning = true
+        variantSelector.values = variantsFor(def)
+        variant = variantSelector.values.firstOrNull()
+        variantSelector.currentValue = variant
         stage = stage.coerceIn(1, def.maxStage)
         measureCrop(def)
         rebuildScene()
@@ -152,7 +197,7 @@ class CropPreviewScreen(
 
         val stageDef = def.stageDefs
             .flatMap { if (it is CropStagePattern) it.expand() else listOf(it) }
-            .filter { stage in it.stageRange }
+            .filter { stage in it.stageRange && it.wears(variant) }
             .let { looks -> looks.firstOrNull { !it.placed } ?: looks.firstOrNull() }
             ?: return
 
@@ -232,6 +277,7 @@ class CropPreviewScreen(
         }
 
         selector.extractRenderState(graphics, mouseX, mouseY, delta)
+        if (variantSelector.values.isNotEmpty()) variantSelector.extractRenderState(graphics, mouseX, mouseY, delta)
 
         overlays.asReversed().forEach {
             it.renderOverlay(graphics, mouseX, mouseY, delta)
@@ -364,6 +410,7 @@ class CropPreviewScreen(
         }
 
         if (selector.mouseClicked(mouseButtonEvent, doubled)) return true
+        if (variantSelector.values.isNotEmpty() && variantSelector.mouseClicked(mouseButtonEvent, doubled)) return true
 
         closeOverlays()
 
@@ -424,6 +471,8 @@ class CropPreviewScreen(
 
     override fun mouseMoved(mouseX: Double, mouseY: Double) {
         overlays.toList().forEach { it.mouseMoved(mouseX, mouseY) }
+        selector.mouseMoved(mouseX, mouseY)
+        variantSelector.mouseMoved(mouseX, mouseY)
     }
 
     override fun mouseScrolled(mouseX: Double, mouseY: Double, scrollX: Double, scrollY: Double): Boolean {
