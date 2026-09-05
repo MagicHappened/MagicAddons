@@ -131,8 +131,8 @@ class HudScene(val boxes: List<HudBox>, val anchors: List<HudAnchorPoint>) {
         const val ANCHOR_HALF: Int = 6
 
         /** Lays the whole hud out for a screen of [screenWidth] by [screenHeight]; with [sample], every element shows its sample. */
-        fun build(layout: HudLayout, screenWidth: Int, screenHeight: Int, sample: Boolean): HudScene {
-            val contents = HudElements.all.mapNotNull { element ->
+        fun build(layout: HudLayout, screenWidth: Int, screenHeight: Int, sample: Boolean, include: (HudElement) -> Boolean = { true }): HudScene {
+            val contents = HudElements.all.filter(include).mapNotNull { element ->
                 val content = if (sample) element.sample() else element.content()
                 content?.let { element to it }
             }.toMap()

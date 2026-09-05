@@ -28,6 +28,19 @@ object DoNotEatShroom : CropDefinitionProvider {
             "1772fa43e9f41925f681690167db25d5488a7fa4b428ec4e95a4b683f15dbb4" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f))
         ),
         stageDefs = listOf(
+            CropStage(
+                blocks = listOf(),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, 0.125, 0.0),
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
+                        hashString = "77a99b274b5e21a3537469b2ae717bb4cedcacca76df7525092a99bc08ea8c9"
+                    )
+                ),
+                1..1
+            ),
             CropStagePattern(
                 blocks = listOf(),
                 armorStands = listOf(
