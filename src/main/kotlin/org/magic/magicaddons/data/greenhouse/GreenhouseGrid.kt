@@ -199,13 +199,27 @@ class GreenhouseGrid(
         return false
     }
 
+    /** [region] grown to hold the whole footprint of every plant it touches, so a big crop's corner is read with the rest. */
+    private fun wholePlants(region: Set<Pair<Int, Int>>): Set<Pair<Int, Int>> {
+        val grown = region.toMutableSet()
+        elements.filter { touches(it, region) }.forEach { element ->
+            val origin = element.instance.slot
+            val footprint = element.instance.cropDef.footprint
+            for (dx in 0 until footprint.width) {
+                for (dy in 0 until footprint.height) grown.add((origin.x + dx) to (origin.y + dy))
+            }
+        }
+        return grown
+    }
+
     /**
      * Reads the plot and brings the elements into line with it. A merge, not a rebuild: a plant
      * still in its slot keeps its age, water and confirmed stage. Returns what changed.
      *
      * Given a [region], only its slots are read again and the plants outside it stay as they are.
      */
-    fun setPlantData(region: Set<Pair<Int, Int>>? = null): ReconcileResult {
+    fun setPlantData(touchedRegion: Set<Pair<Int, Int>>? = null): ReconcileResult {
+        val region = touchedRegion?.let { wholePlants(it) }
         val visitedSlots = Array(width) { BooleanArray(height) }
 
         val level = Minecraft.getInstance().level ?: return ReconcileResult()
@@ -565,7 +579,6 @@ class GreenhouseGrid(
                 }
             }
             if (stands.isEmpty() && blocks.isEmpty()) {
-                Common.LOGGER.info("[reconcile] nothing stands at (${origin.x}, ${origin.z}) where ${definition.name} was placed, placement forgotten")
                 GreenhouseData.forgetPlacementAt(origin)
                 return null
             }
