@@ -565,6 +565,7 @@ class GreenhouseGrid(
                 }
             }
             if (stands.isEmpty() && blocks.isEmpty()) {
+                Common.LOGGER.info("[reconcile] nothing stands at (${origin.x}, ${origin.z}) where ${definition.name} was placed, placement forgotten")
                 GreenhouseData.forgetPlacementAt(origin)
                 return null
             }

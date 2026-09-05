@@ -208,7 +208,8 @@ object GreenhouseData {
 
         // a merge, so whatever the plot cannot say for a plant that is still there is carried over,
         // and any stage predicted while away is corrected by what is actually standing
-        grid.setPlantData()
+        val result = grid.setPlantData()
+        Common.LOGGER.info("[reconcile] full scan of ${grid.layout.id}: +${result.added} -${result.removed} ~${result.replaced} =${result.kept}, ${grid.elements.size} plants")
 
         claimPlantedCrop(grid)
 
@@ -244,6 +245,7 @@ object GreenhouseData {
     /** Something in the plot changed at [positions], so what is stored around them can no longer be trusted. */
     fun requestReconcile(positions: Collection<BlockPos>) {
         if (positions.isEmpty()) return
+        Common.LOGGER.info("[reconcile] ${positions.size} changed at ${positions.take(3).joinToString { "(${it.x}, ${it.y}, ${it.z})" }}")
         touched.addAll(positions)
         lastChangeAt = System.currentTimeMillis()
     }
@@ -288,7 +290,9 @@ object GreenhouseData {
         grid.plot = plot
 
         grid.createSlotDataForGrid()
-        grid.setPlantData(grid.regionAround(positions))
+        val region = grid.regionAround(positions)
+        val result = grid.setPlantData(region)
+        Common.LOGGER.info("[reconcile] rescan of ${region.size} slots: +${result.added} -${result.removed} ~${result.replaced} =${result.kept}, ${grid.elements.size} plants")
         claimPlantedCrop(grid)
         LayoutRenderState.refresh()
     }
@@ -1020,6 +1024,7 @@ object GreenhouseData {
             val pos = aimed.offset(-((footprint.width - 1) / 2), 0, -((footprint.height - 1) / 2))
 
             placements.add(Placement(foundCrop, pos, Instant.now()))
+            Common.LOGGER.info("[reconcile] ${foundCrop.name} placed, filed at (${pos.x}, ${pos.z}) slot ${grid.getSlotAt(pos, false)?.let { "(${it.x}, ${it.y})" }}")
 
             // nothing can be placed over a plant, so whatever was remembered in the way is gone
             val soil = BlockPos(pos.x, GREENHOUSE_SOIL_Y, pos.z)
