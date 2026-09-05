@@ -1,5 +1,6 @@
 package org.magic.magicaddons.commands.debug
 
+import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData
 import net.minecraft.world.entity.EquipmentSlot
 import com.mojang.blaze3d.vertex.PoseStack
 import net.minecraft.ChatFormatting
@@ -94,6 +95,9 @@ object CropCollector : EntityUtils.HighlightSource {
         /** Named for a crop we know, standing at a stage nobody has recorded. */
         Unrecorded("unrecorded"),
 
+        /** A mutation the player put down, whose bought look nobody has recorded. */
+        PlacedMissing("needs placed data"),
+
         /** Named for nothing in the registry, reported but not collectable. */
         Unknown("unknown crop")
     }
@@ -112,7 +116,9 @@ object CropCollector : EntityUtils.HighlightSource {
         var confirmed: Boolean = false,
         var boxes: List<AABB> = emptyList(),
         /** What the diagnosis tool and the matcher said about it, shown in place of the usual label. */
-        var toolNote: String? = null
+        var toolNote: String? = null,
+        /** A mutation the player put down in their own garden: what is recorded is its bought look. */
+        var placedLook: Boolean = false
     )
 
     private class Session(
@@ -679,6 +685,13 @@ object CropCollector : EntityUtils.HighlightSource {
         val def = if (onRoots) roots!! else diagnosed
         val stage = if (onRoots) 1 else diagnosedStage
 
+        // a mutation the player put down in their own garden wears its bought look, which is
+        // recorded apart from the grown look of the same stage and matched apart from it
+        val ownGarden = LocationAPI.island == SkyBlockIsland.GARDEN && !LocationAPI.isGuest
+        val placedLook = ownGarden && def.isMutation && GreenhouseData.getCurrentGrid()?.let { grid ->
+            grid.getSlotAt(standingOn, false)?.let { grid.elementCovering(it) }?.instance?.placed
+        } == true
+
         val absorbed = s.entries.filter { entry ->
             val ew = entry.def?.footprint?.width ?: 1
             val eh = entry.def?.footprint?.height ?: 1
@@ -701,11 +714,12 @@ object CropCollector : EntityUtils.HighlightSource {
         // stage: a fresh entry is only unrecorded when nothing recorded matches what stands here
         val recorded = def.stageDefs
             .flatMap { if (it is CropStagePattern) it.expand() else listOf(it) }
-            .filter { stage in it.stageRange }
+            .filter { stage in it.stageRange && it.placed == placedLook }
             .map { it.matchesStage(standingOn, stands, def.footprint, def.rotatesWithPlot) }
             .firstOrNull { it.matched }
 
         val status = when {
+            recorded == null && placedLook -> Status.PlacedMissing
             recorded == null -> Status.Unrecorded
             recorded.rotationLegacy -> Status.Legacy
             else -> sizeMismatch(def, stage, stands) ?: Status.Current
@@ -735,11 +749,17 @@ object CropCollector : EntityUtils.HighlightSource {
         val matcher = if (recorded != null) "matcher matched stage $stage" else "matcher found nothing at stage $stage"
 
         s.entries.lastOrNull()?.let { entry ->
-            entry.toolNote = "Tool: stage $diagnosedStage/${diagnosed.maxStage}, $matcher - ${turned.label}, " +
+            entry.placedLook = placedLook
+            val placedNote = if (placedLook) " (placed)" else ""
+            entry.toolNote = "Tool: stage $diagnosedStage/${diagnosed.maxStage}$placedNote, $matcher - ${turned.label}, " +
                     "started at (${standingOn.x}, ${standingOn.z})$note"
             sendLine(entry)
         }
     }
+
+    /** The exported stage with the bought-look flag on it, so it never stands in for the grown look. */
+    private fun markPlaced(code: String): String =
+        Regex("""(\d+\.\.\d+)(\s*\)\s*)$""").replace(code) { "${it.groupValues[1]},\n    placed = true${it.groupValues[2]}" }
 
     // ------------------------------------------------------------------ output
 
@@ -784,8 +804,9 @@ object CropCollector : EntityUtils.HighlightSource {
                     basePos = entry.origin,
                     stageNum = entry.stageNum,
                     foundDefinition = def,
-                    quiet = true
-                )
+                    quiet = true,
+                    knownStands = entry.stands
+                )?.let { if (entry.placedLook) markPlaced(it) else it }
                 appendLine(code ?: "// world went away while writing this one")
                 appendLine()
             }

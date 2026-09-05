@@ -1,5 +1,6 @@
 package org.magic.magicaddons.features.farming.greenhousePresets
 
+import org.magic.magicaddons.data.greenhouse.GREENHOUSE_SOIL_Y
 import net.minecraft.world.phys.Vec3
 import net.minecraft.core.registries.BuiltInRegistries
 import org.magic.magicaddons.events.world.AddParticleEvent
@@ -99,8 +100,16 @@ object GreenhouseWatering {
     private val particlesThisTick = mutableMapOf<String, MutableList<Vec3>>()
     private var particleTick: Long = -1
 
-    /** Enough particles of one kind in one tick to be a spray landing rather than stray dust. */
+    /** The burst a spray makes where it lands: this many effect particles in one tick at plant height. */
     private const val CONE_MIN: Int = 8
+    private const val LANDING_PARTICLE: String = "minecraft:entity_effect"
+
+    /** How many ticks after a landing its bars may still come, and how long a bar may trail one. */
+    private const val LANDING_SLACK: Long = 3
+
+    /** The last landing seen, and whether any bar has changed since it, so the two can be compared. */
+    private var lastLandingTick: Long = -1
+    private var landingConfirmed: Boolean = true
 
     /**
      * Every particle the server sends into the plot while the window is open, logged by kind so the
@@ -124,20 +133,24 @@ object GreenhouseWatering {
         particlesThisTick.getOrPut(type) { mutableListOf() }.add(at)
     }
 
-    /** Writes the tick's particles out, one line a kind, and calls a burst of one kind a cone. */
+    /**
+     * Looks through the tick's particles for a landing: a burst of effect particles at plant height.
+     * A landing that the bars never answered is said out loud when the next one comes.
+     */
     private fun flushParticles() {
         if (particlesThisTick.isEmpty()) return
-        particlesThisTick.forEach { (type, spots) ->
-            val centre = spots.reduce { a, b -> a.add(b) }.scale(1.0 / spots.size)
-            val spread = spots.maxOf { it.distanceTo(centre) }
-            val cone = if (spots.size >= CONE_MIN) " CONE" else ""
-            Common.LOGGER.info(
-                "[water] particles tick=$particleTick $type x${spots.size} at (%.1f, %.1f, %.1f) spread %.2f%s".format(
-                    centre.x, centre.y, centre.z, spread, cone
-                )
-            )
-        }
+        val spots = particlesThisTick[LANDING_PARTICLE].orEmpty().filter { it.y < GREENHOUSE_SOIL_Y + 3 }
         particlesThisTick.clear()
+        if (spots.size < CONE_MIN) return
+
+        if (!landingConfirmed) {
+            Common.LOGGER.info("[water] mismatch: landing at tick $lastLandingTick changed no bar")
+        }
+
+        val centre = spots.reduce { a, b -> a.add(b) }.scale(1.0 / spots.size)
+        Common.LOGGER.info("[water] landing tick=$particleTick x${spots.size} at (%.1f, %.1f, %.1f)".format(centre.x, centre.y, centre.z))
+        lastLandingTick = particleTick
+        landingConfirmed = false
     }
 
     /**
@@ -170,9 +183,16 @@ object GreenhouseWatering {
 
             // a bar that changed is one spray tick landing, worth the can's gain over the level held;
             // the bar itself is coarser than that, so it only overrules a count it disagrees with
+            // a bar comes up showing the level the plant already holds, so seeing one for the first
+            // time is a tick only when it shows more than the level held accounts for
             val notches = bar.notches
-            if (lastNotches[stand.uuid] == notches) return@forEach
+            val seen = lastNotches[stand.uuid]
             lastNotches[stand.uuid] = notches
+            if (seen == notches) return@forEach
+            if (seen == null) {
+                val implied = ((element.instance.waterLevel ?: 0) * 16 / 100)
+                if (notches <= implied) return@forEach
+            }
 
             // a level known to the point stays exact: the bar is too coarse to correct it, and a bar
             // that failed to move must not drag the count back onto it. A level only ever read off
@@ -186,10 +206,15 @@ object GreenhouseWatering {
             }
             element.instance.waterPredictedInDebt = false
 
+            // a bar that changes without a landing before it is a tick the particles never showed
+            val tick = level.gameTime
+            val landed = lastLandingTick >= 0 && tick - lastLandingTick <= LANDING_SLACK
+            if (landed) landingConfirmed = true
             Common.LOGGER.info(
                 "[water] spray tick: ${element.instance.cropDef.name} at (${slot.x}, ${slot.y}) " +
                         "$before -> ${element.instance.waterLevel} (bar ${bar.percent}%, ${bar.notches} notches, " +
-                        "exact=${element.instance.waterExact}, can=$lastCan)"
+                        "exact=${element.instance.waterExact}, can=$lastCan)" +
+                        if (landed) "" else " NO LANDING within $LANDING_SLACK ticks"
             )
         }
     }
@@ -226,8 +251,6 @@ object GreenhouseWatering {
 
         if (foreign || total == 0) return null
 
-        // logged while the model is still being fitted: the bar is coarser than the level behind it
-        Common.LOGGER.info("[water] bar filled=$filled debt=$debt total=$total text=\"${name.string}\"")
 
         // a bar cannot show both at once, and a negative level is the one worth reporting
         if (debt > 0) return Bar(-(debt * 100 / total), -debt)
