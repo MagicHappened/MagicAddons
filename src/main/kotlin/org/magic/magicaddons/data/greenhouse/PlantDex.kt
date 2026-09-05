@@ -86,6 +86,34 @@ object PlantDex {
      */
     fun lacksPlacedLook(def: CropDefinition): Boolean = def.isMutation && def.stageDefs.none { it.placed }
 
+    /**
+     * A plant that changes its look without changing stage has two looks to record at such a
+     * stage: asleep and awake at a snoozling's sleeping stages, day and night for anything that
+     * craves a time of day. Whichever is missing is listed, without counting against the dex.
+     */
+    private fun variantGaps(def: CropDefinition): List<String> {
+        val parts = mutableListOf<String>()
+        val looks = def.stageDefs.flatMap { if (it is CropStagePattern) it.expand() else listOf(it) }
+
+        if (def.sleepStages.isNotEmpty()) {
+            val sleeping = def.sleepStages.filter { it <= def.maxStage }.sorted()
+            val asleepMissing = sleeping.filter { stage -> looks.none { stage in it.stageRange && it.readers.any { r -> r.key == CropStandReader.ASLEEP } } }
+            val awakeMissing = sleeping.filter { stage -> looks.none { stage in it.stageRange && it.readers.none { r -> r.key == CropStandReader.ASLEEP } } }
+            if (asleepMissing.isNotEmpty()) parts += "asleep look unrecorded at stages ${ranges(asleepMissing)}"
+            if (awakeMissing.isNotEmpty()) parts += "awake look unrecorded at stages ${ranges(awakeMissing)}"
+        }
+
+        if (looks.any { CropStandReader.CRAVES in it.traits }) {
+            val stages = (1..def.maxStage).toList()
+            val dayMissing = stages.filter { stage -> looks.none { stage in it.stageRange && it.traits[CropStandReader.CRAVES] == CropStandReader.CRAVES_DAY } }
+            val nightMissing = stages.filter { stage -> looks.none { stage in it.stageRange && it.traits[CropStandReader.CRAVES] == CropStandReader.CRAVES_NIGHT } }
+            if (dayMissing.isNotEmpty()) parts += "day look unrecorded at stages ${ranges(dayMissing)}"
+            if (nightMissing.isNotEmpty()) parts += "night look unrecorded at stages ${ranges(nightMissing)}"
+        }
+
+        return parts
+    }
+
     /** The stages of [def] no recording covers. */
     private fun unrecorded(def: CropDefinition): List<Int> {
         val covered = def.stageDefs.flatMap { it.stageRange }.toSet()
@@ -105,6 +133,7 @@ object PlantDex {
         val parts = mutableListOf<String>()
         if (missing.isNotEmpty()) parts += "stages ${ranges(missing)} unrecorded"
         if (lacksPlacedLook(def)) parts += "placed look unrecorded"
+        parts += variantGaps(def)
         if (legacy.isNotEmpty()) parts += "stages ${ranges(legacy)} need normalization"
         if (unturned.isNotEmpty()) parts += "stages ${ranges(unturned)} need rotation data"
         if (oversized.isNotEmpty()) parts += "stages ${ranges(oversized)} need isSmall = false"
