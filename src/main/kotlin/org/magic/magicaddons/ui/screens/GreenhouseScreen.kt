@@ -306,7 +306,7 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         plantPalette.layout(shelfLeft, paletteY, shelfWidth, frameBottom - paletteY)
 
         emptyGridWidget = GridWidget(GreenhouseLayout(id = EMPTY_GRID_ID), slotSize).apply {
-            turns = gridTurns()
+            turns = 0
             widgetX = startX
             widgetY = startY
             widgetWidth = containerSize
@@ -411,7 +411,7 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
 
         master?.plots?.forEach { plot ->
             val gridWidget = GridWidget(plot, slotSize).apply {
-                turns = gridTurns()
+                turns = 0
                 widgetX = startX
                 widgetY = startY
                 widgetWidth = containerSize
@@ -720,10 +720,10 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         }
     }
 
-    /** The player may turn while the screen is open, so the grids follow before each frame. */
+    /** The player may turn while the screen is open, so the greenhouse grids follow before each frame; presets never turn. */
     private fun followPlayerTurn() {
         val turns = gridTurns()
-        (greenhouseGridWidgets + presetGridWidgets + listOfNotNull(emptyGridWidget))
+        greenhouseGridWidgets
             .filter { it.turns != turns }
             .forEach {
                 it.turns = turns

@@ -1068,6 +1068,14 @@ object GreenhouseData {
     fun claimPlacedPlant(instance: GreenhouseElementInstance) {
         instance.placed = true
         instance.age = 0L
+
+        // looks alike across its first stages, a nether wart scans as somewhere in one to three;
+        // just put down, it is at the stage it is placed at
+        val stage = instance.growthStage
+        if (stage is GrowthStageInfo.Estimated && instance.cropDef.stagePlacedAt in stage.range) {
+            instance.growthStage = GrowthStageInfo.Known(instance.cropDef.stagePlacedAt)
+        }
+
         // a placed mutation is finished and drinks nothing; a placed base crop starts dry and grows
         if (instance.needsWater) {
             instance.waterLevel = 0

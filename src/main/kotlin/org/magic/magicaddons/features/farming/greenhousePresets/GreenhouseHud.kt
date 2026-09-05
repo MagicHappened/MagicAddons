@@ -1,5 +1,6 @@
 package org.magic.magicaddons.features.farming.greenhousePresets
 
+import org.magic.magicaddons.data.greenhouse.WaterModel
 import net.minecraft.client.Minecraft
 import net.minecraft.network.chat.Component
 import org.magic.magicaddons.Common
@@ -74,7 +75,17 @@ object GreenhouseHud {
 
         val gardenTime = GreenhouseGrid.timeOfDayNow()
         val ready = plants.count { it.cropDef.isMutation && it.grewInPlace && (it.highestStage ?: 0) >= it.cropDef.maxStage }
-        val dry = plants.count { it.needsWater && (it.waterLevel == 0 || it.waterPredictedInDebt) }
+        // the soonest a plant here dies of thirst, by the same clock the warnings use
+        val tickMs = GreenhouseData.currentGrowthTickMs()
+        val remainingMs = GreenhouseData.remainingTickMs()
+        val thirst = if (tickMs == null || remainingMs == null) null else plants
+            .filter { it.needsWater }
+            .mapNotNull { plant ->
+                val water = plant.waterLevel ?: return@mapNotNull null
+                if (water <= WaterModel.DEATH) 0L
+                else WaterModel.timeUntilDeath(water, grid.layout.waterEffectAt(plant.slot), remainingMs, tickMs)
+            }
+            .minOrNull()
         val asleep = plants.count { it.isAsleep }
         val craving = plants.count { instance ->
             val wants = instance.craving ?: return@count false
@@ -84,7 +95,7 @@ object GreenhouseHud {
         val decaying = plants.mapNotNull { decayRemainingMs(it) }.minOrNull()
 
         if (ready > 0) add(Line("Ready to harvest", ready.toString(), Common.UI.SUCCESS_COLOR))
-        if (dry > 0) add(Line("Out of water", dry.toString(), Common.UI.WARNING_COLOR))
+        if (thirst != null) add(Line("Dies of thirst in", if (thirst == 0L) "now" else readableMs(thirst), if (thirst < HOUR_MS) Common.UI.DANGER_COLOR else Common.UI.WARNING_COLOR))
         if (asleep > 0) add(Line("Asleep", asleep.toString(), Common.UI.WARNING_COLOR))
         if (craving > 0) add(Line("Wrong time of day", craving.toString(), Common.UI.WARNING_COLOR))
         if (decaying != null) add(Line("Next decay", readableMs(decaying), if (decaying < HOUR_MS) Common.UI.DANGER_COLOR else Common.UI.TEXT_COLOR))

@@ -552,11 +552,15 @@ data class GreenhouseElementInstance(
     /** Whether the player put this plant down, as opposed to it growing or appearing on its own. */
     var placed: Boolean = false
 
-    /** Whether this plant drinks: a placed mutation is finished and never does; a placed base crop still grows and drinks. */
-    val needsWater: Boolean get() = cropDef.needsWater && !(placed && cropDef.isMutation)
-
     /** A placed mutation has nothing left to grow, so it is shown as placed rather than at a stage. */
     val finishedByPlacing: Boolean get() = placed && cropDef.isMutation
+
+    /** A mutation known, not guessed, to stand at its last stage; it grew here and is ready to take. */
+    val fullyGrown: Boolean get() =
+        cropDef.isMutation && !placed && (growthStage as? GrowthStageInfo.Known)?.let { it.stage >= cropDef.maxStage } == true
+
+    /** Whether this plant drinks: a finished mutation, placed or grown out, never does; a base crop always does. */
+    val needsWater: Boolean get() = cropDef.needsWater && !finishedByPlacing && !fullyGrown
 
     /** The lowest stage this plant might be at now, which is all a scan can promise about most. */
     val lowestStage: Int?
