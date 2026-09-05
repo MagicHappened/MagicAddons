@@ -1,5 +1,6 @@
 package org.magic.magicaddons.ui.hud
 
+import org.magic.magicaddons.util.ErrorReporter.guard
 import com.mojang.blaze3d.platform.InputConstants
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper
@@ -19,8 +20,10 @@ object HudEditorKey {
 
     init {
         ClientTickEvents.END_CLIENT_TICK.register {
-            while (key.consumeClick()) {
-                if (McCompat.currentScreen() == null) ScreenUtil.setScreen(HudEditorScreen())
+            guard("the hud editor key") {
+                while (key.consumeClick()) {
+                    if (McCompat.currentScreen() == null) ScreenUtil.setScreen(HudEditorScreen())
+                }
             }
         }
     }

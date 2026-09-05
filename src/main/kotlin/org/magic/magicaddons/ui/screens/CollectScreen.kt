@@ -1,5 +1,6 @@
 package org.magic.magicaddons.ui.screens
 
+import org.magic.magicaddons.util.ErrorReporter.guard
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
@@ -67,66 +68,68 @@ class CollectScreen : Screen(Component.literal("Crop Collection")) {
     }
 
     override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
-        val rows = CropCollector.rows()
-        layout(rows)
+        guard("the collector screen") {
+            val rows = CropCollector.rows()
+            layout(rows)
 
-        scroll = scroll.coerceIn(0, (rows.size - visibleRows).coerceAtLeast(0))
+            scroll = scroll.coerceIn(0, (rows.size - visibleRows).coerceAtLeast(0))
 
-        graphics.drawPanel(panelX, panelY, panelX + panelWidth, panelY + panelHeight)
-
-        graphics.text(
-            font,
-            Component.literal("Collect — G closes"),
-            panelX + PAD,
-            panelY + PAD,
-            Common.UI.ACCENT_COLOR,
-            false
-        )
-
-        rows.drop(scroll).take(visibleRows).forEachIndexed { i, row ->
-            val rowY = listTop + i * ROW_HEIGHT
-            val textX: Int
-
-            // a row that can be ticked lights up under the mouse, like any other row on the kit
-            if (row.collectable && mouseX in panelX until panelX + panelWidth && mouseY in rowY until rowY + ROW_HEIGHT) {
-                graphics.fill(panelX + Common.UI.BORDER_SIZE, rowY, panelX + panelWidth - Common.UI.BORDER_SIZE, rowY + ROW_HEIGHT, Common.UI.HOVER_WASH)
-            }
-
-            if (row.collectable) {
-                checkbox.x = panelX + PAD
-                checkbox.y = rowY + (ROW_HEIGHT - CHECKBOX) / 2
-                checkbox.size = CHECKBOX
-                checkbox.checked = row.confirmed
-                checkbox.render(graphics)
-                textX = panelX + PAD + CHECKBOX + PAD
-            } else {
-                // nothing to tick: a plant with no definition is reported, never collected
-                textX = panelX + PAD + CHECKBOX + PAD
-            }
+            graphics.drawPanel(panelX, panelY, panelX + panelWidth, panelY + panelHeight)
 
             graphics.text(
                 font,
-                Component.literal(row.label),
-                textX,
-                rowY + (ROW_HEIGHT - font.lineHeight) / 2,
-                row.color,
-                false
-            )
-        }
-
-        if (rows.size > visibleRows) {
-            graphics.text(
-                font,
-                Component.literal("… ${scroll + visibleRows}/${rows.size}"),
+                Component.literal("Collect — G closes"),
                 panelX + PAD,
-                finishY - ROW_HEIGHT - PAD,
-                Common.UI.TEXT_DIM_COLOR,
+                panelY + PAD,
+                Common.UI.ACCENT_COLOR,
                 false
             )
-        }
 
-        button(graphics, finishY, "Write the file", Common.UI.SUCCESS_COLOR, mouseX, mouseY)
-        button(graphics, quitY, "Dismiss without writing", Common.UI.DANGER_COLOR, mouseX, mouseY)
+            rows.drop(scroll).take(visibleRows).forEachIndexed { i, row ->
+                val rowY = listTop + i * ROW_HEIGHT
+                val textX: Int
+
+                // a row that can be ticked lights up under the mouse, like any other row on the kit
+                if (row.collectable && mouseX in panelX until panelX + panelWidth && mouseY in rowY until rowY + ROW_HEIGHT) {
+                    graphics.fill(panelX + Common.UI.BORDER_SIZE, rowY, panelX + panelWidth - Common.UI.BORDER_SIZE, rowY + ROW_HEIGHT, Common.UI.HOVER_WASH)
+                }
+
+                if (row.collectable) {
+                    checkbox.x = panelX + PAD
+                    checkbox.y = rowY + (ROW_HEIGHT - CHECKBOX) / 2
+                    checkbox.size = CHECKBOX
+                    checkbox.checked = row.confirmed
+                    checkbox.render(graphics)
+                    textX = panelX + PAD + CHECKBOX + PAD
+                } else {
+                    // nothing to tick: a plant with no definition is reported, never collected
+                    textX = panelX + PAD + CHECKBOX + PAD
+                }
+
+                graphics.text(
+                    font,
+                    Component.literal(row.label),
+                    textX,
+                    rowY + (ROW_HEIGHT - font.lineHeight) / 2,
+                    row.color,
+                    false
+                )
+            }
+
+            if (rows.size > visibleRows) {
+                graphics.text(
+                    font,
+                    Component.literal("… ${scroll + visibleRows}/${rows.size}"),
+                    panelX + PAD,
+                    finishY - ROW_HEIGHT - PAD,
+                    Common.UI.TEXT_DIM_COLOR,
+                    false
+                )
+            }
+
+            button(graphics, finishY, "Write the file", Common.UI.SUCCESS_COLOR, mouseX, mouseY)
+            button(graphics, quitY, "Dismiss without writing", Common.UI.DANGER_COLOR, mouseX, mouseY)
+        }
     }
 
     private fun button(graphics: GuiGraphicsExtractor, y: Int, label: String, color: Int, mouseX: Int, mouseY: Int) {
@@ -147,49 +150,55 @@ class CollectScreen : Screen(Component.literal("Crop Collection")) {
 
     /** The whole row is the target: at this size the checkbox alone would be a test of aim. */
     override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
-        val x = mouseButtonEvent.x.toInt()
-        val y = mouseButtonEvent.y.toInt()
+        return guard("the collector screen", false) {
+            val x = mouseButtonEvent.x.toInt()
+            val y = mouseButtonEvent.y.toInt()
 
-        if (x !in panelX until panelX + panelWidth) {
+            if (x !in panelX until panelX + panelWidth) {
+                return super.mouseClicked(mouseButtonEvent, doubled)
+            }
+
+            if (y in finishY until finishY + BUTTON_HEIGHT) {
+                CropCollector.finish()
+                onClose()
+                return true
+            }
+
+            if (y in quitY until quitY + BUTTON_HEIGHT) {
+                CropCollector.quit()
+                onClose()
+                return true
+            }
+
+            if (y in listTop until listTop + visibleRows * ROW_HEIGHT) {
+                val row = CropCollector.rows().getOrNull(scroll + (y - listTop) / ROW_HEIGHT)
+
+                if (row != null && row.collectable) {
+                    CropCollector.toggle(row.id, announce = false)
+                }
+                return true
+            }
+
             return super.mouseClicked(mouseButtonEvent, doubled)
         }
-
-        if (y in finishY until finishY + BUTTON_HEIGHT) {
-            CropCollector.finish()
-            onClose()
-            return true
-        }
-
-        if (y in quitY until quitY + BUTTON_HEIGHT) {
-            CropCollector.quit()
-            onClose()
-            return true
-        }
-
-        if (y in listTop until listTop + visibleRows * ROW_HEIGHT) {
-            val row = CropCollector.rows().getOrNull(scroll + (y - listTop) / ROW_HEIGHT)
-
-            if (row != null && row.collectable) {
-                CropCollector.toggle(row.id, announce = false)
-            }
-            return true
-        }
-
-        return super.mouseClicked(mouseButtonEvent, doubled)
     }
 
     override fun mouseScrolled(mouseX: Double, mouseY: Double, scrollX: Double, scrollY: Double): Boolean {
-        scroll -= scrollY.toInt()
-        return true
+        return guard("the collector screen", false) {
+            scroll -= scrollY.toInt()
+            return true
+        }
     }
 
     override fun keyPressed(keyEvent: KeyEvent): Boolean {
-        // the key that opened it closes it, so reviewing is one hand on one key
-        if (keyEvent.key() == GLFW.GLFW_KEY_G) {
-            onClose()
-            return true
+        return guard("the collector screen", false) {
+            // the key that opened it closes it, so reviewing is one hand on one key
+            if (keyEvent.key() == GLFW.GLFW_KEY_G) {
+                onClose()
+                return true
+            }
+            return super.keyPressed(keyEvent)
         }
-        return super.keyPressed(keyEvent)
     }
 
     /** No blur, no dim, no panorama: the garden behind the list is what the list is about. */

@@ -1,5 +1,6 @@
 package org.magic.magicaddons.features.farming.greenhousePresets
 
+import org.magic.magicaddons.util.ErrorReporter.guard
 import com.mojang.blaze3d.platform.InputConstants
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper
@@ -25,7 +26,7 @@ object GreenhouseKey {
 
     init {
         ClientTickEvents.END_CLIENT_TICK.register { mc ->
-            while (key.consumeClick()) open(mc)
+            guard("the greenhouse key") { while (key.consumeClick()) open(mc) }
         }
     }
 
