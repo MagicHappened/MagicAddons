@@ -229,22 +229,68 @@ object GreenhouseData {
     /** The hunting shard carrying greenhouse speed, a legendary one, twenty four syphons to max. */
     const val GREENHOUSE_SPEED_ATTRIBUTE_ID: String = "attribute:l57"
 
-    /** Whether the plot changed since the last look. Scans are cheap enough to run on the change itself. */
-    private var reconcileWanted: Boolean = false
+    /** Where the plot changed since the last tick; those slots are read again on the tick itself. */
+    private val touched = mutableSetOf<BlockPos>()
 
-    /** Something in the plot changed, so what is stored for it can no longer be trusted. */
-    fun requestReconcile() {
-        reconcileWanted = true
+    /** Whether the whole plot has to be read, for a change with no place to it. */
+    private var fullScanWanted: Boolean = false
+
+    /** When the plot last changed; once it has been quiet for [SETTLE_MS] the whole plot is read once. */
+    private var lastChangeAt: Long? = null
+
+    /** How long the plot has to be quiet before the full scan that squares everything with the world. */
+    private const val SETTLE_MS: Long = 400
+
+    /** Something in the plot changed at [positions], so what is stored around them can no longer be trusted. */
+    fun requestReconcile(positions: Collection<BlockPos>) {
+        if (positions.isEmpty()) return
+        touched.addAll(positions)
+        lastChangeAt = System.currentTimeMillis()
     }
 
-    /** Runs a reconcile if anything has asked for one since the last tick. */
+    fun requestReconcile(position: BlockPos) = requestReconcile(listOf(position))
+
+    /** Something changed with no place to it, so the whole plot is read on the next tick. */
+    fun requestReconcile() {
+        fullScanWanted = true
+    }
+
+    /**
+     * Each tick: the slots around this tick's changes are read again at once, and after the plot
+     * has been quiet for a moment the whole of it is read once, so nothing drifts from the world.
+     */
     private fun runDueReconcile() {
-        if (!reconcileWanted) return
+        val now = System.currentTimeMillis()
 
-        reconcileWanted = false
+        if (touched.isNotEmpty()) {
+            val positions = touched.toList()
+            touched.clear()
+            rescanAround(positions)
+        }
 
+        val settled = lastChangeAt?.let { now - it >= SETTLE_MS } == true
+        if (!fullScanWanted && !settled) return
+
+        fullScanWanted = false
+        lastChangeAt = null
         getCurrentGrid()?.state?.needsUpdate = true
         scanGridData()
+    }
+
+    /** Reads only the slots a change at [positions] can have reached; a plot never read gets the full scan. */
+    private fun rescanAround(positions: List<BlockPos>) {
+        val grid = getCurrentGrid() ?: return
+        if (!grid.state.hasRuntimeReferences) {
+            fullScanWanted = true
+            return
+        }
+        val plot = PlotAPI.getCurrentPlot() ?: return
+        grid.plot = plot
+
+        grid.createSlotDataForGrid()
+        grid.setPlantData(grid.regionAround(positions))
+        claimPlantedCrop(grid)
+        LayoutRenderState.refresh()
     }
 
     /** The last dehydration warning sent while away from the garden, with the time it was sent. */
@@ -837,7 +883,7 @@ object GreenhouseData {
             grid.removeMatchingBlock(pos)
         }
 
-        requestReconcile()
+        requestReconcile(pos)
     }
 
     @EventHandler
@@ -850,7 +896,7 @@ object GreenhouseData {
         val blockVec3 = Vec3.atCenterOf(event.pos)
         if (grid.plot?.aabb?.contains(blockVec3) != true) return
 
-        requestReconcile()
+        requestReconcile(event.pos)
     }
 
     @EventHandler
@@ -860,11 +906,9 @@ object GreenhouseData {
 
         val gridArea = grid.plot?.getBuildableArea() ?: return
 
-        // entities are reported for the whole world at once, so what matters is whether any of
-        // them turned up in this plot, not whether all of them did
-        if (event.addedEntityList.none { gridArea.contains(it.entity.position()) }) return
-
-        requestReconcile()
+        // entities are reported for the whole world at once, so only the ones that turned up in
+        // this plot count, each at its own place
+        requestReconcile(event.addedEntityList.map { it.entity.position() }.filter { gridArea.contains(it) }.map { BlockPos.containing(it) })
     }
 
     @EventHandler
@@ -898,7 +942,7 @@ object GreenhouseData {
         if (event.packet.pos.y != GREENHOUSE_SOIL_Y) return
         slot.placedBlock = event.packet.blockState
 
-        requestReconcile()
+        requestReconcile(event.packet.pos)
     }
 
 
@@ -912,9 +956,7 @@ object GreenhouseData {
         if (!grid.hasRuntime()) return
 
         val area = grid.plot?.getBuildableArea() ?: return
-        if (event.removedEntityList.none { area.contains(it.entity.position()) }) return
-
-        requestReconcile()
+        requestReconcile(event.removedEntityList.map { it.entity.position() }.filter { area.contains(it) }.map { BlockPos.containing(it) })
     }
 
     @EventHandler
@@ -925,7 +967,7 @@ object GreenhouseData {
         val area = grid.plot?.getBuildableArea() ?: return
         if (!area.contains(event.target.position())) return
 
-        requestReconcile()
+        requestReconcile(BlockPos.containing(event.target.position()))
     }
 
     @EventHandler
@@ -983,8 +1025,7 @@ object GreenhouseData {
             val soil = BlockPos(pos.x, GREENHOUSE_SOIL_Y, pos.z)
             placedHere.entries.removeAll { (at, def) -> overlaps(at, def, soil, foundCrop) }
             placedHere[soil] = foundCrop
-            Common.LOGGER.info("[placement] ${foundCrop.name} aimed at (${aimed.x}, ${aimed.z}) filed at (${pos.x}, ${pos.z}) slot ${grid.getSlotAt(pos, false)?.let { "(${it.x}, ${it.y})" }}")
-            requestReconcile()
+            requestReconcile(pos)
 
             return
         }

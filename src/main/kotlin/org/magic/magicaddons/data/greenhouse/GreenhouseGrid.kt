@@ -1,5 +1,6 @@
 package org.magic.magicaddons.data.greenhouse
 
+import org.magic.magicaddons.data.greenhouse.CropRegistry
 import org.magic.magicaddons.Common
 import org.magic.magicaddons.util.getBuildableArea
 import net.minecraft.client.Minecraft
@@ -171,11 +172,40 @@ class GreenhouseGrid(
 
 
     //todo set plant specific data too, such as a found Fleshtrap's hunger, once one can be grown
+    /** The slots a change at [positions] can have reached: every slot within a crop's width of each. */
+    fun regionAround(positions: Collection<BlockPos>): Set<Pair<Int, Int>> {
+        val reach = CropRegistry.all.maxOf { maxOf(it.footprint.width, it.footprint.height) } - 1
+        val region = mutableSetOf<Pair<Int, Int>>()
+        positions.forEach { pos ->
+            val slot = getSlotAt(pos, matchY = false) ?: return@forEach
+            for (x in (slot.x - reach).coerceAtLeast(0)..(slot.x + reach).coerceAtMost(width - 1)) {
+                for (y in (slot.y - reach).coerceAtLeast(0)..(slot.y + reach).coerceAtMost(height - 1)) {
+                    region.add(x to y)
+                }
+            }
+        }
+        return region
+    }
+
+    /** Whether any slot of [element]'s footprint lies in [region]. */
+    private fun touches(element: ElementRuntimeState, region: Set<Pair<Int, Int>>): Boolean {
+        val origin = element.instance.slot
+        val footprint = element.instance.cropDef.footprint
+        for (dx in 0 until footprint.width) {
+            for (dy in 0 until footprint.height) {
+                if ((origin.x + dx) to (origin.y + dy) in region) return true
+            }
+        }
+        return false
+    }
+
     /**
      * Reads the plot and brings the elements into line with it. A merge, not a rebuild: a plant
      * still in its slot keeps its age, water and confirmed stage. Returns what changed.
+     *
+     * Given a [region], only its slots are read again and the plants outside it stay as they are.
      */
-    fun setPlantData(): ReconcileResult {
+    fun setPlantData(region: Set<Pair<Int, Int>>? = null): ReconcileResult {
         val visitedSlots = Array(width) { BooleanArray(height) }
 
         val level = Minecraft.getInstance().level ?: return ReconcileResult()
@@ -194,9 +224,26 @@ class GreenhouseGrid(
         val reconciled = mutableListOf<ElementRuntimeState>()
         val result = ReconcileResult()
 
+        // outside the region nothing is read again: those plants, their slots and their stands are taken as they are
+        if (region != null) {
+            elements.filterNot { touches(it, region) }.forEach { kept ->
+                reconciled.add(kept)
+                result.kept++
+                remainingStands.removeAll((kept.standEntities ?: emptyList()).toSet())
+                val origin = kept.instance.slot
+                val footprint = kept.instance.cropDef.footprint
+                for (dx in 0 until footprint.width) {
+                    for (dy in 0 until footprint.height) {
+                        if (origin.x + dx < width && origin.y + dy < height) visitedSlots[origin.y + dy][origin.x + dx] = true
+                    }
+                }
+            }
+        }
+
         for (x in 0 until width) {
             for (y in 0 until height) {
                 if (visitedSlots[y][x]) continue
+                if (region != null && x to y !in region) continue
 
                 val slot = layout.getSlot(x, y) ?: continue
 
@@ -428,14 +475,7 @@ class GreenhouseGrid(
             var bestLegacy = false
 
             for (candidate in candidates) {
-                val stages = candidate.stageDefs.flatMap {
-                    when (it) {
-                        is CropStagePattern -> it.expand()
-                        is CropStage -> listOf(it)
-                    }
-                }
-
-                for (stage in stages) {
+                for (stage in candidate.stages) {
                     val result = stage.matchesStage(origin, remainingStands, candidate.footprint, candidate.rotatesWithPlot, readings = readings)
 
                     if (!result.matched) continue

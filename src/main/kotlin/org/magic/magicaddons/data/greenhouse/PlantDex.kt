@@ -93,7 +93,7 @@ object PlantDex {
      */
     private fun variantGaps(def: CropDefinition): List<String> {
         val parts = mutableListOf<String>()
-        val looks = def.stageDefs.flatMap { if (it is CropStagePattern) it.expand() else listOf(it) }
+        val looks = def.stages
 
         if (def.sleepStages.isNotEmpty()) {
             val sleeping = def.sleepStages.filter { it <= def.maxStage }.sorted()
