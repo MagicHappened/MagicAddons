@@ -140,8 +140,94 @@ object Noctilume : CropDefinitionProvider {
                 wheatAge = 5,
                 offsets = settlingOffsets,
                 fullSized = setOf(0, 1, 3)
+            ),
+            // both grown looks at four were recorded wrong and wait to be taken again
+            // as placed, craving day
+            CropStage(
+                blocks = CropBlockState.blockStatePattern(
+                    listOf(
+                        BlockPos(0, 1, 0),
+                        BlockPos(0, 1, 1),
+                        BlockPos(1, 1, 0),
+                        BlockPos(1, 1, 1)
+                    ),
+                    blockState = wheatState(5)
+                ),
+                armorStands = CropArmorStand.matcherPattern(
+                    offsets = listOf(
+                        Vec3(-0.21875, -0.0625, 0.15625),
+                        Vec3(0.28125, 0.03125, 0.125),
+                        Vec3(0.375, 0.09375, -0.3125),
+                        Vec3(-0.125, -0.03125, -0.40625)
+                    ),
+                    rotations = listOf(
+                        Rotations(22.5f, 0.0f, -22.5f),
+                        Rotations(22.5f, 0.0f, 22.5f),
+                        Rotations(-22.5f, 0.0f, 22.5f),
+                        Rotations(-22.5f, 0.0f, -22.5f)
+                    ),
+                    xRotations = listOf(
+                        0.0f,
+                        0.0f,
+                        0.0f,
+                        0.0f
+                    ),
+                    yRotations = listOf(
+                        0.0f,
+                        0.0f,
+                        0.0f,
+                        0.0f
+                    ),
+                    hashString = "5cdd8c3d5d76a1dc07cdbedc5fd0bb230852df9c1864896f8893f5bfdf3d4c96",
+                    isSmall = false
+                ),
+                4..4,
+                traits = mapOf(CropStandReader.CRAVES to CropStandReader.CRAVES_DAY),
+                placed = true
+            ),
+            // as placed, craving night
+            CropStage(
+                blocks = CropBlockState.blockStatePattern(
+                    listOf(
+                        BlockPos(0, 1, 0),
+                        BlockPos(0, 1, 1),
+                        BlockPos(1, 1, 0),
+                        BlockPos(1, 1, 1)
+                    ),
+                    blockState = wheatState(5)
+                ),
+                armorStands = CropArmorStand.matcherPattern(
+                    offsets = listOf(
+                        Vec3(-0.21875, -0.0625, 0.15625),
+                        Vec3(0.375, 0.09375, -0.3125),
+                        Vec3(0.28125, 0.03125, 0.125),
+                        Vec3(-0.125, -0.03125, -0.40625)
+                    ),
+                    rotations = listOf(
+                        Rotations(22.5f, 0.0f, -22.5f),
+                        Rotations(-22.5f, 0.0f, 22.5f),
+                        Rotations(22.5f, 0.0f, 22.5f),
+                        Rotations(-22.5f, 0.0f, -22.5f)
+                    ),
+                    xRotations = listOf(
+                        0.0f,
+                        0.0f,
+                        0.0f,
+                        0.0f
+                    ),
+                    yRotations = listOf(
+                        0.0f,
+                        0.0f,
+                        0.0f,
+                        0.0f
+                    ),
+                    hashString = "b1b18493d50ff8972f7ef359893d9063fdc54cb822c679002957c294fc8b0005",
+                    isSmall = false
+                ),
+                4..4,
+                traits = mapOf(CropStandReader.CRAVES to CropStandReader.CRAVES_NIGHT),
+                placed = true
             )
-            // both looks at four were recorded wrong and wait to be taken again
         ),
         decayTimeMs = SIX_DAY_DECAY_TIME_MS,
         maxStage = 4,

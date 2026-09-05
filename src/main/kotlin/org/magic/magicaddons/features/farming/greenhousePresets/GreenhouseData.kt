@@ -378,7 +378,7 @@ object GreenhouseData {
 
         greenhouseGrids.forEach { grid ->
             grid.layout.elementInstances.forEach { instance ->
-                if (!instance.cropDef.needsWater) return@forEach
+                if (!instance.needsWater) return@forEach
 
                 val water = instance.waterLevel ?: return@forEach
                 if (water <= WaterModel.DEATH) return@forEach
@@ -1044,10 +1044,9 @@ object GreenhouseData {
     fun claimPlacedPlant(instance: GreenhouseElementInstance) {
         instance.placed = true
         instance.age = 0L
-        if (instance.cropDef.needsWater) {
-            instance.waterLevel = 0
-            instance.waterExact = true
-        }
+        // placed, it is finished and drinks nothing, so it carries no level at all
+        instance.waterLevel = null
+        instance.waterExact = false
         instance.firstSeenStage = instance.lowestStage
     }
 

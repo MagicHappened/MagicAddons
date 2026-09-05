@@ -89,7 +89,23 @@ object DoNotEatShroom : CropDefinitionProvider {
                 ),
                 8..8
             )
-        ),
+        ,
+            // as placed
+            CropStage(
+                blocks = listOf(),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, -0.4375, 0.0),
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
+                        hashString = "3f22178e2e72d6929a6ef9199795a93cfbad999bbee0aba235b277d0b18e0e94",
+                        isSmall = false
+                    )
+                ),
+                8..8,
+                placed = true
+            )),
         maxStage = 8,
         isMutation = true
     )

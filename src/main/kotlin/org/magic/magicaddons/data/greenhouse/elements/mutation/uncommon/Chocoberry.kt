@@ -84,7 +84,28 @@ object Chocoberry : CropDefinitionProvider {
 
 
 
-        ),
+        ,
+            // as placed
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = melonStemState(3)
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, -0.0625, 0.0),
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
+                        hashString = "167bb9880a3ab37435a21b1f135a01a96cca45b49daeb4a1e91baf358e37d89d",
+                        isSmall = false
+                    )
+                ),
+                6..6,
+                placed = true
+            )),
         maxStage = 6,
         isMutation = true
     )

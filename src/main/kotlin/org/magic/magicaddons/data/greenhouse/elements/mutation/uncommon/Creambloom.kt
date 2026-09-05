@@ -121,7 +121,28 @@ object Creambloom : CropDefinitionProvider {
 
 
 
-        ),
+        ,
+            // as placed
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = melonStemState(4)
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, 0.0625, 0.0),
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
+                        hashString = "60e98c0b598e2f5ce7c5ee8183ed157c5436a00585da711f8a87f24ea1ff055b",
+                        isSmall = false
+                    )
+                ),
+                6..6,
+                placed = true
+            )),
         maxStage = 6,
         isMutation = true
     )

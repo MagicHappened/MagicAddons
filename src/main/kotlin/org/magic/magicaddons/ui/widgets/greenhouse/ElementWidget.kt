@@ -95,14 +95,14 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, Focus
         fun valueFor(instance: GreenhouseElementInstance): String? = when (this) {
             // a plant with one stage never grows, so there is no progress to report on it. Fire,
             // dead plants and the mutations placed by hand are all like this
-            GrowthStage -> if (instance.cropDef.maxStage <= 1) null else
+            GrowthStage -> if (instance.placed) "Placed" else if (instance.cropDef.maxStage <= 1) null else
                 when (val stage = instance.growthStage) {
                 is GrowthStageInfo.Known -> "${stage.stage}/${instance.cropDef.maxStage}"
                 // a guessed stage is worth showing, as long as it does not look measured
                 is GrowthStageInfo.Estimated -> "~${stage.range.first}-${stage.range.last}"
                 null -> null
             }
-            WaterLevel -> instance.waterLevel?.let { "$it%" }
+            WaterLevel -> if (instance.placed) null else instance.waterLevel?.let { "$it%" }
             DecayTime -> decayRemainingMs(instance)?.let { readableDuration(it) }
         }
     }
@@ -147,7 +147,7 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, Focus
 
         // the worst case has this plant dead already, and only a scan can settle it: it either finds
         // a dead bush or finds the plant standing, one tick from death
-        if (instance.cropDef.needsWater && (instance.waterLevel ?: 0) <= WaterModel.DEATH) {
+        if (instance.needsWater && (instance.waterLevel ?: 0) <= WaterModel.DEATH) {
             val size = (width / 3).coerceAtLeast(8)
             val markX = widgetX + width - size
             val markY = widgetY
@@ -175,7 +175,7 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, Focus
         // water is a level, and a meter says that faster than a number. A plant that never drinks is
         // left alone rather than shown an empty meter
         if (info == HoverInfo.WaterLevel) {
-            if (!instance.cropDef.needsWater) return
+            if (!instance.needsWater) return
 
             instance.waterLevel?.let {
                 renderWaterBar(graphics, it.coerceAtLeast(WaterModel.DEATH))
@@ -377,10 +377,10 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, Focus
             }
 
             if (!inPreset) {
-                growthText?.let { add(labelled("Growth", it)) }
+                if (instance.placed) add(labelled("Growth", "Placed")) else growthText?.let { add(labelled("Growth", it)) }
 
                 // a plant that never drinks has no water level worth a line of its own
-                if (cropDefinition.needsWater) {
+                if (instance.needsWater) {
                     add(labelled("Water", instance.waterLevel?.let { "$it%" } ?: "Unknown"))
                 }
 
@@ -392,7 +392,6 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, Focus
                 add(labelled("Size", "${footprint.width}x${footprint.height}"))
             }
 
-            if (!inPreset && instance.placed) add(Component.literal("Placed here").withStyle(ChatFormatting.GRAY))
             if (inPreset) add(Component.literal("Right click to mark").withStyle(ChatFormatting.GRAY))
         }
 
