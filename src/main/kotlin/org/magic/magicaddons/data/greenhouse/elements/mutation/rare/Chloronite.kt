@@ -49,10 +49,30 @@ object Chloronite : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                     offset = Vec3(0.0, -0.84375, 0.0),
-                    hashString = "4696299926a2fd000f519f6b4690670914004e634c8c6546ca5b69f028e43c40"
+                    hashString = "4696299926a2fd000f519f6b4690670914004e634c8c6546ca5b69f028e43c40",
+                    isSmall = false
                     )
                 ),
                 2..2
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = wheatState(2)
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, -0.75, 0.0),
+                        headRotation = Rotations(0.0f, 45.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
+                        hashString = "4696299926a2fd000f519f6b4690670914004e634c8c6546ca5b69f028e43c40",
+                        isSmall = false
+                    )
+                ),
+                3..3
             ),
                     CropStage(
                 blocks = listOf(

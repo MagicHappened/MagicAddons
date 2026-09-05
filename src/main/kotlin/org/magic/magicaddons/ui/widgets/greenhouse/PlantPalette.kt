@@ -30,7 +30,7 @@ import kotlin.math.roundToInt
  */
 class PlantPalette(
     overlayContext: OverlayContext,
-    private val onClearAll: () -> Unit,
+    private val onClearAll: (MouseButtonEvent) -> Unit,
     private val onUndo: () -> Unit,
     private val onRedo: () -> Unit
 ) {
@@ -314,7 +314,7 @@ class PlantPalette(
         }
 
         if (clearButton.mouseClicked(event, doubled)) {
-            onClearAll()
+            onClearAll(event)
             return true
         }
         if (deleteButton.mouseClicked(event, doubled)) {

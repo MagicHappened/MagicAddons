@@ -1,5 +1,7 @@
 package org.magic.magicaddons.ui.screens
 
+import org.magic.magicaddons.data.greenhouse.CropRegistry
+import org.magic.magicaddons.util.ScreenUtil.drawButtonPanel
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhousePresets
 import net.minecraft.core.Direction
 import net.minecraft.world.level.block.Blocks
@@ -122,6 +124,15 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
     /** Whether the mouse is on the next tick box, which then explains the clock. */
     private var timeHovered = false
 
+    /** Clicked, the box keeps its breakdown on screen until clicked again. */
+    private var timePinned = false
+
+    /** The box, as drawn last, so a click can find it. */
+    private var timeBox: IntArray = IntArray(4)
+
+    /** Where the pinned breakdown's unique crops line was drawn, so hovering it can list what is missing. */
+    private var uniqueLineBox: IntArray? = null
+
     private var dynamicNameDisplay: ClickableButtonWidget? = null
     private var hoverWarning = false
 
@@ -142,6 +153,7 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         },
         onImported = { imported(it) },
         onRemove = { removePresetLayout(it) },
+        onNewPreset = { newPreset() },
         shownLayout = { displayedGridWidget?.layout }
     )
 
@@ -179,7 +191,7 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
     ).apply { items = listOf(TELEPORT_LABEL) }
 
     /** The plants a preset can be built from, under the preset shelf. */
-    private val plantPalette = PlantPalette(this, onClearAll = { clearCanvas() }, onUndo = { undo() }, onRedo = { redo() })
+    private val plantPalette = PlantPalette(this, onClearAll = { askClearPlot(it) }, onUndo = { undo() }, onRedo = { redo() })
 
     /** A bookmark along the top of a preset: one of its plots, or the one that adds a plot. */
     private sealed interface PartTab {
@@ -491,6 +503,44 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
 
     private fun shelfTitleHeight(): Int = font.lineHeight + Common.UI.SPACING * 2
 
+    /**
+     * The breakdown as a panel of its own under the box, staying up while the box is pinned. Its
+     * unique crops line, hovered, names the uniques still missing.
+     */
+    private fun drawPinnedClock(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int) {
+        val lines = clockTooltip().split('\n')
+        val lineHeight = font.lineHeight + 2
+        val pad = Common.UI.SPACING_LARGE
+        val width = lines.maxOf { font.width(it) } + pad * 2
+        val top = timeBox[3] + Common.UI.SPACING
+        val height = lines.size * lineHeight + pad * 2 - 2
+
+        graphics.drawPanel(TIME_LEFT, top, TIME_LEFT + width, top + height)
+        lines.forEachIndexed { index, line ->
+            val y = top + pad + index * lineHeight
+            graphics.text(font, Component.literal(line), TIME_LEFT + pad, y, Common.UI.TEXT_COLOR, false)
+            if (index == UNIQUE_LINE) uniqueLineBox = intArrayOf(TIME_LEFT, y, TIME_LEFT + width, y + lineHeight)
+        }
+
+        val box = uniqueLineBox ?: return
+        if (mouseX in box[0] until box[2] && mouseY in box[1] until box[3]) {
+            graphics.drawSimpleTooltip(missingUniquesText(), mouseX + 8, mouseY + 8)
+        }
+    }
+
+    /** The uniques not yet growing, one a line; the ones that count as each other written as a pair. */
+    private fun missingUniquesText(): String {
+        val missing = GreenhouseData.getMissingUniques().map { key ->
+            when (key) {
+                is GreenhouseData.UniqueCropKey.Def -> CropRegistry.get(key.id)?.name ?: key.id
+                GreenhouseData.UniqueCropKey.Flower -> "Moonflower/Sunflower"
+                GreenhouseData.UniqueCropKey.Mushroom -> "Red Mushroom/Brown Mushroom"
+            }
+        }.sorted()
+        if (missing.isEmpty()) return "§aEvery unique crop is growing"
+        return "§7Missing unique crops:\n" + missing.joinToString("\n") { "§f$it" }
+    }
+
     /** Everything the tick period is made of, each level coloured by how far along it is. */
     private fun clockTooltip(): String {
         val misc = GreenhouseData.miscInfo
@@ -690,11 +740,25 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         restore(saved)
     }
 
-    /** Puts the preset down and shows an empty grid; the preset itself keeps everything it had. */
-    private fun clearCanvas() {
-        GreenhouseData.currentPreset = null
-        presetCleared = true
-        initPresetLayout()
+    /** Asks before emptying the plot on show of every plant, soil and mark; one arrow step brings it back. */
+    private fun askClearPlot(event: MouseButtonEvent) {
+        val grid = displayedGridWidget ?: return
+        val question = "Clear ${GreenhouseData.describe(grid.layout)}?"
+        val (menuX, menuY) = OverlayRenderable.placeOnScreen(event.x.toInt(), event.y.toInt(), ConfirmContext.widthFor(question), ConfirmContext.HEIGHT)
+        addContext(ConfirmContext(menuX, menuY, question, this) {
+            remember(grid.layout)
+            grid.layout.elementInstances.clear()
+            grid.layout.slots.forEach {
+                it.placedBlock = Blocks.AIR.defaultBlockState()
+                it.slotMark = null
+            }
+            grid.init()
+        })
+    }
+
+    /** A new preset with one empty plot, shown at once. */
+    private fun newPreset() {
+        addPresetLayout(MasterLayout.create(GreenhouseData.computeNextAvailableId()))
     }
 
     /** Where the badge beside the name starts, so its tooltip can hang under it. */
@@ -757,9 +821,12 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         val timeBoxWidth = font.width(timeText) + Common.UI.TEXT_X_PAD * 2
         val timeBoxHeight = boxHeight(timeText)
 
-        graphics.drawMultilineBoxCentered(timeText, TIME_LEFT + timeBoxWidth / 2, TIME_CENTER_Y)
-        timeHovered = mouseX in TIME_LEFT until TIME_LEFT + timeBoxWidth &&
-                mouseY in TIME_CENTER_Y - timeBoxHeight / 2 until TIME_CENTER_Y + timeBoxHeight / 2
+        timeBox = intArrayOf(TIME_LEFT, TIME_CENTER_Y - timeBoxHeight / 2, TIME_LEFT + timeBoxWidth, TIME_CENTER_Y + timeBoxHeight / 2)
+        timeHovered = mouseX in timeBox[0] until timeBox[2] && mouseY in timeBox[1] until timeBox[3]
+
+        // a button like the delete switch: washed under the mouse, framed bright while pinned
+        graphics.drawButtonPanel(timeBox[0], timeBox[1], timeBox[2], timeBox[3], timeHovered, pressed = timePinned)
+        graphics.text(font, Component.literal(timeText), TIME_LEFT + Common.UI.TEXT_X_PAD, TIME_CENTER_Y - font.lineHeight / 2, Common.UI.TEXT_COLOR, false)
 
         // presets are a plan rather than a greenhouse that exists, no plant in one has a stage,
         // a water level or an age to report
@@ -850,7 +917,10 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
             }
         }
 
-        if (timeHovered) {
+        uniqueLineBox = null
+        if (timePinned) {
+            drawPinnedClock(graphics, mouseX, mouseY)
+        } else if (timeHovered) {
             graphics.drawSimpleTooltip(clockTooltip(), TIME_LEFT, TIME_CENTER_Y + boxHeight(" ") / 2 + Common.UI.SPACING)
         }
 
@@ -906,6 +976,14 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
 
         // the click landed outside every overlay, which is what closes them
         closeOverlays()
+
+        // the next tick box pins its breakdown, and unpins it
+        if (mouseButtonEvent.button() == 0 && mouseButtonEvent.x.toInt() in timeBox[0] until timeBox[2] &&
+            mouseButtonEvent.y.toInt() in timeBox[1] until timeBox[3]
+        ) {
+            timePinned = !timePinned
+            return true
+        }
 
         // the wheel's other job: a middle click in greenhouse mode makes it walk the swatches
         // instead of the plots, and another puts it back. Remembered past the screen, not to disk
@@ -1375,6 +1453,9 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
 
         /** What each part of the tick period runs up to. */
         private const val MAX_UNIQUE_CROPS: Int = 12
+
+        /** Which line of the clock breakdown is the unique crops one, counted from the tick time line. */
+        private const val UNIQUE_LINE: Int = 1
         private const val MAX_SPEED_UPGRADE: Int = 9
         private const val MAX_ATTRIBUTE: Int = 10
 
