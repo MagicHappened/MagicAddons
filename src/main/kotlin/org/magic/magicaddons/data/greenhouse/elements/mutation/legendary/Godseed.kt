@@ -258,7 +258,100 @@ object Godseed : CropDefinitionProvider {
                 34..37 // 34 35 and 37 same so assuming for 36
             )
 
-        ),
+        ,
+            // as placed
+            CropStage(
+                blocks = CropBlockState.blockStatePattern(
+                    listOf(
+                        BlockPos(0, 1, 0),
+                        BlockPos(0, 1, 1),
+                        BlockPos(0, 1, 2),
+                        BlockPos(1, 1, 0),
+                        BlockPos(1, 1, 2),
+                        BlockPos(2, 1, 0),
+                        BlockPos(2, 1, 1),
+                        BlockPos(2, 1, 2)
+                    ),
+                    blockState = wheatState(6)
+                ) + listOf(
+                    CropBlockState(
+                        offset = BlockPos(1, 1, 1),
+                        blockState = melonStemState(7)
+                    )
+                ),
+                armorStands = CropArmorStand.matcherPattern(
+                    offsets = listOf(
+                        Vec3(-1.0, -0.4375, 1.0),
+                        Vec3(-1.0, -0.4375, -1.0),
+                        Vec3(-1.0, 0.75, 1.0),
+                        Vec3(-1.0, 0.71875, -1.0),
+                        Vec3(0.0, 0.0625, 1.0),
+                        Vec3(0.0, 0.0625, -1.0),
+                        Vec3(-1.0, 0.0625, 0.0),
+                        Vec3(1.0, -0.4375, 1.0),
+                        Vec3(1.0, -0.4375, -1.0),
+                        Vec3(1.0, 0.75, -1.0),
+                        Vec3(1.0, 0.0625, 0.0),
+                        Vec3(1.0, 0.75, 1.0)
+                    ),
+                    rotations = listOf(
+                        Rotations(0.0f, 0.0f, 0.0f),
+                        Rotations(0.0f, 0.0f, 0.0f),
+                        Rotations(180.0f, 90.0f, 0.0f),
+                        Rotations(180.0f, 90.0f, 0.0f),
+                        Rotations(180.0f, 0.0f, 0.0f),
+                        Rotations(180.0f, 0.0f, 0.0f),
+                        Rotations(180.0f, 0.0f, 0.0f),
+                        Rotations(0.0f, 0.0f, 0.0f),
+                        Rotations(0.0f, 0.0f, 0.0f),
+                        Rotations(180.0f, 90.0f, 0.0f),
+                        Rotations(180.0f, 0.0f, 0.0f),
+                        Rotations(180.0f, 90.0f, 0.0f)
+                    ),
+                    xRotations = listOf(
+                        0.0f,
+                        0.0f,
+                        0.0f,
+                        0.0f,
+                        0.0f,
+                        0.0f,
+                        0.0f,
+                        0.0f,
+                        0.0f,
+                        0.0f,
+                        0.0f,
+                        0.0f
+                    ),
+                    yRotations = listOf(
+                        0.0f,
+                        0.0f,
+                        0.0f,
+                        0.0f,
+                        0.0f,
+                        0.0f,
+                        0.0f,
+                        0.0f,
+                        0.0f,
+                        0.0f,
+                        0.0f,
+                        0.0f
+                    ),
+                    hashString = "a0cc95bd6b1e5c007cf0d2b8c613a33a7ad3500b27638947c0b6b1db8fcb4887",
+                    isSmall = false
+                ) +
+                listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, 1.4375, 0.0),
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
+                        hashString = "9d6bdd07abe3f398720e5f010648c2c194a2ba0f5ef3e27013b0670336eb4f3c",
+                        isSmall = false
+                    )
+                ),
+                40..40,
+                placed = true
+            )),
         // 10 days decay time
         maxStage = 40,
         isMutation = true

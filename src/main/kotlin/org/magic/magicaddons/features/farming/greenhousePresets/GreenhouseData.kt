@@ -956,7 +956,13 @@ object GreenhouseData {
         if (GreenhouseWatering.startWateringWindow(mainHandId)) return
 
         if (foundCrop != null) {
-            val pos = event.hit.blockPos.relative(event.hit.direction)
+            val aimed = event.hit.blockPos.relative(event.hit.direction)
+
+            // the game puts a three by three down centred on the block aimed at and a two by two
+            // with that block as its north-west corner, so the plant's own corner is a step back
+            // for every two of width beyond one
+            val footprint = foundCrop.footprint
+            val pos = aimed.offset(-((footprint.width - 1) / 2), 0, -((footprint.height - 1) / 2))
 
             placements.add(Placement(foundCrop, pos, Instant.now()))
             placedHere[BlockPos(pos.x, GREENHOUSE_SOIL_Y, pos.z)] = foundCrop

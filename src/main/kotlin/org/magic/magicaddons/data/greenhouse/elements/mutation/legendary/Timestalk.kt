@@ -137,7 +137,22 @@ object Timestalk : CropDefinitionProvider {
                 11..11
             )
 
-        ),
+        ,
+            // as placed
+            CropStage(
+                blocks = listOf(),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, 0.3125, 0.0),
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
+                        hashString = "1b9add43e0e770b7c4ccdcf6708f8b9e875ff13b2a75ab63ff69f2f0e57af9e5"
+                    )
+                ),
+                14..14,
+                placed = true
+            )),
         // five days decay timer
         maxStage = 14,
         requiredSoil = setOf(Blocks.END_STONE),
