@@ -19,9 +19,10 @@ import java.util.zip.Deflater
 import java.util.zip.Inflater
 
 /**
- * A preset as one short line for chat: `MAGH1|name|data`. The name is a label the importer takes
- * as the preset's name. The data is the bytes below, deflated (raw, no zlib header) and base64url
- * encoded without padding:
+ * This mod's own way of sharing a preset: one short line for chat, `MAGH1|name|data`. The name is
+ * a label the importer takes as the preset's name. Importing also still reads the json this mod
+ * wrote before. The data is the bytes below, deflated (raw, no zlib header) and base64url encoded
+ * without padding:
  *
  * ```
  * u8    payload version (1)
@@ -39,7 +40,7 @@ import java.util.zip.Inflater
  */
 object ShareCodeFormat : LayoutFormat {
 
-    override val displayName: String = "Share code"
+    override val displayName: String = "MagicAddons"
 
     private const val PREFIX: String = "MAGH"
     private const val WRAPPER_VERSION: Int = 1
@@ -50,11 +51,12 @@ object ShareCodeFormat : LayoutFormat {
     private const val SOIL_AIR: Int = 1
     private const val SOIL_FIRST: Int = 2
 
-    override fun canImport(text: String): Boolean = text.trim().startsWith(PREFIX)
+    override fun canImport(text: String): Boolean = text.trim().startsWith(PREFIX) || MagicAddonsFormat.canImport(text)
 
     override fun import(text: String, layoutId: String): LayoutTransferResult {
         val trimmed = text.trim()
-        if (!trimmed.startsWith(PREFIX)) return LayoutTransferResult.Failure("That is not a share code.")
+        // the json of earlier versions still comes in
+        if (!trimmed.startsWith(PREFIX)) return MagicAddonsFormat.import(text, layoutId)
 
         val head = trimmed.substringBefore(SEPARATOR)
         val wrapper = head.removePrefix(PREFIX).toIntOrNull() ?: return LayoutTransferResult.Failure("That share code has no version.")

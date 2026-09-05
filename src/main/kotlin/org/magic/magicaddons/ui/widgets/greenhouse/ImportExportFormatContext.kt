@@ -12,11 +12,10 @@ class ImportExportFormatContext(
 ) : AbstractSelectorContextMenu<ImportExportFormatContext.LayoutFormatType>(LayoutFormatType.entries, "Format:", withSearch = false) {
 
     enum class LayoutFormatType {
-        ShareCode,
-        SkyMutations,
-        SkyShards,
+        MagicAddons,
         SkyLayouts,
-        MagicAddons
+        SkyShards,
+        SkyMutations
     }
 
     override fun onValueSelected(value: LayoutFormatType) {
