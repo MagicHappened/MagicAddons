@@ -209,28 +209,29 @@ abstract class SettingWidget<T>(
     }
 
     /**
-     * The unfolded settings under their top and left lines, a light line between rows and a full
-     * one where a row's own group ends. Clipped to how far the group has opened, so it slides.
+     * The unfolded settings under a line the row's full width and a line down the indent, a light
+     * line between rows and a full width one where a row's group ends. Clipped to how far the group
+     * has opened, so it slides.
      */
     private fun renderGroup(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
         val left = groupLeft()
         val right = x + width
         val bottom = groupTop + groupShown
 
-        graphics.enableScissor(left, groupTop, right, bottom)
+        graphics.enableScissor(x, groupTop, right, bottom)
         graphics.fill(left, groupTop, right, bottom, Common.UI.GROUP_SHADE)
         childrenWidgets.forEachIndexed { index, child ->
             if (index > 0) {
                 val above = childrenWidgets[index - 1]
                 if (above.groupShown > 0) {
-                    graphics.fill(above.groupLeft(), child.y - ROW_LINE, right, child.y, Common.UI.BORDER_COLOR)
+                    graphics.fill(left + GROUP_FRAME, child.y - ROW_LINE, right, child.y, Common.UI.BORDER_COLOR)
                 } else {
                     graphics.fill(left + GROUP_FRAME, child.y - ROW_LINE, right, child.y, Common.UI.THIN_DIVIDER_COLOR)
                 }
             }
             child.render(graphics, mouseX, mouseY, delta)
         }
-        graphics.fill(left, groupTop, right, groupTop + GROUP_FRAME, Common.UI.BORDER_COLOR)
+        graphics.fill(x, groupTop, right, groupTop + GROUP_FRAME, Common.UI.BORDER_COLOR)
         graphics.fill(left, groupTop, left + GROUP_FRAME, bottom, Common.UI.BORDER_COLOR)
         graphics.disableScissor()
     }
