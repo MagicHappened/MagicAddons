@@ -72,7 +72,10 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
     //todo warn in the base feature when not all unique crops are detected
     //todo infer stages between ticks, and mark an inferred board yellow rather than showing it as read
 
-    var currentDisplay = CurrentDisplay.Greenhouses
+    /** Plots or presets, kept past the screen so it reopens on whichever was last shown. */
+    var currentDisplay: CurrentDisplay
+        get() = lastDisplay
+        set(value) { lastDisplay = value }
 
     /** Whether the greenhouse on screen is running on guessed growth. Read while drawing, since the
      * tick that makes it stale can land with the screen open. */
@@ -1320,6 +1323,7 @@ class GreenhouseScreen(title: Component) : Screen(title), HoverableContainer, Ov
         initPresetLayout()
     }
     companion object {
+        private var lastDisplay: CurrentDisplay = CurrentDisplay.Greenhouses
         /** Whether the wheel walks the swatches rather than the plots, kept for the session. */
         private var scrollPicksInfo: Boolean = false
 

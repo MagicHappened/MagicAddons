@@ -222,22 +222,33 @@ object LayoutRenderState {
 
         if (soilComplete) {
             layout.elementInstances.forEach { instance ->
-                // by what covers the slot rather than what starts on it: a two by two beginning one
-                // slot over still stands here
-                val growing = grid.elementCovering(instance.slot)
+                // every slot the plant would cover, by what covers each rather than what starts on
+                // it: a two by two beginning one slot over still stands here
+                val footprintSlots = buildList {
+                    for (dx in 0 until instance.cropDef.footprint.width) {
+                        for (dy in 0 until instance.cropDef.footprint.height) {
+                            layout.getSlot(instance.slot.x + dx, instance.slot.y + dy)?.let { add(it) }
+                        }
+                    }
+                }
+                val growing = footprintSlots.mapNotNull { grid.elementCovering(it) }.distinct()
 
                 // the target plant appears on its own once the ingredients are right, so nothing is
                 // planned for it, but it needs an empty slot to appear on
                 if (instance.slot.slotMark == LayoutSlot.Marking.Target) {
-                    if (growing != null) markInTheWay(level, growing, marks, badStands)
+                    growing.forEach { markInTheWay(level, it, marks, badStands) }
                     return@forEach
                 }
 
-                if (growing != null) {
-                    // the right plant, so there is nothing to plan and nothing in the way of it
-                    if (growing.instance.cropDef == instance.cropDef) return@forEach
+                if (growing.isNotEmpty()) {
+                    // the right plant in the right place, so there is nothing to plan and nothing in the way
+                    val right = growing.singleOrNull()?.takeIf {
+                        it.instance.cropDef == instance.cropDef &&
+                                it.instance.slot.x == instance.slot.x && it.instance.slot.y == instance.slot.y
+                    }
+                    if (right != null) return@forEach
 
-                    markInTheWay(level, growing, marks, badStands)
+                    growing.forEach { markInTheWay(level, it, marks, badStands) }
                     return@forEach
                 }
 

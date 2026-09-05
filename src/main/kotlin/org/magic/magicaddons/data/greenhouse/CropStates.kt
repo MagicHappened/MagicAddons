@@ -1,5 +1,7 @@
 package org.magic.magicaddons.data.greenhouse
 
+import net.minecraft.core.registries.BuiltInRegistries
+import net.minecraft.commands.arguments.blocks.BlockStateParser
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.level.block.CropBlock
 import net.minecraft.world.level.block.DoublePlantBlock
@@ -9,6 +11,10 @@ import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.level.block.state.properties.DoubleBlockHalf
 
 object CropStates {
+
+    /** The code for a state: a helper where one exists, the game's own state string otherwise. */
+    fun toCode(state: BlockState): String =
+        toFunctionString(state) ?: "stateOf(\"${BlockStateParser.serialize(state)}\")"
 
     fun toFunctionString(state: BlockState): String? {
         return when (state.block) {
@@ -67,6 +73,10 @@ object CropStates {
         } else {
             "DoubleBlockHalf.LOWER"
         }
+
+    /** Any block state from the text the game itself writes it as, for blocks with no helper above. */
+    fun stateOf(text: String): BlockState =
+        BlockStateParser.parseForBlock(BuiltInRegistries.BLOCK, text, false).blockState()
 
     fun wheatState(age: Int): BlockState =
         Blocks.WHEAT.defaultBlockState()

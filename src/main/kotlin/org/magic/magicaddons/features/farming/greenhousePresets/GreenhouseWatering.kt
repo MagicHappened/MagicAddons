@@ -1,5 +1,8 @@
 package org.magic.magicaddons.features.farming.greenhousePresets
 
+import net.minecraft.world.phys.Vec3
+import net.minecraft.core.registries.BuiltInRegistries
+import org.magic.magicaddons.events.world.AddParticleEvent
 import kotlin.math.abs
 import java.util.UUID
 import org.magic.magicaddons.Common
@@ -88,7 +91,53 @@ object GreenhouseWatering {
     /** Reads any bar standing over a plant of the current grid, for every batch of new entities. */
     @EventHandler
     fun onWorldTick(event: OnWorldTickEvent) {
+        flushParticles()
         readWaterStands()
+    }
+
+    /** Particles seen in the plot this tick, by type, to find the spray's own shape. */
+    private val particlesThisTick = mutableMapOf<String, MutableList<Vec3>>()
+    private var particleTick: Long = -1
+
+    /** Enough particles of one kind in one tick to be a spray landing rather than stray dust. */
+    private const val CONE_MIN: Int = 8
+
+    /**
+     * Every particle the server sends into the plot while the window is open, logged by kind so the
+     * spray's own particle can be told apart. Read off the packet, so it comes even with particles off.
+     */
+    @EventHandler
+    fun onAddParticle(event: AddParticleEvent) {
+        if (wateringUntil == null) return
+        val grid = GreenhouseData.getCurrentGrid() ?: return
+        val area = grid.plot?.getBuildableArea() ?: return
+        val packet = event.packet
+        val at = Vec3(packet.x, packet.y, packet.z)
+        if (!area.contains(at)) return
+
+        val tick = Minecraft.getInstance().level?.gameTime ?: return
+        if (tick != particleTick) {
+            flushParticles()
+            particleTick = tick
+        }
+        val type = BuiltInRegistries.PARTICLE_TYPE.getKey(packet.particle.type)?.toString() ?: packet.particle.type.toString()
+        particlesThisTick.getOrPut(type) { mutableListOf() }.add(at)
+    }
+
+    /** Writes the tick's particles out, one line a kind, and calls a burst of one kind a cone. */
+    private fun flushParticles() {
+        if (particlesThisTick.isEmpty()) return
+        particlesThisTick.forEach { (type, spots) ->
+            val centre = spots.reduce { a, b -> a.add(b) }.scale(1.0 / spots.size)
+            val spread = spots.maxOf { it.distanceTo(centre) }
+            val cone = if (spots.size >= CONE_MIN) " CONE" else ""
+            Common.LOGGER.info(
+                "[water] particles tick=$particleTick $type x${spots.size} at (%.1f, %.1f, %.1f) spread %.2f%s".format(
+                    centre.x, centre.y, centre.z, spread, cone
+                )
+            )
+        }
+        particlesThisTick.clear()
     }
 
     /**
@@ -128,13 +177,20 @@ object GreenhouseWatering {
             // a level known to the point stays exact: the bar is too coarse to correct it, and a bar
             // that failed to move must not drag the count back onto it. A level only ever read off
             // bars stays a bar reading, corrected by the bar when the count drifts from it
-            val counted = ((element.instance.waterLevel ?: 0) + gain).coerceAtMost(100)
+            val before = element.instance.waterLevel
+            val counted = ((before ?: 0) + gain).coerceAtMost(100)
             element.instance.waterLevel = when {
                 element.instance.waterExact -> counted
                 abs(counted - bar.percent) <= NOTCH_PERCENT -> counted
                 else -> bar.percent
             }
             element.instance.waterPredictedInDebt = false
+
+            Common.LOGGER.info(
+                "[water] spray tick: ${element.instance.cropDef.name} at (${slot.x}, ${slot.y}) " +
+                        "$before -> ${element.instance.waterLevel} (bar ${bar.percent}%, ${bar.notches} notches, " +
+                        "exact=${element.instance.waterExact}, can=$lastCan)"
+            )
         }
     }
 
