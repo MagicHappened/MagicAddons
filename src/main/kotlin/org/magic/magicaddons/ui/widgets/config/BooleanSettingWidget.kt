@@ -27,8 +27,9 @@ class BooleanSettingWidget(
         switch.render(graphics)
     }
 
+    /** The switch, and the row around it: anywhere on the row flips the setting. */
     override fun controlClicked(event: MouseButtonEvent, doubled: Boolean): Boolean {
-        if (event.button() != 0 || !switch.isMouseOver(event.x, event.y)) return false
+        if (event.button() != 0 || !isMouseOver(event.x, event.y)) return false
         setting.value = !setting.value
         switch.set(setting.value)
         return true

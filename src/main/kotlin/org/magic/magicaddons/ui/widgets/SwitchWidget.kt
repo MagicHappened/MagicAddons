@@ -2,7 +2,8 @@ package org.magic.magicaddons.ui.widgets
 
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import org.magic.magicaddons.Common
-import org.magic.magicaddons.util.ScreenUtil.fillRounded
+import org.magic.magicaddons.util.ScreenUtil.eased
+import org.magic.magicaddons.util.ScreenUtil.fillPill
 
 /** A pill switch: an amber track with the knob on the right when on, a dark one with it on the left when off. */
 class SwitchWidget(var on: Boolean) {
@@ -24,17 +25,16 @@ class SwitchWidget(var on: Boolean) {
     }
 
     fun render(graphics: GuiGraphicsExtractor) {
-        val radius = height / 2
-        graphics.fillRounded(x, y, x + width, y + height, radius, if (on) Common.UI.ACCENT_COLOR else Common.UI.SWITCH_OFF_COLOR)
-        if (hovered) graphics.fillRounded(x, y, x + width, y + height, radius, Common.UI.HOVER_WASH)
+        graphics.fillPill(x, y, x + width, y + height, if (on) Common.UI.ACCENT_COLOR else Common.UI.SWITCH_OFF_COLOR)
+        if (hovered) graphics.fillPill(x, y, x + width, y + height, Common.UI.HOVER_WASH)
 
         val knob = height - KNOB_INSET * 2
         val travel = width - KNOB_INSET * 2 - knob
-        val along = ((System.currentTimeMillis() - flippedAt) / SLIDE_MS.toFloat()).coerceIn(0f, 1f)
+        val along = eased(flippedAt, SLIDE_MS)
         val fraction = if (on) along else 1f - along
-        val knobX = x + KNOB_INSET + (travel * fraction).toInt()
+        val knobX = x + KNOB_INSET + kotlin.math.round(travel * fraction).toInt()
 
-        graphics.fillRounded(knobX, y + KNOB_INSET, knobX + knob, y + KNOB_INSET + knob, knob / 2, if (on) Common.UI.TEXT_COLOR else Common.UI.DISABLED_TEXT_COLOR)
+        graphics.fillPill(knobX, y + KNOB_INSET, knobX + knob, y + KNOB_INSET + knob, if (on) Common.UI.TEXT_COLOR else Common.UI.DISABLED_TEXT_COLOR)
     }
 
     fun isMouseOver(mouseX: Double, mouseY: Double): Boolean =
@@ -48,6 +48,6 @@ class SwitchWidget(var on: Boolean) {
         const val WIDTH: Int = 22
         const val HEIGHT: Int = 12
         private const val KNOB_INSET: Int = 2
-        private const val SLIDE_MS: Long = 120
+        private const val SLIDE_MS: Long = 150
     }
 }

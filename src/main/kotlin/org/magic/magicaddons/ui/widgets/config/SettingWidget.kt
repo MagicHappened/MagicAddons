@@ -11,12 +11,13 @@ import org.magic.magicaddons.Common
 import org.magic.magicaddons.data.config.SettingNode
 import org.magic.magicaddons.ui.OverlayContext
 import org.magic.magicaddons.util.ScreenUtil.drawBorder
-import org.magic.magicaddons.util.ScreenUtil.drawButtonPanel
 import org.magic.magicaddons.util.ScreenUtil.drawLine
+import org.magic.magicaddons.util.ScreenUtil.eased
 
 /**
  * One setting as a row: its name, the description under it, and the control for its type on the
- * right. Settings under it unfold beneath, indented, behind a chevron that counts them.
+ * right. The settings under it unfold beneath in a framed group, each in its own box, behind a
+ * chevron that counts them.
  */
 abstract class SettingWidget<T>(
     val node: SettingNode<T>,
@@ -27,11 +28,21 @@ abstract class SettingWidget<T>(
     var y: Int = 0
     var width: Int = 0
 
-    /** The row alone; the unfolded settings under it are not counted. */
+    /** The row alone; the group under it is not counted. */
     var height: Int = 0
 
+    /** The row and the group under it, as far as it has unfolded. */
+    private var treeHeight: Int = 0
+
     var hovered: Boolean = false
+
+    /** Whether the group is open or opening; while closing it is still drawn until it has shrunk away. */
     var expanded: Boolean = false
+        private set
+
+    /** When the group last started opening or closing, and how far open it was then. */
+    private var foldStartedAt: Long = 0
+    private var foldFrom: Float = 0f
 
     val childrenWidgets: MutableList<SettingWidget<*>> = mutableListOf()
 
@@ -57,7 +68,7 @@ abstract class SettingWidget<T>(
     private var nameLines: List<FormattedCharSequence> = emptyList()
     private var descriptionLines: List<FormattedCharSequence> = emptyList()
 
-    /** Where the chevron button was laid, zero wide when there is nothing to unfold. */
+    /** Where the count and chevron were laid, zero wide when there is nothing to unfold. */
     private var chevronLeft = 0
     private var chevronTop = 0
     private var chevronWidth = 0
@@ -65,9 +76,13 @@ abstract class SettingWidget<T>(
     /** The text, the control and the chevron side by side; the extra part goes under them. */
     private var topHeight = 0
 
+    /** The group of unfolded settings: its top, and its height as far as it has opened. */
+    private var groupTop = 0
+    private var groupShown = 0
+
     private fun rightColumnWidth(): Int = maxOf(controlWidth, if (hasChildren()) chevronWidthFor() else 0)
 
-    private fun chevronWidthFor(): Int = font.width(descendantCount().toString()) + CHEVRON_SIZE + TEXT_GAP * 3
+    private fun chevronWidthFor(): Int = font.width(descendantCount().toString()) + TEXT_GAP + CHEVRON_SIZE
 
     protected fun textLeft(): Int = x + ROW_PAD
     protected fun textWidth(): Int = width - ROW_PAD * 2 - rightColumnWidth().let { if (it > 0) it + ROW_PAD else 0 }
@@ -93,7 +108,19 @@ abstract class SettingWidget<T>(
         return detail.height(font, extraWidth()) + Common.UI.SPACING
     }
 
-    /** Lays the row and, unfolded, everything under it. Returns the height of it all. */
+    /** How far open the group is, from closed at zero to open at one, moving after a fold. */
+    private fun openness(): Float {
+        val moved = eased(foldStartedAt, FOLD_MS)
+        return if (expanded) foldFrom + (1f - foldFrom) * moved else foldFrom * (1f - moved)
+    }
+
+    /** Whether the group is drawn at all: open, opening, or still closing. */
+    private fun groupVisible(): Boolean = childrenWidgets.isNotEmpty() && (expanded || openness() > 0f)
+
+    private fun groupLeft(): Int = x + INDENT
+    private fun groupWidth(): Int = width - INDENT
+
+    /** Lays the row and, unfolded, the group under it. Returns the height of it all. */
     fun layoutTree(x: Int, y: Int, width: Int): Int {
         this.x = x
         this.y = y
@@ -122,21 +149,28 @@ abstract class SettingWidget<T>(
         layoutControl()
         height = ROW_PAD + topHeight + extraHeight().let { if (it > 0) it + Common.UI.SPACING else 0 } + detailHeight() + ROW_PAD
 
-        if (!expanded) return height
-
-        var currentY = y + height + Common.UI.SPACING
-        childrenWidgets.forEach {
-            currentY += it.layoutTree(x + INDENT, currentY, width - INDENT) + Common.UI.SPACING
+        if (!groupVisible()) {
+            groupShown = 0
+            treeHeight = height
+            return treeHeight
         }
-        return currentY - Common.UI.SPACING - y
+
+        // the rows stack inside the group's frame, a line between each pair
+        groupTop = y + height + GROUP_GAP
+        var currentY = groupTop + GROUP_FRAME
+        childrenWidgets.forEachIndexed { index, child ->
+            if (index > 0) currentY += ROW_LINE
+            currentY += child.layoutTree(groupLeft() + GROUP_FRAME, currentY, groupWidth() - GROUP_FRAME * 2)
+        }
+        val fullHeight = currentY + GROUP_FRAME - groupTop
+
+        groupShown = kotlin.math.round(fullHeight * openness()).toInt()
+        treeHeight = height + if (groupShown > 0) GROUP_GAP + groupShown else 0
+        return treeHeight
     }
 
-    /** The row and everything unfolded under it, as last laid out. */
-    fun totalHeight(): Int {
-        if (!expanded || childrenWidgets.isEmpty()) return height
-        val last = childrenWidgets.last()
-        return last.y + last.totalHeight() - y
-    }
+    /** The row and the group under it, as last laid out. */
+    fun totalHeight(): Int = treeHeight
 
     /** Puts the control at [controlLeft], [controlTop] once the row's width is known. */
     protected open fun layoutControl() {}
@@ -169,37 +203,47 @@ abstract class SettingWidget<T>(
 
         node.detail?.invoke()?.render(graphics, font, extraLeft(), detailTop(), extraWidth())
 
-        if (!expanded || childrenWidgets.isEmpty()) return
-
-        // a line down the indent ties the unfolded settings to their row
-        val guideX = x + INDENT / 2
-        graphics.fill(guideX, y + height + Common.UI.SPACING, guideX + 1, y + totalHeight(), Common.UI.THIN_DIVIDER_COLOR)
-        childrenWidgets.forEach { it.render(graphics, mouseX, mouseY, delta) }
+        if (groupShown > 0) renderGroup(graphics, mouseX, mouseY, delta)
     }
 
-    /** A small button: how many settings are under this row, and a chevron pointing where they open. */
+    /**
+     * The unfolded settings in their frame, each in its own box with a line between. Clipped to
+     * how far the group has opened, so it slides out and back in.
+     */
+    private fun renderGroup(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
+        val left = groupLeft()
+        val right = left + groupWidth()
+        val bottom = groupTop + groupShown
+
+        graphics.enableScissor(left, groupTop, right, bottom)
+        graphics.fill(left, groupTop, right, bottom, Common.UI.GROUP_SHADE)
+        childrenWidgets.forEachIndexed { index, child ->
+            if (index > 0) {
+                graphics.fill(left + GROUP_FRAME, child.y - ROW_LINE, right - GROUP_FRAME, child.y, Common.UI.THIN_DIVIDER_COLOR)
+            }
+            child.render(graphics, mouseX, mouseY, delta)
+        }
+        graphics.drawBorder(left, groupTop, right, bottom, GROUP_FRAME, Common.UI.BORDER_COLOR)
+        graphics.disableScissor()
+    }
+
+    /** The count of settings under this row and a chevron pointing where they open, lit under the mouse. */
     private fun renderChevron(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int) {
-        val over = overChevron(mouseX.toDouble(), mouseY.toDouble())
-        graphics.drawButtonPanel(chevronLeft, chevronTop, chevronLeft + chevronWidth, chevronTop + CHEVRON_HEIGHT, over, pressed = expanded)
+        val color = if (overChevron(mouseX.toDouble(), mouseY.toDouble())) Common.UI.SELECTED_FRAME_COLOR else Common.UI.TEXT_DIM_COLOR
 
-        val count = descendantCount().toString()
-        graphics.text(font, Component.literal(count), chevronLeft + TEXT_GAP, chevronTop + (CHEVRON_HEIGHT - font.lineHeight) / 2 + 1, Common.UI.TEXT_DIM_COLOR, false)
+        graphics.text(font, Component.literal(descendantCount().toString()), chevronLeft, chevronTop + (CHEVRON_HEIGHT - font.lineHeight) / 2 + 1, color, false)
 
-        val left = chevronLeft + chevronWidth - TEXT_GAP - CHEVRON_SIZE
+        // the chevron turns over as the group opens
+        val left = chevronLeft + chevronWidth - CHEVRON_SIZE
         val midX = left + CHEVRON_SIZE / 2
         val midY = chevronTop + CHEVRON_HEIGHT / 2
-        val half = CHEVRON_SIZE / 4
-        if (expanded) {
-            graphics.drawLine(left, midY + half, midX, midY - half, 1, Common.UI.TEXT_COLOR)
-            graphics.drawLine(midX, midY - half, left + CHEVRON_SIZE, midY + half, 1, Common.UI.TEXT_COLOR)
-        } else {
-            graphics.drawLine(left, midY - half, midX, midY + half, 1, Common.UI.TEXT_COLOR)
-            graphics.drawLine(midX, midY + half, left + CHEVRON_SIZE, midY - half, 1, Common.UI.TEXT_COLOR)
-        }
+        val lift = kotlin.math.round(CHEVRON_SIZE / 4 * (openness() * 2f - 1f)).toInt()
+        graphics.drawLine(left, midY - lift, midX, midY + lift, 1, color)
+        graphics.drawLine(midX, midY + lift, left + CHEVRON_SIZE, midY - lift, 1, color)
     }
 
     private fun overChevron(mouseX: Double, mouseY: Double): Boolean =
-        chevronWidth > 0 && mouseX.toInt() in chevronLeft until chevronLeft + chevronWidth &&
+        chevronWidth > 0 && mouseX.toInt() in chevronLeft - TEXT_GAP until chevronLeft + chevronWidth + TEXT_GAP &&
                 mouseY.toInt() in chevronTop until chevronTop + CHEVRON_HEIGHT
 
     fun isMouseOver(mouseX: Double, mouseY: Double): Boolean =
@@ -212,9 +256,11 @@ abstract class SettingWidget<T>(
     }
 
     fun unfold(open: Boolean) {
-        if (!hasChildren()) return
+        if (!hasChildren() || open == expanded) return
         if (open && childrenWidgets.isEmpty()) buildChildren()
-        if (!open && expanded) overlays.closeOverlays()
+        if (!open) overlays.closeOverlays()
+        foldFrom = openness()
+        foldStartedAt = System.currentTimeMillis()
         expanded = open
     }
 
@@ -238,13 +284,11 @@ abstract class SettingWidget<T>(
         if (expanded) childrenWidgets.forEach { if (it.mouseClicked(event, doubled)) handled = true }
         if (handled) return true
 
-        if (controlClicked(event, doubled)) return true
-
         if (hasChildren() && (overChevron(event.x, event.y) || (event.button() == 1 && isMouseOver(event.x, event.y)))) {
             unfold(!expanded)
             return true
         }
-        return false
+        return controlClicked(event, doubled)
     }
 
     open fun mouseMoved(mouseX: Double, mouseY: Double) {
@@ -278,8 +322,13 @@ abstract class SettingWidget<T>(
         /** Room between a row's edge and what it holds. */
         const val ROW_PAD: Int = 6
 
-        /** How far the settings under a row are pushed in. */
-        const val INDENT: Int = 12
+        /** How far the group under a row is pushed in. */
+        const val INDENT: Int = 10
+
+        /** The gap between a row and its group, the group's frame, and the line between its rows. */
+        const val GROUP_GAP: Int = 3
+        const val GROUP_FRAME: Int = 1
+        const val ROW_LINE: Int = 1
 
         const val CHEVRON_SIZE: Int = 8
         const val CHEVRON_HEIGHT: Int = 12
@@ -287,5 +336,8 @@ abstract class SettingWidget<T>(
 
         /** A control of one text line, the height of a small field. */
         const val FIELD_HEIGHT: Int = 14
+
+        /** How long a group takes to slide open or shut. */
+        const val FOLD_MS: Long = 180
     }
 }

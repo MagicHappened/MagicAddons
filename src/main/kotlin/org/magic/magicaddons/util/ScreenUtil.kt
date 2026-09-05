@@ -177,6 +177,28 @@ object ScreenUtil {
         )
     }
 
+    /** A pill: a rectangle whose ends are half circles, drawn a row at a time. A square makes a circle. */
+    fun GuiGraphicsExtractor.fillPill(x1: Int, y1: Int, x2: Int, y2: Int, color: Int) {
+        val height = y2 - y1
+        if (height <= 0 || x2 <= x1) return
+
+        val radius = height / 2f
+        for (row in 0 until height) {
+            val dy = row + 0.5f - radius
+            val half = kotlin.math.sqrt((radius * radius - dy * dy).coerceAtLeast(0f))
+            val left = kotlin.math.round(x1 + radius - half).toInt()
+            val right = kotlin.math.round(x2 - radius + half).toInt()
+            if (right > left) fill(left, y1 + row, right, y1 + row + 1, color)
+        }
+    }
+
+    /** How far along an animation of [durationMs] started at [startedAt] is, eased so it lands softly. */
+    fun eased(startedAt: Long, durationMs: Long): Float {
+        val linear = ((System.currentTimeMillis() - startedAt) / durationMs.toFloat()).coerceIn(0f, 1f)
+        val back = 1f - linear
+        return 1f - back * back * back
+    }
+
     /** A filled rectangle with its corners taken off: a full height middle band and two inset ones. */
     fun GuiGraphicsExtractor.fillRounded(x1: Int, y1: Int, x2: Int, y2: Int, radius: Int, color: Int) {
         if (x2 <= x1 || y2 <= y1) return

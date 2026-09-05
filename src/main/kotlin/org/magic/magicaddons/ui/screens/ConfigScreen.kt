@@ -24,6 +24,7 @@ import org.magic.magicaddons.util.ScreenUtil.drawButtonPanel
 import org.magic.magicaddons.util.ScreenUtil.drawLine
 import org.magic.magicaddons.util.ScreenUtil.drawPanel
 import org.magic.magicaddons.util.ScreenUtil.drawScrollBar
+import org.magic.magicaddons.util.ScreenUtil.eased
 import org.magic.magicaddons.util.VersionChecker
 import org.magic.magicaddons.util.compat.McCompat
 
@@ -54,6 +55,7 @@ class ConfigScreen(title: Component, val parent: Screen?) : Screen(title), Overl
 
     private var hits: List<SearchHit> = emptyList()
     private var dropdownOpen = false
+    private var dropdownOpenedAt = 0L
     private var dropdownScroll = 0
 
     private var scroll = 0
@@ -203,7 +205,13 @@ class ConfigScreen(title: Component, val parent: Screen?) : Screen(title), Overl
 
         hits = found.sortedBy { it.path.size }
         dropdownScroll = 0
+        openDropdown()
+    }
+
+    private fun openDropdown() {
+        if (dropdownOpen) return
         dropdownOpen = true
+        dropdownOpenedAt = System.currentTimeMillis()
     }
 
     private fun closeDropdown() {
@@ -240,6 +248,10 @@ class ConfigScreen(title: Component, val parent: Screen?) : Screen(title), Overl
         if (!dropdownOpen) return
         val left = dropdownLeft
         val top = dropdownTop
+
+        // clipped to how far it has opened, so it slides out under the field
+        val shown = kotlin.math.round(dropdownHeight * eased(dropdownOpenedAt, DROPDOWN_MS)).toInt()
+        graphics.enableScissor(left, top, left + dropdownWidth, top + shown)
         graphics.drawPanel(left, top, left + dropdownWidth, top + dropdownHeight)
 
         val hovered = hitAt(mouseX.toDouble(), mouseY.toDouble())
@@ -248,6 +260,7 @@ class ConfigScreen(title: Component, val parent: Screen?) : Screen(title), Overl
 
         if (hits.isEmpty()) {
             graphics.text(font, Component.literal("Nothing matches"), left + Common.UI.BORDER_SIZE + Common.UI.TEXT_X_PAD, rowTop + (DROPDOWN_ROW_HEIGHT - font.lineHeight) / 2, Common.UI.DISABLED_TEXT_COLOR, false)
+            graphics.disableScissor()
             return
         }
 
@@ -268,6 +281,7 @@ class ConfigScreen(title: Component, val parent: Screen?) : Screen(title), Overl
         }
 
         graphics.drawScrollBar(left + dropdownWidth - Common.UI.BORDER_SIZE - Common.UI.SCROLLBAR_WIDTH, top + Common.UI.BORDER_SIZE, dropdownRows * DROPDOWN_ROW_HEIGHT, hits.size, DROPDOWN_MAX_ROWS, dropdownScroll)
+        graphics.disableScissor()
     }
 
     // ------------------------------------------------------------------ drawing
@@ -409,7 +423,7 @@ class ConfigScreen(title: Component, val parent: Screen?) : Screen(title), Overl
         if (overDropdown(event.x, event.y)) return true
 
         if (search.mouseClicked(event, doubled)) {
-            if (search.value.isNotBlank()) dropdownOpen = true
+            if (search.value.isNotBlank()) openDropdown()
             return true
         }
         closeDropdown()
@@ -547,6 +561,7 @@ class ConfigScreen(title: Component, val parent: Screen?) : Screen(title), Overl
         const val DROPDOWN_ROW_HEIGHT: Int = 14
         const val DROPDOWN_MAX_ROWS: Int = 8
         const val DROPDOWN_EXTRA: Int = 120
+        const val DROPDOWN_MS: Long = 150
         const val ELLIPSIS: String = "…"
 
         /** How long a row found by the search stays framed. */

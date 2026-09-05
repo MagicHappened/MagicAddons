@@ -82,6 +82,9 @@ object Common {
         /** A fainter line, between the settings inside one block and between categories. */
         const val THIN_DIVIDER_COLOR: Int = 0x604C7A63
 
+        /** Laid under a group of unfolded settings, so each level sits a step deeper than the last. */
+        const val GROUP_SHADE: Int = 0x1A000000
+
         /** The track of a switch that is off; on, it takes [ACCENT_COLOR]. */
         const val SWITCH_OFF_COLOR: Int = FIELD_COLOR
 
