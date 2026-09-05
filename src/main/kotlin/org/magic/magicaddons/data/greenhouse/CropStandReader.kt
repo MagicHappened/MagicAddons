@@ -80,6 +80,25 @@ class CropStandReader(
             }
         )
 
+        /** What the all-in aloe's labels say: the stage, how many times the rewards were reset, and by how much. */
+        const val LABEL_STAGE: String = "labelStage"
+        const val REWARDS_RESET: String = "rewardsReset"
+        const val REWARDS_MULTIPLIER: String = "rewardsMultiplier"
+
+        /** A reader for a label such as "Stage 5", taking the number out of it. */
+        fun stageLabel(key: String = LABEL_STAGE): CropStandReader = CropStandReader(
+            key = key,
+            matches = { it.customName?.string?.trim()?.matches(Regex("""(?i)stage\s*\d+.*""")) == true },
+            read = { it.customName?.string?.let { text -> Regex("""(?i)stage\s*(\d+)""").find(text)?.groupValues?.get(1) }?.toIntOrNull() }
+        )
+
+        /** A reader for a label such as "3x rewards", taking the multiplier out of it. */
+        fun multiplierLabel(key: String, contains: String): CropStandReader = CropStandReader(
+            key = key,
+            matches = { it.customName?.string?.contains(contains, ignoreCase = true) == true },
+            read = { it.customName?.string?.let { text -> Regex("""(\d+)\s*x""", RegexOption.IGNORE_CASE).find(text)?.groupValues?.get(1) }?.toIntOrNull() }
+        )
+
         /** A reader that only says whether a stand is there at all, as one or nothing. */
         fun presence(key: String, contains: String): CropStandReader = CropStandReader(
             key = key,

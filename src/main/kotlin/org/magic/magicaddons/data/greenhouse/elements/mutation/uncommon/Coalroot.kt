@@ -145,7 +145,28 @@ object Coalroot : CropDefinitionProvider {
                 8..8
             )
 
-        ),
+        ,
+            // as bought: the page says stage eight, the stem is still the seventh
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = melonStemState(7)
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, -0.40625, 0.0),
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
+                        hashString = "f946443fa0039354edd31a70c749c4f963464744dc20b79137bd9910356ee90",
+                        isSmall = false
+                    )
+                ),
+                8..8,
+                placed = true
+            )),
         maxStage = 8,
         isMutation = true
     )

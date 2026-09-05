@@ -64,14 +64,19 @@ object DataHandler {
         .filter { it.isDirectory() }
         .mapNotNull { runCatching { UUID.fromString(it.name) }.getOrNull() }
 
+    private val names = mutableMapOf<UUID, String?>()
+
     /** The fruit name written beside a profile's data, so an offline profile can still be named. */
-    fun profileName(id: UUID): String? = runCatching {
-        JsonParser.parseString(profileDir(id).resolve(PROFILE_FILE).readText()).asJsonObject.get("name")?.asString
-    }.getOrNull()
+    fun profileName(id: UUID): String? = names.getOrPut(id) {
+        runCatching {
+            JsonParser.parseString(profileDir(id).resolve(PROFILE_FILE).readText()).asJsonObject.get("name")?.asString
+        }.getOrNull()
+    }
 
     private fun writeProfileName(id: UUID, name: String) {
         createIfMissing(profileDir(id))
         profileDir(id).resolve(PROFILE_FILE).writeText(JsonObject().apply { addProperty("name", name) }.toString())
+        names[id] = name
     }
 
     /** Puts the current profile's data away and brings [id]'s up, when it is not the one loaded already. */

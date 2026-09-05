@@ -1,5 +1,7 @@
 package org.magic.magicaddons.util
 
+import org.magic.magicaddons.features.HighlightFeature
+import org.magic.magicaddons.features.FeatureManager
 import net.minecraft.client.Minecraft
 import net.minecraft.client.multiplayer.ClientLevel
 import net.minecraft.core.component.DataComponents
@@ -107,23 +109,32 @@ object EntityUtils {
         val newList = mutableListOf<EntityInfo>()
         val newMap = mutableMapOf<String, EntityInfo>()
 
+        // the neighbour query behind every entity is what the highlight features read tags from;
+        // with none of them on, only who came and went is worth knowing, and that needs no query
+        val detailed = FeatureManager.features.any { it is HighlightFeature && it.baseSetting.value }
+
         level.entitiesForRendering().forEach { entity ->
+            val informationEntities: List<Entity>?
 
-            val nearby = level.getEntities(entity, entity.boundingBox.inflate(0.5, 2.0, 0.5))
+            if (detailed) {
+                val nearby = level.getEntities(entity, entity.boundingBox.inflate(0.5, 2.0, 0.5))
 
-            if ((entity is ArmorStand || entity is Display) && isNearMeaningfulEntity(entity, nearby)) {
-                return@forEach
-            }
-
-            // collected for every entity, not just mobs: a lot of entities are an item display with a
-            // name tag next to it and nothing else, and that name tag is all we know about them
-            val informationEntities = nearby
-                .filter {
-                    it !== entity && (
-                            (it is ArmorStand && it.hasCustomName()) ||
-                            it is Display
-                            )
+                if ((entity is ArmorStand || entity is Display) && isNearMeaningfulEntity(entity, nearby)) {
+                    return@forEach
                 }
+
+                // collected for every entity, not just mobs: a lot of entities are an item display with a
+                // name tag next to it and nothing else, and that name tag is all we know about them
+                informationEntities = nearby
+                    .filter {
+                        it !== entity && (
+                                (it is ArmorStand && it.hasCustomName()) ||
+                                it is Display
+                                )
+                    }
+            } else {
+                informationEntities = null
+            }
 
             val distance = sqrt(entity.distanceToSqr(player))
 

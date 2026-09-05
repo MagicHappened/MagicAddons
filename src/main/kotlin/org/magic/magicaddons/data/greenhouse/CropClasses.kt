@@ -111,6 +111,8 @@ open class CropStage(
      * the same readings map the stand readers write to.
      */
     val traits: Map<String, Int> = emptyMap(),
+    /** The look a bought plant arrives with, when it differs from the grown look of the same stage. */
+    val placed: Boolean = false,
     /** Values taken off the stands after matching. They never decide whether it matched. */
     val readers: List<CropStandReader> = emptyList()
 ) {
@@ -463,6 +465,8 @@ data class CropDefinition(
     val needsWater: Boolean = true,
     val isBaseCrop: Boolean = false,
     val isMutation: Boolean = false,
+    /** The stage a bought plant is put down at, when it is not the last for a mutation or the first otherwise. */
+    val placedStage: Int? = null,
     val isRareCrop: Boolean = false,
     /** Shown in the ui when skyblock has no item of its own for this crop, a dead plant has none. */
     val displayItem: Item? = null,
@@ -478,6 +482,9 @@ data class CropDefinition(
     /** Whether the plant turns with its plot. PlantBoy Advance stands the same way in every plot. */
     val rotatesWithPlot: Boolean = true
 ){
+    /** The stage a bought plant is put down at: the last for a mutation, the first for anything else. */
+    val stagePlacedAt: Int get() = placedStage ?: if (isMutation) maxStage else 1
+
     fun matchesId(id: SkyBlockId): Boolean{
         return skyblockId == id || (aliases?.any { it == id } ?: false)
     }
@@ -539,6 +546,9 @@ data class GreenhouseElementInstance(
      */
     var firstSeenStage: Int? = null
 
+    /** Whether the player put this plant down, as opposed to it growing or appearing on its own. */
+    var placed: Boolean = false
+
     /** The lowest stage this plant might be at now, which is all a scan can promise about most. */
     val lowestStage: Int?
         get() = when (val stage = growthStage) {
@@ -566,6 +576,7 @@ data class GreenhouseElementInstance(
      */
     val grewInPlace: Boolean
         get() {
+            if (placed) return false
             val first = firstSeenStage ?: return false
             val now = lowestStage ?: return false
 

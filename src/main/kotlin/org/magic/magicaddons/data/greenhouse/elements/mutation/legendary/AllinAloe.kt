@@ -1,5 +1,6 @@
 package org.magic.magicaddons.data.greenhouse.elements.mutation.legendary
 
+import org.magic.magicaddons.data.greenhouse.CropStandReader
 import net.minecraft.core.BlockPos
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.phys.Vec3
@@ -52,6 +53,30 @@ object AllinAloe : CropDefinitionProvider {
                     CropBlockState(
                         offset = BlockPos(0, 1, 0),
                         blockState = melonStemState(7)
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, -0.15625, -0.125),
+                        headRotation = Rotations(22.5f, 0.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
+                        hashString = "dde18b1db0f938380dd8bed0c9189c3e62ea3acf900a19b2e95f52708c3ae3f2",
+                        isSmall = false
+                    )
+                ),
+                2..2,
+                readers = listOf(
+                    CropStandReader.stageLabel(),
+                    CropStandReader.percentLabel(CropStandReader.REWARDS_RESET, "reset"),
+                    CropStandReader.multiplierLabel(CropStandReader.REWARDS_MULTIPLIER, "reward")
+                )
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = melonStemState(7)
                     ),
                     CropBlockState(
                         offset = BlockPos(0, 2, 0),
@@ -89,6 +114,34 @@ object AllinAloe : CropDefinitionProvider {
                     )
                 ),
                 4..4
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = melonStemState(7)
+                    ),
+                    CropBlockState(
+                        offset = BlockPos(0, 2, 0),
+                        blockState = melonStemState(3)
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, 0.0625, 0.09375),
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
+                        xRotation = 0.0f,
+                        yRotation = 0.0f,
+                        hashString = "955a5ebfc03404c361753d267f7d1664692a2da3ebc63fc3b74925015ab7171b",
+                        isSmall = false
+                    )
+                ),
+                5..5,
+                readers = listOf(
+                    CropStandReader.stageLabel(),
+                    CropStandReader.percentLabel(CropStandReader.REWARDS_RESET, "reset"),
+                    CropStandReader.multiplierLabel(CropStandReader.REWARDS_MULTIPLIER, "reward")
+                )
             ),
             CropStage(
                 blocks = listOf(

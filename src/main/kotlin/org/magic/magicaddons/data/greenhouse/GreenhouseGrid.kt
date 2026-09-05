@@ -223,9 +223,17 @@ class GreenhouseGrid(
                 } else {
                     if (standing != null) result.replaced++ else result.added++
 
-                    // a mutation where nothing stood at the last look grew there on its own
                     if (standing == null && def.isMutation && state.lastUpdateTimestamp != null) {
-                        GreenhouseData.claimSpawnedMutation(found.instance, layout)
+                        // a mutation the player just put down, or one that appeared above stage one
+                        // while the plot was being watched, was placed: a spawn starts at stage one.
+                        // Anything else where nothing stood at the last look grew there on its own
+                        val placedNow = GreenhouseData.takePlacement(def, found.instance.slot, this)
+                        val watched = state.hasRuntimeReferences && (found.instance.lowestStage ?: 1) > 1
+                        if (placedNow || watched) {
+                            GreenhouseData.claimPlacedPlant(found.instance)
+                        } else {
+                            GreenhouseData.claimSpawnedMutation(found.instance, layout)
+                        }
                     }
                     found
                 }
@@ -260,6 +268,7 @@ class GreenhouseGrid(
         // the plant is the one that was standing here, so it keeps the stage it was first seen at
         // rather than the one this scan happens to find it at
         found.instance.firstSeenStage = standing.firstSeenStage ?: found.instance.lowestStage
+        found.instance.placed = standing.placed
 
         // predicted past death and still standing means ticks were skipped. The fewest that leave
         // it alive put it one tick from dying, so that is assumed and said out loud

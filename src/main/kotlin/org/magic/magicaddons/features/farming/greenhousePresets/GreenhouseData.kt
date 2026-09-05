@@ -1,5 +1,6 @@
 package org.magic.magicaddons.features.farming.greenhousePresets
 
+import org.magic.magicaddons.data.greenhouse.LayoutSlot
 import tech.thatgravyboat.skyblockapi.api.profile.profile.ProfileAPI
 import org.magic.magicaddons.data.greenhouse.MasterLayout
 import org.magic.magicaddons.data.greenhouse.GrowthStageInfo
@@ -113,8 +114,11 @@ object GreenhouseData {
     var lastServerTick: Long? = null
 
     var removedElementByAttack: ElementRuntimeState? = null
-    private var placedCrop: Pair<CropDefinition, BlockPos>? = null
-    private var placedCropAt: Instant? = null
+    /** One crop the player put down, until the plot confirms it or the window runs out. */
+    private class Placement(val def: CropDefinition, val pos: BlockPos, val at: Instant)
+
+    /** Every placement still waiting on the plot: several go down in a row faster than a scan. */
+    private val placements = mutableListOf<Placement>()
 
     /** How long a placement the server never confirmed is still worth waiting for. */
     private val PLACE_WINDOW: Duration = Duration.ofSeconds(5)
@@ -235,10 +239,7 @@ object GreenhouseData {
     private const val CHORUS_COLLISION: String = "chorus-collision"
 
     /** How many growth ticks the player says they will be away for. */
-    private fun absenceTicks(): Int? = baseSetting
-        .getChild<BooleanSetting>("ChorusCollisionWarning")
-        ?.getChild<IntSetting>("ChorusAbsenceTicks")
-        ?.value
+    private fun absenceTicks(): Int? = GreenhousePresets.chorusAbsenceTicks()
 
     /**
      * The chosen ticks as time off, for the line under the setting. A span one tick wide, since the
@@ -285,7 +286,7 @@ object GreenhouseData {
 
     /** Which greenhouses run out of room for their chorus before the player is next back. */
     private fun warnOfChorusCollision() {
-        if (baseSetting.getChild<BooleanSetting>("ChorusCollisionWarning")?.value != true) return
+        if (!GreenhousePresets.warningType(GreenhousePresets.CHORUS_KEY)) return
 
         val nextTick = miscInfo.nextTickTime ?: return
         val remainingMs = Duration.between(Instant.now(), nextTick).toMillis()
@@ -948,8 +949,7 @@ object GreenhouseData {
         if (foundCrop != null) {
             val pos = event.hit.blockPos.relative(event.hit.direction)
 
-            placedCrop = Pair(foundCrop, pos)
-            placedCropAt = Instant.now()
+            placements.add(Placement(foundCrop, pos, Instant.now()))
             requestReconcile()
 
             return
@@ -1001,26 +1001,38 @@ object GreenhouseData {
      * adds is what a read cannot know, that it is at no age and holds no water.
      */
     private fun claimPlantedCrop(grid: GreenhouseGrid) {
-        val (definition, pos) = placedCrop ?: return
-        val placedAt = placedCropAt
+        val now = Instant.now()
+        placements.removeAll { now.isAfter(it.at.plus(PLACE_WINDOW)) }
 
-        if (placedAt == null || Instant.now().isAfter(placedAt.plus(PLACE_WINDOW))) {
-            forgetPlacedCrop()
-            return
+        placements.removeAll { placement ->
+            val slot = grid.getSlotAt(placement.pos, false) ?: return@removeAll false
+            val element = grid.elementCovering(slot) ?: return@removeAll false
+            if (element.instance.cropDef != placement.def) return@removeAll false
+
+            claimPlacedPlant(element.instance)
+            true
         }
+    }
 
-        val slot = grid.getSlotAt(pos, false) ?: return
-        val element = grid.elementCovering(slot) ?: return
+    /** Whether a plant of [def] was just put down on [slot], taking the placement off the list. */
+    fun takePlacement(def: CropDefinition, slot: LayoutSlot, grid: GreenhouseGrid): Boolean {
+        val now = Instant.now()
+        val index = placements.indexOfFirst { placement ->
+            placement.def == def &&
+                    !now.isAfter(placement.at.plus(PLACE_WINDOW)) &&
+                    grid.getSlotAt(placement.pos, false)?.let { it.x == slot.x && it.y == slot.y } == true
+        }
+        if (index < 0) return false
+        placements.removeAt(index)
+        return true
+    }
 
-        if (element.instance.cropDef != definition) return
-
-        element.instance.age = 0L
-        if (definition.needsWater) element.instance.waterLevel = 0
-
-        // placed at whatever stage it was bought at, so it never counts as grown here
-        element.instance.firstSeenStage = element.instance.lowestStage
-
-        forgetPlacedCrop()
+    /** A plant the player put down: new, dry, and never to count as grown here. */
+    fun claimPlacedPlant(instance: GreenhouseElementInstance) {
+        instance.placed = true
+        instance.age = 0L
+        if (instance.cropDef.needsWater) instance.waterLevel = 0
+        instance.firstSeenStage = instance.lowestStage
     }
 
     /**
@@ -1050,15 +1062,11 @@ object GreenhouseData {
 
     @EventHandler
     fun onPlacementRefused(event: OnSystemChatEvent) {
-        if (placedCrop == null) return
+        if (placements.isEmpty()) return
         if (PLACE_REFUSALS.none { it.containsMatchIn(event.text) }) return
 
-        forgetPlacedCrop()
-    }
-
-    private fun forgetPlacedCrop() {
-        placedCrop = null
-        placedCropAt = null
+        // the refusal is about the last thing put down
+        placements.removeAt(placements.lastIndex)
     }
 
     fun setDiagnosesListeningElement(hitBlock: BlockPos? = null, hitEntity: ArmorStand? = null, grid: GreenhouseGrid) {
@@ -1215,8 +1223,6 @@ object GreenhouseData {
             dumpLore(saplingLore)
             return
         }
-
-        ChatUtils.sendWithPrefix("${def.name}, stage $stageRaw of ${def.maxStage}")
 
         // the page says how many stages the crop really has, so a definition that disagrees is
         // wrong about something the game just told us

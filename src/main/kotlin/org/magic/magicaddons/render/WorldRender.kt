@@ -316,4 +316,106 @@ object WorldRender {
         addVertex(pose, dx, dy, dz).setColor(color)
     }
 
+
+    /**
+     * Everything a plan draws in one frame, handed to the collector as one batch a render type.
+     * A batch a block made the buffer source flush and rebind its target on every switch between
+     * boxes, lines and blocks, which cost more than the drawing itself.
+     */
+    class Batch(private val cameraPos: Vec3) {
+        private class Fill(val pos: BlockPos, val boxes: List<AABB>, val color: Int)
+        private class Ghost(val pos: BlockPos, val state: BlockState, val color: Int)
+        private class Outline(val pos: BlockPos, val shape: VoxelShape, val color: Int)
+
+        private val fills = mutableListOf<Fill>()
+        private val ghosts = mutableListOf<Ghost>()
+        private val outlines = mutableListOf<Outline>()
+
+        /** Marks whatever stands at a position: its shape filled, its edges drawn on top. */
+        fun mark(pos: BlockPos, shape: VoxelShape, color: Int, fillAlpha: Int) {
+            if (shape.isEmpty) return
+            fills.add(Fill(pos, shape.toAabbs(), ARGB.color(fillAlpha, color)))
+            outline(pos, shape, color)
+        }
+
+        fun outline(pos: BlockPos, shape: VoxelShape, color: Int) {
+            if (shape.isEmpty) return
+            outlines.add(Outline(pos, shape, color))
+        }
+
+        /** A block as it would look if it were there, tinted and see through, boxed as a plan. */
+        fun ghost(pos: BlockPos, state: BlockState, tint: Int, outlineColor: Int, alpha: Int) {
+            ghosts.add(Ghost(pos, state, ARGB.color(alpha, tint)))
+            val level = Minecraft.getInstance().level ?: return
+            outline(pos, state.getShape(level, pos), outlineColor)
+        }
+
+        fun submit(poseStack: PoseStack, collector: SubmitNodeCollector) {
+            if (fills.isEmpty() && ghosts.isEmpty() && outlines.isEmpty()) return
+
+            poseStack.pushPose()
+            poseStack.translate(-cameraPos.x, -cameraPos.y, -cameraPos.z)
+
+            try {
+                if (fills.isNotEmpty()) {
+                    val batch = fills.toList()
+                    collector.submitCustomGeometry(poseStack, RenderTypes.debugFilledBox()) { transform, consumer ->
+                        batch.forEach { fill ->
+                            fill.boxes.forEach { box ->
+                                consumer.fillBox(transform, box.move(fill.pos.x.toDouble(), fill.pos.y.toDouble(), fill.pos.z.toDouble()).grow(FILL_EXPAND), fill.color)
+                            }
+                        }
+                    }
+                }
+
+                if (ghosts.isNotEmpty()) {
+                    val batch = ghosts.toList()
+                    collector.submitCustomGeometry(poseStack, RenderTypes.translucentMovingBlock()) { transform, consumer ->
+                        val stack = PoseStack()
+                        stack.mulPose(transform.pose())
+                        val quadInstance = QuadInstance()
+                        val parts = mutableListOf<BlockStateModelPart>()
+
+                        batch.forEach { ghost ->
+                            parts.clear()
+                            RANDOM.setSeed(Mth.getSeed(ghost.pos))
+                            Minecraft.getInstance().modelManager.blockStateModelSet.get(ghost.state).collectParts(RANDOM, parts)
+                            if (parts.isEmpty()) return@forEach
+
+                            stack.pushPose()
+                            stack.translate(ghost.pos.x.toDouble(), ghost.pos.y.toDouble(), ghost.pos.z.toDouble())
+                            val pose = stack.last()
+                            parts.forEach { part ->
+                                QUAD_SIDES.forEach { side ->
+                                    part.getQuads(side).forEach { quad ->
+                                        quadInstance.setColor(ghost.color)
+                                        quadInstance.setLightCoords(FULL_BRIGHT)
+                                        quadInstance.setOverlayCoords(NO_OVERLAY)
+                                        consumer.putBakedQuad(pose, quad, quadInstance)
+                                    }
+                                }
+                            }
+                            stack.popPose()
+                        }
+                    }
+                }
+
+                if (outlines.isNotEmpty()) {
+                    // one call per box, so two marked blocks side by side stay two boxes
+                    val edges = outlines.flatMap { outline ->
+                        outline.shape.toAabbs().map { box ->
+                            RenderCompat.OutlineItem(
+                                Vec3(outline.pos.x.toDouble(), outline.pos.y.toDouble(), outline.pos.z.toDouble()),
+                                Shapes.create(box.grow(-OUTLINE_INSET)),
+                                outline.color
+                            )
+                        }
+                    }
+                    RenderCompat.outlineAll(collector, poseStack, edges)
+                }
+            } finally {
+                poseStack.popPose()
+            }
+        }
+    }
 }

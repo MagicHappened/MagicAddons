@@ -110,7 +110,9 @@ object CropCollector : EntityUtils.HighlightSource {
         val names: Set<String>,
         var color: Int,
         var confirmed: Boolean = false,
-        var boxes: List<AABB> = emptyList()
+        var boxes: List<AABB> = emptyList(),
+        /** What the diagnosis tool and the matcher said about it, shown in place of the usual label. */
+        var toolNote: String? = null
     )
 
     private class Session(
@@ -730,10 +732,13 @@ object CropCollector : EntityUtils.HighlightSource {
         )
 
         val note = if (absorbed.isEmpty()) "" else ", replacing ${absorbed.size} earlier guess(es)"
-        ChatUtils.sendWithPrefix(
-            "${def.name} pinned to (${standingOn.x}, ${standingOn.z}) at stage $stage$note"
-        )
-        s.entries.lastOrNull()?.let { sendLine(it) }
+        val matcher = if (recorded != null) "matcher matched stage $stage" else "matcher found nothing at stage $stage"
+
+        s.entries.lastOrNull()?.let { entry ->
+            entry.toolNote = "Tool: stage $diagnosedStage/${diagnosed.maxStage}, $matcher - ${turned.label}, " +
+                    "started at (${standingOn.x}, ${standingOn.z})$note"
+            sendLine(entry)
+        }
     }
 
     // ------------------------------------------------------------------ output
@@ -814,7 +819,7 @@ object CropCollector : EntityUtils.HighlightSource {
             ?: "unknown"
         val stage = entry.stageText?.let { "stage $it" } ?: "stage ?"
 
-        return "$name (${entry.origin.x}, ${entry.origin.z}) $stage — ${entry.status.label}"
+        return entry.toolNote ?: "$name (${entry.origin.x}, ${entry.origin.z}) $stage — ${entry.status.label}"
     }
 
     private fun sendLine(entry: Entry) {
