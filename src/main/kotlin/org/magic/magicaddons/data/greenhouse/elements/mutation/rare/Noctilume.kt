@@ -132,6 +132,14 @@ object Noctilume : CropDefinitionProvider {
                 wheatAge = 5,
                 offsets = settlingOffsets,
                 fullSized = setOf(0, 1, 3)
+            ),
+            look(
+                stage = 3,
+                hash = "329aa65e77ecc216dbadc774121dec2f3d7267289462eb5d11d3bafa6f5996c8",
+                craving = CropStandReader.CRAVES_DAY,
+                wheatAge = 5,
+                offsets = settlingOffsets,
+                fullSized = setOf(0, 1, 3)
             )
             // both looks at four were recorded wrong and wait to be taken again
         ),

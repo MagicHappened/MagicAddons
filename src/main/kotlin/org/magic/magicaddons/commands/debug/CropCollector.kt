@@ -693,7 +693,7 @@ object CropCollector : EntityUtils.HighlightSource {
             // flagged when it was put down, or first seen at the stage it is placed at and never
             // grown since; a spawn is first seen at one, so a single-stage plant cannot be told this way
             plant != null && (plant.placed || (def.stagePlacedAt > 1 && (plant.firstSeenStage ?: 0) >= def.stagePlacedAt))
-        } == true
+        } == true || (ownGarden && GreenhouseData.placedHereAt(standingOn) == def)
 
         val absorbed = s.entries.filter { entry ->
             val ew = entry.def?.footprint?.width ?: 1
