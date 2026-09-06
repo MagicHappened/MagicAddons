@@ -14,6 +14,7 @@ import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
+import org.magic.magicaddons.util.EntityUtils
 import org.magic.magicaddons.util.PlayerUtils
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockId
 import kotlin.math.abs
@@ -46,6 +47,10 @@ data class CropArmorStand(
     val yRotation: Float? = null,
     val hashString: String? = null,
     val containsCustomName: String? = null,
+    /** What the stand holds when it holds something other than a skull, as "minecraft:gold_block". */
+    val itemId: String? = null,
+    /** Which slot [itemId] is carried in. Skulls and nearly everything else ride on the head. */
+    val itemSlot: EquipmentSlot = EquipmentSlot.HEAD,
     /** A stand's position is its feet, so size decides where its skull lands. Nearly all are small. */
     val isSmall: Boolean = true,
 ) {
@@ -57,19 +62,23 @@ data class CropArmorStand(
             yRotations: List<Float>? = null,
             hashString: String? = null,
             customName: String? = null,
+            itemId: String? = null,
+            itemSlot: EquipmentSlot = EquipmentSlot.HEAD,
             isSmall: Boolean = true
         ): List<CropArmorStand> {
             val result = mutableListOf<CropArmorStand>()
             offsets.forEachIndexed { i, offset ->
                 result.add(
                     CropArmorStand(
-                        offset,
-                        rotations?.getOrNull(i),
-                        xRotations?.getOrNull(i),
-                        yRotations?.getOrNull(i),
-                        hashString,
-                        customName,
-                        isSmall
+                        offset = offset,
+                        headRotation = rotations?.getOrNull(i),
+                        xRotation = xRotations?.getOrNull(i),
+                        yRotation = yRotations?.getOrNull(i),
+                        hashString = hashString,
+                        containsCustomName = customName,
+                        itemId = itemId,
+                        itemSlot = itemSlot,
+                        isSmall = isSmall
                     )
                 )
             }
@@ -136,12 +145,28 @@ open class CropStage(
 
     /** What the matcher reads off a stand: read once per scan, not once per stage tried against it. */
     class StandReadings {
-        class Reading(val position: Vec3, val skullHash: String?, val name: String?)
+        class Reading(
+            val position: Vec3,
+            val skullHash: String?,
+            val name: String?,
+            val stand: ArmorStand
+        ) {
+            private val items = HashMap<EquipmentSlot, String?>()
+
+            /** The plain item this stand carries in one slot, read once per slot. */
+            fun itemIn(slot: EquipmentSlot): String? =
+                items.getOrPut(slot) { EntityUtils.itemIdIn(stand, slot) }
+        }
 
         private val readings = HashMap<Int, Reading>()
 
         fun of(stand: ArmorStand): Reading = readings.getOrPut(stand.id) {
-            Reading(stand.position(), PlayerUtils.getSkullHash(stand), stand.customName?.string)
+            Reading(
+                stand.position(),
+                PlayerUtils.getSkullHash(stand),
+                stand.customName?.string,
+                stand
+            )
         }
     }
 
@@ -200,7 +225,8 @@ open class CropStage(
 
                     isClose(reading.position.subtract(center), expected) &&
                             (standDef.hashString?.let { it == reading.skullHash } ?: true) &&
-                            (standDef.containsCustomName?.let { reading.name?.contains(it) == true } ?: true)
+                            (standDef.containsCustomName?.let { reading.name?.contains(it) == true } ?: true) &&
+                            (standDef.itemId?.let { it == reading.itemIn(standDef.itemSlot) } ?: true)
                 }
 
                 if (match == null) {
@@ -263,7 +289,9 @@ open class CropStage(
             blockMap[worldPos] = state
         }
         armorStands?.forEach { standDef ->
-            standDef.hashString ?: return@forEach
+            val held = standDef.hashString?.let { PlayerUtils.getItemFromHash(it) }
+                ?: standDef.itemId?.let { EntityUtils.itemStackOf(it) }
+                ?: return@forEach
             val turned = WorldRotation.rotate(standDef.offset, worldStep)
             val stand = ArmorStand(
                 level,
@@ -287,7 +315,7 @@ open class CropStage(
             stand.isInvisible = true
             // an explicit pose on the stand wins; otherwise the role says, and the role may
             // care where in the world the plant stands
-            val role = standPoses[standDef.hashString]
+            val role = standDef.hashString?.let { standPoses[it] }
             val head = standDef.headRotation
                 ?: role?.headAt(baseBlock.x, baseBlock.z, standDef.offset)
 
@@ -296,8 +324,7 @@ open class CropStage(
                 (standDef.yRotation ?: role?.yRotation ?: 0f) + 90f * worldStep
             )
             stand.xRot = standDef.xRotation ?: role?.xRotation ?: 0f
-            val stack = PlayerUtils.getItemFromHash(standDef.hashString)
-            stand.setItemSlot(EquipmentSlot.HEAD, stack)
+            stand.setItemSlot(if (standDef.hashString != null) EquipmentSlot.HEAD else standDef.itemSlot, held)
             renderStands.add(stand)
         }
         return RenderData(

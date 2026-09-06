@@ -106,6 +106,12 @@ object GreenhousePresets : Feature() {
                                 value = false
                             ),
                             BooleanSetting(
+                                key = GreenhouseData.THIRST_KEY,
+                                displayName = "Dying Of Thirst",
+                                description = "Warns before a growth tick kills a plant that has run out of water",
+                                value = false
+                            ),
+                            BooleanSetting(
                                 key = PlantWarnings.DECAY_KEY,
                                 displayName = "Decay",
                                 description = "Warns six hours, one hour, twenty, five and one minute before a plant " +

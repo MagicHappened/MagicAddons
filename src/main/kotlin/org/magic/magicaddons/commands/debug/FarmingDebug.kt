@@ -9,7 +9,6 @@ import com.mojang.blaze3d.vertex.PoseStack
 import net.minecraft.client.renderer.SubmitNodeCollector
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
-import tech.thatgravyboat.skyblockapi.api.profile.hunting.AttributeAPI
 import org.magic.magicaddons.render.WorldRender
 import java.time.Duration
 import java.time.Instant
@@ -28,14 +27,14 @@ import net.minecraft.world.entity.decoration.ArmorStand
 import org.magic.magicaddons.commands.AbstractCommand
 import org.magic.magicaddons.commands.CropWords
 import org.magic.magicaddons.commands.fmt
-import org.magic.magicaddons.commands.toExactDuration
 import org.magic.magicaddons.data.greenhouse.CropDefinition
 import org.magic.magicaddons.data.greenhouse.PlantDex
-import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData
+import org.magic.magicaddons.ui.screens.CropPreviewScreen
 import org.magic.magicaddons.features.farming.greenhousePresets.LayoutRenderState
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.EntityUtils.typePath
 import org.magic.magicaddons.util.PlayerUtils
+import org.magic.magicaddons.util.ScreenUtil
 
 /**
  * Reads the entities standing around the player. Greenhouse stands have no hit box to aim at, so
@@ -170,14 +169,35 @@ object FarmingDebug : AbstractCommand() {
             .then(
                 plantDexCommand()
             )
-            .then(
-                LiteralArgumentBuilder.literal<FabricClientCommandSource>("uniques")
-                    .executes {
-                        dumpGrowthState()
-                        return@executes 1
-                    }
-            )
+            .then(previewCommand())
     }
+
+    /** The crop preview, on a crop when one is named and empty when not. */
+    private fun previewCommand(): LiteralArgumentBuilder<FabricClientCommandSource> =
+        LiteralArgumentBuilder.literal<FabricClientCommandSource>("preview")
+            .executes {
+                ScreenUtil.setScreen(CropPreviewScreen(null))
+                return@executes 1
+            }
+            .then(
+                RequiredArgumentBuilder.argument<FabricClientCommandSource, String>(
+                    "crop",
+                    StringArgumentType.word()
+                ).suggests { _, builder ->
+                    CropWords.suggest(builder)
+                }.executes {
+                    val word = StringArgumentType.getString(it, "crop")
+                    val def = CropWords.find(word)
+
+                    if (def == null) {
+                        ChatUtils.sendWithPrefix("No crop called $word.")
+                        return@executes 0
+                    }
+
+                    ScreenUtil.setScreen(CropPreviewScreen(null, def))
+                    return@executes 1
+                }
+            )
 
     /** The dex, and under it "missing" then every crop as a command word. */
     private fun plantDexCommand(): LiteralArgumentBuilder<FabricClientCommandSource> =
@@ -276,65 +296,6 @@ object FarmingDebug : AbstractCommand() {
         Minecraft.getInstance().keyboardHandler.clipboard = report.missingList
 
         ChatUtils.send(clipboard(report.missingList, "${report.incompleteCrops} crops incomplete"))
-    }
-
-    /**
-     * Everything the growth tick is worked out from. Worth watching live: planting a unique anywhere
-     * shortens the tick for every plot at once.
-     */
-    private fun dumpGrowthState() {
-        val misc = GreenhouseData.miscInfo
-        val uniques = GreenhouseData.getCurrentUniques()
-        val missing = GreenhouseData.getMissingUniques()
-
-        ChatUtils.sendWithPrefix(Component.literal("Growth").withStyle(ChatFormatting.GOLD))
-
-        ChatUtils.send(field("uniques", "${uniques.size} of ${uniques.size + missing.size}"))
-        ChatUtils.send(field("crop growth", misc.cropGrowthValue?.toString() ?: "unknown"))
-        ChatUtils.send(field("speed upgrade", misc.cropSpeedUpgradeValue?.toString() ?: "unknown"))
-        ChatUtils.send(field("yield upgrade", misc.cropYieldUpgradeValue?.toString() ?: "unknown"))
-        ChatUtils.send(
-            field(
-                "speed attribute",
-                GreenhouseData.greenhouseSpeedAttribute()?.toString() ?: "unknown, counted as 0"
-            )
-        )
-
-        val tick = GreenhouseData.currentGrowthTickMs()
-
-        ChatUtils.send(
-            field("growth tick", tick?.toExactDuration() ?: "cannot be worked out yet")
-        )
-
-        dumpAttributes()
-    }
-
-    /**
-     * Every attribute shard the player holds. Nothing in the api names the greenhouse speed one, so
-     * its id has to be read off a player who has it.
-     */
-    private fun dumpAttributes() {
-        // anything owned at all: an unsyphoned shard has no level, and filtering on level hides it
-        // only the greenhouse one, since listing every shard ran past what chat keeps
-        val owned = AttributeAPI.attributeMap
-            .filterKeys { it.id == GreenhouseData.GREENHOUSE_SPEED_ATTRIBUTE_ID }
-
-        if (owned.isEmpty()) {
-            ChatUtils.send(field("attributes", "none held, or the attribute menu has not been opened"))
-            return
-        }
-
-        ChatUtils.sendWithPrefix(
-            Component.literal("Attributes held (${owned.size})").withStyle(ChatFormatting.GOLD)
-        )
-
-        owned.entries
-            .sortedByDescending { it.value.level }
-            .forEach { (id, data) ->
-                ChatUtils.send(
-                    copyable(id.id, "level ${data.level}, ${data.owned} owned, ${data.syphoned} syphoned")
-                )
-            }
     }
 
     /** Every stand and display near the player, nearest first. Our own plan stands only on request. */
@@ -524,20 +485,4 @@ object FarmingDebug : AbstractCommand() {
 
         return runs.joinToString(" | ")
     }
-
-    private fun field(label: String, value: String): Component =
-        Component.literal("  $label: ").withStyle(ChatFormatting.DARK_GRAY)
-            .append(Component.literal(value).withStyle(ChatFormatting.WHITE))
-
-    /** A value worth taking out of the game whole, rather than reading off the screen. */
-    private fun copyable(label: String, value: String): Component =
-        Component.literal("  $label: ").withStyle(ChatFormatting.DARK_GRAY)
-            .append(
-                Component.literal(value).withStyle(
-                    Style.EMPTY
-                        .withColor(ChatFormatting.YELLOW)
-                        .withClickEvent(ClickEvent.CopyToClipboard(value))
-                        .withHoverEvent(HoverEvent.ShowText(Component.literal("Click to copy")))
-                )
-            )
 }

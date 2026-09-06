@@ -271,6 +271,9 @@ object GreenhouseData : GridCallbacks {
     private val TELEPORT_OFFER_WINDOW: Duration = Duration.ofSeconds(15)
 
     private const val DEHYDRATION: String = "dehydration"
+
+    /** The setting key of the thirst warning, under the warning types heading. */
+    const val THIRST_KEY: String = "DehydrationWarning"
     private const val CHORUS_COLLISION: String = "chorus-collision"
 
     /** How many growth ticks the player says they will be away for. */
@@ -379,6 +382,8 @@ object GreenhouseData : GridCallbacks {
      * past death is left alone, since the dead bush says it better.
      */
     private fun warnOfDyingPlants() {
+        if (!GreenhousePresets.warningType(THIRST_KEY)) return
+
         val nextTick = miscInfo.nextTickTime ?: return
         val remainingMs = Duration.between(Instant.now(), nextTick).toMillis()
 
@@ -418,6 +423,8 @@ object GreenhouseData : GridCallbacks {
 
     /** A plant found alive past its predicted death: said now, at whatever the countdown reads. */
     override fun warnSurvivor(plant: DyingPlant) {
+        if (!GreenhousePresets.warningType(THIRST_KEY)) return
+
         val remaining = miscInfo.nextTickTime
             ?.let { Duration.between(Instant.now(), it).toMillis().coerceAtLeast(0) }
             ?: 0

@@ -185,6 +185,14 @@ class CropPreviewScreen(
         val clamped = newStage.coerceIn(1, def.maxStage)
 
         if (clamped == stage) return
+
+        // one look covers a whole range of stages, so stepping inside that range draws the same scene
+        val look = sceneStage
+        if (look != null && clamped in look.stageRange && look.wears(variant, def, clamped)) {
+            stage = clamped
+            return
+        }
+
         stage = clamped
         rebuildScene()
     }

@@ -142,26 +142,31 @@ object PlantDex {
         return parts
     }
 
-    /**
-     * Whether a stage knows how every stand is turned, role poses counted: one good sample of a
-     * skull covers every stage that shows it.
-     */
-    private fun hasRotation(def: CropDefinition, stage: CropStage): Boolean =
-        stage.armorStands.orEmpty().all {
-            (it.headRotation != null && it.xRotation != null && it.yRotation != null) ||
-                    def.standPoses.containsKey(it.hashString)
-        }
+    /** Stages recorded without the way their stands are turned, by crop name, listed by hand. */
+    private val UNTURNED: Map<String, Set<Int>> = mapOf(
+        "Cactus" to setOf(5, 7),
+        "Chocoberry" to setOf(1, 2, 3, 4, 5),
+        "Cocoa Beans" to setOf(5),
+        "Devourer" to (10..12).toSet(),
+        "Fleshtrap" to setOf(4, 13),
+        "Godseed" to setOf(32, 34, 35, 36, 37, 40),
+        "Melon" to (7..9).toSet(),
+        "Moonflower" to setOf(4),
+        "PlantBoy Advance" to setOf(9, 10),
+        "Pumpkin" to setOf(7, 8),
+        "Stoplight Petal" to setOf(2, 5, 8),
+        "Sunflower" to setOf(4),
+        "Timestalk" to setOf(10, 11),
+        "Zombud" to (10..15).toSet()
+    )
 
     /** The stages of [def] recorded without the way their stands are turned. */
-    fun rotationGaps(def: CropDefinition): List<Int> = def.stageDefs
-        .filterNot { hasRotation(def, it) }
-        .flatMap { it.stageRange }
-        .distinct()
-        .sorted()
+    fun rotationGaps(def: CropDefinition): List<Int> =
+        UNTURNED[def.name].orEmpty().filter { it in 1..def.maxStage }.sorted()
 
     /** Whether the stage [stage] of [def] was recorded without its rotations. */
-    fun needsRotation(def: CropDefinition, stage: Int): Boolean = def.stageDefs
-        .any { stage in it.stageRange && !hasRotation(def, it) }
+    fun needsRotation(def: CropDefinition, stage: Int): Boolean =
+        stage in UNTURNED[def.name].orEmpty()
 
     /** What one crop is missing, in the listing's own words, or null when it wants for nothing. */
     fun reportFor(def: CropDefinition): String? =

@@ -4,6 +4,8 @@ import org.magic.magicaddons.features.HighlightFeature
 import org.magic.magicaddons.features.FeatureManager
 import net.minecraft.client.Minecraft
 import net.minecraft.core.component.DataComponents
+import net.minecraft.core.registries.BuiltInRegistries
+import net.minecraft.resources.Identifier
 import net.minecraft.world.entity.Display
 import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.EquipmentSlot
@@ -257,6 +259,35 @@ object EntityUtils {
         val helmet = entity.getItemBySlot(EquipmentSlot.HEAD)
         return hasArmorId(helmet, id, "HELMET")
     }
+    /** The slots a stand can carry a crop's parts in, head first since nearly all of them do. */
+    private val CARRY_SLOTS: List<EquipmentSlot> =
+        listOf(EquipmentSlot.HEAD, EquipmentSlot.MAINHAND, EquipmentSlot.OFFHAND)
+
+    /**
+     * The plain item the entity carries, as the slot it is in and "minecraft:gold_block", or null
+     * when it carries only a skull or nothing.
+     */
+    fun heldItem(entity: LivingEntity): Pair<EquipmentSlot, String>? = CARRY_SLOTS
+        .firstNotNullOfOrNull { slot ->
+            val stack = entity.getItemBySlot(slot)
+            if (stack.isEmpty || PlayerUtils.getSkinHash(stack) != null) null
+            else slot to BuiltInRegistries.ITEM.getKey(stack.item).toString()
+        }
+
+    /** The plain item in one slot, as "minecraft:gold_block", or null when there is none. */
+    fun itemIdIn(entity: LivingEntity, slot: EquipmentSlot): String? {
+        val stack = entity.getItemBySlot(slot)
+        if (stack.isEmpty || PlayerUtils.getSkinHash(stack) != null) return null
+
+        return BuiltInRegistries.ITEM.getKey(stack.item).toString()
+    }
+
+    /** One of whatever [itemId] names, or null when nothing is registered under it. */
+    fun itemStackOf(itemId: String): ItemStack? =
+        runCatching { BuiltInRegistries.ITEM.getOptional(Identifier.parse(itemId)).orElse(null) }
+            .getOrNull()
+            ?.let { ItemStack(it) }
+
     fun hasArmorId(stack: ItemStack, id: String, suffix: String): Boolean {
         val customData = stack.get(DataComponents.CUSTOM_DATA) ?: return false
         val tag = customData.copyTag()
