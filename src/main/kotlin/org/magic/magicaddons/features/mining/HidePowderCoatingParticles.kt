@@ -26,6 +26,9 @@ object HidePowderCoatingParticles : Feature() {
     var armorDirty = true
     var equippedDivan = false
 
+    /** How close a dust particle has to be to the player to be hidden. */
+    private const val HIDE_RADIUS: Double = 4.0
+
     @EventHandler
     fun onAddParticle(event: AddParticleEvent){
         if (!baseSetting.value) return
@@ -34,7 +37,7 @@ object HidePowderCoatingParticles : Feature() {
 
         val dustPos = Vec3(event.packet.x, event.packet.y, event.packet.z)
         val distance: Double = dustPos.distanceTo(Minecraft.getInstance().player?.position() ?: return)
-        if (distance > 4.0) return
+        if (distance > HIDE_RADIUS) return
         updateEquippedDivan()
         if (!equippedDivan) return
         event.canceled = true

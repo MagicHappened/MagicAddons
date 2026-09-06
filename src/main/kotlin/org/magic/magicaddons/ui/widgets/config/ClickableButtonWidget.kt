@@ -7,13 +7,13 @@ import net.minecraft.network.chat.Component
 import org.magic.magicaddons.Common
 import org.magic.magicaddons.ui.Focusable
 import org.magic.magicaddons.util.ScreenUtil.drawButtonPanel
+import org.magic.magicaddons.util.ScreenUtil.inRect
 
 /** A button drawn as a panel that lights under the mouse, with whatever [renderContent] puts on it. */
 class ClickableButtonWidget(
     var width: Int,
     var height: Int,
-    val renderContent: ClickableButtonWidget.(GuiGraphicsExtractor) -> Unit,
-    val shouldRenderButton: Boolean = true
+    val renderContent: ClickableButtonWidget.(GuiGraphicsExtractor) -> Unit
 ) : Focusable {
     var x: Int = 0
     var y: Int = 0
@@ -23,21 +23,8 @@ class ClickableButtonWidget(
         y: Int,
         width: Int,
         height: Int,
-        renderContent: ClickableButtonWidget.(GuiGraphicsExtractor) -> Unit,
-        shouldRenderButton: Boolean = true
-    ) : this(width, height, renderContent, shouldRenderButton) {
-        this.x = x
-        this.y = y
-    }
-
-    constructor(
-        x: Int,
-        y: Int,
-        width: Int,
-        height: Int,
-        message: Component,
-        shouldRenderButton: Boolean = true
-    ) : this(width, height, message, shouldRenderButton) {
+        message: Component
+    ) : this(width, height, message) {
         this.x = x
         this.y = y
     }
@@ -45,8 +32,7 @@ class ClickableButtonWidget(
     constructor(
         width: Int,
         height: Int,
-        message: Component,
-        shouldRenderButton: Boolean = true
+        message: Component
     ) : this(
         width,
         height,
@@ -67,6 +53,9 @@ class ClickableButtonWidget(
         this.message = message
     }
 
+    /** A button of the standard height, as wide as its [label] needs. */
+    constructor(label: String) : this(widthFor(label), HEIGHT, Component.literal(label))
+
     override var focusedState: Boolean = false
 
     /** Set from [mouseMoved], so the button lights up under the mouse. */
@@ -78,10 +67,7 @@ class ClickableButtonWidget(
     var message: Component? = null
 
     fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
-        if (shouldRenderButton) {
-            graphics.drawButtonPanel(x, y, x + width, y + height, hovered || isFocused, pressed)
-        }
-
+        graphics.drawButtonPanel(x, y, x + width, y + height, hovered || isFocused, pressed)
         renderContent(graphics)
     }
 
@@ -93,13 +79,18 @@ class ClickableButtonWidget(
         hovered = isMouseOver(mouseX, mouseY)
     }
 
-    override fun isMouseOver(mouseX: Double, mouseY: Double): Boolean {
-        return mouseX.toInt() in x until (x + width) &&
-                mouseY.toInt() in y until (y + height)
-    }
+    override fun isMouseOver(mouseX: Double, mouseY: Double): Boolean =
+        inRect(mouseX, mouseY, x, y, width, height)
 
-    private companion object {
+    companion object {
+        /** The height of the toolbar buttons on the greenhouse screen. */
+        const val HEIGHT: Int = 26
+
+        /** A button as wide as its word and the usual padding, so a row of them wastes nothing. */
+        fun widthFor(label: String): Int =
+            Minecraft.getInstance().font.width(label) + (Common.UI.TEXT_X_PAD + Common.UI.BORDER_SIZE) * 2
+
         /** A style colour carries no alpha, and text drawn with none is invisible. */
-        const val OPAQUE: Int = 0xFF000000.toInt()
+        private const val OPAQUE: Int = 0xFF000000.toInt()
     }
 }

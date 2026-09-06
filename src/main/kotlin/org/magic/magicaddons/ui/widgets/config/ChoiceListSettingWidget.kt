@@ -12,6 +12,7 @@ import org.magic.magicaddons.ui.OverlayContext
 import org.magic.magicaddons.ui.widgets.TextField
 import org.magic.magicaddons.ui.widgets.ToggleRowWidget
 import org.magic.magicaddons.util.ScreenUtil.drawScrollBar
+import org.magic.magicaddons.util.ScreenUtil.stepScroll
 
 /**
  * Every name in the catalogue as a row with a checkbox, under a search box narrowing them, in a
@@ -51,10 +52,6 @@ class ChoiceListSettingWidget(
 
     private fun isOn(name: String): Boolean = listSetting.value.any { it.value == name }
 
-    /**
-     * Flips a name without moving its row: a row that jumped away the moment it was ticked would
-     * vanish from under the mouse. The order catches up on the next scroll, search or reopen.
-     */
     private fun setOn(name: String, on: Boolean) {
         if (on) {
             if (!isOn(name)) listSetting.value.add(ListEntry(name, name, true))
@@ -148,7 +145,7 @@ class ChoiceListSettingWidget(
     override fun mouseScrolled(mouseX: Double, mouseY: Double, scrollX: Double, scrollY: Double): Boolean {
         if (!overRows(mouseX, mouseY) || matching.size <= VISIBLE_ROWS) return false
 
-        scroll = (scroll - scrollY.toInt().coerceIn(-1, 1)).coerceIn(0, matching.size - VISIBLE_ROWS)
+        scroll = stepScroll(scroll, scrollY, matching.size, VISIBLE_ROWS)
         rebuildRows()
         return true
     }

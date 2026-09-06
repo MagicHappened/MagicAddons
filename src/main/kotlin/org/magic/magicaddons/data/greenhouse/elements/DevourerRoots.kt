@@ -20,8 +20,6 @@ object DevourerRoots : CropDefinitionProvider {
                     CropArmorStand(
                         offset = Vec3(0.0, -0.75, 0.1875),
                         headRotation = Rotations(-45.0f, 0.0f, 0.0f),
-                        xRotation = 0.0f,
-                        yRotation = 0.0f,
                         hashString = "438788f3e6237fa486cc01e256496bc7a80cbc34f48935a1e1764be1ba69377a",
                         isSmall = false
                     )

@@ -3,7 +3,13 @@ package org.magic.magicaddons.data.greenhouse.elements.mutation.epic
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Rotations
 import net.minecraft.world.phys.Vec3
-import org.magic.magicaddons.data.greenhouse.*
+import org.magic.magicaddons.data.greenhouse.CropArmorStand
+import org.magic.magicaddons.data.greenhouse.CropBlockState
+import org.magic.magicaddons.data.greenhouse.CropDefinition
+import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
+import org.magic.magicaddons.data.greenhouse.CropEffect
+import org.magic.magicaddons.data.greenhouse.CropStage
+import org.magic.magicaddons.data.greenhouse.StandPose
 import org.magic.magicaddons.data.greenhouse.CropStates.wheatState
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
@@ -87,23 +93,7 @@ object Puffercloud : CropDefinitionProvider {
                         isSmall = false
                     )
                 ),
-                4..4
-            ),
-            CropStage(
-                blocks = listOf(
-                    CropBlockState(
-                        offset = BlockPos(0,1,0),
-                        blockState = wheatState(2)
-                    )
-                ),
-                armorStands = listOf(
-                    CropArmorStand(
-                        offset = Vec3(0.0, -0.71875, 0.0),
-                        hashString = "4c5d2d992b12548a4112cd533627ef76e193fec3f4452d367d654a4bb60f0a04",
-                        isSmall = false
-                    )
-                ),
-                5..5
+                4..5
             ),
             CropStage(
                 blocks = listOf(
@@ -148,8 +138,6 @@ object Puffercloud : CropDefinitionProvider {
                     CropArmorStand(
                         offset = Vec3(0.0, -0.65625, 0.0),
                         headRotation = Rotations(0.0f, 0.0f, 0.0f),
-                        xRotation = 0.0f,
-                        yRotation = 0.0f,
                         hashString = "2f9502a6895a90bbbb25921842fa6a213744ba967bbdfd861a44c92a79530aa0",
                         isSmall = false
                     )
@@ -240,35 +228,10 @@ object Puffercloud : CropDefinitionProvider {
                 ),
                 14..14
             )
-
-
-
-
-
-        ,
-            // as placed
-            CropStage(
-                blocks = listOf(
-                    CropBlockState(
-                        offset = BlockPos(0, 1, 0),
-                        blockState = wheatState(5)
-                    )
-                ),
-                armorStands = listOf(
-                    CropArmorStand(
-                        offset = Vec3(0.0, -0.4375, 0.0),
-                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
-                        xRotation = 0.0f,
-                        yRotation = 0.0f,
-                        hashString = "9a488340c3d9131b6e97bae6279aac852037367cb93a6b50c60a7d328aec173e",
-                        isSmall = false
-                    )
-                ),
-                14..14,
-                placed = true
-            )),
+        ),
         // five days decay time
         maxStage = 14,
-        isMutation = true
+        isMutation = true,
+        placedSameAsGrown = true
     )
 }

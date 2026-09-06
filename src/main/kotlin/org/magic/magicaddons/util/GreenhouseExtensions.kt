@@ -3,6 +3,7 @@ package org.magic.magicaddons.util
 import net.minecraft.core.BlockPos
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
+import org.magic.magicaddons.data.greenhouse.GREENHOUSE_SIZE
 import tech.thatgravyboat.skyblockapi.api.profile.garden.Plot
 import java.time.Duration
 import java.time.Instant
@@ -11,20 +12,7 @@ import kotlin.math.abs
 /** Where a garden plot keeps its greenhouse, offset from the corner of the plot itself. */
 private const val BUILD_OFFSET = 43
 
-/** A greenhouse is ten by ten. */
-private const val GRID_SIZE = 10
-
 fun BlockPos.center(): Vec3 = Vec3(x + 0.5, y + 0.5, z + 0.5)
-
-/** Whether this yaw faces squarely along an axis, which is how an unrotated crop stands. */
-fun Float.isCardinalYaw(): Boolean {
-    val normalized = ((this % 360f) + 360f) % 360f
-
-    return abs(normalized - 0f) < 0.1f ||
-            abs(normalized - 90f) < 0.1f ||
-            abs(normalized - 180f) < 0.1f ||
-            abs(normalized - 270f) < 0.1f
-}
 
 /** Reads a duration the game wrote, such as "1d 4h 30m", as milliseconds. */
 fun String.parseDurationToMs(): Long {
@@ -43,6 +31,21 @@ fun String.parseDurationToMs(): Long {
     }
 
     return totalMs
+}
+
+/** A length of time in two units at most: "2d 3h", "9h 40m", "54m", "30s". */
+fun Long.toShortDuration(): String {
+    val seconds = (this / 1000).coerceAtLeast(0)
+    val minutes = seconds / 60
+    val hours = minutes / 60
+    val days = hours / 24
+
+    return when {
+        days > 0 -> "${days}d ${hours % 24}h"
+        hours > 0 -> "${hours}h ${minutes % 60}m"
+        minutes > 0 -> "${minutes}m"
+        else -> "${seconds}s"
+    }
 }
 
 /** The gap between this instant and [from], worded the way the game words its own timers. */
@@ -76,6 +79,6 @@ fun Plot.getBuildableArea(): AABB {
 
     return AABB(
         minX, box.minY, minZ,
-        minX + GRID_SIZE, box.maxY, minZ + GRID_SIZE
+        minX + GREENHOUSE_SIZE, box.maxY, minZ + GREENHOUSE_SIZE
     )
 }

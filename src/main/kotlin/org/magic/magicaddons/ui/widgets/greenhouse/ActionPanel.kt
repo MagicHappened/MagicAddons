@@ -5,7 +5,6 @@ import net.minecraft.client.gui.components.Renderable
 import net.minecraft.client.gui.components.events.GuiEventListener
 import net.minecraft.client.input.MouseButtonEvent
 import org.magic.magicaddons.Common
-import org.magic.magicaddons.ui.Focusable
 import org.magic.magicaddons.ui.HoverableContainer
 import org.magic.magicaddons.ui.widgets.config.ClickableButtonWidget
 
@@ -13,11 +12,9 @@ import org.magic.magicaddons.ui.widgets.config.ClickableButtonWidget
  * A row of buttons belonging to one half of the greenhouse screen. A panel is told where it may sit
  * and fits its buttons into that, rather than measuring the grid or the window itself.
  */
-abstract class ActionPanel : Renderable, Focusable, HoverableContainer {
+abstract class ActionPanel : Renderable, HoverableContainer {
 
     override var hoveredElement: GuiEventListener? = null
-
-    override var focusedState: Boolean = false
 
     var x: Int = 0
         private set
@@ -27,9 +24,6 @@ abstract class ActionPanel : Renderable, Focusable, HoverableContainer {
 
     /** What the screen has offered, which is the most this panel may take rather than what it takes. */
     var width: Int = 0
-        private set
-
-    var height: Int = 0
         private set
 
     /**
@@ -45,11 +39,10 @@ abstract class ActionPanel : Renderable, Focusable, HoverableContainer {
     protected abstract fun onPressed(button: ClickableButtonWidget, event: MouseButtonEvent): Boolean
 
     /** Puts the panel in the given box, buttons in a row along the top, wrapping when room runs out. */
-    open fun layoutIn(x: Int, y: Int, width: Int, height: Int) {
+    fun layoutIn(x: Int, y: Int, width: Int) {
         this.x = x
         this.y = y
         this.width = width
-        this.height = height
 
         var rowX = x + PADDING
         var rowY = y + PADDING
@@ -74,7 +67,7 @@ abstract class ActionPanel : Renderable, Focusable, HoverableContainer {
     fun hasShown(): Boolean = buttons.any { isShown(it) }
 
     /** How tall the panel's buttons actually came out, which a caller may want to lay out below. */
-    open val contentHeight: Int
+    val contentHeight: Int
         get() {
             val bottom = buttons.maxOfOrNull { it.y + it.height } ?: return 0
 
@@ -84,19 +77,9 @@ abstract class ActionPanel : Renderable, Focusable, HoverableContainer {
     override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
         buttons.filter { isShown(it) }
             .forEach { it.extractRenderState(graphics, mouseX, mouseY, delta) }
-
-        renderContent(graphics, mouseX, mouseY, delta)
     }
 
-    /** Anything the panel draws besides its buttons. Nothing, unless a panel says otherwise. */
-    protected open fun renderContent(
-        graphics: GuiGraphicsExtractor,
-        mouseX: Int,
-        mouseY: Int,
-        delta: Float
-    ) = Unit
-
-    override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
+    fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
         buttons.filter { isShown(it) }.forEach { button ->
             if (button.mouseClicked(mouseButtonEvent, doubled)) {
                 return onPressed(button, mouseButtonEvent)
@@ -106,8 +89,10 @@ abstract class ActionPanel : Renderable, Focusable, HoverableContainer {
         return false
     }
 
-    override fun isMouseOver(mouseX: Double, mouseY: Double): Boolean =
-        mouseX.toInt() in x until (x + width) && mouseY.toInt() in y until (y + height)
+    fun mouseMoved(mouseX: Double, mouseY: Double) {
+        buttons.forEach { it.mouseMoved(mouseX, mouseY) }
+        hoveredElement = buttons.firstOrNull { isShown(it) && it.isMouseOver(mouseX, mouseY) }
+    }
 
     companion object {
         /** How far the buttons sit inside the room the panel was given. */

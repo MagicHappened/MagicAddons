@@ -1,5 +1,6 @@
 package org.magic.magicaddons.features.farming.greenhousePresets
 
+import org.magic.magicaddons.commands.internal.MainInternal
 import java.time.Instant
 import java.time.Duration
 import org.magic.magicaddons.data.greenhouse.GreenhouseLayout
@@ -14,11 +15,11 @@ import net.minecraft.world.phys.Vec3
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.Level
+import org.magic.magicaddons.data.greenhouse.CROP_HEIGHT
 import org.magic.magicaddons.data.greenhouse.LayoutSlot
 import org.magic.magicaddons.data.greenhouse.ElementRuntimeState
 import org.magic.magicaddons.data.greenhouse.Footprint
 import net.minecraft.client.renderer.SubmitNodeCollector
-import net.minecraft.world.phys.AABB
 import net.minecraft.world.entity.decoration.ArmorStand
 import net.minecraft.client.Minecraft
 import net.minecraft.core.BlockPos
@@ -28,9 +29,7 @@ import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.shapes.VoxelShape
 import org.magic.magicaddons.data.greenhouse.CropDefinition
 import org.magic.magicaddons.data.greenhouse.CropStage
-import org.magic.magicaddons.data.greenhouse.CropStagePattern
 import org.magic.magicaddons.data.greenhouse.GreenhouseGrid
-import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.render.WorldRender
 import org.magic.magicaddons.util.ChatUtils
 
@@ -39,9 +38,6 @@ import org.magic.magicaddons.util.ChatUtils
  * its first stage. Missing blocks are ghosted, blocks in the way are outlined.
  */
 object LayoutRenderState {
-    init {
-        EventBus.register(this)
-    }
 
     /**
      * What a marked block is told to do: red swap it, orange work on it, purple remove it, blue
@@ -51,7 +47,7 @@ object LayoutRenderState {
         Wrong(0xFFFF3333.toInt()),
         Adjust(0xFFFF9922.toInt()),
         Remove(0xFFAA44EE.toInt()),
-        Missing(0xFF3399FF.toInt())
+        Missing(GHOST_OUTLINE_COLOR)
     }
 
     /** Enough colour to read the mark through, little enough to see the block under it. */
@@ -66,7 +62,6 @@ object LayoutRenderState {
     /** The glow around a ghosted head, drawn as itself rather than multiplied over a texture. */
     const val GHOST_OUTLINE_COLOR: Int = 0xFF3399FF.toInt()
 
-    /** Ground a hoe turns into other ground: untilled dirt is not the wrong block. */
     /** State a plan does not care about, because nothing the player does decides it. */
     private val IGNORED_PROPERTIES: List<IntegerProperty> = listOf(FarmlandBlock.MOISTURE)
 
@@ -76,6 +71,7 @@ object LayoutRenderState {
      */
     private val STATE_IS_NOT_OURS: Set<Block> = setOf(Blocks.FIRE)
 
+    /** Ground a hoe turns into other ground: untilled dirt is not the wrong block. */
     private val TILLABLE: Set<Block> = setOf(
         Blocks.DIRT,
         Blocks.GRASS_BLOCK,
@@ -134,10 +130,6 @@ object LayoutRenderState {
     @Volatile
     private var plan: Plan = Plan.NOTHING
 
-
-    /** Which half of the job the player is on. */
-    val phase: Phase get() = plan.phase
-
     /** Stands in the way of a crop. Tinted rather than outlined, since entities draw one at a time. */
     val badStandsUUID: Set<UUID> get() = plan.badStands
 
@@ -169,9 +161,8 @@ object LayoutRenderState {
     }
 
     /** Starts over on the plan of whichever greenhouse the player is in. */
+    /** Forgets which crops were reported missing, then refreshes. */
     fun show() {
-        // the phase rides in the plan now, and refresh works it out from the plot rather than
-        // being told, so starting over is forgetting what has been said and looking again
         reportedMissingStage.clear()
 
         refresh()
@@ -274,15 +265,7 @@ object LayoutRenderState {
                 standGroups[key] = previous.standGroups[key] ?: render.stands
 
                 // a stand already standing in the crop's space is in the way of it
-                val footprint = instance.cropDef.footprint
-                val space = AABB(
-                    soil.x.toDouble(), soil.y.toDouble(), soil.z.toDouble(),
-                    (soil.x + footprint.width).toDouble(),
-                    (soil.y + CROP_HEIGHT).toDouble(),
-                    (soil.z + footprint.height).toDouble()
-                )
-
-                level.getEntitiesOfClass(ArmorStand::class.java, space)
+                level.getEntitiesOfClass(ArmorStand::class.java, instance.cropDef.footprint.spaceAbove(soil, CROP_HEIGHT))
                     .forEach { badStands.add(it.uuid) }
             }
         }
@@ -335,7 +318,7 @@ object LayoutRenderState {
         Component.literal(word).withStyle(
             Style.EMPTY
                 .withColor(color)
-                .withClickEvent(ClickEvent.RunCommand("/MagicAddons internal $command"))
+                .withClickEvent(ClickEvent.RunCommand("${MainInternal.COMMAND} $command"))
                 .withHoverEvent(HoverEvent.ShowText(Component.literal("Click to answer $word")))
         )
 
@@ -369,14 +352,7 @@ object LayoutRenderState {
             }
         }
 
-        val space = AABB(
-            soil.x.toDouble(), soil.y.toDouble(), soil.z.toDouble(),
-            (soil.x + footprint.width).toDouble(),
-            (soil.y + CROP_HEIGHT).toDouble(),
-            (soil.z + footprint.height).toDouble()
-        )
-
-        return level.getEntitiesOfClass(ArmorStand::class.java, space).any { !it.isMarker }
+        return level.getEntitiesOfClass(ArmorStand::class.java, footprint.spaceAbove(soil, CROP_HEIGHT)).any { !it.isMarker }
     }
 
     /**
@@ -444,22 +420,14 @@ object LayoutRenderState {
      * placed already grown. A crop with no stage recorded is skipped and named once.
      */
     private fun ghostStageOf(definition: CropDefinition): CropStage? {
-        val stages = definition.stageDefs
-            .flatMap { if (it is CropStagePattern) it.expand() else listOf(it) }
-
         val at = definition.stagePlacedAt
-        val candidates = stages.filter { at in it.stageRange }
+        val candidates = definition.stages.filter { at in it.stageRange }
         val stage = candidates.firstOrNull { it.placed } ?: candidates.firstOrNull()
 
         if (stage == null && reportedMissingStage.add(definition.name)) {
-            val which = "stage $at"
-
-            ChatUtils.sendWithPrefix("No $which described for ${definition.name}, skipping it.")
+            ChatUtils.sendWithPrefix("No stage $at described for ${definition.name}, skipping it.")
         }
 
         return stage
     }
-
-    /** How far above the soil a crop can reach, for finding what is standing in its way. */
-    private const val CROP_HEIGHT: Int = 5
 }

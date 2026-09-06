@@ -3,7 +3,7 @@ package org.magic.magicaddons.util
 import org.magic.magicaddons.data.handlers.DataHandler
 import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.events.EventHandler
-import org.magic.magicaddons.events.world.OnSetTimePacket
+import org.magic.magicaddons.events.world.SetTimePacketEvent
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData.checkForUpdate
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData.greenhouseGrids
 import tech.thatgravyboat.skyblockapi.api.SkyBlockAPI
@@ -39,7 +39,7 @@ object ServerUtils {
     }
 
     @EventHandler
-    fun onTick(event: OnSetTimePacket) {
+    fun onTick(event: SetTimePacketEvent) {
 
         val currentGameTime = event.packet.gameTime
         val previousGameTime = lastGameTime

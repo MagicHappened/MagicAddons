@@ -7,7 +7,6 @@ import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
 import org.magic.magicaddons.Common
 import org.magic.magicaddons.data.config.TextSetting
-import org.magic.magicaddons.ui.Focusable
 import org.magic.magicaddons.ui.OverlayContext
 import org.magic.magicaddons.ui.OverlayRenderable
 import org.magic.magicaddons.ui.widgets.RemovableRowWidget
@@ -29,7 +28,6 @@ class TextSettingWidget(
     private var lastFocusedValue: String = setting.value
 
     private val textBox = TextField(0, BOX_HEIGHT).also {
-        it.setMaxLength(256)
         it.value = setting.value
         it.setResponder { typed ->
             setting.value = typed
@@ -108,13 +106,11 @@ class TextSettingWidget(
     override fun keyPressed(event: KeyEvent): Boolean = textBox.keyPressed(event) || super.keyPressed(event)
 
     /** The previous values, dropped down under the box as rows that apply or remove themselves. */
-    inner class HistoryOverlay : OverlayRenderable, Focusable {
+    inner class HistoryOverlay : OverlayRenderable {
 
         var open: Boolean = false
 
-        override var focusedState: Boolean = false
-
-        override val renderPriority: Int = 1
+        override val renderPriority: Int = OverlayRenderable.DROPDOWN_PRIORITY
 
         override var hoveredElement: GuiEventListener? = null
 

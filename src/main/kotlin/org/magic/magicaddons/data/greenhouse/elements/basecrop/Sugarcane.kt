@@ -3,7 +3,6 @@ package org.magic.magicaddons.data.greenhouse.elements.basecrop
 import org.magic.magicaddons.data.greenhouse.CropEffect
 import net.minecraft.core.BlockPos
 import net.minecraft.world.level.block.Blocks
-import org.magic.magicaddons.data.greenhouse.DEFAULT_DECAY_TIME_MS
 import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
 import org.magic.magicaddons.data.greenhouse.CropBlockState
 import org.magic.magicaddons.data.greenhouse.CropDefinition
@@ -46,7 +45,7 @@ object Sugarcane : CropDefinitionProvider {
                         blockState = wheatState(3)
                     ),
                 ),
-                armorStands = listOf(),
+                armorStands = null,
                 2..2
             ),
             CropStage(
@@ -61,8 +60,7 @@ object Sugarcane : CropDefinitionProvider {
                         offset = BlockPos(0,3,0),
                         blockState = wheatState(1)
                     ),
-                armorStands = listOf(
-                ),
+                armorStands = null,
                 3..3
             ),
             CropStage(
@@ -77,23 +75,22 @@ object Sugarcane : CropDefinitionProvider {
                         offset = BlockPos(0, 3, 0),
                         blockState = wheatState(3)
                     ),
-                armorStands = listOf(),
+                armorStands = null,
                 4..4
             ),
             CropStage(
                 blocks = CropBlockState.blockStatePattern(
-                    listOf(
+                    positions = listOf(
                         BlockPos(0, 1, 0),
                         BlockPos(0, 2, 0),
                         BlockPos(0, 3, 0)
                     ),
                     blockState = sugarcaneState()
-                ) + listOf(
+                ) +
                     CropBlockState(
                         offset = BlockPos(0, 4, 0),
                         blockState = wheatState(3)
-                    )
-                ),
+                    ),
                 armorStands = null,
                 6..6
             ),

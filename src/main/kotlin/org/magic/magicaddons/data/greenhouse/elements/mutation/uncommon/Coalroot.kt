@@ -12,7 +12,6 @@ import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
 import org.magic.magicaddons.data.greenhouse.CropStage
 import org.magic.magicaddons.data.greenhouse.CropStates.deadBushState
 import org.magic.magicaddons.data.greenhouse.CropStates.melonStemState
-import org.magic.magicaddons.data.greenhouse.DEFAULT_DECAY_TIME_MS
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
 object Coalroot : CropDefinitionProvider {
@@ -157,9 +156,6 @@ object Coalroot : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.40625, 0.0),
-                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
-                        xRotation = 0.0f,
-                        yRotation = 0.0f,
                         hashString = "f946443fa0039354edd31a70c749c4f963464744dc20b79137bd9910356ee90",
                         isSmall = false
                     )

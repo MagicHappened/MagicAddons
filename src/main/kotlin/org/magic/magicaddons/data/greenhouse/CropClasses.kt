@@ -12,9 +12,8 @@ import net.minecraft.world.item.Item
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.level.block.state.BlockState
+import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
-import org.magic.magicaddons.Common
-import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.PlayerUtils
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockId
 import kotlin.math.abs
@@ -29,10 +28,19 @@ sealed interface GrowthStageInfo {
 
 
 
-data class Footprint(val width: Int, val height: Int)
+data class Footprint(val width: Int, val height: Int) {
+    /** The box a crop of this footprint fills from [soil] up to [height] blocks above it. */
+    fun spaceAbove(soil: BlockPos, height: Int): AABB = AABB(
+        soil.x.toDouble(), soil.y.toDouble(), soil.z.toDouble(),
+        (soil.x + width).toDouble(),
+        (soil.y + height).toDouble(),
+        (soil.z + this.height).toDouble()
+    )
+}
 
 data class CropArmorStand(
-    val offset: Vec3, //offset is defined from the soil top left block
+    /** Where the stand's feet are, measured from the centre of the footprint at soil height. */
+    val offset: Vec3,
     val headRotation: Rotations? = null,
     val xRotation: Float? = null,
     val yRotation: Float? = null,
@@ -103,9 +111,11 @@ data class CropBlockState(
 
 
 open class CropStage(
+    /** The blocks this stage is made of; null means no blocks are required. */
     val blocks: List<CropBlockState>? = null,
-    val armorStands: List<CropArmorStand>? = null,  // make sure on the matcher if its NULL it shouldnt have the respective thing on it!
-    val stageRange: IntRange, // eg if its a wheat crop it CANNOT have any armor stands on it otherwise it will be considered something
+    /** The stands this stage is made of; null means no stands are required. */
+    val armorStands: List<CropArmorStand>? = null,
+    val stageRange: IntRange,
     /**
      * Facts the matched stage implies, such as which time of day a noctilume craves. They land in
      * the same readings map the stand readers write to.
@@ -124,7 +134,6 @@ open class CropStage(
             ?.let { reader.key to it }
     }.toMap()
 
-    // for now leaving debug in just in case
     /** What the matcher reads off a stand: read once per scan, not once per stage tried against it. */
     class StandReadings {
         class Reading(val position: Vec3, val skullHash: String?, val name: String?)
@@ -141,125 +150,79 @@ open class CropStage(
         remainingStands: List<ArmorStand>,
         footprint: Footprint,
         rotatesWithPlot: Boolean = true,
-        debug: Boolean = false,
         readings: StandReadings = StandReadings()
     ): StageMatchResult {
-        val level = Minecraft.getInstance().level ?: return StageMatchResult(
-            false,
-            0,
-            emptyList(),
-            emptyMap()
-        )
+        val level = Minecraft.getInstance().level ?: return StageMatchResult.NONE
 
         var score = 0
         var matchedFirstCandidate = true
         val usedStands = mutableListOf<Entity>()
         val matchedBlocks = mutableMapOf<BlockPos, BlockState>()
-        if (debug){
-            Common.LOGGER.info("Trying to match stage: ${stageRange.first}, ${stageRange.last}")
+
+        this.blocks?.forEach { blockDef ->
+            // drawn but never demanded, so a stage is not refused for the absence of
+            // something that was only ever decoration
+            if (!blockDef.required) return@forEach
+
+            val pos = origin.offset(blockDef.offset)
+            val state = level.getBlockState(pos)
+
+            if (state != blockDef.blockState) return StageMatchResult.NONE
+
+            matchedBlocks[pos] = state
+            score += 1
         }
-        try {
-            this.blocks?.forEach { blockDef ->
-                // drawn but never demanded, so a stage is not refused for the absence of
-                // something that was only ever decoration
-                if (!blockDef.required) return@forEach
+        val center = Vec3(
+            origin.x + footprint.width / 2.0,
+            origin.y.toDouble(),
+            origin.z + footprint.height / 2.0
+        )
+        // the world's own rotation is tried first, since exports are normalized to rotation zero.
+        // matching only at zero means a pre-normalization recording, which the result reports
+        val worldStep = WorldRotation.step(origin.x, origin.z)
 
-                val pos = origin.offset(blockDef.offset)
-                val state = level.getBlockState(pos)
+        val candidateSteps = when {
+            this.armorStands.isNullOrEmpty() || !rotatesWithPlot -> listOf(0)
+            else -> listOf(worldStep, 0).distinct()
+        }
 
-                if (state != blockDef.blockState) {
-                    if (debug) {
-                        Common.LOGGER.info(
-                            "Block mismatch at $pos. State=${state.block}"
-                        )
-                    }
+        var matchedStands: List<Entity>? = null
 
-                    return StageMatchResult(false, 0, emptyList(), emptyMap())
+        for (step in candidateSteps) {
+            val used = mutableListOf<Entity>()
+            var allFound = true
+
+            for (standDef in this.armorStands.orEmpty()) {
+                val expected = WorldRotation.rotate(standDef.offset, step)
+
+                val match = remainingStands.firstOrNull { entity ->
+                    val reading = readings.of(entity)
+
+                    isClose(reading.position.subtract(center), expected) &&
+                            (standDef.hashString?.let { it == reading.skullHash } ?: true) &&
+                            (standDef.containsCustomName?.let { reading.name?.contains(it) == true } ?: true)
                 }
 
-                if (debug) {
-                    Common.LOGGER.info("Matched block at $pos")
-                }
-
-                matchedBlocks[pos] = state
-                score += 1
-            }
-            val center = Vec3(
-                origin.x + footprint.width / 2.0,
-                origin.y.toDouble(),
-                origin.z + footprint.height / 2.0
-            )
-            // the world's own rotation is tried first, since exports are normalized to rotation zero.
-            // matching only at zero means a pre-normalization recording, which the result reports
-            val worldStep = WorldRotation.step(origin.x, origin.z)
-
-            val candidateSteps = when {
-                this.armorStands.isNullOrEmpty() || !rotatesWithPlot -> listOf(0)
-                else -> listOf(worldStep, 0).distinct()
-            }
-
-            var matchedStands: List<Entity>? = null
-
-            for (step in candidateSteps) {
-                val used = mutableListOf<Entity>()
-                var allFound = true
-
-                for (standDef in this.armorStands.orEmpty()) {
-                    val expected = WorldRotation.rotate(standDef.offset, step)
-
-                    val match = remainingStands.firstOrNull { entity ->
-                        val reading = readings.of(entity)
-
-                        isClose(reading.position.subtract(center), expected) &&
-                                (standDef.hashString?.let { it == reading.skullHash } ?: true) &&
-                                (standDef.containsCustomName?.let { reading.name?.contains(it) == true } ?: true)
-                    }
-
-                    if (match == null) {
-                        if (debug) {
-                            Common.LOGGER.info(
-                                "step=$step: no stand at ${standDef.offset} (rotated $expected)"
-                            )
-                        }
-                        allFound = false
-                        break
-                    }
-
-                    used.add(match)
-                }
-
-                if (allFound) {
-                    matchedStands = used
-                    matchedFirstCandidate = step == candidateSteps.first()
+                if (match == null) {
+                    allFound = false
                     break
                 }
+
+                used.add(match)
             }
 
-            if (matchedStands == null) {
-                return StageMatchResult(false, 0, emptyList(), emptyMap())
+            if (allFound) {
+                matchedStands = used
+                matchedFirstCandidate = step == candidateSteps.first()
+                break
             }
+        }
 
-            matchedStands.forEach { match ->
-                if (debug) {
-                    Common.LOGGER.info("Matched armor stand at ${match.position()}")
-                }
-                usedStands.add(match)
-                score += 2
-            }
+        if (matchedStands == null) return StageMatchResult.NONE
 
-            if (debug) {
-                Common.LOGGER.info(
-                    "Stage matched successfully. Score=$score"
-                )
-            }
-        } catch (e: NoSuchMethodException) {
-            ChatUtils.sendWithPrefix("Caught NoSuchMethodException in matchesStage. for $e")
-            return StageMatchResult(
-                matched = false,
-                score = 0,
-                usedStands = emptyList(),
-                matchedBlocks = emptyMap()
-            )
+        matchedStands.forEach { match ->
+            usedStands.add(match)
+            score += 2
         }
 
         return StageMatchResult(
@@ -477,7 +440,8 @@ data class CropDefinition(
     val isMutation: Boolean = false,
     /** The stage a plant is placed at, when it is not the last for a mutation or the first otherwise. */
     val placedStage: Int? = null,
-    val isRareCrop: Boolean = false,
+    /** The placed look is the grown look of the stage it is placed at, so no placed stage is recorded. */
+    val placedSameAsGrown: Boolean = false,
     /** Shown in the ui when skyblock has no item of its own for this crop, a dead plant has none. */
     val displayItem: Item? = null,
     /** The buffs and debuffs this crop carries, which are what make a layout worth planning. */
@@ -495,12 +459,11 @@ data class CropDefinition(
     /** The stage a plant is placed at: the last for a mutation, the first for anything else. */
     val stagePlacedAt: Int get() = placedStage ?: if (isMutation) maxStage else 1
 
+    /** The id a layout stores for this crop: its skyblock id, or its name when it has none. */
+    val elementId: String get() = skyblockId?.id ?: name
+
     /** Every look this crop can have, patterns expanded to one stage each. Built once, read by every scan. */
     val stages: List<CropStage> = stageDefs.flatMap { if (it is CropStagePattern) it.expand() else listOf(it) }
-
-    fun matchesId(id: SkyBlockId): Boolean{
-        return skyblockId == id || (aliases?.any { it == id } ?: false)
-    }
 
     override fun toString(): String {
         return name
@@ -514,20 +477,25 @@ data class StageMatchResult(
     val matchedBlocks: Map<BlockPos, BlockState>,
     /** Matched, but only at rotation zero: a pre-normalization recording that wants re-exporting. */
     val rotationLegacy: Boolean = false
-)
+) {
+    companion object {
+        /** No match. */
+        val NONE = StageMatchResult(false, 0, emptyList(), emptyMap())
+    }
+}
 
 
 data class ElementRuntimeState(
     val instance: GreenhouseElementInstance,
     val standEntities: List<Entity>?,
-    val blocksMap: Map<BlockPos,BlockState>?, // todo add handling of water level
-    //todo add here an extra info thing (maybe use the original one?),
+    val blocksMap: Map<BlockPos,BlockState>?,
     /** See [StageMatchResult.rotationLegacy]: matched, but from a pre-normalization recording. */
     val rotationLegacy: Boolean = false
 )
 
 data class GreenhouseElementInstance(
-    val elementId: String, //just the skyblock id or name
+    /** [CropDefinition.elementId] of the crop. */
+    val elementId: String,
     val slot: LayoutSlot,
     var waterLevel: Int? = null,
     var growthStage: GrowthStageInfo? = null,
@@ -594,12 +562,7 @@ data class GreenhouseElementInstance(
             null -> null
         }
 
-    /**
-     * Whether this plant grew where it stands rather than being placed there.
-     *
-     * todo tell the player to harvest a grown mutation at its last stage, judged by the high end
-     *  of an estimated range so they are told early.
-     */
+    /** Whether this plant grew where it stands rather than being placed there. */
     val grewInPlace: Boolean
         get() {
             if (placed) return false
@@ -607,6 +570,26 @@ data class GreenhouseElementInstance(
             val now = lowestStage ?: return false
 
             return now > first
+        }
+
+    /** A mutation this plant grew here to its last stage, judged by the highest stage it might be at. */
+    val readyToHarvest: Boolean
+        get() = cropDef.isMutation && grewInPlace && (highestStage ?: 0) >= cropDef.maxStage
+
+    /** Whether this plant craves a time of day other than [now], while it still has stages to grow. */
+    fun cravesOtherTime(now: Int): Boolean {
+        val wants = craving ?: return false
+        val stage = lowestStage
+        return wants != now && (stage == null || stage < cropDef.maxStage)
+    }
+
+    /** Time left before this plant rots. Null when it never rots, or its age was never measured. */
+    val decayRemainingMs: Long?
+        get() {
+            val decayTime = cropDef.decayTimeMs
+            if (decayTime == NEVER_DECAYS) return null
+            val age = age ?: return null
+            return (decayTime - age).coerceAtLeast(0L)
         }
 }
 

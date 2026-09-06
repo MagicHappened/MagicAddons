@@ -6,6 +6,7 @@ import net.minecraft.network.chat.Component
 import org.magic.magicaddons.Common
 import org.magic.magicaddons.ui.Focusable
 import org.magic.magicaddons.util.ScreenUtil.drawWrappedText
+import org.magic.magicaddons.util.ScreenUtil.inRect
 import org.magic.magicaddons.util.ScreenUtil.wrappedHeight
 
 /**
@@ -24,8 +25,8 @@ open class BaseRowWidget<T>(
     /** The line under the row; the last row of a list leaves it to the list's frame. */
     var dividerBelow = true
 
-    var width: Int = 200
-    var height: Int = 20
+    var width: Int = 0
+    var height: Int = 0
 
     var x: Int = 0
     var y: Int = 0
@@ -78,12 +79,13 @@ open class BaseRowWidget<T>(
         )
     }
 
-    override fun isMouseOver(mouseX: Double, mouseY: Double): Boolean {
-        return (mouseX.toInt() in x..x + width && mouseY.toInt() in y..y + height)
-    }
+    override fun isMouseOver(mouseX: Double, mouseY: Double): Boolean =
+        inRect(mouseX, mouseY, x, y, width, height)
 
+    /** Whether the mouse is on the text part of the row, between the reserved ends. */
     open fun isMouseOverRow(mouseX: Double, mouseY: Double): Boolean {
-        return (mouseX.toInt() in x + getLeftReservedWidth()..x + width - getRightReservedWidth() && mouseY.toInt() in y..y + height)
+        val left = x + getLeftReservedWidth()
+        return inRect(mouseX, mouseY, left, y, x + width - getRightReservedWidth() - left, height)
     }
 
     override fun mouseMoved(mouseX: Double, mouseY: Double) {

@@ -2,13 +2,10 @@ package org.magic.magicaddons.data.greenhouse.transfer
 
 import org.magic.magicaddons.data.greenhouse.CropDefinition
 import org.magic.magicaddons.data.greenhouse.CropRegistry
+import org.magic.magicaddons.data.greenhouse.GREENHOUSE_SIZE
 import org.magic.magicaddons.data.greenhouse.GreenhouseElementInstance
 import org.magic.magicaddons.data.greenhouse.GreenhouseLayout
 import org.magic.magicaddons.data.greenhouse.LayoutSlot
-import java.io.ByteArrayOutputStream
-import java.util.Base64
-import java.util.zip.Deflater
-import java.util.zip.Inflater
 
 /**
  * Layouts as greenhouse.skyshards.com shares them: `inputs|targets|grid`, raw-deflated and written
@@ -21,7 +18,7 @@ object SkyShardsFormat : LayoutFormat {
 
     private const val URL: String = "https://greenhouse.skyshards.com/designer?layout="
 
-    private const val GRID: Int = 10
+    private const val GRID: Int = GREENHOUSE_SIZE
     private const val CELLS: Int = GRID * GRID
 
     private const val ALPHABET: String = "abcdefghijklmnopqrstuvwxyz"
@@ -47,25 +44,13 @@ object SkyShardsFormat : LayoutFormat {
         "jerryflower", "phantomleaf", "timestalk"
     )
 
-    /** Both sides written the same way, so `do_not_eat_shroom` and `Do-not-eat-shroom` compare equal. */
-    private fun key(text: String): String = text.lowercase().filter { it.isLetterOrDigit() }
-
-    private val byKey: Map<String, CropDefinition> by lazy {
-        buildMap {
-            CropRegistry.all.forEach { def ->
-                putIfAbsent(key(def.name), def)
-                def.skyblockId?.id?.substringAfter(':')?.let { putIfAbsent(key(it), def) }
-            }
-        }
-    }
-
     private val idOf: Map<CropDefinition, String> by lazy {
         buildMap {
-            (BASE + MUTATIONS).forEach { id -> byKey[key(id)]?.let { putIfAbsent(it, id) } }
+            (BASE + MUTATIONS).forEach { id -> CropRegistry.findLoose(id)?.let { putIfAbsent(it, id) } }
         }
     }
 
-    private fun definitionFor(id: String): CropDefinition? = byKey[key(id)]
+    private fun definitionFor(id: String): CropDefinition? = CropRegistry.findLoose(id)
 
     private fun cropAt(index: Int): String? = when {
         index < 0 -> null
@@ -83,43 +68,9 @@ object SkyShardsFormat : LayoutFormat {
 
     // ------------------------------------------------------------------ the wrapping
 
-    private fun decode(share: String): String? = runCatching {
-        val bytes = Base64.getUrlDecoder().decode(share.trim().padded())
+    private fun decode(share: String): String? = RawDeflate.decode(share)?.toString(Charsets.UTF_8)
 
-        val inflater = Inflater(true)
-        inflater.setInput(bytes)
-
-        val out = ByteArrayOutputStream(bytes.size * 4)
-        val buffer = ByteArray(4096)
-
-        while (!inflater.finished()) {
-            val read = inflater.inflate(buffer)
-            if (read == 0 && inflater.needsInput()) break
-            out.write(buffer, 0, read)
-        }
-        inflater.end()
-
-        out.toString(Charsets.UTF_8)
-    }.getOrNull()
-
-    /** The site strips base64 padding; the decoder wants it back. */
-    private fun String.padded(): String = this + "=".repeat((4 - length % 4) % 4)
-
-    private fun encode(text: String): String {
-        val deflater = Deflater(Deflater.BEST_COMPRESSION, true)
-        deflater.setInput(text.toByteArray(Charsets.UTF_8))
-        deflater.finish()
-
-        val out = ByteArrayOutputStream()
-        val buffer = ByteArray(4096)
-
-        while (!deflater.finished()) {
-            out.write(buffer, 0, deflater.deflate(buffer))
-        }
-        deflater.end()
-
-        return Base64.getUrlEncoder().withoutPadding().encodeToString(out.toByteArray())
-    }
+    private fun encode(text: String): String = RawDeflate.encode(text.toByteArray(Charsets.UTF_8))
 
     /** The share string out of whatever the player copied: either link shape, or the string bare. */
     private fun payloadOf(text: String): String = text.trim().let {
@@ -221,13 +172,7 @@ object SkyShardsFormat : LayoutFormat {
             }
 
             layout.elementInstances.add(
-                GreenhouseElementInstance(
-                    definition.skyblockId?.id ?: definition.name,
-                    anchor ?: continue,
-                    null,
-                    null,
-                    cropDef = definition
-                )
+                GreenhouseElementInstance(definition.elementId, anchor ?: continue, cropDef = definition)
             )
         }
 

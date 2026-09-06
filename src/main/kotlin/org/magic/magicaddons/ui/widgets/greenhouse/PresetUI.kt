@@ -3,12 +3,8 @@ package org.magic.magicaddons.ui.widgets.greenhouse
 import org.magic.magicaddons.data.greenhouse.MasterLayout
 import org.magic.magicaddons.data.greenhouse.transfer.SkyLayoutsFormat
 import net.minecraft.client.Minecraft
-import net.minecraft.client.gui.GuiGraphicsExtractor
-import net.minecraft.client.gui.components.Renderable
-import net.minecraft.client.gui.components.events.GuiEventListener
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.network.chat.Component
-import org.magic.magicaddons.ui.Focusable
 import org.magic.magicaddons.data.greenhouse.GreenhouseGrid
 import org.magic.magicaddons.data.greenhouse.transfer.LayoutFormat
 import org.magic.magicaddons.data.greenhouse.transfer.ShareCodeFormat
@@ -16,12 +12,11 @@ import org.magic.magicaddons.data.greenhouse.transfer.LayoutTransferResult
 import org.magic.magicaddons.data.greenhouse.transfer.SkyMutationsFormat
 import org.magic.magicaddons.data.greenhouse.transfer.SkyShardsFormat
 import org.magic.magicaddons.data.greenhouse.GreenhouseLayout
-import org.magic.magicaddons.data.greenhouse.LayoutSlot
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData
-import org.magic.magicaddons.ui.HoverableContainer
 import org.magic.magicaddons.ui.OverlayContext
 import org.magic.magicaddons.ui.OverlayRenderable
 import org.magic.magicaddons.ui.widgets.ConfirmContext
+import org.magic.magicaddons.ui.widgets.PickContext
 import org.magic.magicaddons.ui.widgets.config.ClickableButtonWidget
 import org.magic.magicaddons.util.ChatUtils
 
@@ -37,99 +32,51 @@ class PresetUI(
     val shownLayout: () -> GreenhouseLayout?,
 ) : ActionPanel() {
 
-    private val importButton = ClickableButtonWidget(
-        50,
-        26,
-        Component.literal("Import")
-    )
-
-    private val exportButton = ClickableButtonWidget(
-        50,
-        26,
-        Component.literal("Export")
-    )
-
-    val applyToButton = ClickableButtonWidget(
-        50,
-        26,
-        Component.literal("Planner")
-    )
-
-    val deleteButton = ClickableButtonWidget(
-        50,
-        26,
-        Component.literal("Delete")
-    )
-
-
-    private val newButton = ClickableButtonWidget(26, 26, Component.literal("+"))
+    private val importButton = ClickableButtonWidget("Import")
+    private val exportButton = ClickableButtonWidget("Export")
+    private val applyToButton = ClickableButtonWidget("Planner")
+    private val deleteButton = ClickableButtonWidget("Delete")
+    private val newButton = ClickableButtonWidget(ClickableButtonWidget.HEIGHT, ClickableButtonWidget.HEIGHT, Component.literal("+"))
 
     override val buttons: List<ClickableButtonWidget> =
         listOf(newButton, importButton, exportButton, applyToButton, deleteButton)
 
     override fun onPressed(button: ClickableButtonWidget, event: MouseButtonEvent): Boolean {
-        if (button === newButton) {
-            onNewPreset()
-            return true
+        when (button) {
+            newButton -> onNewPreset()
+            importButton -> openFormatMenu(event) { importPreset(it) }
+            exportButton -> openFormatMenu(event) { exportPreset(it) }
+            applyToButton -> openMenu(event, "Assign To:", GreenhouseData.greenhouseGrids) { onAssignedLayout(shownLayout(), it) }
+            deleteButton -> askDelete(event)
+            else -> return false
         }
-        if (button === importButton) {
-            val context = ImportExportFormatContext(
-                event.x.toInt(),
-                event.y.toInt(),
-                overlayContext,
-                {
-                    importPreset(it)
-                }
-            )
-            context.init()
-            overlayContext.addContext(context)
-            return true
-        }
-        if (button === exportButton) {
-            val context = ImportExportFormatContext(
-                event.x.toInt(),
-                event.y.toInt(),
-                overlayContext,
-                { exportPreset(it)}
-            )
-            context.init()
-            overlayContext.addContext(context)
-            return true
-        }
-        if (button === applyToButton) {
-            val context = ApplyToContext(
-                event.x.toInt(),
-                event.y.toInt(),
-                overlayContext,
-                { onAssignedLayout.invoke(shownLayout(), it) }
-            )
-            context.init()
-            overlayContext.addContext(context)
-            return true
-        }
-        if (button === deleteButton) {
-            val master = GreenhouseData.currentPreset ?: run {
-                ChatUtils.sendWithPrefix("No preset to remove.")
-                return true
-            }
-            val clickX = event.x.toInt()
-            val clickY = event.y.toInt()
+        return true
+    }
 
-            // a preset of several plots is asked which; a preset of one goes straight to the question
-            if (master.plots.size > 1) {
-                val (menuX, menuY) = OverlayRenderable.placeOnScreen(clickX, clickY, CHOICE_WIDTH, CHOICE_HEIGHT)
-                val choice = DeleteChoiceContext(menuX, menuY, overlayContext, master) { plot ->
-                    confirmDelete(master, plot, clickX, clickY)
-                }
-                choice.init()
-                overlayContext.addContext(choice)
-            } else {
-                confirmDelete(master, null, clickX, clickY)
-            }
-            return true
-        }
+    /** The list of formats at the mouse; the picked one goes to [onPick]. */
+    private fun openFormatMenu(event: MouseButtonEvent, onPick: (LayoutFormatType) -> Unit) =
+        openMenu(event, "Format:", LayoutFormatType.entries, onPick)
 
-        return false
+    private fun <T> openMenu(event: MouseButtonEvent, title: String, values: List<T>, onPick: (T) -> Unit) {
+        val menu = PickContext(event.x.toInt(), event.y.toInt(), title, values, overlayContext, onPick)
+        menu.init()
+        overlayContext.addContext(menu)
+    }
+
+    /** A preset of several plots is asked which; a preset of one goes straight to the question. */
+    private fun askDelete(event: MouseButtonEvent) {
+        val master = GreenhouseData.currentPreset ?: run {
+            ChatUtils.sendWithPrefix("No preset to remove.")
+            return
+        }
+        val clickX = event.x.toInt()
+        val clickY = event.y.toInt()
+
+        if (master.plots.size > 1) {
+            openMenu(event, "Delete:", DeleteChoice.choicesOf(master)) { confirmDelete(master, it.plot, clickX, clickY) }
+        } else {
+            confirmDelete(master, null, clickX, clickY)
+        }
     }
 
     /** The yes or no before anything is deleted; no, or a click elsewhere, deletes nothing. */
@@ -143,38 +90,7 @@ class PresetUI(
         overlayContext.addContext(ConfirmContext(menuX, menuY, question, overlayContext) { onRemove(plot) })
     }
 
-    override fun mouseMoved(mouseX: Double, mouseY: Double) {
-        hoveredElement = null
-        importButton.mouseMoved(mouseX, mouseY)
-        exportButton.mouseMoved(mouseX, mouseY)
-        applyToButton.mouseMoved(mouseX, mouseY)
-        deleteButton.mouseMoved(mouseX, mouseY)
-        newButton.mouseMoved(mouseX, mouseY)
-        if (hoveredElement == null) {
-            if (importButton.isMouseOver(mouseX, mouseY)) {
-                hoveredElement = importButton
-            }
-        }
-        if (hoveredElement == null) {
-            if (exportButton.isMouseOver(mouseX, mouseY)) {
-                hoveredElement = exportButton
-            }
-        }
-        if (hoveredElement == null) {
-            if (applyToButton.isMouseOver(mouseX, mouseY)) {
-                hoveredElement = applyToButton
-            }
-        }
-        if (hoveredElement == null) {
-            if (deleteButton.isMouseOver(mouseX, mouseY)) {
-                hoveredElement = deleteButton
-            }
-        }
-    }
-
-
-
-    fun importPreset(type: ImportExportFormatContext.LayoutFormatType) {
+    private fun importPreset(type: LayoutFormatType) {
         val format = formatFor(type)
         val clipboard = Minecraft.getInstance().keyboardHandler.clipboard
 
@@ -183,7 +99,7 @@ class PresetUI(
             return
         }
 
-        val result = format.import(clipboard, "preset_${GreenhouseData.computeNextAvailableId()}")
+        val result = format.import(clipboard, GreenhouseLayout.presetId(GreenhouseData.computeNextAvailableId()))
 
         result.notes.forEach { ChatUtils.sendWithPrefix(it) }
 
@@ -199,11 +115,11 @@ class PresetUI(
         }
     }
 
-    fun exportPreset(type: ImportExportFormatContext.LayoutFormatType) {
+    private fun exportPreset(type: LayoutFormatType) {
         val preset = GreenhouseData.currentPreset
 
         if (preset == null) {
-            ChatUtils.sendWithPrefix("No Preset Selected")
+            ChatUtils.sendWithPrefix("No preset selected.")
             return
         }
 
@@ -233,19 +149,11 @@ class PresetUI(
     private fun LayoutFormat.isSinglePlot(): Boolean = this === SkyMutationsFormat || this === SkyShardsFormat
 
     /** The format behind a menu entry. */
-    private fun formatFor(type: ImportExportFormatContext.LayoutFormatType): LayoutFormat =
+    private fun formatFor(type: LayoutFormatType): LayoutFormat =
         when (type) {
-            ImportExportFormatContext.LayoutFormatType.SkyMutations -> SkyMutationsFormat
-            ImportExportFormatContext.LayoutFormatType.SkyShards -> SkyShardsFormat
-            ImportExportFormatContext.LayoutFormatType.SkyLayouts -> SkyLayoutsFormat
-            ImportExportFormatContext.LayoutFormatType.MagicAddons -> ShareCodeFormat
+            LayoutFormatType.SkyMutations -> SkyMutationsFormat
+            LayoutFormatType.SkyShards -> SkyShardsFormat
+            LayoutFormatType.SkyLayouts -> SkyLayoutsFormat
+            LayoutFormatType.MagicAddons -> ShareCodeFormat
         }
-
-
-
-    private companion object {
-        /** About what the plot list takes, for keeping it on screen. */
-        const val CHOICE_WIDTH: Int = 120
-        const val CHOICE_HEIGHT: Int = 100
-    }
 }

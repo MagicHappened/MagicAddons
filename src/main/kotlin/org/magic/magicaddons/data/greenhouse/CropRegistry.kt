@@ -1,5 +1,6 @@
 package org.magic.magicaddons.data.greenhouse
 
+import net.minecraft.world.level.block.Block
 import org.magic.magicaddons.data.greenhouse.elements.DeadPlant
 import org.magic.magicaddons.data.greenhouse.elements.DevourerRoots
 import org.magic.magicaddons.data.greenhouse.elements.FireElement
@@ -12,14 +13,17 @@ import org.magic.magicaddons.data.greenhouse.elements.mutation.legendary.*
 import org.magic.magicaddons.data.greenhouse.elements.rarecrop.*
 
 object CropRegistry {
-    val all: MutableList<CropDefinition> = mutableListOf()
+    private val definitions = mutableListOf<CropDefinition>()
+    private val tiers = mutableMapOf<CropDefinition, Int>()
+
+    val all: List<CropDefinition> get() = definitions
 
     /** Where each crop sits in the dex ordering, taken from the package its provider lives in. */
-    val tierOf: MutableMap<CropDefinition, Int> = mutableMapOf()
+    val tierOf: Map<CropDefinition, Int> get() = tiers
 
     private fun register(provider: CropDefinitionProvider) {
-        all.add(provider.definition)
-        tierOf[provider.definition] = tierFromPackage(provider.javaClass.name)
+        definitions.add(provider.definition)
+        tiers[provider.definition] = tierFromPackage(provider.javaClass.name)
     }
 
     private fun tierFromPackage(name: String): Int = when {
@@ -46,6 +50,30 @@ object CropRegistry {
 
     fun get(idOrName: String): CropDefinition? = byKey[idOrName]
 
+    /** A crop by id or name, falling back to its name in any casing. */
+    fun findByName(name: String): CropDefinition? =
+        get(name) ?: all.find { it.name.equals(name, ignoreCase = true) }
+
+    /** [text] with only its letters and digits, lower case, so "do_not_eat_shroom" and "Do-not-eat-shroom" compare equal. */
+    private fun looseKey(text: String): String = text.lowercase().filter { it.isLetterOrDigit() }
+
+    private val byLooseKey: Map<String, CropDefinition> by lazy {
+        buildMap {
+            all.forEach { definition ->
+                putIfAbsent(looseKey(definition.name), definition)
+                definition.skyblockId?.id?.substringAfter(':')?.let { putIfAbsent(looseKey(it), definition) }
+            }
+        }
+    }
+
+    /** A crop by its name or bare skyblock id, ignoring case, spaces and punctuation. */
+    fun findLoose(text: String): CropDefinition? = byLooseKey[looseKey(text)]
+
+    /** The crops that can stand on each soil block. */
+    val elementsBySoil: Map<Block, List<CropDefinition>> by lazy {
+        all.flatMap { definition -> definition.requiredSoil.map { soil -> soil to definition } }
+            .groupBy(keySelector = { it.first }, valueTransform = { it.second })
+    }
 
     init {
         loadCrops()

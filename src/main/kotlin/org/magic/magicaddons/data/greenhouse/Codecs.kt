@@ -7,7 +7,6 @@ import net.minecraft.world.level.block.state.BlockState
 import org.magic.magicaddons.data.greenhouse.GreenhouseGrid.GridState
 import org.magic.magicaddons.data.greenhouse.GrowthStageInfo.Estimated
 import org.magic.magicaddons.data.greenhouse.GrowthStageInfo.Known
-import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData
 import java.time.Instant
 import java.util.*
 
@@ -153,9 +152,8 @@ object Codecs {
 
             ).apply(instance) { lastUpdate, assignedLayout ->
                 GridState(
-                    lastUpdateTimestamp = lastUpdate.orElse(null)?.let { Instant.ofEpochMilli(it) },
-                    assignedLayout = GreenhouseData.allPlots().find { it.id == assignedLayout.orElse(null) }
-                )
+                    lastUpdateTimestamp = lastUpdate.orElse(null)?.let { Instant.ofEpochMilli(it) }
+                ).also { it.assignedLayoutId = assignedLayout.orElse(null) }
             }
         }
     }
@@ -192,11 +190,7 @@ object Codecs {
                     .fieldOf("layout")
                     .forGetter { it.layout }
 
-            ).apply(instance) { state, layout ->
-                val grid = GreenhouseGrid(state, layout)
-
-                grid
-            }
+            ).apply(instance) { state, layout -> GreenhouseGrid(state, layout) }
         }
     }
 

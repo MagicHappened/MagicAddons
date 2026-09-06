@@ -1,6 +1,6 @@
 package org.magic.magicaddons.util
 
-import org.magic.magicaddons.events.world.OnWorldTickEvent
+import org.magic.magicaddons.events.world.WorldTickEvent
 import org.magic.magicaddons.events.EventHandler
 import org.magic.magicaddons.events.EventBus
 import org.joml.Matrix3x2fc
@@ -14,62 +14,38 @@ import net.minecraft.client.gui.Font
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.render.TextureSetup
 import net.minecraft.client.gui.screens.Screen
-import net.minecraft.client.gui.screens.inventory.tooltip.ClientTooltipComponent
-import net.minecraft.client.gui.screens.inventory.tooltip.DefaultTooltipPositioner
+import net.minecraft.client.input.MouseButtonEvent
+import net.minecraft.client.input.MouseButtonInfo
 import net.minecraft.client.renderer.RenderPipelines
 import net.minecraft.client.renderer.texture.TextureAtlasSprite
 import net.minecraft.core.Direction
-import net.minecraft.resources.Identifier
 import net.minecraft.util.RandomSource
 import net.minecraft.world.item.ItemStack
+import net.minecraft.world.item.Items
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.client.renderer.block.dispatch.BlockStateModelPart
-import net.minecraft.client.renderer.item.ItemStackRenderState
 import net.minecraft.client.renderer.state.gui.ColoredRectangleRenderState
 import net.minecraft.client.renderer.state.gui.GuiTextRenderState
 import net.minecraft.network.chat.Component
 import net.minecraft.util.FormattedCharSequence
 import net.minecraft.world.item.ItemDisplayContext
 import org.joml.Matrix3x2f
-import org.joml.Matrix4f
 import net.minecraft.client.renderer.item.TrackingItemStackRenderState
+import org.magic.magicaddons.data.greenhouse.CropDefinition
 import org.magic.magicaddons.render.ItemIconRenderState
 import org.magic.magicaddons.util.compat.McCompat
 
 object ScreenUtil {
 
-    private data class TextBoxLayout(
-        val lines: List<String>,
-        val maxWidth: Int,
-        val lineHeight: Int,
-        val totalHeight: Int,
-        val boxWidth: Int,
-        val boxHeight: Int
-    )
+    private class TextBoxLayout(val lines: List<String>, val boxWidth: Int, val boxHeight: Int)
 
     private fun computeLayout(text: String): TextBoxLayout {
-        val textRenderer = Minecraft.getInstance().font
-        val padding = 4
-
+        val font = Minecraft.getInstance().font
         val lines = text.lines()
-        val maxWidth = lines.maxOfOrNull { textRenderer.width(it) } ?: 0
-        val lineHeight = textRenderer.lineHeight
-        val totalHeight = lines.size * lineHeight
+        val maxWidth = lines.maxOfOrNull { font.width(it) } ?: 0
 
-        val boxWidth = maxWidth + padding * 2
-        val boxHeight = totalHeight + padding * 2
-
-        return TextBoxLayout(
-            lines,
-            maxWidth,
-            lineHeight,
-            totalHeight,
-            boxWidth,
-            boxHeight
-        )
+        return TextBoxLayout(lines, maxWidth + BOX_PAD * 2, lines.size * font.lineHeight + BOX_PAD * 2)
     }
-
-
 
     private var newScreen: Screen? = null
 
@@ -82,7 +58,7 @@ object ScreenUtil {
     }
 
     @EventHandler
-    fun onTick(event: OnWorldTickEvent) {
+    fun onTick(event: WorldTickEvent) {
         val target = newScreen ?: return
 
         if (McCompat.currentScreen() !== target) {
@@ -91,6 +67,34 @@ object ScreenUtil {
             newScreen = null
         }
     }
+
+    /** Whether ([mouseX], [mouseY]) lies in the rectangle from ([x], [y]) of [width] by [height]. */
+    fun inRect(mouseX: Double, mouseY: Double, x: Int, y: Int, width: Int, height: Int): Boolean =
+        inRect(mouseX.toInt(), mouseY.toInt(), x, y, width, height)
+
+    fun inRect(mouseX: Int, mouseY: Int, x: Int, y: Int, width: Int, height: Int): Boolean =
+        mouseX in x until x + width && mouseY in y until y + height
+
+    /** The same event at another point, for a screen that draws in its own coordinates. */
+    fun MouseButtonEvent.at(x: Double, y: Double): MouseButtonEvent =
+        MouseButtonEvent(x, y, MouseButtonInfo(button(), modifiers()))
+
+    operator fun IntArray.component4(): Int = this[3]
+
+    /** [text] when it fits in [room], else cut to fit with an ellipsis on the end. */
+    fun ellipsised(font: Font, text: String, room: Int): String =
+        if (font.width(text) <= room) text
+        else font.plainSubstrByWidth(text, (room - font.width(ELLIPSIS)).coerceAtLeast(0)) + ELLIPSIS
+
+    /** [scroll] moved one row by a wheel turn of [scrollY], kept within [total] rows of which [visible] show. */
+    fun stepScroll(scroll: Int, scrollY: Double, total: Int, visible: Int): Int =
+        (scroll - scrollY.toInt().coerceIn(-1, 1)).coerceIn(0, (total - visible).coerceAtLeast(0))
+
+    /** The item that stands for a crop: its display item, its skyblock item, or a barrier when neither exists. */
+    fun stackFor(def: CropDefinition): ItemStack =
+        def.displayItem?.let { ItemStack(it) }
+            ?: def.skyblockId?.toItem()?.takeUnless { it.isEmpty }
+            ?: ItemStack(Items.BARRIER)
 
     /** A panel: the fill with the standard frame around it. Every box of this mod is one. */
     fun GuiGraphicsExtractor.drawPanel(
@@ -257,15 +261,6 @@ object ScreenUtil {
         override fun bounds(): ScreenRectangle = bounds
     }
 
-    fun GuiGraphicsExtractor.drawBorder(
-        x1: Float, y1: Float,
-        x2: Float, y2: Float,
-        thickness: Float,
-        color: Int? = null
-    ) {
-        drawBorder(x1.toInt(), y1.toInt(), x2.toInt(), y2.toInt(), thickness.toInt(), color ?: Common.UI.TEXT_COLOR)
-    }
-
     /** A panel with a quiet title in its top left, for a group of controls that belong together. */
     fun GuiGraphicsExtractor.drawShelf(x1: Int, y1: Int, x2: Int, y2: Int, title: String) {
         drawPanel(x1, y1, x2, y2)
@@ -315,49 +310,23 @@ object ScreenUtil {
         fill(x1 + corner, y2 - corner, x2 - corner, y2, color)
     }
 
-    fun GuiGraphicsExtractor.drawLine(
-        x1: Int,
-        y1: Int,
-        x2: Int,
-        y2: Int,
-        thickness: Int,
-        color: Int
-    ) {
-        drawLine(
-            x1.toFloat(),
-            y1.toFloat(),
-            x2.toFloat(),
-            y2.toFloat(),
-            thickness.toFloat(),
-            color
-        )
-    }
-
-    fun GuiGraphicsExtractor.drawLine(
-        x1: Float,
-        y1: Float,
-        x2: Float,
-        y2: Float,
-        thickness: Float,
-        color: Int? = null
-    ) {
-        val dx = x2 - x1
-        val dy = y2 - y1
+    /** A straight line of [thickness] from ([x1], [y1]) to ([x2], [y2]), as one gui element. */
+    fun GuiGraphicsExtractor.drawLine(x1: Int, y1: Int, x2: Int, y2: Int, thickness: Int, color: Int) {
+        val dx = (x2 - x1).toFloat()
+        val dy = (y2 - y1).toFloat()
         val length = kotlin.math.sqrt(dx * dx + dy * dy)
         if (length == 0f) return
 
         val pose = Matrix3x2f(this.pose())
 
-        pose.translate(x1, y1)
+        pose.translate(x1.toFloat(), y1.toFloat())
         pose.rotate(kotlin.math.atan2(dy, dx))
 
         // never thinner than one pixel: taking toInt() of half a thickness turned every line of
         // thickness 1 into a rectangle of no height, which drew nothing
         val half = thickness / 2f
-        val y0 = kotlin.math.floor(-half).toInt()
-        val y1 = kotlin.math.ceil(half).toInt()
-
-        val actualColor = color ?: Common.UI.TEXT_COLOR
+        val top = kotlin.math.floor(-half).toInt()
+        val bottom = kotlin.math.ceil(half).toInt()
 
         this.guiRenderState.addGuiElement(
             ColoredRectangleRenderState(
@@ -365,11 +334,11 @@ object ScreenUtil {
                 TextureSetup.noTexture(),
                 pose,
                 0,
-                y0,
+                top,
                 kotlin.math.round(length).toInt().coerceAtLeast(1),
-                y1,
-                actualColor,
-                actualColor,
+                bottom,
+                color,
+                color,
                 this.scissorStack.peek()
             )
         )
@@ -400,106 +369,109 @@ object ScreenUtil {
     /** Tooltips wrap at this width, the same as vanilla's own widget tooltips. */
     private const val TOOLTIP_MAX_WIDTH = 170
 
+    /** Room between a tooltip's frame and its text. */
+    const val TOOLTIP_PAD: Int = Common.UI.TEXT_X_PAD
+
+    /** How far a tooltip sits from the cursor, so the pointer does not cover its first line. */
+    const val CURSOR_TOOLTIP_X: Int = 7
+    const val CURSOR_TOOLTIP_Y: Int = 12
+
     /** An item drawn larger than this is rendered at size rather than stretched from sixteen. */
     private const val CRISP_ITEM_ABOVE = 16
 
     /** A tooltip split on newlines and wrapped at vanilla's width, colour codes honoured. */
-    fun GuiGraphicsExtractor.drawSimpleTooltip(text: String, mouseX: Int, mouseY: Int, maxWidth: Int = TOOLTIP_MAX_WIDTH) {
+    fun GuiGraphicsExtractor.drawSimpleTooltip(text: String, x: Int, y: Int, maxWidth: Int = TOOLTIP_MAX_WIDTH): IntArray =
+        drawTooltipLines(wrapTooltip(text, maxWidth), x, y)
+
+    /** [drawSimpleTooltip] beside the cursor. */
+    fun GuiGraphicsExtractor.drawTooltipAtCursor(text: String, mouseX: Int, mouseY: Int, maxWidth: Int = TOOLTIP_MAX_WIDTH): IntArray =
+        drawSimpleTooltip(text, mouseX + CURSOR_TOOLTIP_X, mouseY + CURSOR_TOOLTIP_Y, maxWidth)
+
+    /** [drawTooltipLines] beside the cursor. */
+    fun GuiGraphicsExtractor.drawTooltipLinesAtCursor(
+        lines: List<FormattedCharSequence>,
+        mouseX: Int,
+        mouseY: Int,
+        icons: (Int) -> List<ItemStack> = { emptyList() }
+    ): IntArray =
+        drawTooltipLines(lines, mouseX + CURSOR_TOOLTIP_X, mouseY + CURSOR_TOOLTIP_Y, icons)
+
+    private fun wrapTooltip(text: String, maxWidth: Int): List<FormattedCharSequence> {
         val font = Minecraft.getInstance().font
-        val lines = text.split('\n').flatMap { line ->
+        return text.split('\n').flatMap { line ->
             font.split(Component.literal(line), maxWidth.coerceAtLeast(font.width("W")))
         }
-        drawTooltipLines(lines, mouseX, mouseY)
     }
 
-    /** Lines on a panel at the cursor, drawn at once and kept on screen. Call it last, it has no depth of its own. */
-    fun GuiGraphicsExtractor.drawTooltipLines(lines: List<FormattedCharSequence>, mouseX: Int, mouseY: Int) {
-        if (lines.isEmpty()) return
+    /**
+     * Lines on a panel at ([x], [y]), moved to stay on screen. Call it last, it has no depth of its
+     * own. [icons] gives the items drawn text-high before a line. Returns the panel's rectangle.
+     */
+    fun GuiGraphicsExtractor.drawTooltipLines(
+        lines: List<FormattedCharSequence>,
+        x: Int,
+        y: Int,
+        icons: (Int) -> List<ItemStack> = { emptyList() }
+    ): IntArray {
+        if (lines.isEmpty()) return intArrayOf(x, y, x, y)
         val font = Minecraft.getInstance().font
-        val pad = Common.UI.TEXT_X_PAD
+        val icon = font.lineHeight
+        val iconStep = icon + Common.UI.SPACING_SMALL
 
-        val boxWidth = lines.maxOf { font.width(it) } + pad * 2
-        val boxHeight = lines.size * font.lineHeight + pad * 2
+        val boxWidth = lines.indices.maxOf { icons(it).size * iconStep + font.width(lines[it]) } + TOOLTIP_PAD * 2
+        val boxHeight = lines.size * font.lineHeight + TOOLTIP_PAD * 2
 
         val screen = McCompat.currentScreen()
         val screenWidth = screen?.width ?: Minecraft.getInstance().window.guiScaledWidth
         val screenHeight = screen?.height ?: Minecraft.getInstance().window.guiScaledHeight
 
-        val x = mouseX.coerceAtMost(screenWidth - boxWidth).coerceAtLeast(0)
-        val y = mouseY.coerceAtMost(screenHeight - boxHeight).coerceAtLeast(0)
+        val left = x.coerceAtMost(screenWidth - boxWidth).coerceAtLeast(0)
+        val top = y.coerceAtMost(screenHeight - boxHeight).coerceAtLeast(0)
 
-        drawPanel(x, y, x + boxWidth, y + boxHeight)
+        drawPanel(left, top, left + boxWidth, top + boxHeight)
 
         lines.forEachIndexed { index, line ->
-            text(font, line, x + pad, y + pad + index * font.lineHeight, Common.UI.TEXT_COLOR, false)
+            var textX = left + TOOLTIP_PAD
+            val lineY = top + TOOLTIP_PAD + index * font.lineHeight
+            icons(index).forEach { stack ->
+                renderFakeItem(stack, textX, lineY, icon, icon)
+                textX += iconStep
+            }
+            text(font, line, textX, lineY, Common.UI.TEXT_COLOR, false)
         }
+        return intArrayOf(left, top, left + boxWidth, top + boxHeight)
     }
 
-    /** How tall [drawMultilineBox] draws [text], so screens can stack boxes under each other. */
+    /** How tall [drawMultilineBoxCentered] draws [text], so screens can stack boxes under each other. */
     fun boxHeight(text: String): Int = computeLayout(text).boxHeight
 
+    /** A framed box with [text] centred in it, line by line, its middle at ([centerX], [centerY]). */
     fun GuiGraphicsExtractor.drawMultilineBoxCentered(
         text: String,
         centerX: Int,
         centerY: Int,
         color: Int? = null
     ) {
+        val font = Minecraft.getInstance().font
         val layout = computeLayout(text)
 
         val x = centerX - layout.boxWidth / 2
         val y = centerY - layout.boxHeight / 2
 
-        drawMultilineBox(text, x, y, color)
-    }
+        drawPanel(x, y, x + layout.boxWidth, y + layout.boxHeight, frame = color ?: Common.UI.BORDER_COLOR)
 
-
-    fun GuiGraphicsExtractor.drawMultilineBox(
-        text: String,
-        x: Int,
-        y: Int,
-        color: Int? = null
-    ){
-        drawMultilineBox(
-            text,
-            x.toFloat(),
-            y.toFloat(),
-            color
-        )
-    }
-
-
-    fun GuiGraphicsExtractor.drawMultilineBox(
-        text: String,
-        x: Float,
-        y: Float,
-        color: Int? = null
-    ) {
-        val font = Minecraft.getInstance().font
-        val padding = 4f
-
-        val layout = computeLayout(text)
-
-        val x1 = x
-        val y1 = y
-        val x2 = x + layout.boxWidth
-        val y2 = y + layout.boxHeight
-
-        drawPanel(x1.toInt(), y1.toInt(), x2.toInt(), y2.toInt(), frame = color ?: Common.UI.BORDER_COLOR)
-
-        // text
-        var currentY = y + padding
+        var currentY = y + BOX_PAD
 
         layout.lines.forEach { line ->
-            val seq = Component.literal(line).visualOrderText
-            val centeredX = x + (layout.boxWidth - font.width(line)) / 2f
+            val centeredX = x + (layout.boxWidth - font.width(line)) / 2
 
             guiRenderState.addText(
                 GuiTextRenderState(
                     font,
-                    seq,
+                    Component.literal(line).visualOrderText,
                     Matrix3x2f(pose()),
-                    centeredX.toInt(),
-                    currentY.toInt(),
+                    centeredX,
+                    currentY,
                     Common.UI.TEXT_COLOR,
                     0,
                     false,
@@ -508,7 +480,7 @@ object ScreenUtil {
                 )
             )
 
-            currentY += layout.lineHeight
+            currentY += font.lineHeight
         }
     }
 
@@ -595,7 +567,8 @@ object ScreenUtil {
         throw IllegalStateException("No sprite for state $state")
     }
 
+    /** Room between a text box's frame and its lines. */
+    private const val BOX_PAD: Int = 4
 
-
-
+    private const val ELLIPSIS: String = "…"
 }

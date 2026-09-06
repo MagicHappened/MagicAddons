@@ -8,10 +8,6 @@ class LayoutSlot(
     var placedBlock: BlockState?,
     var slotMark: Marking? = null
 ) {
-    fun isCoordsEqual(other: LayoutSlot): Boolean {
-        return x == other.x && y == other.y
-    }
-
     /**
      * What a slot is for in a layout. [color] belongs to the marking rather than to whichever
      * widget happens to draw it, so a role reads as the same colour everywhere in the ui.

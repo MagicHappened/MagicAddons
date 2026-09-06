@@ -36,21 +36,8 @@ object SkyLayoutsFormat : LayoutFormat {
     /** The site's default for how often the greenhouse is visited, in stages; the mod tracks no such thing. */
     private const val VISIT_INTERVAL: Int = 8
 
-    private const val MAX_PLOTS: Int = 3
-
-    private fun key(text: String): String = text.lowercase().filter { it.isLetterOrDigit() }
-
-    private val byKey: Map<String, CropDefinition> by lazy {
-        buildMap {
-            CropRegistry.all.forEach { def ->
-                putIfAbsent(key(def.name), def)
-                def.skyblockId?.id?.substringAfter(':')?.let { putIfAbsent(key(it), def) }
-            }
-        }
-    }
-
     private val kindOf: Map<CropDefinition, Int> by lazy {
-        buildMap { KINDS.forEachIndexed { index, id -> byKey[key(id)]?.let { putIfAbsent(it, index) } } }
+        buildMap { KINDS.forEachIndexed { index, id -> CropRegistry.findLoose(id)?.let { putIfAbsent(it, index) } } }
     }
 
     private fun letter(index: Int): Char = ALPHABET[index]
@@ -76,13 +63,13 @@ object SkyLayoutsFormat : LayoutFormat {
 
         // the link names the mutation the layout grows; the site shows it at every empty cell
         val head = code.substringBefore('~')
-        val target = KINDS.getOrNull(index(head[1]) - 1)?.let { byKey[key(it)] }
+        val target = KINDS.getOrNull(index(head[1]) - 1)?.let { CropRegistry.findLoose(it) }
 
-        val layouts = boards.take(MAX_PLOTS).mapIndexed { number, board ->
-            val id = if (number == 0) layoutId else "${layoutId}_p${number + 1}"
-            readBoard(board, id, target, notes) ?: return LayoutTransferResult.Failure("Could not read plot ${number + 1} of the SkyLayouts link.")
+        val layouts = boards.take(MasterLayout.MAX_PLOTS).mapIndexed { number, board ->
+            readBoard(board, MasterLayout.plotId(layoutId, number), target, notes)
+                ?: return LayoutTransferResult.Failure("Could not read plot ${number + 1} of the SkyLayouts link.")
         }
-        if (boards.size > MAX_PLOTS) notes.add("Only the first $MAX_PLOTS plots were taken.")
+        if (boards.size > MasterLayout.MAX_PLOTS) notes.add("Only the first ${MasterLayout.MAX_PLOTS} plots were taken.")
 
         if (layouts.size > 1) notes.add("Imported ${layouts.size} plots as one preset.")
 
@@ -129,14 +116,14 @@ object SkyLayoutsFormat : LayoutFormat {
                 val kind = cells[y * size + x]
                 if (kind < 0 || kind >= kinds.size || taken[x][y]) continue
 
-                val def = byKey[key(kinds[kind])]
+                val def = CropRegistry.findLoose(kinds[kind])
                 if (def == null) {
                     unknown.add(kinds[kind])
                     continue
                 }
                 val slot = layout.getSlot(x, y) ?: continue
 
-                layout.elementInstances.add(GreenhouseElementInstance(def.skyblockId?.id ?: def.name, slot, null, null, cropDef = def))
+                layout.elementInstances.add(GreenhouseElementInstance(def.elementId, slot, cropDef = def))
                 val soil = def.requiredSoil.firstOrNull()?.defaultBlockState()
                 for (dx in 0 until def.footprint.width) {
                     for (dy in 0 until def.footprint.height) {
@@ -156,7 +143,7 @@ object SkyLayoutsFormat : LayoutFormat {
                     val slot = layout.getSlot(x, y) ?: continue
                     slot.slotMark = LayoutSlot.Marking.Target
                     target.requiredSoil.firstOrNull()?.let { slot.placedBlock = it.defaultBlockState() }
-                    layout.elementInstances.add(GreenhouseElementInstance(target.skyblockId?.id ?: target.name, slot, null, null, cropDef = target))
+                    layout.elementInstances.add(GreenhouseElementInstance(target.elementId, slot, cropDef = target))
                 }
             }
         } else if (target != null) {
@@ -178,8 +165,8 @@ object SkyLayoutsFormat : LayoutFormat {
             ?.let { kindOf[it.cropDef] }
         val head = "1" + letter(target?.plus(1) ?: 0) + letter(VISIT_INTERVAL)
 
-        val boards = plots.take(MAX_PLOTS).map { writeBoard(it, notes) }
-        if (plots.size > MAX_PLOTS) notes.add("Only the first $MAX_PLOTS plots were written.")
+        val boards = plots.take(MasterLayout.MAX_PLOTS).map { writeBoard(it, notes) }
+        if (plots.size > MasterLayout.MAX_PLOTS) notes.add("Only the first ${MasterLayout.MAX_PLOTS} plots were written.")
 
         return LayoutTransferResult.Exported(URL + head + "~p" + boards.joinToString("~"), notes)
     }

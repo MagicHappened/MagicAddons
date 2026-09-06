@@ -1,55 +1,42 @@
 package org.magic.magicaddons.features.farming.greenhousePresets
 
-import org.magic.magicaddons.data.greenhouse.LayoutSlot
-import tech.thatgravyboat.skyblockapi.api.profile.profile.ProfileAPI
-import org.magic.magicaddons.data.greenhouse.MasterLayout
-import org.magic.magicaddons.data.greenhouse.GrowthStageInfo
+import org.magic.magicaddons.commands.internal.MainInternal
 import org.magic.magicaddons.commands.debug.CropCollector
-import org.magic.magicaddons.data.config.BooleanSetting
-import org.magic.magicaddons.data.config.IntSetting
+import org.magic.magicaddons.commands.internal.farming.SetTimestalkAttribute
 import org.magic.magicaddons.util.getBuildableArea
 import org.magic.magicaddons.util.parseDurationToMs
 import org.magic.magicaddons.util.center
+import org.magic.magicaddons.util.toShortDuration
 import net.minecraft.network.chat.HoverEvent
 import net.minecraft.network.chat.ClickEvent
 import net.minecraft.ChatFormatting
 import net.minecraft.client.Minecraft
 import net.minecraft.core.BlockPos
-import net.minecraft.core.Rotations
-import net.minecraft.network.chat.TextColor
 import net.minecraft.network.chat.Component
-import net.minecraft.world.entity.EquipmentSlot
 import net.minecraft.world.entity.decoration.ArmorStand
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
-import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.Blocks
-import net.minecraft.world.level.block.state.BlockState
-import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.Common
-import org.magic.magicaddons.commands.debug.FarmingDebug
-import org.magic.magicaddons.data.greenhouse.GREENHOUSE_SOIL_Y
 import org.magic.magicaddons.data.greenhouse.*
-import org.magic.magicaddons.data.greenhouse.CropStates.toFunctionString
 import org.magic.magicaddons.data.greenhouse.elements.FireElement
 import org.magic.magicaddons.data.handlers.DataHandler
 import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.events.EventHandler
-import org.magic.magicaddons.events.chat.OnSystemChatEvent
+import org.magic.magicaddons.events.chat.SystemChatEvent
 import org.magic.magicaddons.events.greenhouse.GrowthTickEvent
 import org.magic.magicaddons.events.greenhouse.PlotChangedEvent
 import org.magic.magicaddons.events.interact.*
-import org.magic.magicaddons.events.world.OnWorldTickEvent
-import org.magic.magicaddons.events.world.OnEntityAdded
-import org.magic.magicaddons.events.world.OnEntityRemoved
+import org.magic.magicaddons.events.world.WorldTickEvent
+import org.magic.magicaddons.events.world.EntityAddedEvent
+import org.magic.magicaddons.events.world.EntityRemovedEvent
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhousePresets.baseSetting
 import org.magic.magicaddons.util.ChatUtils
-import org.magic.magicaddons.util.PlayerUtils
 import org.magic.magicaddons.ui.widgets.config.SettingDetail
 import org.magic.magicaddons.util.ServerUtils
 import tech.thatgravyboat.skyblockapi.api.profile.hunting.AttributeAPI
-import tech.thatgravyboat.skyblockapi.api.SkyBlockAPI
+import tech.thatgravyboat.skyblockapi.api.profile.profile.ProfileAPI
 import tech.thatgravyboat.skyblockapi.api.events.base.Subscription
 import tech.thatgravyboat.skyblockapi.api.events.base.predicates.OnlyIn
 import tech.thatgravyboat.skyblockapi.api.events.base.predicates.OnlyNonGuest
@@ -66,22 +53,14 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 import tech.thatgravyboat.skyblockapi.utils.extentions.getLore
 import tech.thatgravyboat.skyblockapi.utils.extentions.isSkyblockFiller
 import net.minecraft.network.chat.Style
-import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockId
-import java.util.Optional
 import java.time.Duration
 import java.time.Instant
-import java.util.*
-import kotlin.math.abs
 
-object GreenhouseData {
+object GreenhouseData : GridCallbacks {
 
     init {
-        EventBus.register(this)
-        SkyBlockAPI.eventBus.register(this)
+        GreenhouseGrid.callbacks = this
     }
-
-    private const val BUILD_OFFSET = 43
-    private const val GRID_SIZE = 10
 
     var lastPlot: Plot? = null
 
@@ -104,7 +83,6 @@ object GreenhouseData {
         return if (master.plots.size > 1) "${master.plotTitle(plot)} of ${master.displayName()}" else master.displayName()
     }
     var miscInfo = MiscGreenhouseInfo()
-    var lastGridLayouts = mutableListOf<GreenhouseLayout>()
 
     var currentPreset: MasterLayout? = null
     var currentGridIndex: Int = 0
@@ -112,7 +90,6 @@ object GreenhouseData {
     var lastCheckTime: Instant? = null
     var lastServerTick: Long? = null
 
-    var removedElementByAttack: ElementRuntimeState? = null
     /** One crop the player put down, until the plot confirms it or the window runs out. */
     private class Placement(val def: CropDefinition, val pos: BlockPos, val at: Instant)
 
@@ -127,8 +104,7 @@ object GreenhouseData {
 
     private class PlacedHere(val def: CropDefinition, val at: Long)
 
-    /** The crop the player put down on the soil at [soil] this session, if any. */
-    fun placedHereAt(soil: BlockPos): CropDefinition? = placedHere[BlockPos(soil.x, GREENHOUSE_SOIL_Y, soil.z)]?.def
+    override fun placedHereAt(soil: BlockPos): CropDefinition? = placedHere[BlockPos(soil.x, GREENHOUSE_SOIL_Y, soil.z)]?.def
 
     /**
      * The soil at [soil] no longer holds what was put down there: a recorded look has matched it,
@@ -136,7 +112,7 @@ object GreenhouseData {
      * A placement younger than [PLACE_SETTLE_MS] is kept: the scan on the tick of the click runs
      * before the server has put the plant's stands down.
      */
-    fun forgetPlacementAt(soil: BlockPos) {
+    override fun forgetPlacementAt(soil: BlockPos) {
         val key = BlockPos(soil.x, GREENHOUSE_SOIL_Y, soil.z)
         val placed = placedHere[key] ?: return
         if (System.currentTimeMillis() - placed.at < PLACE_SETTLE_MS) return
@@ -154,25 +130,8 @@ object GreenhouseData {
     /** How long a placement the server never confirmed is still worth waiting for. */
     private val PLACE_WINDOW: Duration = Duration.ofSeconds(5)
 
-
-    val elementsBySoil: Map<Block, List<CropDefinition>> =
-        CropRegistry.all
-            .flatMap { definition ->
-                definition.requiredSoil.map { soil ->
-                    soil to definition
-                }
-            }
-            .groupBy(
-                keySelector = { it.first },
-                valueTransform = { it.second }
-            )
-
-
-
     private var plantDiagnosticHitBaseBlock: BlockPos? = null
     private var plantDiagnosticListeningElement: ElementRuntimeState? = null
-    // ^^ temp
-
 
     private fun initKnownIds() {
         if (checkGreenhouses) return
@@ -181,16 +140,15 @@ object GreenhouseData {
 
         PlotAPI.plots.forEach { plot ->
             if (plot.data?.isGreenhouse != true) return@forEach
-            val existingGrid = greenhouseGrids.find { "plot_${plot.id}" == it.layout.id }
+            val plotId = GreenhouseLayout.plotId(plot.id)
+            val existingGrid = greenhouseGrids.find { plotId == it.layout.id }
             existingGrid ?: run {
-                val gridLayout = GreenhouseLayout(
-                    id = "plot_${plot.id}"
-                )
+                val gridLayout = GreenhouseLayout(id = plotId)
                 val gridState = GreenhouseGrid.GridState(
-                    null,
-                    true,
-                    null,
-                    false
+                    lastUpdateTimestamp = null,
+                    needsUpdate = true,
+                    assignedLayout = null,
+                    hasRuntimeReferences = false
                 )
 
                 val grid = GreenhouseGrid(gridState, gridLayout)
@@ -235,7 +193,7 @@ object GreenhouseData {
     /** The most one look at the clock may move the next tick by, so a wrong guess cannot walk it away. */
     private const val MAX_TICK_ADJUSTMENT_MS: Long = 5_000
 
-    /** The hunting shard carrying greenhouse speed, a legendary one, twenty four syphons to max. */
+    /** The hunting shard carrying greenhouse speed, ten levels of a tenth of a percent each. */
     const val GREENHOUSE_SPEED_ATTRIBUTE_ID: String = "attribute:l57"
 
     /** Where the plot changed since the last tick; those slots are read again on the tick itself. */
@@ -339,27 +297,12 @@ object GreenhouseData {
         val longest = remaining + ticks * tickMs
 
         return SettingDetail.Text(
-            "(absent for between ${spanText(shortest)} - ${spanText(longest)})"
+            "(absent for between ${shortest.toShortDuration()} - ${longest.toShortDuration()})"
         )
     }
 
     /** The colour of the detail line when a value it needs is missing. */
     private const val MISSING_COLOR: Int = 0xFFFF8855.toInt()
-
-    /** A length of time as the player reads one: "2d 3h", "9h 40m", "54m", "30s". */
-    fun spanText(ms: Long): String {
-        val seconds = (ms / 1000).coerceAtLeast(0)
-        val minutes = seconds / 60
-        val hours = minutes / 60
-        val days = hours / 24
-
-        return when {
-            days > 0 -> "${days}d ${hours % 24}h"
-            hours > 0 -> "${hours}h ${minutes % 60}m"
-            minutes > 0 -> "${minutes}m"
-            else -> "${seconds}s"
-        }
-    }
 
     /** Which greenhouses run out of room for their chorus before the player is next back. */
     private fun warnOfChorusCollision() {
@@ -386,8 +329,7 @@ object GreenhouseData {
 
     /** What to break, where, and why. A growing jellybean is named when there is one to lose. */
     private fun sendChorusWarning(crowded: List<Pair<GreenhouseLayout, ChorusCollision.Report>>) {
-        val message = Component.literal("[MA] ").withStyle(ChatFormatting.GOLD)
-            .append(
+        val message = ChatUtils.buildWithPrefix(
                 Component.literal("Chorus collision likely: ").withStyle(ChatFormatting.RED)
             )
 
@@ -452,11 +394,7 @@ object GreenhouseData {
                 if (water <= WaterModel.DEATH) return@forEach
 
                 // a plant that has finished growing stopped drinking, so nothing kills it
-                val lowestStage = when (val stage = instance.growthStage) {
-                    is GrowthStageInfo.Known -> stage.stage
-                    is GrowthStageInfo.Estimated -> stage.range.first
-                    null -> null
-                }
+                val lowestStage = instance.lowestStage
                 if (lowestStage != null && lowestStage >= instance.cropDef.maxStage) return@forEach
 
                 val effect = grid.layout.waterEffectAt(instance.slot)
@@ -479,7 +417,7 @@ object GreenhouseData {
     }
 
     /** A plant found alive past its predicted death: said now, at whatever the countdown reads. */
-    fun warnSurvivor(plant: DyingPlant) {
+    override fun warnSurvivor(plant: DyingPlant) {
         val remaining = miscInfo.nextTickTime
             ?.let { Duration.between(Instant.now(), it).toMillis().coerceAtLeast(0) }
             ?: 0
@@ -497,8 +435,7 @@ object GreenhouseData {
     private fun sendDehydrationWarning(dying: List<DyingPlant>, remainingMs: Long) {
         val byHouse = dying.groupBy({ it.greenhouse }, { it.plant })
 
-        val message = Component.literal("[MA] ").withStyle(ChatFormatting.GOLD)
-            .append(
+        val message = ChatUtils.buildWithPrefix(
                 Component.literal("Dying of thirst in ${shortDuration(remainingMs)}: ")
                     .withStyle(ChatFormatting.RED)
             )
@@ -517,16 +454,7 @@ object GreenhouseData {
 
         if (LocationAPI.island != SkyBlockIsland.GARDEN || LocationAPI.isGuest) {
             message.append(Component.literal(" "))
-            message.append(
-                Component.literal("[GARDEN]").withStyle(
-                    Style.EMPTY
-                        .withColor(ChatFormatting.GREEN)
-                        .withClickEvent(ClickEvent.RunCommand("/warp garden"))
-                        .withHoverEvent(
-                            HoverEvent.ShowText(Component.literal("Click here to warp to garden!"))
-                        )
-                )
-            )
+            message.append(gardenWarpLink())
 
             // remembered so returning to the garden can be answered with a teleport to the plot
             awayWarning = Instant.now() to dying.first()
@@ -535,22 +463,17 @@ object GreenhouseData {
         Minecraft.getInstance().player?.sendSystemMessage(message)
     }
 
-    @EventHandler
-    fun onWorldTick(event: OnWorldTickEvent) {
-        runDueReconcile()
-    }
-
-    /** Whether the player stands in a greenhouse, their own or one they are visiting. */
+    /** Whether the player stands in any plot but the barn, their own or one they are visiting. */
     fun inGreenhouse(): Boolean = PlotAPI.getCurrentPlot()?.takeUnless { it.isBarn } != null
 
     fun getCurrentGrid(): GreenhouseGrid? {
         val plotId = PlotAPI.getCurrentPlot()?.id ?: return null
-        return greenhouseGrids.find { it.layout.id == "plot_$plotId" }
+        return greenhouseGrids.find { it.layout.id == GreenhouseLayout.plotId(plotId) }
     }
     fun computeNextAvailableId(): Int {
         val usedIds = presetGrids
             .mapNotNull {
-                it.id.removePrefix("preset_").toIntOrNull()
+                it.id.removePrefix(GreenhouseLayout.PRESET_PREFIX).toIntOrNull()
             }
             .toSet()
 
@@ -574,16 +497,20 @@ object GreenhouseData {
 
         // only the values the clock actually needs stop it. Warning about them is the screen's job,
         // not something to do from inside a check that runs every tick
-        if (miscInfo.cropGrowthValue == null || miscInfo.cropSpeedUpgradeValue == null) return
+        val cropGrowth = miscInfo.cropGrowthValue ?: return
+        val speedUpgrade = miscInfo.cropSpeedUpgradeValue ?: return
 
         val nextTick = miscInfo.nextTickTime ?: return
 
         val growthTickMs = computeGrowthStageTimeMs(
             getCurrentUniques().size,
-            miscInfo.cropGrowthValue!!,
-            miscInfo.cropSpeedUpgradeValue!!,
+            cropGrowth,
+            speedUpgrade,
             greenhouseSpeedAttribute() ?: 0
         )
+
+        // the countdown as it stands once this check has nudged it
+        var current = nextTick
 
         val now = Instant.now()
 
@@ -634,14 +561,11 @@ object GreenhouseData {
 
             // added, not taken off: time the server spent behind is time the tick has not served
             // yet. Taking it off ran the screen ahead of the game
-            miscInfo.nextTickTime =
-                miscInfo.nextTickTime!!.plusMillis(adjustmentDelta)
+            current = nextTick.plusMillis(adjustmentDelta)
+            miscInfo.nextTickTime = current
             lastCheckTime = now
 
-            now.toEpochMilli() -
-                    miscInfo.nextTickTime!!.toEpochMilli()
-
-
+            now.toEpochMilli() - current.toEpochMilli()
         } else {
             lastCheckTime = now
             now.toEpochMilli() - nextTick.toEpochMilli()
@@ -655,26 +579,13 @@ object GreenhouseData {
         // the countdown running out is itself a tick, and passedGrowthTicks only counts whole
         // periods since then. The clock knew this and the plants did not, so one tick went untold
         val elapsedTicks = passedGrowthTicks.toInt() + 1
-//        Common.LOGGER.info("Overdue ms $overdueMs")
-//        Common.LOGGER.info("Overdue growth ticks $passedGrowthTicks")
         val nextTickAdvance = (passedGrowthTicks + 1) * growthTickMs
-//        Common.LOGGER.info("Next tick advance ms $nextTickAdvance")
-//        Common.LOGGER.info("Previous tick ${miscInfo.nextTickTime}")
-//        Common.LOGGER.info("Next tick ${miscInfo.nextTickTime!!.plusMillis((nextTickAdvance))}")
-//        Common.LOGGER.info("Now $now") //hopefully dont need anymore
-        miscInfo.nextTickTime =
-            miscInfo.nextTickTime!!.plusMillis(
-                nextTickAdvance
-            )
+        miscInfo.nextTickTime = current.plusMillis(nextTickAdvance)
 
         greenhouseGrids.forEach { grid ->
             if (onlineTickTracking && !grid.hasRuntime()) return@forEach
 
-            // a greenhouse not read this session has no pending count yet, which is no reason to
-            // skip it: these are exactly the ticks nobody was there to see
-            val pendingTicks = grid.state.pendingGrowthTicks ?: 0
-
-            grid.state.pendingGrowthTicks = pendingTicks + elapsedTicks
+            grid.state.pendingGrowthTicks += elapsedTicks
             grid.state.needsUpdate = true
 
             // nobody is looking at this greenhouse, so the clock is all we have to go on
@@ -704,7 +615,8 @@ object GreenhouseData {
     }
 
     @EventHandler
-    fun onTick(event: OnWorldTickEvent) {
+    fun onTick(event: WorldTickEvent) {
+        runDueReconcile()
         ensureProfile()
         if (DataHandler.activeProfile == null) return
         OtherProfiles.advance()
@@ -742,10 +654,9 @@ object GreenhouseData {
 
         if (LocationAPI.island != SkyBlockIsland.GARDEN || LocationAPI.isGuest) return
 
-        val plotNumber = offer.plotId.removePrefix("plot_")
+        val plotNumber = offer.plotId.removePrefix(GreenhouseLayout.PLOT_PREFIX)
 
-        val message = Component.literal("[MA] ").withStyle(ChatFormatting.GOLD)
-            .append(
+        val message = ChatUtils.buildWithPrefix(
                 Component.literal(
                     "Click here to teleport to ${offer.greenhouse} to water ${offer.plant}"
                 ).withStyle(
@@ -852,28 +763,23 @@ object GreenhouseData {
     @OnlyIn(SkyBlockIsland.GARDEN)
     fun onInventory(event: ContainerInitializedEvent) {
         val realItems = event.containerItems.filter { !it.isSkyblockFiller() }
-        if (event.title == "Crop Diagnostics") {
-            getDiagnosesData(realItems)
-            plantDiagnosticListeningElement = null
-            plantDiagnosticHitBaseBlock = null
-            return
-        }
+
+        // the diagnosis reads what the tool was last pointed at, and any container ends that pointing
+        val listening = plantDiagnosticListeningElement
+        val hit = plantDiagnosticHitBaseBlock
         plantDiagnosticListeningElement = null
         plantDiagnosticHitBaseBlock = null
-        if (event.title == "Desk") {
-            updateCropGrowth(realItems)
-            return
-        }
 
-        if (event.title == "Greenhouse Upgrades") {
-            updateUpgrades(realItems)
+        when (event.title) {
+            "Crop Diagnostics" -> getDiagnosesData(realItems, listening, hit)
+            "Desk" -> updateCropGrowth(realItems)
+            "Greenhouse Upgrades" -> updateUpgrades(realItems)
         }
-
     }
 
 
     @EventHandler
-    fun onBlockBreak(event: OnBlockDestroyedEvent) {
+    fun onBlockBreak(event: BlockDestroyedEvent) {
         regenRender()
 
         val grid = getCurrentGrid() ?: return
@@ -896,7 +802,7 @@ object GreenhouseData {
     }
 
     @EventHandler
-    fun onBlockPlaced(event: OnBlockPlacedEvent) {
+    fun onBlockPlaced(event: BlockPlacedEvent) {
         regenRender()
 
         val grid = getCurrentGrid() ?: return
@@ -909,7 +815,7 @@ object GreenhouseData {
     }
 
     @EventHandler
-    fun onEntityAdded(event: OnEntityAdded) {
+    fun onEntityAdded(event: EntityAddedEvent) {
         val grid = getCurrentGrid() ?: return
         if (!grid.hasRuntime()) return
 
@@ -921,7 +827,7 @@ object GreenhouseData {
     }
 
     @EventHandler
-    fun onBlockUpdated(event: OnBlockChangedEvent) {
+    fun onBlockUpdated(event: BlockChangedEvent) {
         val grid = getCurrentGrid() ?: return
         if (!grid.hasRuntime()) return
 
@@ -929,23 +835,18 @@ object GreenhouseData {
         if (!gridArea.contains(event.packet.pos.center())) return
         val slot = grid.getSlotAt(event.packet.pos, false) ?: return
 
-        if (gridArea.contains(event.packet.pos.center())) {
-            if (event.packet.pos.y == 74) {
-
-                if (event.packet.blockState.block == Blocks.FIRE) {
-                    val alreadyHasFire = grid.elements.any {
-                        it.instance.slot == slot && it.instance.cropDef.name == "Fire"
-                    }
-                    if (!alreadyHasFire) {
-                        val fireRuntime = FireElement.getFireAtSlot(
-                            slot,
-                            mapOf(event.packet.pos to event.packet.blockState)
-                        )
-                        grid.elements.add(fireRuntime)
-                    }
-                    return
-                }
+        if (event.packet.pos.y == GREENHOUSE_SOIL_Y + 1 && event.packet.blockState.block == Blocks.FIRE) {
+            val alreadyHasFire = grid.elements.any {
+                it.instance.slot == slot && it.instance.cropDef.name == "Fire"
             }
+            if (!alreadyHasFire) {
+                val fireRuntime = FireElement.getFireAtSlot(
+                    slot,
+                    mapOf(event.packet.pos to event.packet.blockState)
+                )
+                grid.elements.add(fireRuntime)
+            }
+            return
         }
 
         if (event.packet.pos.y != GREENHOUSE_SOIL_Y) return
@@ -960,7 +861,7 @@ object GreenhouseData {
      * Waited for rather than read on the swing, which looked at a plot the crop still stood in.
      */
     @EventHandler
-    fun onEntityRemoved(event: OnEntityRemoved) {
+    fun onEntityRemoved(event: EntityRemovedEvent) {
         val grid = getCurrentGrid() ?: return
         if (!grid.hasRuntime()) return
 
@@ -969,7 +870,7 @@ object GreenhouseData {
     }
 
     @EventHandler
-    fun onAttackEntity(event: OnAttackEntityEvent) {
+    fun onAttackEntity(event: AttackEntityEvent) {
         val grid = getCurrentGrid() ?: return
         if (!grid.hasRuntime()) return
 
@@ -980,41 +881,39 @@ object GreenhouseData {
     }
 
     @EventHandler
-    fun onInteractEntity(event: OnInteractEntityEvent) {
+    fun onInteractEntity(event: InteractEntityEvent) {
         val entityBlockPos = BlockPos.containing(event.target.position())
-        plantDiagnosticHitBaseBlock = BlockPos(entityBlockPos.x, 73, entityBlockPos.z)
+        plantDiagnosticHitBaseBlock = BlockPos(entityBlockPos.x, GREENHOUSE_SOIL_Y, entityBlockPos.z)
         val grid = getCurrentGrid() ?: return
         if (!grid.hasRuntime()) return
         val mainHandId = event.player.mainHandItem.getSkyBlockId() ?: return
         val standTarget = event.target as? ArmorStand ?: return
-        if (mainHandId.id == "item:plant_diagnostics_tool") {
-            setDiagnosesListeningElement(null, standTarget, grid)
-            return
-        }
+        if (mainHandId.id == DIAGNOSTICS_TOOL_ID) listenAtStand(standTarget, grid)
     }
+
+    private const val DIAGNOSTICS_TOOL_ID: String = "item:plant_diagnostics_tool"
 
 
     @EventHandler
-    fun onItemUse(event: OnUseEvent) {
+    fun onItemUse(event: UseEvent) {
         val grid = getCurrentGrid() ?: return
         if (!grid.hasRuntime()) return
         val mainHandId = event.player.mainHandItem.getSkyBlockId() ?: return
 
-        if (GreenhouseWatering.startWateringWindow(mainHandId)) return
+        GreenhouseWatering.startWateringWindow(mainHandId)
     }
 
     @EventHandler
-    fun onBlockUse(event: OnBlockUseEvent) {
-        plantDiagnosticHitBaseBlock = BlockPos(event.hit.blockPos.x, 73, event.hit.blockPos.z)
+    fun onBlockUse(event: BlockUseEvent) {
+        plantDiagnosticHitBaseBlock = BlockPos(event.hit.blockPos.x, GREENHOUSE_SOIL_Y, event.hit.blockPos.z)
         val grid = getCurrentGrid() ?: return
         if (!grid.hasRuntime()) return
         val mainHandId = event.player.mainHandItem.getSkyBlockId() ?: return
 
         val foundCrop = CropRegistry.get(mainHandId.id)
 
-        if (mainHandId.id == "item:plant_diagnostics_tool") {
-            setDiagnosesListeningElement(event.hit.blockPos, null, grid)
-
+        if (mainHandId.id == DIAGNOSTICS_TOOL_ID) {
+            listenAtBlock(event.hit.blockPos, grid)
             return
         }
         if (GreenhouseWatering.startWateringWindow(mainHandId)) return
@@ -1035,15 +934,11 @@ object GreenhouseData {
             placedHere.entries.removeAll { (at, placed) -> overlaps(at, placed.def, soil, foundCrop) }
             placedHere[soil] = PlacedHere(foundCrop, System.currentTimeMillis())
             requestReconcile(pos)
-
-            return
         }
-
-
     }
 
 
-    fun warnUnknownValues(sendWarning: Boolean = true): Boolean {
+    fun warnUnknownValues(): Boolean {
         // the numbers only matter once there is a greenhouse for them to time
         if (greenhouseGrids.isEmpty() && PlotAPI.plots.none { it.data?.isGreenhouse == true }) return false
 
@@ -1068,7 +963,7 @@ object GreenhouseData {
             warnings.add(
                 ChatUtils.buildWithCommand(
                     "Unknown Timestalk attribute, ticks are timed as if it were zero. Click to set it",
-                    "MagicAddons internal setTimestalkAttributeL57"
+                    "${MainInternal.PATH} ${SetTimestalkAttribute.NAME}"
                 )
             )
         }
@@ -1077,9 +972,7 @@ object GreenhouseData {
                 ChatUtils.buildWithPrefix("Unknown tick time, please right click a non fully grown plant")
             )
         }
-        if (sendWarning) {
-            ChatUtils.sendWarningsComponents(warnings)
-        }
+        ChatUtils.sendWarningsComponents(warnings)
         return warnings.isNotEmpty()
     }
 
@@ -1091,18 +984,15 @@ object GreenhouseData {
         val now = Instant.now()
         placements.removeAll { now.isAfter(it.at.plus(PLACE_WINDOW)) }
 
-        placements.removeAll { placement ->
-            val slot = grid.getSlotAt(placement.pos, false) ?: return@removeAll false
-            val element = grid.elementCovering(slot) ?: return@removeAll false
-            if (element.instance.cropDef != placement.def) return@removeAll false
+        placements.toList().forEach { placement ->
+            val slot = grid.getSlotAt(placement.pos, false) ?: return@forEach
+            val element = grid.elementCovering(slot) ?: return@forEach
 
-            claimPlacedPlant(element.instance)
-            true
+            if (takePlacement(element.instance.cropDef, slot, grid)) claimPlacedPlant(element.instance)
         }
     }
 
-    /** Whether a plant of [def] was just put down on [slot], taking the placement off the list. */
-    fun takePlacement(def: CropDefinition, slot: LayoutSlot, grid: GreenhouseGrid): Boolean {
+    override fun takePlacement(def: CropDefinition, slot: LayoutSlot, grid: GreenhouseGrid): Boolean {
         val now = Instant.now()
         val index = placements.indexOfFirst { placement ->
             placement.def == def &&
@@ -1115,7 +1005,7 @@ object GreenhouseData {
     }
 
     /** A plant the player put down: new, dry, and never to count as grown here. */
-    fun claimPlacedPlant(instance: GreenhouseElementInstance) {
+    override fun claimPlacedPlant(instance: GreenhouseElementInstance) {
         instance.placed = true
         instance.age = 0L
 
@@ -1143,7 +1033,7 @@ object GreenhouseData {
      * tick of water. Its age is counted from the garden loading, whatever stage it is at: the
      * game starts a mutation that spawned while the player was away at zero.
      */
-    fun claimSpawnedMutation(instance: GreenhouseElementInstance, layout: GreenhouseLayout) {
+    override fun claimSpawnedMutation(instance: GreenhouseElementInstance, layout: GreenhouseLayout) {
         val grown = ((instance.lowestStage ?: 1) - 1).coerceAtLeast(0)
         val now = Instant.now()
 
@@ -1164,7 +1054,7 @@ object GreenhouseData {
     )
 
     @EventHandler
-    fun onPlacementRefused(event: OnSystemChatEvent) {
+    fun onPlacementRefused(event: SystemChatEvent) {
         if (placements.isEmpty()) return
         if (PLACE_REFUSALS.none { it.containsMatchIn(event.text) }) return
 
@@ -1172,37 +1062,27 @@ object GreenhouseData {
         placements.removeAt(placements.lastIndex)
     }
 
-    fun setDiagnosesListeningElement(hitBlock: BlockPos? = null, hitEntity: ArmorStand? = null, grid: GreenhouseGrid) {
-        var hitElement: ElementRuntimeState? = null
-        if (hitBlock != null) {
-            hitElement = grid.elements.find {
-                it.blocksMap?.keys?.contains(hitBlock) ?: return@find false
-            }
-        }
-        if (hitEntity != null && hitElement == null) {
-            hitElement = grid.elements.find {
-                it.standEntities?.contains(hitEntity) ?: return@find false
-            }
-        }
-        // anything inside a plant's footprint counts as part of it, whether or not the stage names
-        // it, so pointing the tool at a hunger bar or an unnamed block still finds the plant
-        if (hitElement == null) {
-            val pos = hitBlock ?: hitEntity?.blockPosition()
-
-            hitElement = pos
-                ?.let { grid.getSlotAt(BlockPos(it.x, GREENHOUSE_SOIL_Y, it.z), false) }
-                ?.let { grid.elementCovering(it) }
-        }
-
-        if (hitElement == null) {
-            plantDiagnosticListeningElement = null
-            return
-        }
-
-        plantDiagnosticListeningElement = hitElement
+    /** The diagnosis tool was pointed at a block: the plant that block belongs to is what the pages describe. */
+    private fun listenAtBlock(pos: BlockPos, grid: GreenhouseGrid) {
+        plantDiagnosticListeningElement = grid.elements.find { it.blocksMap?.keys?.contains(pos) == true }
+            ?: elementAround(pos, grid)
     }
 
-    fun getDiagnosesData(realItems: List<ItemStack>) {
+    /** The diagnosis tool was pointed at a stand: the plant that stand belongs to is what the pages describe. */
+    private fun listenAtStand(stand: ArmorStand, grid: GreenhouseGrid) {
+        plantDiagnosticListeningElement = grid.elements.find { it.standEntities?.contains(stand) == true }
+            ?: elementAround(stand.blockPosition(), grid)
+    }
+
+    /**
+     * The plant whose footprint holds [pos], whether or not its stage names what was hit, so pointing
+     * the tool at a hunger bar or an unnamed block still finds the plant.
+     */
+    private fun elementAround(pos: BlockPos, grid: GreenhouseGrid): ElementRuntimeState? =
+        grid.getSlotAt(BlockPos(pos.x, GREENHOUSE_SOIL_Y, pos.z), false)?.let { grid.elementCovering(it) }
+
+    /** Reads a diagnosis: the tick countdown, and what the pages say about [listening], the plant the tool was pointed at over [hit]. */
+    private fun getDiagnosesData(realItems: List<ItemStack>, listening: ElementRuntimeState?, hit: BlockPos?) {
         if (!baseSetting.value) return
         val identifyStack = realItems.firstOrNull() ?: return
 
@@ -1295,7 +1175,7 @@ object GreenhouseData {
 
         // what the pages say about the plant pointed at, and the one thing the game knows better
         // than any guess: stage, water and age exactly
-        plantDiagnosticListeningElement?.let { element ->
+        listening?.let { element ->
             age?.parseDurationToMs()?.let { element.instance.age = it }
             stageRaw?.let { element.instance.growthStage = GrowthStageInfo.Known(it) }
 
@@ -1341,7 +1221,6 @@ object GreenhouseData {
                 )
             }
 
-        val hit = plantDiagnosticHitBaseBlock
         if (hit == null) {
             ChatUtils.sendWithPrefix("Nothing was pointed at, so there is no plant to correct.")
             return
@@ -1437,7 +1316,7 @@ object GreenhouseData {
         }
         if (miscInfo.cropYieldUpgradeValue != yieldTier) {
             miscInfo.cropYieldUpgradeValue = yieldTier
-            ChatUtils.sendWithPrefix("Updated Plant Yield Tier to $speedTier")
+            ChatUtils.sendWithPrefix("Updated Plant Yield Tier to $yieldTier")
         }
     }
 
@@ -1465,7 +1344,7 @@ object GreenhouseData {
 
 
     /**
-     * The greenhouse speed attribute, half a percent a level. Taken from what the player typed first,
+     * The greenhouse speed attribute, a tenth of a percent a level. Taken from what the player typed first,
      * since the shard api does not report this one at all.
      */
     fun greenhouseSpeedAttribute(): Int? =
@@ -1549,7 +1428,7 @@ object GreenhouseData {
                 return when (def.name) {
                     "Sunflower", "Moonflower" -> Flower
                     "Red Mushroom", "Brown Mushroom" -> Mushroom
-                    else -> Def(def.skyblockId?.id ?: def.name)
+                    else -> Def(def.elementId)
                 }
             }
         }

@@ -1,24 +1,13 @@
 package org.magic.magicaddons.features.farming.greenhousePresets
 
 import java.time.Duration
-import net.minecraft.client.Minecraft
-import net.minecraft.core.BlockPos
-import net.minecraft.world.entity.decoration.ArmorStand
-import net.minecraft.world.level.block.Blocks
-import net.minecraft.world.level.block.state.BlockState
 import org.magic.magicaddons.data.config.BooleanSetting
 import org.magic.magicaddons.data.config.IntSetting
 import org.magic.magicaddons.data.greenhouse.CropRegistry
+import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.features.Feature
-import org.magic.magicaddons.util.ChatUtils
 import tech.thatgravyboat.skyblockapi.api.profile.hunting.AttributeAPI
 import tech.thatgravyboat.skyblockapi.api.SkyBlockAPI
-import tech.thatgravyboat.skyblockapi.api.events.base.Subscription
-import tech.thatgravyboat.skyblockapi.api.events.base.predicates.OnlyIn
-import tech.thatgravyboat.skyblockapi.api.events.base.predicates.OnlyNonGuest
-import tech.thatgravyboat.skyblockapi.api.events.location.IslandChangeEvent
-import tech.thatgravyboat.skyblockapi.api.events.render.RenderWorldEvent
-import tech.thatgravyboat.skyblockapi.api.location.SkyBlockIsland
 
 object GreenhousePresets : Feature() {
 
@@ -36,15 +25,38 @@ object GreenhousePresets : Feature() {
     private const val ONE_MINUTE_KEY = "OneMinuteBefore"
 
     init {
-        SkyBlockAPI.eventBus.register(this)
+        registerListeners()
+    }
+
+    /** Registers every object of this feature on the bus, so none is left waiting to be referenced before it listens. */
+    @Suppress("UNUSED_EXPRESSION")
+    private fun registerListeners() {
+        EventBus.register(GreenhouseData)
+        SkyBlockAPI.eventBus.register(GreenhouseData)
+        EventBus.register(GreenhouseWatering)
+        EventBus.register(PlantWarnings)
+        EventBus.register(GreenhouseKey)
+        EventBus.register(GreenhouseHud)
+        EventBus.register(LayoutRenderState)
+        EventBus.register(OtherProfiles)
+        EventBus.register(ChorusCollision)
+        EventBus.register(GreenhouseWarnings)
+        CropRegistry
+
+        // the attribute api only registers its listeners once something references it, so it is
+        // referenced here rather than the first time a value is asked of it
+        AttributeAPI
     }
 
     fun keyWorksAnywhere(): Boolean = baseSetting.getChild<BooleanSetting>(KEY_ANYWHERE)?.value == true
 
     fun turnsGridWithPlayer(): Boolean = baseSetting.getChild<BooleanSetting>(TURN_GRID_KEY)?.value == true
 
-    private fun warnings(): BooleanSetting? = baseSetting.getChild<BooleanSetting>(WARNINGS_KEY)?.takeIf { it.value }
-    private fun types(): BooleanSetting? = warnings()?.getChild<BooleanSetting>(TYPES_KEY)?.takeIf { it.value }
+    private fun warningsSetting(): BooleanSetting? = baseSetting.getChild<BooleanSetting>(WARNINGS_KEY)
+    private fun typesSetting(): BooleanSetting? = warningsSetting()?.getChild<BooleanSetting>(TYPES_KEY)
+
+    private fun warnings(): BooleanSetting? = warningsSetting()?.takeIf { it.value }
+    private fun types(): BooleanSetting? = warnings()?.let { typesSetting() }?.takeIf { it.value }
     private fun reminders(): BooleanSetting? = warnings()?.getChild<BooleanSetting>(REMINDERS_KEY)?.takeIf { it.value }
 
     /** Whether one kind of warning is on, with the headings above it on too. */
@@ -60,9 +72,8 @@ object GreenhousePresets : Feature() {
         Duration.ofMinutes(1).takeIf { reminder(ONE_MINUTE_KEY) }
     )
 
-    /** How many growth ticks the player says they will be away for, under the chorus warning. */
-    fun chorusAbsenceTicks(): Int? = baseSetting.getChild<BooleanSetting>(WARNINGS_KEY)
-        ?.getChild<BooleanSetting>(TYPES_KEY)
+    /** How many growth ticks the player says they will be away for, whether or not the warning is on. */
+    fun chorusAbsenceTicks(): Int? = typesSetting()
         ?.getChild<BooleanSetting>(CHORUS_KEY)
         ?.getChild<IntSetting>(CHORUS_TICKS_KEY)
         ?.value
@@ -89,13 +100,13 @@ object GreenhousePresets : Feature() {
                         value = true,
                         children = listOf(
                             BooleanSetting(
-                                key = "ReadyToHarvestWarning",
+                                key = PlantWarnings.HARVEST_KEY,
                                 displayName = "Ready To Harvest",
                                 description = "Tells you when a mutation you grew has nothing left to grow",
                                 value = false
                             ),
                             BooleanSetting(
-                                key = "DecayWarning",
+                                key = PlantWarnings.DECAY_KEY,
                                 displayName = "Decay",
                                 description = "Warns six hours, one hour, twenty, five and one minute before a plant " +
                                         "rots away. Needs a plant diagnostic to have been used on the plant, " +
@@ -103,14 +114,14 @@ object GreenhousePresets : Feature() {
                                 value = false
                             ),
                             BooleanSetting(
-                                key = "SnoozlingAsleepWarning",
+                                key = PlantWarnings.SNOOZLING_KEY,
                                 displayName = "Snoozling Asleep",
                                 description = "Warns when a snoozling has dropped asleep, which it does on reaching " +
                                         "stage 5, 10 and 15, and grows no further until it is woken",
                                 value = false
                             ),
                             BooleanSetting(
-                                key = "NoctilumeTimeWarning",
+                                key = PlantWarnings.NOCTILUME_KEY,
                                 displayName = "Noctilume Time",
                                 description = "Warns while a noctilume craves a time of day the garden is not on, " +
                                         "since it stalls every tick until the garden time is changed",
@@ -201,31 +212,4 @@ object GreenhousePresets : Feature() {
             )
         )
     )
-
-
-
-
-    @Subscription
-    @OnlyNonGuest
-    @OnlyIn(SkyBlockIsland.GARDEN)
-    @Suppress("UNUSED_EXPRESSION")
-    private fun onIslandChange(event: IslandChangeEvent){
-        // an object only registers on the event bus once something touches it, and these three
-        // are only ever reached from their own handlers, so nothing else would wake them
-        GreenhouseData
-        GreenhouseWatering
-        PlantWarnings
-        GreenhouseHud
-        CropRegistry
-
-        // the attribute api only registers its listeners once something references it, so it is
-        // referenced here rather than the first time a value is asked of it
-        AttributeAPI
-
-
-    }
-    //todo dont render on top of other blocks just render a red outline and then when breaking said block
-    // will render what to place
-
-
 }

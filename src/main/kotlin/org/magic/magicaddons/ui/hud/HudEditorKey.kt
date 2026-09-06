@@ -1,6 +1,6 @@
 package org.magic.magicaddons.ui.hud
 
-import org.magic.magicaddons.events.world.OnWorldTickEvent
+import org.magic.magicaddons.events.world.WorldTickEvent
 import org.magic.magicaddons.events.EventHandler
 import org.magic.magicaddons.events.EventBus
 import com.mojang.blaze3d.platform.InputConstants
@@ -24,7 +24,7 @@ object HudEditorKey {
     }
 
     @EventHandler
-    fun onTick(event: OnWorldTickEvent) {
+    fun onTick(event: WorldTickEvent) {
         while (key.consumeClick()) {
             if (McCompat.currentScreen() == null) ScreenUtil.setScreen(HudEditorScreen())
         }

@@ -1,7 +1,6 @@
 package org.magic.magicaddons.ui.widgets.greenhouse
 
 import net.minecraft.client.input.MouseButtonEvent
-import net.minecraft.network.chat.Component
 import org.magic.magicaddons.ui.widgets.config.ClickableButtonWidget
 
 /**
@@ -12,11 +11,7 @@ class GreenhousePanel(
     private val onUnplan: () -> Unit
 ) : ActionPanel() {
 
-    private val unplanButton = ClickableButtonWidget(
-        70,
-        26,
-        Component.literal("Unplan")
-    )
+    private val unplanButton = ClickableButtonWidget("Unplan")
 
     /** Whether there is anything to do here, which today is whether a planner is running. */
     var showUnplan: Boolean = false

@@ -6,7 +6,6 @@ import net.minecraft.core.BlockPos
 import net.minecraft.core.Rotations
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.phys.Vec3
-import org.magic.magicaddons.data.greenhouse.DEFAULT_DECAY_TIME_MS
 import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
 import org.magic.magicaddons.data.greenhouse.CropArmorStand
 import org.magic.magicaddons.data.greenhouse.CropBlockState
@@ -45,7 +44,7 @@ object Brownmushroom : CropDefinitionProvider {
                     )
                 ),
                 stageRange = 1..5,
-                baseStageStandOffset = Vec3(0.0, 0.06, 0.0)
+                baseStageStandOffset = Vec3(0.0, 0.0625, 0.0)
             ),
             CropStage(
                 blocks = listOf(

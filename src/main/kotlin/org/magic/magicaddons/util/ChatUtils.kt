@@ -1,6 +1,7 @@
 package org.magic.magicaddons.util
 
 
+import net.minecraft.network.chat.MutableComponent
 import net.minecraft.ChatFormatting
 import net.minecraft.client.Minecraft
 import net.minecraft.network.chat.ClickEvent
@@ -10,6 +11,8 @@ import net.minecraft.network.chat.Style
 import java.time.Instant
 
 object ChatUtils {
+    private const val WARNING_COOLDOWN_SECONDS: Long = 60
+
     var lastWarningTime: Instant? = null
 
     fun send(message: String){
@@ -23,7 +26,7 @@ object ChatUtils {
         sendWithPrefix(Component.literal(message).withStyle(ChatFormatting.WHITE))
     }
 
-    fun buildWithPrefix(message: String?): Component {
+    fun buildWithPrefix(message: String?): MutableComponent {
         val body = message?.takeIf { it.isNotBlank() } ?: return Component.literal("")
 
         return buildWithPrefix(Component.literal(body).withStyle(ChatFormatting.WHITE))
@@ -39,7 +42,7 @@ object ChatUtils {
         Minecraft.getInstance().player?.connection?.sendCommand(command)
     }
 
-    fun buildWithPrefix(message: Component?): Component {
+    fun buildWithPrefix(message: Component?): MutableComponent {
         val prefix = Component.literal("[MA] ").withStyle(ChatFormatting.GOLD)
 
         return if (message != null && message != Component.empty()) prefix.append(message) else prefix
@@ -49,63 +52,39 @@ object ChatUtils {
         Minecraft.getInstance().player?.sendSystemMessage(component)
     }
 
+    /** The prefixed message, clicking it runs [command]. */
     fun buildWithCommand(message: String, command: String): Component {
-        val component = Component.literal("[MA] ")
-            .withStyle(ChatFormatting.GOLD)
-            .append(
-                Component.literal(message)
-                    .withStyle(
-                        Style.EMPTY
-                            .withColor(ChatFormatting.WHITE)
-                            .withClickEvent(
-                                ClickEvent.RunCommand(command)
+        return buildWithPrefix(
+            Component.literal(message)
+                .withStyle(
+                    Style.EMPTY
+                        .withColor(ChatFormatting.WHITE)
+                        .withClickEvent(
+                            ClickEvent.RunCommand(command)
+                        )
+                        .withHoverEvent(
+                            HoverEvent.ShowText(
+                                Component.literal("Running: $command")
                             )
-                            .withHoverEvent(
-                                HoverEvent.ShowText(
-                                    Component.literal("Running: $command")
-                                )
-                            )
-                    )
-            )
-        return component
+                        )
+                )
+        )
     }
 
     fun cooldownReady(): Boolean {
         return lastWarningTime
-            ?.plusSeconds(60)
+            ?.plusSeconds(WARNING_COOLDOWN_SECONDS)
             ?.isBefore(Instant.now())
             ?: true
     }
 
-    fun sendWarning(message: String) {
-        if (cooldownReady()) {
-            lastWarningTime = Instant.now()
-            sendWithPrefix(message)
-        }
-    }
-    fun buildWarning(message: String): Component? {
-        if (cooldownReady()) {
-            lastWarningTime = Instant.now()
-            return buildWithPrefix(message)
-        }
-        return null
-    }
-    fun sendWarnings(messages: List<String>) {
-        sendWarningsComponents(messages.map { Component.literal(it) })
-    }
+    /** Sends the warnings, at most once a minute. */
     fun sendWarningsComponents(messages: List<Component>) {
         if (cooldownReady()) {
             lastWarningTime = Instant.now()
             messages.forEach {
                 send(it)
             }
-        }
-    }
-
-    fun sendWarningWithCommand(message: String, command: String) {
-        if (cooldownReady()) {
-            lastWarningTime = Instant.now()
-            sendWithCommand(message,command)
         }
     }
 

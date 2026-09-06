@@ -8,7 +8,6 @@ import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.components.Renderable
 import net.minecraft.client.gui.components.events.GuiEventListener
 import org.magic.magicaddons.util.ScreenUtil.drawTooltipLines
-import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.client.renderer.RenderPipelines
 import net.minecraft.client.renderer.texture.TextureAtlasSprite
 import net.minecraft.core.Direction
@@ -16,23 +15,20 @@ import net.minecraft.network.chat.Component
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
 import net.minecraft.world.level.block.Blocks
-import org.magic.magicaddons.ui.Focusable
-import org.magic.magicaddons.data.greenhouse.NEVER_DECAYS
 import org.magic.magicaddons.data.greenhouse.GreenhouseElementInstance
 import org.magic.magicaddons.data.greenhouse.WaterModel
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData
-import org.magic.magicaddons.data.greenhouse.LayoutSlot
 import org.magic.magicaddons.data.greenhouse.GrowthStageInfo
-import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.ScreenUtil
 import org.magic.magicaddons.util.ScreenUtil.drawBorder
 import org.magic.magicaddons.util.ScreenUtil.fillCornerTriangle
 import org.magic.magicaddons.util.ScreenUtil.fillRounded
+import org.magic.magicaddons.util.ScreenUtil.inRect
 import org.magic.magicaddons.util.ScreenUtil.renderFakeItem
 
-class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, Focusable {
-    var widgetX: Int = 0
-    var widgetY: Int = 0
+class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, GuiEventListener {
+    var x: Int = 0
+    var y: Int = 0
     var padding: Int = 0
 
     /** When this plant was dropped into its slot, for the pop it makes on arriving; zero for none. */
@@ -40,57 +36,28 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, Focus
 
     /** Whether this plant stands in a plan rather than a greenhouse, so it has no stage or water. */
     var inPreset: Boolean = false
-    var width = 50
-    var height = 50
-    /** Resolved on demand: only the fire element draws one, and resolving can throw. */
-    val sprite: TextureAtlasSprite? by lazy {
-        runCatching {
-            ScreenUtil.getSpriteForState(Blocks.FIRE.defaultBlockState(), Direction.NORTH)
-        }.getOrNull()
-    }
+    var width = 0
+    var height = 0
+
     var renderedStack: ItemStack = ItemStack.EMPTY
-    var markingColor: Int? = null
+
+    /** The colour of the mark on this plant's slot, null for an unmarked one. */
+    private val markingColor: Int? get() = instance.slot.slotMark?.color
 
     /** The water effects reaching this plant, set by whoever knows what stands beside it. */
     var waterEffect: Int = 0
 
-    /** What a time worked out from a plant that may have been passed over is marked with. */
-    private val DEBT_MARK: String = "*"
-
-    /** Where that mark sits on screen, so hovering it can explain itself. Null when none was drawn. */
+    /** Where the debt mark sits on screen, so hovering it can explain itself. Null when none was drawn. */
     private var debtMarkBox: IntArray? = null
-
-    /** What the mark means, said in full rather than left as a symbol nobody can look up. */
-    private val DEBT_EXPLANATION: String = """
-        When the plant's water is negative, it has a chance to skip ticks entirely,
-        therefore not draining water. This estimate assumes it never skips ticks,
-        so your plants don't die.
-    """.trimIndent()
-
-    /** Worn in the corner of a plant the worst case has already killed. */
-    private val DEAD_MARK: ItemStack = ItemStack(Items.DEAD_BUSH)
-
-    /** The pop on arriving: how small it starts and how long it takes. */
-    private val POP_MS: Long = 150
-    private val POP_FROM: Float = 0.5f
-
-    /** Behind the bush, so a slot that might already be dead reads as such at a glance. */
-    private val DEAD_MARK_BACKGROUND: Int = 0xC0201010.toInt()
 
     /** Where the dead bush was drawn, so hovering it can explain itself. */
     private var deadMarkBox: IntArray? = null
 
-    private val DEAD_EXPLANATION: String = """
-        In the worst case scenario this plant is dead.
-        Enter the greenhouse to verify.
-    """.trimIndent()
-    override var focusedState: Boolean = false
-
     /** One fact about a plant, small enough to write over it. The colour is how the controls stand for it. */
     enum class HoverInfo(val color: Int, val label: String) {
         GrowthStage(0xFF3FBF3F.toInt(), "Growth stage"),
-        WaterLevel(0xFF3F7FDF.toInt(), "Water level"),
-        DecayTime(0xFFCC3333.toInt(), "Decay time");
+        WaterLevel(Common.UI.WATER_FULL_COLOR, "Water level"),
+        DecayTime(Common.UI.WATER_DEBT_COLOR, "Decay time");
 
         /** This fact about [instance], or null while the game has not told us the value yet. */
         fun valueFor(instance: GreenhouseElementInstance): String? = when (this) {
@@ -104,22 +71,18 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, Focus
                 null -> null
             }
             WaterLevel -> if (!instance.needsWater) null else instance.waterLevel?.let { "$it%" }
-            DecayTime -> decayRemainingMs(instance)?.let { readableDuration(it) }
+            DecayTime -> instance.decayRemainingMs?.let { readableDuration(it) }
         }
     }
 
-    fun init(){
-        markingColor = instance.slot.slotMark?.color
-    }
-
     override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, deltaTick: Float) {
-        markingColor?.let { colour ->
+        markingColor?.let { color ->
             // right up against the grid lines, with no soil showing between
-            graphics.drawBorder(widgetX, widgetY, widgetX + width, widgetY + height, Common.UI.BORDER_SIZE, colour)
+            graphics.drawBorder(x, y, x + width, y + height, Common.UI.BORDER_SIZE, color)
 
             // a tag folded over the top right corner, hard to miss at any slot size
             val tag = (width / 3).coerceAtLeast(5)
-            graphics.fillCornerTriangle(widgetX + width, widgetY, tag, colour)
+            graphics.fillCornerTriangle(x + width, y, tag, color)
         }
         if (instance.elementId == "Fire") {
             renderFire(graphics)
@@ -130,13 +93,13 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, Focus
         val scale = if (appearedAt == 0L || elapsed >= POP_MS) 1f else POP_FROM + (1f - POP_FROM) * elapsed / POP_MS
 
         graphics.pose().pushMatrix()
-        graphics.pose().translate(widgetX + width / 2f, widgetY + height / 2f)
+        graphics.pose().translate(x + width / 2f, y + height / 2f)
         graphics.pose().scale(scale, scale)
-        graphics.pose().translate(-(widgetX + width / 2f), -(widgetY + height / 2f))
+        graphics.pose().translate(-(x + width / 2f), -(y + height / 2f))
         graphics.renderFakeItem(
             renderedStack,
-            widgetX + padding,
-            widgetY + padding,
+            x + padding,
+            y + padding,
             width - padding * 2,
             height - padding * 2
         )
@@ -150,8 +113,8 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, Focus
             // a third of a single slot, half a slot on anything wider
             val footprint = instance.cropDef.footprint
             val size = (if (footprint.width > 1) width / footprint.width / 2 else width / 3).coerceAtLeast(8)
-            val markX = widgetX + width - size
-            val markY = widgetY
+            val markX = x + width - size
+            val markY = y
 
             graphics.fill(markX, markY, markX + size, markY + size, DEAD_MARK_BACKGROUND)
             graphics.renderFakeItem(DEAD_MARK, markX, markY, size, size)
@@ -159,16 +122,9 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, Focus
         }
     }
 
-    fun renderFire(graphics: GuiGraphicsExtractor){
-        val sprite = sprite ?: return
-        graphics.blitSprite(
-            RenderPipelines.GUI_TEXTURED,
-            sprite,
-            widgetX,
-            widgetY,
-            width,
-            height
-        )
+    private fun renderFire(graphics: GuiGraphicsExtractor) {
+        val sprite = FIRE_SPRITE ?: return
+        graphics.blitSprite(RenderPipelines.GUI_TEXTURED, sprite, x, y, width, height)
     }
 
     /** Writes the pinned fact over the plant. Nothing is drawn while that fact is unknown. */
@@ -186,19 +142,29 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, Focus
 
         val text = info.valueFor(instance) ?: return
         val font = Minecraft.getInstance().font
+        val textHeight = font.lineHeight * INFO_TEXT_SCALE
+
+        drawScaledLabel(graphics, text, y + height - textHeight - 1f, Common.UI.OVERLAY_TEXT_COLOR)
+    }
+
+    /**
+     * [text] at [INFO_TEXT_SCALE] on a dark ground, centred across the plant with its top at
+     * [top]. Returns the box the text took: left, top, right, bottom.
+     */
+    private fun drawScaledLabel(graphics: GuiGraphicsExtractor, text: String, top: Float, color: Int): IntArray {
+        val font = Minecraft.getInstance().font
 
         // a hundred slots share the grid, full size text would not fit inside one of them
         val textWidth = font.width(text) * INFO_TEXT_SCALE
         val textHeight = font.lineHeight * INFO_TEXT_SCALE
-        val textX = widgetX + (width - textWidth) / 2f
-        val textY = widgetY + height - textHeight - 1f
+        val textX = x + (width - textWidth) / 2f
 
         // the plant behind it is busy, the text needs its own ground to stay readable
         graphics.fill(
             (textX - 1f).toInt(),
-            (textY - 1f).toInt(),
+            (top - 1f).toInt(),
             (textX + textWidth + 1f).toInt(),
-            (textY + textHeight).toInt(),
+            (top + textHeight).toInt(),
             Common.UI.OVERLAY_BACKGROUND_COLOR
         )
 
@@ -206,12 +172,14 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, Focus
         pose.pushMatrix()
 
         try {
-            pose.translate(textX, textY)
+            pose.translate(textX, top)
             pose.scale(INFO_TEXT_SCALE, INFO_TEXT_SCALE)
-            graphics.text(font, text, 0, 0, Common.UI.OVERLAY_TEXT_COLOR, false)
+            graphics.text(font, text, 0, 0, color, false)
         } finally {
             pose.popMatrix()
         }
+
+        return intArrayOf(textX.toInt(), top.toInt(), (textX + textWidth).toInt(), (top + textHeight).toInt())
     }
 
     /**
@@ -222,9 +190,9 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, Focus
         val barWidth = width - WATER_BAR_INSET * 2
         if (barWidth < WATER_BAR_MIN_WIDTH) return
 
-        val left = widgetX + WATER_BAR_INSET
+        val left = x + WATER_BAR_INSET
         val right = left + barWidth
-        val bottom = widgetY + height - WATER_BAR_INSET
+        val bottom = y + height - WATER_BAR_INSET
         val top = bottom - WATER_BAR_HEIGHT
 
         renderWaterVerdict(graphics, waterLevel, top)
@@ -293,50 +261,21 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, Focus
         }
 
         val font = Minecraft.getInstance().font
-        val textWidth = font.width(text) * INFO_TEXT_SCALE
         val textHeight = font.lineHeight * INFO_TEXT_SCALE
-        val textX = widgetX + (width - textWidth) / 2f
-        val textY = barTop - textHeight - 1f
+        val box = drawScaledLabel(graphics, text, barTop - textHeight - 1f, color)
 
-        graphics.fill(
-            (textX - 1f).toInt(),
-            (textY - 1f).toInt(),
-            (textX + textWidth + 1f).toInt(),
-            (textY + textHeight).toInt(),
-            Common.UI.OVERLAY_BACKGROUND_COLOR
-        )
-
-        val pose = graphics.pose()
-        pose.pushMatrix()
-
-        try {
-            pose.translate(textX, textY)
-            pose.scale(INFO_TEXT_SCALE, INFO_TEXT_SCALE)
-            graphics.text(font, text, 0, 0, color, false)
-
-            if (instance.waterPredictedInDebt) {
-                val markWidth = font.width(DEBT_MARK) * INFO_TEXT_SCALE
-
-                debtMarkBox = intArrayOf(
-                    (textX + textWidth - markWidth).toInt(),
-                    textY.toInt(),
-                    (textX + textWidth).toInt(),
-                    (textY + textHeight).toInt()
-                )
-            }
-        } finally {
-            pose.popMatrix()
+        if (instance.waterPredictedInDebt) {
+            val markWidth = (font.width(DEBT_MARK) * INFO_TEXT_SCALE).toInt()
+            debtMarkBox = intArrayOf(box[2] - markWidth, box[1], box[2], box[3])
         }
     }
 
-    override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, bl: Boolean): Boolean {
-        return isMouseOver(mouseButtonEvent.x, mouseButtonEvent.y)
-    }
+    override fun isMouseOver(mouseX: Double, mouseY: Double): Boolean = inRect(mouseX, mouseY, x, y, width, height)
 
-    override fun isMouseOver(mouseX: Double, mouseY: Double): Boolean {
-        return mouseX.toInt() in widgetX until widgetX + width &&
-                mouseY.toInt() in widgetY until widgetY + height
-    }
+    /** A plant is hovered, never focused; the listener interface still asks. */
+    override fun isFocused(): Boolean = false
+
+    override fun setFocused(focused: Boolean) {}
 
     /** The dead bush's own tooltip, when the mouse is on it rather than on the plant. */
     fun deadTooltipAt(mouseX: Int, mouseY: Int): String? {
@@ -357,7 +296,6 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, Focus
     }
 
     fun renderTooltip(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int) {
-        val font = Minecraft.getInstance().font
         val cropDefinition = instance.cropDef
 
         val lines = buildList {
@@ -389,7 +327,7 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, Focus
                     add(labelled("Water", instance.waterLevel?.let { "$it%" } ?: "Unknown"))
                 }
 
-                decayRemainingMs(instance)?.let { add(labelled("Decays in", readableDuration(it))) }
+                instance.decayRemainingMs?.let { add(labelled("Decays in", readableDuration(it))) }
             }
 
             val footprint = cropDefinition.footprint
@@ -402,9 +340,6 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, Focus
 
         graphics.drawTooltipLines(lines.map { it.visualOrderText }, mouseX, mouseY)
     }
-
-
-
 
     companion object {
         /** A slot is small, but the numbers still have to be legible from across the grid. */
@@ -420,24 +355,43 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, Focus
         /** Past this, a duration is shown in whole hours. */
         private const val COARSE_AFTER_SECONDS: Long = 6 * 60 * 60
 
+        /** Appended to a water time that assumes no skipped ticks. */
+        private const val DEBT_MARK: String = "*"
+
+        /** What the mark means, said in full rather than left as a symbol nobody can look up. */
+        private val DEBT_EXPLANATION: String = """
+            When the plant's water is negative, it has a chance to skip ticks entirely,
+            therefore not draining water. This estimate assumes it never skips ticks,
+            so your plants don't die.
+        """.trimIndent()
+
+        /** Worn in the corner of a plant the worst case has already killed. */
+        private val DEAD_MARK: ItemStack = ItemStack(Items.DEAD_BUSH)
+
+        /** Behind the bush, so a slot that might already be dead reads as such at a glance. */
+        private const val DEAD_MARK_BACKGROUND: Int = 0xC0201010.toInt()
+
+        private val DEAD_EXPLANATION: String = """
+            In the worst case scenario this plant is dead.
+            Enter the greenhouse to verify.
+        """.trimIndent()
+
+        /** The pop on arriving: how small it starts and how long it takes. */
+        private const val POP_MS: Long = 150
+        private const val POP_FROM: Float = 0.5f
+
+        /** Resolved once: only the fire element draws one, and resolving can throw. */
+        private val FIRE_SPRITE: TextureAtlasSprite? by lazy {
+            runCatching {
+                ScreenUtil.getSpriteForState(Blocks.FIRE.defaultBlockState(), Direction.NORTH)
+            }.getOrNull()
+        }
+
         private fun labelled(label: String, value: String): Component =
             Component.literal("$label: ").withStyle(ChatFormatting.GRAY)
                 .append(Component.literal(value).withStyle(ChatFormatting.WHITE))
 
-        /** Time before this plant decays, null when it never does or its age was never read. */
-        private fun decayRemainingMs(instance: GreenhouseElementInstance): Long? {
-            val decayTime = instance.cropDef.decayTimeMs
-            if (decayTime == NEVER_DECAYS) return null
-
-            val age = instance.age ?: return null
-
-            return (decayTime - age).coerceAtLeast(0L)
-        }
-
-        /**
-         * A duration cut off rather than rounded, so it never reads longer than the time left. Past
-         * six hours the minutes are dropped.
-         */
+        /** Cuts off rather than rounds, and drops the minutes past six hours; Long.toShortDuration keeps them. */
         private fun readableDuration(ms: Long): String {
             val seconds = ms / 1000
 

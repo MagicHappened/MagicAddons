@@ -11,11 +11,11 @@ import org.magic.magicaddons.data.config.BooleanSetting
 import org.magic.magicaddons.events.ConfigChangedEvent
 import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.events.EventHandler
-import org.magic.magicaddons.events.chat.OnSystemChatEvent
-import org.magic.magicaddons.events.world.OnEntityAdded
-import org.magic.magicaddons.events.world.OnEntityRemoved
-import org.magic.magicaddons.events.world.OnEntityUpdated
-import org.magic.magicaddons.events.world.OnWorldTickEvent
+import org.magic.magicaddons.events.chat.SystemChatEvent
+import org.magic.magicaddons.events.world.EntityAddedEvent
+import org.magic.magicaddons.events.world.EntityRemovedEvent
+import org.magic.magicaddons.events.world.EntityUpdatedEvent
+import org.magic.magicaddons.events.world.WorldTickEvent
 import org.magic.magicaddons.features.HighlightFeature
 import org.magic.magicaddons.ui.hud.ConfigTarget
 import org.magic.magicaddons.ui.hud.HudContent
@@ -28,7 +28,6 @@ import tech.thatgravyboat.skyblockapi.api.events.base.Subscription
 import tech.thatgravyboat.skyblockapi.api.events.location.IslandChangeEvent
 import tech.thatgravyboat.skyblockapi.api.location.LocationAPI
 import tech.thatgravyboat.skyblockapi.api.location.SkyBlockIsland
-import org.magic.magicaddons.util.compat.McCompat
 
 object SafariHelper : HighlightFeature() {
 
@@ -222,7 +221,7 @@ object SafariHelper : HighlightFeature() {
     }
 
     @EventHandler
-    fun onWorldTick(event: OnWorldTickEvent) {
+    fun onWorldTick(event: WorldTickEvent) {
         val zone = if (LocationAPI.island == SkyBlockIsland.SAFARI) {
             Minecraft.getInstance().player?.position()?.let { SafariZone.at(it) }
         } else {
@@ -245,18 +244,18 @@ object SafariHelper : HighlightFeature() {
     }
 
     @EventHandler
-    fun onEntityAdded(event: OnEntityAdded) {
+    fun onEntityAdded(event: EntityAddedEvent) {
         handleEntitiesAdded(event.addedEntityList)
     }
 
     @EventHandler
-    fun onEntityRemoved(event: OnEntityRemoved) {
+    fun onEntityRemoved(event: EntityRemovedEvent) {
         event.removedEntityList.forEach { sparklingEntities.remove(it.entity) }
         handleEntitiesRemoved(event.removedEntityList)
     }
 
     @EventHandler
-    fun onEntityUpdated(event: OnEntityUpdated) {
+    fun onEntityUpdated(event: EntityUpdatedEvent) {
         handleEntitiesUpdated(event.updatedEntityList)
     }
 
@@ -273,7 +272,7 @@ object SafariHelper : HighlightFeature() {
     }
 
     @EventHandler
-    fun onSystemChat(event: OnSystemChatEvent) {
+    fun onSystemChat(event: SystemChatEvent) {
         if (!baseSetting.value) return
         if (currentZone == null) return
 

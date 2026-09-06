@@ -11,9 +11,12 @@ object Common {
         // pine and amber: deep green panels, darker insets, moss frames, cream text, amber for the pick
         const val BACKGROUND_COLOR: Int = 0xFF1F3330.toInt()
         const val BORDER_SIZE: Int = 2
-        /** A moss frame, lighter than the panel, since black sinks into the darkened world. */
+        /** The frame around a panel, lighter than the panel itself. */
         const val BORDER_COLOR: Int = 0xFF4C7A63.toInt()
         const val TEXT_X_PAD: Int = 4
+
+        /** The hint shown in an empty search field. */
+        const val SEARCH_HINT: String = "Search…"
 
         /** How far one wheel notch moves a scrolling screen. */
         const val SCROLL_STEP: Int = 20
@@ -36,13 +39,13 @@ object Common {
         /** Plain text on a panel of this mod. */
         const val TEXT_COLOR: Int = 0xFFF2ECDC.toInt()
 
-        /** Laid over a control the mouse is on, so it lifts rather than changes colour. */
+        /** A translucent white filled over a control the mouse is on. */
         const val HOVER_WASH: Int = 0x28FFFFFF
 
-        /** Laid over a control that is picked, so it sits pressed in. */
+        /** A translucent black filled over a control that is picked or pressed. */
         const val PRESSED_SHADE: Int = 0x50000000
 
-        /** The frame of a picked or focused control, the palette's one bright colour. */
+        /** The frame colour of a picked or focused control. */
         const val SELECTED_FRAME_COLOR: Int = 0xFFE0A84A.toInt()
 
         /** The ground of a text field or checkbox, darker than the panel it sits in. */

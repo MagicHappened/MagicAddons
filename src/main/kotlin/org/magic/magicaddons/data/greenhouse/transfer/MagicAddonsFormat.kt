@@ -1,8 +1,6 @@
 package org.magic.magicaddons.data.greenhouse.transfer
 
-import com.google.gson.GsonBuilder
 import com.google.gson.JsonArray
-import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import org.magic.magicaddons.data.greenhouse.CropRegistry
 import org.magic.magicaddons.data.greenhouse.GreenhouseElementInstance
@@ -11,26 +9,24 @@ import org.magic.magicaddons.data.greenhouse.LayoutSlot
 import org.magic.magicaddons.data.greenhouse.MasterLayout
 
 /**
- * This mod's own layout format: plain json, one line per plant, meant to be read and hand-corrected.
- * A plant is written once at the slot it starts from. Version 1 holds one plot under `plants`,
- * version 2 holds several under `plots`, each with its own name and plants.
+ * Reads the json this mod shared layouts as before the share code: one line per plant, written
+ * once at the slot it starts from. Version 1 holds one plot under `plants`, version 2 several
+ * under `plots`, each with its own name and plants. Nothing writes this shape any more.
  */
-object MagicAddonsFormat : LayoutFormat {
+object MagicAddonsFormat {
 
-    override val displayName: String = "MagicAddons"
+    val displayName: String = "MagicAddons (json)"
 
-    /** Raise when the shape below changes in a way an older reader would get wrong. */
+    /** The newest shape this reader understands. */
     private const val VERSION: Int = 2
 
-    private val GSON = GsonBuilder().setPrettyPrinting().create()
-
-    override fun canImport(text: String): Boolean =
+    fun canImport(text: String): Boolean =
         runCatching {
             val root = JsonParser.parseString(text).asJsonObject
             root.has(PLANTS) || root.has(PLOTS)
         }.getOrDefault(false)
 
-    override fun import(text: String, layoutId: String): LayoutTransferResult {
+    fun import(text: String, layoutId: String): LayoutTransferResult {
         val root = runCatching { JsonParser.parseString(text).asJsonObject }.getOrNull()
             ?: return LayoutTransferResult.Failure("That is not a MagicAddons layout.")
 
@@ -49,7 +45,7 @@ object MagicAddonsFormat : LayoutFormat {
             val plots = plotsJson.mapIndexedNotNull { index, element ->
                 val plot = runCatching { element.asJsonObject }.getOrNull() ?: return@mapIndexedNotNull null
                 val plants = runCatching { plot.getAsJsonArray(PLANTS) }.getOrNull() ?: JsonArray()
-                val id = if (index == 0) layoutId else "${layoutId}_p${index + 1}"
+                val id = MasterLayout.plotId(layoutId, index)
                 GreenhouseLayout(id = id, name = plot.get(NAME)?.asString).also { readPlants(plants, it, notes) }
             }.take(MasterLayout.MAX_PLOTS)
             if (plots.isEmpty()) return LayoutTransferResult.Failure("That layout lists no plots.")
@@ -72,8 +68,7 @@ object MagicAddonsFormat : LayoutFormat {
             val plant = runCatching { element.asJsonObject }.getOrNull() ?: return@forEach
 
             val cropName = plant.get(CROP)?.asString ?: return@forEach
-            val definition = CropRegistry.get(cropName)
-                ?: CropRegistry.all.find { it.name.equals(cropName, ignoreCase = true) }
+            val definition = CropRegistry.findByName(cropName)
 
             if (definition == null) {
                 notes.add("Unknown crop: $cropName")
@@ -111,7 +106,7 @@ object MagicAddonsFormat : LayoutFormat {
 
             layout.elementInstances.add(
                 GreenhouseElementInstance(
-                    definition.skyblockId?.id ?: definition.name,
+                    definition.elementId,
                     anchor ?: return@forEach,
                     cropDef = definition
                 )
@@ -119,60 +114,8 @@ object MagicAddonsFormat : LayoutFormat {
         }
     }
 
-    private fun plantsOf(layout: GreenhouseLayout): JsonArray {
-        val plants = JsonArray()
-
-        layout.elementInstances
-            .sortedWith(compareBy({ it.slot.y }, { it.slot.x }))
-            .forEach { instance ->
-                plants.add(JsonObject().apply {
-                    addProperty(CROP, instance.cropDef.name)
-                    addProperty(X, instance.slot.x)
-                    addProperty(Y, instance.slot.y)
-                    instance.slot.slotMark?.let { addProperty(ROLE, it.name) }
-                })
-            }
-        return plants
-    }
-
-    override fun export(layout: GreenhouseLayout): LayoutTransferResult = exportOne(layout, layout.name)
-
-    /** One plot written the old way, so older versions of the mod can still read it. */
-    private fun exportOne(layout: GreenhouseLayout, name: String?): LayoutTransferResult {
-        val root = JsonObject().apply {
-            addProperty(VERSION_KEY, 1)
-            name?.let { addProperty(NAME, it) }
-            addProperty(SIZE, layout.size)
-            add(PLANTS, plantsOf(layout))
-        }
-
-        return LayoutTransferResult.Exported(GSON.toJson(root))
-    }
-
-    override fun exportAll(master: MasterLayout): LayoutTransferResult {
-        if (master.plots.size == 1) return exportOne(master.plots.first(), master.name)
-
-        val plots = JsonArray()
-        master.plots.forEach { plot ->
-            plots.add(JsonObject().apply {
-                plot.name?.let { addProperty(NAME, it) }
-                add(PLANTS, plantsOf(plot))
-            })
-        }
-
-        val root = JsonObject().apply {
-            addProperty(VERSION_KEY, VERSION)
-            master.name?.let { addProperty(NAME, it) }
-            addProperty(SIZE, master.plots.first().size)
-            add(PLOTS, plots)
-        }
-
-        return LayoutTransferResult.Exported(GSON.toJson(root))
-    }
-
     private const val VERSION_KEY: String = "version"
     private const val NAME: String = "name"
-    private const val SIZE: String = "size"
     private const val PLANTS: String = "plants"
     private const val PLOTS: String = "plots"
     private const val CROP: String = "crop"

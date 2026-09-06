@@ -7,9 +7,13 @@ import net.minecraft.util.RandomSource
 import net.minecraft.core.Direction
 import net.minecraft.client.renderer.block.dispatch.BlockStateModelPart
 import net.minecraft.client.Minecraft
+import net.minecraft.client.multiplayer.ClientLevel
+import net.minecraft.util.LightCoordsUtil
 import org.magic.magicaddons.util.compat.RenderCompat
 import net.minecraft.client.renderer.SubmitNodeCollector
 import net.minecraft.client.renderer.rendertype.RenderTypes
+import net.minecraft.client.renderer.texture.OverlayTexture
+import net.minecraft.client.color.block.BlockColors
 import net.minecraft.core.BlockPos
 import net.minecraft.util.ARGB
 import net.minecraft.world.level.block.state.BlockState
@@ -23,12 +27,6 @@ import net.minecraft.world.phys.shapes.VoxelShape
  * comes from the frame being drawn, or the marks lag behind the player as they walk.
  */
 object WorldRender {
-
-
-    /** Full brightness: a plan is a hint laid over the world, not a block lit by it. */
-    private const val FULL_BRIGHT: Int = 0xF000F0
-
-    private const val NO_OVERLAY: Int = 0xA0000
 
     private val RANDOM: RandomSource = RandomSource.create(0)
 
@@ -44,38 +42,7 @@ object WorldRender {
     /** The least a box can measure and still be seen, for entities that occupy nothing at all. */
     private const val MIN_BOX: Double = 0.08
 
-    /**
-     * Marks whatever stands at a position: its shape filled, its edges drawn on top. Neither is depth
-     * tested, so a block behind another still reads.
-     */
-    fun mark(
-        poseStack: PoseStack,
-        collector: SubmitNodeCollector,
-        cameraPos: Vec3,
-        pos: BlockPos,
-        shape: VoxelShape,
-        color: Int,
-        fillAlpha: Int
-    ) {
-        if (shape.isEmpty) return
-
-        val boxes = shape.toAabbs()
-
-        atBlock(poseStack, cameraPos, pos) { pose ->
-            collector.submitCustomGeometry(pose, RenderTypes.debugFilledBox()) { transform, consumer ->
-                boxes.forEach {
-                    consumer.fillBox(transform, it.grow(FILL_EXPAND), ARGB.color(fillAlpha, color))
-                }
-            }
-        }
-
-        outline(poseStack, collector, cameraPos, pos, shape, color)
-    }
-
-    /**
-     * Marks a world-space box the way mark marks a block, for entities. Anything too thin to see is
-     * opened out to the least that can be.
-     */
+    /** A world-space box filled and outlined, for entities. A box too thin to see is widened to MIN_BOX. */
     fun markBox(
         poseStack: PoseStack,
         collector: SubmitNodeCollector,
@@ -104,85 +71,6 @@ object WorldRender {
         }
     }
 
-    /** The edges of [shape], each of its boxes drawn as its own box. */
-    fun outline(
-        poseStack: PoseStack,
-        collector: SubmitNodeCollector,
-        cameraPos: Vec3,
-        pos: BlockPos,
-        shape: VoxelShape,
-        color: Int
-    ) {
-        if (shape.isEmpty) return
-
-        atBlock(poseStack, cameraPos, pos) { pose ->
-            // one call per box, so two marked blocks side by side stay two boxes rather than
-            // merging into one long one the way a single combined shape would
-            shape.toAabbs().forEach { box ->
-                RenderCompat.outline(
-                    collector,
-                    pose,
-                    Shapes.create(box.grow(-OUTLINE_INSET)),
-                    color
-                )
-            }
-        }
-    }
-
-    /**
-     * Draws a block as it would look if it were there, tinted and see through. The colour is written
-     * onto each quad, since the tint array only reaches quads that ask for it, and it multiplies the texture.
-     */
-    fun ghost(
-        poseStack: PoseStack,
-        collector: SubmitNodeCollector,
-        cameraPos: Vec3,
-        pos: BlockPos,
-        state: BlockState,
-        tint: Int,
-        outlineColor: Int,
-        alpha: Int
-    ) {
-        val parts = mutableListOf<BlockStateModelPart>()
-
-        // seeded from the block's own position, as the chunk renderer seeds its own: a shared
-        // generator picked a different fire variant every frame, which flickers
-        RANDOM.setSeed(state.getSeed(pos))
-
-        Minecraft.getInstance().modelManager.blockStateModelSet.get(state)
-            .collectParts(RANDOM, parts)
-
-        val quadColor = ARGB.color(alpha, tint)
-
-        if (parts.isNotEmpty()) {
-            atBlock(poseStack, cameraPos, pos) { pose ->
-                collector.submitCustomGeometry(
-                    pose,
-                    RenderTypes.translucentMovingBlock()
-                ) { transform, consumer ->
-                    val quadInstance = QuadInstance()
-
-                    parts.forEach { part ->
-                        QUAD_SIDES.forEach { side ->
-                            part.getQuads(side).forEach { quad ->
-                                quadInstance.setColor(quadColor)
-                                quadInstance.setLightCoords(FULL_BRIGHT)
-                                quadInstance.setOverlayCoords(NO_OVERLAY)
-
-                                consumer.putBakedQuad(transform, quad, quadInstance)
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        // the box around it says this is a plan rather than something already standing there
-        val level = Minecraft.getInstance().level ?: return
-
-        outline(poseStack, collector, cameraPos, pos, state.getShape(level, pos), outlineColor)
-    }
-
     /** Draws a block exactly as it is: full colour, no outline. What the crop preview is made of. */
     fun solid(
         poseStack: PoseStack,
@@ -200,8 +88,6 @@ object WorldRender {
 
         if (parts.isEmpty()) return
 
-        // a stem is yellow and grass is green because of tints the model does not carry itself;
-        // without asking for them here every tinted block came out white
         val colors = Minecraft.getInstance().blockColors
         val level = Minecraft.getInstance().level
         val tintColors = mutableMapOf<Int, Int>()
@@ -220,22 +106,15 @@ object WorldRender {
 
                             val color = if (material.isTinted) {
                                 tintColors.getOrPut(material.tintIndex()) {
-                                    val source = colors.getTintSource(state, material.tintIndex())
-                                    val rgb = when {
-                                        source == null -> 0xFFFFFF
-                                        level != null -> source.colorInWorld(state, level, pos)
-                                        else -> source.color(state)
-                                    }
-
-                                    ARGB.color(0xFF, rgb)
+                                    tintColor(colors, level, state, pos, material.tintIndex())
                                 }
                             } else {
                                 -1
                             }
 
                             quadInstance.setColor(color)
-                            quadInstance.setLightCoords(FULL_BRIGHT)
-                            quadInstance.setOverlayCoords(NO_OVERLAY)
+                            quadInstance.setLightCoords(LightCoordsUtil.FULL_BRIGHT)
+                            quadInstance.setOverlayCoords(OverlayTexture.NO_OVERLAY)
 
                             consumer.putBakedQuad(transform, quad, quadInstance)
                         }
@@ -243,6 +122,18 @@ object WorldRender {
                 }
             }
         }
+    }
+
+    /** The block's tint for one tint index as opaque ARGB. Stems and grass are only coloured through this. */
+    private fun tintColor(colors: BlockColors, level: ClientLevel?, state: BlockState, pos: BlockPos, tintIndex: Int): Int {
+        val source = colors.getTintSource(state, tintIndex)
+        val rgb = when {
+            source == null -> 0xFFFFFF
+            level != null -> source.colorInWorld(state, level, pos)
+            else -> source.color(state)
+        }
+
+        return ARGB.color(0xFF, rgb)
     }
 
     /** Runs [action] with the pose stack sitting at [pos], as the game sets up its own outline. */
@@ -389,23 +280,15 @@ object WorldRender {
                             parts.forEach { part ->
                                 QUAD_SIDES.forEach { side ->
                                     part.getQuads(side).forEach { quad ->
-                                        // a stem is yellow and grass green only through a tint the model
-                                        // does not carry itself; without it every tinted block came out white
                                         val material = quad.materialInfo()
                                         val color = if (material.isTinted) {
-                                            val source = colors.getTintSource(ghost.state, material.tintIndex())
-                                            val rgb = when {
-                                                source == null -> 0xFFFFFF
-                                                level != null -> source.colorInWorld(ghost.state, level, ghost.pos)
-                                                else -> source.color(ghost.state)
-                                            }
-                                            ARGB.multiply(ghost.color, ARGB.color(0xFF, rgb))
+                                            ARGB.multiply(ghost.color, tintColor(colors, level, ghost.state, ghost.pos, material.tintIndex()))
                                         } else {
                                             ghost.color
                                         }
                                         quadInstance.setColor(color)
-                                        quadInstance.setLightCoords(FULL_BRIGHT)
-                                        quadInstance.setOverlayCoords(NO_OVERLAY)
+                                        quadInstance.setLightCoords(LightCoordsUtil.FULL_BRIGHT)
+                                        quadInstance.setOverlayCoords(OverlayTexture.NO_OVERLAY)
                                         consumer.putBakedQuad(pose, quad, quadInstance)
                                     }
                                 }

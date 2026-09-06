@@ -6,7 +6,6 @@ import net.minecraft.core.BlockPos
 import net.minecraft.core.Rotations
 import net.minecraft.world.phys.Vec3
 import net.minecraft.world.level.block.state.properties.DoubleBlockHalf
-import org.magic.magicaddons.data.greenhouse.DEFAULT_DECAY_TIME_MS
 import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
 import org.magic.magicaddons.data.greenhouse.CropArmorStand
 import org.magic.magicaddons.data.greenhouse.CropBlockState
@@ -64,7 +63,8 @@ object Sunflower : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.25, 0.1875),
-                        hashString = "b40d6fc1e1b67c58d7f82350bcac083f9e9547f9131236463164417fbdd3bee4"
+                        hashString = "b40d6fc1e1b67c58d7f82350bcac083f9e9547f9131236463164417fbdd3bee4",
+                        isSmall = false
                     )
                 ),
                 3..3,
@@ -96,9 +96,6 @@ object Sunflower : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, 0.03125, 0.1875),
-                        headRotation = Rotations(-10.0f, 0.0f, 0.0f),
-                        xRotation = 0.0f,
-                        yRotation = 0.0f,
                         hashString = "b40d6fc1e1b67c58d7f82350bcac083f9e9547f9131236463164417fbdd3bee4",
                         isSmall = false
                     )
@@ -115,9 +112,6 @@ object Sunflower : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, 0.0625, 0.1875),
-                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
-                        xRotation = 0.0f,
-                        yRotation = 0.0f,
                         hashString = "8082ca3aa210204d1daa8a3b737f594e102daf3c87b776530d49ba79b9b22e71",
                         isSmall = false
                     )
@@ -134,7 +128,8 @@ object Sunflower : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, 0.0625, 0.1875),
-                        hashString = "8082ca3aa210204d1daa8a3b737f594e102daf3c87b776530d49ba79b9b22e71"
+                        hashString = "8082ca3aa210204d1daa8a3b737f594e102daf3c87b776530d49ba79b9b22e71",
+                        isSmall = false
                     )
                 ),
                 7..8,
@@ -153,22 +148,7 @@ object Sunflower : CropDefinitionProvider {
                         hashString = "8082ca3aa210204d1daa8a3b737f594e102daf3c87b776530d49ba79b9b22e71"
                     )
                 ),
-                9..9,
-            ),
-            CropStage(
-                blocks = listOf(
-                    CropBlockState(
-                        offset = BlockPos(0, 1, 0),
-                        blockState = melonStemState(6)
-                    )
-                ),
-                armorStands = listOf(
-                    CropArmorStand(
-                        offset = Vec3(0.0, 0.15625, 0.1875),
-                        hashString = "8082ca3aa210204d1daa8a3b737f594e102daf3c87b776530d49ba79b9b22e71"
-                    )
-                ),
-                10..10,
+                9..10,
             ),
             CropStage(
                 blocks = listOf(
@@ -197,8 +177,6 @@ object Sunflower : CropDefinitionProvider {
                     CropArmorStand(
                         offset = Vec3(0.0, 0.4375, 0.1875),
                         headRotation = Rotations(0.0f, 0.0f, 0.0f),
-                        xRotation = 0.0f,
-                        yRotation = 0.0f,
                         hashString = "f942c5e8426609a132549b7df5300739fade9122dad08a1d0265347795cf51ad",
                         isSmall = false
                     )

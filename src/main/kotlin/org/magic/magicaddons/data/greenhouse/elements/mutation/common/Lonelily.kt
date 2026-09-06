@@ -9,7 +9,6 @@ import org.magic.magicaddons.data.greenhouse.CropDefinition
 import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
 import org.magic.magicaddons.data.greenhouse.CropStage
 import org.magic.magicaddons.data.greenhouse.CropStates.wheatState
-import org.magic.magicaddons.data.greenhouse.DEFAULT_DECAY_TIME_MS
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 import net.minecraft.core.Rotations
 import org.magic.magicaddons.data.greenhouse.StandPose
@@ -43,30 +42,9 @@ object Lonelily : CropDefinitionProvider {
                 ),
                 1..1,
             )
-
-        ,
-            // as placed, the same as it grows to
-            CropStage(
-                blocks = listOf(
-                    CropBlockState(
-                        offset = BlockPos(0, 1, 0),
-                        blockState = wheatState(3)
-                    )
-                ),
-                armorStands = listOf(
-                    CropArmorStand(
-                        offset = Vec3(0.0, -0.125, 0.0),
-                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
-                        xRotation = 0.0f,
-                        yRotation = 0.0f,
-                        hashString = "f4672d5fb128c63197da27f40d7143818d318665b3ab2335121e9ae8f9ecc2e3",
-                        isSmall = false
-                    )
-                ),
-                1..1,
-                placed = true
-            )),
+        ),
         needsWater = false,
-        isMutation = true
+        isMutation = true,
+        placedSameAsGrown = true
     )
 }

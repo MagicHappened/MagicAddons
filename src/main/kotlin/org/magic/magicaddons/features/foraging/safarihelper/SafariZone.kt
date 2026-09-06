@@ -2,14 +2,14 @@ package org.magic.magicaddons.features.foraging.safarihelper
 
 import net.minecraft.world.entity.Display
 import net.minecraft.world.entity.Entity
-import net.minecraft.world.entity.EquipmentSlot
 import net.minecraft.world.entity.animal.parrot.Parrot
-import net.minecraft.world.entity.decoration.ArmorStand
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.item.BlockItem
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.EntityInfo
+import org.magic.magicaddons.util.EntityUtils
+import org.magic.magicaddons.util.EntityUtils.typePath
 import org.magic.magicaddons.util.PlayerUtils
 
 /**
@@ -112,7 +112,7 @@ enum class SafariZone(val displayName: String, val uniqueMobs: List<SafariMob>) 
 private val CAVERNFISH_AREA = AABB(-105.0, 55.0, 68.0, -75.0, 72.0, 105.0)
 
 private fun isType(info: EntityInfo, path: String): Boolean =
-    info.entity.type.toString() == "entity.minecraft.$path"
+    info.entity.typePath() == path
 
 private fun isParrot(info: EntityInfo, variant: Parrot.Variant): Boolean {
     val entity = info.entity
@@ -126,11 +126,7 @@ private fun hasPlayerSkin(info: EntityInfo, hash: String): Boolean {
 
 private fun hasSkull(info: EntityInfo, vararg hashes: String): Boolean =
     visualsOf(info).any { entity ->
-        val hash = when (entity) {
-            is Display.ItemDisplay -> PlayerUtils.getSkinHash(entity.itemStack)
-            is ArmorStand -> PlayerUtils.getSkinHash(entity.getItemBySlot(EquipmentSlot.HEAD))
-            else -> null
-        }
+        val hash = EntityUtils.carriedSkullHash(entity)
 
         hash != null && hash in hashes
     }

@@ -3,7 +3,14 @@ package org.magic.magicaddons.data.greenhouse.elements.mutation.epic
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Rotations
 import net.minecraft.world.phys.Vec3
-import org.magic.magicaddons.data.greenhouse.*
+import org.magic.magicaddons.data.greenhouse.CropArmorStand
+import org.magic.magicaddons.data.greenhouse.CropBlockState
+import org.magic.magicaddons.data.greenhouse.CropDefinition
+import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
+import org.magic.magicaddons.data.greenhouse.CropEffect
+import org.magic.magicaddons.data.greenhouse.CropStage
+import org.magic.magicaddons.data.greenhouse.Footprint
+import org.magic.magicaddons.data.greenhouse.StandPose
 import org.magic.magicaddons.data.greenhouse.CropStates.melonStemState
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
@@ -146,11 +153,20 @@ object PlantBoyAdvance : CropDefinitionProvider {
                     )
                             +
                             CropArmorStand.matcherPattern(
-                                listOf(
+                                offsets = listOf(
                                     Vec3(-0.5, -0.65625, 0.0),
                                     Vec3(0.5, -0.65625, 0.0)
                                 ),
-                                hashString = "9eaf5fc0bf98649111f53d7516b18dec5d9d13f19273bef2b2b04f068ca9d337"
+                                rotations = listOf(
+                                    Rotations(45.0f, 0.0f, 0.0f),
+                                    Rotations(45.0f, 180.0f, 0.0f)
+                                ),
+                                yRotations = listOf(
+                                    90.0f,
+                                    90.0f
+                                ),
+                                hashString = "9eaf5fc0bf98649111f53d7516b18dec5d9d13f19273bef2b2b04f068ca9d337",
+                                isSmall = false
                             ),
                 9..9,
             ),
@@ -177,11 +193,20 @@ object PlantBoyAdvance : CropDefinitionProvider {
                     )
                             +
                             CropArmorStand.matcherPattern(
-                                listOf(
+                                offsets = listOf(
                                     Vec3(0.5, -0.65625, 0.0),
                                     Vec3(-0.5, -0.65625, 0.0)
                                 ),
-                                hashString = "9eaf5fc0bf98649111f53d7516b18dec5d9d13f19273bef2b2b04f068ca9d337"
+                                rotations = listOf(
+                                    Rotations(45.0f, 180.0f, 0.0f),
+                                    Rotations(45.0f, 0.0f, 0.0f)
+                                ),
+                                yRotations = listOf(
+                                    90.0f,
+                                    90.0f
+                                ),
+                                hashString = "9eaf5fc0bf98649111f53d7516b18dec5d9d13f19273bef2b2b04f068ca9d337",
+                                isSmall = false
                             ),
                 10..10,
             ),
@@ -207,10 +232,6 @@ object PlantBoyAdvance : CropDefinitionProvider {
                     rotations = listOf(
                         Rotations(45.0f, 180.0f, 0.0f),
                         Rotations(45.0f, 0.0f, 0.0f)
-                    ),
-                    xRotations = listOf(
-                        0.0f,
-                        0.0f
                     ),
                     yRotations = listOf(
                         90.0f,
@@ -254,10 +275,6 @@ object PlantBoyAdvance : CropDefinitionProvider {
                         Rotations(45.0f, 180.0f, 0.0f),
                         Rotations(45.0f, 0.0f, 0.0f)
                     ),
-                    xRotations = listOf(
-                        0.0f,
-                        0.0f
-                    ),
                     yRotations = listOf(
                         90.0f,
                         90.0f
@@ -268,9 +285,6 @@ object PlantBoyAdvance : CropDefinitionProvider {
                 listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.4375, 0.0),
-                        headRotation = Rotations(-22.5f, 0.0f, 0.0f),
-                        xRotation = 0.0f,
-                        yRotation = 0.0f,
                         hashString = "765accb195aad0d7212eedd647e3f80ed5d4acdffe4329ead074f7587f366457",
                         isSmall = false
                     )

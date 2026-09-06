@@ -8,7 +8,6 @@ import org.magic.magicaddons.util.ScreenUtil
 
 object HudCommand : AbstractCommand() {
     override val argument: String = "hud"
-    override val description: String = "Opens the hud editor"
 
     override fun build(): LiteralArgumentBuilder<FabricClientCommandSource> =
         LiteralArgumentBuilder.literal<FabricClientCommandSource>(argument).executes {

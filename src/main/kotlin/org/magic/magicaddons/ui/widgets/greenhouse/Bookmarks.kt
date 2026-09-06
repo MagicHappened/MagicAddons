@@ -5,8 +5,11 @@ import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.network.chat.Component
 import org.magic.magicaddons.Common
+import org.magic.magicaddons.util.ScreenUtil.component4
 import org.magic.magicaddons.util.ScreenUtil.drawBorder
-import org.magic.magicaddons.util.ScreenUtil.drawSimpleTooltip
+import org.magic.magicaddons.util.ScreenUtil.drawTooltipAtCursor
+import org.magic.magicaddons.util.ScreenUtil.ellipsised
+import org.magic.magicaddons.util.ScreenUtil.inRect
 import kotlin.math.roundToInt
 
 /**
@@ -113,7 +116,7 @@ class Bookmarks<T>(
 
             if (side != Side.Right) {
                 val room = x2 - x1 - Common.UI.TEXT_X_PAD * 2
-                val shown = shortened(label(item), room)
+                val shown = ellipsised(font, label(item), room)
                 // the text sits in the part that shows: above the frame for the top, under it for the bottom
                 val textTop = if (side == Side.Top) y1 + (THICKNESS - font.lineHeight) / 2 + Common.UI.BORDER_SIZE / 2
                 else y1 + TUCK + (THICKNESS - font.lineHeight) / 2 + Common.UI.BORDER_SIZE / 2
@@ -133,25 +136,17 @@ class Bookmarks<T>(
     fun renderTooltip(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int) {
         val item = hovered ?: return
         val text = tooltip(item)
-            ?: label(item).takeIf { side != Side.Right && shortened(it, tabSize() - Common.UI.TEXT_X_PAD * 2) != it }
+            ?: label(item).takeIf { side != Side.Right && ellipsised(font, it, tabSize() - Common.UI.TEXT_X_PAD * 2) != it }
             ?: return
 
-        graphics.drawSimpleTooltip(text, mouseX + 7, mouseY + 12)
+        graphics.drawTooltipAtCursor(text, mouseX, mouseY)
     }
 
-    private fun shortened(text: String, room: Int): String =
-        if (font.width(text) <= room) text
-        else font.plainSubstrByWidth(text, (room - font.width(ELLIPSIS)).coerceAtLeast(0)) + ELLIPSIS
-
-    private fun tabAt(mouseX: Double, mouseY: Double): T? {
-        val mx = mouseX.toInt()
-        val my = mouseY.toInt()
-
-        return items.withIndex().firstOrNull { (index, item) ->
+    private fun tabAt(mouseX: Double, mouseY: Double): T? =
+        items.withIndex().firstOrNull { (index, item) ->
             val (x1, y1, x2, y2) = rect(index, item)
-            mx in x1 until x2 && my in y1 until y2
+            inRect(mouseX, mouseY, x1, y1, x2 - x1, y2 - y1)
         }?.value
-    }
 
     fun isMouseOver(mouseX: Double, mouseY: Double): Boolean = tabAt(mouseX, mouseY) != null
 
@@ -164,8 +159,6 @@ class Bookmarks<T>(
         onPick(item, event)
         return true
     }
-
-    private operator fun IntArray.component4(): Int = this[3]
 
     companion object {
         /** How far a tab stands out of the frame, and how much further the picked one goes. */
@@ -180,6 +173,5 @@ class Bookmarks<T>(
 
         private const val MAX_TAB_WIDTH: Int = 100
         private const val ANIM_MS: Float = 150f
-        private const val ELLIPSIS: String = "…"
     }
 }

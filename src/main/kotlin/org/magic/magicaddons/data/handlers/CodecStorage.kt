@@ -10,8 +10,6 @@ import org.magic.magicaddons.Common
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
-import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
 
 object CodecStorage {
 
@@ -21,44 +19,30 @@ object CodecStorage {
         .setPrettyPrinting()
         .create()
 
+    /** One value of a root object: the key it is filed under, and the codec that writes it. */
+    class Entry<T>(val key: String, val codec: Codec<T>, val value: T) {
+        fun encode(): JsonElement = codec.encodeStart(jsonOps, value)
+            .getOrThrow { IllegalStateException("Codec encode error: $it") }
+    }
+
     /**
-     * Writes the file whole to a temporary name and moves it over the old one, so a game killed
-     * mid-write leaves the old file rather than half of the new one. The old file is kept as .bak.
+     * Writes every entry as one root object. The old file is copied to .bak first, the new one is
+     * written to .tmp and moved over the old, and the .bak is deleted once that move succeeded.
      */
-    fun <T> save(
-        path: Path,
-        codec: Codec<T>,
-        value: T,
-        wrapperKey: String? = null
-    ) {
-        val encoded = codec.encodeStart(jsonOps, value)
-            .resultOrPartial { error ->
-                throw IllegalStateException("Codec encode error: $error")
-            }
-            .orElseThrow()
+    fun save(path: Path, entries: List<Entry<*>>) {
+        val root = JsonObject()
+        entries.forEach { root.add(it.key, it.encode()) }
 
-        DataHandler.createFile(path)
-
-        val rootObject = readRoot(path) ?: JsonObject()
-
-        if (wrapperKey != null) {
-            rootObject.add(wrapperKey, encoded)
-        } else {
-            if (encoded is JsonObject) {
-                encoded.entrySet().forEach {
-                    rootObject.add(it.key, it.value)
-                }
-            } else {
-                throw IllegalStateException("Root save without wrapperKey requires JsonObject")
-            }
+        val backup = backupOf(path)
+        if (Files.exists(path) && Files.size(path) > 0) {
+            Files.copy(path, backup, StandardCopyOption.REPLACE_EXISTING)
         }
 
         val temporary = path.resolveSibling(path.fileName.toString() + ".tmp")
-        Files.writeString(temporary, gson.toJson(rootObject))
-        if (Files.exists(path) && Files.size(path) > 0) {
-            Files.move(path, backupOf(path), StandardCopyOption.REPLACE_EXISTING)
-        }
+        Files.writeString(temporary, gson.toJson(root))
         Files.move(temporary, path, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
+
+        Files.deleteIfExists(backup)
     }
 
     fun <T> load(
@@ -68,35 +52,35 @@ object CodecStorage {
     ): T? {
         if (!Files.exists(path)) return null
 
-        val jsonElement: JsonElement = readRoot(path) ?: return null
+        val root = readRoot(path) ?: return null
 
-        val actual = if (wrapperKey != null) {
-            jsonElement.asJsonObject.get(wrapperKey) ?: return null
+        val actual: JsonElement = if (wrapperKey != null) {
+            root.get(wrapperKey) ?: return null
         } else {
-            jsonElement
+            root
         }
 
         return codec.parse(jsonOps, actual)
-            .resultOrPartial { error ->
-                throw IllegalStateException("Codec Decode error: $error")
-            }
-            .orElse(null)
+            .getOrThrow { IllegalStateException("Codec decode error: $it") }
     }
 
     /**
-     * The file's json, or the backup's when the file will not parse: a file cut short is put aside
-     * under a dated name and the backup takes its place, so a bad save costs one session at most.
+     * The file's json, or the backup's when the file will not parse and a backup does. The unreadable
+     * file is kept as .broken, one copy overwritten each time, and the backup takes its place.
      */
     private fun readRoot(path: Path): JsonObject? {
         parse(path)?.let { return it }
 
-        val broken = path.resolveSibling(path.fileName.toString() + ".broken-" + LocalDateTime.now().format(STAMP))
-        Common.LOGGER.error("$path is not valid json, moving it to $broken")
-        runCatching { Files.move(path, broken, StandardCopyOption.REPLACE_EXISTING) }
-
         val backup = backupOf(path)
-        val fromBackup = parse(backup) ?: return null
-        Common.LOGGER.warn("Restored $path from $backup")
+        val fromBackup = parse(backup)
+        if (fromBackup == null) {
+            Common.LOGGER.error("$path is not valid json and there is no backup to restore")
+            return null
+        }
+
+        val broken = path.resolveSibling(path.fileName.toString() + ".broken")
+        Common.LOGGER.error("$path is not valid json, keeping it as $broken and restoring $backup")
+        runCatching { Files.copy(path, broken, StandardCopyOption.REPLACE_EXISTING) }
         runCatching { Files.copy(backup, path, StandardCopyOption.REPLACE_EXISTING) }
         return fromBackup
     }
@@ -107,6 +91,4 @@ object CodecStorage {
     }
 
     private fun backupOf(path: Path): Path = path.resolveSibling(path.fileName.toString() + ".bak")
-
-    private val STAMP: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss")
 }

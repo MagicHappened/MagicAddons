@@ -23,34 +23,27 @@ import kotlin.io.path.writeText
 /** Greenhouse data on disk: one folder a profile, named by the profile's id, each holding its own file. */
 object DataHandler {
     val configDir: Path = FabricLoader.getInstance().configDir
-    val modDir: Path = configDir.resolve("MagicAddons")
+    private val modDir: Path = configDir.resolve("MagicAddons")
     val dataDir: Path = modDir.resolve("data")
-
-    /** Where the data lived before it was split by profile. */
-    private val legacyFile: Path = dataDir.resolve("greenhousepresets.json")
 
     private const val FILE_NAME: String = "greenhousepresets.json"
     private const val PROFILE_FILE: String = "profile.json"
+
+    /** Where the data lived before it was split by profile. */
+    private val legacyFile: Path = dataDir.resolve(FILE_NAME)
 
     /** The profile whose data is loaded, null until the game has said which profile this is. */
     var activeProfile: UUID? = null
         private set
 
     fun init() {
-        createIfMissing(modDir)
-        createIfMissing(dataDir)
+        ensureDirectory(modDir)
+        ensureDirectory(dataDir)
     }
 
-    private fun createIfMissing(path: Path) {
+    private fun ensureDirectory(path: Path) {
         if (!Files.exists(path)) {
             Files.createDirectories(path)
-        }
-    }
-
-    fun createFile(path: Path) {
-        val parent = path.parent
-        if (!Files.exists(parent)) {
-            Files.createDirectories(parent)
         }
     }
 
@@ -74,7 +67,7 @@ object DataHandler {
     }
 
     private fun writeProfileName(id: UUID, name: String) {
-        createIfMissing(profileDir(id))
+        ensureDirectory(profileDir(id))
         profileDir(id).resolve(PROFILE_FILE).writeText(JsonObject().apply { addProperty("name", name) }.toString())
         names[id] = name
     }
@@ -89,7 +82,7 @@ object DataHandler {
 
         // data from before the split belongs to whichever profile is seen first
         if (legacyFile.exists() && profileIds().isEmpty()) {
-            createIfMissing(profileDir(id))
+            ensureDirectory(profileDir(id))
             Files.move(legacyFile, greenhouseFile(id))
         }
 
@@ -129,31 +122,26 @@ object DataHandler {
             Common.LOGGER.error("Failed to load greenhouses data")
             return@run mutableListOf()
         }
+
+        // the file names the assigned layout by id, and the presets it points into are loaded by now
+        val plots = GreenhouseData.allPlots()
+        GreenhouseData.greenhouseGrids.forEach { grid ->
+            grid.state.assignedLayout = plots.find { it.id == grid.state.assignedLayoutId }
+            grid.state.assignedLayoutId = null
+        }
     }
 
     fun saveGardenData() {
         val file = greenhouseFile(activeProfile ?: return)
-        createIfMissing(file.parent)
+        ensureDirectory(file.parent)
 
         CodecStorage.save(
-            path = file,
-            codec = MISC_GREENHOUSE_INFO_CODEC,
-            value = GreenhouseData.miscInfo,
-            wrapperKey = "misc_info"
-        )
-
-        CodecStorage.save(
-            path = file,
-            codec = MASTER_LAYOUT_CODEC.listOf(),
-            value = GreenhouseData.presetGrids,
-            wrapperKey = "presets"
-        )
-
-        CodecStorage.save(
-            path = file,
-            codec = GREENHOUSE_GRID_CODEC.listOf(),
-            value = GreenhouseData.greenhouseGrids,
-            wrapperKey = "greenhouses"
+            file,
+            listOf(
+                CodecStorage.Entry("misc_info", MISC_GREENHOUSE_INFO_CODEC, GreenhouseData.miscInfo),
+                CodecStorage.Entry("presets", MASTER_LAYOUT_CODEC.listOf(), GreenhouseData.presetGrids),
+                CodecStorage.Entry("greenhouses", GREENHOUSE_GRID_CODEC.listOf(), GreenhouseData.greenhouseGrids)
+            )
         )
     }
 }

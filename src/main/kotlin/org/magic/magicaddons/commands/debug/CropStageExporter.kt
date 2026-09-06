@@ -8,17 +8,16 @@ import net.minecraft.ChatFormatting
 import net.minecraft.client.Minecraft
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Rotations
-import net.minecraft.world.entity.EquipmentSlot
 import net.minecraft.world.entity.decoration.ArmorStand
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
+import org.magic.magicaddons.commands.fmt
 import org.magic.magicaddons.data.greenhouse.CropDefinition
 import org.magic.magicaddons.data.greenhouse.CropStates.toCode
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.PlayerUtils
-import org.magic.magicaddons.util.isCardinalYaw
 
 /**
  * Writes the blocks and stands around a plant as the kotlin a CropDefinition is made of, so a new
@@ -32,26 +31,11 @@ object CropStageExporter {
         "df03ad96092f3f789902436709cdf69de6b727c121b3c2daef9ffa1ccaed186c"
     )
 
-    fun copyCropStageData(
-        basePos: BlockPos,
-        stageNum: Int? = null,
-        foundDefinition: CropDefinition? = null,
-        discordFormat: Boolean = false
-    ) {
-        val result = buildCropStageData(basePos, stageNum, foundDefinition, discordFormat)
-            ?: return
-
-        Minecraft.getInstance().keyboardHandler.clipboard = result
-
-        ChatUtils.sendWithPrefix("Copied crop stage to clipboard (${result.length} chars)")
-    }
-
     /** The stage as kotlin, or null without a world. Quiet keeps the skipped-entity report out of chat. */
     fun buildCropStageData(
         basePos: BlockPos,
         stageNum: Int? = null,
         foundDefinition: CropDefinition? = null,
-        discordFormat: Boolean = false,
         quiet: Boolean = false,
         /** The stands seen when the plant was pinned, used when the world has none there any more. */
         knownStands: List<Entity> = emptyList()
@@ -66,16 +50,12 @@ object CropStageExporter {
         val width = footprint?.width ?: 1
         val height = footprint?.height ?: 1
 
-        if (discordFormat) {
-            sb.appendLine("```")
-        }
-
         for (dx in 0 until width) {
             for (dz in 0 until height) {
 
                 var y = basePos.y + 1
 
-                while (true) { //for multi height crops
+                while (true) {
                     val checkPos = BlockPos(
                         basePos.x + dx,
                         y,
@@ -98,7 +78,7 @@ object CropStageExporter {
                 }
             }
         }
-        // capture maximum stands (false positives on players but thats fine)
+        // tall enough for any plant; players caught in it are skipped below
         val box = AABB(
             basePos.x.toDouble(),
             basePos.y.toDouble() - 2,
@@ -242,12 +222,12 @@ object CropStageExporter {
             }
 
             if (parts.isNotEmpty()){
-                if (finalBlockString.isBlank()){ //no patterns only singletons
+                if (finalBlockString.isBlank()){
                     finalBlockString = "    blocks = listOf(\n" +
                             parts.joinToString(",\n") +
                             "\n)"
 
-                } else { //patterns AND blocks
+                } else {
                     val combined = finalBlockString +
                             " + listOf(\n" +
                             parts.joinToString(",\n") +
@@ -392,22 +372,13 @@ object CropStageExporter {
         sb.appendLine("    ${stageNum ?: 1}..${stageNum ?: 1}")
         sb.appendLine(")")
 
-        if (discordFormat) {
-            sb.appendLine("```")
-            sb.appendLine("Crop found: ${foundDefinition?.name} stageNum=$stageNum")
-        }
-
         return sb.toString()
     }
-
-    /** A position short enough to read in chat. */
-    private fun fmt(pos: Vec3): String = "%.4f %.4f %.4f".format(pos.x, pos.y, pos.z)
 
     /** Moves a block built at the left margin under whatever line it is being written into. */
     private fun indent(text: String, by: String = "    "): String =
         text.lineSequence().joinToString("\n") { if (it.isBlank()) it else by + it }
 
-    //temp for exporting
     data class ArmorStandExport(
         val offset: Vec3,
         val rotation: Rotations,

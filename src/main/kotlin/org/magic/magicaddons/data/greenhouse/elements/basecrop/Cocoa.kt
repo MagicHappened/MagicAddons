@@ -6,7 +6,6 @@ import net.minecraft.core.BlockPos
 import net.minecraft.core.Rotations
 import net.minecraft.world.item.Items
 import net.minecraft.world.phys.Vec3
-import org.magic.magicaddons.data.greenhouse.DEFAULT_DECAY_TIME_MS
 import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
 import org.magic.magicaddons.data.greenhouse.CropArmorStand
 import org.magic.magicaddons.data.greenhouse.CropBlockState
@@ -41,8 +40,6 @@ object Cocoa : CropDefinitionProvider {
                     CropArmorStand(
                     offset = Vec3(0.0, 0.34375, 0.0),
                     headRotation = Rotations(0.0f, 22.5f, 22.5f),
-                    xRotation = 0.0f,
-                    yRotation = 0.0f,
                     hashString = "e1f5cb495ba97bf9c05c15b8c9cc866c14c1fe14807fed5802a0bf68deec8912"
                     )
                 ),
@@ -59,8 +56,6 @@ object Cocoa : CropDefinitionProvider {
                     CropArmorStand(
                         offset = Vec3(0.0, -0.25, 0.0),
                         headRotation = Rotations(0.0f, 22.5f, 22.5f),
-                        xRotation = 0.0f,
-                        yRotation = 0.0f,
                         hashString = "e1f5cb495ba97bf9c05c15b8c9cc866c14c1fe14807fed5802a0bf68deec8912",
                         isSmall = false
                     )
@@ -94,8 +89,6 @@ object Cocoa : CropDefinitionProvider {
                     CropArmorStand(
                         offset = Vec3(-0.125, 0.46875, 0.0625),
                         headRotation = Rotations(0.0f, -22.5f, -22.5f),
-                        xRotation = 0.0f,
-                        yRotation = 0.0f,
                         hashString = "e1f5cb495ba97bf9c05c15b8c9cc866c14c1fe14807fed5802a0bf68deec8912"
                     ),
                     CropArmorStand(
@@ -138,16 +131,12 @@ object Cocoa : CropDefinitionProvider {
                     CropArmorStand(
                         offset = Vec3(0.0, 0.09375, 0.0),
                         headRotation = Rotations(0.0f, 22.5f, 22.5f),
-                        xRotation = 0.0f,
-                        yRotation = 0.0f,
                         hashString = "44d72eed58354ce14bfc497138a13564070fb4653898aeb3e66c73082ae1f993",
                         isSmall = false
                     ),
                     CropArmorStand(
                         offset = Vec3(-0.125, 0.65625, 0.0625),
                         headRotation = Rotations(0.0f, -22.5f, -22.5f),
-                        xRotation = 0.0f,
-                        yRotation = 0.0f,
                         hashString = "44d72eed58354ce14bfc497138a13564070fb4653898aeb3e66c73082ae1f993"
                     )
                 ),

@@ -3,7 +3,6 @@ package org.magic.magicaddons.data.greenhouse.elements.basecrop
 import org.magic.magicaddons.data.greenhouse.CropEffect
 import net.minecraft.core.BlockPos
 import net.minecraft.world.level.block.Blocks
-import org.magic.magicaddons.data.greenhouse.DEFAULT_DECAY_TIME_MS
 import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
 import org.magic.magicaddons.data.greenhouse.CropBlockState
 import org.magic.magicaddons.data.greenhouse.CropDefinition
@@ -27,7 +26,7 @@ object Netherwart : CropDefinitionProvider {
                         blockState = netherwartState(0)
                     )
                 ),
-                armorStands = listOf(),
+                armorStands = null,
                 1..3
             ),
             CropStage(
@@ -37,7 +36,7 @@ object Netherwart : CropDefinitionProvider {
                         blockState = netherwartState(1)
                     )
                 ),
-                armorStands = listOf(),
+                armorStands = null,
                 4..5
             ),
             CropStage(
@@ -47,7 +46,7 @@ object Netherwart : CropDefinitionProvider {
                         blockState = netherwartState(2)
                     )
                 ),
-                armorStands = listOf(),
+                armorStands = null,
                 6..7
             ),
             CropStage(
@@ -57,7 +56,7 @@ object Netherwart : CropDefinitionProvider {
                         blockState = netherwartState(3)
                     )
                 ),
-                armorStands = listOf(),
+                armorStands = null,
                 8..8
             )
 

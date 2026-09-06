@@ -8,7 +8,7 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import org.magic.magicaddons.events.EventBus;
-import org.magic.magicaddons.events.interact.OnAnyPlayerSwingEvent;
+import org.magic.magicaddons.events.interact.AnyPlayerSwingEvent;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -47,8 +47,8 @@ public class LivingEntityMixin {
         ItemStack stack = player.getMainHandItem();
         boolean isSelf = player instanceof LocalPlayer;
 
-        OnAnyPlayerSwingEvent event =
-                new OnAnyPlayerSwingEvent(player, stack, isSelf);
+        AnyPlayerSwingEvent event =
+                new AnyPlayerSwingEvent(player, stack, isSelf);
 
         EventBus.post(event);
     }

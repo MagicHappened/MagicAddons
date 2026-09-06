@@ -5,7 +5,7 @@ import net.minecraft.client.gui.GuiGraphicsExtractor
 import org.magic.magicaddons.Common
 import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.events.EventHandler
-import org.magic.magicaddons.events.render.OnHudRenderEvent
+import org.magic.magicaddons.events.render.HudRenderEvent
 import org.magic.magicaddons.util.compat.McCompat
 import kotlin.math.roundToInt
 
@@ -266,7 +266,7 @@ object HudRenderer {
     }
 
     @EventHandler
-    fun onHudRender(event: OnHudRenderEvent) {
+    fun onHudRender(event: HudRenderEvent) {
         if (McCompat.hudHidden() || McCompat.currentScreen() != null) return
         val window = Minecraft.getInstance().window
         HudScene.build(HudLayoutStore.layout, window.guiScaledWidth, window.guiScaledHeight, sample = false).draw(event.graphics)

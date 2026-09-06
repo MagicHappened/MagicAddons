@@ -4,10 +4,10 @@ import kotlin.math.abs
 
 
 data class GreenhouseLayout(
-    val id: String, // plot_# for grids, preset_# for presets
+    val id: String, // plot_# for grids, preset_#[_p#] for presets
     var name: String? = null,
-    val size: Int = 10,
-    val slots: List<LayoutSlot> = List(100) { index ->
+    val size: Int = GREENHOUSE_SIZE,
+    val slots: List<LayoutSlot> = List(size * size) { index ->
         val x = index % size
         val y = index / size
         // no soil said: anything may stand there. Air is asked for by placing it from the shelf
@@ -33,14 +33,22 @@ data class GreenhouseLayout(
     }
     override fun toString(): String = displayName()
 
+    enum class Kind { PLOT, PRESET }
+
+    /** Whether this is a garden plot or a saved preset. */
+    val kind: Kind get() = if (id.startsWith(PLOT_PREFIX)) Kind.PLOT else Kind.PRESET
+
+    /** The plot or preset number in the id, null for a placeholder with none. */
+    val number: Int? get() = id.removePrefix(PLOT_PREFIX).removePrefix(PRESET_PREFIX).substringBefore("_p").toIntOrNull()
+
+    /** Which plot of a multi-plot preset this is, counted from 1; null for the first and for garden plots. */
+    val part: Int? get() = id.substringAfter("_p", "").toIntOrNull()
+
     /** The given name, or the plot or preset number when it was never named. */
     fun displayName(): String = name
-        ?: id.substringAfter("_p", "").takeIf { it.isNotEmpty() }?.let { "Plot $it" }
-        ?: id.removePrefix("plot_").takeIf { it != id }?.let { "Plot $it" }
-        ?: id.removePrefix("preset_").takeIf { it != id }?.let { "Preset $it" }
+        ?: part?.let { "Plot $it" }
+        ?: number?.let { if (kind == Kind.PLOT) "Plot $it" else "Preset $it" }
         ?: id
-
-    /** The water effects reaching a slot, as a total signed percentage. Only direct neighbours count. */
 
     /**
      * The effects a plant has are the ones its neighbours grant: a crop's effects are what it gives
@@ -91,9 +99,7 @@ data class GreenhouseLayout(
      * How much longer a plant holds its water, as a percentage: the pieces are added, drains being
      * negative. Measured rather than assumed, in notes/water-formula.md.
      */
-    fun waterEffectAt(slot: LayoutSlot): Int = effectsAt(slot)
-        .filter { it.kind == CropEffect.Kind.Water }
-        .sumOf { it.percent }
+    fun waterEffectAt(slot: LayoutSlot): Int = CropEffect.total(effectsAt(slot), CropEffect.Kind.Water)
 
     private fun GreenhouseElementInstance.covers(slot: LayoutSlot): Boolean =
         slot.x in this.slot.x until this.slot.x + cropDef.footprint.width &&
@@ -112,7 +118,13 @@ data class GreenhouseLayout(
         return false
     }
 
-    private companion object {
-        const val SLOT_KEY_STRIDE: Int = 1024
+    companion object {
+        const val PLOT_PREFIX: String = "plot_"
+        const val PRESET_PREFIX: String = "preset_"
+
+        fun plotId(number: Int): String = "$PLOT_PREFIX$number"
+        fun presetId(number: Int): String = "$PRESET_PREFIX$number"
+
+        private const val SLOT_KEY_STRIDE: Int = 1024
     }
 }

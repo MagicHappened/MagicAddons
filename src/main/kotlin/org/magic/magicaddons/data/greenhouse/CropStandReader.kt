@@ -3,7 +3,6 @@ package org.magic.magicaddons.data.greenhouse
 import net.minecraft.ChatFormatting
 import net.minecraft.network.chat.Component
 import net.minecraft.network.chat.Style
-import net.minecraft.network.chat.TextColor
 import net.minecraft.world.entity.decoration.ArmorStand
 import java.util.Optional
 import org.magic.magicaddons.util.compat.McCompat
@@ -34,23 +33,32 @@ class CropStandReader(
         /** The character skyblock builds every one of its bars out of. */
         private const val BAR_CHAR: Char = '|'
 
-        /** An empty notch, whatever the filled ones happen to be coloured. */
+        /** Bar notch colours: blue is water held, red is water debt, white is an empty notch. */
+        private val FILLED = McCompat.chatColor(ChatFormatting.BLUE)
+        private val DEBT = McCompat.chatColor(ChatFormatting.RED)
         private val EMPTY = McCompat.chatColor(ChatFormatting.WHITE)
 
-        /**
-         * Any skyblock bar as the percentage of it that is filled. Any colour but white counts as
-         * filled, since a bar changes colour as it empties, and the filled notches are counted
-         * rather than measured as a leading run.
-         */
-        fun barPercent(name: Component): Int? {
+        /** The notches of a bar counted by colour: blue, red, any other colour, and all of them. */
+        class BarNotches(val filled: Int, val debt: Int, val other: Int, val total: Int)
+
+        /** Any skyblock bar as its notches by colour, or null when the name holds no bar. */
+        fun barNotches(name: Component): BarNotches? {
             var filled = 0
+            var debt = 0
+            var other = 0
             var total = 0
 
             name.visit({ style, text ->
                 val notches = text.count { it == BAR_CHAR }
 
                 if (notches > 0) {
-                    if (style.color?.value != EMPTY) filled += notches
+                    when (style.color?.value) {
+                        FILLED -> filled += notches
+                        DEBT -> debt += notches
+                        EMPTY -> Unit
+                        else -> other += notches
+                    }
+
                     total += notches
                 }
 
@@ -59,7 +67,15 @@ class CropStandReader(
 
             if (total == 0) return null
 
-            return filled * 100 / total
+            return BarNotches(filled, debt, other, total)
+        }
+
+        /**
+         * Any skyblock bar as the percentage of it that is filled. Any colour but white counts as
+         * filled, since a bar changes colour as it empties.
+         */
+        fun barPercent(name: Component): Int? = barNotches(name)?.let {
+            (it.filled + it.debt + it.other) * 100 / it.total
         }
 
         /** A reader for a bar, found by being one. */

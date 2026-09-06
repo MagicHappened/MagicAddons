@@ -8,7 +8,6 @@ import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.CropDefinition
 import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
 import org.magic.magicaddons.data.greenhouse.NEVER_DECAYS
-import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockId
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
 object Squash : CropDefinitionProvider {
@@ -35,6 +34,5 @@ object Squash : CropDefinitionProvider {
         ),
         decayTimeMs = NEVER_DECAYS,
         needsWater = false,
-        isRareCrop = true
     )
 }

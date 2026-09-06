@@ -8,7 +8,6 @@ import org.magic.magicaddons.util.ChatUtils
 
 object ForceUpdate : AbstractCommand() {
     override val argument: String = "ForceUpdate"
-    override val description: String = "marks greenhouses as needing a rescan"
 
     override fun build(): LiteralArgumentBuilder<FabricClientCommandSource> {
         return LiteralArgumentBuilder.literal<FabricClientCommandSource>(argument).executes {

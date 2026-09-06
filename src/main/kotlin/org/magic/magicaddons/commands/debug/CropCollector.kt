@@ -25,7 +25,8 @@ import org.magic.magicaddons.util.getBuildableArea
 import tech.thatgravyboat.skyblockapi.api.location.LocationAPI
 import tech.thatgravyboat.skyblockapi.api.location.SkyBlockIsland
 import tech.thatgravyboat.skyblockapi.api.profile.garden.PlotAPI
-import org.magic.magicaddons.data.greenhouse.CropStagePattern
+import org.magic.magicaddons.commands.internal.MainInternal
+import org.magic.magicaddons.commands.internal.farming.CollectToggle
 import org.magic.magicaddons.data.greenhouse.GreenhouseGrid
 import org.magic.magicaddons.data.greenhouse.GrowthStageInfo
 import org.magic.magicaddons.data.greenhouse.LayoutSlot
@@ -60,6 +61,9 @@ object CropCollector : EntityUtils.HighlightSource {
 
     /** How far above the soil a plant can reach, for the stand search and the block columns. */
     private const val PLANT_HEIGHT: Int = 15
+
+    /** How long the boxes stay up after the file is written. */
+    private const val FINISHED_HIGHLIGHT_SECONDS: Long = 10
 
     /** The skulls the plot marker stands carry on every greenhouse, never part of a plant. */
     private val PLOT_MARKER_SKINS: Set<String> = CropStageExporter.PLOT_MARKER_SKINS
@@ -104,15 +108,15 @@ object CropCollector : EntityUtils.HighlightSource {
 
     private class Entry(
         val id: Int,
-        var def: CropDefinition?,
-        var origin: BlockPos,
+        val def: CropDefinition?,
+        val origin: BlockPos,
         val stands: List<ArmorStand>,
-        var status: Status,
+        val status: Status,
         /** What the plant said through a diagnosis, or what matching decided; null is unread. */
-        var stageText: String?,
-        var stageNum: Int?,
+        val stageText: String?,
+        val stageNum: Int?,
         val names: Set<String>,
-        var color: Int,
+        val color: Int,
         var confirmed: Boolean = false,
         var boxes: List<AABB> = emptyList(),
         /** What the diagnosis tool and the matcher said about it, shown in place of the usual label. */
@@ -403,10 +407,6 @@ object CropCollector : EntityUtils.HighlightSource {
         mapNotNull { it.standName() }.toSet()
 
     /**
-     * The definition a stand's name points at, by the longest name prefix that fits: the game names
-     * stands after their crop with decorations on the end.
-     */
-    /**
      * The one definition a skull hash appears in, for stands with no name. Shared hashes are left out.
      */
     private val defsByHash: Map<String, CropDefinition> by lazy {
@@ -441,8 +441,7 @@ object CropCollector : EntityUtils.HighlightSource {
      * A skull the stage lists at both sizes is left alone, since either stand could be the one.
      */
     private fun sizeMismatch(def: CropDefinition, stage: Int, stands: List<ArmorStand>): Status? {
-        val sizeOf = def.stageDefs
-            .flatMap { if (it is CropStagePattern) it.expand() else listOf(it) }
+        val sizeOf = def.stages
             .filter { stage in it.stageRange }
             .flatMap { it.armorStands.orEmpty() }
             .filter { it.hashString != null }
@@ -466,6 +465,10 @@ object CropCollector : EntityUtils.HighlightSource {
         defForName(stand.standName())
             ?: PlayerUtils.getSkullHash(stand)?.let { defsByHash[it] }
 
+    /**
+     * The definition a stand's name points at, by the longest name prefix that fits: the game names
+     * stands after their crop with decorations on the end.
+     */
     private fun defForName(name: String?): CropDefinition? {
         val n = name?.let(::norm) ?: return null
         if (n.isEmpty()) return null
@@ -610,10 +613,6 @@ object CropCollector : EntityUtils.HighlightSource {
     }
 
     /**
-     * A diagnosis taken during a run, which outranks everything the scan decided: every entry over
-     * that footprint is dropped and rebuilt from the stands actually standing there.
-     */
-    /**
      * The block the item in a stand's hand hangs inside, modelled from its shoulder, pose and yaw.
      * An approximation, but the only question is which whole block the item sits in.
      */
@@ -638,7 +637,11 @@ object CropCollector : EntityUtils.HighlightSource {
         return BlockPos.containing(stand.position().add(turned))
     }
 
-    /** [hit] is the block or stand the tool was pointed at; only its x and z are used. */
+    /**
+     * A diagnosis taken during a run, which outranks everything the scan decided: every entry over
+     * that footprint is dropped and rebuilt from the stands actually standing there.
+     * [hit] is the block or stand the tool was pointed at; only its x and z are used.
+     */
     fun correct(diagnosed: CropDefinition, diagnosedStage: Int, hit: BlockPos) {
         val s = session ?: return
         val client = Minecraft.getInstance()
@@ -674,8 +677,7 @@ object CropCollector : EntityUtils.HighlightSource {
 
         // a diagnosis on a root names the devourer, but what stands there is the roots
         val roots = CropRegistry.all.firstOrNull { it.name == DEVOURER_ROOTS }
-        val rootSkulls = roots?.stageDefs.orEmpty()
-            .flatMap { if (it is CropStagePattern) it.expand() else listOf(it) }
+        val rootSkulls = roots?.stages.orEmpty()
             .flatMap { it.armorStands.orEmpty() }
             .mapNotNull { it.hashString }
             .toSet()
@@ -715,9 +717,8 @@ object CropCollector : EntityUtils.HighlightSource {
 
         // the diagnosis names the plant, but the definitions may already describe this very
         // stage: a fresh entry is only unrecorded when nothing recorded matches what stands here
-        val recorded = def.stageDefs
-            .flatMap { if (it is CropStagePattern) it.expand() else listOf(it) }
-            .filter { stage in it.stageRange && it.placed == placedLook }
+        val recorded = def.stages
+            .filter { stage in it.stageRange && (it.placed == placedLook || (placedLook && def.placedSameAsGrown)) }
             .map { it.matchesStage(standingOn, stands, def.footprint, def.rotatesWithPlot) }
             .firstOrNull { it.matched }
 
@@ -854,7 +855,7 @@ object CropCollector : EntityUtils.HighlightSource {
             Status.Unknown -> Style.EMPTY.withColor(ChatFormatting.WHITE)
             else -> Style.EMPTY
                 .withColor(TextColor.fromRgb(entry.color and 0xFFFFFF))
-                .withClickEvent(ClickEvent.RunCommand("/MagicAddons internal collectToggle ${entry.id}"))
+                .withClickEvent(ClickEvent.RunCommand("${MainInternal.COMMAND} ${CollectToggle.NAME} ${entry.id}"))
                 .withHoverEvent(
                     HoverEvent.ShowText(
                         Component.literal(if (entry.confirmed) "Click to drop from the file" else "Click to confirm")
@@ -871,8 +872,8 @@ object CropCollector : EntityUtils.HighlightSource {
     fun submitHighlights(poseStack: PoseStack, collector: SubmitNodeCollector, cameraPos: Vec3) {
         val s = session ?: return
 
-        // the highlights live until the world does, or ten seconds past the file being written
-        val done = s.finishedAt?.let { Instant.now().isAfter(it.plusSeconds(10)) } ?: false
+        // the highlights live until the world does, or a little past the file being written
+        val done = s.finishedAt?.let { Instant.now().isAfter(it.plusSeconds(FINISHED_HIGHLIGHT_SECONDS)) } ?: false
         if (done || Minecraft.getInstance().level !== s.level) {
             clear()
             return

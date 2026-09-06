@@ -1,12 +1,12 @@
 package org.magic.magicaddons.ui
 
-import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.components.events.GuiEventListener
 import net.minecraft.client.input.CharacterEvent
 import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
 import org.magic.magicaddons.ui.widgets.AbstractContextMenu
+import org.magic.magicaddons.util.ScreenUtil.inRect
 import org.magic.magicaddons.util.compat.McCompat
 
 interface OverlayRenderable : GuiEventListener, HoverableContainer {
@@ -19,31 +19,39 @@ interface OverlayRenderable : GuiEventListener, HoverableContainer {
     val overlayWidth: Int
     val overlayHeight: Int
 
-    fun renderOverlay(
-        graphics: GuiGraphicsExtractor,
-        mouseX: Int,
-        mouseY: Int,
-        delta: Float
-    ){
+    fun renderOverlay(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float)
 
-    }
+    override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean =
+        isMouseOver(mouseButtonEvent.x, mouseButtonEvent.y)
 
+    override fun mouseMoved(mouseX: Double, mouseY: Double) {}
 
-    override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
-        return isMouseOver(mouseButtonEvent.x.toInt(), mouseButtonEvent.y.toInt())
-    }
-    override fun mouseMoved(mouseX: Double, mouseY: Double)  {
-    }
-    fun isMouseOver(mouseX: Int, mouseY: Int): Boolean {
-        return mouseX in overlayX until overlayX + overlayWidth &&
-                mouseY in overlayY until overlayY + overlayHeight
-    }
+    /** An overlay takes no keyboard focus; it is offered every input first anyway. */
+    override fun isFocused(): Boolean = false
+
+    override fun setFocused(focused: Boolean) {}
+
+    override fun isMouseOver(mouseX: Double, mouseY: Double): Boolean =
+        inRect(mouseX, mouseY, overlayX, overlayY, overlayWidth, overlayHeight)
 
     /** Told when the overlay is taken off screen, so it can stop believing it is open. */
     fun onClosed() {
     }
 
+    override fun charTyped(characterEvent: CharacterEvent): Boolean = false
+
+    override fun keyPressed(keyEvent: KeyEvent): Boolean = false
+
     companion object {
+        /** A context menu opened at the mouse. */
+        const val MENU_PRIORITY: Int = 0
+
+        /** A list dropped down under a selector or a text box. */
+        const val DROPDOWN_PRIORITY: Int = 1
+
+        /** A panel opened from a dropped down list, so it has to draw over that list. */
+        const val DIALOG_PRIORITY: Int = 2
+
         /** Where a menu opened at a point should sit: at the cursor, folded back when it runs out. */
         fun placeOnScreen(x: Int, y: Int, menuWidth: Int, menuHeight: Int): Pair<Int, Int> {
             val screen = McCompat.currentScreen() ?: return x to y
@@ -59,15 +67,6 @@ interface OverlayRenderable : GuiEventListener, HoverableContainer {
                     (if (y + menuHeight > bottom) y - menuHeight else y).coerceAtLeast(top)
         }
     }
-
-    override fun charTyped(characterEvent: CharacterEvent): Boolean {
-        return false
-    }
-
-    override fun keyPressed(keyEvent: KeyEvent): Boolean {
-        return false
-    }
-
 }
 
 interface OverlayContext {
@@ -101,4 +100,26 @@ interface OverlayContext {
         overlays.clear()
         closing.forEach { it.onClosed() }
     }
+
+    /** The overlays drawn lowest priority first, so the highest ends up on top. */
+    fun renderOverlays(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
+        overlays.toList().asReversed().forEach { it.renderOverlay(graphics, mouseX, mouseY, delta) }
+    }
+
+    /** Whether an overlay took the click. Walked over a copy, since a handler may open or close one. */
+    fun overlaysMouseClicked(event: MouseButtonEvent, doubled: Boolean): Boolean =
+        overlays.toList().any { it.mouseClicked(event, doubled) }
+
+    fun overlaysMouseMoved(mouseX: Double, mouseY: Double) {
+        overlays.toList().forEach { it.mouseMoved(mouseX, mouseY) }
+    }
+
+    fun overlaysMouseScrolled(mouseX: Double, mouseY: Double, scrollX: Double, scrollY: Double): Boolean =
+        overlays.toList().any { it.mouseScrolled(mouseX, mouseY, scrollX, scrollY) }
+
+    fun overlaysCharTyped(event: CharacterEvent): Boolean =
+        overlays.toList().any { it.charTyped(event) }
+
+    fun overlaysKeyPressed(event: KeyEvent): Boolean =
+        overlays.toList().any { it.keyPressed(event) }
 }

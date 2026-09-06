@@ -13,6 +13,7 @@ import org.magic.magicaddons.ui.OverlayContext
 import org.magic.magicaddons.util.ScreenUtil.drawBorder
 import org.magic.magicaddons.util.ScreenUtil.drawLine
 import org.magic.magicaddons.util.ScreenUtil.eased
+import org.magic.magicaddons.util.ScreenUtil.inRect
 
 /**
  * One setting as a row: its name, the description under it, and the control for its type on the
@@ -125,7 +126,7 @@ abstract class SettingWidget<T>(
     private fun groupVisible(): Boolean = childrenWidgets.isNotEmpty() && (expanded || openness() > 0f)
 
     /** The group starts in from the row and runs to the row's right edge. */
-    fun groupLeft(): Int = x + INDENT
+    private fun groupLeft(): Int = x + INDENT
 
     /** Lays the row and, unfolded, the group under it. Returns the height of it all. */
     fun layoutTree(x: Int, y: Int, width: Int): Int {
@@ -263,8 +264,7 @@ abstract class SettingWidget<T>(
         chevronWidth > 0 && mouseX.toInt() in chevronLeft - TEXT_GAP until chevronLeft + chevronWidth + TEXT_GAP &&
                 mouseY.toInt() in chevronTop until chevronTop + CHEVRON_HEIGHT
 
-    fun isMouseOver(mouseX: Double, mouseY: Double): Boolean =
-        mouseX.toInt() in x until x + width && mouseY.toInt() in y until y + height
+    fun isMouseOver(mouseX: Double, mouseY: Double): Boolean = inRect(mouseX, mouseY, x, y, width, height)
 
     /** Builds the widgets under this row, so an enum can swap them when its value changes. */
     protected fun buildChildren() {
@@ -350,8 +350,8 @@ abstract class SettingWidget<T>(
         const val GROUP_FRAME: Int = 1
         const val ROW_LINE: Int = 1
 
-        const val CHEVRON_SIZE: Int = 8
-        const val CHEVRON_HEIGHT: Int = 12
+        private const val CHEVRON_SIZE: Int = 8
+        private const val CHEVRON_HEIGHT: Int = 12
         private const val TEXT_GAP: Int = 3
 
         /** A control of one text line, the height of a small field. */

@@ -6,7 +6,6 @@ import org.magic.magicaddons.Common
 import org.magic.magicaddons.events.ConfigChangedEvent
 import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.features.FeatureManager
-import org.magic.magicaddons.util.ChatUtils
 import java.io.File
 
 object MagicAddonsConfigJsonHandler {

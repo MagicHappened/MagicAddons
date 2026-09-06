@@ -26,7 +26,7 @@ object HudPainter {
 
     class Laid(val rows: List<Row>) {
         val heightUnits: Int
-            get() = rows.sumOf { it.lines.size * Minecraft.getInstance().font.lineHeight } +
+            get() = rows.sumOf { it.lines.size * font.lineHeight } +
                     (rows.size - 1).coerceAtLeast(0) * LINE_GAP
     }
 

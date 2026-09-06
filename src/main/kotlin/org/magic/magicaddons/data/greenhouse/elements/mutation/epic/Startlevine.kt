@@ -148,9 +148,6 @@ object Startlevine : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.5, 0.0),
-                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
-                        xRotation = 0.0f,
-                        yRotation = 0.0f,
                         hashString = "a7c545c10c035790615642a9ed6d689448b778cc16ac423c0f7fb19a0d057c6a",
                         isSmall = false
                     )
@@ -167,9 +164,6 @@ object Startlevine : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.5, 0.0),
-                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
-                        xRotation = 0.0f,
-                        yRotation = 0.0f,
                         hashString = "a7c545c10c035790615642a9ed6d689448b778cc16ac423c0f7fb19a0d057c6a",
                         isSmall = false
                     )
@@ -186,9 +180,6 @@ object Startlevine : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.4375, 0.0),
-                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
-                        xRotation = 0.0f,
-                        yRotation = 0.0f,
                         hashString = "a7c545c10c035790615642a9ed6d689448b778cc16ac423c0f7fb19a0d057c6a",
                         isSmall = false
                     )
@@ -229,9 +220,6 @@ object Startlevine : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.4375, 0.0),
-                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
-                        xRotation = 0.0f,
-                        yRotation = 0.0f,
                         hashString = "98bef15a64354093d26b8f002e476b8012ed3ad9b061796953b6b1dad447d7",
                         isSmall = false
                     )
