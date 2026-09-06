@@ -23,8 +23,11 @@ import kotlin.io.path.writeText
 /** Greenhouse data on disk: one folder a profile, named by the profile's id, each holding its own file. */
 object DataHandler {
     val configDir: Path = FabricLoader.getInstance().configDir
-    private val modDir: Path = configDir.resolve("MagicAddons")
+    val modDir: Path = configDir.resolve(Common.MOD_ID)
     val dataDir: Path = modDir.resolve("data")
+
+    /** Where the mod wrote before every folder was lowercase. */
+    private val legacyModDir: Path = configDir.resolve("MagicAddons")
 
     private const val FILE_NAME: String = "greenhousepresets.json"
     private const val PROFILE_FILE: String = "profile.json"
@@ -38,7 +41,24 @@ object DataHandler {
 
     fun init() {
         ensureDirectory(modDir)
+        moveLegacyModDir()
         ensureDirectory(dataDir)
+    }
+
+    /** Moves anything left in the old MagicAddons folder into the lowercase one, once. */
+    private fun moveLegacyModDir() {
+        runCatching {
+            // the same folder twice on a filesystem that ignores case, so nothing to move
+            if (!Files.exists(legacyModDir) || Files.isSameFile(legacyModDir, modDir)) return
+            Files.walk(legacyModDir).use { paths ->
+                paths.sorted().forEach { source ->
+                    val target = modDir.resolve(legacyModDir.relativize(source).toString())
+                    if (Files.isDirectory(source)) ensureDirectory(target)
+                    else if (!Files.exists(target)) Files.move(source, target)
+                }
+            }
+            legacyModDir.toFile().deleteRecursively()
+        }.onFailure { Common.LOGGER.warn("Could not move the old MagicAddons config folder", it) }
     }
 
     private fun ensureDirectory(path: Path) {

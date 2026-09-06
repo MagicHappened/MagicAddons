@@ -138,7 +138,7 @@ class HudLayout {
 /** The layout on disk, magicaddons/hud.json under the config folder, read once and written after every edit. */
 object HudLayoutStore {
     private val gson = GsonBuilder().setPrettyPrinting().create()
-    private val file = DataHandler.configDir.resolve("magicaddons").resolve("hud.json").toFile()
+    private val file = DataHandler.modDir.resolve("hud.json").toFile()
 
     val layout: HudLayout by lazy { load() }
 

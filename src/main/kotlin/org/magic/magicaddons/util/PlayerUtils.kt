@@ -82,7 +82,13 @@ object PlayerUtils {
     fun getHelmetHash(entity: LivingEntity): String? =
         getSkinHash(entity.getItemBySlot(EquipmentSlot.HEAD))
 
-    fun getItemFromHash(hash: String): ItemStack {
+    /**
+     * The skulls built here, one per texture hash. A new profile means a new texture to resolve,
+     * which shows as a head flickering blank for a moment every time one is rebuilt.
+     */
+    private val skullCache = mutableMapOf<String, ItemStack>()
+
+    fun getItemFromHash(hash: String): ItemStack = skullCache.getOrPut(hash) {
         val stack = ItemStack(Items.PLAYER_HEAD)
 
         val texturesJson = """
@@ -99,7 +105,8 @@ object PlayerUtils {
             .encodeToString(texturesJson.toByteArray(Charsets.UTF_8))
 
         val profile = GameProfile(
-            uuid = UUID.randomUUID(),
+            // the same id for the same texture, so the resolved skin is reused rather than fetched again
+            uuid = UUID.nameUUIDFromBytes(hash.toByteArray(Charsets.UTF_8)),
             name = "",
             map = PropertyMap {
                 put("textures", Property("textures", encoded))
@@ -111,7 +118,7 @@ object PlayerUtils {
             profile.toResolvableProfile()
         )
 
-        return stack
-    }
+        stack
+    }.copy()
 
 }

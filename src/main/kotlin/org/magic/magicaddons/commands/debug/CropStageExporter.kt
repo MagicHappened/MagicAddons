@@ -17,6 +17,8 @@ import org.magic.magicaddons.commands.fmt
 import org.magic.magicaddons.data.greenhouse.CropDefinition
 import org.magic.magicaddons.data.greenhouse.CropStates.toCode
 import org.magic.magicaddons.util.ChatUtils
+import net.minecraft.world.entity.EquipmentSlot
+import org.magic.magicaddons.util.EntityUtils
 import org.magic.magicaddons.util.PlayerUtils
 
 /**
@@ -128,9 +130,13 @@ object CropStageExporter {
                 entity.name.string.replace("\"", "\\\"")
             } else null
 
-            // a stand with neither a head nor a name gives a definition nothing to match on, and
-            // standing anywhere near a player puts their own nameplate stands inside the box
-            if (hash == null && customName == null) {
+            // a stand can carry a plain item instead of a skull, as godseed's gold blocks do
+            val held = if (hash == null) EntityUtils.heldItem(entity) else null
+            val itemId = held?.second
+
+            // a stand with nothing to match on at all, and standing anywhere near a player puts
+            // their own nameplate stands inside the box
+            if (hash == null && customName == null && itemId == null) {
                 skipped += "nameless empty-handed stand at ${fmt(entity.position())}"
                 continue
             }
@@ -147,6 +153,8 @@ object CropStageExporter {
                     yRotation = Mth.wrapDegrees(entity.yRot - 90f * worldStep) + 0.0f,
                     hash = hash,
                     customName = customName,
+                    itemId = itemId,
+                    itemSlot = held?.first,
                     isSmall = entity.isSmall
                 )
             )
@@ -248,7 +256,7 @@ object CropStageExporter {
         if (standData.isNotEmpty()) {
 
             val grouped = standData.groupBy {
-                it.hash
+                it.hash ?: it.itemId
             }
 
             // a pattern carries one size for the whole group, so stands of mixed size are
@@ -286,20 +294,28 @@ object CropStageExporter {
 
                     val hash = group.first().hash
                     val name = group.first().customName
+                    val itemId = group.first().itemId
+                    val itemSlot = group.first().itemSlot
 
                     val fields = mutableListOf<String>()
 
                     fields.add("offsets = listOf(\n$offsets\n)")
 
-                    // always written, zeros included, same as the single stands
+                    // the head poses are always written, poses of zeros included
                     fields.add("rotations = listOf(\n$rotations\n)")
-                    fields.add("xRotations = listOf(\n$xRotations\n)")
-                    fields.add("yRotations = listOf(\n$yRotations\n)")
+
+                    // a stand turned no further than the plot is written without a turn of its own
+                    if (group.any { it.xRotation != 0f }) fields.add("xRotations = listOf(\n$xRotations\n)")
+                    if (group.any { it.yRotation != 0f }) fields.add("yRotations = listOf(\n$yRotations\n)")
 
                     // only written when the stand has one, so no export contains the string "null"
                     // as a hash
                     if (hash != null) fields.add("hashString = \"$hash\"")
                     if (name != null) fields.add("customName = \"$name\"")
+                    if (itemId != null) fields.add("itemId = \"$itemId\"")
+                    if (itemSlot != null && itemSlot != EquipmentSlot.HEAD) {
+                        fields.add("itemSlot = EquipmentSlot.$itemSlot")
+                    }
 
                     // a fact the singleton branch always kept and this one silently dropped, so
                     // full-size plants exported as small ones whenever their stands grouped
@@ -320,16 +336,23 @@ object CropStageExporter {
 
                         val fields = mutableListOf<String>()
                         fields.add("offset = Vec3(${stand.offset.x}, ${stand.offset.y}, ${stand.offset.z})")
-                        // always written, zeros included: leaving a pose of nothing out kept default
-                        // posed stands reading as uncollected forever
+                        // the head pose is always written, a pose of zeros included
                         fields.add("headRotation = Rotations(${stand.rotation.x}f, ${stand.rotation.y}f, ${stand.rotation.z}f)")
-                        fields.add("xRotation = ${stand.xRotation}f")
-                        fields.add("yRotation = ${stand.yRotation}f")
+
+                        // a stand turned no further than the plot is written without a turn of its own
+                        if (stand.xRotation != 0f) fields.add("xRotation = ${stand.xRotation}f")
+                        if (stand.yRotation != 0f) fields.add("yRotation = ${stand.yRotation}f")
                         if (stand.hash != null){
                             fields.add("hashString = \"${stand.hash}\"")
                         }
                         if (stand.customName != null){
                             fields.add("containsCustomName = \"${stand.customName}\"")
+                        }
+                        if (stand.itemId != null){
+                            fields.add("itemId = \"${stand.itemId}\"")
+                        }
+                        if (stand.itemSlot != null && stand.itemSlot != EquipmentSlot.HEAD){
+                            fields.add("itemSlot = EquipmentSlot.${stand.itemSlot}")
                         }
                         // written only when it differs, since a definition takes small as read
                         if (!stand.isSmall) {
@@ -386,6 +409,10 @@ object CropStageExporter {
         val yRotation: Float,
         val hash: String?,
         val customName: String?,
+        /** What the stand carries when that is not a skull, as "minecraft:gold_block". */
+        val itemId: String?,
+        /** Which slot that item is in, since a stand can hold one as well as wear one. */
+        val itemSlot: EquipmentSlot?,
         /** How the stand is built, which is what decides where the head it carries ends up. */
         val isSmall: Boolean
     )

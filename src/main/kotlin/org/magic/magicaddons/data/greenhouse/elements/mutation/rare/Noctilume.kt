@@ -169,7 +169,8 @@ object Noctilume : CropDefinitionProvider {
                 fullSized = setOf(0, 1, 2, 3)
             ),
             // as placed, craving night
-            look(
+            look( //todo check if this is the only placed varient as observed by someone with blastberry
+                  // a placed blastberry rearms its redstone torch after 1 stage
                 stage = 4,
                 hash = "b1b18493d50ff8972f7ef359893d9063fdc54cb822c679002957c294fc8b0005",
                 craving = CropStandReader.CRAVES_NIGHT,

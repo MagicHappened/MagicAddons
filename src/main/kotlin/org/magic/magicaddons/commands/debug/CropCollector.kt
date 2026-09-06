@@ -19,6 +19,7 @@ import net.minecraft.world.entity.decoration.ArmorStand
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.CropDefinition
+import org.magic.magicaddons.data.handlers.DataHandler
 import org.magic.magicaddons.data.greenhouse.GREENHOUSE_SOIL_Y
 import org.magic.magicaddons.data.greenhouse.CropRegistry
 import org.magic.magicaddons.util.getBuildableArea
@@ -200,7 +201,11 @@ object CropCollector : EntityUtils.HighlightSource {
             )
         )
             .filterNot { it.isMarker }
-            .filterNot { PlayerUtils.getSkullHash(it) == null && !it.hasCustomName() }
+            // a stand carrying a plain item is part of the plant too, as godseed's pedestals are
+            .filterNot {
+                PlayerUtils.getSkullHash(it) == null && !it.hasCustomName() &&
+                        EntityUtils.heldItem(it) == null
+            }
             // the plot's own marker head hovers high over every greenhouse without being flagged
             // a marker, and once floated seven blocks up into a snoozling export
             .filterNot { PlayerUtils.getSkullHash(it) in PLOT_MARKER_SKINS }
@@ -662,7 +667,11 @@ object CropCollector : EntityUtils.HighlightSource {
             )
         )
             .filterNot { it.isMarker }
-            .filterNot { PlayerUtils.getSkullHash(it) == null && !it.hasCustomName() }
+            // a stand carrying a plain item is part of the plant too, as godseed's pedestals are
+            .filterNot {
+                PlayerUtils.getSkullHash(it) == null && !it.hasCustomName() &&
+                        EntityUtils.heldItem(it) == null
+            }
             // the plot's own marker head hovers high over every greenhouse without being flagged
             // a marker, and once floated seven blocks up into a snoozling export
             .filterNot { PlayerUtils.getSkullHash(it) in PLOT_MARKER_SKINS }
@@ -816,7 +825,7 @@ object CropCollector : EntityUtils.HighlightSource {
             }
         }
 
-        val dir = File("config/magicaddons/collected")
+        val dir = DataHandler.modDir.resolve("collected").toFile()
         dir.mkdirs()
         // a file of one crop is named after it, so a run per crop stays easy to tell apart
         val crops = confirmed.mapNotNull { it.def?.name }.toSet()

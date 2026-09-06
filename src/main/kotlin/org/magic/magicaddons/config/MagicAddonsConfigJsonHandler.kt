@@ -3,17 +3,17 @@ package org.magic.magicaddons.config
 import com.google.common.reflect.TypeToken
 import com.google.gson.GsonBuilder
 import org.magic.magicaddons.Common
+import org.magic.magicaddons.data.handlers.DataHandler
 import org.magic.magicaddons.events.ConfigChangedEvent
 import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.features.FeatureManager
-import java.io.File
 
 object MagicAddonsConfigJsonHandler {
 
     private const val CONFIG_VERSION_NUM = "1.0.4"
 
     private val gson = GsonBuilder().setPrettyPrinting().create()
-    private val file = File("config/magicaddons/magicaddons.json")
+    private val file = DataHandler.modDir.resolve("magicaddons.json").toFile()
 
     var configMap = mutableMapOf<
             String, //category string
