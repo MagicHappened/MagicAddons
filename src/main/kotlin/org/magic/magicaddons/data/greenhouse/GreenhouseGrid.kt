@@ -1,21 +1,13 @@
 package org.magic.magicaddons.data.greenhouse
 
-import org.magic.magicaddons.data.greenhouse.CropRegistry
-import org.magic.magicaddons.Common
 import org.magic.magicaddons.util.getBuildableArea
 import net.minecraft.client.Minecraft
 import net.minecraft.core.BlockPos
-import net.minecraft.network.chat.Component
 import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.decoration.ArmorStand
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.state.BlockState
-import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
-import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData.elementsBySoil
-import org.magic.magicaddons.features.farming.greenhousePresets.DyingPlant
-import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData
-import org.magic.magicaddons.util.ChatUtils
 import tech.thatgravyboat.skyblockapi.api.profile.garden.Plot
 import tech.thatgravyboat.skyblockapi.api.profile.garden.PlotAPI
 import java.time.Instant
@@ -23,28 +15,24 @@ import java.time.Instant
 /** The y every greenhouse plants on, the grid is a single flat row of soil. */
 const val GREENHOUSE_SOIL_Y: Int = 73
 
+/** A greenhouse is ten by ten. */
+const val GREENHOUSE_SIZE: Int = 10
+
+/** How far above the soil a plant reaches: its stands are read and whatever is in its way is found within this. */
+const val CROP_HEIGHT: Int = 5
+
 class GreenhouseGrid(
     var state: GridState,
     var layout: GreenhouseLayout
 ) {
     var plot: Plot? = null
-    val width = 10
-    val height = 10
+    val width = GREENHOUSE_SIZE
+    val height = GREENHOUSE_SIZE
 
     val elements = mutableListOf<ElementRuntimeState>()
 
-    fun addElement(element: ElementRuntimeState, age: Long? = null) {
-        if (age != null)
-            element.instance.age = age
-        layout.elementInstances += element.instance
-        elements.add(element)
-    }
-
     fun hasRuntime(): Boolean {
         return state.hasRuntimeReferences
-    }
-    fun slotEquals(slot: LayoutSlot): Boolean {
-        return layout.getSlot(slot.x,slot.y)?.placedBlock == slot.placedBlock
     }
 
     fun getPosForSlot(slot: LayoutSlot): BlockPos? {
@@ -104,45 +92,6 @@ class GreenhouseGrid(
         }
     }
 
-    fun removeMatchingEntity(entity: Entity): ElementRuntimeState? {
-        return elements.find { element ->
-            element.standEntities?.any { it == entity } ?: false
-        }?.also {
-            elements.remove(it)
-            layout.elementInstances.remove(it.instance)
-        }
-    }
-
-    fun createSlotData(): List<LayoutSlot>? {
-        val world = Minecraft.getInstance().level ?: return null
-        val plot = PlotAPI.getCurrentPlot() ?: return null
-        if (plot != this.plot) return null
-
-        val buildArea = plot.getBuildableArea()
-
-        val minX = buildArea.minX.toInt()
-        val minZ = buildArea.minZ.toInt()
-
-        return List(width * height) { index ->
-
-            val gridX = index % width
-            val gridY = index / width
-
-            val worldX = minX + gridX
-            val worldZ = minZ + gridY
-
-            val state = world.getBlockState(
-                BlockPos(worldX, 73, worldZ)
-            )
-
-            LayoutSlot(
-                gridX,
-                gridY,
-                state
-            )
-        }
-    }
-
     fun createSlotDataForGrid() {
         val world = Minecraft.getInstance().level ?: return
         val plot = PlotAPI.getCurrentPlot() ?: return
@@ -161,7 +110,7 @@ class GreenhouseGrid(
             val worldZ = minZ + gridY
 
             val state = world.getBlockState(
-                BlockPos(worldX, 73, worldZ)
+                BlockPos(worldX, GREENHOUSE_SOIL_Y, worldZ)
             )
 
             layout.getSlot(gridX, gridY)?.let {
@@ -171,7 +120,6 @@ class GreenhouseGrid(
     }
 
 
-    //todo set plant specific data too, such as a found Fleshtrap's hunger, once one can be grown
     /** The slots a change at [positions] can have reached: every slot within a crop's width of each. */
     fun regionAround(positions: Collection<BlockPos>): Set<Pair<Int, Int>> {
         val reach = CropRegistry.all.maxOf { maxOf(it.footprint.width, it.footprint.height) } - 1
@@ -214,16 +162,16 @@ class GreenhouseGrid(
 
     /**
      * Reads the plot and brings the elements into line with it. A merge, not a rebuild: a plant
-     * still in its slot keeps its age, water and confirmed stage. Returns what changed.
+     * still in its slot keeps its age, water and confirmed stage.
      *
      * Given a [region], only its slots are read again and the plants outside it stay as they are.
      */
-    fun setPlantData(touchedRegion: Set<Pair<Int, Int>>? = null): ReconcileResult {
+    fun setPlantData(touchedRegion: Set<Pair<Int, Int>>? = null) {
         val region = touchedRegion?.let { wholePlants(it) }
         val visitedSlots = Array(width) { BooleanArray(height) }
 
-        val level = Minecraft.getInstance().level ?: return ReconcileResult()
-        val buildableArea = plot?.getBuildableArea() ?: return ReconcileResult()
+        val level = Minecraft.getInstance().level ?: return
+        val buildableArea = plot?.getBuildableArea() ?: return
 
         // a greenhouse is full of plot marker stands that hold nothing and belong to no plant, so a
         // crop stand described without a skull would bind to one
@@ -236,13 +184,11 @@ class GreenhouseGrid(
         val previous = layout.elementInstances.associateBy { it.slot.x to it.slot.y }
         val readings = CropStage.StandReadings()
         val reconciled = mutableListOf<ElementRuntimeState>()
-        val result = ReconcileResult()
 
         // outside the region nothing is read again: those plants, their slots and their stands are taken as they are
         if (region != null) {
             elements.filterNot { touches(it, region) }.forEach { kept ->
                 reconciled.add(kept)
-                result.kept++
                 remainingStands.removeAll((kept.standEntities ?: emptyList()).toSet())
                 val origin = kept.instance.slot
                 val footprint = kept.instance.cropDef.footprint
@@ -262,8 +208,6 @@ class GreenhouseGrid(
                 val slot = layout.getSlot(x, y) ?: continue
 
                 val found = findElementAtSlot(slot, remainingStands, readings) ?: continue
-                //todo catch mutation specifics here, such as fleshtrap hunger and bonus data, and
-                // make sure they reach disk
 
                 val def = found.instance.cropDef
 
@@ -281,21 +225,18 @@ class GreenhouseGrid(
 
                 val standing = previous[x to y]
                 val runtime = if (standing != null && standing.elementId == found.instance.elementId) {
-                    result.kept++
                     carryOver(standing, found)
                 } else {
-                    if (standing != null) result.replaced++ else result.added++
-
                     if (standing == null && def.isMutation && state.lastUpdateTimestamp != null) {
                         // a mutation the player just put down, or one that appeared above stage one
                         // while the plot was being watched, was placed: a spawn starts at stage one.
                         // Anything else where nothing stood at the last look grew there on its own
-                        val placedNow = GreenhouseData.takePlacement(def, found.instance.slot, this)
+                        val placedNow = callbacks.takePlacement(def, found.instance.slot, this)
                         val watched = state.hasRuntimeReferences && (found.instance.lowestStage ?: 1) > 1
                         if (found.instance.placed || placedNow || watched) {
-                            GreenhouseData.claimPlacedPlant(found.instance)
+                            callbacks.claimPlacedPlant(found.instance)
                         } else {
-                            GreenhouseData.claimSpawnedMutation(found.instance, layout)
+                            callbacks.claimSpawnedMutation(found.instance, layout)
                         }
                     }
                     found
@@ -305,17 +246,11 @@ class GreenhouseGrid(
             }
         }
 
-        result.removed = previous.count { (key, _) ->
-            reconciled.none { it.instance.slot.x to it.instance.slot.y == key }
-        }
-
         elements.clear()
         elements.addAll(reconciled)
 
         layout.elementInstances.clear()
         layout.elementInstances.addAll(reconciled.map { it.instance })
-
-        return result
     }
 
     /**
@@ -342,7 +277,7 @@ class GreenhouseGrid(
                 WaterModel.aliveFloor(water, layout.waterEffectAt(found.instance.slot))
             found.instance.waterPredictedInDebt = true
 
-            GreenhouseData.warnSurvivor(
+            callbacks.warnSurvivor(
                 DyingPlant(found.instance.cropDef.name, layout.displayName(), layout.id)
             )
         } else {
@@ -372,6 +307,8 @@ class GreenhouseGrid(
     fun predictGrowth(ticks: Int, tickMs: Long) {
         if (ticks <= 0) return
 
+        val gardenTime = timeOfDayNow()
+
         // the plants themselves, not the runtime wrappers: a wrapper only exists while the plot is
         // loaded, which is never true of the greenhouse this is for
         layout.elementInstances.forEach { instance ->
@@ -379,11 +316,7 @@ class GreenhouseGrid(
 
             // a finished plant stops drinking, so no water is taken off one. Judged by the lowest
             // stage it might be at, so a plant only probably grown keeps drying
-            val lowestStage = when (val stage = instance.growthStage) {
-                is GrowthStageInfo.Known -> stage.stage
-                is GrowthStageInfo.Estimated -> stage.range.first
-                null -> null
-            }
+            val lowestStage = instance.lowestStage
 
             if (lowestStage != null && lowestStage >= maxStage) {
                 instance.age = instance.age?.plus(ticks * tickMs)
@@ -392,7 +325,7 @@ class GreenhouseGrid(
 
             // a sleeping snoozling, a noctilume craving the other time of day and a starved fleshtrap
             // are all stuck, and all still dry out: being stuck is not being spared
-            val cravingUnfulfilled = instance.craving?.let { it != timeOfDayNow() } == true
+            val cravingUnfulfilled = instance.cravesOtherTime(gardenTime)
 
             // a plant in debt may be passed over entirely and nothing here can know, so the loss is
             // counted anyway and the plant remembers that it is a worst case
@@ -443,18 +376,10 @@ class GreenhouseGrid(
         }
     }
 
-    /** What one reconcile did, counted by what happened to each plant. */
-    data class ReconcileResult(
-        var added: Int = 0,
-        var removed: Int = 0,
-        var replaced: Int = 0,
-        var kept: Int = 0
-    ) {
-        val changed: Boolean get() = added > 0 || removed > 0 || replaced > 0
-    }
-
-    // temp for testing
     companion object {
+
+        /** Who a scan reports placements and survivors to; the feature installs itself here. */
+        var callbacks: GridCallbacks = GridCallbacks.None
 
         /** The garden clock as a craving value: its custom time reaches the client as world time. */
         fun timeOfDayNow(): Int {
@@ -478,7 +403,7 @@ class GreenhouseGrid(
             slot: LayoutSlot,
             readings: CropStage.StandReadings = CropStage.StandReadings()
         ): ElementRuntimeState? {
-            val candidates = elementsBySoil[soil] ?: return null
+            val candidates = CropRegistry.elementsBySoil[soil] ?: return null
 
             var bestDef: CropDefinition? = null
             var bestGrowth: GrowthStageInfo? = null
@@ -518,7 +443,7 @@ class GreenhouseGrid(
             if (bestLegacy) bestStage?.let { PlantDex.noteLegacy(definition.name, it.stageRange) }
 
             val instance = GreenhouseElementInstance(
-                definition.skyblockId?.id ?: definition.name,
+                definition.elementId,
                 slot = slot,
                 growthStage = bestGrowth,
                 cropDef = definition
@@ -531,7 +456,7 @@ class GreenhouseGrid(
             // matched through its placed look, so it was put down, whoever remembers it or not;
             // and the memory of putting it down has served its purpose
             if (bestStage?.placed == true) instance.placed = true
-            GreenhouseData.forgetPlacementAt(origin)
+            callbacks.forgetPlacementAt(origin)
 
             // what winning this stage implies, filed before the stand readings: a noctilume's craving
             // is carried by which skull matched
@@ -562,7 +487,7 @@ class GreenhouseGrid(
             remainingStands: MutableList<ArmorStand>,
             slot: LayoutSlot
         ): ElementRuntimeState? {
-            val definition = GreenhouseData.placedHereAt(origin) ?: return null
+            val definition = callbacks.placedHereAt(origin) ?: return null
             if (soil !in definition.requiredSoil) return null
 
             val level = Minecraft.getInstance().level ?: return null
@@ -571,7 +496,7 @@ class GreenhouseGrid(
             val blocks = mutableMapOf<BlockPos, BlockState>()
             for (dx in 0 until footprint.width) {
                 for (dz in 0 until footprint.height) {
-                    for (dy in 1..READER_HEIGHT) {
+                    for (dy in 1..CROP_HEIGHT) {
                         val pos = origin.offset(dx, dy, dz)
                         val state = level.getBlockState(pos)
                         if (!state.isAir) blocks[pos] = state
@@ -579,12 +504,12 @@ class GreenhouseGrid(
                 }
             }
             if (stands.isEmpty() && blocks.isEmpty()) {
-                GreenhouseData.forgetPlacementAt(origin)
+                callbacks.forgetPlacementAt(origin)
                 return null
             }
 
             val instance = GreenhouseElementInstance(
-                definition.skyblockId?.id ?: definition.name,
+                definition.elementId,
                 slot = slot,
                 growthStage = GrowthStageInfo.Known(definition.stagePlacedAt),
                 cropDef = definition
@@ -599,21 +524,9 @@ class GreenhouseGrid(
         private fun standsAround(origin: BlockPos, footprint: Footprint): List<ArmorStand> {
             val level = Minecraft.getInstance().level ?: return emptyList()
 
-            val box = AABB(
-                origin.x.toDouble(),
-                origin.y.toDouble(),
-                origin.z.toDouble(),
-                (origin.x + footprint.width).toDouble(),
-                (origin.y + READER_HEIGHT).toDouble(),
-                (origin.z + footprint.height).toDouble()
-            )
-
-            return level.getEntitiesOfClass(ArmorStand::class.java, box).filterNot { it.isMarker }
+            return level.getEntitiesOfClass(ArmorStand::class.java, footprint.spaceAbove(origin, CROP_HEIGHT))
+                .filterNot { it.isMarker }
         }
-
-        /** How far above the soil a plant may hang something worth reading. */
-        private const val READER_HEIGHT: Int = 5
-
     }
 
     /** The plant standing on [slot], through the one matcher. */
@@ -628,62 +541,18 @@ class GreenhouseGrid(
         return findElementAt(origin, soil, remainingStands, slot, readings)
     }
 
-    fun getUnassignedBlockMap(): Map<BlockPos, BlockState> {
-        val level = Minecraft.getInstance().level ?: return emptyMap()
-        val area = plot?.getBuildableArea() ?: return emptyMap()
-
-        val allBlocks = mutableMapOf<BlockPos, BlockState>()
-
-        val minX = area.minX.toInt()
-        val minZ = area.minZ.toInt()
-        val maxX = area.maxX.toInt()
-        val maxZ = area.maxZ.toInt()
-
-        val minY = 74
-        val maxY = 84
-
-        for (x in minX..maxX) {
-            for (z in minZ..maxZ) {
-                for (y in minY..maxY) {
-                    val pos = BlockPos(x, y, z)
-                    val state = level.getBlockState(pos)
-
-                    if (!state.isAir) {
-                        allBlocks[pos] = state
-                    }
-                }
-            }
-        }
-
-        val usedPositions = elements
-            .flatMap { it.blocksMap?.keys ?: emptySet() }
-            .toSet()
-
-        return allBlocks.filterKeys { it !in usedPositions }
-    }
-
-    fun getUnassignedArmorStands(): List<ArmorStand>? {
-        val level = Minecraft.getInstance().level ?: return null
-        val area = plot?.getBuildableArea() ?: return null
-        val stands = level.getEntities(null, area)
-            .filterIsInstance<ArmorStand>()
-            .filterNot { it.isMarker }
-            .toMutableList()
-        elements.forEach {
-            it.standEntities?.let { elements -> stands.removeAll(elements.toSet()) }
-        }
-        return stands.toList()
-    }
-
     data class GridState(
         var lastUpdateTimestamp: Instant? = null,
         var needsUpdate: Boolean = false,
         var assignedLayout: GreenhouseLayout? = null,
         var hasRuntimeReferences: Boolean = false,
-        var pendingGrowthTicks: Int? = null,
+        var pendingGrowthTicks: Int = 0,
         /** Whether the player is tired of hearing this particular greenhouse's plan is finished. */
         var completionMuted: Boolean = false
-    )
+    ) {
+        /** The assigned layout's id as read from disk, resolved to the layout once the presets are loaded too. */
+        var assignedLayoutId: String? = null
+    }
 
     override fun toString(): String = layout.displayName()
 }

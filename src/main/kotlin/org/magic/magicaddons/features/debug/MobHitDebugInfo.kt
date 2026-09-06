@@ -22,9 +22,10 @@ import net.minecraft.world.item.ItemStack
 import org.magic.magicaddons.data.config.BooleanSetting
 import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.events.EventHandler
-import org.magic.magicaddons.events.interact.OnAttackEntityEvent
+import org.magic.magicaddons.events.interact.AttackEntityEvent
 import org.magic.magicaddons.features.Feature
 import org.magic.magicaddons.util.ChatUtils
+import org.magic.magicaddons.util.EntityUtils.typePath
 import org.magic.magicaddons.util.PlayerUtils
 import java.net.URI
 
@@ -56,7 +57,7 @@ object MobHitDebugInfo : Feature() {
     private val GSON = GsonBuilder().setPrettyPrinting().create()
 
     @EventHandler
-    fun onAttackEntity(event: OnAttackEntityEvent) {
+    fun onAttackEntity(event: AttackEntityEvent) {
         if (!baseSetting.value) return
         event.canceled = true
 
@@ -177,7 +178,7 @@ object MobHitDebugInfo : Feature() {
     }
 
     private fun describe(entity: Entity): EntityLine = EntityLine(
-        type = entity.type.toString().removePrefix("entity.minecraft."),
+        type = entity.typePath(),
         name = entity.customName?.string,
         invisible = entity.isInvisible,
         marker = (entity as? ArmorStand)?.isMarker,
@@ -261,9 +262,12 @@ object MobHitDebugInfo : Feature() {
         EquipmentSlot.OFFHAND
     )
 
+    /** Hashes up to this long are shown whole; longer ones as their two ends. */
+    private const val SHORT_HASH_LENGTH: Int = 20
+
     /** A hash as the hover shows one: enough of both ends to recognise it. */
     private fun shorten(hash: String): String =
-        if (hash.length <= 20) hash else "${hash.take(8)}…${hash.takeLast(6)}"
+        if (hash.length <= SHORT_HASH_LENGTH) hash else "${hash.take(8)}…${hash.takeLast(6)}"
 
     private fun yesNo(value: Boolean): String = if (value) "yes" else "no"
 }

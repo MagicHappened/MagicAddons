@@ -9,6 +9,8 @@ import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.screens.ChatScreen
 import net.minecraft.network.chat.Component
 import org.magic.magicaddons.commands.AbstractCommand
+import org.magic.magicaddons.commands.internal.MainInternal
+import org.magic.magicaddons.commands.toExactDuration
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData
 import org.magic.magicaddons.util.ChatUtils
 
@@ -18,8 +20,10 @@ import org.magic.magicaddons.util.ChatUtils
  */
 object SetTimestalkAttribute : AbstractCommand() {
 
-    override val argument: String = "setTimestalkAttributeL57"
-    override val description: String = "Sets your Timestalk attribute level, which decides greenhouse tick speed"
+    /** Kept as is: chat links in older messages run this name. */
+    const val NAME: String = "setTimestalkAttributeL57"
+
+    override val argument: String = NAME
 
     /** Ten levels, half a percent each, which is the five percent the formula tops out at. */
     private const val MAX_LEVEL: Int = 10
@@ -45,13 +49,7 @@ object SetTimestalkAttribute : AbstractCommand() {
                     )
 
                     GreenhouseData.currentGrowthTickMs()?.let { tick ->
-                        val seconds = tick / 1000
-
-                        ChatUtils.sendWithPrefix(
-                            "A growth tick is now %dh %02dm %02ds".format(
-                                seconds / 3600, seconds % 3600 / 60, seconds % 60
-                            )
-                        )
+                        ChatUtils.sendWithPrefix("A growth tick is now ${tick.toExactDuration()}")
                     }
 
                     return@executes 1
@@ -67,7 +65,7 @@ object SetTimestalkAttribute : AbstractCommand() {
         )
         Minecraft.getInstance().setScreenAndShow(
             // not a draft: the text is put in as though the player had typed it, ready to add to
-            ChatScreen("/MagicAddons internal $argument ", false)
+            ChatScreen("${MainInternal.COMMAND} $argument ", false)
         )
     }
 }

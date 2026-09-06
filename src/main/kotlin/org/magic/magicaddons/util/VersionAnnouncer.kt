@@ -3,7 +3,7 @@ package org.magic.magicaddons.util
 import net.minecraft.client.Minecraft
 import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.events.EventHandler
-import org.magic.magicaddons.events.world.OnWorldTickEvent
+import org.magic.magicaddons.events.world.WorldTickEvent
 import tech.thatgravyboat.skyblockapi.api.SkyBlockAPI
 import tech.thatgravyboat.skyblockapi.api.events.base.Subscription
 import tech.thatgravyboat.skyblockapi.api.events.location.IslandChangeEvent
@@ -32,7 +32,7 @@ object VersionAnnouncer {
     }
 
     @EventHandler
-    fun onWorldTick(event: OnWorldTickEvent) {
+    fun onWorldTick(event: WorldTickEvent) {
         val due = speakAt ?: return
         if (Instant.now().isBefore(due)) return
 

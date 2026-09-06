@@ -3,23 +3,19 @@ package org.magic.magicaddons.ui.widgets.greenhouse
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.components.Renderable
 import net.minecraft.client.gui.components.events.GuiEventListener
-import net.minecraft.client.gui.narration.NarratableEntry
-import net.minecraft.client.gui.narration.NarrationElementOutput
 import net.minecraft.client.input.MouseButtonEvent
-import net.minecraft.world.item.ItemStack
 import org.magic.magicaddons.data.greenhouse.Footprint
 import org.magic.magicaddons.data.greenhouse.GreenhouseElementInstance
-import net.minecraft.world.item.Items
 import org.magic.magicaddons.Common
-import org.magic.magicaddons.ui.Focusable
 import org.magic.magicaddons.data.greenhouse.GreenhouseLayout
 import org.magic.magicaddons.ui.HoverableContainer
-import org.magic.magicaddons.util.ScreenUtil.drawLine
+import org.magic.magicaddons.util.ScreenUtil.inRect
+import org.magic.magicaddons.util.ScreenUtil.stackFor
 
 class GridWidget(
     val layout: GreenhouseLayout,
     val slotSize: Int
-) : Renderable, Focusable, NarratableEntry, HoverableContainer {
+) : Renderable, HoverableContainer {
 
     /** How far a slot sits from the grid's corner: a slot and the line after it, counted that often. */
     private fun offsetOf(index: Int): Int = index * (slotSize + LINE_WIDTH)
@@ -30,12 +26,8 @@ class GridWidget(
     private val slotWidgets = mutableListOf<SlotWidget>()
     private val elementWidgets = mutableListOf<ElementWidget>()
 
-    var widgetX: Int = 0
-    var widgetY: Int = 0
-    var widgetWidth: Int = 300
-    var widgetHeight: Int = 300
-
-    override var focusedState: Boolean = false
+    var x: Int = 0
+    var y: Int = 0
 
     override var hoveredElement: GuiEventListener? = null
 
@@ -73,9 +65,9 @@ class GridWidget(
     /** The slot under a point, or null off the grid. */
     fun slotAt(mouseX: Double, mouseY: Double): Pair<Int, Int>? {
         val step = slotSize + LINE_WIDTH
-        val cx = (mouseX.toInt() - widgetX) / step
-        val cy = (mouseY.toInt() - widgetY) / step
-        if (mouseX < widgetX || mouseY < widgetY || cx !in 0 until layout.size || cy !in 0 until layout.size) return null
+        val cx = (mouseX.toInt() - x) / step
+        val cy = (mouseY.toInt() - y) / step
+        if (mouseX < x || mouseY < y || cx !in 0 until layout.size || cy !in 0 until layout.size) return null
         return unturned(cx, cy)
     }
 
@@ -88,10 +80,10 @@ class GridWidget(
         val across = maxOf(ax, bx) - left + 1
         val down = maxOf(ay, by) - top + 1
         return intArrayOf(
-            widgetX + offsetOf(left),
-            widgetY + offsetOf(top),
-            widgetX + offsetOf(left) + slotSize * across + (across - 1),
-            widgetY + offsetOf(top) + slotSize * down + (down - 1)
+            x + offsetOf(left),
+            y + offsetOf(top),
+            x + offsetOf(left) + slotSize * across + (across - 1),
+            y + offsetOf(top) + slotSize * down + (down - 1)
         )
     }
 
@@ -101,20 +93,18 @@ class GridWidget(
         slotWidgets.clear()
         elementWidgets.clear()
 
-        for (x in 0 until layout.size) {
-            for (y in 0 until layout.size) {
-
-
-                val slot = layout.getSlot(x, y) ?: continue
+        for (sx in 0 until layout.size) {
+            for (sy in 0 until layout.size) {
+                val slot = layout.getSlot(sx, sy) ?: continue
 
                 val widget = SlotWidget(slot)
 
-                widget.widgetWidth = slotSize
-                widget.widgetHeight = slotSize
+                widget.width = slotSize
+                widget.height = slotSize
 
-                val (cx, cy) = turned(x, y)
-                widget.widgetX = widgetX + offsetOf(cx)
-                widget.widgetY = widgetY + offsetOf(cy)
+                val (cx, cy) = turned(sx, sy)
+                widget.x = x + offsetOf(cx)
+                widget.y = y + offsetOf(cy)
 
                 widget.init()
 
@@ -132,18 +122,14 @@ class GridWidget(
             val footprint = instance.cropDef.footprint
             val rect = cellRect(instance.slot.x, instance.slot.y, footprint.width, footprint.height)
 
-            widget.widgetX = rect[0]
-            widget.widgetY = rect[1]
+            widget.x = rect[0]
+            widget.y = rect[1]
             widget.width = rect[2] - rect[0]
             widget.height = rect[3] - rect[1]
             widget.waterEffect = layout.waterEffectAt(instance.slot)
-            widget.init()
-            // an id skyblock has no item for resolves to an empty stack, which draws nothing at all
-            widget.renderedStack = instance.cropDef.displayItem?.let { ItemStack(it) }
-                ?: instance.cropDef.skyblockId?.toItem()?.takeUnless { it.isEmpty }
-                ?: ItemStack(Items.BARRIER)
+            widget.renderedStack = stackFor(instance.cropDef)
             if (instance in justPlaced) widget.appearedAt = System.currentTimeMillis()
-            widget.inPreset = layout.id.startsWith("preset_")
+            widget.inPreset = layout.kind == GreenhouseLayout.Kind.PRESET
             elementWidgets.add(widget)
         }
         justPlaced.clear()
@@ -158,8 +144,8 @@ class GridWidget(
         // and under the plants so a wide plant covers them
         for (i in 1 until layout.size) {
             val at = offsetOf(i) - LINE_WIDTH
-            graphics.fill(widgetX + at, widgetY, widgetX + at + LINE_WIDTH, widgetY + gridSpan, Common.UI.GRID_LINE_COLOR)
-            graphics.fill(widgetX, widgetY + at, widgetX + gridSpan, widgetY + at + LINE_WIDTH, Common.UI.GRID_LINE_COLOR)
+            graphics.fill(x + at, y, x + at + LINE_WIDTH, y + gridSpan, Common.UI.GRID_LINE_COLOR)
+            graphics.fill(x, y + at, x + gridSpan, y + at + LINE_WIDTH, Common.UI.GRID_LINE_COLOR)
         }
 
         elementWidgets.forEach {
@@ -172,39 +158,16 @@ class GridWidget(
         }
     }
 
-    override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
-        elementWidgets.forEach {
-            if (it.mouseClicked(mouseButtonEvent, doubled)){
-                return true
-            }
-        }
-        slotWidgets.forEach {
-            if (it.mouseClicked(mouseButtonEvent, doubled)) {
-                return true
-            }
-        }
-        return false
-    }
+    /** A click on the grid is taken here, so it never falls through to whatever lies under it. */
+    fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean =
+        isMouseOver(mouseButtonEvent.x, mouseButtonEvent.y)
 
-    override fun isMouseOver(mouseX: Double, mouseY: Double): Boolean {
-        return mouseX >= widgetX &&
-                mouseX <= widgetX + widgetWidth &&
-                mouseY >= widgetY &&
-                mouseY <= widgetY + widgetHeight
-    }
+    fun isMouseOver(mouseX: Double, mouseY: Double): Boolean =
+        inRect(mouseX, mouseY, x, y, gridSpan, gridSpan)
 
-    override fun mouseMoved(mouseX: Double, mouseY: Double) {
-        elementWidgets.forEach { it.mouseMoved(mouseX, mouseY) }
+    fun mouseMoved(mouseX: Double, mouseY: Double) {
         hoveredElement = elementWidgets.firstOrNull { it.isMouseOver(mouseX, mouseY) }
     }
-
-
-
-    override fun narrationPriority(): NarratableEntry.NarrationPriority {
-        return NarratableEntry.NarrationPriority.NONE
-    }
-
-    override fun updateNarration(narrationElementOutput: NarrationElementOutput) {}
 
     companion object {
         /** The line drawn between one slot and the next, and around the outside. */
@@ -219,7 +182,4 @@ class GridWidget(
         /** What a grid of [slots] at [slotSize] takes up, which is the span plus its closing line. */
         fun spanFor(slotSize: Int, slots: Int): Int = slots * (slotSize + LINE_WIDTH)
     }
-
-
-
 }

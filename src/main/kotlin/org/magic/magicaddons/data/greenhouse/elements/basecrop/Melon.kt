@@ -4,7 +4,6 @@ import org.magic.magicaddons.data.greenhouse.CropEffect
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Rotations
 import net.minecraft.world.phys.Vec3
-import org.magic.magicaddons.data.greenhouse.DEFAULT_DECAY_TIME_MS
 import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
 import org.magic.magicaddons.data.greenhouse.CropArmorStand
 import org.magic.magicaddons.data.greenhouse.CropBlockState
@@ -116,16 +115,12 @@ object Melon : CropDefinitionProvider {
                     CropArmorStand(
                         offset = Vec3(0.0, -0.53125, 0.0),
                         headRotation = Rotations(0.0f, 0.0f, -22.5f),
-                        xRotation = 0.0f,
-                        yRotation = 0.0f,
                         hashString = "afa92dd43afed9e640cf3d3b008ca5199634ec8512de5e1f5eeaecd761296cb9",
                         isSmall = false
                     ),
                     CropArmorStand(
                         offset = Vec3(0.21875, 0.1875, 0.1875),
                         headRotation = Rotations(22.5f, 0.0f, 22.5f),
-                        xRotation = 0.0f,
-                        yRotation = 0.0f,
                         hashString = "360549bf880605bba628e89b1cca4b8a0e428b61d879f45edd9f45469d87aec4"
                     )
                 ),
@@ -159,18 +154,17 @@ object Melon : CropDefinitionProvider {
                         blockState = melonStemState(7)
                     )
                 ),
-                armorStands =
-                    listOf(
-                        CropArmorStand(
-                            offset = Vec3(0.0, -0.53125, 0.0),
-                            hashString = "192600cad8dbec5b6a6ec4dcf9bb4e9cd76190cad80aeee8b047de719cf5e36d",
-                        ),
-                        CropArmorStand(
-                            offset = Vec3(0.1875, 0.1875, -0.21875),
-                            hashString = "afa92dd43afed9e640cf3d3b008ca5199634ec8512de5e1f5eeaecd761296cb9",
-                        )
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, -0.53125, 0.0),
+                        hashString = "192600cad8dbec5b6a6ec4dcf9bb4e9cd76190cad80aeee8b047de719cf5e36d",
+                        isSmall = false
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(0.21875, 0.1875, 0.1875),
+                        hashString = "afa92dd43afed9e640cf3d3b008ca5199634ec8512de5e1f5eeaecd761296cb9",
                     )
-                ,
+                ),
                 8..8,
             ),
             CropStage(
@@ -193,7 +187,7 @@ object Melon : CropDefinitionProvider {
                     )
                 ),
                 9..9,
-            ), //todo check other rotations
+            ),
             CropStage(
                 blocks = listOf(
                     CropBlockState(
@@ -230,14 +224,6 @@ object Melon : CropDefinitionProvider {
                     rotations = listOf(
                         Rotations(0.0f, 0.0f, -22.5f),
                         Rotations(22.5f, 0.0f, 22.5f)
-                    ),
-                    xRotations = listOf(
-                        0.0f,
-                        0.0f
-                    ),
-                    yRotations = listOf(
-                        0.0f,
-                        0.0f
                     ),
                     hashString = "fdfae4b11048bc1ce96ed150134e79f16e2bcaf12d43fa0ff0e27fb2e0852130",
                     isSmall = false

@@ -6,7 +6,9 @@ import net.minecraft.client.input.CharacterEvent
 import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.network.chat.Component
+import org.magic.magicaddons.Common
 import org.magic.magicaddons.util.ErrorReporter
+import org.magic.magicaddons.util.compat.McCompat
 
 /**
  * A screen of this mod. The game's calls into it are taken here and handed on to the `on` methods,
@@ -28,6 +30,15 @@ abstract class MagicScreen(title: Component, private val where: String) : Screen
     final override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) =
         caught(Unit) { onRender(graphics, mouseX, mouseY, delta) }
     open fun onRender(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) = super.extractRenderState(graphics, mouseX, mouseY, delta)
+
+    /** The panorama when there is no world, then the world dimmed; subtitles keep drawing over it. */
+    override fun extractBackground(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
+        if (this.minecraft.level == null) {
+            this.extractPanorama(graphics, delta)
+        }
+        graphics.fill(0, 0, width, height, Common.UI.SCREEN_DIM_COLOR)
+        McCompat.extractDeferredSubtitles(this.minecraft)
+    }
 
     final override fun mouseClicked(event: MouseButtonEvent, doubled: Boolean): Boolean = caught(false) { onMouseClicked(event, doubled) }
     open fun onMouseClicked(event: MouseButtonEvent, doubled: Boolean): Boolean = super.mouseClicked(event, doubled)

@@ -4,7 +4,13 @@ import org.magic.magicaddons.data.greenhouse.CropStates.stateOf
 import net.minecraft.core.BlockPos
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.phys.Vec3
-import org.magic.magicaddons.data.greenhouse.*
+import org.magic.magicaddons.data.greenhouse.CropArmorStand
+import org.magic.magicaddons.data.greenhouse.CropBlockState
+import org.magic.magicaddons.data.greenhouse.CropDefinition
+import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
+import org.magic.magicaddons.data.greenhouse.CropEffect
+import org.magic.magicaddons.data.greenhouse.CropStage
+import org.magic.magicaddons.data.greenhouse.StandPose
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 import net.minecraft.core.Rotations
 
@@ -28,8 +34,6 @@ object Blastberry : CropDefinitionProvider {
                     CropArmorStand(
                         offset = Vec3(0.0, -0.71875, 0.0),
                         headRotation = Rotations(0.0f, 0.0f, 0.0f),
-                        xRotation = 0.0f,
-                        yRotation = 0.0f,
                         hashString = "a3b6c45e028b8b70befb6feb9d320dbda86c6f925961e23babbc7ff250918d0f",
                         isSmall = false
                     )
@@ -42,8 +46,6 @@ object Blastberry : CropDefinitionProvider {
                     CropArmorStand(
                         offset = Vec3(0.0, -0.625, 0.0),
                         headRotation = Rotations(0.0f, 0.0f, 0.0f),
-                        xRotation = 0.0f,
-                        yRotation = 0.0f,
                         hashString = "a3b6c45e028b8b70befb6feb9d320dbda86c6f925961e23babbc7ff250918d0f",
                         isSmall = false
                     )
@@ -57,8 +59,6 @@ object Blastberry : CropDefinitionProvider {
                     CropArmorStand(
                         offset = Vec3(0.0, -0.5, 0.0),
                         headRotation = Rotations(0.0f, 0.0f, 0.0f),
-                        xRotation = 0.0f,
-                        yRotation = 0.0f,
                         hashString = "ba199c78d912ac538f9c2b7994fe7a2918cfae95bcb82d6c4313ee0f2f7ed54d",
                         isSmall = false
                     )
@@ -94,9 +94,6 @@ object Blastberry : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.53125, 0.0),
-                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
-                        xRotation = 0.0f,
-                        yRotation = 0.0f,
                         hashString = "bacae0e87ffeadb750260c2e6531004d69d14473376cb22577fafe70569349f3",
                         isSmall = false
                     )

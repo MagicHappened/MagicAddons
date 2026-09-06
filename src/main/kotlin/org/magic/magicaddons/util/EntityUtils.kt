@@ -3,7 +3,6 @@ package org.magic.magicaddons.util
 import org.magic.magicaddons.features.HighlightFeature
 import org.magic.magicaddons.features.FeatureManager
 import net.minecraft.client.Minecraft
-import net.minecraft.client.multiplayer.ClientLevel
 import net.minecraft.core.component.DataComponents
 import net.minecraft.world.entity.Display
 import net.minecraft.world.entity.Entity
@@ -15,18 +14,23 @@ import net.minecraft.world.item.ItemStack
 import org.magic.magicaddons.data.EntityInfo
 import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.events.EventHandler
-import org.magic.magicaddons.events.world.OnEntityAdded
-import org.magic.magicaddons.events.world.OnEntityRemoved
-import org.magic.magicaddons.events.world.OnEntityUpdated
-import org.magic.magicaddons.events.world.OnWorldTickEvent
-import tech.thatgravyboat.skyblockapi.api.SkyBlockAPI
+import org.magic.magicaddons.events.world.EntityAddedEvent
+import org.magic.magicaddons.events.world.EntityRemovedEvent
+import org.magic.magicaddons.events.world.EntityUpdatedEvent
+import org.magic.magicaddons.events.world.WorldTickEvent
 import kotlin.math.sqrt
 
 object EntityUtils {
     init {
         EventBus.register(this)
-        SkyBlockAPI.eventBus.register(this)
     }
+
+    /** How far around an entity its name tags and item displays are looked for. */
+    private const val NEARBY_RADIUS: Double = 0.5
+    private const val NEARBY_HEIGHT: Double = 2.0
+
+    /** Real accounts have a version 4 uuid; a server side npc does not. */
+    private const val PLAYER_UUID_VERSION: Int = 4
 
     interface HighlightSource {
         val highlightPriority: Int
@@ -64,13 +68,8 @@ object EntityUtils {
         }
     }
 
-    fun hasSource(entity: Entity, source: HighlightSource): Boolean {
-        return highlightMap[entity]?.contains(source) == true
-    }
-
     var entityInfoList: List<EntityInfo>? = null
 
-    private var entityMapPrev: Map<String, EntityInfo> = emptyMap()
     private var entityMapCurr: Map<String, EntityInfo> = emptyMap()
 
     private val addedEntities = mutableListOf<EntityInfo>()
@@ -97,7 +96,7 @@ object EntityUtils {
 
 
     @EventHandler
-    private fun onWorldTick(event: OnWorldTickEvent){
+    private fun onWorldTick(event: WorldTickEvent){
         update()
     }
 
@@ -117,7 +116,7 @@ object EntityUtils {
             val informationEntities: List<Entity>?
 
             if (detailed) {
-                val nearby = level.getEntities(entity, entity.boundingBox.inflate(0.5, 2.0, 0.5))
+                val nearby = level.getEntities(entity, entity.boundingBox.inflate(NEARBY_RADIUS, NEARBY_HEIGHT, NEARBY_RADIUS))
 
                 if ((entity is ArmorStand || entity is Display) && isNearMeaningfulEntity(entity, nearby)) {
                     return@forEach
@@ -166,18 +165,17 @@ object EntityUtils {
 
 
         if (addedEntities.isNotEmpty()) {
-            EventBus.post(OnEntityAdded(addedEntities))
+            EventBus.post(EntityAddedEvent(addedEntities))
         }
         if (removedEntities.isNotEmpty()) {
-            EventBus.post(OnEntityRemoved(removedEntities))
+            EventBus.post(EntityRemovedEvent(removedEntities))
         }
 
         if (updatedEntities.isNotEmpty()) {
-            EventBus.post(OnEntityUpdated(updatedEntities))
+            EventBus.post(EntityUpdatedEvent(updatedEntities))
         }
         // update state
         entityInfoList = newList
-        entityMapPrev = entityMapCurr
         entityMapCurr = newMap
     }
 
@@ -210,7 +208,37 @@ object EntityUtils {
     }
 
     fun isRealPlayer(entity: Player): Boolean {
-        return entity.uuid.version() == 4
+        return entity.uuid.version() == PLAYER_UUID_VERSION
+    }
+
+    /** The entity type's description id, "entity.minecraft.pig" for a pig. */
+    fun Entity.typeId(): String = type.toString()
+
+    /** The last part of the type id, "pig" for a pig. */
+    fun Entity.typePath(): String = typeId().substringAfterLast('.')
+
+    /** The skull texture an item display holds or an armor stand wears on its head, or null. */
+    fun carriedSkullHash(entity: Entity): String? = when (entity) {
+        is Display.ItemDisplay -> PlayerUtils.getSkinHash(entity.itemStack)
+        is ArmorStand -> PlayerUtils.getHelmetHash(entity)
+        else -> null
+    }
+
+    /**
+     * The entity to outline when [hash] is the skull on the mob, or on a stand or display beside it.
+     * An invisible mob is drawn by whatever carries its skull, so that carrier comes back instead.
+     */
+    fun skullCarrier(info: EntityInfo, hash: String): Entity? {
+        val entity = info.entity
+
+        if (entity is LivingEntity && PlayerUtils.getHelmetHash(entity) == hash) {
+            return entity
+        }
+
+        val carrier = info.informationEntities?.firstOrNull { carriedSkullHash(it) == hash }
+            ?: return null
+
+        return if (entity.isInvisible) carrier else entity
     }
 
     fun isEntityWearingArmorId(id: String, entity: Player, searchHelmet: Boolean): Boolean {

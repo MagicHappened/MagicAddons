@@ -84,7 +84,8 @@ object PlantDex {
      * Whether a mutation has no recording of how it looks when placed. Not a stage of
      * its own and not counted against the dex, only listed: only the hologram and the collector want it.
      */
-    fun lacksPlacedLook(def: CropDefinition): Boolean = def.isMutation && def.stageDefs.none { it.placed }
+    fun lacksPlacedLook(def: CropDefinition): Boolean =
+        def.isMutation && !def.placedSameAsGrown && def.stageDefs.none { it.placed }
 
     /**
      * A plant that changes its look without changing stage has two looks to record at such a

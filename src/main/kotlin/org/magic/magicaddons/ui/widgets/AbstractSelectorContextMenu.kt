@@ -8,31 +8,40 @@ import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.network.chat.Component
 import org.magic.magicaddons.Common
+import org.magic.magicaddons.ui.OverlayRenderable
 import org.magic.magicaddons.util.ScreenUtil.drawBorder
 import kotlin.math.max
 
 /**
  * A titled panel listing [values] as rows under a search field, the field narrowing the rows as
- * the player types. Picking a row hands the value to [onValueSelected].
+ * the player types. Picking a row hands the value to [onValueSelected]. Opened at ([x], [y]) and
+ * folded back on screen by [init] once its size is known.
  */
 abstract class AbstractSelectorContextMenu<T>(
+    x: Int,
+    y: Int,
     val values: List<T>,
     private val title: String,
     /** A handful of rows needs no search field; a long list gets one. */
     private val withSearch: Boolean = true
 ) : AbstractContextMenu() {
 
+    final override var overlayX: Int = x
+        private set
+    final override var overlayY: Int = y
+        private set
+
     override var hoveredElement: GuiEventListener? = null
 
     protected val font = Minecraft.getInstance().font
 
     protected open val rowHeight = 20
-    protected open val paddingLeft: Int = Common.UI.TEXT_X_PAD
-    protected open val paddingRight: Int = Common.UI.TEXT_X_PAD
+    private val paddingLeft: Int = Common.UI.TEXT_X_PAD
+    private val paddingRight: Int = Common.UI.TEXT_X_PAD
 
     private val titlePad = Common.UI.SPACING
 
-    private val search = TextField(0, rowHeight, Component.literal(SEARCH_HINT)).apply {
+    private val search = TextField(0, rowHeight, Component.literal(Common.UI.SEARCH_HINT)).apply {
         setResponder { buildWidgets(); layoutRows() }
     }
 
@@ -52,10 +61,15 @@ abstract class AbstractSelectorContextMenu<T>(
     override val overlayHeight: Int
         get() = titleHeight + searchHeight + valueWidgets.sumOf { it.height }
 
+    /** Builds the rows, then moves the menu so the whole of it is on screen. */
     open fun init() {
         search.value = ""
         search.focused = true
         buildWidgets()
+
+        val (x, y) = OverlayRenderable.placeOnScreen(overlayX, overlayY, overlayWidth, overlayHeight)
+        overlayX = x
+        overlayY = y
         layoutRows()
     }
 
@@ -84,12 +98,8 @@ abstract class AbstractSelectorContextMenu<T>(
         }
     }
 
-    protected open fun createRow(value: T): ClickableRowWidget<T> {
-        return ClickableRowWidget(
-            value = value,
-            onClick = { onValueSelected(it.value) }
-        )
-    }
+    private fun createRow(value: T): ClickableRowWidget<T> =
+        ClickableRowWidget(value = value, onClick = { onValueSelected(it.value) })
 
     override fun renderOverlay(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
         graphics.fill(overlayX, overlayY, overlayX + overlayWidth, overlayY + overlayHeight, Common.UI.BACKGROUND_COLOR)
@@ -106,7 +116,7 @@ abstract class AbstractSelectorContextMenu<T>(
         if (withSearch) {
             search.render(graphics)
         } else {
-            // the search field used to part the title from the rows; a line does it now
+            // a line parts the title from the rows
             val lineY = overlayY + titleHeight - 1
             graphics.fill(overlayX, lineY, overlayX + overlayWidth, lineY + 1, Common.UI.DIVIDER_COLOR)
         }
@@ -115,7 +125,7 @@ abstract class AbstractSelectorContextMenu<T>(
     }
 
     override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
-        if (!isMouseOver(mouseButtonEvent.x.toInt(), mouseButtonEvent.y.toInt())) return false
+        if (!isMouseOver(mouseButtonEvent.x, mouseButtonEvent.y)) return false
         if (withSearch && search.mouseClicked(mouseButtonEvent, doubled)) return true
 
         valueWidgets.toList().forEach {
@@ -139,8 +149,4 @@ abstract class AbstractSelectorContextMenu<T>(
     }
 
     abstract fun onValueSelected(value: T)
-
-    companion object {
-        const val SEARCH_HINT: String = "Search…"
-    }
 }

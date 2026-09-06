@@ -10,6 +10,7 @@ import net.minecraft.network.chat.Component
 import org.magic.magicaddons.Common
 import org.magic.magicaddons.util.ScreenUtil.drawBorder
 import org.magic.magicaddons.util.ScreenUtil.drawField
+import org.magic.magicaddons.util.ScreenUtil.inRect
 
 /**
  * A one line text field drawn in this mod's own look. A vanilla EditBox holds the text and the
@@ -93,8 +94,7 @@ class TextField(
         graphics.disableScissor()
     }
 
-    fun isMouseOver(mouseX: Double, mouseY: Double): Boolean =
-        mouseX.toInt() in x until x + width && mouseY.toInt() in y until y + height
+    fun isMouseOver(mouseX: Double, mouseY: Double): Boolean = inRect(mouseX, mouseY, x, y, width, height)
 
     /** Focuses the field when the click is on it and drops focus otherwise; true when it was on it. */
     fun mouseClicked(event: MouseButtonEvent, doubled: Boolean): Boolean {

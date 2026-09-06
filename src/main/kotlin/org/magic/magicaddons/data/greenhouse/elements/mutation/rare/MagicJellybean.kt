@@ -4,7 +4,14 @@ import net.minecraft.core.Rotations
 import net.minecraft.core.BlockPos
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.phys.Vec3
-import org.magic.magicaddons.data.greenhouse.*
+import org.magic.magicaddons.data.greenhouse.CropArmorStand
+import org.magic.magicaddons.data.greenhouse.CropBlockState
+import org.magic.magicaddons.data.greenhouse.CropDefinition
+import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
+import org.magic.magicaddons.data.greenhouse.CropEffect
+import org.magic.magicaddons.data.greenhouse.CropStage
+import org.magic.magicaddons.data.greenhouse.NEVER_DECAYS
+import org.magic.magicaddons.data.greenhouse.StandPose
 import org.magic.magicaddons.data.greenhouse.CropStates.melonStemState
 import org.magic.magicaddons.data.greenhouse.CropStates.sugarcaneState
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
@@ -155,58 +162,15 @@ object MagicJellybean : CropDefinitionProvider {
                     blockState = melonStemState(6)
                 )
             ),
-            armorStands = CropArmorStand.matcherPattern(
-                offsets = listOf(
-                    Vec3(0.0, -0.21875, 0.0),
-                    Vec3(0.0, 0.78125, 0.0),
-                    Vec3(0.0, 1.78125, 0.0),
-                    Vec3(0.0, 2.78125, 0.0),
-                    Vec3(0.0, 3.78125, 0.0),
-                    Vec3(0.0, 4.78125, 0.0),
-                    Vec3(0.0, 5.78125, 0.0),
-                    Vec3(0.0, 6.78125, 0.0),
-                    Vec3(0.0, 7.78125, 0.0),
-                    Vec3(0.0, 8.78125, 0.0)
-                ),
-                rotations = listOf(
-                    Rotations(-22.5f, 22.5f, -22.5f),
-                    Rotations(-22.5f, 0.0f, 22.5f),
-                    Rotations(22.5f, -22.5f, 0.0f),
-                    Rotations(-22.5f, 22.5f, -22.5f),
-                    Rotations(-22.5f, 0.0f, 22.5f),
-                    Rotations(22.5f, -22.5f, 0.0f),
-                    Rotations(-22.5f, 22.5f, -22.5f),
-                    Rotations(-22.5f, 0.0f, 22.5f),
-                    Rotations(22.5f, -22.5f, 0.0f),
-                    Rotations(22.5f, 22.5f, 22.5f)
-                ),
-                xRotations = listOf(
-                    0.0f,
-                    0.0f,
-                    0.0f,
-                    0.0f,
-                    0.0f,
-                    0.0f,
-                    0.0f,
-                    0.0f,
-                    0.0f,
-                    0.0f
-                ),
-                yRotations = listOf(
-                    0.0f,
-                    0.0f,
-                    0.0f,
-                    0.0f,
-                    0.0f,
-                    0.0f,
-                    0.0f,
-                    0.0f,
-                    0.0f,
-                    0.0f
-                ),
-                hashString = "c526a56b80f56a6870f891d1d46fa7f8c71494cad24e94326da84b3829417b81",
-                isSmall = false
-            ),
+            armorStands = (0 until MAX_CANE).map { height ->
+                CropArmorStand(
+                    offset = Vec3(0.0, CANE_STAND_Y + height, 0.0),
+                    // the top cane's head is turned its own way rather than where the cycle puts it
+                    headRotation = if (height == MAX_CANE - 1) Rotations(22.5f, 22.5f, 22.5f) else null,
+                    hashString = CANE_HASH,
+                    isSmall = false
+                )
+            },
             120..120,
             placed = true
         )

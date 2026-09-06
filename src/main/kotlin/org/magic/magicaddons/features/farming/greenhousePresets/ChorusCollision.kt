@@ -1,7 +1,7 @@
 package org.magic.magicaddons.features.farming.greenhousePresets
 
+import org.magic.magicaddons.data.greenhouse.GREENHOUSE_SIZE
 import org.magic.magicaddons.data.greenhouse.GreenhouseGrid
-import org.magic.magicaddons.data.greenhouse.GreenhouseElementInstance
 import org.magic.magicaddons.data.greenhouse.GreenhouseLayout
 import kotlin.math.ceil
 import kotlin.math.sqrt
@@ -29,16 +29,12 @@ object ChorusCollision {
      * jellybean costs far more than the chorus given up to avoid it. */
     const val QUANTILE: Double = 2.33
 
-    /** The plot is square and this is its side, the same ten every layout is built on. */
-    private const val SIZE: Int = 10
-
     /**
      * One greenhouse weighed against one absence: the margin it has, the margin it needs, and how
      * many young chorus to break to cover the difference.
      */
     data class Report(
         val movers: Int,
-        val ripe: Int,
         val free: Int,
         val spawnOpen: Int,
         val ripening: Int,
@@ -65,13 +61,12 @@ object ChorusCollision {
         // the lowest stage a plant might be at, so a plant only probably grown is still counted as
         // one that might teleport. Every guess here leans the same way: towards warning
         val movers = chorus.filter { (it.lowestStage ?: 1) < maxStage }
-        val ripe = chorus.size - movers.size
 
         // a mover this close to the end stops moving inside the window, handing its tile back
         val ripening = movers.count { (it.lowestStage ?: 1) >= maxStage - ticks }
 
         val occupied = occupancy(layout)
-        val free = SIZE * SIZE - occupied.count { it != null }
+        val free = GREENHOUSE_SIZE * GREENHOUSE_SIZE - occupied.count { it != null }
         val spawnOpen = countSpawners(occupied)
 
         val mean = SPAWN_CHANCE * spawnOpen * ticks
@@ -87,7 +82,6 @@ object ChorusCollision {
 
         return Report(
             movers = movers.size,
-            ripe = ripe,
             free = free,
             spawnOpen = spawnOpen,
             ripening = ripening,
@@ -105,14 +99,9 @@ object ChorusCollision {
         )
     }
 
-    /** The chorus to break first, youngest first: the cheapest thing standing on the plot. */
-    fun cullOrder(layout: GreenhouseLayout): List<GreenhouseElementInstance> = layout.elementInstances
-        .filter { it.cropDef.name == CHORUS && (it.lowestStage ?: 1) < it.cropDef.maxStage }
-        .sortedBy { it.lowestStage ?: 1 }
-
     /** Which crop stands on each tile, by name, null for air. A big crop fills every tile it covers. */
     private fun occupancy(layout: GreenhouseLayout): Array<String?> {
-        val tiles = arrayOfNulls<String>(SIZE * SIZE)
+        val tiles = arrayOfNulls<String>(GREENHOUSE_SIZE * GREENHOUSE_SIZE)
 
         layout.elementInstances.forEach { instance ->
             val footprint = instance.cropDef.footprint
@@ -122,8 +111,8 @@ object ChorusCollision {
                     val x = instance.slot.x + dx
                     val y = instance.slot.y + dy
 
-                    if (x in 0 until SIZE && y in 0 until SIZE) {
-                        tiles[y * SIZE + x] = instance.cropDef.name
+                    if (x in 0 until GREENHOUSE_SIZE && y in 0 until GREENHOUSE_SIZE) {
+                        tiles[y * GREENHOUSE_SIZE + x] = instance.cropDef.name
                     }
                 }
             }
@@ -139,9 +128,9 @@ object ChorusCollision {
     private fun countSpawners(tiles: Array<String?>): Int {
         var open = 0
 
-        for (y in 1 until SIZE - 1) {
-            for (x in 1 until SIZE - 1) {
-                if (tiles[y * SIZE + x] != null) continue
+        for (y in 1 until GREENHOUSE_SIZE - 1) {
+            for (x in 1 until GREENHOUSE_SIZE - 1) {
+                if (tiles[y * GREENHOUSE_SIZE + x] != null) continue
 
                 var jellybeans = 0
                 var chloronite = 0
@@ -150,7 +139,7 @@ object ChorusCollision {
                     for (dx in -1..1) {
                         if (dx == 0 && dy == 0) continue
 
-                        when (tiles[(y + dy) * SIZE + (x + dx)]) {
+                        when (tiles[(y + dy) * GREENHOUSE_SIZE + (x + dx)]) {
                             JELLYBEAN -> jellybeans++
                             CHLORONITE -> chloronite++
                         }

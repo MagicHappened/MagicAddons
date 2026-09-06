@@ -15,7 +15,6 @@ import org.magic.magicaddons.util.ChatUtils
 object UnplanGreenhouse : AbstractCommand() {
 
     override val argument: String = "unplan"
-    override val description: String = "Takes the plan off the greenhouse being stood in"
 
     override fun build(): LiteralArgumentBuilder<FabricClientCommandSource> =
         LiteralArgumentBuilder.literal<FabricClientCommandSource>(argument)
@@ -28,7 +27,6 @@ object UnplanGreenhouse : AbstractCommand() {
 object KeepPlanner : AbstractCommand() {
 
     override val argument: String = "keepPlanner"
-    override val description: String = "Leaves the plan on, and stops asking about it"
 
     override fun build(): LiteralArgumentBuilder<FabricClientCommandSource> =
         LiteralArgumentBuilder.literal<FabricClientCommandSource>(argument)

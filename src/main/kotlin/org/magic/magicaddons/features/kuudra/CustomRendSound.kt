@@ -13,8 +13,8 @@ import org.magic.magicaddons.data.config.BooleanSetting
 import org.magic.magicaddons.data.config.TextSetting
 import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.events.EventHandler
-import org.magic.magicaddons.events.interact.OnAnyPlayerSwingEvent
-import org.magic.magicaddons.events.world.OnWorldTickEvent
+import org.magic.magicaddons.events.interact.AnyPlayerSwingEvent
+import org.magic.magicaddons.events.world.WorldTickEvent
 import org.magic.magicaddons.features.Feature
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.EntityUtils
@@ -27,11 +27,19 @@ object CustomRendSound : Feature() {
         EventBus.register(this)
     }
 
-    var wornReaperArmorList: MutableSet<Player> = mutableSetOf()
-    var wornReaperTuxedoArmorList: MutableSet<Player> = mutableSetOf()
+    val wornReaperArmorList: MutableSet<Player> = mutableSetOf()
+    val wornReaperTuxedoArmorList: MutableSet<Player> = mutableSetOf()
     var lastPullTimeMs: Long? = null
 
     const val REND_COOLDOWN: Int = 500
+
+    /** Which part of a player's display name holds the name itself, after the level tag. */
+    private const val NAME_SIBLING_INDEX: Int = 1
+
+    /** The two corners of Kuudra's lair. */
+    private val LAIR_CORNER_A: Vec3 = Vec3(-60.0, 40.0, -142.0)
+    private val LAIR_CORNER_B: Vec3 = Vec3(-135.0, 1.0, -65.0)
+    private val LAIR_BOX: AABB = AABB(LAIR_CORNER_A, LAIR_CORNER_B)
 
     override val id: String = "CustomRendSound"
     override val displayName: String = "Custom Rend Sound"
@@ -51,10 +59,8 @@ object CustomRendSound : Feature() {
         )
     )
 
-    // ELEGANT_TUXEDO_BOOTS | ELEGANT_TUXEDO_LEGGINGS | ELEGANT_TUXEDO_CHESTPLATE
-
     @EventHandler
-    fun onWorldTick(event: OnWorldTickEvent) {
+    fun onWorldTick(event: WorldTickEvent) {
         if (!baseSetting.value) return
         val inKuudra = LocationAPI.island == SkyBlockIsland.KUUDRA
         if (!inKuudra) return
@@ -79,13 +85,10 @@ object CustomRendSound : Feature() {
                 }
             }
         }
-
     }
 
-
-
     @EventHandler
-    fun onAnySwing(event: OnAnyPlayerSwingEvent) {
+    fun onAnySwing(event: AnyPlayerSwingEvent) {
         if (!baseSetting.value) return
         val inKuudra = LocationAPI.island == SkyBlockIsland.KUUDRA
         if (!inKuudra) return
@@ -93,7 +96,6 @@ object CustomRendSound : Feature() {
         if (lastPullTimeMs != null && now - lastPullTimeMs!! < REND_COOLDOWN) return
 
         val player = event.player
-
 
         if (player !in wornReaperTuxedoArmorList){
             return
@@ -120,10 +122,7 @@ object CustomRendSound : Feature() {
 
         wornReaperArmorList.remove(event.player)
         wornReaperTuxedoArmorList.remove(event.player)
-        ChatUtils.sendWithPrefix("${event.player.displayName.siblings[1].string} Pulled!")
-        // SoundEvents.ENTITY_GOAT_SCREAMING_DEATH.id
-        // minecraft:entity.goat.screaming.death
-        // baseSetting.getChild<TextSetting>("RendPullSoundPath")?.value ?: "mob.goat.death.screamer"
+        ChatUtils.sendWithPrefix("${event.player.displayName.siblings[NAME_SIBLING_INDEX].string} Pulled!")
         val soundId = Identifier.parse(
             baseSetting.getChild<TextSetting>("RendPullSoundPath")?.value
                 ?: "minecraft:entity.goat.screaming.death"
@@ -145,19 +144,10 @@ object CustomRendSound : Feature() {
         )
         Minecraft.getInstance().soundManager.play(goatSound)
         lastPullTimeMs = now
-
     }
 
     fun inKuudraLair(): Boolean{
         val player = Minecraft.getInstance().player ?: return false
-        val vec1 = Vec3(-60.0, 40.0, -142.0)
-        val vec2 = Vec3(-135.0, 1.0, -65.0)
-        val box = AABB(vec1, vec2)
-        return box.contains(Vec3(player.x, player.y, player.z))
+        return LAIR_BOX.contains(Vec3(player.x, player.y, player.z))
     }
-
-
-
-
-
 }

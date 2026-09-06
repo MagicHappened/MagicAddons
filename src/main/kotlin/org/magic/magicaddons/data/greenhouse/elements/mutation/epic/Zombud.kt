@@ -3,7 +3,13 @@ package org.magic.magicaddons.data.greenhouse.elements.mutation.epic
 import net.minecraft.core.BlockPos
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.phys.Vec3
-import org.magic.magicaddons.data.greenhouse.*
+import org.magic.magicaddons.data.greenhouse.CropArmorStand
+import org.magic.magicaddons.data.greenhouse.CropBlockState
+import org.magic.magicaddons.data.greenhouse.CropDefinition
+import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
+import org.magic.magicaddons.data.greenhouse.CropEffect
+import org.magic.magicaddons.data.greenhouse.CropStage
+import org.magic.magicaddons.data.greenhouse.StandPose
 import org.magic.magicaddons.data.greenhouse.CropStates.netherwartState
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 import net.minecraft.core.Rotations
@@ -96,9 +102,6 @@ object Zombud : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.40625, 0.0),
-                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
-                        xRotation = 0.0f,
-                        yRotation = 0.0f,
                         hashString = "29e27b7ee26e272ce53f19e169a593ea83cc120bfa3a209e1a8a279fcdf463e7",
                         isSmall = false
                     )
@@ -137,24 +140,7 @@ object Zombud : CropDefinitionProvider {
                         )
                     )
                 ,
-                10..10
-            ),
-            CropStage(
-                blocks = listOf(
-                    CropBlockState(
-                        offset = BlockPos(0,1,0),
-                        blockState = netherwartState(0)
-                    )
-                ),
-                armorStands =
-                    listOf(
-                        CropArmorStand(
-                            offset = Vec3(0.0, -0.28125, 0.0),
-                            hashString = "7a65b2ac222b9b875d7bd33d0fbe60c60434eb86fe16ce451e9f8c4d81cc6455",
-                        )
-                    )
-                ,
-                11..11
+                10..11
             ),
             CropStage(
                 blocks = listOf(
@@ -258,42 +244,12 @@ object Zombud : CropDefinitionProvider {
                 ),
                 16..16
             )
-
-
-        ,
-            // as placed
-            CropStage(
-                blocks = listOf(
-                    CropBlockState(
-                        offset = BlockPos(0, 1, 0),
-                        blockState = netherwartState(2)
-                    )
-                ),
-                armorStands = listOf(
-                    CropArmorStand(
-                        offset = Vec3(0.0, -0.375, 0.0),
-                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
-                        xRotation = 0.0f,
-                        yRotation = 0.0f,
-                        hashString = "de090b85462e85f7f44be07e55f1486602c141bb6fd0c277d5bb7c68deda265d",
-                        isSmall = false
-                    ),
-                    CropArmorStand(
-                        offset = Vec3(0.0, 0.21875, 0.0),
-                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
-                        xRotation = 0.0f,
-                        yRotation = 0.0f,
-                        hashString = "b2c4994b7a1c45231b623b8245c117382b267c8856c57cffa2d808c241027a51",
-                        isSmall = false
-                    )
-                ),
-                16..16,
-                placed = true
-            )),
+        ),
         // five day decay timer
         maxStage = 16,
         requiredSoil = setOf(Blocks.SOUL_SAND),
         needsWater = false,
-        isMutation = true
+        isMutation = true,
+        placedSameAsGrown = true
     )
 }

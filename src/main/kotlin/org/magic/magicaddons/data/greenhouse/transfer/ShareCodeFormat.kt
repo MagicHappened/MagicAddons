@@ -14,9 +14,6 @@ import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.DataInputStream
 import java.io.DataOutputStream
-import java.util.Base64
-import java.util.zip.Deflater
-import java.util.zip.Inflater
 
 /**
  * This mod's own way of sharing a preset: one short line for chat, `MAGH1|name|data`. The name is
@@ -66,7 +63,7 @@ object ShareCodeFormat : LayoutFormat {
         val data = rest.substringAfterLast(SEPARATOR)
         val label = if (rest.contains(SEPARATOR)) rest.substringBeforeLast(SEPARATOR).trim().takeIf { it.isNotEmpty() } else null
 
-        val bytes = runCatching { inflate(Base64.getUrlDecoder().decode(data)) }.getOrNull()
+        val bytes = RawDeflate.decode(data)
             ?: return LayoutTransferResult.Failure("That share code is damaged.")
 
         return runCatching { read(bytes, layoutId, label) }.getOrElse { LayoutTransferResult.Failure("That share code is damaged.") }
@@ -83,7 +80,7 @@ object ShareCodeFormat : LayoutFormat {
         val size = input.readUnsignedByte()
 
         val crops = List(input.readUnsignedByte()) { input.readUTF() }.map { name ->
-            (CropRegistry.get(name) ?: CropRegistry.all.find { it.name.equals(name, ignoreCase = true) })
+            CropRegistry.findByName(name)
                 .also { if (it == null) notes.add("Unknown crop: $name") }
         }
         val soils = List(input.readUnsignedByte()) { input.readUTF() }.map { id ->
@@ -94,8 +91,7 @@ object ShareCodeFormat : LayoutFormat {
         val plotCount = input.readUnsignedByte()
         val plots = List(plotCount) { index ->
             val plotName = input.readUTF().takeIf { it.isNotEmpty() }
-            val id = if (index == 0) layoutId else "${layoutId}_p${index + 1}"
-            val layout = GreenhouseLayout(id = id, name = plotName)
+            val layout = GreenhouseLayout(id = MasterLayout.plotId(layoutId, index), name = plotName)
 
             for (cell in 0 until size * size) {
                 val crop = input.readUnsignedByte()
@@ -133,7 +129,7 @@ object ShareCodeFormat : LayoutFormat {
                 if (covered.placedBlock == null) covered.placedBlock = definition.requiredSoil.firstOrNull()?.defaultBlockState()
             }
         }
-        layout.elementInstances.add(GreenhouseElementInstance(definition.skyblockId?.id ?: definition.name, slot, cropDef = definition))
+        layout.elementInstances.add(GreenhouseElementInstance(definition.elementId, slot, cropDef = definition))
     }
 
     override fun export(layout: GreenhouseLayout): LayoutTransferResult = write(layout.name, listOf(layout))
@@ -177,35 +173,10 @@ object ShareCodeFormat : LayoutFormat {
             }
         }
 
-        val code = Base64.getUrlEncoder().withoutPadding().encodeToString(deflate(bytes.toByteArray()))
+        val code = RawDeflate.encode(bytes.toByteArray())
         val label = (name ?: "").replace(SEPARATOR, ' ').trim()
         return LayoutTransferResult.Exported("$PREFIX$WRAPPER_VERSION$SEPARATOR$label$SEPARATOR$code")
     }
 
     private fun idOf(block: Block): String = BuiltInRegistries.BLOCK.getKey(block).toString()
-
-    private fun deflate(bytes: ByteArray): ByteArray {
-        val deflater = Deflater(Deflater.BEST_COMPRESSION, true)
-        deflater.setInput(bytes)
-        deflater.finish()
-        val out = ByteArrayOutputStream()
-        val buffer = ByteArray(1024)
-        while (!deflater.finished()) out.write(buffer, 0, deflater.deflate(buffer))
-        deflater.end()
-        return out.toByteArray()
-    }
-
-    private fun inflate(bytes: ByteArray): ByteArray {
-        val inflater = Inflater(true)
-        inflater.setInput(bytes)
-        val out = ByteArrayOutputStream()
-        val buffer = ByteArray(1024)
-        while (!inflater.finished()) {
-            val count = inflater.inflate(buffer)
-            if (count == 0 && inflater.needsInput()) break
-            out.write(buffer, 0, count)
-        }
-        inflater.end()
-        return out.toByteArray()
-    }
 }

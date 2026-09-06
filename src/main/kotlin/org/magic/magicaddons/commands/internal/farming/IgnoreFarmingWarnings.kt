@@ -8,7 +8,6 @@ import org.magic.magicaddons.util.ChatUtils
 
 object IgnoreFarmingWarnings : AbstractCommand() {
     override val argument: String = "ignoreFarmingWarnings"
-    override val description: String = "Ignores farming warnings"
 
     override fun build(): LiteralArgumentBuilder<FabricClientCommandSource> {
         return LiteralArgumentBuilder.literal<FabricClientCommandSource>(argument).executes {

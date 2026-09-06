@@ -6,6 +6,7 @@ import net.minecraft.network.chat.Component
 import net.minecraft.network.chat.HoverEvent
 import net.minecraft.network.chat.Style
 import org.magic.magicaddons.features.FeatureManager
+import org.magic.magicaddons.util.ChatUtils
 
 // the old shapes are read as raw maps, which is what an unchecked cast says
 @Suppress("UNCHECKED_CAST")
@@ -199,23 +200,25 @@ object OldConfigHandler {
             if (name.isBlank()) value else "$name: $value"
         }
         ConfigNotices.queue(
-            Component.literal("[MA] ").withStyle(ChatFormatting.GOLD)
-                .append(
-                    Component.literal(
-                        "Config update: the Player Entity skin hash list is now a single value " +
-                                "with history. Your first enabled hash was kept; "
-                    ).withStyle(ChatFormatting.YELLOW)
-                )
-                .append(
-                    Component.literal("click here").setStyle(
-                        Style.EMPTY
-                            .withColor(ChatFormatting.GREEN)
-                            .withUnderlined(true)
-                            .withClickEvent(ClickEvent.CopyToClipboard(listing))
-                            .withHoverEvent(HoverEvent.ShowText(Component.literal(listing)))
+            ChatUtils.buildWithPrefix(
+                Component.empty()
+                    .append(
+                        Component.literal(
+                            "Config update: the Player Entity skin hash list is now a single value " +
+                                    "with history. Your first enabled hash was kept; "
+                        ).withStyle(ChatFormatting.YELLOW)
                     )
-                )
-                .append(Component.literal(" to copy the full list with names.").withStyle(ChatFormatting.YELLOW))
+                    .append(
+                        Component.literal("click here").setStyle(
+                            Style.EMPTY
+                                .withColor(ChatFormatting.GREEN)
+                                .withUnderlined(true)
+                                .withClickEvent(ClickEvent.CopyToClipboard(listing))
+                                .withHoverEvent(HoverEvent.ShowText(Component.literal(listing)))
+                        )
+                    )
+                    .append(Component.literal(" to copy the full list with names.").withStyle(ChatFormatting.YELLOW))
+            )
         )
 
         return raw

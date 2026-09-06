@@ -3,9 +3,7 @@ package org.magic.magicaddons.features.farming.greenhousePresets
 import net.minecraft.network.chat.Component
 import org.magic.magicaddons.Common
 import org.magic.magicaddons.data.config.BooleanSetting
-import org.magic.magicaddons.data.greenhouse.GreenhouseElementInstance
 import org.magic.magicaddons.data.greenhouse.GreenhouseGrid
-import org.magic.magicaddons.data.greenhouse.NEVER_DECAYS
 import org.magic.magicaddons.data.greenhouse.WaterModel
 import org.magic.magicaddons.ui.hud.ConfigTarget
 import org.magic.magicaddons.ui.hud.HudContent
@@ -13,6 +11,8 @@ import org.magic.magicaddons.ui.hud.HudElement
 import org.magic.magicaddons.ui.hud.HudLine
 import org.magic.magicaddons.ui.hud.HudSituation
 import org.magic.magicaddons.util.toReadableDuration
+import org.magic.magicaddons.util.toShortDuration
+import java.time.Duration
 
 /** A small panel on screen while standing in a greenhouse: the next tick and what the plants need. */
 object GreenhouseHud : HudElement("greenhouse", "Greenhouse") {
@@ -23,6 +23,9 @@ object GreenhouseHud : HudElement("greenhouse", "Greenhouse") {
     override val defaultY: Int = 8
 
     override val situations: Set<HudSituation> = setOf(HudSituation.GREENHOUSE)
+
+    /** Under this much time left, a countdown is shown in the danger colour. */
+    private val URGENT_MS: Long = Duration.ofHours(1).toMillis()
 
     private fun setting(): BooleanSetting? = GreenhousePresets.baseSetting.getChild<BooleanSetting>(KEY)
 
@@ -71,7 +74,7 @@ object GreenhouseHud : HudElement("greenhouse", "Greenhouse") {
         add(Line("Plants", plants.size.toString()))
 
         val gardenTime = GreenhouseGrid.timeOfDayNow()
-        val ready = plants.count { it.cropDef.isMutation && it.grewInPlace && (it.highestStage ?: 0) >= it.cropDef.maxStage }
+        val ready = plants.count { it.readyToHarvest }
         // the soonest a plant here dies of thirst, by the same clock the warnings use
         val tickMs = GreenhouseData.currentGrowthTickMs()
         val remainingMs = GreenhouseData.remainingTickMs()
@@ -84,40 +87,13 @@ object GreenhouseHud : HudElement("greenhouse", "Greenhouse") {
             }
             .minOrNull()
         val asleep = plants.count { it.isAsleep }
-        val craving = plants.count { instance ->
-            val wants = instance.craving ?: return@count false
-            val stage = instance.lowestStage
-            wants != gardenTime && (stage == null || stage < instance.cropDef.maxStage)
-        }
-        val decaying = plants.mapNotNull { decayRemainingMs(it) }.minOrNull()
+        val craving = plants.count { it.cravesOtherTime(gardenTime) }
+        val decaying = plants.mapNotNull { it.decayRemainingMs }.minOrNull()
 
         if (ready > 0) add(Line("Ready to harvest", ready.toString(), Common.UI.SUCCESS_COLOR))
-        if (thirst != null) add(Line("Dies of thirst in", if (thirst == 0L) "now" else readableMs(thirst), if (thirst < HOUR_MS) Common.UI.DANGER_COLOR else Common.UI.WARNING_COLOR))
+        if (thirst != null) add(Line("Dies of thirst in", if (thirst == 0L) "now" else thirst.toShortDuration(), if (thirst < URGENT_MS) Common.UI.DANGER_COLOR else Common.UI.WARNING_COLOR))
         if (asleep > 0) add(Line("Asleep", asleep.toString(), Common.UI.WARNING_COLOR))
         if (craving > 0) add(Line("Wrong time of day", craving.toString(), Common.UI.WARNING_COLOR))
-        if (decaying != null) add(Line("Next decay", readableMs(decaying), if (decaying < HOUR_MS) Common.UI.DANGER_COLOR else Common.UI.TEXT_COLOR))
-    }
-
-    private fun decayRemainingMs(instance: GreenhouseElementInstance): Long? {
-        val decayTime = instance.cropDef.decayTimeMs
-        if (decayTime == NEVER_DECAYS) return null
-        val age = instance.age ?: return null
-        return (decayTime - age).coerceAtLeast(0L)
-    }
-
-    private const val HOUR_MS: Long = 60L * 60 * 1000
-
-    /** "2d 3h", "1h 5m", "20m", "40s". */
-    private fun readableMs(ms: Long): String {
-        val seconds = (ms / 1000).coerceAtLeast(0)
-        val days = seconds / 86400
-        val hours = seconds % 86400 / 3600
-        val minutes = seconds % 3600 / 60
-        return when {
-            days > 0 -> "${days}d ${hours}h"
-            hours > 0 -> "${hours}h ${minutes}m"
-            minutes > 0 -> "${minutes}m"
-            else -> "${seconds}s"
-        }
+        if (decaying != null) add(Line("Next decay", decaying.toShortDuration(), if (decaying < URGENT_MS) Common.UI.DANGER_COLOR else Common.UI.TEXT_COLOR))
     }
 }

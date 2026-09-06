@@ -14,7 +14,6 @@ import org.magic.magicaddons.util.ChatUtils
 
 object PlaySound : AbstractCommand() {
     override val argument: String = "playsound"
-    override val description: String = "plays the sound from the given sound path"
 
     override fun build(): LiteralArgumentBuilder<FabricClientCommandSource> {
         val command = LiteralArgumentBuilder.literal<FabricClientCommandSource>(argument)

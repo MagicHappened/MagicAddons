@@ -1,19 +1,17 @@
 package org.magic.magicaddons.features.farming.greenhousePresets
 
+import org.magic.magicaddons.util.ChatUtils
 import net.minecraft.ChatFormatting
 import net.minecraft.client.Minecraft
-import net.minecraft.network.chat.ClickEvent
 import net.minecraft.network.chat.Component
 import net.minecraft.network.chat.HoverEvent
 import net.minecraft.network.chat.Style
-import org.magic.magicaddons.data.config.BooleanSetting
 import org.magic.magicaddons.data.greenhouse.CropStandReader
 import org.magic.magicaddons.data.greenhouse.GreenhouseElementInstance
 import org.magic.magicaddons.data.greenhouse.GreenhouseGrid
-import org.magic.magicaddons.data.greenhouse.NEVER_DECAYS
-import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.events.EventHandler
 import org.magic.magicaddons.events.greenhouse.GrowthTickEvent
+import org.magic.magicaddons.util.toShortDuration
 import tech.thatgravyboat.skyblockapi.api.location.LocationAPI
 import tech.thatgravyboat.skyblockapi.api.location.SkyBlockIsland
 import java.time.Duration
@@ -26,18 +24,15 @@ import java.time.Instant
  */
 object PlantWarnings {
 
-    init {
-        EventBus.register(this)
-    }
-
     private const val HARVEST: String = "harvest-ready"
     private const val DECAY: String = "plant-decay"
     private const val ATTENTION: String = "plant-attention"
 
-    private const val HARVEST_KEY: String = "ReadyToHarvestWarning"
-    private const val DECAY_KEY: String = "DecayWarning"
-    private const val SNOOZLING_KEY: String = "SnoozlingAsleepWarning"
-    private const val NOCTILUME_KEY: String = "NoctilumeTimeWarning"
+    /** The setting keys of each warning kind, under the warning types heading. */
+    const val HARVEST_KEY: String = "ReadyToHarvestWarning"
+    const val DECAY_KEY: String = "DecayWarning"
+    const val SNOOZLING_KEY: String = "SnoozlingAsleepWarning"
+    const val NOCTILUME_KEY: String = "NoctilumeTimeWarning"
     const val OTHER_PROFILES_KEY: String = "OtherProfileWarnings"
 
     /** Decay is measured in hours rather than minutes, so it climbs a ladder of its own. */
@@ -71,15 +66,9 @@ object PlantWarnings {
      * harvesting it gains nothing. Judged by the highest stage it might be at, to tell the player early.
      */
     private fun harvestNotes(): List<HouseNote> = notes { instance ->
-        val definition = instance.cropDef
+        if (!instance.readyToHarvest) return@notes null
 
-        if (!definition.isMutation) return@notes null
-        if (!instance.grewInPlace) return@notes null
-
-        val stage = instance.highestStage ?: return@notes null
-        if (stage < definition.maxStage) return@notes null
-
-        definition.name to null
+        instance.cropDef.name to null
     }
 
     /**
@@ -98,13 +87,9 @@ object PlantWarnings {
             if (snoozling && instance.isAsleep) return@notes instance.cropDef.name to "asleep"
 
             if (!noctilume) return@notes null
+            if (!instance.cravesOtherTime(gardenTime)) return@notes null
 
             val craving = instance.craving ?: return@notes null
-            if (craving == gardenTime) return@notes null
-
-            // a plant with nothing left to grow craves nothing in practice, whatever its skull says
-            val stage = instance.lowestStage
-            if (stage != null && stage >= instance.cropDef.maxStage) return@notes null
 
             instance.cropDef.name to
                     "garden on ${timeName(gardenTime)}, craves ${timeName(craving)}"
@@ -128,21 +113,11 @@ object PlantWarnings {
     private fun decayingPlants(): List<DecayingPlant> =
         houses().flatMap { (grid, house) ->
             grid.layout.elementInstances.mapNotNull { instance ->
-                val remaining = decayRemainingMs(instance) ?: return@mapNotNull null
+                val remaining = instance.decayRemainingMs ?: return@mapNotNull null
 
                 DecayingPlant(house, instance.cropDef.name, remaining)
             }
         }.sortedBy { it.remainingMs }
-
-    /** Time left before this plant rots. Null when it never rots, or its age was never measured. */
-    private fun decayRemainingMs(instance: GreenhouseElementInstance): Long? {
-        val decayTime = instance.cropDef.decayTimeMs
-        if (decayTime == NEVER_DECAYS) return null
-
-        val age = instance.age ?: return null
-
-        return (decayTime - age).coerceAtLeast(0L)
-    }
 
     // -------------------------------------------------------------------------- when they run
 
@@ -183,7 +158,7 @@ object PlantWarnings {
 
             if (notes.isNotEmpty() && GreenhouseWarnings.shouldWarn(HARVEST, remainingMs, GreenhousePresets.reminderThresholds())) {
                 send(
-                    "Some plants are ready to harvest! Next tick in ${shortDuration(remainingMs)}",
+                    "Some plants are ready to harvest! Next tick in ${remainingMs.toShortDuration()}",
                     notes
                 )
             }
@@ -192,7 +167,7 @@ object PlantWarnings {
         val attention = attentionNotes()
 
         if (attention.isNotEmpty() && GreenhouseWarnings.shouldWarn(ATTENTION, remainingMs, GreenhousePresets.reminderThresholds())) {
-            send("Some plants need attention! Next tick in ${shortDuration(remainingMs)}", attention)
+            send("Some plants need attention! Next tick in ${remainingMs.toShortDuration()}", attention)
         }
     }
 
@@ -218,7 +193,7 @@ object PlantWarnings {
         val notes = due.groupBy { it.house }.map { (house, inHouse) ->
             HouseNote(
                 house,
-                inHouse.groupBy { it.plant to shortDuration(it.remainingMs) }
+                inHouse.groupBy { it.plant to it.remainingMs.toShortDuration() }
                     .map { (key, plants) -> "${key.first} x${plants.size} - ${key.second}" }
             )
         }
@@ -251,8 +226,7 @@ object PlantWarnings {
 
     /** A headline, the greenhouses under it each holding their detail on hover, and a way home. */
     private fun send(headline: String, notes: List<HouseNote>) {
-        val message = Component.literal("[MA] ").withStyle(ChatFormatting.GOLD)
-            .append(Component.literal(headline).withStyle(ChatFormatting.YELLOW))
+        val message = ChatUtils.buildWithPrefix(Component.literal(headline).withStyle(ChatFormatting.YELLOW))
             .append(Component.literal("\n"))
 
         notes.forEachIndexed { index, note ->
@@ -275,18 +249,7 @@ object PlantWarnings {
 
         if (LocationAPI.island != SkyBlockIsland.GARDEN || LocationAPI.isGuest) {
             message.append(Component.literal(" "))
-            message.append(
-                Component.literal("[GARDEN]").withStyle(
-                    Style.EMPTY
-                        .withColor(ChatFormatting.GREEN)
-                        .withClickEvent(ClickEvent.RunCommand("/warp garden"))
-                        .withHoverEvent(
-                            HoverEvent.ShowText(
-                                Component.literal("Click here to warp to garden!")
-                            )
-                        )
-                )
-            )
+            message.append(gardenWarpLink())
         }
 
         Minecraft.getInstance().player?.sendSystemMessage(message)
@@ -304,21 +267,6 @@ object PlantWarnings {
             minutes == 60L -> "1 hour"
             minutes == 1L -> "1 minute"
             else -> "$minutes minutes"
-        }
-    }
-
-    /** A countdown as the hover and the headline read one: "2d 3h", "1h 5m", "20m", "40s". */
-    private fun shortDuration(ms: Long): String {
-        val seconds = (ms / 1000).coerceAtLeast(0)
-        val minutes = seconds / 60
-        val hours = minutes / 60
-        val days = hours / 24
-
-        return when {
-            days > 0 -> "${days}d ${hours % 24}h"
-            hours > 0 -> "${hours}h ${minutes % 60}m"
-            minutes > 0 -> "${minutes}m"
-            else -> "${seconds}s"
         }
     }
 }

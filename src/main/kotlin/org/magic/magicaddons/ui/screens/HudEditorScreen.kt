@@ -76,8 +76,11 @@ class HudEditorScreen : MagicScreen(Component.literal("HUD Editor"), "the hud ed
     /** The place being laid out; only elements that can show there are drawn. */
     private var situation: HudSituation = HudSituation.current()
 
-    /** Whether the tab at the right edge has its panel open. */
+    /** Whether the tab at the top centre has its panel open. */
     private var panelOpen = false
+
+    /** One switch per element in the panel, kept so the knob can slide when it is flipped. */
+    private val panelSwitches = mutableMapOf<String, SwitchWidget>()
 
     private fun shownHere(element: HudElement): Boolean = element.showsIn(situation) && !layout.isHidden(situation, element.id)
 
@@ -390,14 +393,13 @@ class HudEditorScreen : MagicScreen(Component.literal("HUD Editor"), "the hud ed
     private fun openConfig(part: HudPart) {
         val target = part.element.configTarget ?: return
         HudLayoutStore.save()
-        setScreen(ConfigScreen(Component.literal("Magic Addons Config"), this).apply { showSetting(target.feature, target.path) })
+        setScreen(ConfigScreen(this).apply { showSetting(target.feature, target.path) })
     }
 
     // ------------------------------------------------------------------ the menu
 
     private fun openMenu(x: Int, y: Int, title: String, entries: List<HudMenu.Entry>) {
-        val (menuX, menuY) = OverlayRenderable.placeOnScreen(x, y, HudMenu.widthFor(title, entries), HudMenu.heightFor(entries))
-        addContext(HudMenu(menuX, menuY, title, entries, this).also { it.init() })
+        addContext(HudMenu(x, y, title, entries, this).also { it.init() })
     }
 
     private fun placementEntries(id: String): List<HudMenu.Entry> {
@@ -436,7 +438,7 @@ class HudEditorScreen : MagicScreen(Component.literal("HUD Editor"), "the hud ed
 
     // ------------------------------------------------------------------ drawing
 
-    override fun extractBackground(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, deltaTick: Float) {
+    override fun extractBackground(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
         graphics.fill(0, 0, width, height, Common.UI.SCREEN_DIM_COLOR)
     }
 
@@ -469,17 +471,33 @@ class HudEditorScreen : MagicScreen(Component.literal("HUD Editor"), "the hud ed
         }
         drawHints(graphics)
         drawPanel(graphics)
-        overlays.asReversed().forEach { it.renderOverlay(graphics, mouseX, mouseY, delta) }
+        renderOverlays(graphics, mouseX, mouseY, delta)
     }
 
-    // ------------------------------------------------------------------ the tab at the right edge
+    // ------------------------------------------------------------------ the tab at the top centre
 
-    private fun panelRows(): Pair<List<HudSituation>, List<HudElement>> =
-        HudSituation.offered() to HudElements.all.filter { it.showsIn(situation) }
+    /** One row of the panel: a situation to lay out for, or an element to show or hide there. */
+    private class PanelRow(val top: Int, val situation: HudSituation? = null, val element: HudElement? = null)
+
+    /** The panel's rows from the top: the situations under the Show heading, a line, then the elements. */
+    private fun panelRows(): List<PanelRow> {
+        var rowY = panelTop() + PANEL_PAD + PANEL_ROW
+        return buildList {
+            HudSituation.offered().forEach { candidate ->
+                add(PanelRow(rowY, situation = candidate))
+                rowY += PANEL_ROW
+            }
+            rowY += PANEL_PAD * 2 + 1
+            HudElements.all.filter { it.showsIn(situation) }.forEach { element ->
+                add(PanelRow(rowY, element = element))
+                rowY += PANEL_ROW
+            }
+        }
+    }
 
     private fun panelHeight(): Int {
-        val (situations, elements) = panelRows()
-        return PANEL_PAD * 2 + PANEL_ROW * (1 + situations.size + elements.size) + PANEL_PAD * 2 + 1
+        val rows = panelRows()
+        return PANEL_PAD * 2 + PANEL_ROW * (1 + rows.size) + PANEL_PAD * 2 + 1
     }
 
     private fun panelLeft(): Int = (width - PANEL_WIDTH) / 2
@@ -510,37 +528,40 @@ class HudEditorScreen : MagicScreen(Component.literal("HUD Editor"), "the hud ed
         val panelTop = panelTop()
         graphics.drawPanel(left, panelTop, panelRight(), panelTop + panelHeight())
 
-        val (situations, elements) = panelRows()
-        var rowY = panelTop + PANEL_PAD
-        graphics.text(font, Component.literal("Show"), left + PANEL_PAD, rowY + (PANEL_ROW - font.lineHeight) / 2, Common.UI.TEXT_DIM_COLOR, false)
-        rowY += PANEL_ROW
+        val rows = panelRows()
+        graphics.text(font, Component.literal("Show"), left + PANEL_PAD, panelTop + PANEL_PAD + (PANEL_ROW - font.lineHeight) / 2, Common.UI.TEXT_DIM_COLOR, false)
 
-        situations.forEach { candidate ->
-            val over = mouseX in left until panelRight() && mouseY in rowY until rowY + PANEL_ROW
-            if (candidate == situation) {
-                graphics.fill(left + Common.UI.BORDER_SIZE, rowY, panelRight() - Common.UI.BORDER_SIZE, rowY + PANEL_ROW, Common.UI.PRESSED_SHADE)
-                graphics.fill(left + Common.UI.BORDER_SIZE, rowY, left + Common.UI.BORDER_SIZE + 2, rowY + PANEL_ROW, Common.UI.SELECTED_FRAME_COLOR)
-            } else if (over) {
-                graphics.fill(left + Common.UI.BORDER_SIZE, rowY, panelRight() - Common.UI.BORDER_SIZE, rowY + PANEL_ROW, Common.UI.HOVER_WASH)
-            }
-            graphics.text(font, Component.literal(candidate.label), left + PANEL_PAD + 3, rowY + (PANEL_ROW - font.lineHeight) / 2, if (candidate == situation) Common.UI.TEXT_COLOR else Common.UI.TEXT_DIM_COLOR, false)
-            rowY += PANEL_ROW
+        // the line between the situations and the elements
+        rows.firstOrNull { it.element != null }?.let { first ->
+            val lineY = first.top - PANEL_PAD - 1
+            graphics.fill(left + PANEL_PAD, lineY, panelRight() - PANEL_PAD, lineY + 1, Common.UI.THIN_DIVIDER_COLOR)
         }
 
-        rowY += PANEL_PAD
-        graphics.fill(left + PANEL_PAD, rowY, panelRight() - PANEL_PAD, rowY + 1, Common.UI.THIN_DIVIDER_COLOR)
-        rowY += 1 + PANEL_PAD
-
-        elements.forEach { element ->
-            val shown = !layout.isHidden(situation, element.id)
+        rows.forEach { row ->
+            val rowY = row.top
             val over = mouseX in left until panelRight() && mouseY in rowY until rowY + PANEL_ROW
-            if (over) graphics.fill(left + Common.UI.BORDER_SIZE, rowY, panelRight() - Common.UI.BORDER_SIZE, rowY + PANEL_ROW, Common.UI.HOVER_WASH)
-            graphics.text(font, Component.literal(element.name), left + PANEL_PAD + 3, rowY + (PANEL_ROW - font.lineHeight) / 2, if (shown) Common.UI.TEXT_COLOR else Common.UI.DISABLED_TEXT_COLOR, false)
-            val switch = SwitchWidget(shown, 16, 9)
-            switch.x = panelRight() - PANEL_PAD - switch.width
-            switch.y = rowY + (PANEL_ROW - switch.height) / 2
-            switch.render(graphics)
-            rowY += PANEL_ROW
+            val textY = rowY + (PANEL_ROW - font.lineHeight) / 2
+
+            row.situation?.let { candidate ->
+                if (candidate == situation) {
+                    graphics.fill(left + Common.UI.BORDER_SIZE, rowY, panelRight() - Common.UI.BORDER_SIZE, rowY + PANEL_ROW, Common.UI.PRESSED_SHADE)
+                    graphics.fill(left + Common.UI.BORDER_SIZE, rowY, left + Common.UI.BORDER_SIZE + 2, rowY + PANEL_ROW, Common.UI.SELECTED_FRAME_COLOR)
+                } else if (over) {
+                    graphics.fill(left + Common.UI.BORDER_SIZE, rowY, panelRight() - Common.UI.BORDER_SIZE, rowY + PANEL_ROW, Common.UI.HOVER_WASH)
+                }
+                graphics.text(font, Component.literal(candidate.label), left + PANEL_PAD + 3, textY, if (candidate == situation) Common.UI.TEXT_COLOR else Common.UI.TEXT_DIM_COLOR, false)
+            }
+
+            row.element?.let { element ->
+                val shown = !layout.isHidden(situation, element.id)
+                if (over) graphics.fill(left + Common.UI.BORDER_SIZE, rowY, panelRight() - Common.UI.BORDER_SIZE, rowY + PANEL_ROW, Common.UI.HOVER_WASH)
+                graphics.text(font, Component.literal(element.name), left + PANEL_PAD + 3, textY, if (shown) Common.UI.TEXT_COLOR else Common.UI.DISABLED_TEXT_COLOR, false)
+                val switch = panelSwitches.getOrPut(element.id) { SwitchWidget(shown, PANEL_SWITCH_WIDTH, PANEL_SWITCH_HEIGHT) }
+                switch.set(shown)
+                switch.x = panelRight() - PANEL_PAD - switch.width
+                switch.y = rowY + (PANEL_ROW - switch.height) / 2
+                switch.render(graphics)
+            }
         }
     }
 
@@ -557,27 +578,17 @@ class HudEditorScreen : MagicScreen(Component.literal("HUD Editor"), "the hud ed
         }
         if (button != 0) return true
 
-        val (situations, elements) = panelRows()
-        var rowY = panelTop() + PANEL_PAD + PANEL_ROW
-        situations.forEach { candidate ->
-            if (y in rowY until rowY + PANEL_ROW) {
-                situation = candidate
-                selectedId = null
-                rebuild()
-                return true
-            }
-            rowY += PANEL_ROW
+        val row = panelRows().firstOrNull { y in it.top until it.top + PANEL_ROW } ?: return true
+        row.situation?.let { candidate ->
+            situation = candidate
+            selectedId = null
+            rebuild()
         }
-        rowY += PANEL_PAD * 2 + 1
-        elements.forEach { element ->
-            if (y in rowY until rowY + PANEL_ROW) {
-                layout.setHidden(situation, element.id, !layout.isHidden(situation, element.id))
-                if (selectedId == element.id) selectedId = null
-                rebuild()
-                HudLayoutStore.save()
-                return true
-            }
-            rowY += PANEL_ROW
+        row.element?.let { element ->
+            layout.setHidden(situation, element.id, !layout.isHidden(situation, element.id))
+            if (selectedId == element.id) selectedId = null
+            rebuild()
+            HudLayoutStore.save()
         }
         return true
     }
@@ -758,11 +769,11 @@ class HudEditorScreen : MagicScreen(Component.literal("HUD Editor"), "the hud ed
     override fun onMouseMoved(mouseX: Double, mouseY: Double) {
         this.mouseX = mouseX.toInt()
         this.mouseY = mouseY.toInt()
-        overlays.forEach { it.mouseMoved(mouseX, mouseY) }
+        overlaysMouseMoved(mouseX, mouseY)
     }
 
     override fun onMouseClicked(event: MouseButtonEvent, doubled: Boolean): Boolean {
-        if (overlays.toList().any { it.mouseClicked(event, doubled) }) return true
+        if (overlaysMouseClicked(event, doubled)) return true
         if (overlays.isNotEmpty()) {
             closeOverlays()
             return true
@@ -865,7 +876,7 @@ class HudEditorScreen : MagicScreen(Component.literal("HUD Editor"), "the hud ed
     }
 
     override fun onMouseScrolled(mouseX: Double, mouseY: Double, scrollX: Double, scrollY: Double): Boolean {
-        if (overlays.any { it.mouseScrolled(mouseX, mouseY, scrollX, scrollY) }) return true
+        if (overlaysMouseScrolled(mouseX, mouseY, scrollX, scrollY)) return true
         val step = if (scrollY > 0) 1 else -1
         scene.anchorAt(mouseX, mouseY)?.let { anchor ->
             anchor.state.alpha = ((anchor.state.alpha + step * ALPHA_STEP) * 100).roundToInt().coerceIn(0, 100) / 100f
@@ -955,6 +966,10 @@ class HudEditorScreen : MagicScreen(Component.literal("HUD Editor"), "the hud ed
         const val PANEL_WIDTH: Int = 120
         const val PANEL_ROW: Int = 13
         const val PANEL_PAD: Int = 4
+
+        /** The switch on an element row, a step smaller than a setting's. */
+        const val PANEL_SWITCH_WIDTH: Int = 16
+        const val PANEL_SWITCH_HEIGHT: Int = 9
 
         const val HANDLE: Int = 2
 

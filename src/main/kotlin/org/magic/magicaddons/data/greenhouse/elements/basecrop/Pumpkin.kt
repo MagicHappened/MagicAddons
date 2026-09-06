@@ -4,7 +4,6 @@ import org.magic.magicaddons.data.greenhouse.CropEffect
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Rotations
 import net.minecraft.world.phys.Vec3
-import org.magic.magicaddons.data.greenhouse.DEFAULT_DECAY_TIME_MS
 import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
 import org.magic.magicaddons.data.greenhouse.CropArmorStand
 import org.magic.magicaddons.data.greenhouse.CropBlockState
@@ -37,7 +36,6 @@ object Pumpkin : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, 0.125, 0.0),
-                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
                         hashString = "18bd4aa55673e90a3c611117277d94f6ce185b5d13d2a862a3376f50a6139c4f"
                     )
                 ),
@@ -103,16 +101,12 @@ object Pumpkin : CropDefinitionProvider {
                     CropArmorStand(
                         offset = Vec3(0.0, -0.53125, 0.0),
                         headRotation = Rotations(0.0f, 0.0f, -22.5f),
-                        xRotation = 0.0f,
-                        yRotation = 0.0f,
                         hashString = "18bd4aa55673e90a3c611117277d94f6ce185b5d13d2a862a3376f50a6139c4f",
                         isSmall = false
                     ),
                     CropArmorStand(
                         offset = Vec3(0.21875, 0.1875, 0.1875),
                         headRotation = Rotations(22.5f, 0.0f, 22.5f),
-                        xRotation = 0.0f,
-                        yRotation = 0.0f,
                         hashString = "1408c8f3063204487451961fab8e7d5dd3702c06c8ef88f777ae83a79aa3a36f"
                     )
                 ),
@@ -128,9 +122,10 @@ object Pumpkin : CropDefinitionProvider {
                     CropArmorStand(
                         offset = Vec3(0.0, -0.53125, 0.0),
                         hashString = "18bd4aa55673e90a3c611117277d94f6ce185b5d13d2a862a3376f50a6139c4f",
+                        isSmall = false
                     ),
                     CropArmorStand(
-                        offset = Vec3(-0.1875, 0.1875, 0.21875),
+                        offset = Vec3(0.21875, 0.1875, 0.1875),
                         hashString = "18bd4aa55673e90a3c611117277d94f6ce185b5d13d2a862a3376f50a6139c4f",
                     )
                 ),
@@ -168,16 +163,12 @@ object Pumpkin : CropDefinitionProvider {
                         isSmall = false,
                         offset = Vec3(0.09375, -0.625, 0.09375),
                         headRotation = Rotations(22.5f, 0.0f, 22.5f),
-                        xRotation = 0.0f,
-                        yRotation = 0.0f,
                         hashString = "18bd4aa55673e90a3c611117277d94f6ce185b5d13d2a862a3376f50a6139c4f"
                     ),
                     CropArmorStand(
                         isSmall = false,
                         offset = Vec3(-0.0625, -0.46875, 0.0),
                         headRotation = Rotations(0.0f, 0.0f, -22.5f),
-                        xRotation = 0.0f,
-                        yRotation = 0.0f,
                         hashString = "a9d2abe3c6d6400a20b47179bbe9be278ed336c07fcc1e03ab0eb0c470d620c"
                     )
                 ),
@@ -219,14 +210,6 @@ object Pumpkin : CropDefinitionProvider {
                     rotations = listOf(
                         Rotations(0.0f, 0.0f, -22.5f),
                         Rotations(22.5f, 0.0f, 22.5f)
-                    ),
-                    xRotations = listOf(
-                        0.0f,
-                        0.0f
-                    ),
-                    yRotations = listOf(
-                        0.0f,
-                        0.0f
                     ),
                     hashString = "1839c3565f36c9d6e52d55a1760b11c2060953143ffe4ffe9c8b606ee4e3648f",
                     isSmall = false

@@ -4,7 +4,7 @@ import org.magic.magicaddons.util.ScreenUtil.drawCheckerboard
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.level.block.Block
 import net.minecraft.ChatFormatting
-import org.magic.magicaddons.util.ScreenUtil.drawTooltipLines
+import org.magic.magicaddons.util.ScreenUtil.drawTooltipLinesAtCursor
 import org.magic.magicaddons.util.compat.McCompat
 import org.magic.magicaddons.data.greenhouse.LayoutSlot
 import org.magic.magicaddons.ui.widgets.EnumWidget
@@ -16,23 +16,26 @@ import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.network.chat.Component
 import net.minecraft.world.item.ItemStack
-import net.minecraft.world.item.Items
 import org.magic.magicaddons.Common
 import org.magic.magicaddons.data.greenhouse.CropDefinition
 import org.magic.magicaddons.data.greenhouse.CropRegistry
 import org.magic.magicaddons.ui.widgets.TextField
 import org.magic.magicaddons.ui.widgets.config.ClickableButtonWidget
+import org.magic.magicaddons.util.ScreenUtil
 import org.magic.magicaddons.util.ScreenUtil.drawBorder
 import org.magic.magicaddons.util.ScreenUtil.drawScrollBar
+import org.magic.magicaddons.util.ScreenUtil.drawTooltipAtCursor
+import org.magic.magicaddons.util.ScreenUtil.inRect
 import org.magic.magicaddons.util.ScreenUtil.renderFakeItem
 import org.magic.magicaddons.util.ScreenUtil.drawShelf
-import org.magic.magicaddons.util.ScreenUtil.drawSimpleTooltip
+import org.magic.magicaddons.util.ScreenUtil.stepScroll
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
 /**
- * Every plant as an icon on a shelf, searched from the top, dragged from here onto a preset's grid.
- * Also holds the Clear all button and the Delete switch, which the owning screen acts on.
+ * Every plant and soil as an icon on a shelf, searched from the top, dragged or clicked from here
+ * onto a preset's grid. Above the icons sit the Clear all button, the Delete switch, the mark
+ * selector and the undo and redo arrows, which the owning screen acts on.
  */
 class PlantPalette(
     overlayContext: OverlayContext,
@@ -63,37 +66,32 @@ class PlantPalette(
 
     private val undoButton = ClickableButtonWidget(ARROW_WIDTH, ROW, Component.literal("←"))
     private val redoButton = ClickableButtonWidget(ARROW_WIDTH, ROW, Component.literal("→"))
-    var x: Int = 0
-    var y: Int = 0
-    var width: Int = 0
-    var height: Int = 0
+    private var x: Int = 0
+    private var y: Int = 0
+    private var width: Int = 0
+    private var height: Int = 0
 
     private val font = Minecraft.getInstance().font
 
-    private val search = TextField(0, ROW, Component.literal(SEARCH_HINT)).apply {
+    private val search = TextField(0, ROW, Component.literal(Common.UI.SEARCH_HINT)).apply {
         setResponder { scroll = 0 }
     }
 
-    private val clearButton = ClickableButtonWidget(buttonWidth("Clear all"), ROW, Component.literal("Clear all"))
-    private val deleteButton = ClickableButtonWidget(buttonWidth("Delete"), ROW, Component.literal("Delete"))
-
-    /** A button as wide as its word and the usual padding, so a row of them wastes nothing. */
-    private fun buttonWidth(label: String): Int = font.width(label) + (Common.UI.TEXT_X_PAD + Common.UI.BORDER_SIZE) * 2
+    private val clearButton = ClickableButtonWidget(ClickableButtonWidget.widthFor("Clear all"), ROW, Component.literal("Clear all"))
+    private val deleteButton = ClickableButtonWidget(ClickableButtonWidget.widthFor("Delete"), ROW, Component.literal("Delete"))
 
     /** While on, clicking a plant on the grid takes it off the preset. */
     var deleteMode: Boolean = false
         private set
 
-    var hovered: PaletteItem? = null
-        private set
+    private var hovered: PaletteItem? = null
 
     /** Where the mouse last was, so a scroll can work out what is under it now. */
     private var lastMouseX = 0.0
     private var lastMouseY = 0.0
 
     /** The thing being dragged, and where the mouse has it. */
-    var dragging: PaletteItem? = null
-        private set
+    private var dragging: PaletteItem? = null
     private var dragX = 0
     private var dragY = 0
 
@@ -162,11 +160,11 @@ class PlantPalette(
     /** Whether the mouse is on the little i in the shelf's corner. */
     private var infoHovered = false
 
-    private fun infoCentre(): Pair<Int, Int> = (x + width - EDGE_PAD - INFO_RADIUS - 1) to (y + titleHeight() / 2)
+    private fun infoCenter(): Pair<Int, Int> = (x + width - EDGE_PAD - INFO_RADIUS - 1) to (y + titleHeight() / 2)
 
     /** A ring with an i in it, at the shelf's top right, so the two search prefixes can be found. */
     private fun renderInfo(graphics: GuiGraphicsExtractor) {
-        val (cx, cy) = infoCentre()
+        val (cx, cy) = infoCenter()
         for (dy in -INFO_RADIUS..INFO_RADIUS) {
             val half = kotlin.math.sqrt((INFO_RADIUS * INFO_RADIUS - dy * dy).toDouble()).toInt()
             graphics.fill(cx - half, cy + dy, cx + half + 1, cy + dy + 1, if (infoHovered) Common.UI.ACCENT_COLOR else Common.UI.BORDER_COLOR)
@@ -180,7 +178,7 @@ class PlantPalette(
     }
 
     private fun isOverInfo(mouseX: Double, mouseY: Double): Boolean {
-        val (cx, cy) = infoCentre()
+        val (cx, cy) = infoCenter()
         return mouseX.toInt() in cx - INFO_RADIUS..cx + INFO_RADIUS && mouseY.toInt() in cy - INFO_RADIUS..cy + INFO_RADIUS
     }
 
@@ -197,13 +195,13 @@ class PlantPalette(
     private fun iconSize(): Int = ((minOf(cellWidth, cellHeight) - ICON_PAD * 2) / 16 * 16).coerceAtLeast(16)
 
     /** The ground under an icon: a plant's rarity colour, or the soils' own colour. */
-    private fun colourOf(item: PaletteItem): Int = when (item) {
+    private fun colorOf(item: PaletteItem): Int = when (item) {
         is PaletteItem.Soil -> SOIL_CELL
-        is PaletteItem.Crop -> rarityColour(item.def)
+        is PaletteItem.Crop -> rarityColor(item.def)
     }
 
     /** The ground under an icon, in the colour of the plant's rarity, or its own for base and rare crops. */
-    private fun rarityColour(def: CropDefinition): Int = when (CropRegistry.tierOf[def] ?: 7) {
+    private fun rarityColor(def: CropDefinition): Int = when (CropRegistry.tierOf[def] ?: 7) {
         1 -> RARITY_COMMON
         2 -> RARITY_UNCOMMON
         3 -> RARITY_RARE
@@ -258,8 +256,8 @@ class PlantPalette(
 
     private fun totalRows(): Int = (shown().size + columns - 1) / columns
 
-    /** The plant whose cell is under the mouse, when the mouse is on the grid. */
-    private fun cropAt(mouseX: Double, mouseY: Double): PaletteItem? {
+    /** The plant or soil whose cell is under the mouse, when the mouse is on the grid. */
+    private fun itemAt(mouseX: Double, mouseY: Double): PaletteItem? {
         val mx = mouseX.toInt()
         val my = mouseY.toInt()
         if (mx < gridLeft() || my < gridTop() || my >= gridTop() + visibleRows * cellHeight) return null
@@ -271,13 +269,8 @@ class PlantPalette(
         return shown().getOrNull(row * columns + column)
     }
 
-    fun stackFor(def: CropDefinition): ItemStack =
-        def.displayItem?.let { ItemStack(it) }
-            ?: def.skyblockId?.toItem()?.takeUnless { it.isEmpty }
-            ?: ItemStack(Items.BARRIER)
-
     fun stackFor(item: PaletteItem): ItemStack = when (item) {
-        is PaletteItem.Crop -> stackFor(item.def)
+        is PaletteItem.Crop -> ScreenUtil.stackFor(item.def)
         is PaletteItem.Soil -> ItemStack(item.block.asItem())
     }
 
@@ -303,23 +296,23 @@ class PlantPalette(
         val rows = totalRows()
         scroll = scroll.coerceIn(0, (rows - visibleRows).coerceAtLeast(0))
 
-        list.drop(scroll * columns).take(visibleRows * columns).forEachIndexed { index, def ->
+        list.drop(scroll * columns).take(visibleRows * columns).forEachIndexed { index, item ->
             val cellX = gridLeft() + index % columns * cellWidth
             val cellY = gridTop() + index / columns * cellHeight
             val right = cellX + cellWidth - 1
             val bottom = cellY + cellHeight - 1
 
-            graphics.fill(cellX + 1, cellY + 1, right, bottom, colourOf(def))
-            if (def == hovered || def == selected) graphics.fill(cellX + 1, cellY + 1, right, bottom, Common.UI.HOVER_WASH)
+            graphics.fill(cellX + 1, cellY + 1, right, bottom, colorOf(item))
+            if (item == hovered || item == selected) graphics.fill(cellX + 1, cellY + 1, right, bottom, Common.UI.HOVER_WASH)
             // the picked one is lit and framed twice as thick in the bright colour until it is put down
-            if (def == selected) {
+            if (item == selected) {
                 graphics.drawBorder(cellX + 1, cellY + 1, right, bottom, Common.UI.BORDER_SIZE, Common.UI.SELECTED_FRAME_COLOR)
             } else {
                 graphics.drawBorder(cellX + 1, cellY + 1, right, bottom, 1, Common.UI.BORDER_COLOR)
             }
 
             val icon = iconSize()
-            drawIcon(graphics, def, cellX + (cellWidth - icon) / 2, cellY + (cellHeight - icon) / 2, icon)
+            drawIcon(graphics, item, cellX + (cellWidth - icon) / 2, cellY + (cellHeight - icon) / 2, icon)
         }
 
         if (rows > visibleRows) {
@@ -336,13 +329,13 @@ class PlantPalette(
 
     /** The carried plant under the mouse, seen through, so the slot it is over stays visible. */
     fun renderDrag(graphics: GuiGraphicsExtractor) {
-        val def = carried ?: return
+        val item = carried ?: return
         val icon = iconSize()
         val (atX, atY) = if (dragging != null) dragX to dragY else lastMouseX.toInt() to lastMouseY.toInt()
         val left = atX - icon / 2
         val top = atY - icon / 2
 
-        drawIcon(graphics, def, left, top, icon)
+        drawIcon(graphics, item, left, top, icon)
         graphics.fill(left, top, left + icon, top + icon, DRAG_VEIL)
     }
 
@@ -360,8 +353,8 @@ class PlantPalette(
     fun renderTooltip(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int) {
         if (infoHovered) {
             // wrapped only where the screen itself runs out
-            val room = (McCompat.currentScreen()?.width ?: Int.MAX_VALUE) - (mouseX + 8) - Common.UI.TEXT_X_PAD * 2
-            graphics.drawSimpleTooltip(SEARCH_HELP, mouseX + 8, mouseY + 8, room)
+            val room = (McCompat.currentScreen()?.width ?: Int.MAX_VALUE) - (mouseX + ScreenUtil.CURSOR_TOOLTIP_X) - Common.UI.TEXT_X_PAD * 2
+            graphics.drawTooltipAtCursor(SEARCH_HELP, mouseX, mouseY, room)
             return
         }
         if (carried != null) return
@@ -376,16 +369,15 @@ class PlantPalette(
                 addAll(font.split(Component.literal(AIR_NOTE).withStyle(ChatFormatting.GRAY), NOTE_WIDTH))
             }
         }
-        graphics.drawTooltipLines(lines, mouseX + 7, mouseY + 12)
+        graphics.drawTooltipLinesAtCursor(lines, mouseX, mouseY)
     }
 
-    fun isMouseOver(mouseX: Double, mouseY: Double): Boolean =
-        mouseX.toInt() in x until x + width && mouseY.toInt() in y until y + height
+    fun isMouseOver(mouseX: Double, mouseY: Double): Boolean = inRect(mouseX, mouseY, x, y, width, height)
 
     fun mouseMoved(mouseX: Double, mouseY: Double) {
         lastMouseX = mouseX
         lastMouseY = mouseY
-        hovered = cropAt(mouseX, mouseY)
+        hovered = itemAt(mouseX, mouseY)
         clearButton.mouseMoved(mouseX, mouseY)
         deleteButton.mouseMoved(mouseX, mouseY)
         infoHovered = isOverInfo(mouseX, mouseY)
@@ -423,23 +415,23 @@ class PlantPalette(
         }
 
         // the button is down on a plant: a move makes it a drag, a release in place makes it a pick
-        pressed = cropAt(event.x, event.y)
+        pressed = itemAt(event.x, event.y)
         pressX = event.x
         pressY = event.y
         return true
     }
 
-    fun mouseDragged(mouseX: Double, mouseY: Double): Boolean {
+    fun mouseDragged(event: MouseButtonEvent, dragX: Double, dragY: Double): Boolean {
         val held = pressed ?: dragging ?: return false
 
-        if (dragging == null && (abs(mouseX - pressX) > DRAG_SLACK || abs(mouseY - pressY) > DRAG_SLACK)) {
+        if (dragging == null && (abs(event.x - pressX) > DRAG_SLACK || abs(event.y - pressY) > DRAG_SLACK)) {
             dragging = held
             selected = null
         }
         if (dragging == null) return true
 
-        dragX = mouseX.toInt()
-        dragY = mouseY.toInt()
+        this.dragX = event.x.toInt()
+        this.dragY = event.y.toInt()
         return true
     }
 
@@ -463,10 +455,10 @@ class PlantPalette(
         selected = null
     }
 
-    fun mouseScrolled(mouseX: Double, mouseY: Double, scrollY: Double): Boolean {
+    fun mouseScrolled(mouseX: Double, mouseY: Double, scrollX: Double, scrollY: Double): Boolean {
         if (!isMouseOver(mouseX, mouseY)) return false
-        scroll = (scroll - scrollY.toInt().coerceIn(-1, 1)).coerceIn(0, (totalRows() - visibleRows).coerceAtLeast(0))
-        hovered = cropAt(lastMouseX, lastMouseY)
+        scroll = stepScroll(scroll, scrollY, totalRows(), visibleRows)
+        hovered = itemAt(lastMouseX, lastMouseY)
         return true
     }
 
@@ -476,7 +468,6 @@ class PlantPalette(
 
     companion object {
         const val TITLE: String = "Plants"
-        private const val SEARCH_HINT: String = "Search…"
 
         private const val ROW: Int = 20
 

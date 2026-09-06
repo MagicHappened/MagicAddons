@@ -4,6 +4,7 @@ import net.minecraft.client.gui.GuiGraphicsExtractor
 import org.magic.magicaddons.Common
 import org.magic.magicaddons.util.ScreenUtil.eased
 import org.magic.magicaddons.util.ScreenUtil.fillPill
+import org.magic.magicaddons.util.ScreenUtil.inRect
 
 /** A pill switch: an amber track with the knob on the right when on, a dark one with it on the left when off. */
 class SwitchWidget(var on: Boolean, val width: Int = WIDTH, val height: Int = HEIGHT) {
@@ -35,8 +36,7 @@ class SwitchWidget(var on: Boolean, val width: Int = WIDTH, val height: Int = HE
         graphics.fillPill(knobX, y + KNOB_INSET, knobX + knob, y + KNOB_INSET + knob, if (on) Common.UI.TEXT_COLOR else Common.UI.DISABLED_TEXT_COLOR)
     }
 
-    fun isMouseOver(mouseX: Double, mouseY: Double): Boolean =
-        mouseX.toInt() in x until x + width && mouseY.toInt() in y until y + height
+    fun isMouseOver(mouseX: Double, mouseY: Double): Boolean = inRect(mouseX, mouseY, x, y, width, height)
 
     fun mouseMoved(mouseX: Double, mouseY: Double) {
         hovered = isMouseOver(mouseX, mouseY)

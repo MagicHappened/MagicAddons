@@ -4,7 +4,7 @@ import net.minecraft.client.Minecraft
 import net.minecraft.network.chat.Component
 import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.events.EventHandler
-import org.magic.magicaddons.events.world.OnWorldTickEvent
+import org.magic.magicaddons.events.world.WorldTickEvent
 
 /**
  * Chat lines a config migration wants the player to read. The config loads before there is a
@@ -22,7 +22,7 @@ object ConfigNotices {
     }
 
     @EventHandler
-    fun onWorldTick(event: OnWorldTickEvent) {
+    fun onWorldTick(event: WorldTickEvent) {
         if (pending.isEmpty()) return
         val player = Minecraft.getInstance().player ?: return
 

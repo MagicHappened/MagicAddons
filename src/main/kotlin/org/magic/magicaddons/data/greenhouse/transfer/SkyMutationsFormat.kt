@@ -64,7 +64,7 @@ object SkyMutationsFormat : LayoutFormat {
             if (row !in 0 until layout.size || column !in 0 until layout.size) return@forEach
             if (occupied[row][column]) return@forEach
 
-            // a SEED is not a CROP skymutations smh
+            // the site names three crops after their seeds
             val siteName = entry[2].asString
             val cropName = NAMES.entries.firstOrNull { it.value == siteName }?.key ?: siteName
 
@@ -74,7 +74,7 @@ object SkyMutationsFormat : LayoutFormat {
                 return@forEach
             }
 
-            val definition = CropRegistry.all.find { it.name.equals(cropName, ignoreCase = true) }
+            val definition = CropRegistry.findByName(cropName)
             if (definition == null) {
                 notes.add("Unknown crop: $cropName")
                 return@forEach
@@ -106,13 +106,7 @@ object SkyMutationsFormat : LayoutFormat {
             val anchor = topLeftSlot ?: return@forEach
 
             layout.elementInstances.add(
-                GreenhouseElementInstance(
-                    definition.skyblockId?.id ?: definition.name,
-                    anchor,
-                    null,
-                    null,
-                    cropDef = definition
-                )
+                GreenhouseElementInstance(definition.elementId, anchor, cropDef = definition)
             )
         }
 

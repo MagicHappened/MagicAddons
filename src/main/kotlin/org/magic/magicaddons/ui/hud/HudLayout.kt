@@ -2,7 +2,7 @@ package org.magic.magicaddons.ui.hud
 
 import com.google.gson.GsonBuilder
 import org.magic.magicaddons.Common
-import java.io.File
+import org.magic.magicaddons.data.handlers.DataHandler
 
 enum class Positioning { ABSOLUTE, RELATIVE }
 
@@ -135,10 +135,10 @@ class HudLayout {
     }
 }
 
-/** The layout on disk, config/magicaddons/hud.json, read once and written after every edit. */
+/** The layout on disk, magicaddons/hud.json under the config folder, read once and written after every edit. */
 object HudLayoutStore {
     private val gson = GsonBuilder().setPrettyPrinting().create()
-    private val file = File("config/magicaddons/hud.json")
+    private val file = DataHandler.configDir.resolve("magicaddons").resolve("hud.json").toFile()
 
     val layout: HudLayout by lazy { load() }
 

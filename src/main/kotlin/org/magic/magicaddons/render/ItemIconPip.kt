@@ -5,6 +5,7 @@ import com.mojang.blaze3d.vertex.PoseStack
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.navigation.ScreenRectangle
 import net.minecraft.client.gui.render.pip.PictureInPictureRenderer
+import net.minecraft.util.LightCoordsUtil
 //? if >=26.2 {
 /*import net.minecraft.client.renderer.SubmitNodeCollector
 *///?} else {
@@ -94,7 +95,7 @@ class ItemIconRenderer(
 
         // the gui's y runs down, so the item is flipped the way vanilla flips its oversized items
         poseStack.scale(1f, -1f, -1f)
-        state.item.submit(poseStack, collector, FULL_BRIGHT, OverlayTexture.NO_OVERLAY, 0)
+        state.item.submit(poseStack, collector, LightCoordsUtil.FULL_BRIGHT, OverlayTexture.NO_OVERLAY, 0)
 
         drawnIdentity = state.item.modelIdentity
         drawnSize = state.scale()
@@ -103,10 +104,5 @@ class ItemIconRenderer(
         //? if <26.2 {
         features.renderAllFeatures()
         //?}
-    }
-
-    private companion object {
-        /** Sky and block light both full, the light an item in a gui is drawn under. */
-        const val FULL_BRIGHT: Int = 0xF000F0
     }
 }

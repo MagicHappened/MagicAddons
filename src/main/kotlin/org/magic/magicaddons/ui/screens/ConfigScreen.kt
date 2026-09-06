@@ -5,7 +5,6 @@ import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.input.CharacterEvent
 import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
-import net.minecraft.client.input.MouseButtonInfo
 import net.minecraft.network.chat.Component
 import org.lwjgl.glfw.GLFW
 import org.magic.magicaddons.Common
@@ -20,11 +19,15 @@ import org.magic.magicaddons.ui.ScrollView
 import org.magic.magicaddons.ui.widgets.TextField
 import org.magic.magicaddons.ui.widgets.config.BooleanSettingWidget
 import org.magic.magicaddons.ui.widgets.config.SettingWidget
+import org.magic.magicaddons.util.ScreenUtil.at
 import org.magic.magicaddons.util.ScreenUtil.drawButtonPanel
 import org.magic.magicaddons.util.ScreenUtil.drawLine
 import org.magic.magicaddons.util.ScreenUtil.drawPanel
 import org.magic.magicaddons.util.ScreenUtil.drawScrollBar
 import org.magic.magicaddons.util.ScreenUtil.eased
+import org.magic.magicaddons.util.ScreenUtil.ellipsised
+import org.magic.magicaddons.util.ScreenUtil.inRect
+import org.magic.magicaddons.util.ScreenUtil.stepScroll
 import org.magic.magicaddons.util.VersionChecker
 import org.magic.magicaddons.util.compat.McCompat
 
@@ -32,7 +35,7 @@ import org.magic.magicaddons.util.compat.McCompat
  * The config, filling the window: a header with the search, the categories down the left, and the
  * picked category's features as blocks in a scrolling view on the right.
  */
-class ConfigScreen(title: Component, val parent: Screen?) : MagicScreen(title, "the config screen"), OverlayContext, ScrollView {
+class ConfigScreen(val parent: Screen?) : MagicScreen(Component.literal("Magic Addons Config"), "the config screen"), OverlayContext, ScrollView {
 
     /** Open lists and histories, drawn over the blocks and offered every input first. */
     override val overlays: MutableList<OverlayRenderable> = mutableListOf()
@@ -43,7 +46,7 @@ class ConfigScreen(title: Component, val parent: Screen?) : MagicScreen(title, "
     /** One root widget per feature, kept across category switches so what was unfolded stays so. */
     private val blocks = mutableMapOf<Feature, SettingWidget<Boolean>>()
 
-    private val search = TextField(0, SEARCH_HEIGHT, Component.literal("Search…")).also {
+    private val search = TextField(0, SEARCH_HEIGHT, Component.literal(Common.UI.SEARCH_HINT)).also {
         it.setMaxLength(64)
         it.setResponder { rebuildHits() }
     }
@@ -96,9 +99,11 @@ class ConfigScreen(title: Component, val parent: Screen?) : MagicScreen(title, "
     override val viewTop: Int get() = clipTop + scroll
     override val viewBottom: Int get() = clipBottom + scroll
 
-    private val closeSize = 16
-    private val closeLeft: Int get() = width - MARGIN - HEADER_PAD - closeSize
-    private val closeTop: Int get() = headerTop + (HEADER_HEIGHT - closeSize) / 2
+    private val closeLeft: Int get() = width - MARGIN - HEADER_PAD - CLOSE_SIZE
+    private val closeTop: Int get() = headerTop + (HEADER_HEIGHT - CLOSE_SIZE) / 2
+
+    private fun overClose(mouseX: Double, mouseY: Double): Boolean =
+        inRect(mouseX, mouseY, closeLeft, closeTop, CLOSE_SIZE, CLOSE_SIZE)
 
     /** Each category's row in the side panel, with the thick divider before the developer ones. */
     private class CategoryRow(val category: FeatureManager.Category, val top: Int, val dividerAbove: Boolean)
@@ -233,8 +238,7 @@ class ConfigScreen(title: Component, val parent: Screen?) : MagicScreen(title, "
     private val dropdownHeight: Int get() = dropdownRows * DROPDOWN_ROW_HEIGHT + Common.UI.BORDER_SIZE * 2
 
     private fun overDropdown(mouseX: Double, mouseY: Double): Boolean =
-        dropdownOpen && mouseX.toInt() in dropdownLeft until dropdownLeft + dropdownWidth &&
-                mouseY.toInt() in dropdownTop until dropdownTop + dropdownHeight
+        dropdownOpen && inRect(mouseX, mouseY, dropdownLeft, dropdownTop, dropdownWidth, dropdownHeight)
 
     private fun hitAt(mouseX: Double, mouseY: Double): SearchHit? {
         if (!overDropdown(mouseX, mouseY)) return null
@@ -282,8 +286,7 @@ class ConfigScreen(title: Component, val parent: Screen?) : MagicScreen(title, "
             graphics.text(font, Component.literal(prefix), textX, textY, Common.UI.TEXT_DIM_COLOR, false)
             textX += font.width(prefix)
 
-            val room = textRoom - font.width(prefix)
-            val label = if (font.width(hit.label) <= room) hit.label else font.plainSubstrByWidth(hit.label, room - font.width(ELLIPSIS)) + ELLIPSIS
+            val label = ellipsised(font, hit.label, textRoom - font.width(prefix))
             graphics.text(font, Component.literal(label), textX, textY, Common.UI.TEXT_COLOR, false)
             rowTop += DROPDOWN_ROW_HEIGHT
         }
@@ -293,14 +296,6 @@ class ConfigScreen(title: Component, val parent: Screen?) : MagicScreen(title, "
     }
 
     // ------------------------------------------------------------------ drawing
-
-    override fun extractBackground(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, deltaTick: Float) {
-        if (this.minecraft.level == null) {
-            this.extractPanorama(graphics, deltaTick)
-        }
-        graphics.fill(0, 0, width, height, Common.UI.SCREEN_DIM_COLOR)
-        McCompat.extractDeferredSubtitles(this.minecraft)
-    }
 
     override fun onRender(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
         super.onRender(graphics, mouseX, mouseY, delta)
@@ -329,11 +324,9 @@ class ConfigScreen(title: Component, val parent: Screen?) : MagicScreen(title, "
 
         search.render(graphics)
 
-        val overClose = mouseX in closeLeft until closeLeft + closeSize && mouseY in closeTop until closeTop + closeSize
-        graphics.drawButtonPanel(closeLeft, closeTop, closeLeft + closeSize, closeTop + closeSize, overClose)
-        val inset = 5
-        graphics.drawLine(closeLeft + inset, closeTop + inset, closeLeft + closeSize - inset, closeTop + closeSize - inset, 1, Common.UI.TEXT_COLOR)
-        graphics.drawLine(closeLeft + closeSize - inset, closeTop + inset, closeLeft + inset, closeTop + closeSize - inset, 1, Common.UI.TEXT_COLOR)
+        graphics.drawButtonPanel(closeLeft, closeTop, closeLeft + CLOSE_SIZE, closeTop + CLOSE_SIZE, overClose(mouseX.toDouble(), mouseY.toDouble()))
+        graphics.drawLine(closeLeft + CLOSE_INSET, closeTop + CLOSE_INSET, closeLeft + CLOSE_SIZE - CLOSE_INSET, closeTop + CLOSE_SIZE - CLOSE_INSET, 1, Common.UI.TEXT_COLOR)
+        graphics.drawLine(closeLeft + CLOSE_SIZE - CLOSE_INSET, closeTop + CLOSE_INSET, closeLeft + CLOSE_INSET, closeTop + CLOSE_SIZE - CLOSE_INSET, 1, Common.UI.TEXT_COLOR)
     }
 
     private fun renderSidePanel(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int) {
@@ -400,7 +393,7 @@ class ConfigScreen(title: Component, val parent: Screen?) : MagicScreen(title, "
             graphics.drawPanel(left, top, left + (contentRight - contentLeft), top + block.totalHeight() + Common.UI.BORDER_SIZE * 2)
             block.render(graphics, mouseX, contentMouseY, delta)
         }
-        overlays.asReversed().forEach { it.renderOverlay(graphics, mouseX, contentMouseY, delta) }
+        renderOverlays(graphics, mouseX, contentMouseY, delta)
 
         graphics.pose().popMatrix()
         graphics.disableScissor()
@@ -411,14 +404,13 @@ class ConfigScreen(title: Component, val parent: Screen?) : MagicScreen(title, "
     // ------------------------------------------------------------------ input
 
     private fun overMain(mouseX: Double, mouseY: Double): Boolean =
-        mouseX.toInt() in clipLeft until clipRight && mouseY.toInt() in clipTop until clipBottom
+        inRect(mouseX, mouseY, clipLeft, clipTop, clipRight - clipLeft, clipBottom - clipTop)
 
     private fun overBar(mouseX: Double, mouseY: Double): Boolean =
         maxScroll > 0 && mouseX.toInt() >= clipRight - Common.UI.SCROLLBAR_WIDTH - 3 && overMain(mouseX, mouseY)
 
     /** The event moved into content coordinates, which the blocks live in. */
-    private fun shifted(event: MouseButtonEvent): MouseButtonEvent =
-        MouseButtonEvent(event.x, event.y + scroll, MouseButtonInfo(event.button(), event.modifiers()))
+    private fun shifted(event: MouseButtonEvent): MouseButtonEvent = event.at(event.x, event.y + scroll)
 
     override fun onMouseClicked(event: MouseButtonEvent, doubled: Boolean): Boolean {
         // the second event of a double click is the same click again; acting on it would undo the first
@@ -436,7 +428,7 @@ class ConfigScreen(title: Component, val parent: Screen?) : MagicScreen(title, "
         }
         closeDropdown()
 
-        if (event.x.toInt() in closeLeft until closeLeft + closeSize && event.y.toInt() in closeTop until closeTop + closeSize) {
+        if (overClose(event.x, event.y)) {
             onClose()
             return true
         }
@@ -462,7 +454,7 @@ class ConfigScreen(title: Component, val parent: Screen?) : MagicScreen(title, "
         val content = shifted(event)
         // an open list takes the click if it lands inside it; anywhere else closes every list and
         // the click goes on to the settings underneath
-        if (overlays.toList().any { it.mouseClicked(content, doubled) }) return true
+        if (overlaysMouseClicked(content, doubled)) return true
         if (overlays.isNotEmpty()) closeOverlays()
 
         var handled = false
@@ -488,19 +480,19 @@ class ConfigScreen(title: Component, val parent: Screen?) : MagicScreen(title, "
 
     override fun onMouseMoved(mouseX: Double, mouseY: Double) {
         val contentY = mouseY + scroll
-        overlays.forEach { it.mouseMoved(mouseX, contentY) }
+        overlaysMouseMoved(mouseX, contentY)
         shownBlocks().forEach { it.mouseMoved(mouseX, contentY) }
     }
 
     override fun onMouseScrolled(mouseX: Double, mouseY: Double, scrollX: Double, scrollY: Double): Boolean {
         if (overDropdown(mouseX, mouseY)) {
-            dropdownScroll = (dropdownScroll - scrollY.toInt().coerceIn(-1, 1)).coerceIn(0, (hits.size - DROPDOWN_MAX_ROWS).coerceAtLeast(0))
+            dropdownScroll = stepScroll(dropdownScroll, scrollY, hits.size, DROPDOWN_MAX_ROWS)
             return true
         }
         if (!overMain(mouseX, mouseY)) return false
 
         val contentY = mouseY + scroll
-        if (overlays.any { it.mouseScrolled(mouseX, contentY, scrollX, scrollY) }) return true
+        if (overlaysMouseScrolled(mouseX, contentY, scrollX, scrollY)) return true
         if (shownBlocks().any { it.mouseScrolled(mouseX, contentY, scrollX, scrollY) }) return true
 
         scroll = (scroll - (scrollY * Common.UI.SCROLL_STEP).toInt()).coerceIn(0, maxScroll)
@@ -509,7 +501,7 @@ class ConfigScreen(title: Component, val parent: Screen?) : MagicScreen(title, "
 
     override fun onCharTyped(characterEvent: CharacterEvent): Boolean {
         if (search.charTyped(characterEvent)) return true
-        if (overlays.any { it.charTyped(characterEvent) }) return true
+        if (overlaysCharTyped(characterEvent)) return true
         return shownBlocks().any { it.charTyped(characterEvent) }
     }
 
@@ -533,7 +525,7 @@ class ConfigScreen(title: Component, val parent: Screen?) : MagicScreen(title, "
             }
             if (search.keyPressed(keyEvent)) return true
         }
-        if (overlays.any { it.keyPressed(keyEvent) }) return true
+        if (overlaysKeyPressed(keyEvent)) return true
         if (shownBlocks().any { it.keyPressed(keyEvent) }) return true
         return super.onKeyPressed(keyEvent)
     }
@@ -552,6 +544,10 @@ class ConfigScreen(title: Component, val parent: Screen?) : MagicScreen(title, "
         const val HEADER_HEIGHT: Int = 30
         const val HEADER_PAD: Int = 8
         const val TITLE_SCALE: Float = 1.3f
+
+        /** The close button in the header, and how far its cross sits inside it. */
+        const val CLOSE_SIZE: Int = 16
+        const val CLOSE_INSET: Int = 5
         const val SEARCH_HEIGHT: Int = 16
         const val SEARCH_MIN_WIDTH: Int = 100
         const val SEARCH_MAX_WIDTH: Int = 240
@@ -570,7 +566,6 @@ class ConfigScreen(title: Component, val parent: Screen?) : MagicScreen(title, "
         const val DROPDOWN_MAX_ROWS: Int = 8
         const val DROPDOWN_EXTRA: Int = 120
         const val DROPDOWN_MS: Long = 150
-        const val ELLIPSIS: String = "…"
 
         /** How long a row found by the search stays framed. */
         const val FLASH_MS: Long = 1500

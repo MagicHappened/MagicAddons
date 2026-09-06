@@ -1,13 +1,10 @@
 package org.magic.magicaddons.features.combat
 
-import net.minecraft.world.entity.Display
 import net.minecraft.world.entity.Entity
-import net.minecraft.world.entity.EquipmentSlot
-import net.minecraft.world.entity.LivingEntity
-import net.minecraft.world.entity.decoration.ArmorStand
 import net.minecraft.world.entity.player.Player
-import net.minecraft.world.item.ItemStack
 import org.magic.magicaddons.data.EntityInfo
+import org.magic.magicaddons.util.EntityUtils
+import org.magic.magicaddons.util.EntityUtils.typeId
 import org.magic.magicaddons.util.PlayerUtils
 
 /**
@@ -54,31 +51,9 @@ object SingleMobs {
                         } == true
             }
 
-            is Rule.Type -> entity.takeIf { it.type.toString().contains(rule.path) }
+            is Rule.Type -> entity.takeIf { it.typeId().contains(rule.path) }
 
-            is Rule.Skull -> skullCarrier(info, rule.hash)
+            is Rule.Skull -> EntityUtils.skullCarrier(info, rule.hash)
         }
-    }
-
-    /** Whoever wears the skull: the mob itself, or otherwise the stand or display beside it. */
-    private fun skullCarrier(info: EntityInfo, hash: String): Entity? {
-        val entity = info.entity
-
-        if (entity is LivingEntity && PlayerUtils.getSkinHash(entity.getItemBySlot(EquipmentSlot.HEAD)) == hash) {
-            return entity
-        }
-
-        val carrier = info.informationEntities?.firstOrNull { other ->
-            val stack = when (other) {
-                is ArmorStand -> other.getItemBySlot(EquipmentSlot.HEAD)
-                is Display.ItemDisplay -> other.itemStack
-                else -> ItemStack.EMPTY
-            }
-
-            !stack.isEmpty && PlayerUtils.getSkinHash(stack) == hash
-        } ?: return null
-
-        // the mob is what matched, but an invisible one is drawn by whatever carries its skull
-        return if (entity.isInvisible) carrier else entity
     }
 }

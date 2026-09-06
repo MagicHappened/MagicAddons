@@ -2,7 +2,6 @@ package org.magic.magicaddons.commands
 
 import net.fabricmc.fabric.api.client.command.v2.ClientCommands.literal
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback
-import net.minecraft.network.chat.Component
 import org.magic.magicaddons.Common
 import org.magic.magicaddons.commands.debug.MainDebug
 import org.magic.magicaddons.commands.features.EditFeature
@@ -18,7 +17,7 @@ import org.magic.magicaddons.util.ScreenUtil
 
 
 object MainCommand {
-    val commandList = mutableListOf(
+    val commandList = listOf(
         GreenhouseScreenCommand,
         MainInternal,
         ToggleFeature,
@@ -42,10 +41,7 @@ object MainCommand {
 
                 roots.forEach { root ->
                     root.executes {
-                        val config = ConfigScreen(
-                            Component.literal("Magic Addons Config"),
-                            null
-                        )
+                        val config = ConfigScreen(null)
                         ScreenUtil.setScreen(config)
                         1
                     }

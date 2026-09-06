@@ -10,7 +10,6 @@ import org.magic.magicaddons.util.VersionChecker
 /** Asks GitHub whether a newer build exists, and answers either way. */
 object VersionCommand : AbstractCommand() {
     override val argument: String = "version"
-    override val description: String = "checks whether a newer version of the mod is available"
 
     override fun build(): LiteralArgumentBuilder<FabricClientCommandSource> {
         val command = LiteralArgumentBuilder.literal<FabricClientCommandSource>(argument)

@@ -112,6 +112,5 @@ object CropStates {
     fun shortGrassState(): BlockState = Blocks.SHORT_GRASS.defaultBlockState()
     fun roseBushState(half: DoubleBlockHalf = DoubleBlockHalf.LOWER): BlockState =
         Blocks.ROSE_BUSH.defaultBlockState().setValue(DoublePlantBlock.HALF, half)
-            .setValue(DoublePlantBlock.HALF, half)
     fun deadBushState(): BlockState = Blocks.DEAD_BUSH.defaultBlockState()
 }

@@ -7,14 +7,12 @@ import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource
 import org.magic.magicaddons.commands.AbstractCommand
 import org.magic.magicaddons.commands.debug.CropCollector
 
-/**
- * Flips one collector entry between confirmed and not. Meant to be clicked: every listed line
- * carries this command with its own id.
- */
+/** Flips one collector entry between confirmed and not. Every listed line carries this command with its id. */
 object CollectToggle : AbstractCommand() {
 
-    override val argument: String = "collectToggle"
-    override val description: String = "Confirms or unconfirms a plant the crop collector listed"
+    const val NAME: String = "collectToggle"
+
+    override val argument: String = NAME
 
     override fun build(): LiteralArgumentBuilder<FabricClientCommandSource> =
         LiteralArgumentBuilder.literal<FabricClientCommandSource>(argument)

@@ -37,6 +37,11 @@ class IntSettingWidget(
     override fun layoutControl() {
         valueBox.x = controlLeft()
         valueBox.y = controlTop()
+        syncBox()
+    }
+
+    /** Shows the setting's value in the box, unless the player is typing in it. */
+    private fun syncBox() {
         if (!valueBox.focused) valueBox.value = setting.value.toString()
     }
 
@@ -60,8 +65,7 @@ class IntSettingWidget(
         val along = ((mouseX - barLeft()) / barWidth().toDouble()).coerceIn(0.0, 1.0)
         val steps = (along * span / setting.step).roundToInt()
         setting.value = (setting.range.first + steps * setting.step).coerceIn(setting.range)
-
-        if (!valueBox.focused) valueBox.value = setting.value.toString()
+        syncBox()
     }
 
     private fun overBar(mouseX: Double, mouseY: Double): Boolean =
@@ -116,7 +120,7 @@ class IntSettingWidget(
 
         val direction = if (scrollY > 0) 1 else -1
         setting.value = (setting.value + direction * setting.step).coerceIn(setting.range)
-        if (!valueBox.focused) valueBox.value = setting.value.toString()
+        syncBox()
         return true
     }
 

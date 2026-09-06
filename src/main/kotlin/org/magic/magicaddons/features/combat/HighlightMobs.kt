@@ -6,9 +6,7 @@ import net.minecraft.world.entity.Display
 import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.EquipmentSlot
 import net.minecraft.world.entity.LivingEntity
-import net.minecraft.world.entity.decoration.ArmorStand
 import net.minecraft.world.entity.player.Player
-import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
 import org.magic.magicaddons.data.EntityInfo
 import org.magic.magicaddons.data.config.BooleanSetting
@@ -17,12 +15,14 @@ import org.magic.magicaddons.data.config.ToggleListSetting
 import org.magic.magicaddons.events.ConfigChangedEvent
 import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.events.EventHandler
-import org.magic.magicaddons.events.chat.OnSystemChatEvent
-import org.magic.magicaddons.events.interact.OnInteractEntityEvent
-import org.magic.magicaddons.events.world.OnEntityAdded
-import org.magic.magicaddons.events.world.OnEntityRemoved
-import org.magic.magicaddons.events.world.OnEntityUpdated
+import org.magic.magicaddons.events.chat.SystemChatEvent
+import org.magic.magicaddons.events.interact.InteractEntityEvent
+import org.magic.magicaddons.events.world.EntityAddedEvent
+import org.magic.magicaddons.events.world.EntityRemovedEvent
+import org.magic.magicaddons.events.world.EntityUpdatedEvent
 import org.magic.magicaddons.features.HighlightFeature
+import org.magic.magicaddons.util.EntityUtils
+import org.magic.magicaddons.util.EntityUtils.typeId
 import org.magic.magicaddons.util.PlayerUtils
 import tech.thatgravyboat.skyblockapi.api.SkyBlockAPI
 import tech.thatgravyboat.skyblockapi.api.events.base.Subscription
@@ -189,17 +189,17 @@ object HighlightMobs : HighlightFeature() {
     }
 
     @EventHandler
-    fun onEntityAdded(event: OnEntityAdded) {
+    fun onEntityAdded(event: EntityAddedEvent) {
         handleEntitiesAdded(event.addedEntityList)
     }
 
     @EventHandler
-    fun onEntityRemoved(event: OnEntityRemoved) {
+    fun onEntityRemoved(event: EntityRemovedEvent) {
         handleEntitiesRemoved(event.removedEntityList)
     }
 
     @EventHandler
-    fun onEntityUpdated(event: OnEntityUpdated) {
+    fun onEntityUpdated(event: EntityUpdatedEvent) {
         handleEntitiesUpdated(event.updatedEntityList)
     }
 
@@ -240,7 +240,7 @@ object HighlightMobs : HighlightFeature() {
     private val CORPSE_LOOT_MESSAGE = Regex("\\s*\\w+ CORPSE LOOT!\\s*")
 
     @EventHandler
-    fun onInteractEntity(event: OnInteractEntityEvent) {
+    fun onInteractEntity(event: InteractEntityEvent) {
         if (!hideLootedEnabled()) return
         if (corpseColor(event.target) == null) return
 
@@ -250,7 +250,7 @@ object HighlightMobs : HighlightFeature() {
 
     /** The loot message names the type but not which corpse, so it settles the one just clicked. */
     @EventHandler
-    fun onSystemChat(event: OnSystemChatEvent) {
+    fun onSystemChat(event: SystemChatEvent) {
         if (event.overlay) return
         if (!CORPSE_LOOT_MESSAGE.matches(event.text)) return
 
@@ -346,7 +346,7 @@ object HighlightMobs : HighlightFeature() {
             val otherEnabled = entityType.getChild<BooleanSetting>("EntityTypeOtherEnabled")?.value == true
             if (otherEnabled && entity !is LocalPlayer) {
                 val path = entityTypeMobPathValue.value
-                if (path.isNotBlank() && entity.type.toString().contains(path)) return entity
+                if (path.isNotBlank() && entity.typeId().contains(path)) return entity
             }
         }
 
@@ -355,19 +355,7 @@ object HighlightMobs : HighlightFeature() {
             val expected = helmet.getChild<TextSetting>("EntityEquipmentHelmetSkullHash")?.value
                 ?: return null
 
-            if (PlayerUtils.getSkinHash(entity.getItemBySlot(EquipmentSlot.HEAD)) == expected) return entity
-
-            // a skull on something standing in the mob: a rat is an invisible zombie whose skull is
-            // its own item display, and that display is what should be drawn
-            val carrier = info.informationEntities?.firstOrNull { other ->
-                val stack = when (other) {
-                    is ArmorStand -> other.getItemBySlot(EquipmentSlot.HEAD)
-                    is Display.ItemDisplay -> other.itemStack
-                    else -> ItemStack.EMPTY
-                }
-                !stack.isEmpty && PlayerUtils.getSkinHash(stack) == expected
-            }
-            if (carrier != null) return if (entity.isInvisible) carrier else entity
+            EntityUtils.skullCarrier(info, expected)?.let { return it }
         }
 
         return null

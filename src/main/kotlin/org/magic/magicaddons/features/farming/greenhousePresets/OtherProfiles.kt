@@ -7,7 +7,6 @@ import org.magic.magicaddons.data.greenhouse.MiscGreenhouseInfo
 import org.magic.magicaddons.data.handlers.CodecStorage
 import org.magic.magicaddons.data.handlers.DataHandler
 import java.time.Instant
-import java.util.UUID
 
 /**
  * The greenhouses of the profiles not being played, read from their files and moved on by their
@@ -15,7 +14,7 @@ import java.util.UUID
  */
 object OtherProfiles {
 
-    class Profile(val id: UUID, val name: String, val misc: MiscGreenhouseInfo, val grids: List<GreenhouseGrid>)
+    class Profile(val name: String, val misc: MiscGreenhouseInfo, val grids: List<GreenhouseGrid>)
 
     var profiles: List<Profile> = emptyList()
         private set
@@ -27,7 +26,7 @@ object OtherProfiles {
             val file = DataHandler.greenhouseFile(id)
             val misc = CodecStorage.load(file, MISC_GREENHOUSE_INFO_CODEC, wrapperKey = "misc_info") ?: return@mapNotNull null
             val grids = CodecStorage.load(file, GREENHOUSE_GRID_CODEC.listOf(), wrapperKey = "greenhouses") ?: return@mapNotNull null
-            Profile(id, DataHandler.profileName(id) ?: id.toString().take(8), misc, grids)
+            Profile(DataHandler.profileName(id) ?: id.toString().take(8), misc, grids)
         }
     }
 
@@ -55,7 +54,7 @@ object OtherProfiles {
 
             misc.nextTickTime = nextTick.plusMillis(elapsedTicks * tickMs)
             profile.grids.forEach { grid ->
-                grid.state.pendingGrowthTicks = (grid.state.pendingGrowthTicks ?: 0) + elapsedTicks
+                grid.state.pendingGrowthTicks += elapsedTicks
                 grid.predictGrowth(elapsedTicks, tickMs)
             }
         }

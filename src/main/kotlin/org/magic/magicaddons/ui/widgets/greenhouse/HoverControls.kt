@@ -2,34 +2,19 @@ package org.magic.magicaddons.ui.widgets.greenhouse
 
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.components.Renderable
-import net.minecraft.client.gui.components.events.GuiEventListener
 import net.minecraft.client.input.MouseButtonEvent
 import org.magic.magicaddons.Common
-import org.magic.magicaddons.ui.Focusable
-import org.magic.magicaddons.ui.HoverableContainer
 
 /**
  * The coloured bookmarks down the right of the grid: picking one writes its fact onto every plant
  * at once. One at a time, since a second line of text would cover the plant it describes.
  */
-class HoverControls : Renderable, Focusable, HoverableContainer {
-
-    override var hoveredElement: GuiEventListener? = null
+class HoverControls : Renderable {
 
     /** The frame's right edge, and how far the bookmarks reach past it. */
     var x: Int = 0
-    var y: Int = 0
-    var width: Int = Bookmarks.REACH
-    var height: Int = 0
-
-    override var focusedState: Boolean = false
-
-    /** The picked fact, kept across closing the screen: reopening is how a plot is looked at. */
-    var selectedInfo: ElementWidget.HoverInfo?
-        get() = lastPicked
-        private set(value) {
-            lastPicked = value
-        }
+        private set
+    val width: Int = Bookmarks.REACH
 
     private val bookmarks = Bookmarks<ElementWidget.HoverInfo>(
         side = Bookmarks.Side.Right,
@@ -42,8 +27,6 @@ class HoverControls : Renderable, Focusable, HoverableContainer {
     /** Hangs the bookmarks off the right edge of a grid of [gridHeight] starting at [gridRight]. */
     fun layoutAgainstGrid(gridRight: Int, gridTop: Int, gridHeight: Int) {
         x = gridRight
-        y = gridTop
-        height = gridHeight
         bookmarks.layoutAlong(gridRight, gridTop, gridHeight)
     }
 
@@ -58,14 +41,12 @@ class HoverControls : Renderable, Focusable, HoverableContainer {
         bookmarks.renderTooltip(graphics, mouseX, mouseY)
     }
 
-    override fun mouseMoved(mouseX: Double, mouseY: Double) {
+    fun mouseMoved(mouseX: Double, mouseY: Double) {
         bookmarks.mouseMoved(mouseX, mouseY)
-        hoveredElement = if (bookmarks.hovered != null) this else null
     }
 
     /** Picks the clicked tab, or drops it when it was already picked. */
-    override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean =
-        bookmarks.mouseClicked(mouseButtonEvent)
+    fun mouseClicked(mouseButtonEvent: MouseButtonEvent): Boolean = bookmarks.mouseClicked(mouseButtonEvent)
 
     /** Moves the pick one tab along, wrapping. From nothing, down starts at the top and up at the bottom. */
     fun cycle(down: Boolean) {
@@ -78,11 +59,10 @@ class HoverControls : Renderable, Focusable, HoverableContainer {
         }
     }
 
-    override fun isMouseOver(mouseX: Double, mouseY: Double): Boolean = bookmarks.isMouseOver(mouseX, mouseY)
-
     companion object {
-        /** What was last picked, remembered across screens for as long as the game is running. */
-        private var lastPicked: ElementWidget.HoverInfo? = null
+        /** The picked fact, kept across screens for as long as the game is running. */
+        var selectedInfo: ElementWidget.HoverInfo? = null
+            private set
 
         /** What the bookmarks take up beside the grid, gap included. */
         const val TOTAL_WIDTH: Int = Bookmarks.REACH + Common.UI.SPACING_LARGE

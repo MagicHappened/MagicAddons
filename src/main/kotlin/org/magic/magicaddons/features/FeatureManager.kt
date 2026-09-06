@@ -9,14 +9,15 @@ import org.magic.magicaddons.features.kuudra.CustomRendSound
 import org.magic.magicaddons.features.mining.HidePowderCoatingParticles
 
 object FeatureManager {
-    val features = mutableListOf(
+    // listing the objects here is what makes them initialise
+    val features = listOf(
         HidePowderCoatingParticles,
         GreenhousePresets,
         HighlightMobs,
         SafariHelper,
         CustomRendSound,
         MobHitDebugInfo
-    ) // need to call objects somehow for initialization
+    )
 
     /** A category of the config screen: its key, the name shown, and its features. */
     data class Category(val key: String, val name: String, val features: List<Feature>, val dev: Boolean)

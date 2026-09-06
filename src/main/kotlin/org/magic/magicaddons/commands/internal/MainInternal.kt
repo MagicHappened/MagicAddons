@@ -2,6 +2,7 @@ package org.magic.magicaddons.commands.internal
 
 import com.mojang.brigadier.builder.LiteralArgumentBuilder
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource
+import org.magic.magicaddons.Common
 import org.magic.magicaddons.commands.AbstractCommand
 import org.magic.magicaddons.commands.internal.farming.CollectToggle
 import org.magic.magicaddons.commands.internal.farming.IgnoreFarmingWarnings
@@ -12,8 +13,14 @@ import org.magic.magicaddons.util.ChatUtils
 
 object MainInternal : AbstractCommand() {
     override val argument: String = "internal"
-    override val description: String = "internal commands used by chat hovers"
-    val internalCommandList = mutableListOf<AbstractCommand>(
+
+    /** The root every internal command sits under, without the slash: "MagicAddons internal". */
+    const val PATH: String = "${Common.MOD_NAME} internal"
+
+    /** The same with the slash, for a chat click event. */
+    const val COMMAND: String = "/$PATH"
+
+    val internalCommandList = listOf<AbstractCommand>(
         CollectToggle,
         IgnoreFarmingWarnings,
         KeepPlanner,

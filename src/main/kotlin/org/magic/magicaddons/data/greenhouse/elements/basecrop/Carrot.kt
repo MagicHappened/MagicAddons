@@ -2,7 +2,6 @@ package org.magic.magicaddons.data.greenhouse.elements.basecrop
 
 import org.magic.magicaddons.data.greenhouse.CropEffect
 import net.minecraft.core.BlockPos
-import org.magic.magicaddons.data.greenhouse.DEFAULT_DECAY_TIME_MS
 import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
 import org.magic.magicaddons.data.greenhouse.CropBlockState
 import org.magic.magicaddons.data.greenhouse.CropDefinition
@@ -45,8 +44,7 @@ object Carrot : CropDefinitionProvider {
                         blockState = carrotState(2)
                     )
                 ),
-                armorStands = listOf(
-                ),
+                armorStands = null,
                 3..3
             ),
             CropStage(
@@ -56,8 +54,7 @@ object Carrot : CropDefinitionProvider {
                         blockState = carrotState(3)
                     )
                 ),
-                armorStands = listOf(
-                ),
+                armorStands = null,
                 4..4
             ),
             CropStage(

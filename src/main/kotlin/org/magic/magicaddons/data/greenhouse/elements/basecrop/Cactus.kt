@@ -4,7 +4,13 @@ import net.minecraft.core.BlockPos
 import net.minecraft.core.Rotations
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.phys.Vec3
-import org.magic.magicaddons.data.greenhouse.*
+import org.magic.magicaddons.data.greenhouse.CropArmorStand
+import org.magic.magicaddons.data.greenhouse.CropBlockState
+import org.magic.magicaddons.data.greenhouse.CropDefinition
+import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
+import org.magic.magicaddons.data.greenhouse.CropEffect
+import org.magic.magicaddons.data.greenhouse.CropStage
+import org.magic.magicaddons.data.greenhouse.StandPose
 import org.magic.magicaddons.data.greenhouse.CropStates.cactusState
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
@@ -27,7 +33,6 @@ object Cactus : CropDefinitionProvider {
                     CropArmorStand(
                         isSmall = false,
                         offset = Vec3(0.0, -0.5, 0.0),
-                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
                         hashString = "d4b3ea5cb6b6f046e326621ca11ffb7d6aec22d66c0d81e5039b19ee4400309f"
                     )
                 ),
@@ -38,17 +43,11 @@ object Cactus : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.5, 0.0),
-                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
-                        xRotation = 0.0f,
-                        yRotation = 0.0f,
                         hashString = "d4b3ea5cb6b6f046e326621ca11ffb7d6aec22d66c0d81e5039b19ee4400309f",
                         isSmall = false
                     ),
                     CropArmorStand(
                         offset = Vec3(0.0, 0.78125, 0.0),
-                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
-                        xRotation = 0.0f,
-                        yRotation = 0.0f,
                         hashString = "d4b3ea5cb6b6f046e326621ca11ffb7d6aec22d66c0d81e5039b19ee4400309f"
                     )
                 ),
@@ -76,6 +75,7 @@ object Cactus : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, 0.5, 0.0),
+                        isSmall = false,
                         hashString = "d4b3ea5cb6b6f046e326621ca11ffb7d6aec22d66c0d81e5039b19ee4400309f"
                     )
                 ),
@@ -116,8 +116,6 @@ object Cactus : CropDefinitionProvider {
                         isSmall = false,
                         offset = Vec3(0.3125, 1.0, 0.0),
                         headRotation = Rotations(0.0f, 0.0f, 67.5f),
-                        xRotation = 0.0f,
-                        yRotation = 0.0f,
                         hashString = "d4b3ea5cb6b6f046e326621ca11ffb7d6aec22d66c0d81e5039b19ee4400309f"
                     )
                 ),
@@ -148,8 +146,8 @@ object Cactus : CropDefinitionProvider {
                 7..7,
             ),
             CropStage(
-                blocks =             CropBlockState.blockStatePattern(
-                    listOf(
+                blocks = CropBlockState.blockStatePattern(
+                    positions = listOf(
                         BlockPos(0, 1, 0),
                         BlockPos(0, 2, 0),
                         BlockPos(0, 3, 0)
@@ -164,14 +162,6 @@ object Cactus : CropDefinitionProvider {
                     rotations = listOf(
                         Rotations(0.0f, 0.0f, 67.5f),
                         Rotations(0.0f, 0.0f, -67.5f)
-                    ),
-                    xRotations = listOf(
-                        0.0f,
-                        0.0f
-                    ),
-                    yRotations = listOf(
-                        0.0f,
-                        0.0f
                     ),
                     hashString = "d4b3ea5cb6b6f046e326621ca11ffb7d6aec22d66c0d81e5039b19ee4400309f",
                     isSmall = false

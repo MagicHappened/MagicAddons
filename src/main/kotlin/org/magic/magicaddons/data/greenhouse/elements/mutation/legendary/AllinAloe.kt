@@ -19,7 +19,7 @@ import net.minecraft.core.Rotations
 import org.magic.magicaddons.data.greenhouse.StandPose
 
 object AllinAloe : CropDefinitionProvider {
-    val fragmentSkyblockId: SkyBlockId = SkyBlockItemId.item("ALL_IN_ALOE_FRAGMENT")
+    private val fragmentSkyblockId: SkyBlockId = SkyBlockItemId.item("ALL_IN_ALOE_FRAGMENT")
 
     override val definition = CropDefinition(
         name = "All-in Aloe",
@@ -47,7 +47,12 @@ object AllinAloe : CropDefinitionProvider {
                         hashString = "dde18b1db0f938380dd8bed0c9189c3e62ea3acf900a19b2e95f52708c3ae3f2"
                     )
                 ),
-                1..1
+                1..1,
+                readers = listOf(
+                    CropStandReader.stageLabel(),
+                    CropStandReader.percentLabel(CropStandReader.REWARDS_RESET, "reset"),
+                    CropStandReader.multiplierLabel(CropStandReader.REWARDS_MULTIPLIER, "reward")
+                )
             ),
             CropStage(
                 blocks = listOf(
@@ -59,9 +64,6 @@ object AllinAloe : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.15625, -0.125),
-                        headRotation = Rotations(22.5f, 0.0f, 0.0f),
-                        xRotation = 0.0f,
-                        yRotation = 0.0f,
                         hashString = "dde18b1db0f938380dd8bed0c9189c3e62ea3acf900a19b2e95f52708c3ae3f2",
                         isSmall = false
                     )
@@ -87,14 +89,16 @@ object AllinAloe : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.0625, -0.125),
-                        headRotation = Rotations(22.5f, 0.0f, 0.0f),
-                        xRotation = 0.0f,
-                        yRotation = 0.0f,
                         hashString = "dde18b1db0f938380dd8bed0c9189c3e62ea3acf900a19b2e95f52708c3ae3f2",
                         isSmall = false
                     )
                 ),
-                3..3
+                3..3,
+                readers = listOf(
+                    CropStandReader.stageLabel(),
+                    CropStandReader.percentLabel(CropStandReader.REWARDS_RESET, "reset"),
+                    CropStandReader.multiplierLabel(CropStandReader.REWARDS_MULTIPLIER, "reward")
+                )
             ),
             CropStage(
                 blocks = listOf(
@@ -114,7 +118,12 @@ object AllinAloe : CropDefinitionProvider {
                         hashString = "955a5ebfc03404c361753d267f7d1664692a2da3ebc63fc3b74925015ab7171b"
                     )
                 ),
-                4..4
+                4..4,
+                readers = listOf(
+                    CropStandReader.stageLabel(),
+                    CropStandReader.percentLabel(CropStandReader.REWARDS_RESET, "reset"),
+                    CropStandReader.multiplierLabel(CropStandReader.REWARDS_MULTIPLIER, "reward")
+                )
             ),
             CropStage(
                 blocks = listOf(
@@ -130,9 +139,6 @@ object AllinAloe : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, 0.0625, 0.09375),
-                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
-                        xRotation = 0.0f,
-                        yRotation = 0.0f,
                         hashString = "955a5ebfc03404c361753d267f7d1664692a2da3ebc63fc3b74925015ab7171b",
                         isSmall = false
                     )
@@ -162,7 +168,12 @@ object AllinAloe : CropDefinitionProvider {
                         hashString = "955a5ebfc03404c361753d267f7d1664692a2da3ebc63fc3b74925015ab7171b"
                     )
                 ),
-                6..6
+                6..6,
+                readers = listOf(
+                    CropStandReader.stageLabel(),
+                    CropStandReader.percentLabel(CropStandReader.REWARDS_RESET, "reset"),
+                    CropStandReader.multiplierLabel(CropStandReader.REWARDS_MULTIPLIER, "reward")
+                )
             ),
             CropStage(
                 blocks = listOf(
@@ -179,13 +190,16 @@ object AllinAloe : CropDefinitionProvider {
                     CropArmorStand(
                         offset = Vec3(0.0, 0.15625, 0.09375),
                         headRotation = Rotations(0.0f, 0.0f, 0.0f),
-                        xRotation = 0.0f,
-                        yRotation = 0.0f,
                         hashString = "241163612258d30dc6ef63b21f61ba89c622e5dcebd99fd36a3b507e80cdc725",
                         isSmall = false
                     )
                 ),
-                7..7
+                7..7,
+                readers = listOf(
+                    CropStandReader.stageLabel(),
+                    CropStandReader.percentLabel(CropStandReader.REWARDS_RESET, "reset"),
+                    CropStandReader.multiplierLabel(CropStandReader.REWARDS_MULTIPLIER, "reward")
+                )
             ),
             CropStage(
                 blocks = listOf(
@@ -202,13 +216,16 @@ object AllinAloe : CropDefinitionProvider {
                     CropArmorStand(
                         offset = Vec3(0.0, 0.25, 0.09375),
                         headRotation = Rotations(0.0f, 0.0f, 0.0f),
-                        xRotation = 0.0f,
-                        yRotation = 0.0f,
                         hashString = "241163612258d30dc6ef63b21f61ba89c622e5dcebd99fd36a3b507e80cdc725",
                         isSmall = false
                     )
                 ),
-                8..8
+                8..8,
+                readers = listOf(
+                    CropStandReader.stageLabel(),
+                    CropStandReader.percentLabel(CropStandReader.REWARDS_RESET, "reset"),
+                    CropStandReader.multiplierLabel(CropStandReader.REWARDS_MULTIPLIER, "reward")
+                )
             ),
             CropStage(
                 blocks = listOf(
@@ -225,13 +242,16 @@ object AllinAloe : CropDefinitionProvider {
                     CropArmorStand(
                         offset = Vec3(0.0, 0.34375, 0.09375),
                         headRotation = Rotations(0.0f, 0.0f, 0.0f),
-                        xRotation = 0.0f,
-                        yRotation = 0.0f,
                         hashString = "241163612258d30dc6ef63b21f61ba89c622e5dcebd99fd36a3b507e80cdc725",
                         isSmall = false
                     )
                 ),
-                9..9
+                9..9,
+                readers = listOf(
+                    CropStandReader.stageLabel(),
+                    CropStandReader.percentLabel(CropStandReader.REWARDS_RESET, "reset"),
+                    CropStandReader.multiplierLabel(CropStandReader.REWARDS_MULTIPLIER, "reward")
+                )
             ),
             // as placed
             CropStage(
@@ -249,8 +269,6 @@ object AllinAloe : CropDefinitionProvider {
                     CropArmorStand(
                         offset = Vec3(0.0, 1.25, 0.09375),
                         headRotation = Rotations(-45.0f, 0.0f, 0.0f),
-                        xRotation = 0.0f,
-                        yRotation = 0.0f,
                         hashString = "d846f1f7ea8b021e1feedb00811baa8d3eb4de88800a7ebd8f852e806e60af90",
                         isSmall = false
                     )

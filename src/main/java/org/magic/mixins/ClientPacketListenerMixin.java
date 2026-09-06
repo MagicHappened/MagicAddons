@@ -1,10 +1,8 @@
 package org.magic.mixins;
 
-import org.magic.magicaddons.util.ErrorReporter;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.multiplayer.ClientPacketListener;
-import net.minecraft.client.multiplayer.MultiPlayerGameMode;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.protocol.game.ClientboundBlockUpdatePacket;
@@ -13,21 +11,17 @@ import net.minecraft.network.protocol.game.ClientboundSetTimePacket;
 import net.minecraft.network.protocol.game.ClientboundSystemChatPacket;
 import net.minecraft.world.level.block.state.BlockState;
 import org.magic.magicaddons.events.EventBus;
-import org.magic.magicaddons.events.chat.OnSystemChatEvent;
-import org.magic.magicaddons.events.interact.OnBlockDestroyedEvent;
-import org.magic.magicaddons.events.interact.OnBlockPlacedEvent;
-import org.magic.magicaddons.events.interact.OnBlockChangedEvent;
+import org.magic.magicaddons.events.chat.SystemChatEvent;
+import org.magic.magicaddons.events.interact.BlockDestroyedEvent;
+import org.magic.magicaddons.events.interact.BlockPlacedEvent;
+import org.magic.magicaddons.events.interact.BlockChangedEvent;
 import org.magic.magicaddons.events.world.AddParticleEvent;
-import org.magic.magicaddons.events.world.OnSetTimePacket;
-import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData;
-import org.magic.magicaddons.util.ChatUtils;
+import org.magic.magicaddons.events.world.SetTimePacketEvent;
 import org.magic.misc.BlockEventBufferAccess;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-import java.util.List;
-import java.util.Map;
 
 
 @Mixin(ClientPacketListener.class)
@@ -59,7 +53,7 @@ public class ClientPacketListenerMixin {
             )
     )
     private void onSetTime(ClientboundSetTimePacket packet, CallbackInfo ci){
-        OnSetTimePacket event = new OnSetTimePacket(packet);
+        SetTimePacketEvent event = new SetTimePacketEvent(packet);
         EventBus.post(event);
     }
 
@@ -88,7 +82,7 @@ public class ClientPacketListenerMixin {
             blockEventBuffer.magicaddons$getPendingPlaces().remove(pos);
 
             if (!newState.isAir() && newState.is(expectedPlaceState.getBlock())) {
-                EventBus.post(new OnBlockPlacedEvent(pos, player, newState));
+                EventBus.post(new BlockPlacedEvent(pos, player, newState));
             }
             return;
         }
@@ -98,27 +92,13 @@ public class ClientPacketListenerMixin {
             blockEventBuffer.magicaddons$getPendingBreaks().remove(pos);
 
             if (newState.isAir() || newState != expectedBreakState) {
-                EventBus.post(new OnBlockDestroyedEvent(pos, player, newState));
+                EventBus.post(new BlockDestroyedEvent(pos, player, newState));
             }
             return;
         }
         BlockState currentState = level.getBlockState(pos);
         if (currentState.equals(packet.getBlockState())) return;
-        try {
-            var removedElement = GreenhouseData.INSTANCE.getRemovedElementByAttack();
-            if (removedElement != null) {
-
-                Map<BlockPos, BlockState> blocksMap = removedElement.getBlocksMap();
-
-                if (blocksMap != null && blocksMap.containsKey(pos)) {
-                    GreenhouseData.INSTANCE.setRemovedElementByAttack(null);
-                    return;
-                }
-            }
-        } catch (Throwable error) {
-            ErrorReporter.INSTANCE.report("the block update", error);
-        }
-        EventBus.post(new OnBlockChangedEvent(packet));
+        EventBus.post(new BlockChangedEvent(packet));
     }
 
     @Inject(
@@ -130,7 +110,7 @@ public class ClientPacketListenerMixin {
             )
     )
     private void onSystemChat(ClientboundSystemChatPacket packet, CallbackInfo ci) {
-        EventBus.post(new OnSystemChatEvent(packet.content(), packet.overlay()));
+        EventBus.post(new SystemChatEvent(packet.content(), packet.overlay()));
     }
 
 }

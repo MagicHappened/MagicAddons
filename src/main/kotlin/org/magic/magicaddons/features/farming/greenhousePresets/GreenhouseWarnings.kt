@@ -1,12 +1,18 @@
 package org.magic.magicaddons.features.farming.greenhousePresets
 
+import net.minecraft.ChatFormatting
+import net.minecraft.network.chat.ClickEvent
+import net.minecraft.network.chat.Component
+import net.minecraft.network.chat.HoverEvent
+import net.minecraft.network.chat.Style
 import java.time.Duration
 
-/** One plant in trouble: what it is, which greenhouse holds it, and the plot to ride to. */
-data class DyingPlant(
-    val plant: String,
-    val greenhouse: String,
-    val plotId: String
+/** The clickable [GARDEN] word that runs /warp garden, for a warning sent while away. */
+fun gardenWarpLink(): Component = Component.literal("[GARDEN]").withStyle(
+    Style.EMPTY
+        .withColor(ChatFormatting.GREEN)
+        .withClickEvent(ClickEvent.RunCommand("/warp garden"))
+        .withHoverEvent(HoverEvent.ShowText(Component.literal("Click here to warp to garden!")))
 )
 
 /**

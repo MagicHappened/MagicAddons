@@ -10,20 +10,16 @@ import org.magic.magicaddons.util.ChatUtils
 
 object ToggleFeature : AbstractCommand() {
     override val argument: String = "toggle"
-    override val description: String = "Toggle a specific feature"
-    val mainCommand: LiteralArgumentBuilder<FabricClientCommandSource> = literal<FabricClientCommandSource>(argument)
-        .executes  {
-            it.source.sendError(ChatUtils.buildWithPrefix("Missing feature to toggle."))
-            return@executes 1
-        }
-    override fun build(): LiteralArgumentBuilder<FabricClientCommandSource> {
-        buildFeatureLiterals()
-        return mainCommand
-    }
 
-    fun buildFeatureLiterals(){
+    override fun build(): LiteralArgumentBuilder<FabricClientCommandSource> {
+        val command = literal<FabricClientCommandSource>(argument)
+            .executes {
+                it.source.sendError(ChatUtils.buildWithPrefix("Missing feature to toggle."))
+                return@executes 0
+            }
+
         FeatureManager.features.forEach { feature ->
-            mainCommand.then(
+            command.then(
                 literal<FabricClientCommandSource>(feature.id)
                     .executes {
                         feature.baseSetting.value = !feature.baseSetting.value
@@ -33,5 +29,7 @@ object ToggleFeature : AbstractCommand() {
                     }
             )
         }
+
+        return command
     }
 }

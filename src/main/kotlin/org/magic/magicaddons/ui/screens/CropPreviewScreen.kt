@@ -1,10 +1,10 @@
 package org.magic.magicaddons.ui.screens
 
+import net.minecraft.util.LightCoordsUtil
 import org.magic.magicaddons.data.greenhouse.CropStandReader
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
-import net.minecraft.client.gui.components.events.GuiEventListener
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.input.CharacterEvent
 import net.minecraft.client.input.KeyEvent
@@ -20,13 +20,10 @@ import org.magic.magicaddons.data.greenhouse.CropStagePattern
 import org.magic.magicaddons.data.greenhouse.PlantDex
 import org.magic.magicaddons.render.CropPreviewRenderState
 import org.magic.magicaddons.render.StandInScene
-import org.magic.magicaddons.ui.HoverableContainer
 import org.magic.magicaddons.ui.OverlayContext
 import org.magic.magicaddons.ui.OverlayRenderable
 import org.magic.magicaddons.ui.widgets.EnumWidget
-import org.magic.magicaddons.util.ScreenUtil
 import org.magic.magicaddons.util.compat.McCompat
-import org.magic.magicaddons.util.ScreenUtil.drawBorder
 import org.magic.magicaddons.util.ScreenUtil.drawSimpleTooltip
 import org.magic.magicaddons.util.ScreenUtil.drawWarningBadge
 import org.magic.magicaddons.util.ScreenUtil.drawPanel
@@ -41,10 +38,9 @@ class CropPreviewScreen(
     private val parent: Screen?,
     /** A crop to open on, or null for the empty stage. */
     private val initial: CropDefinition? = null
-) : MagicScreen(Component.literal("Crop Preview"), "the crop preview"), OverlayContext, HoverableContainer {
+) : MagicScreen(Component.literal("Crop Preview"), "the crop preview"), OverlayContext {
 
     override val overlays: MutableList<OverlayRenderable> = mutableListOf()
-    override var hoveredElement: GuiEventListener? = null
 
     private var selectedDef: CropDefinition? = null
     private var stage: Int = 1
@@ -76,19 +72,17 @@ class CropPreviewScreen(
         override fun toString(): String = label
     }
 
-    private var variant: Variant? = null
-
     /** Shown under the crop picker only for crops with such looks, swapping the scene between them. */
     private val variantSelector = EnumWidget(
         values = emptyList<Variant>(),
         currentValue = null as Variant?,
         overlayContext = this,
         searchable = false,
-        valueChanged = {
-            variant = it
-            rebuildScene()
-        }
+        valueChanged = { rebuildScene() }
     )
+
+    /** The look on show, null for a crop with only one. */
+    private val variant: Variant? get() = variantSelector.currentValue
 
     private fun variantsFor(def: CropDefinition): List<Variant> = when {
         def.stageDefs.any { CropStandReader.CRAVES in it.traits } -> listOf(Variant.Day, Variant.Night)
@@ -130,25 +124,25 @@ class CropPreviewScreen(
             picked(initial)
         }
 
-        // eight percent of the screen above and below; everything between is the preview's
-        previewY = height * 8 / 100
+        // a margin of the screen above and below; everything between is the preview's
+        previewY = height * PREVIEW_MARGIN_PERCENT / 100
         previewSize = height - previewY * 2
         previewX = (width - previewSize) / 2
 
         // label and track just inside the box's top edge, on the backdrop, reaching across
         // until the incomplete-data mark's corner
-        sliderX = previewX + 10
-        sliderW = previewX + previewSize - 26 - sliderX
-        sliderY = previewY + font.lineHeight + 8
+        sliderX = previewX + SLIDER_LEFT_INSET
+        sliderW = previewX + previewSize - SLIDER_RIGHT_INSET - sliderX
+        sliderY = previewY + font.lineHeight + SLIDER_TOP_GAP
 
         // the picker stands off to the left, its top lined up with the preview's
-        selector.height = 22
-        selector.fitToValues((previewX - Common.UI.SPACING_LARGE * 2).coerceAtLeast(80))
+        selector.height = SELECTOR_HEIGHT
+        selector.fitToValues((previewX - Common.UI.SPACING_LARGE * 2).coerceAtLeast(SELECTOR_MIN_WIDTH))
         selector.x = Common.UI.SPACING_LARGE
         selector.y = previewY
 
-        // the list stops short of the chat, give or take: about six rows above the bottom
-        selector.overlayBudget = height - (selector.y + selector.height) - selector.height * 6
+        // the list stops short of the chat, give or take
+        selector.overlayBudget = height - (selector.y + selector.height) - selector.height * LIST_ROWS_ABOVE_CHAT
 
         variantSelector.height = selector.height
         variantSelector.width = selector.width
@@ -160,8 +154,7 @@ class CropPreviewScreen(
         selectedDef = def
         spinning = true
         variantSelector.values = variantsFor(def)
-        variant = variantSelector.values.firstOrNull()
-        variantSelector.currentValue = variant
+        variantSelector.currentValue = variantSelector.values.firstOrNull()
         stage = stage.coerceIn(1, def.maxStage)
         measureCrop(def)
         rebuildScene()
@@ -182,7 +175,7 @@ class CropPreviewScreen(
                 }
                 data.stands.forEach {
                     cropMinY = minOf(cropMinY, it.y)
-                    cropMaxY = maxOf(cropMaxY, it.y + 1.2)
+                    cropMaxY = maxOf(cropMaxY, it.y + STAND_HEIGHT)
                 }
             }
     }
@@ -245,7 +238,7 @@ class CropPreviewScreen(
     /** What this stage was recorded without, in the collector's own words. Empty when whole. */
     private fun missingData(): List<String> {
         val def = selectedDef ?: return emptyList()
-        val stageDef = sceneStage ?: return emptyList()
+        if (sceneStage == null) return emptyList()
 
         val missing = mutableListOf<String>()
 
@@ -258,7 +251,7 @@ class CropPreviewScreen(
     override fun onRender(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
         val def = selectedDef
 
-        if (spinning && !draggingView) yaw = (yaw + delta * 1.2f) % 360f
+        if (spinning && !draggingView) yaw = (yaw + delta * SPIN_DEGREES_PER_TICK) % 360f
 
         // the same panel every other screen boxes its content with
         graphics.drawPanel(
@@ -288,9 +281,7 @@ class CropPreviewScreen(
         selector.extractRenderState(graphics, mouseX, mouseY, delta)
         if (variantSelector.values.isNotEmpty()) variantSelector.extractRenderState(graphics, mouseX, mouseY, delta)
 
-        overlays.asReversed().forEach {
-            it.renderOverlay(graphics, mouseX, mouseY, delta)
-        }
+        renderOverlays(graphics, mouseX, mouseY, delta)
     }
 
     /** The plant itself, handed to the gui pipeline to draw with real depth. */
@@ -305,7 +296,7 @@ class CropPreviewScreen(
 
             // the scene floats in a void with no light of its own, and a head lit by where the
             // stand happens to technically be is a head drawn black
-            state.lightCoords = FULL_BRIGHT
+            state.lightCoords = LightCoordsUtil.FULL_BRIGHT
 
             StandInScene(
                 state,
@@ -326,7 +317,7 @@ class CropPreviewScreen(
                 bY0 = previewY + 1,
                 bX1 = previewX + previewSize - 1,
                 bY1 = previewY + previewSize - 1,
-                pixelsPerBlock = (previewSize / (extent * 1.4)).toFloat(),
+                pixelsPerBlock = (previewSize / (extent * VIEW_MARGIN)).toFloat(),
                 scissor = null
             )
         )
@@ -341,7 +332,7 @@ class CropPreviewScreen(
             (previewX + previewSize / 2).toFloat(),
             (previewY + previewSize / 2).toFloat()
         )
-        pose.scale(4f, 4f)
+        pose.scale(UNKNOWN_MARK_SCALE, UNKNOWN_MARK_SCALE)
 
         graphics.text(
             font,
@@ -406,67 +397,57 @@ class CropPreviewScreen(
         }
     }
 
-    override fun extractBackground(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, a: Float) {
-        if (this.minecraft.level == null) {
-            this.extractPanorama(graphics, a)
-        }
-        graphics.fill(0, 0, width, height, Common.UI.SCREEN_DIM_COLOR)
-    }
+    override fun onMouseClicked(event: MouseButtonEvent, doubled: Boolean): Boolean {
+        if (overlaysMouseClicked(event, doubled)) return true
 
-    override fun onMouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
-        overlays.toList().forEach {
-            if (it.mouseClicked(mouseButtonEvent, doubled)) return true
-        }
-
-        if (selector.mouseClicked(mouseButtonEvent, doubled)) return true
-        if (variantSelector.values.isNotEmpty() && variantSelector.mouseClicked(mouseButtonEvent, doubled)) return true
+        if (selector.mouseClicked(event, doubled)) return true
+        if (variantSelector.values.isNotEmpty() && variantSelector.mouseClicked(event, doubled)) return true
 
         closeOverlays()
 
-        val mx = mouseButtonEvent.x.toInt()
-        val my = mouseButtonEvent.y.toInt()
+        val mx = event.x.toInt()
+        val my = event.y.toInt()
         val def = selectedDef
 
         if (def != null && def.maxStage > 1 &&
             my in sliderY - 2..sliderY + SLIDER_HEIGHT + 2 && mx in sliderX..sliderX + sliderW
         ) {
             draggingSlider = true
-            dragSliderTo(mouseButtonEvent.x)
+            dragSliderTo(event.x)
             return true
         }
 
-        if (mouseButtonEvent.button() == 0 &&
+        if (event.button() == 0 &&
             mx in previewX..previewX + previewSize && my in previewY..previewY + previewSize
         ) {
             draggingView = true
             return true
         }
 
-        return super.onMouseClicked(mouseButtonEvent, doubled)
+        return super.onMouseClicked(event, doubled)
     }
 
-    override fun onMouseDragged(mouseButtonEvent: MouseButtonEvent, dragX: Double, dragY: Double): Boolean {
+    override fun onMouseDragged(event: MouseButtonEvent, dragX: Double, dragY: Double): Boolean {
         if (draggingSlider) {
-            dragSliderTo(mouseButtonEvent.x)
+            dragSliderTo(event.x)
             return true
         }
 
         if (draggingView) {
             spinning = false
-            // sideways dragging turned out to feel right the way it first was
-            yaw = (yaw + dragX.toFloat() * 0.8f) % 360f
-            pitch = (pitch - dragY.toFloat() * 0.5f).coerceIn(-75f, 30f)
+            yaw = (yaw + dragX.toFloat() * DRAG_YAW_PER_PIXEL) % 360f
+            pitch = (pitch - dragY.toFloat() * DRAG_PITCH_PER_PIXEL).coerceIn(MIN_PITCH, MAX_PITCH)
             return true
         }
 
-        return super.onMouseDragged(mouseButtonEvent, dragX, dragY)
+        return super.onMouseDragged(event, dragX, dragY)
     }
 
-    override fun onMouseReleased(mouseButtonEvent: MouseButtonEvent): Boolean {
+    override fun onMouseReleased(event: MouseButtonEvent): Boolean {
         draggingSlider = false
         draggingView = false
 
-        return super.onMouseReleased(mouseButtonEvent)
+        return super.onMouseReleased(event)
     }
 
     private fun dragSliderTo(mouseX: Double) {
@@ -479,34 +460,19 @@ class CropPreviewScreen(
     }
 
     override fun onMouseMoved(mouseX: Double, mouseY: Double) {
-        overlays.toList().forEach { it.mouseMoved(mouseX, mouseY) }
+        overlaysMouseMoved(mouseX, mouseY)
         selector.mouseMoved(mouseX, mouseY)
         variantSelector.mouseMoved(mouseX, mouseY)
     }
 
-    override fun onMouseScrolled(mouseX: Double, mouseY: Double, scrollX: Double, scrollY: Double): Boolean {
-        overlays.toList().forEach {
-            if (it.mouseScrolled(mouseX, mouseY, scrollX, scrollY)) return true
-        }
+    override fun onMouseScrolled(mouseX: Double, mouseY: Double, scrollX: Double, scrollY: Double): Boolean =
+        overlaysMouseScrolled(mouseX, mouseY, scrollX, scrollY) || super.onMouseScrolled(mouseX, mouseY, scrollX, scrollY)
 
-        return super.onMouseScrolled(mouseX, mouseY, scrollX, scrollY)
-    }
+    override fun onCharTyped(characterEvent: CharacterEvent): Boolean =
+        overlaysCharTyped(characterEvent) || super.onCharTyped(characterEvent)
 
-    override fun onCharTyped(characterEvent: CharacterEvent): Boolean {
-        overlays.toList().forEach {
-            if (it.charTyped(characterEvent)) return true
-        }
-
-        return super.onCharTyped(characterEvent)
-    }
-
-    override fun onKeyPressed(keyEvent: KeyEvent): Boolean {
-        overlays.toList().forEach {
-            if (it.keyPressed(keyEvent)) return true
-        }
-
-        return super.onKeyPressed(keyEvent)
-    }
+    override fun onKeyPressed(keyEvent: KeyEvent): Boolean =
+        overlaysKeyPressed(keyEvent) || super.onKeyPressed(keyEvent)
 
     /** Escape goes back to the screen it came from, or out to the game when opened by command. */
     override fun onClose() {
@@ -517,16 +483,47 @@ class CropPreviewScreen(
         /** Rotation-zero, pose-cycle-zero: the crop's canonical look. */
         val ORIGIN: BlockPos = BlockPos(0, 0, 0)
 
-        const val FULL_BRIGHT: Int = 0xF000F0
 
         /** How many blocks the scene is drawn below the box's middle. */
         const val SCENE_DROP: Double = 0.75
+
+        /** How much taller than its block an armour stand is measured as. */
+        const val STAND_HEIGHT: Double = 1.2
+
+        /** How much of the box the crop's widest extent is given; the rest is air around it. */
+        const val VIEW_MARGIN: Double = 1.4
+
+        /** The screen height, in percent, left above and below the preview box. */
+        const val PREVIEW_MARGIN_PERCENT: Int = 8
 
         /** The same breathing room the greenhouse screen gives its grid inside the backdrop. */
         const val BORDER_PAD: Int = 6
 
         const val SLIDER_HEIGHT: Int = 10
         const val HANDLE_WIDTH: Int = 8
+
+        /** Where the slider's track sits inside the box: from its left and right edges, and under the label. */
+        const val SLIDER_LEFT_INSET: Int = 10
+        const val SLIDER_RIGHT_INSET: Int = 26
+        const val SLIDER_TOP_GAP: Int = 8
+
+        const val SELECTOR_HEIGHT: Int = 22
+        const val SELECTOR_MIN_WIDTH: Int = 80
+
+        /** How many list rows the picker's dropdown stops short of the bottom, to keep off the chat. */
+        const val LIST_ROWS_ABOVE_CHAT: Int = 6
+
+        /** Degrees of yaw a tick of the idle spin adds. */
+        const val SPIN_DEGREES_PER_TICK: Float = 1.2f
+
+        /** Degrees of yaw and pitch a pixel of dragging adds, and how far the pitch may go. */
+        const val DRAG_YAW_PER_PIXEL: Float = 0.8f
+        const val DRAG_PITCH_PER_PIXEL: Float = 0.5f
+        const val MIN_PITCH: Float = -75f
+        const val MAX_PITCH: Float = 30f
+
+        /** How many times its size the question mark for an unrecorded stage is drawn at. */
+        const val UNKNOWN_MARK_SCALE: Float = 4f
 
         const val BADGE_SIZE: Int = 16
 

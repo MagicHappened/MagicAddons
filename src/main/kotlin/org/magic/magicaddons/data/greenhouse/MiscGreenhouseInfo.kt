@@ -8,7 +8,7 @@ data class MiscGreenhouseInfo(
     var cropSpeedUpgradeValue: Int? = null,
     var cropYieldUpgradeValue: Int? = null,
     /**
-     * The greenhouse speed attribute, worth half a percent a level. Nothing reports it, so it is
+     * The greenhouse speed attribute, worth a tenth of a percent a level. Nothing reports it, so it is
      * asked for the way the upgrades are.
      */
     var greenhouseSpeedAttribute: Int? = null,

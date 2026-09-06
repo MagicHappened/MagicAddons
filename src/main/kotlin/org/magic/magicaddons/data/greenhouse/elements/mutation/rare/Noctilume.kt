@@ -3,7 +3,15 @@ package org.magic.magicaddons.data.greenhouse.elements.mutation.rare
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Rotations
 import net.minecraft.world.phys.Vec3
-import org.magic.magicaddons.data.greenhouse.*
+import org.magic.magicaddons.data.greenhouse.CropArmorStand
+import org.magic.magicaddons.data.greenhouse.CropBlockState
+import org.magic.magicaddons.data.greenhouse.CropDefinition
+import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
+import org.magic.magicaddons.data.greenhouse.CropEffect
+import org.magic.magicaddons.data.greenhouse.CropStage
+import org.magic.magicaddons.data.greenhouse.CropStandReader
+import org.magic.magicaddons.data.greenhouse.Footprint
+import org.magic.magicaddons.data.greenhouse.SIX_DAY_DECAY_TIME_MS
 import org.magic.magicaddons.data.greenhouse.CropStates.wheatState
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
@@ -65,7 +73,8 @@ object Noctilume : CropDefinitionProvider {
         craving: Int?,
         wheatAge: Int,
         offsets: List<Vec3>,
-        fullSized: Set<Int> = emptySet()
+        fullSized: Set<Int> = emptySet(),
+        placed: Boolean = false
     ): CropStage = CropStage(
         blocks = CropBlockState.blockStatePattern(
             positions = wheatPositions,
@@ -75,14 +84,13 @@ object Noctilume : CropDefinitionProvider {
             CropArmorStand(
                 offset = offsets[index],
                 headRotation = standRotations[index],
-                xRotation = 0f,
-                yRotation = 0f,
                 hashString = hash,
                 isSmall = index !in fullSized
             )
         },
         stageRange = stage..stage,
-        traits = craving?.let { mapOf(CropStandReader.CRAVES to it) } ?: emptyMap()
+        traits = craving?.let { mapOf(CropStandReader.CRAVES to it) } ?: emptyMap(),
+        placed = placed
     )
 
     override val definition = CropDefinition(
@@ -94,7 +102,6 @@ object Noctilume : CropDefinitionProvider {
         ),
         skyblockId = SkyBlockItemId.item("NOCTILUME"),
         stageDefs = listOf(
-            // the only seedling recorded so far craves night; a day one is expected
             look(
                 stage = 1,
                 hash = "281e8164cf7af240cc235d4826996013bd045de20d40abd262145dc24c790a09",
@@ -141,133 +148,34 @@ object Noctilume : CropDefinitionProvider {
                 offsets = settlingOffsets,
                 fullSized = setOf(0, 1, 3)
             ),
-            // the grown look at four craving day was recorded wrong and waits to be taken again
             // as placed, craving day
-            CropStage(
-                blocks = CropBlockState.blockStatePattern(
-                    listOf(
-                        BlockPos(0, 1, 0),
-                        BlockPos(0, 1, 1),
-                        BlockPos(1, 1, 0),
-                        BlockPos(1, 1, 1)
-                    ),
-                    blockState = wheatState(5)
-                ),
-                armorStands = CropArmorStand.matcherPattern(
-                    offsets = listOf(
-                        Vec3(-0.21875, -0.0625, 0.15625),
-                        Vec3(0.28125, 0.03125, 0.125),
-                        Vec3(0.375, 0.09375, -0.3125),
-                        Vec3(-0.125, -0.03125, -0.40625)
-                    ),
-                    rotations = listOf(
-                        Rotations(22.5f, 0.0f, -22.5f),
-                        Rotations(22.5f, 0.0f, 22.5f),
-                        Rotations(-22.5f, 0.0f, 22.5f),
-                        Rotations(-22.5f, 0.0f, -22.5f)
-                    ),
-                    xRotations = listOf(
-                        0.0f,
-                        0.0f,
-                        0.0f,
-                        0.0f
-                    ),
-                    yRotations = listOf(
-                        0.0f,
-                        0.0f,
-                        0.0f,
-                        0.0f
-                    ),
-                    hashString = "5cdd8c3d5d76a1dc07cdbedc5fd0bb230852df9c1864896f8893f5bfdf3d4c96",
-                    isSmall = false
-                ),
-                4..4,
-                traits = mapOf(CropStandReader.CRAVES to CropStandReader.CRAVES_DAY),
+            look(
+                stage = 4,
+                hash = "5cdd8c3d5d76a1dc07cdbedc5fd0bb230852df9c1864896f8893f5bfdf3d4c96",
+                craving = CropStandReader.CRAVES_DAY,
+                wheatAge = 5,
+                offsets = grownOffsets,
+                fullSized = setOf(0, 1, 2, 3),
                 placed = true
             ),
+            // todo: grown look at stage 4 craving day was recorded wrong, record it again
             // grown at four, craving night
-            CropStage(
-                blocks = CropBlockState.blockStatePattern(
-                    listOf(
-                        BlockPos(0, 1, 0),
-                        BlockPos(0, 1, 1),
-                        BlockPos(1, 1, 0),
-                        BlockPos(1, 1, 1)
-                    ),
-                    blockState = wheatState(6)
-                ),
-                armorStands = CropArmorStand.matcherPattern(
-                    offsets = listOf(
-                        Vec3(-0.21875, -0.0625, 0.15625),
-                        Vec3(0.375, 0.09375, -0.3125),
-                        Vec3(0.28125, 0.03125, 0.125),
-                        Vec3(-0.125, -0.03125, -0.40625)
-                    ),
-                    rotations = listOf(
-                        Rotations(22.5f, 0.0f, -22.5f),
-                        Rotations(-22.5f, 0.0f, 22.5f),
-                        Rotations(22.5f, 0.0f, 22.5f),
-                        Rotations(-22.5f, 0.0f, -22.5f)
-                    ),
-                    xRotations = listOf(
-                        0.0f,
-                        0.0f,
-                        0.0f,
-                        0.0f
-                    ),
-                    yRotations = listOf(
-                        0.0f,
-                        0.0f,
-                        0.0f,
-                        0.0f
-                    ),
-                    hashString = "b1b18493d50ff8972f7ef359893d9063fdc54cb822c679002957c294fc8b0005",
-                    isSmall = false
-                ),
-                4..4,
-                traits = mapOf(CropStandReader.CRAVES to CropStandReader.CRAVES_NIGHT)
+            look(
+                stage = 4,
+                hash = "b1b18493d50ff8972f7ef359893d9063fdc54cb822c679002957c294fc8b0005",
+                craving = CropStandReader.CRAVES_NIGHT,
+                wheatAge = 6,
+                offsets = grownOffsets,
+                fullSized = setOf(0, 1, 2, 3)
             ),
             // as placed, craving night
-            CropStage(
-                blocks = CropBlockState.blockStatePattern(
-                    listOf(
-                        BlockPos(0, 1, 0),
-                        BlockPos(0, 1, 1),
-                        BlockPos(1, 1, 0),
-                        BlockPos(1, 1, 1)
-                    ),
-                    blockState = wheatState(5)
-                ),
-                armorStands = CropArmorStand.matcherPattern(
-                    offsets = listOf(
-                        Vec3(-0.21875, -0.0625, 0.15625),
-                        Vec3(0.375, 0.09375, -0.3125),
-                        Vec3(0.28125, 0.03125, 0.125),
-                        Vec3(-0.125, -0.03125, -0.40625)
-                    ),
-                    rotations = listOf(
-                        Rotations(22.5f, 0.0f, -22.5f),
-                        Rotations(-22.5f, 0.0f, 22.5f),
-                        Rotations(22.5f, 0.0f, 22.5f),
-                        Rotations(-22.5f, 0.0f, -22.5f)
-                    ),
-                    xRotations = listOf(
-                        0.0f,
-                        0.0f,
-                        0.0f,
-                        0.0f
-                    ),
-                    yRotations = listOf(
-                        0.0f,
-                        0.0f,
-                        0.0f,
-                        0.0f
-                    ),
-                    hashString = "b1b18493d50ff8972f7ef359893d9063fdc54cb822c679002957c294fc8b0005",
-                    isSmall = false
-                ),
-                4..4,
-                traits = mapOf(CropStandReader.CRAVES to CropStandReader.CRAVES_NIGHT),
+            look(
+                stage = 4,
+                hash = "b1b18493d50ff8972f7ef359893d9063fdc54cb822c679002957c294fc8b0005",
+                craving = CropStandReader.CRAVES_NIGHT,
+                wheatAge = 5,
+                offsets = grownOffsets,
+                fullSized = setOf(0, 1, 2, 3),
                 placed = true
             )
         ),

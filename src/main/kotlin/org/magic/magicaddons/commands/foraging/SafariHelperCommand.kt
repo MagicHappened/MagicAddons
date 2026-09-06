@@ -13,7 +13,6 @@ import org.magic.magicaddons.util.ChatUtils
 object SafariHelperCommand : AbstractCommand() {
 
     override val argument: String = "SafariHelper"
-    override val description: String = "Safari helper utilities"
 
     override fun build(): LiteralArgumentBuilder<FabricClientCommandSource> {
         val remainingMobs = literal<FabricClientCommandSource>("SendRemainingMobs")
@@ -35,7 +34,7 @@ object SafariHelperCommand : AbstractCommand() {
         return literal<FabricClientCommandSource>(argument)
             .executes {
                 it.source.sendError(ChatUtils.buildWithPrefix("Missing safari helper action."))
-                return@executes 1
+                return@executes 0
             }
             .then(remainingMobs)
     }

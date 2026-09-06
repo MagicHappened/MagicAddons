@@ -56,11 +56,6 @@ object PlayerUtils {
         return textures.firstOrNull()?.value
     }
 
-    fun getSkinJson(player: Player): JsonObject? {
-        val value = getTextureValue(player)
-        return getSkinDataFromValue(value)?.json
-    }
-
     fun getSkinUrl(player: Player): String? {
         val value = getTextureValue(player)
         return getSkinDataFromValue(value)?.url
@@ -79,12 +74,13 @@ object PlayerUtils {
         return skinData.hash
     }
 
-    /**
-     * The skull an entity carries, in whichever slot it holds it: hypixel hangs some crops' skulls
-     * off the main hand. The first skull found wins, and nothing else counts as one.
-     */
+    /** The skull an entity carries in any slot, the first one found. Some crops hold theirs in the main hand. */
     fun getSkullHash(entity: LivingEntity): String? =
         EquipmentSlot.entries.firstNotNullOfOrNull { getSkinHash(entity.getItemBySlot(it)) }
+
+    /** The skull texture hash of the helmet an entity wears, or null without one. */
+    fun getHelmetHash(entity: LivingEntity): String? =
+        getSkinHash(entity.getItemBySlot(EquipmentSlot.HEAD))
 
     fun getItemFromHash(hash: String): ItemStack {
         val stack = ItemStack(Items.PLAYER_HEAD)

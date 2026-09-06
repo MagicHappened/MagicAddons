@@ -16,14 +16,11 @@ open class RemovableRowWidget<T>(
     { onClick.invoke(it as RemovableRowWidget<T>) }
 ) {
 
-    private val removeWidth = 20
-
     private val removeButton = ClickableButtonWidget(
-        width = removeWidth,
-        height = 20,
+        width = REMOVE_WIDTH,
+        height = 0,
         { graphics ->
-            val pad = 4
-            val size = minOf(width, height) - pad * 2
+            val size = minOf(width, height) - CROSS_PAD * 2
 
             val startX = x + (width - size) / 2
             val startY = y + (height - size) / 2
@@ -36,14 +33,14 @@ open class RemovableRowWidget<T>(
     )
 
     override fun getRightReservedWidth(): Int {
-        return super.getRightReservedWidth() + if (onRemove != null) removeWidth else 0
+        return super.getRightReservedWidth() + if (onRemove != null) REMOVE_WIDTH else 0
     }
 
     override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int) {
         super.extractRenderState(graphics, mouseX, mouseY)
 
         if (onRemove != null) {
-            removeButton.x = x + width - removeWidth
+            removeButton.x = x + width - REMOVE_WIDTH
             removeButton.y = y
             removeButton.height = height
 
@@ -63,5 +60,13 @@ open class RemovableRowWidget<T>(
     override fun mouseMoved(mouseX: Double, mouseY: Double) {
         super.mouseMoved(mouseX, mouseY)
         removeButton.mouseMoved(mouseX, mouseY)
+    }
+
+    private companion object {
+        /** The width of the cross button at the row's right edge. */
+        const val REMOVE_WIDTH: Int = 20
+
+        /** How far the cross sits inside its button. */
+        const val CROSS_PAD: Int = 4
     }
 }

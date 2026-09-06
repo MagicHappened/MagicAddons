@@ -9,9 +9,6 @@ object BlockUtils {
     fun BlockState.isBlock(id: String): Boolean {
         return BuiltInRegistries.BLOCK.getKey(this.block).toString() == id
     }
-    fun BlockState.getId(): String {
-        return BuiltInRegistries.BLOCK.getKey(this.block).toString()
-    }
 
     fun BlockState.getIntProperty(name: String): Int? {
         val prop = this.block.stateDefinition.properties

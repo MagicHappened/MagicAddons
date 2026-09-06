@@ -11,13 +11,13 @@ import org.magic.magicaddons.ui.widgets.CheckboxWidget
 import org.magic.magicaddons.util.ScreenUtil.drawButtonPanel
 import org.magic.magicaddons.util.ScreenUtil.drawPanel
 
+/** Where the checklist was scrolled to, kept outside the screen so reopening lands back there. */
+private var scroll: Int = 0
+
 /**
  * The collector's checklist, docked right so the garden stays visible behind it. Opened with G
  * while a run is live, closed with G or escape.
  */
-/** Where the checklist was scrolled to, kept outside the screen so reopening lands back there. */
-private var scroll: Int = 0
-
 class CollectScreen : MagicScreen(Component.literal("Crop Collection"), "the collector screen") {
 
     private companion object {
@@ -82,25 +82,23 @@ class CollectScreen : MagicScreen(Component.literal("Crop Collection"), "the col
             false
         )
 
+        val textX = panelX + PAD + CHECKBOX + PAD
+
         rows.drop(scroll).take(visibleRows).forEachIndexed { i, row ->
             val rowY = listTop + i * ROW_HEIGHT
-            val textX: Int
 
             // a row that can be ticked lights up under the mouse, like any other row on the kit
             if (row.collectable && mouseX in panelX until panelX + panelWidth && mouseY in rowY until rowY + ROW_HEIGHT) {
                 graphics.fill(panelX + Common.UI.BORDER_SIZE, rowY, panelX + panelWidth - Common.UI.BORDER_SIZE, rowY + ROW_HEIGHT, Common.UI.HOVER_WASH)
             }
 
+            // nothing to tick on a plant with no definition: it is reported, never collected
             if (row.collectable) {
                 checkbox.x = panelX + PAD
                 checkbox.y = rowY + (ROW_HEIGHT - CHECKBOX) / 2
                 checkbox.size = CHECKBOX
                 checkbox.checked = row.confirmed
                 checkbox.render(graphics)
-                textX = panelX + PAD + CHECKBOX + PAD
-            } else {
-                // nothing to tick: a plant with no definition is reported, never collected
-                textX = panelX + PAD + CHECKBOX + PAD
             }
 
             graphics.text(
@@ -145,12 +143,12 @@ class CollectScreen : MagicScreen(Component.literal("Crop Collection"), "the col
     }
 
     /** The whole row is the target: at this size the checkbox alone would be a test of aim. */
-    override fun onMouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
-        val x = mouseButtonEvent.x.toInt()
-        val y = mouseButtonEvent.y.toInt()
+    override fun onMouseClicked(event: MouseButtonEvent, doubled: Boolean): Boolean {
+        val x = event.x.toInt()
+        val y = event.y.toInt()
 
         if (x !in panelX until panelX + panelWidth) {
-            return super.onMouseClicked(mouseButtonEvent, doubled)
+            return super.onMouseClicked(event, doubled)
         }
 
         if (y in finishY until finishY + BUTTON_HEIGHT) {
@@ -174,7 +172,7 @@ class CollectScreen : MagicScreen(Component.literal("Crop Collection"), "the col
             return true
         }
 
-        return super.onMouseClicked(mouseButtonEvent, doubled)
+        return super.onMouseClicked(event, doubled)
     }
 
     override fun onMouseScrolled(mouseX: Double, mouseY: Double, scrollX: Double, scrollY: Double): Boolean {
@@ -192,7 +190,7 @@ class CollectScreen : MagicScreen(Component.literal("Crop Collection"), "the col
     }
 
     /** No blur, no dim, no panorama: the garden behind the list is what the list is about. */
-    override fun extractBackground(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, a: Float) = Unit
+    override fun extractBackground(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) = Unit
 
     override fun isPauseScreen(): Boolean = false
 }

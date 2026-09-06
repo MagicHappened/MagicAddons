@@ -1,15 +1,10 @@
 package org.magic.magicaddons.commands.debug
 
-import org.magic.magicaddons.commands.debug.CropCollector
 import com.mojang.brigadier.arguments.BoolArgumentType
 import com.mojang.brigadier.arguments.DoubleArgumentType
 import com.mojang.brigadier.arguments.StringArgumentType
 import com.mojang.brigadier.builder.LiteralArgumentBuilder
 import com.mojang.brigadier.builder.RequiredArgumentBuilder
-import com.mojang.brigadier.context.StringRange
-import com.mojang.brigadier.suggestion.Suggestion
-import com.mojang.brigadier.suggestion.Suggestions
-import java.util.concurrent.CompletableFuture
 import com.mojang.blaze3d.vertex.PoseStack
 import net.minecraft.client.renderer.SubmitNodeCollector
 import net.minecraft.world.phys.AABB
@@ -31,13 +26,15 @@ import net.minecraft.world.entity.Interaction
 import net.minecraft.world.entity.EquipmentSlot
 import net.minecraft.world.entity.decoration.ArmorStand
 import org.magic.magicaddons.commands.AbstractCommand
-import org.magic.magicaddons.data.greenhouse.Footprint
+import org.magic.magicaddons.commands.CropWords
+import org.magic.magicaddons.commands.fmt
+import org.magic.magicaddons.commands.toExactDuration
 import org.magic.magicaddons.data.greenhouse.CropDefinition
-import org.magic.magicaddons.data.greenhouse.CropRegistry
 import org.magic.magicaddons.data.greenhouse.PlantDex
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData
 import org.magic.magicaddons.features.farming.greenhousePresets.LayoutRenderState
 import org.magic.magicaddons.util.ChatUtils
+import org.magic.magicaddons.util.EntityUtils.typePath
 import org.magic.magicaddons.util.PlayerUtils
 
 /**
@@ -45,9 +42,10 @@ import org.magic.magicaddons.util.PlayerUtils
  * they are dumped by proximity, with each name's formatting spelled out so bars can be read.
  */
 object FarmingDebug : AbstractCommand() {
-    var footprint: Footprint = Footprint(1, 1)
 
     private const val DEFAULT_RADIUS: Double = 4.0
+    private const val MIN_RADIUS: Double = 0.5
+    private const val MAX_RADIUS: Double = 32.0
 
     /** The plant dex word that lists every gap instead of one crop. */
     private const val MISSING_WORD: String = "missing"
@@ -85,44 +83,41 @@ object FarmingDebug : AbstractCommand() {
     }
 
     override val argument: String = "farming"
-    override val description: String = "returns data for greenhouse testing"
 
     override fun build(): LiteralArgumentBuilder<FabricClientCommandSource> {
-        return LiteralArgumentBuilder.literal<FabricClientCommandSource>(argument)
+        val entities = LiteralArgumentBuilder.literal<FabricClientCommandSource>("entities")
             .executes {
                 dumpNearbyEntities(DEFAULT_RADIUS, false)
                 return@executes 1
             }
             .then(
-                LiteralArgumentBuilder.literal<FabricClientCommandSource>("entities")
-                    .executes {
-                        dumpNearbyEntities(DEFAULT_RADIUS, false)
+                RequiredArgumentBuilder.argument<FabricClientCommandSource, Boolean>(
+                    "holograms",
+                    BoolArgumentType.bool()
+                ).executes {
+                    dumpNearbyEntities(
+                        DEFAULT_RADIUS,
+                        BoolArgumentType.getBool(it, "holograms")
+                    )
+                    return@executes 1
+                }.then(
+                    RequiredArgumentBuilder.argument<FabricClientCommandSource, Double>(
+                        "radius",
+                        DoubleArgumentType.doubleArg(MIN_RADIUS, MAX_RADIUS)
+                    ).executes {
+                        dumpNearbyEntities(
+                            DoubleArgumentType.getDouble(it, "radius"),
+                            BoolArgumentType.getBool(it, "holograms")
+                        )
                         return@executes 1
                     }
-                    .then(
-                        RequiredArgumentBuilder.argument<FabricClientCommandSource, Boolean>(
-                            "holograms",
-                            BoolArgumentType.bool()
-                        ).executes {
-                            dumpNearbyEntities(
-                                DEFAULT_RADIUS,
-                                BoolArgumentType.getBool(it, "holograms")
-                            )
-                            return@executes 1
-                        }.then(
-                            RequiredArgumentBuilder.argument<FabricClientCommandSource, Double>(
-                                "radius",
-                                DoubleArgumentType.doubleArg(0.5, 32.0)
-                            ).executes {
-                                dumpNearbyEntities(
-                                    DoubleArgumentType.getDouble(it, "radius"),
-                                    BoolArgumentType.getBool(it, "holograms")
-                                )
-                                return@executes 1
-                            }
-                        )
-                    )
+                )
             )
+
+        return LiteralArgumentBuilder.literal<FabricClientCommandSource>(argument)
+            // bare "farming" runs "farming entities"
+            .executes(entities.command)
+            .then(entities)
             .then(
                 LiteralArgumentBuilder.literal<FabricClientCommandSource>("entitiesAll")
                     .executes {
@@ -132,7 +127,7 @@ object FarmingDebug : AbstractCommand() {
                     .then(
                         RequiredArgumentBuilder.argument<FabricClientCommandSource, Double>(
                             "radius",
-                            DoubleArgumentType.doubleArg(0.5, 32.0)
+                            DoubleArgumentType.doubleArg(MIN_RADIUS, MAX_RADIUS)
                         ).executes {
                             dumpEverything(DoubleArgumentType.getDouble(it, "radius"))
                             return@executes 1
@@ -182,33 +177,9 @@ object FarmingDebug : AbstractCommand() {
                         return@executes 1
                     }
             )
-            .then(
-                LiteralArgumentBuilder.literal<FabricClientCommandSource>("footprint")
-                    .then(
-                        RequiredArgumentBuilder.argument<FabricClientCommandSource, String>(
-                            "footprint",
-                            StringArgumentType.word()
-                        ).executes {
-                            val stringArg = StringArgumentType.getString(it, "footprint")
-
-                            try {
-                                footprint = Footprint(stringArg[0].digitToInt(), stringArg[1].digitToInt())
-                            } catch (e: Exception) {
-                                ChatUtils.sendWithPrefix("Footprint has to be two digits, such as 22 for a 2x2")
-                                return@executes 0
-                            }
-
-                            ChatUtils.sendWithPrefix("Footprint is now ${footprint.width}x${footprint.height}")
-                            return@executes 1
-                        }
-                    )
-            )
     }
 
-    /**
-     * The dex, and under it "missing" then every crop as a command word, so names are offered rather
-     * than typed out. Spaces and punctuation are stripped, since a word cannot hold a space.
-     */
+    /** The dex, and under it "missing" then every crop as a command word. */
     private fun plantDexCommand(): LiteralArgumentBuilder<FabricClientCommandSource> =
         LiteralArgumentBuilder.literal<FabricClientCommandSource>("plantDex")
             .executes {
@@ -220,19 +191,10 @@ object FarmingDebug : AbstractCommand() {
                     "crop",
                     StringArgumentType.word()
                 ).suggests { _, builder ->
-                    // built by hand rather than through the builder, which sorts alphabetically
-                    // and would bury "missing" among the crops
-                    val typed = builder.remainingLowerCase
-                    val suggestions = (listOf(MISSING_WORD) + CropRegistry.all.map { cropWord(it) }.distinct())
-                        .filter { it.lowercase().startsWith(typed) }
-                        .map { Suggestion(StringRange.between(builder.start, builder.input.length), it) }
-
-                    CompletableFuture.completedFuture(
-                        Suggestions(StringRange.between(builder.start, builder.input.length), suggestions)
-                    )
+                    CropWords.suggest(builder, listOf(MISSING_WORD))
                 }.executes {
                     val word = StringArgumentType.getString(it, "crop")
-                    val def = CropRegistry.all.firstOrNull { def -> cropWord(def).equals(word, ignoreCase = true) }
+                    val def = CropWords.find(word)
 
                     when {
                         word.equals(MISSING_WORD, ignoreCase = true) -> dumpMissingPlants()
@@ -242,8 +204,6 @@ object FarmingDebug : AbstractCommand() {
                     return@executes 1
                 }
             )
-
-    private fun cropWord(def: CropDefinition): String = def.name.filter { c -> c.isLetterOrDigit() }
 
     /** Every crop still missing something, one line per tier with the crops in its hover. */
     private fun dumpMissingPlants() {
@@ -343,7 +303,7 @@ object FarmingDebug : AbstractCommand() {
         val tick = GreenhouseData.currentGrowthTickMs()
 
         ChatUtils.send(
-            field("growth tick", tick?.let { exactDuration(it) } ?: "cannot be worked out yet")
+            field("growth tick", tick?.toExactDuration() ?: "cannot be worked out yet")
         )
 
         dumpAttributes()
@@ -375,13 +335,6 @@ object FarmingDebug : AbstractCommand() {
                     copyable(id.id, "level ${data.level}, ${data.owned} owned, ${data.syphoned} syphoned")
                 )
             }
-    }
-
-    /** A duration to the second, for a figure being held against the game's own. */
-    private fun exactDuration(ms: Long): String {
-        val seconds = ms / 1000
-
-        return "%dh %02dm %02ds".format(seconds / 3600, seconds % 3600 / 60, seconds % 60)
     }
 
     /** Every stand and display near the player, nearest first. Our own plan stands only on request. */
@@ -456,7 +409,7 @@ object FarmingDebug : AbstractCommand() {
                 val at = entity.position()
 
                 appendLine()
-                appendLine("${entity.type.toString().substringAfterLast('.')} ${fmt(at)}")
+                appendLine("${entity.typePath()} ${fmt(at)}")
                 appendLine("  id=${entity.id} uuid=${entity.uuid}")
                 appendLine("  rot=%.2f/%.2f box=${entity.boundingBox}".format(entity.yRot, entity.xRot))
                 appendLine("  invisible=${entity.isInvisible} passengers=${entity.passengers.size}")
@@ -509,20 +462,19 @@ object FarmingDebug : AbstractCommand() {
     private fun clipboard(text: String, what: String): Component {
         val lines = text.count { it == '\n' } + 1
 
-        return Component.literal("[MA] ").withStyle(ChatFormatting.GOLD)
-            .append(
-                Component.literal("Click to copy $lines lines ($what)").withStyle(
-                    Style.EMPTY
-                        .withColor(ChatFormatting.YELLOW)
-                        .withClickEvent(ClickEvent.CopyToClipboard(text))
-                        .withHoverEvent(HoverEvent.ShowText(Component.literal("Already copied")))
-                )
+        return ChatUtils.buildWithPrefix(
+            Component.literal("Click to copy $lines lines ($what)").withStyle(
+                Style.EMPTY
+                    .withColor(ChatFormatting.YELLOW)
+                    .withClickEvent(ClickEvent.CopyToClipboard(text))
+                    .withHoverEvent(HoverEvent.ShowText(Component.literal("Already copied")))
             )
+        )
     }
 
     /** One entity written out, for a listing that goes to the clipboard rather than to chat. */
     private fun describeEntity(entity: Entity, offset: Vec3): String = buildString {
-        appendLine("${entity.type.toString().substringAfterLast('.')} ${fmt(entity.position())}")
+        appendLine("${entity.typePath()} ${fmt(entity.position())}")
         appendLine("  you ${fmt(offset)}")
 
         if (entity is ArmorStand) {
@@ -558,9 +510,6 @@ object FarmingDebug : AbstractCommand() {
         }
     }
 
-    /** A position short enough to read in chat. */
-    private fun fmt(pos: Vec3): String = "%.4f %.4f %.4f".format(pos.x, pos.y, pos.z)
-
     /** The custom name as its styled runs, `colour:text` each, which is what makes a bar readable. */
     private fun describeRuns(name: Component): String {
         val runs = mutableListOf<String>()
@@ -574,22 +523,6 @@ object FarmingDebug : AbstractCommand() {
         }, Style.EMPTY)
 
         return runs.joinToString(" | ")
-    }
-
-    /** The skull or item a stand or display carries, which is how most crops are identified. */
-    private fun describeHeldItem(entity: Entity): Component? {
-        val stack = when (entity) {
-            is Display.ItemDisplay -> entity.itemStack
-            is ArmorStand -> EquipmentSlot.entries.map { entity.getItemBySlot(it) }
-                .firstOrNull { !it.isEmpty }
-            else -> null
-        } ?: return null
-
-        if (stack.isEmpty) return null
-
-        val hash = PlayerUtils.getSkinHash(stack) ?: return field("item", stack.item.toString())
-
-        return copyable("hash", hash)
     }
 
     private fun field(label: String, value: String): Component =
