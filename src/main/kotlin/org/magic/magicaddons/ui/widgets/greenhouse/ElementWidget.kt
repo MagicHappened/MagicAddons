@@ -236,28 +236,19 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, GuiEv
         val ticksLeft = WaterModel.ticksUntilDeath(waterLevel, waterEffect)
         val remainingMs = GreenhouseData.remainingTickMs()
 
-        val stage = when (val known = instance.growthStage) {
-            is GrowthStageInfo.Known -> known.stage
-            is GrowthStageInfo.Estimated -> known.range.first
-            null -> null
-        }
-
-        // nothing to outlast when the plant is already at its only stage
-        val ticksNeeded = stage
-            ?.takeIf { instance.cropDef.maxStage > 1 }
-            ?.let { instance.cropDef.maxStage - it }
+        val outlasts = instance.outlastsGrowth(waterEffect)
         val tickMs = GreenhouseData.currentGrowthTickMs()
 
         val text: String
         val color: Int
 
-        if (ticksLeft == null || ticksNeeded == null || tickMs == null || remainingMs == null) {
+        if (ticksLeft == null || outlasts == null || tickMs == null || remainingMs == null) {
             text = "?"
             color = Common.UI.TEXT_COLOR
         } else {
             text = readableDuration(remainingMs + (ticksLeft - 1) * tickMs) +
                     if (instance.waterPredictedInDebt) DEBT_MARK else ""
-            color = if (ticksLeft > ticksNeeded) Common.UI.SUCCESS_COLOR else Common.UI.DANGER_COLOR
+            color = if (outlasts) Common.UI.SUCCESS_COLOR else Common.UI.DANGER_COLOR
         }
 
         val font = Minecraft.getInstance().font

@@ -159,11 +159,13 @@ object Melon : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.53125, 0.0),
+                        headRotation = Rotations(0.0f, 0.0f, -22.5f),
                         hashString = "192600cad8dbec5b6a6ec4dcf9bb4e9cd76190cad80aeee8b047de719cf5e36d",
                         isSmall = false
                     ),
                     CropArmorStand(
                         offset = Vec3(0.21875, 0.1875, 0.1875),
+                        headRotation = Rotations(22.5f, 0.0f, 22.5f),
                         hashString = "afa92dd43afed9e640cf3d3b008ca5199634ec8512de5e1f5eeaecd761296cb9",
                     )
                 ),

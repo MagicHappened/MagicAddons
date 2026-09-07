@@ -267,6 +267,10 @@ object EntityUtils {
      * The plain item the entity carries, as the slot it is in and "minecraft:gold_block", or null
      * when it carries only a skull or nothing.
      */
+    /** Whether the entity carries anything at all. A plant's stands always do, a nameplate never does. */
+    fun carriesAnything(entity: LivingEntity): Boolean =
+        CARRY_SLOTS.any { !entity.getItemBySlot(it).isEmpty }
+
     fun heldItem(entity: LivingEntity): Pair<EquipmentSlot, String>? = CARRY_SLOTS
         .firstNotNullOfOrNull { slot ->
             val stack = entity.getItemBySlot(slot)
