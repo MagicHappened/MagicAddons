@@ -97,7 +97,7 @@ class GridWidget(
             for (sy in 0 until layout.size) {
                 val slot = layout.getSlot(sx, sy) ?: continue
 
-                val widget = SlotWidget(slot)
+                val widget = SlotWidget(slot, layout.kind == GreenhouseLayout.Kind.PRESET)
 
                 widget.width = slotSize
                 widget.height = slotSize
