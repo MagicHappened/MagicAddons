@@ -237,6 +237,7 @@ class GreenhouseGrid(
                             callbacks.claimPlacedPlant(found.instance)
                         } else {
                             callbacks.claimSpawnedMutation(found.instance, layout)
+                            capToTicksSinceLook(found.instance)
                         }
                     }
                     found
@@ -251,6 +252,22 @@ class GreenhouseGrid(
 
         layout.elementInstances.clear()
         layout.elementInstances.addAll(reconciled.map { it.instance })
+    }
+
+    /**
+     * Narrows a plant that spawned since the last look: it started at stage one then, so it cannot
+     * be further along than the ticks that have passed. One tick means it is still at stage one.
+     */
+    private fun capToTicksSinceLook(instance: GreenhouseElementInstance) {
+        val ticks = state.pendingGrowthTicks
+        if (ticks <= 0) return
+
+        val range = (instance.growthStage as? GrowthStageInfo.Estimated)?.range ?: return
+        val last = range.last.coerceAtMost(ticks)
+        if (last < range.first) return
+
+        instance.growthStage =
+            if (range.first == last) GrowthStageInfo.Known(last) else GrowthStageInfo.Estimated(range.first..last)
     }
 
     /**
@@ -368,7 +385,9 @@ class GreenhouseGrid(
             val first = if (inDebt) range.first else (range.first + ticks).coerceAtMost(ceiling(range.first))
             val last = (range.last + ticks).coerceAtMost(ceiling(range.last))
 
-            instance.growthStage = GrowthStageInfo.Estimated(first..last)
+            // both ends landing on the same stage leaves nothing to estimate
+            instance.growthStage =
+                if (first == last) GrowthStageInfo.Known(first) else GrowthStageInfo.Estimated(first..last)
 
             // judged by the lowest it might be at, so a plant only probably asleep is still called
             // awake: the warning for one that has stopped growing is worth being sure about
