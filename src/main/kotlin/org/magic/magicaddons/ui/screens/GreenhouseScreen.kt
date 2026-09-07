@@ -25,6 +25,7 @@ import org.magic.magicaddons.data.greenhouse.GREENHOUSE_SIZE
 import org.magic.magicaddons.data.greenhouse.GreenhouseGrid
 import org.magic.magicaddons.data.greenhouse.GreenhouseLayout
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData
+import org.magic.magicaddons.features.farming.greenhousePresets.PlannerNeeds
 import org.magic.magicaddons.ui.HoverableContainer
 import org.magic.magicaddons.ui.OverlayContext
 import org.magic.magicaddons.ui.OverlayRenderable
@@ -1273,6 +1274,7 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
         }
         grid.state.assignedLayout = layout
         grid.state.completionMuted = false
+        PlannerNeeds.forget(grid)
         GreenhouseData.regenRender()
 
         ChatUtils.sendWithPrefix(

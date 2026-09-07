@@ -32,6 +32,7 @@ import org.magic.magicaddons.data.greenhouse.CropStage
 import org.magic.magicaddons.data.greenhouse.GreenhouseGrid
 import org.magic.magicaddons.render.WorldRender
 import org.magic.magicaddons.util.ChatUtils
+import org.magic.magicaddons.util.EntityUtils
 
 /**
  * Shows the player how to build a layout: the soil row first, then the crops on it, each drawn at
@@ -100,6 +101,8 @@ object LayoutRenderState {
         val marks: Map<BlockPos, Pair<VoxelShape, Mark>>,
         val ghosts: Map<BlockPos, BlockState>,
         val badStands: Set<UUID>,
+        /** Soil of crops left unplanned because something already stands on it. */
+        val blocked: Set<BlockPos>,
         /**
          * Ghost stands kept apart by crop, so an unchanged crop keeps its stands. Rebuilding an
          * entity is not the same to a renderer as leaving it alone.
@@ -119,11 +122,13 @@ object LayoutRenderState {
             append('|')
             badStands.map { it.toString() }.sorted().forEach { append(it).append(',') }
             append('|')
+            blocked.map { it.asLong() }.sorted().forEach { append(it).append(',') }
+            append('|')
             standGroups.keys.sorted().forEach { append(it).append(';') }
         }
 
         companion object {
-            val NOTHING = Plan(Phase.Soil, emptyMap(), emptyMap(), emptySet(), emptyMap())
+            val NOTHING = Plan(Phase.Soil, emptyMap(), emptyMap(), emptySet(), emptySet(), emptyMap())
         }
     }
 
@@ -177,6 +182,8 @@ object LayoutRenderState {
     fun refresh() {
         val grid = GreenhouseData.getCurrentGrid()
 
+        PlannerNeeds.arriveAt(grid)
+
         // losing sight of the greenhouse is not the same as having nothing to draw, so the last
         // plan stays up rather than blinking out on every unreadable moment
         if (grid == null) return
@@ -195,18 +202,24 @@ object LayoutRenderState {
         val marks = mutableMapOf<BlockPos, Pair<VoxelShape, Mark>>()
         val ghosts = mutableMapOf<BlockPos, BlockState>()
         val badStands = mutableSetOf<UUID>()
+        val blocked = mutableSetOf<BlockPos>()
         val standGroups = mutableMapOf<String, List<ArmorStand>>()
 
         // what is already up, to take the unchanged parts of it over rather than build them again
         val previous = plan
 
         var soilComplete = true
+        val soilNeeded = linkedMapOf<Block, Int>()
+        val cropsNeeded = linkedMapOf<CropDefinition, Int>()
 
         layout.slots.forEach { slot ->
             val wanted = slot.placedBlock ?: return@forEach
             val pos = grid.getPosForSlotCoords(slot.x, slot.y) ?: return@forEach
 
-            if (!compare(level, pos, wanted, marks, ghosts)) soilComplete = false
+            if (compare(level, pos, wanted, marks, ghosts)) return@forEach
+
+            soilComplete = false
+            if (needsPlacing(level, pos, wanted)) soilNeeded.merge(wanted.block, 1, Int::plus)
         }
 
         val soilPhase = if (soilComplete) Phase.Crops else Phase.Soil
@@ -248,7 +261,12 @@ object LayoutRenderState {
 
                 // a plant at a stage nobody has described matches nothing, and planning for its slot
                 // as bare put a ghost inside it. Anything growing on the soil is a plant
-                if (isOccupied(level, soil, instance.cropDef.footprint)) return@forEach
+                if (isOccupied(level, soil, instance.cropDef.footprint)) {
+                    blocked.add(soil)
+                    return@forEach
+                }
+
+                cropsNeeded.merge(instance.cropDef, 1, Int::plus)
 
                 val stage = ghostStageOf(instance.cropDef) ?: return@forEach
                 val render = stage.toRenderData(level, soil, instance.cropDef.footprint, instance.cropDef.standPoses, instance.cropDef.rotatesWithPlot)
@@ -266,11 +284,15 @@ object LayoutRenderState {
 
                 // a stand already standing in the crop's space is in the way of it
                 level.getEntitiesOfClass(ArmorStand::class.java, instance.cropDef.footprint.spaceAbove(soil, CROP_HEIGHT))
+                    .filter { EntityUtils.carriesAnything(it) }
                     .forEach { badStands.add(it.uuid) }
             }
         }
 
-        val next = Plan(soilPhase, marks, ghosts, badStands, standGroups)
+        val next = Plan(soilPhase, marks, ghosts, badStands, blocked, standGroups)
+
+        if (soilComplete) PlannerNeeds.tellPlants(grid, cropsNeeded)
+        else PlannerNeeds.tellSoil(grid, soilNeeded)
 
         // a plan asking for what is already up is not a new plan: swapping it in handed the renderer
         // a fresh set of ghost stands for nothing
@@ -289,7 +311,9 @@ object LayoutRenderState {
     private fun announceIfFinished(grid: GreenhouseGrid, layout: GreenhouseLayout, next: Plan) {
         if (grid.state.completionMuted) return
 
-        val finished = next.marks.isEmpty() && next.ghosts.isEmpty() && next.badStands.isEmpty()
+        // a crop skipped for a slot that reads as taken is not a crop that got planted
+        val finished = next.marks.isEmpty() && next.ghosts.isEmpty() && next.badStands.isEmpty() &&
+                next.blocked.isEmpty()
         val was = lastFinished
 
         lastFinished = finished
@@ -352,7 +376,10 @@ object LayoutRenderState {
             }
         }
 
-        return level.getEntitiesOfClass(ArmorStand::class.java, footprint.spaceAbove(soil, CROP_HEIGHT)).any { !it.isMarker }
+        // hypixel hangs a player's level and name off invisible stands that follow them about, and
+        // one walking past a slot is not a plant standing in it
+        return level.getEntitiesOfClass(ArmorStand::class.java, footprint.spaceAbove(soil, CROP_HEIGHT))
+            .any { !it.isMarker && EntityUtils.carriesAnything(it) }
     }
 
     /**
@@ -413,6 +440,17 @@ object LayoutRenderState {
 
         marks[pos] = standing.getShape(level, pos) to if (adjustable) Mark.Adjust else Mark.Wrong
         return false
+    }
+
+    /** Whether the slot wants a block the player has to bring, rather than one to till or work on. */
+    private fun needsPlacing(level: Level, pos: BlockPos, wanted: BlockState): Boolean {
+        if (wanted.isAir) return false
+
+        val standing = level.getBlockState(pos)
+        if (standing.isAir) return true
+
+        return standing.block != wanted.block &&
+                !(standing.block in TILLABLE && wanted.block in TILLABLE)
     }
 
     /**

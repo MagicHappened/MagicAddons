@@ -46,11 +46,17 @@ class PresetUI(
             newButton -> onNewPreset()
             importButton -> openFormatMenu(event) { importPreset(it) }
             exportButton -> openFormatMenu(event) { exportPreset(it) }
-            applyToButton -> openMenu(event, "Assign To:", GreenhouseData.greenhouseGrids) { onAssignedLayout(shownLayout(), it) }
+            applyToButton -> openMenu(event, "Assign To:", assignTargets()) { onAssignedLayout(shownLayout(), it) }
             deleteButton -> askDelete(event)
             else -> return false
         }
         return true
+    }
+
+    /** The greenhouses to assign to, the one being stood in first and the rest in their own order. */
+    private fun assignTargets(): List<GreenhouseGrid> {
+        val current = GreenhouseData.getCurrentGrid()
+        return GreenhouseData.greenhouseGrids.sortedByDescending { it === current }
     }
 
     /** The list of formats at the mouse; the picked one goes to [onPick]. */

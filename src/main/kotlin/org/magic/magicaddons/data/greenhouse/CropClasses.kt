@@ -570,6 +570,23 @@ data class GreenhouseElementInstance(
     /** Whether this plant drinks: a finished mutation, placed or grown out, never does; a base crop always does. */
     val needsWater: Boolean get() = cropDef.needsWater && !finishedByPlacing && !fullyGrown
 
+    /**
+     * Whether the water it holds now sees it to its last stage. Null when the stage is unknown or
+     * the crop has only the one stage, so there is nothing to outlast and nothing to say.
+     */
+    fun outlastsGrowth(waterEffectPercent: Int): Boolean? {
+        if (!needsWater) return true
+
+        val water = waterLevel ?: return null
+        if (water <= WaterModel.DEATH) return false
+
+        val ticksLeft = WaterModel.ticksUntilDeath(water, waterEffectPercent) ?: return true
+        val stage = lowestStage ?: return null
+        if (cropDef.maxStage <= 1) return null
+
+        return ticksLeft > cropDef.maxStage - stage
+    }
+
     /** The lowest stage this plant might be at now, which is all a scan can promise about most. */
     val lowestStage: Int?
         get() = when (val stage = growthStage) {
