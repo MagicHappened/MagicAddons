@@ -324,11 +324,45 @@ class GreenhouseGrid(
     fun predictGrowth(ticks: Int, tickMs: Long) {
         if (ticks <= 0) return
 
-        val gardenTime = timeOfDayNow()
-
         // the plants themselves, not the runtime wrappers: a wrapper only exists while the plot is
         // loaded, which is never true of the greenhouse this is for
+        advance(layout.elementInstances, layout, ticks, tickMs)
+    }
+
+    /**
+     * The plot as it would stand after that many more ticks, built on plants of its own so nothing
+     * real is moved on.
+     */
+    fun predictedLayout(ticks: Int, tickMs: Long): GreenhouseLayout {
+        val preview = GreenhouseLayout(id = layout.id, name = layout.name, size = layout.size)
+
+        preview.slots.forEach { slot ->
+            val theirs = layout.getSlot(slot.x, slot.y)
+            slot.placedBlock = theirs?.placedBlock
+            slot.slotMark = theirs?.slotMark
+        }
+
         layout.elementInstances.forEach { instance ->
+            val slot = preview.getSlot(instance.slot.x, instance.slot.y) ?: return@forEach
+            preview.elementInstances.add(instance.copyForPrediction(slot))
+        }
+
+        advance(preview.elementInstances, preview, ticks, tickMs)
+
+        return preview
+    }
+
+    private fun advance(
+        instances: List<GreenhouseElementInstance>,
+        layout: GreenhouseLayout,
+        ticks: Int,
+        tickMs: Long
+    ) {
+        if (ticks <= 0) return
+
+        val gardenTime = timeOfDayNow()
+
+        instances.forEach { instance ->
             val maxStage = instance.cropDef.maxStage
 
             // a finished plant stops drinking, so no water is taken off one. Judged by the lowest

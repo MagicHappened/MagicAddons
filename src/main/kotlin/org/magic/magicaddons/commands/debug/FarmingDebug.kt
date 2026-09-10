@@ -32,6 +32,7 @@ import org.magic.magicaddons.data.greenhouse.PlantDex
 import org.magic.magicaddons.ui.screens.CropPreviewScreen
 import org.magic.magicaddons.features.farming.greenhousePresets.LayoutRenderState
 import org.magic.magicaddons.util.ChatUtils
+import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData
 import org.magic.magicaddons.util.EntityUtils.typePath
 import org.magic.magicaddons.util.PlayerUtils
 import org.magic.magicaddons.util.ScreenUtil
@@ -170,7 +171,30 @@ object FarmingDebug : AbstractCommand() {
                 plantDexCommand()
             )
             .then(previewCommand())
+            .then(
+                LiteralArgumentBuilder.literal<FabricClientCommandSource>("scan")
+                    .executes {
+                        GreenhouseData.scanUpdatesState = !GreenhouseData.scanUpdatesState
+                        ChatUtils.sendWithPrefix(
+                            "Greenhouse scans ${allowed(GreenhouseData.scanUpdatesState)} update the mod's data."
+                        )
+                        return@executes 1
+                    }
+            )
+            .then(
+                LiteralArgumentBuilder.literal<FabricClientCommandSource>("tool")
+                    .executes {
+                        GreenhouseData.toolUpdatesState = !GreenhouseData.toolUpdatesState
+                        ChatUtils.sendWithPrefix(
+                            "Diagnosis tool readings ${allowed(GreenhouseData.toolUpdatesState)} update the mod's data."
+                        )
+                        return@executes 1
+                    }
+            )
     }
+
+    /** How a toggle reads in the line that reports it. */
+    private fun allowed(on: Boolean): String = if (on) "now" else "no longer"
 
     /** The crop preview, on a crop when one is named and empty when not. */
     private fun previewCommand(): LiteralArgumentBuilder<FabricClientCommandSource> =

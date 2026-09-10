@@ -131,6 +131,12 @@ object GreenhouseData : GridCallbacks {
     private val PLACE_WINDOW: Duration = Duration.ofSeconds(5)
 
     private var plantDiagnosticHitBaseBlock: BlockPos? = null
+
+    /** Whether a greenhouse scan may change what the mod holds. Turned off from the farming debug command. */
+    var scanUpdatesState: Boolean = true
+
+    /** Whether a diagnosis read off the tool may change what the mod holds. */
+    var toolUpdatesState: Boolean = true
     private var plantDiagnosticListeningElement: ElementRuntimeState? = null
 
     private fun initKnownIds() {
@@ -163,6 +169,7 @@ object GreenhouseData : GridCallbacks {
     }
 
     private fun scanGridData() {
+        if (!scanUpdatesState) return
         if (!greenhousesInitialized) return
         val plot = PlotAPI.getCurrentPlot() ?: return
 
@@ -778,7 +785,7 @@ object GreenhouseData : GridCallbacks {
         plantDiagnosticHitBaseBlock = null
 
         when (event.title) {
-            "Crop Diagnostics" -> getDiagnosesData(realItems, listening, hit)
+            "Crop Diagnostics" -> if (toolUpdatesState) getDiagnosesData(realItems, listening, hit)
             "Desk" -> updateCropGrowth(realItems)
             "Greenhouse Upgrades" -> updateUpgrades(realItems)
         }

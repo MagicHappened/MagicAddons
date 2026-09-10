@@ -147,6 +147,22 @@ object Puffercloud : CropDefinitionProvider {
             CropStage(
                 blocks = listOf(
                     CropBlockState(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = wheatState(3)
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, -0.59375, 0.0),
+                        hashString = "2f9502a6895a90bbbb25921842fa6a213744ba967bbdfd861a44c92a79530aa0",
+                        isSmall = false
+                    )
+                ),
+                9..9
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
                         offset = BlockPos(0,1,0),
                         blockState = wheatState(3)
                     )

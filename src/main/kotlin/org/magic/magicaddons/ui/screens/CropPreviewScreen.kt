@@ -13,6 +13,7 @@ import net.minecraft.core.BlockPos
 import net.minecraft.network.chat.Component
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.Common
+import org.magic.magicaddons.ui.widgets.SliderWidget
 import org.magic.magicaddons.data.greenhouse.CropDefinition
 import org.magic.magicaddons.data.greenhouse.CropRegistry
 import org.magic.magicaddons.data.greenhouse.CropStage
@@ -27,7 +28,6 @@ import org.magic.magicaddons.util.compat.McCompat
 import org.magic.magicaddons.util.ScreenUtil.drawSimpleTooltip
 import org.magic.magicaddons.util.ScreenUtil.drawWarningBadge
 import org.magic.magicaddons.util.ScreenUtil.drawPanel
-import org.magic.magicaddons.util.ScreenUtil.drawButtonPanel
 import org.magic.magicaddons.util.ScreenUtil.drawMultilineBoxCentered
 
 /**
@@ -63,7 +63,6 @@ class CropPreviewScreen(
 
     /** The slow turn runs until the player turns the plant themselves, and again for the next crop. */
     private var spinning = true
-    private var draggingSlider = false
 
     /** The looks a plant has more than one of at a stage: what it craves, or whether it sleeps. */
     enum class Variant(private val label: String) {
@@ -113,9 +112,8 @@ class CropPreviewScreen(
     private var previewY = 0
     private var previewSize = 0
 
-    private var sliderX = 0
-    private var sliderY = 0
-    private var sliderW = 0
+    /** The stage picker across the top of the box; its label is drawn above it. */
+    private val slider = SliderWidget { setStage(it) }
 
     override fun onInit() {
         super.onInit()
@@ -131,9 +129,9 @@ class CropPreviewScreen(
 
         // label and track just inside the box's top edge, on the backdrop, reaching across
         // until the incomplete-data mark's corner
-        sliderX = previewX + SLIDER_LEFT_INSET
-        sliderW = previewX + previewSize - SLIDER_RIGHT_INSET - sliderX
-        sliderY = previewY + font.lineHeight + SLIDER_TOP_GAP
+        slider.x = previewX + SLIDER_LEFT_INSET
+        slider.width = previewX + previewSize - SLIDER_RIGHT_INSET - slider.x
+        slider.y = previewY + font.lineHeight + SLIDER_TOP_GAP
 
         // the picker stands off to the left, its top lined up with the preview's
         selector.height = SELECTOR_HEIGHT
@@ -156,6 +154,8 @@ class CropPreviewScreen(
         variantSelector.values = variantsFor(def)
         variantSelector.currentValue = variantSelector.values.firstOrNull()
         stage = stage.coerceIn(1, def.maxStage)
+        slider.range(1, def.maxStage)
+        slider.show(stage)
         measureCrop(def)
         rebuildScene()
     }
@@ -185,6 +185,8 @@ class CropPreviewScreen(
         val clamped = newStage.coerceIn(1, def.maxStage)
 
         if (clamped == stage) return
+
+        slider.show(clamped)
 
         // one look covers a whole range of stages, so stepping inside that range draws the same scene
         val look = sceneStage
@@ -356,21 +358,7 @@ class CropPreviewScreen(
     private fun drawSlider(graphics: GuiGraphicsExtractor, def: CropDefinition, mouseX: Int, mouseY: Int) {
         if (def.maxStage <= 1) return
 
-        val trackY = sliderY + SLIDER_HEIGHT / 2
-
-        graphics.fill(sliderX, trackY - 1, sliderX + sliderW, trackY + 1, Common.UI.BORDER_COLOR)
-
-        val handleX = sliderX + ((stage - 1) * (sliderW - HANDLE_WIDTH)) / (def.maxStage - 1)
-        val onHandle = mouseX in handleX until handleX + HANDLE_WIDTH && mouseY in sliderY until sliderY + SLIDER_HEIGHT
-
-        // the handle is a small button: washed under the mouse, shaded while it is being dragged
-        graphics.drawButtonPanel(
-            handleX, sliderY,
-            handleX + HANDLE_WIDTH, sliderY + SLIDER_HEIGHT,
-            hovered = onHandle || draggingSlider,
-            pressed = draggingSlider,
-            fill = Common.UI.ACCENT_COLOR
-        )
+        slider.render(graphics, mouseX, mouseY)
 
         val label = "Stage $stage / ${def.maxStage}"
 
@@ -378,7 +366,7 @@ class CropPreviewScreen(
             font,
             Component.literal(label),
             previewX + (previewSize - font.width(label)) / 2,
-            sliderY - font.lineHeight - 2,
+            slider.y - font.lineHeight - 2,
             Common.UI.TEXT_COLOR,
             false
         )
@@ -417,13 +405,7 @@ class CropPreviewScreen(
         val my = event.y.toInt()
         val def = selectedDef
 
-        if (def != null && def.maxStage > 1 &&
-            my in sliderY - 2..sliderY + SLIDER_HEIGHT + 2 && mx in sliderX..sliderX + sliderW
-        ) {
-            draggingSlider = true
-            dragSliderTo(event.x)
-            return true
-        }
+        if (def != null && slider.mouseClicked(event.x, event.y)) return true
 
         if (event.button() == 0 &&
             mx in previewX..previewX + previewSize && my in previewY..previewY + previewSize
@@ -436,10 +418,7 @@ class CropPreviewScreen(
     }
 
     override fun onMouseDragged(event: MouseButtonEvent, dragX: Double, dragY: Double): Boolean {
-        if (draggingSlider) {
-            dragSliderTo(event.x)
-            return true
-        }
+        if (slider.mouseDragged(event.x)) return true
 
         if (draggingView) {
             spinning = false
@@ -452,19 +431,10 @@ class CropPreviewScreen(
     }
 
     override fun onMouseReleased(event: MouseButtonEvent): Boolean {
-        draggingSlider = false
+        slider.mouseReleased()
         draggingView = false
 
         return super.onMouseReleased(event)
-    }
-
-    private fun dragSliderTo(mouseX: Double) {
-        val def = selectedDef ?: return
-        if (def.maxStage <= 1) return
-
-        val along = ((mouseX - sliderX) / sliderW).coerceIn(0.0, 1.0)
-
-        setStage(1 + Math.round(along * (def.maxStage - 1)).toInt())
     }
 
     override fun onMouseMoved(mouseX: Double, mouseY: Double) {
@@ -506,9 +476,6 @@ class CropPreviewScreen(
 
         /** The same breathing room the greenhouse screen gives its grid inside the backdrop. */
         const val BORDER_PAD: Int = 6
-
-        const val SLIDER_HEIGHT: Int = 10
-        const val HANDLE_WIDTH: Int = 8
 
         /** Where the slider's track sits inside the box: from its left and right edges, and under the label. */
         const val SLIDER_LEFT_INSET: Int = 10

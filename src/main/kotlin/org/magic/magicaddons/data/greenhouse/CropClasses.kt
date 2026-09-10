@@ -570,6 +570,15 @@ data class GreenhouseElementInstance(
     /** Whether this plant drinks: a finished mutation, placed or grown out, never does; a base crop always does. */
     val needsWater: Boolean get() = cropDef.needsWater && !finishedByPlacing && !fullyGrown
 
+    /** A copy on [slot], readings included, for a prediction that must not move the real plant. */
+    fun copyForPrediction(slot: LayoutSlot): GreenhouseElementInstance =
+        copy(slot = slot, readings = readings.toMutableMap()).also {
+            it.waterPredictedInDebt = waterPredictedInDebt
+            it.waterExact = waterExact
+            it.firstSeenStage = firstSeenStage
+            it.placed = placed
+        }
+
     /**
      * Whether the water it holds now sees it to its last stage. Null when the stage is unknown or
      * the crop has only the one stage, so there is nothing to outlast and nothing to say.
