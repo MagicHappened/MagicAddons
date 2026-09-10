@@ -162,6 +162,10 @@ class GridWidget(
     fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean =
         isMouseOver(mouseButtonEvent.x, mouseButtonEvent.y)
 
+    /** The plant drawn under this point, or null on an empty slot. */
+    fun elementAt(mouseX: Double, mouseY: Double): GreenhouseElementInstance? =
+        elementWidgets.firstOrNull { it.isMouseOver(mouseX, mouseY) }?.instance
+
     fun isMouseOver(mouseX: Double, mouseY: Double): Boolean =
         inRect(mouseX, mouseY, x, y, gridSpan, gridSpan)
 

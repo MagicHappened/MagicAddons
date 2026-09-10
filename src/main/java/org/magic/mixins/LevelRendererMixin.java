@@ -32,6 +32,7 @@ import org.jspecify.annotations.Nullable;
 import org.magic.magicaddons.commands.debug.FarmingDebug;
 import org.magic.magicaddons.commands.debug.CropCollector;
 import org.magic.magicaddons.features.farming.greenhousePresets.LayoutRenderState;
+import org.magic.magicaddons.features.farming.greenhousePresets.PlantSpotlight;
 import org.magic.magicaddons.util.EntityUtils;
 import org.magic.misc.EntityRenderModifier;
 import org.magic.misc.WrappedEntityRenderState;
@@ -120,6 +121,13 @@ public abstract class LevelRendererMixin {
         // once in chat rather than ending the frame
         try {
             LayoutRenderState.INSTANCE.submit(
+                    poseStack,
+                    submitNodeCollector,
+                    levelRenderState.cameraRenderState.pos
+            );
+
+            // the plant picked on the greenhouse screen, outlined until its ten seconds run out
+            PlantSpotlight.INSTANCE.submit(
                     poseStack,
                     submitNodeCollector,
                     levelRenderState.cameraRenderState.pos

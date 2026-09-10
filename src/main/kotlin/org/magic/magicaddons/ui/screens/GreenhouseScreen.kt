@@ -25,11 +25,13 @@ import org.magic.magicaddons.data.greenhouse.GREENHOUSE_SIZE
 import org.magic.magicaddons.data.greenhouse.GreenhouseGrid
 import org.magic.magicaddons.data.greenhouse.GreenhouseLayout
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData
+import org.magic.magicaddons.features.farming.greenhousePresets.PlantSpotlight
 import org.magic.magicaddons.features.farming.greenhousePresets.PlannerNeeds
 import org.magic.magicaddons.ui.HoverableContainer
 import org.magic.magicaddons.ui.OverlayContext
 import org.magic.magicaddons.ui.OverlayRenderable
 import org.magic.magicaddons.ui.widgets.PickContext
+import org.magic.magicaddons.ui.widgets.SliderWidget
 import org.magic.magicaddons.ui.widgets.greenhouse.EditLayoutContextMenu
 import org.magic.magicaddons.ui.widgets.EnumWidget
 import org.magic.magicaddons.ui.widgets.config.ClickableButtonWidget
@@ -121,7 +123,14 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
     private var shelfWidth: Int = 0
     private var viewShelfY: Int = 0
     private var viewShelfHeight: Int = 0
+    private var predictShelfY: Int = 0
+    private var predictShelfHeight: Int = 0
     private var actionShelfY: Int = 0
+
+    /** The greenhouse widget a prediction stands in for, put back when the slider returns to zero. */
+    private var predictionBase: GridWidget? = null
+
+    private val predictSlider = SliderWidget { showPrediction(it) }
 
     /** Whether the mouse is on the next tick box, which then explains the clock. */
     private var timeHovered = false
@@ -277,6 +286,26 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
 
         // the view shelf holds the mode toggle and, for presets, the selector; the action shelf
         // under it holds whatever the mode can do
+        layoutShelves()
+
+        // bottom centre, in the margin the grid already leaves under itself
+        cropPreviewButton.x = (width - cropPreviewButton.width) / 2
+        cropPreviewButton.y = height - cropPreviewButton.height - Common.UI.SPACING_LARGE - 2
+
+        layoutGreenhouseWidgets()
+        layoutPresetWidgets()
+
+        when (currentDisplay) {
+            CurrentDisplay.Greenhouses -> initGreenhouseLayout()
+            CurrentDisplay.Presets -> initPresetLayout()
+        }
+    }
+
+    /**
+     * The shelves down the left: what is shown, the prediction slider in greenhouse mode, and what
+     * the mode can do. Measured again on a mode switch, since the middle shelf is greenhouses only.
+     */
+    private fun layoutShelves() {
         shelfLeft = Common.UI.SPACING_LARGE
         shelfWidth = (startX - BORDER_PADDING - Common.UI.SPACING_LARGE - shelfLeft).coerceAtLeast(MIN_ACTION_ROW_WIDTH)
         viewShelfY = startY - BORDER_PADDING
@@ -290,24 +319,27 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
         gridSelector.closeList()
 
         viewShelfHeight = shelfTitleHeight() + ActionPanel.PADDING * 2 + currentDisplayToggle.height
-        actionShelfY = viewShelfY + viewShelfHeight + Common.UI.SPACING_LARGE
+
+        predictShelfY = viewShelfY + viewShelfHeight + Common.UI.SPACING_LARGE
+        predictShelfHeight = if (currentDisplay == CurrentDisplay.Greenhouses) {
+            shelfTitleHeight() + ActionPanel.PADDING * 2 + SliderWidget.HEIGHT
+        } else {
+            0
+        }
+
+        predictSlider.x = shelfLeft + ActionPanel.PADDING
+        predictSlider.y = predictShelfY + shelfTitleHeight() + ActionPanel.PADDING
+        predictSlider.width = (shelfWidth - ActionPanel.PADDING * 2 - PREDICT_LABEL_WIDTH)
+            .coerceAtLeast(SliderWidget.HANDLE_WIDTH * 2)
+        predictSlider.range(0, MAX_PREDICT_TICKS)
+
+        actionShelfY = predictShelfY +
+                if (predictShelfHeight > 0) predictShelfHeight + Common.UI.SPACING_LARGE else 0
 
         // one row under the title, offered to whichever mode is on screen, so the two put their
         // buttons in the same place without either working out where that is
         actionRowX = shelfLeft
         actionRowY = actionShelfY + shelfTitleHeight()
-
-        // bottom centre, in the margin the grid already leaves under itself
-        cropPreviewButton.x = (width - cropPreviewButton.width) / 2
-        cropPreviewButton.y = height - cropPreviewButton.height - Common.UI.SPACING_LARGE - 2
-
-        layoutGreenhouseWidgets()
-        layoutPresetWidgets()
-
-        when (currentDisplay) {
-            CurrentDisplay.Greenhouses -> initGreenhouseLayout()
-            CurrentDisplay.Presets -> initPresetLayout()
-        }
     }
 
     /** The plot bookmarks, the teleport tab, the greenhouse buttons and the hover controls around the grid. */
@@ -349,6 +381,7 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
         }
 
     private fun initGreenhouseLayout() {
+        dropPrediction()
         displayedGridWidget = null
         hoveredElement = null
         greenhouseGridWidgets.clear()
@@ -404,6 +437,7 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
     }
 
     private fun initPresetLayout() {
+        dropPrediction()
         presetGridWidgets.clear()
         displayedGridWidget = null
         hoveredElement = null
@@ -807,6 +841,25 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
 
         graphics.drawShelf(shelfLeft, viewShelfY, shelfLeft + shelfWidth, viewShelfY + viewShelfHeight, SHELF_VIEW)
 
+        if (predictShelfHeight > 0) {
+            graphics.drawShelf(
+                shelfLeft,
+                predictShelfY,
+                shelfLeft + shelfWidth,
+                predictShelfY + predictShelfHeight,
+                SHELF_PREDICT
+            )
+            predictSlider.render(graphics, mouseX, mouseY)
+            graphics.text(
+                font,
+                Component.literal(predictLabel()),
+                predictSlider.x + predictSlider.width + Common.UI.SPACING,
+                predictSlider.y + (SliderWidget.HEIGHT - font.lineHeight) / 2 + 1,
+                Common.UI.TEXT_COLOR,
+                false
+            )
+        }
+
         val panel = if (currentDisplay == CurrentDisplay.Greenhouses) greenhousePanel else presetUI
         if (panel.hasShown()) {
             val title = if (currentDisplay == CurrentDisplay.Greenhouses) SHELF_GREENHOUSE else SHELF_PRESET
@@ -967,6 +1020,10 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
             return true
         }
 
+        if (predictShelfHeight > 0 &&
+            predictSlider.mouseClicked(mouseButtonEvent.x / drawScale, mouseButtonEvent.y / drawScale)
+        ) return true
+
         if (cropPreviewButton.mouseClicked(mouseButtonEvent, doubled)) {
             ScreenUtil.setScreen(CropPreviewScreen(this))
             return true
@@ -976,10 +1033,12 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
             when (currentDisplay) {
                 CurrentDisplay.Greenhouses -> {
                     currentDisplay = CurrentDisplay.Presets
+                    relayoutShelves()
                     initPresetLayout()
                 }
                 CurrentDisplay.Presets -> {
                     currentDisplay = CurrentDisplay.Greenhouses
+                    relayoutShelves()
                     initGreenhouseLayout()
                 }
             }
@@ -992,8 +1051,27 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
         return super.onMouseClicked(mouseButtonEvent, doubled)
     }
 
+    /**
+     * Outlines the real plant in the world, for a plant of the greenhouse being stood in. A plant of
+     * any other greenhouse has no stands or blocks loaded to outline.
+     */
+    private fun spotlight(instance: GreenhouseElementInstance): Boolean {
+        val grid = GreenhouseData.getCurrentGrid() ?: return false
+        if (grid !== displayedGrid()) return false
+
+        val runtime = grid.elements.firstOrNull { it.instance === instance } ?: return false
+
+        PlantSpotlight.show(runtime)
+        return true
+    }
+
     /** The clicks greenhouse mode takes: the middle click, the Unplan button, the bookmarks and the swatches. */
     private fun greenhouseClicked(event: MouseButtonEvent, doubled: Boolean): Boolean {
+        if (event.button() == 0) {
+            val clicked = displayedGridWidget?.elementAt(event.x, event.y)
+            if (clicked != null && spotlight(clicked)) return true
+        }
+
         // the wheel's other job: a middle click in greenhouse mode makes it walk the swatches
         // instead of the plots, and another puts it back. Remembered past the screen, not to disk
         if (event.button() == 2) {
@@ -1118,11 +1196,13 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
     }
 
     override fun onMouseDragged(event: MouseButtonEvent, dragX: Double, dragY: Double): Boolean {
+        if (predictSlider.mouseDragged(event.x / drawScale)) return true
         if (currentDisplay == CurrentDisplay.Presets && plantPalette.mouseDragged(scaled(event), dragX, dragY)) return true
         return super.onMouseDragged(event, dragX, dragY)
     }
 
     override fun onMouseReleased(event: MouseButtonEvent): Boolean {
+        predictSlider.mouseReleased()
         plantPalette.mouseReleased()?.let { placeDragged(it, event.x / drawScale, event.y / drawScale) }
         return super.onMouseReleased(event)
     }
@@ -1236,8 +1316,43 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
         addContext(menu)
     }
 
+    /** Measures the shelves again and puts every mode's widgets back where the new measurements say. */
+    private fun relayoutShelves() {
+        layoutShelves()
+        layoutGreenhouseWidgets()
+        layoutPresetWidgets()
+    }
+
+    /** Redraws the greenhouse on screen as it would stand after that many more growth ticks. */
+    private fun showPrediction(ticks: Int) {
+        val real = predictionBase ?: displayedGridWidget ?: return
+
+        if (ticks <= 0) {
+            displayedGridWidget = real
+            predictionBase = null
+            return
+        }
+
+        val grid = GreenhouseData.greenhouseGrids.firstOrNull { it.layout === real.layout } ?: return
+        val tickMs = GreenhouseData.currentGrowthTickMs() ?: return
+
+        predictionBase = real
+        displayedGridWidget = newGridWidget(grid.predictedLayout(ticks, tickMs), gridTurns())
+    }
+
+    /** Puts the real greenhouse back on screen, for when the screen moves to another one. */
+    private fun dropPrediction() {
+        predictSlider.set(0)
+        predictionBase = null
+    }
+
+    /** What the slider reads beside it: the plot as it stands, or how far ahead it is being shown. */
+    private fun predictLabel(): String =
+        if (predictSlider.value == 0) PREDICT_NOW else "+${predictSlider.value}"
+
     /** Shows the greenhouse with [layout], which also becomes the current greenhouse for the rest of the mod. */
     private fun gridWidgetChanged(layout: GreenhouseLayout) {
+        dropPrediction()
         val widget = greenhouseGridWidgets.find { it.layout == layout } ?: return
 
         GreenhouseData.greenhouseGrids
@@ -1375,6 +1490,16 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
         private const val TIME_CENTER_Y: Int = 18
 
         private const val SHELF_VIEW: String = "View"
+        private const val SHELF_PREDICT: String = "Prediction"
+
+        /** What the slider reads at zero, where the plot is shown as it stands. */
+        private const val PREDICT_NOW: String = "Now"
+
+        /** Room kept beside the slider for the number of ticks. */
+        private const val PREDICT_LABEL_WIDTH: Int = 22
+
+        /** The furthest ahead the slider looks. */
+        private const val MAX_PREDICT_TICKS: Int = 10
         private const val SHELF_GREENHOUSE: String = "Greenhouse"
         private const val SHELF_PRESET: String = "Preset"
 
