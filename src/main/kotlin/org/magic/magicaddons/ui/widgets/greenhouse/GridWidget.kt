@@ -1,5 +1,9 @@
 package org.magic.magicaddons.ui.widgets.greenhouse
 
+import org.magic.magicaddons.util.ScreenUtil.component4
+import org.magic.magicaddons.util.ScreenUtil.renderFakeItem
+import org.magic.magicaddons.util.ScreenUtil.eased
+import net.minecraft.world.item.ItemStack
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.components.Renderable
 import net.minecraft.client.gui.components.events.GuiEventListener
@@ -36,6 +40,22 @@ class GridWidget(
 
     /** Plants placed since the last build, which arrive with a little pop. Cleared by [init]. */
     val justPlaced: MutableSet<GreenhouseElementInstance> = mutableSetOf()
+
+    /** Plants marked since the last build, which flash once. Cleared by [init]. */
+    val justMarked: MutableSet<GreenhouseElementInstance> = mutableSetOf()
+
+    /** A plant taken off the grid, drawn shrinking away where it stood for a moment after. */
+    private class Vanishing(val rect: IntArray, val stack: ItemStack, val at: Long)
+
+    private val vanishing = mutableListOf<Vanishing>()
+
+    /** Notes a plant about to be taken off, so it can be drawn shrinking away rather than gone at once. */
+    fun noteVanishing(instance: GreenhouseElementInstance) {
+        val footprint = instance.cropDef.footprint
+        val rect = cellRect(instance.slot.x, instance.slot.y, footprint.width, footprint.height)
+
+        vanishing.add(Vanishing(rect, stackFor(instance.cropDef), System.currentTimeMillis()))
+    }
 
     /** Quarter turns clockwise the picture is given; the slots underneath never move. */
     var turns: Int = 0
@@ -129,10 +149,29 @@ class GridWidget(
             widget.waterEffect = layout.waterEffectAt(instance.slot)
             widget.renderedStack = stackFor(instance.cropDef)
             if (instance in justPlaced) widget.appearedAt = System.currentTimeMillis()
+            if (instance in justMarked) widget.markedAt = System.currentTimeMillis()
             widget.inPreset = layout.kind == GreenhouseLayout.Kind.PRESET
             elementWidgets.add(widget)
         }
         justPlaced.clear()
+        justMarked.clear()
+    }
+
+    /** The plants taken off since a moment ago, each drawn smaller the longer it has been gone. */
+    private fun renderVanishing(graphics: GuiGraphicsExtractor) {
+        val now = System.currentTimeMillis()
+        vanishing.removeAll { now - it.at >= VANISH_MS }
+
+        vanishing.forEach { gone ->
+            val shrink = 1f - eased(gone.at, VANISH_MS)
+            val (left, top, right, bottom) = gone.rect
+            val centerX = (left + right) / 2f
+            val centerY = (top + bottom) / 2f
+            val size = ((minOf(right - left, bottom - top) - slotSize / 5) * shrink).toInt()
+            if (size <= 0) return@forEach
+
+            graphics.renderFakeItem(gone.stack, (centerX - size / 2f).toInt(), (centerY - size / 2f).toInt(), size, size)
+        }
     }
 
     override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
@@ -151,6 +190,7 @@ class GridWidget(
         elementWidgets.forEach {
             it.extractRenderState(graphics, mouseX, mouseY, delta)
         }
+        renderVanishing(graphics)
 
         // drawn after every plant so the text of one never ends up under the plant next to it
         pinnedInfo?.let { info ->
@@ -176,6 +216,9 @@ class GridWidget(
     companion object {
         /** The line drawn between one slot and the next, and around the outside. */
         const val LINE_WIDTH: Int = 1
+
+        /** How long a plant taken off keeps shrinking where it stood. */
+        private const val VANISH_MS: Long = 150
 
         /**
          * The largest slot that fits a grid into the room available, lines included. Divided once,

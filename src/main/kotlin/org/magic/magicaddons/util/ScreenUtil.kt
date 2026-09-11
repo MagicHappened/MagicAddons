@@ -8,6 +8,7 @@ import net.minecraft.client.renderer.state.gui.GuiElementRenderState
 import net.minecraft.client.gui.navigation.ScreenRectangle
 import com.mojang.blaze3d.vertex.VertexConsumer
 import org.magic.magicaddons.Common
+import org.magic.magicaddons.features.customization.Customization
 import com.mojang.blaze3d.pipeline.RenderPipeline
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.Font
@@ -27,6 +28,7 @@ import net.minecraft.client.renderer.block.dispatch.BlockStateModelPart
 import net.minecraft.client.renderer.state.gui.ColoredRectangleRenderState
 import net.minecraft.client.renderer.state.gui.GuiTextRenderState
 import net.minecraft.network.chat.Component
+import net.minecraft.network.chat.FontDescription
 import net.minecraft.util.FormattedCharSequence
 import net.minecraft.world.item.ItemDisplayContext
 import org.joml.Matrix3x2f
@@ -81,6 +83,33 @@ object ScreenUtil {
 
     operator fun IntArray.component4(): Int = this[3]
 
+    /**
+     * Writing on one of the mod's screens. Every one of them draws through this, so the text shadow
+     * setting reaches all of it rather than the places that happened to ask for a shadow.
+     */
+    fun GuiGraphicsExtractor.modText(font: Font, text: Component, x: Int, y: Int, color: Int) {
+        text(font, inModFont(text), x, y, color, Customization.textShadow)
+    }
+
+    fun GuiGraphicsExtractor.modText(font: Font, text: String, x: Int, y: Int, color: Int) {
+        modText(font, Component.literal(text), x, y, color)
+    }
+
+    /** The same, for one line of text already wrapped by the font; see [splitMod] for the wrapping. */
+    fun GuiGraphicsExtractor.modText(font: Font, text: FormattedCharSequence, x: Int, y: Int, color: Int) {
+        text(font, text, x, y, color, Customization.textShadow)
+    }
+
+    /** [text] in the font the settings pick, when they pick one other than the game's own. */
+    fun inModFont(text: Component): Component {
+        val fontId = Customization.fontId ?: return text
+
+        return text.copy().withStyle { style -> style.withFont(FontDescription.Resource(fontId)) }
+    }
+
+    /** Wraps text for the mod's screens, in the picked font, so every wrapped line carries it. */
+    fun Font.splitMod(text: Component, width: Int): List<FormattedCharSequence> = split(inModFont(text), width)
+
     /** [text] when it fits in [room], else cut to fit with an ellipsis on the end. */
     fun ellipsised(font: Font, text: String, room: Int): String =
         if (font.width(text) <= room) text
@@ -112,7 +141,8 @@ object ScreenUtil {
         hovered: Boolean,
         pressed: Boolean = false,
         fill: Int = Common.UI.BACKGROUND_COLOR,
-        frame: Int = Common.UI.BORDER_COLOR
+        frame: Int = Common.UI.BORDER_COLOR,
+        frameSize: Int = Common.UI.BORDER_SIZE
     ) {
         fill(x1, y1, x2, y2, fill)
         if (pressed) {
@@ -120,13 +150,13 @@ object ScreenUtil {
         } else if (hovered) {
             fill(x1, y1, x2, y2, Common.UI.HOVER_WASH)
         }
-        drawBorder(x1, y1, x2, y2, Common.UI.BORDER_SIZE, if (pressed) Common.UI.SELECTED_FRAME_COLOR else frame)
+        drawBorder(x1, y1, x2, y2, frameSize, if (pressed) Common.UI.SELECTED_FRAME_COLOR else frame)
     }
 
     /** The ground of a text field or checkbox: a dark inset, framed white only while it has the keyboard. */
-    fun GuiGraphicsExtractor.drawField(x1: Int, y1: Int, x2: Int, y2: Int, focused: Boolean) {
+    fun GuiGraphicsExtractor.drawField(x1: Int, y1: Int, x2: Int, y2: Int, focused: Boolean, frameSize: Int = Common.UI.BORDER_SIZE) {
         fill(x1, y1, x2, y2, Common.UI.FIELD_COLOR)
-        if (focused) drawBorder(x1, y1, x2, y2, Common.UI.BORDER_SIZE, Common.UI.SELECTED_FRAME_COLOR)
+        if (focused) drawBorder(x1, y1, x2, y2, frameSize, Common.UI.SELECTED_FRAME_COLOR)
     }
 
     /** A red square with a white exclamation mark, for data that may be wrong. */
@@ -290,6 +320,13 @@ object ScreenUtil {
     }
 
     /** How far along an animation of [durationMs] started at [startedAt] is, eased so it lands softly. */
+    /** [color] with its alpha scaled by [fraction], for something fading in or out. */
+    fun withAlpha(color: Int, fraction: Float): Int {
+        val alpha = (((color ushr 24) and 0xFF) * fraction.coerceIn(0f, 1f)).toInt()
+
+        return (color and 0xFFFFFF) or (alpha shl 24)
+    }
+
     fun eased(startedAt: Long, durationMs: Long): Float {
         val linear = ((System.currentTimeMillis() - startedAt) / durationMs.toFloat()).coerceIn(0f, 1f)
         val back = 1f - linear
@@ -359,7 +396,7 @@ object ScreenUtil {
         shadow: Boolean = false
     ): Int {
         var currentY = y
-        font.split(text, maxWidth.coerceAtLeast(font.width("W"))).forEach { line ->
+        font.splitMod(text, maxWidth.coerceAtLeast(font.width("W"))).forEach { line ->
             text(font, line, x, currentY, color, shadow)
             currentY += font.lineHeight
         }
@@ -399,7 +436,7 @@ object ScreenUtil {
     private fun wrapTooltip(text: String, maxWidth: Int): List<FormattedCharSequence> {
         val font = Minecraft.getInstance().font
         return text.split('\n').flatMap { line ->
-            font.split(Component.literal(line), maxWidth.coerceAtLeast(font.width("W")))
+            font.splitMod(Component.literal(line), maxWidth.coerceAtLeast(font.width("W")))
         }
     }
 
@@ -502,6 +539,7 @@ object ScreenUtil {
         if (size > CRISP_ITEM_ABOVE && !renderDecorations) {
             val state = TrackingItemStackRenderState()
             mc.itemModelResolver.updateForTopItem(state, stack, ItemDisplayContext.GUI, mc.level, null, 0)
+
             guiRenderState.addPicturesInPictureState(
                 ItemIconRenderState(state, x, y, x + size, y + size, size.toFloat(), Matrix3x2f(pose()))
             )

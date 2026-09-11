@@ -8,6 +8,7 @@ import net.minecraft.network.chat.ClickEvent
 import net.minecraft.network.chat.Component
 import net.minecraft.network.chat.HoverEvent
 import net.minecraft.network.chat.Style
+import org.magic.magicaddons.features.customization.Customization
 import java.time.Instant
 
 object ChatUtils {
@@ -43,7 +44,7 @@ object ChatUtils {
     }
 
     fun buildWithPrefix(message: Component?): MutableComponent {
-        val prefix = Component.literal("[MA] ").withStyle(ChatFormatting.GOLD)
+        val prefix = Component.literal("[MA] ").withColor(Customization.prefixColour)
 
         return if (message != null && message != Component.empty()) prefix.append(message) else prefix
     }

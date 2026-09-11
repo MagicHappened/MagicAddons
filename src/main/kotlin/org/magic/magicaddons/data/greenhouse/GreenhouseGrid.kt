@@ -228,12 +228,10 @@ class GreenhouseGrid(
                     carryOver(standing, found)
                 } else {
                     if (standing == null && def.isMutation && state.lastUpdateTimestamp != null) {
-                        // a mutation the player just put down, or one that appeared above stage one
-                        // while the plot was being watched, was placed: a spawn starts at stage one.
-                        // Anything else where nothing stood at the last look grew there on its own
+                        // only a plant the player was seen putting down counts as placed; anything
+                        // else where nothing stood at the last look grew there on its own
                         val placedNow = callbacks.takePlacement(def, found.instance.slot, this)
-                        val watched = state.hasRuntimeReferences && (found.instance.lowestStage ?: 1) > 1
-                        if (found.instance.placed || placedNow || watched) {
+                        if (found.instance.placed || placedNow) {
                             callbacks.claimPlacedPlant(found.instance)
                         } else {
                             callbacks.claimSpawnedMutation(found.instance, layout)

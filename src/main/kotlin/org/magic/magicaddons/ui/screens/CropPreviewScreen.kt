@@ -13,6 +13,7 @@ import net.minecraft.core.BlockPos
 import net.minecraft.network.chat.Component
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.Common
+import org.magic.magicaddons.features.customization.Customization
 import org.magic.magicaddons.ui.widgets.SliderWidget
 import org.magic.magicaddons.data.greenhouse.CropDefinition
 import org.magic.magicaddons.data.greenhouse.CropRegistry
@@ -41,6 +42,8 @@ class CropPreviewScreen(
 ) : MagicScreen(Component.literal("Crop Preview"), "the crop preview"), OverlayContext {
 
     override val overlays: MutableList<OverlayRenderable> = mutableListOf()
+
+    override val backgroundName: String = Customization.PREVIEW_SCREEN
 
     private var selectedDef: CropDefinition? = null
     private var stage: Int = 1
@@ -453,7 +456,7 @@ class CropPreviewScreen(
         overlaysKeyPressed(keyEvent) || super.onKeyPressed(keyEvent)
 
     /** Escape goes back to the screen it came from, or out to the game when opened by command. */
-    override fun onClose() {
+    override fun finishClose() {
         McCompat.setScreen(parent)
     }
 

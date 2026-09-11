@@ -174,7 +174,8 @@ object Codecs {
                     x,
                     y,
                     block.orElse(null),
-                    marking.orElse(null)?.let { LayoutSlot.Marking.entries[it] }
+                    // a mark from a version that had more of them is dropped rather than crashing the load
+                    marking.orElse(null)?.let { LayoutSlot.Marking.entries.getOrNull(it) }
                 )
             }
         }

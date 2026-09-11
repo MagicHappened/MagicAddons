@@ -1,5 +1,6 @@
 package org.magic.magicaddons.ui.screens
 
+import org.magic.magicaddons.util.ScreenUtil.modText
 import org.magic.magicaddons.commands.internal.MainInternal
 import org.magic.magicaddons.data.greenhouse.Footprint
 import org.magic.magicaddons.ui.widgets.greenhouse.PaletteItem
@@ -24,6 +25,7 @@ import org.magic.magicaddons.Common
 import org.magic.magicaddons.data.greenhouse.GREENHOUSE_SIZE
 import org.magic.magicaddons.data.greenhouse.GreenhouseGrid
 import org.magic.magicaddons.data.greenhouse.GreenhouseLayout
+import org.magic.magicaddons.features.customization.Customization
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData
 import org.magic.magicaddons.features.farming.greenhousePresets.PlantSpotlight
 import org.magic.magicaddons.features.farming.greenhousePresets.PlannerNeeds
@@ -67,6 +69,9 @@ import tech.thatgravyboat.skyblockapi.api.profile.garden.PlotAPI
 
 class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "the greenhouse screen"), HoverableContainer, OverlayContext {
 
+    override val backgroundName: String = Customization.GREENHOUSE_SCREEN
+
+
     enum class CurrentDisplay {
         Greenhouses,
         Presets
@@ -99,12 +104,9 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
     private val greenhouseGridWidgets: MutableList<GridWidget> = mutableListOf()
     private val presetGridWidgets: MutableList<GridWidget> = mutableListOf()
 
-    /** Shows the mode's name and switches to the other; as wide as the longer of the two names. */
-    private val currentDisplayToggle = ClickableButtonWidget(
-        maxOf(ClickableButtonWidget.widthFor(TOGGLE_PLOTS), ClickableButtonWidget.widthFor(TOGGLE_PRESETS)),
-        ClickableButtonWidget.HEIGHT,
-        Component.literal(TOGGLE_PLOTS)
-    )
+    /** The two modes side by side, the one on screen drawn pressed in so it is plain which is showing. */
+    private val plotsButton = ClickableButtonWidget(TOGGLE_PLOTS)
+    private val presetsButton = ClickableButtonWidget(TOGGLE_PRESETS)
 
     /** What the player can do to the greenhouse on screen, the other end of the Planner button. */
     private val greenhousePanel = GreenhousePanel(
@@ -201,7 +203,16 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
     ).apply { items = listOf(TELEPORT_LABEL) }
 
     /** The plants a preset can be built from, under the preset shelf. */
-    private val plantPalette = PlantPalette(this, onClearAll = { askClearPlot(it) }, onUndo = { undo() }, onRedo = { redo() })
+    private val plantPalette = PlantPalette(
+        this,
+        onClearAll = { askClearPlot(it) },
+        onUndo = { undo() },
+        onRedo = { redo() },
+        uniqueMissing = { uniqueMissingFromPreset(it) }
+    )
+
+    /** The slot the last drag stroke acted on, so holding the mouse over it does not act twice. */
+    private var lastPainted: Pair<Int, Int>? = null
 
     /** A bookmark along the top of a preset: one of its plots, or the one that adds a plot. */
     private sealed interface PartTab {
@@ -245,9 +256,11 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
     override fun onInit() {
         super.onInit()
 
-        // a cramped window is laid out as if it had more units, then drawn smaller to fit them in
+        // a cramped window is laid out as if it had more units, then drawn smaller to fit them in,
+        // and the player's own scale multiplies whatever that came to
         drawScale = DRAW_SCALES.first { it == DRAW_SCALES.last() ||
-                width / it >= COMFORTABLE_WIDTH && height / it >= COMFORTABLE_HEIGHT }
+                width / it >= COMFORTABLE_WIDTH && height / it >= COMFORTABLE_HEIGHT } *
+                Customization.uiScale
         width = (width / drawScale).toInt()
         height = (height / drawScale).toInt()
 
@@ -310,15 +323,17 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
         shelfWidth = (startX - BORDER_PADDING - Common.UI.SPACING_LARGE - shelfLeft).coerceAtLeast(MIN_ACTION_ROW_WIDTH)
         viewShelfY = startY - BORDER_PADDING
 
-        currentDisplayToggle.x = shelfLeft + ActionPanel.PADDING
-        currentDisplayToggle.y = viewShelfY + shelfTitleHeight() + ActionPanel.PADDING
+        plotsButton.x = shelfLeft + ActionPanel.PADDING
+        plotsButton.y = viewShelfY + shelfTitleHeight() + ActionPanel.PADDING
+        presetsButton.x = plotsButton.x + plotsButton.width + Common.UI.SPACING
+        presetsButton.y = plotsButton.y
 
-        gridSelector.x = currentDisplayToggle.x + currentDisplayToggle.width + Common.UI.SPACING
-        gridSelector.y = currentDisplayToggle.y
-        gridSelector.height = currentDisplayToggle.height
+        gridSelector.x = presetsButton.x + presetsButton.width + Common.UI.SPACING
+        gridSelector.y = plotsButton.y
+        gridSelector.height = plotsButton.height
         gridSelector.closeList()
 
-        viewShelfHeight = shelfTitleHeight() + ActionPanel.PADDING * 2 + currentDisplayToggle.height
+        viewShelfHeight = shelfTitleHeight() + ActionPanel.PADDING * 2 + plotsButton.height
 
         predictShelfY = viewShelfY + viewShelfHeight + Common.UI.SPACING_LARGE
         predictShelfHeight = if (currentDisplay == CurrentDisplay.Greenhouses) {
@@ -385,7 +400,6 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
         displayedGridWidget = null
         hoveredElement = null
         greenhouseGridWidgets.clear()
-        currentDisplayToggle.message = Component.literal(TOGGLE_PLOTS)
         val amountInitialized = GreenhouseData.greenhouseGrids.count { it.state.lastUpdateTimestamp != null }
         if (PlotAPI.plots.any { it.data == null }) {
             if (!GreenhouseData.miscInfo.shouldIgnoreWarning) {
@@ -465,7 +479,6 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
         gridSelector.currentValue = master
         gridSelector.values = GreenhouseData.presetGrids.toList()
         relayoutSelector()
-        currentDisplayToggle.message = Component.literal(TOGGLE_PRESETS)
 
         layoutName()
     }
@@ -607,6 +620,58 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
         }
     }
 
+    /** Every plant whose footprint covers the slot, which is at most one. */
+    private fun plantsCovering(layout: GreenhouseLayout, sx: Int, sy: Int): List<GreenhouseElementInstance> =
+        layout.elementInstances.filter { plant ->
+            sx in plant.slot.x until plant.slot.x + plant.cropDef.footprint.width &&
+                    sy in plant.slot.y until plant.slot.y + plant.cropDef.footprint.height
+        }
+
+    /** Empties a cell of the preset: the plant covering it and the soil under it. */
+    private fun clearCell(sx: Int, sy: Int): Boolean {
+        val grid = displayedGridWidget ?: return false
+        val slot = grid.layout.getSlot(sx, sy) ?: return false
+        val covering = plantsCovering(grid.layout, sx, sy)
+        if (covering.isEmpty() && slot.placedBlock == null) return false
+
+        remember(grid.layout)
+        covering.forEach { grid.noteVanishing(it) }
+        grid.layout.elementInstances.removeAll(covering)
+        slot.placedBlock = null
+        grid.init()
+        return true
+    }
+
+    /** Marks the plant covering a cell, so a wide plant is marked from any of its cells. */
+    private fun markCell(sx: Int, sy: Int, marking: LayoutSlot.Marking?): Boolean {
+        val grid = displayedGridWidget ?: return false
+        val plant = plantsCovering(grid.layout, sx, sy).firstOrNull() ?: return false
+
+        applyMark(plant, marking)
+        return true
+    }
+
+    /**
+     * What a click does to a cell, done again to each cell the mouse is dragged across: putting the
+     * picked plant down, emptying the cell, or marking it, by which switch is on.
+     */
+    private fun paintUnderMouse(event: MouseButtonEvent): Boolean {
+        val grid = displayedGridWidget ?: return false
+        val cell = grid.slotAt(event.x, event.y) ?: return false
+        if (cell == lastPainted) return true
+
+        val picked = plantPalette.selected
+        val acted = when {
+            picked != null -> { placeDragged(picked, event.x, event.y); true }
+            plantPalette.deleteMode -> { clearCell(cell.first, cell.second); true }
+            plantPalette.markChoice.applies -> { markCell(cell.first, cell.second, plantPalette.markChoice.marking); true }
+            else -> false
+        }
+        if (acted) lastPainted = cell
+
+        return acted
+    }
+
     /** Drops the carried plant or soil onto the preset at the mouse, when it fits there. With no preset, one is started. */
     private fun placeDragged(item: PaletteItem, mouseX: Double, mouseY: Double) {
         if (currentDisplay != CurrentDisplay.Presets) return
@@ -651,48 +716,35 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
     private fun openMarkContext(instance: GreenhouseElementInstance, event: MouseButtonEvent) {
         val grid = displayedGridWidget ?: return
 
-        val options = MarkOption.entries.filter {
-            it != MarkOption.Unique || canBeUnique(grid.layout, instance)
-        }
-        val menu = PickContext(event.x.toInt(), event.y.toInt(), "Mark as:", options, this) { option ->
+        val menu = PickContext(event.x.toInt(), event.y.toInt(), "Mark as:", MarkOption.entries, this) { option ->
             applyMark(instance, option.marking)
         }
         menu.init()
         addContext(menu)
     }
 
-    /** Takes a plant off the preset, for the Delete switch. */
-    private fun removeFromPreset(instance: GreenhouseElementInstance) {
-        val grid = displayedGridWidget ?: return
-        remember(grid.layout)
-        grid.layout.elementInstances.remove(instance)
-        grid.init()
-    }
-
-    /** Writes a mark onto a plant's slot; unique crop only where it would count as one. */
+    /** Writes a mark onto a plant's slot. */
     private fun applyMark(instance: GreenhouseElementInstance, marking: LayoutSlot.Marking?) {
         val grid = displayedGridWidget ?: return
-        if (marking == LayoutSlot.Marking.UniqueCrop && !canBeUnique(grid.layout, instance)) {
-            ChatUtils.sendWithPrefix("${instance.cropDef.name} would not count as a unique crop here.")
-            return
-        }
         remember(grid.layout)
         instance.slot.slotMark = marking
+        grid.justMarked.add(instance)
         grid.init()
     }
 
     /**
-     * A base crop counts as unique once across the whole preset: another plant of the same kind
-     * already marked unique, on any plot, means this one would add nothing. Mutations never count.
+     * Whether a base crop has no plant of its kind anywhere in the preset. Sunflower and moonflower
+     * count as one kind, as do the two mushrooms, the way the garden counts its uniques.
      */
-    private fun canBeUnique(layout: GreenhouseLayout, instance: GreenhouseElementInstance): Boolean {
-        if (!instance.cropDef.isBaseCrop) return false
-        val key = GreenhouseData.UniqueCropKey.from(instance.cropDef)
+    private fun uniqueMissingFromPreset(def: CropDefinition): Boolean {
+        if (!def.isBaseCrop) return false
+
+        val layout = displayedGridWidget?.layout ?: return false
         val plots = GreenhouseData.masterOf(layout)?.plots ?: listOf(layout)
+        val key = GreenhouseData.UniqueCropKey.from(def)
+
         return plots.flatMap { it.elementInstances }.none {
-            it !== instance &&
-                    it.slot.slotMark == LayoutSlot.Marking.UniqueCrop &&
-                    GreenhouseData.UniqueCropKey.from(it.cropDef) == key
+            it.cropDef.isBaseCrop && GreenhouseData.UniqueCropKey.from(it.cropDef) == key
         }
     }
 
@@ -873,7 +925,10 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
         }
         scrollHint.extractRenderState(graphics, mouseX, mouseY)
 
-        currentDisplayToggle.extractRenderState(graphics, mouseX, mouseY, delta)
+        plotsButton.pressed = currentDisplay == CurrentDisplay.Greenhouses
+        presetsButton.pressed = currentDisplay == CurrentDisplay.Presets
+        plotsButton.extractRenderState(graphics, mouseX, mouseY, delta)
+        presetsButton.extractRenderState(graphics, mouseX, mouseY, delta)
         cropPreviewButton.extractRenderState(graphics, mouseX, mouseY, delta)
 
         if (hoverWarning) {
@@ -939,7 +994,7 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
         timeHovered = overTimeBox(mouseX.toDouble(), mouseY.toDouble())
 
         graphics.drawButtonPanel(timeBox[0], timeBox[1], timeBox[2], timeBox[3], timeHovered, pressed = timePinned)
-        graphics.text(font, Component.literal(timeText), TIME_LEFT + Common.UI.TEXT_X_PAD, TIME_CENTER_Y - font.lineHeight / 2, Common.UI.TEXT_COLOR, false)
+        graphics.modText(font, Component.literal(timeText), TIME_LEFT + Common.UI.TEXT_X_PAD, TIME_CENTER_Y - font.lineHeight / 2, Common.UI.TEXT_COLOR)
     }
 
     private fun overTimeBox(mouseX: Double, mouseY: Double): Boolean =
@@ -1029,19 +1084,12 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
             return true
         }
 
-        if (currentDisplayToggle.mouseClicked(mouseButtonEvent, doubled)) {
-            when (currentDisplay) {
-                CurrentDisplay.Greenhouses -> {
-                    currentDisplay = CurrentDisplay.Presets
-                    relayoutShelves()
-                    initPresetLayout()
-                }
-                CurrentDisplay.Presets -> {
-                    currentDisplay = CurrentDisplay.Greenhouses
-                    relayoutShelves()
-                    initGreenhouseLayout()
-                }
-            }
+        if (plotsButton.mouseClicked(mouseButtonEvent, doubled)) {
+            showDisplay(CurrentDisplay.Greenhouses)
+            return true
+        }
+        if (presetsButton.mouseClicked(mouseButtonEvent, doubled)) {
+            showDisplay(CurrentDisplay.Presets)
             return true
         }
 
@@ -1095,9 +1143,9 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
     private fun presetClicked(event: MouseButtonEvent, doubled: Boolean): Boolean {
         if (displayedGridWidget != null && partTabs.mouseClicked(event)) return true
 
-        // a right click puts a picked plant down, wherever the mouse is
-        if (event.button() == 1 && plantPalette.selected != null) {
-            plantPalette.dropSelection()
+        // a right click puts whatever tool is held down, wherever the mouse is
+        if (event.button() == 1 && plantPalette.holdsTool) {
+            plantPalette.clearTools()
             return true
         }
 
@@ -1105,38 +1153,26 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
 
         // a picked plant lands on the slot clicked
         plantPalette.selected?.let { picked ->
-            val overSlot = (displayedGridWidget ?: emptyGridWidget)?.slotAt(event.x, event.y) != null
-            if (event.button() == 0 && overSlot) {
+            val cell = (displayedGridWidget ?: emptyGridWidget)?.slotAt(event.x, event.y)
+            if (event.button() == 0 && cell != null) {
                 placeDragged(picked, event.x, event.y)
+                lastPainted = cell
                 return true
             }
         }
 
         if (event.button() == 0) {
-            // with the switch on, a click on bare soil takes the soil off the preset
-            if (plantPalette.deleteMode && displayedGridWidget?.hoveredElement == null) {
-                displayedGridWidget?.let { grid ->
-                    val (sx, sy) = grid.slotAt(event.x, event.y) ?: return@let
-                    val slot = grid.layout.getSlot(sx, sy) ?: return@let
-                    if (slot.placedBlock != null) {
-                        remember(grid.layout)
-                        slot.placedBlock = null
-                        grid.init()
-                        return true
-                    }
-                }
-            }
-            (displayedGridWidget?.hoveredElement as? ElementWidget)?.let { element ->
-                // with the switch on, a click on a plant takes it off the preset
+            displayedGridWidget?.slotAt(event.x, event.y)?.let { (sx, sy) ->
+                // with the switch on, a click empties the cell: the plant on it and the soil under it
                 if (plantPalette.deleteMode) {
-                    removeFromPreset(element.instance)
-                    return true
+                    lastPainted = sx to sy
+                    return clearCell(sx, sy)
                 }
-                // with the mark selector on something, a click on a plant marks it
+                // with the mark selector on something, a click marks the plant covering the cell
                 val choice = plantPalette.markChoice
                 if (choice.applies) {
-                    applyMark(element.instance, choice.marking)
-                    return true
+                    lastPainted = sx to sy
+                    return markCell(sx, sy, choice.marking)
                 }
             }
         }
@@ -1163,27 +1199,35 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
             overlay.hoveredElement ?: overlay.takeIf { it.isMouseOver(scaledX, scaledY) }
         }
 
+        // an open list covers what is under it, so nothing under it is told the mouse is there:
+        // told, a plant would light up and put its tooltip over the list
+        val underOverlay = hoveredElement != null
+        val widgetX = if (underOverlay) OFF_SCREEN else scaledX
+        val widgetY = if (underOverlay) OFF_SCREEN else scaledY
+
         when (currentDisplay) {
             CurrentDisplay.Greenhouses -> {
-                hoverControls.mouseMoved(scaledX, scaledY)
-                plotTabs.mouseMoved(scaledX, scaledY)
-                teleportTab.mouseMoved(scaledX, scaledY)
-                greenhousePanel.mouseMoved(scaledX, scaledY)
+                hoverControls.mouseMoved(widgetX, widgetY)
+                plotTabs.mouseMoved(widgetX, widgetY)
+                teleportTab.mouseMoved(widgetX, widgetY)
+                greenhousePanel.mouseMoved(widgetX, widgetY)
             }
             CurrentDisplay.Presets -> {
-                plantPalette.mouseMoved(scaledX, scaledY)
-                partTabs.mouseMoved(scaledX, scaledY)
-                presetUI.mouseMoved(scaledX, scaledY)
+                plantPalette.mouseMoved(widgetX, widgetY)
+                partTabs.mouseMoved(widgetX, widgetY)
+                presetUI.mouseMoved(widgetX, widgetY)
             }
         }
 
-        displayedGridWidget?.mouseMoved(scaledX, scaledY)
-        currentDisplayToggle.mouseMoved(scaledX, scaledY)
-        cropPreviewButton.mouseMoved(scaledX, scaledY)
+        displayedGridWidget?.mouseMoved(widgetX, widgetY)
+        plotsButton.mouseMoved(widgetX, widgetY)
+        presetsButton.mouseMoved(widgetX, widgetY)
+        cropPreviewButton.mouseMoved(widgetX, widgetY)
 
         hoveredElement = hoveredElement
             ?: displayedGridWidget?.hoveredElement
-            ?: currentDisplayToggle.takeIf { it.isMouseOver(scaledX, scaledY) }
+            ?: plotsButton.takeIf { it.isMouseOver(scaledX, scaledY) }
+            ?: presetsButton.takeIf { it.isMouseOver(scaledX, scaledY) }
             ?: presetUI.hoveredElement.takeIf { currentDisplay == CurrentDisplay.Presets }
 
         hoverWarning = overName(scaledX, scaledY) && shouldWarn
@@ -1197,11 +1241,16 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
 
     override fun onMouseDragged(event: MouseButtonEvent, dragX: Double, dragY: Double): Boolean {
         if (predictSlider.mouseDragged(event.x / drawScale)) return true
-        if (currentDisplay == CurrentDisplay.Presets && plantPalette.mouseDragged(scaled(event), dragX, dragY)) return true
+        if (currentDisplay == CurrentDisplay.Presets) {
+            // a plant dragged off the shelf comes first; otherwise the stroke paints the grid
+            if (plantPalette.mouseDragged(scaled(event), dragX, dragY)) return true
+            if (event.button() == 0 && paintUnderMouse(scaled(event))) return true
+        }
         return super.onMouseDragged(event, dragX, dragY)
     }
 
     override fun onMouseReleased(event: MouseButtonEvent): Boolean {
+        lastPainted = null
         predictSlider.mouseReleased()
         plantPalette.mouseReleased()?.let { placeDragged(it, event.x / drawScale, event.y / drawScale) }
         return super.onMouseReleased(event)
@@ -1314,6 +1363,18 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
             }
         }
         addContext(menu)
+    }
+
+    /** Switches to a mode, doing nothing when it is the one already showing. */
+    private fun showDisplay(display: CurrentDisplay) {
+        if (display == currentDisplay) return
+
+        currentDisplay = display
+        relayoutShelves()
+        when (display) {
+            CurrentDisplay.Greenhouses -> initGreenhouseLayout()
+            CurrentDisplay.Presets -> initPresetLayout()
+        }
     }
 
     /** Measures the shelves again and puts every mode's widgets back where the new measurements say. */
@@ -1490,6 +1551,9 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
         private const val TIME_CENTER_Y: Int = 18
 
         private const val SHELF_VIEW: String = "View"
+
+        /** A point no widget is at, handed to them while an open list has the mouse. */
+        private const val OFF_SCREEN: Double = -1.0
         private const val SHELF_PREDICT: String = "Prediction"
 
         /** What the slider reads at zero, where the plot is shown as it stands. */

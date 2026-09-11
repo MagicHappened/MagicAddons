@@ -39,8 +39,13 @@ data class ItemIconRenderState(
     override fun pose(): Matrix3x2f = matrix
     override fun scissorArea(): ScreenRectangle? = null
 
+    /**
+     * Where the icon lands on the screen. The corners are given in the screen's own units, and a
+     * screen drawing itself smaller carries that in the pose, so the gui is told the corners after
+     * it; judged before it, a lower row would count as off the screen and be dropped.
+     */
     override fun bounds(): ScreenRectangle? =
-        PictureInPictureRenderState.getBounds(bX0, bY0, bX1, bY1, null)
+        ScreenRectangle(bX0, bY0, bX1 - bX0, bY1 - bY0).transformMaxBounds(matrix)
 }
 
 /** Draws an [ItemIconRenderState] the way the gui draws an oversized item: into its own texture. */

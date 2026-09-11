@@ -169,7 +169,7 @@ class Bookmarks<T>(
         const val REACH: Int = THICKNESS + LIFT
 
         /** How far a tab reaches under the frame's line, so the two read as one piece. */
-        private const val TUCK: Int = Common.UI.BORDER_SIZE
+        private val TUCK: Int get() = Common.UI.BORDER_SIZE
 
         private const val MAX_TAB_WIDTH: Int = 100
         private const val ANIM_MS: Float = 150f

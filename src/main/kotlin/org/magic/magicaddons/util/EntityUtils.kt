@@ -13,6 +13,11 @@ import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.decoration.ArmorStand
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.item.ItemStack
+import net.minecraft.core.BlockPos
+import net.minecraft.world.level.ClipContext
+import net.minecraft.world.level.Level
+import net.minecraft.world.phys.HitResult
+import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.EntityInfo
 import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.events.EventHandler
@@ -42,7 +47,51 @@ object EntityUtils {
          * treasure and mobs differently.
          */
         fun highlightColor(entity: Entity): Int
+
+        /** Whether an outline is drawn when a wall stands between the camera and the entity. */
+        val throughWalls: Boolean get() = true
     }
+
+    /** Whether the camera has a clear line to [entity], looked up once a tick for each entity. */
+    @JvmStatic
+    fun inSight(camera: Vec3, entity: Entity): Boolean {
+        val level = entity.level()
+        val now = level.gameTime
+
+        if (sightCheckedAt != now) {
+            sightCheckedAt = now
+            inSight.clear()
+        }
+
+        return inSight.getOrPut(entity) { clearLine(level, camera, entity) }
+    }
+
+    private var sightCheckedAt: Long = -1
+    private val inSight: MutableMap<Entity, Boolean> = mutableMapOf()
+
+    /**
+     * Rays from the camera to the middle, top and feet of the entity; one that gets there, or is
+     * only stopped by the block the entity stands in, such as grass, is enough.
+     */
+    private fun clearLine(level: Level, camera: Vec3, entity: Entity): Boolean {
+        val box = entity.boundingBox
+        val middleX = (box.minX + box.maxX) / 2
+        val middleZ = (box.minZ + box.maxZ) / 2
+        val points = listOf(
+            Vec3(middleX, (box.minY + box.maxY) / 2, middleZ),
+            Vec3(middleX, box.maxY - SIGHT_INSET, middleZ),
+            Vec3(middleX, box.minY + SIGHT_INSET, middleZ)
+        )
+
+        return points.any { point ->
+            val hit = level.clip(ClipContext(camera, point, ClipContext.Block.VISUAL, ClipContext.Fluid.NONE, entity))
+
+            hit.type == HitResult.Type.MISS || hit.blockPos == BlockPos.containing(point)
+        }
+    }
+
+    /** Keeps the top and bottom rays inside the entity rather than on its edge. */
+    private const val SIGHT_INSET: Double = 0.1
 
 
     private val highlightMap: MutableMap<Entity, MutableSet<HighlightSource>> = mutableMapOf()

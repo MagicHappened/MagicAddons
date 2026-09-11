@@ -1,5 +1,8 @@
 package org.magic.magicaddons.ui.widgets.config
 
+import org.magic.magicaddons.util.ScreenUtil.drawBorder
+import org.magic.magicaddons.util.ScreenUtil.withAlpha
+import org.magic.magicaddons.util.ScreenUtil.eased
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.input.MouseButtonEvent
@@ -63,11 +66,33 @@ class ClickableButtonWidget(
 
     /** Drawn pressed in while true, for a button that stands for a state rather than an action. */
     var pressed: Boolean = false
+        set(value) {
+            if (field == value) return
+            field = value
+            pressedChangedAt = System.currentTimeMillis()
+        }
+
+    /** When the button last went in or came out, so the pressed look eases rather than snaps. */
+    private var pressedChangedAt: Long = 0L
 
     var message: Component? = null
 
     fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
-        graphics.drawButtonPanel(x, y, x + width, y + height, hovered || isFocused, pressed)
+        val along = eased(pressedChangedAt, PRESS_MS)
+        val pressedFraction = if (pressed) along else 1f - along
+
+        graphics.drawButtonPanel(x, y, x + width, y + height, hovered || isFocused, pressed = false)
+
+        // the shade and the bright frame laid over the plain button by how far in it is
+        if (pressedFraction > 0f) {
+            graphics.fill(x, y, x + width, y + height, withAlpha(Common.UI.PRESSED_SHADE, pressedFraction))
+            graphics.drawBorder(
+                x, y, x + width, y + height,
+                Common.UI.BORDER_SIZE,
+                withAlpha(Common.UI.SELECTED_FRAME_COLOR, pressedFraction)
+            )
+        }
+
         renderContent(graphics)
     }
 
@@ -92,5 +117,8 @@ class ClickableButtonWidget(
 
         /** A style colour carries no alpha, and text drawn with none is invisible. */
         private const val OPAQUE: Int = 0xFF000000.toInt()
+
+        /** How long the pressed look takes to settle in or out. */
+        private const val PRESS_MS: Long = 150
     }
 }

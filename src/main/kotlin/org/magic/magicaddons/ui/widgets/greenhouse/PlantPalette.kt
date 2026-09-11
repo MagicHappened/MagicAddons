@@ -1,5 +1,7 @@
 package org.magic.magicaddons.ui.widgets.greenhouse
 
+import org.magic.magicaddons.util.ScreenUtil.splitMod
+import org.magic.magicaddons.util.ScreenUtil.modText
 import org.magic.magicaddons.util.ScreenUtil.drawCheckerboard
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.level.block.Block
@@ -41,7 +43,9 @@ class PlantPalette(
     overlayContext: OverlayContext,
     private val onClearAll: (MouseButtonEvent) -> Unit,
     private val onUndo: () -> Unit,
-    private val onRedo: () -> Unit
+    private val onRedo: () -> Unit,
+    /** Whether a crop has no plant of its kind in the preset yet, for the Uniques switch to mark. */
+    private val uniqueMissing: (CropDefinition) -> Boolean
 ) {
 
     /** What a click on a plant does while the selector is on something other than Off. */
@@ -49,7 +53,6 @@ class PlantPalette(
         Off("Mark off", null, false),
         Target("Target", LayoutSlot.Marking.Target, true),
         Ingredient("Ingredient", LayoutSlot.Marking.Ingredient, true),
-        Unique("Unique crop", LayoutSlot.Marking.UniqueCrop, true),
         Clear("Clear mark", null, true);
 
         override fun toString(): String = label
@@ -59,10 +62,23 @@ class PlantPalette(
         values = MarkChoice.entries,
         currentValue = MarkChoice.Off,
         overlayContext = overlayContext,
-        searchable = false
+        searchable = false,
+        // a mark being chosen puts every other tool down, the way picking any tool does
+        valueChanged = { picked -> if (picked.applies) clearTools(keepMark = true) }
     )
 
     val markChoice: MarkChoice get() = markSelector.currentValue ?: MarkChoice.Off
+
+    /** Whether any tool is picked up: a plant, the Delete or Uniques switch, or a mark. */
+    val holdsTool: Boolean get() = selected != null || deleteMode || uniquesMode || markChoice.applies
+
+    /** Puts every tool down. One tool is held at a time, so picking one up calls this first. */
+    fun clearTools(keepMark: Boolean = false) {
+        selected = null
+        deleteMode = false
+        uniquesMode = false
+        if (!keepMark) markSelector.currentValue = MarkChoice.Off
+    }
 
     private val undoButton = ClickableButtonWidget(ARROW_WIDTH, ROW, Component.literal("←"))
     private val redoButton = ClickableButtonWidget(ARROW_WIDTH, ROW, Component.literal("→"))
@@ -79,6 +95,10 @@ class PlantPalette(
 
     private val clearButton = ClickableButtonWidget(ClickableButtonWidget.widthFor("Clear all"), ROW, Component.literal("Clear all"))
     private val deleteButton = ClickableButtonWidget(ClickableButtonWidget.widthFor("Delete"), ROW, Component.literal("Delete"))
+    private val uniquesButton = ClickableButtonWidget(ClickableButtonWidget.widthFor("Uniques"), ROW, Component.literal("Uniques"))
+
+    /** With the switch on, a crop the preset has no unique of yet is marked red on the shelf. */
+    var uniquesMode: Boolean = false
 
     /** While on, clicking a plant on the grid takes it off the preset. */
     var deleteMode: Boolean = false
@@ -174,7 +194,7 @@ class PlantPalette(
             val half = kotlin.math.sqrt((inner * inner - dy * dy).toDouble()).toInt()
             graphics.fill(cx - half, cy + dy, cx + half + 1, cy + dy + 1, Common.UI.BACKGROUND_COLOR)
         }
-        graphics.text(font, Component.literal("i"), cx - font.width("i") / 2 + 1, cy - font.lineHeight / 2 + 1, Common.UI.TEXT_COLOR, false)
+        graphics.modText(font, Component.literal("i"), cx - font.width("i") / 2 + 1, cy - font.lineHeight / 2 + 1, Common.UI.TEXT_COLOR)
     }
 
     private fun isOverInfo(mouseX: Double, mouseY: Double): Boolean {
@@ -227,9 +247,12 @@ class PlantPalette(
         deleteButton.x = clearButton.x + clearButton.width + Common.UI.SPACING
         deleteButton.y = clearButton.y
 
-        // the mark selector, as wide as its longest word, and the arrows follow Delete on the same
+        uniquesButton.x = deleteButton.x + deleteButton.width + Common.UI.SPACING
+        uniquesButton.y = clearButton.y
+
+        // the mark selector, as wide as its longest word, and the arrows follow Uniques on the same
         // row when they fit, else take the next row
-        val afterDelete = deleteButton.x + deleteButton.width + Common.UI.SPACING
+        val afterDelete = uniquesButton.x + uniquesButton.width + Common.UI.SPACING
         val arrows = ARROW_WIDTH * 2 + Common.UI.SPACING * 2
         val right = x + width - EDGE_PAD
         markSelector.fitToValues(right - search.x - arrows)
@@ -280,8 +303,10 @@ class PlantPalette(
 
         search.render(graphics)
         deleteButton.pressed = deleteMode
+        uniquesButton.pressed = uniquesMode
         clearButton.extractRenderState(graphics, mouseX, mouseY, delta)
         deleteButton.extractRenderState(graphics, mouseX, mouseY, delta)
+        uniquesButton.extractRenderState(graphics, mouseX, mouseY, delta)
 
         // the box wears the colour of the mark it would give, and red while set to clear marks
         markSelector.frameColor = when (markChoice) {
@@ -313,6 +338,12 @@ class PlantPalette(
 
             val icon = iconSize()
             drawIcon(graphics, item, cellX + (cellWidth - icon) / 2, cellY + (cellHeight - icon) / 2, icon)
+
+            // over the icon, the way a mark sits over a plant on the grid, for a unique still to plant
+            if (uniquesMode && item is PaletteItem.Crop && uniqueMissing(item.def)) {
+                graphics.fill(cellX + 1, cellY + 1, right, bottom, MISSING_UNIQUE_WASH)
+                graphics.drawBorder(cellX + 1, cellY + 1, right, bottom, Common.UI.BORDER_SIZE, Common.UI.DANGER_COLOR)
+            }
         }
 
         if (rows > visibleRows) {
@@ -366,7 +397,7 @@ class PlantPalette(
             (item as? PaletteItem.Crop)?.def?.effects?.forEach { add(Component.literal(it.label).withStyle(ChatFormatting.GRAY).visualOrderText) }
             if (item is PaletteItem.Soil && item.block == Blocks.AIR) {
                 add(Component.empty().visualOrderText)
-                addAll(font.split(Component.literal(AIR_NOTE).withStyle(ChatFormatting.GRAY), NOTE_WIDTH))
+                addAll(font.splitMod(Component.literal(AIR_NOTE).withStyle(ChatFormatting.GRAY), NOTE_WIDTH))
             }
         }
         graphics.drawTooltipLinesAtCursor(lines, mouseX, mouseY)
@@ -384,12 +415,13 @@ class PlantPalette(
         markSelector.mouseMoved(mouseX, mouseY)
         undoButton.mouseMoved(mouseX, mouseY)
         redoButton.mouseMoved(mouseX, mouseY)
+        uniquesButton.mouseMoved(mouseX, mouseY)
     }
 
     fun mouseClicked(event: MouseButtonEvent, doubled: Boolean): Boolean {
-        // a right click puts a picked plant down wherever the mouse is, another cell included
-        if (event.button() == 1 && selected != null) {
-            selected = null
+        // a right click puts whatever tool is held down, wherever the mouse is
+        if (event.button() == 1 && holdsTool) {
+            clearTools()
             return true
         }
         if (search.mouseClicked(event, doubled)) return true
@@ -410,7 +442,15 @@ class PlantPalette(
             return true
         }
         if (deleteButton.mouseClicked(event, doubled)) {
-            deleteMode = !deleteMode
+            val turnOn = !deleteMode
+            clearTools()
+            deleteMode = turnOn
+            return true
+        }
+        if (uniquesButton.mouseClicked(event, doubled)) {
+            val turnOn = !uniquesMode
+            clearTools()
+            uniquesMode = turnOn
             return true
         }
 
@@ -446,13 +486,12 @@ class PlantPalette(
         pressed = null
 
         if (dragged != null) return dragged
-        if (clicked != null) selected = if (selected == clicked) null else clicked
+        if (clicked != null) {
+            val pickUp = selected != clicked
+            clearTools()
+            if (pickUp) selected = clicked
+        }
         return null
-    }
-
-    /** Puts a picked plant down without placing it. */
-    fun dropSelection() {
-        selected = null
     }
 
     fun mouseScrolled(mouseX: Double, mouseY: Double, scrollX: Double, scrollY: Double): Boolean {
@@ -496,6 +535,9 @@ class PlantPalette(
 
         /** A dusty rose, like no rarity and no soil block. */
         private const val SOIL_CELL: Int = 0xFF8A4A5E.toInt()
+
+        /** Laid over a crop the preset has no unique of yet, while the Uniques switch is on. */
+        private const val MISSING_UNIQUE_WASH: Int = 0x38FF0000
 
         private const val AIR_NOTE: String = "Useful for separating a Devourer from eating your other crops: " +
                 "the hologram will ask for an air block here instead of allowing any block."
