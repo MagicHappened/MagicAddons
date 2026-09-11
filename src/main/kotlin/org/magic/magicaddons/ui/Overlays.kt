@@ -11,7 +11,7 @@ import org.magic.magicaddons.util.compat.McCompat
 
 interface OverlayRenderable : GuiEventListener, HoverableContainer {
 
-    /** Higher wins: a higher priority overlay draws on top and is offered input first. */
+    /** higher priority draws first. */
     val renderPriority: Int
 
     val overlayX: Int
@@ -26,7 +26,7 @@ interface OverlayRenderable : GuiEventListener, HoverableContainer {
 
     override fun mouseMoved(mouseX: Double, mouseY: Double) {}
 
-    /** An overlay takes no keyboard focus; it is offered every input first anyway. */
+    // An overlay takes no keyboard focus
     override fun isFocused(): Boolean = false
 
     override fun setFocused(focused: Boolean) {}
@@ -34,7 +34,7 @@ interface OverlayRenderable : GuiEventListener, HoverableContainer {
     override fun isMouseOver(mouseX: Double, mouseY: Double): Boolean =
         inRect(mouseX, mouseY, overlayX, overlayY, overlayWidth, overlayHeight)
 
-    /** Told when the overlay is taken off screen, so it can stop believing it is open. */
+    /** fired when the overlay is taken off-screen */
     fun onClosed() {
     }
 
@@ -43,7 +43,7 @@ interface OverlayRenderable : GuiEventListener, HoverableContainer {
     override fun keyPressed(keyEvent: KeyEvent): Boolean = false
 
     companion object {
-        /** A context menu opened at the mouse. */
+        /** A context menu opened at the cursor */
         const val MENU_PRIORITY: Int = 0
 
         /** A list dropped down under a selector or a text box. */
@@ -93,7 +93,6 @@ interface OverlayContext {
         }
     }
 
-    /** Takes every overlay off screen, telling each one so it does not stay half open. */
     fun closeOverlays() {
         val closing = overlays.toList()
 
@@ -106,7 +105,7 @@ interface OverlayContext {
         overlays.toList().asReversed().forEach { it.renderOverlay(graphics, mouseX, mouseY, delta) }
     }
 
-    /** Whether an overlay took the click. Walked over a copy, since a handler may open or close one. */
+    /** Whether an overlay consumed the click. Walked over a copy, since a handler may open or close one. */
     fun overlaysMouseClicked(event: MouseButtonEvent, doubled: Boolean): Boolean =
         overlays.toList().any { it.mouseClicked(event, doubled) }
 

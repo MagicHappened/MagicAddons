@@ -120,8 +120,11 @@ object Codecs {
                     .forGetter { it.placed },
 
                 Codec.BOOL.optionalFieldOf("water_exact", false)
-                    .forGetter { it.waterExact }
-            ).apply(instance) { id, slot, waterOpt, growthOpt, ageOpt, readingsOpt, firstSeenOpt, placed, waterExact ->
+                    .forGetter { it.waterExact },
+
+                Codec.STRING.listOf().optionalFieldOf("alternatives", emptyList())
+                    .forGetter { plant -> plant.alternatives.map { it.elementId } }
+            ).apply(instance) { id, slot, waterOpt, growthOpt, ageOpt, readingsOpt, firstSeenOpt, placed, waterExact, alternativeIds ->
                 GreenhouseElementInstance(
                     elementId = id,
                     slot = slot.orElse(null),
@@ -129,7 +132,8 @@ object Codecs {
                     growthStage = growthOpt.orElse(null),
                     age = ageOpt.orElse(null),
                     readings = readingsOpt.orElse(emptyMap()).toMutableMap(),
-                    cropDef = CropRegistry.get(id) ?: throw IllegalStateException("Unable to find crop for id $id")
+                    cropDef = CropRegistry.get(id) ?: throw IllegalStateException("Unable to find crop for id $id"),
+                    alternatives = alternativeIds.mapNotNull { CropRegistry.get(it) }.toMutableList()
                 ).also { plant ->
                     plant.firstSeenStage = firstSeenOpt.orElse(null)
                     plant.placed = placed
@@ -147,12 +151,12 @@ object Codecs {
                 },
                 Codec.STRING.optionalFieldOf("assigned_layout_id").forGetter {
                     Optional.ofNullable(it.assignedLayout?.id)
-                }
-
-
-            ).apply(instance) { lastUpdate, assignedLayout ->
+                },
+                Codec.INT.optionalFieldOf("plan_turns", 0).forGetter { it.planTurns }
+            ).apply(instance) { lastUpdate, assignedLayout, planTurns ->
                 GridState(
-                    lastUpdateTimestamp = lastUpdate.orElse(null)?.let { Instant.ofEpochMilli(it) }
+                    lastUpdateTimestamp = lastUpdate.orElse(null)?.let { Instant.ofEpochMilli(it) },
+                    planTurns = planTurns
                 ).also { it.assignedLayoutId = assignedLayout.orElse(null) }
             }
         }

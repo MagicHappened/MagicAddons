@@ -82,6 +82,13 @@ object GreenhouseData : GridCallbacks {
         val master = masterOf(plot) ?: return plot.displayName()
         return if (master.plots.size > 1) "${master.plotTitle(plot)} of ${master.displayName()}" else master.displayName()
     }
+    /** A plot named in full, the preset and the plot each by its name or its number. */
+    fun nameInFull(plot: GreenhouseLayout): String {
+        val master = masterOf(plot) ?: return plot.displayName()
+
+        return "${master.displayName()} - ${master.plotTitle(plot)}"
+    }
+
     var miscInfo = MiscGreenhouseInfo()
 
     var currentPreset: MasterLayout? = null
@@ -480,6 +487,9 @@ object GreenhouseData : GridCallbacks {
     /** Whether the player stands in any plot but the barn, their own or one they are visiting. */
     fun inGreenhouse(): Boolean = PlotAPI.getCurrentPlot()?.takeUnless { it.isBarn } != null
 
+    /** whether the player is on their own garden */
+    fun inOwnGarden(): Boolean = LocationAPI.island == SkyBlockIsland.GARDEN && !LocationAPI.isGuest
+
     fun getCurrentGrid(): GreenhouseGrid? {
         val plotId = PlotAPI.getCurrentPlot()?.id ?: return null
         return greenhouseGrids.find { it.layout.id == GreenhouseLayout.plotId(plotId) }
@@ -759,7 +769,7 @@ object GreenhouseData : GridCallbacks {
         }
 
         grid.state.assignedLayout = null
-        grid.state.completionMuted = false
+        grid.state.buildAnnounced = false
 
         regenRender()
 

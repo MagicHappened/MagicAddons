@@ -11,12 +11,11 @@ import org.magic.magicaddons.ui.widgets.CheckboxWidget
 import org.magic.magicaddons.util.ScreenUtil.drawButtonPanel
 import org.magic.magicaddons.util.ScreenUtil.drawPanel
 
-/** Where the checklist was scrolled to, kept outside the screen so reopening lands back there. */
+/** scroll kept outside the screen to reopen it on that scroll */
 private var scroll: Int = 0
 
 /**
- * The collector's checklist, docked right so the garden stays visible behind it. Opened with G
- * while a run is live, closed with G or escape.
+ * collector screen, currently only for collecting crops that dont have data, eventually, will not have a use.
  */
 class CollectScreen : MagicScreen(Component.literal("Crop Collection"), "the collector screen") {
 
@@ -26,7 +25,6 @@ class CollectScreen : MagicScreen(Component.literal("Crop Collection"), "the col
         const val PAD: Int = 4
         const val EDGE_GAP: Int = 6
 
-        /** The two verdict buttons stand a little taller than a list row. */
         const val BUTTON_HEIGHT: Int = ROW_HEIGHT + 4
 
         const val MAX_PANEL_WIDTH: Int = 260
@@ -41,7 +39,7 @@ class CollectScreen : MagicScreen(Component.literal("Crop Collection"), "the col
     private var listTop: Int = 0
     private var visibleRows: Int = 0
 
-    /** The two verdict buttons, laid out as pseudo-rows under the list. */
+    /** the 2 screen buttons, laid out as pseudo-rows under the list. */
     private var finishY: Int = 0
     private var quitY: Int = 0
 
@@ -142,7 +140,7 @@ class CollectScreen : MagicScreen(Component.literal("Crop Collection"), "the col
         )
     }
 
-    /** The whole row is the target: at this size the checkbox alone would be a test of aim. */
+    /** can click on the entire row with the current dimensions assigned. */
     override fun onMouseClicked(event: MouseButtonEvent, doubled: Boolean): Boolean {
         val x = event.x.toInt()
         val y = event.y.toInt()
@@ -189,7 +187,7 @@ class CollectScreen : MagicScreen(Component.literal("Crop Collection"), "the col
         return super.onKeyPressed(keyEvent)
     }
 
-    /** No blur, no dim, no panorama: the garden behind the list is what the list is about. */
+    /** remove the default background blur */
     override fun extractBackground(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) = Unit
 
     override fun isPauseScreen(): Boolean = false

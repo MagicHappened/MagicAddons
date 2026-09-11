@@ -3,6 +3,8 @@ package org.magic.magicaddons.features.farming.greenhousePresets
 import java.time.Duration
 import org.magic.magicaddons.data.config.BooleanSetting
 import org.magic.magicaddons.data.config.IntSetting
+import org.magic.magicaddons.data.config.ParentSetting
+import org.magic.magicaddons.data.config.TextSetting
 import org.magic.magicaddons.data.greenhouse.CropRegistry
 import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.features.Feature
@@ -13,6 +15,13 @@ object GreenhousePresets : Feature() {
 
     private const val KEY_ANYWHERE = "GreenhouseKeyAnywhere"
     private const val TURN_GRID_KEY = "TurnGridWithPlayer"
+    private const val PLANNER_OPTIONS_KEY = "PlannerOptions"
+    private const val PLANT_TRANSPARENCY_KEY = "PlantTransparency"
+    private const val HARVEST_HIGHLIGHT_KEY = "HarvestHighlight"
+    private const val PLANNER_COLORS_KEY = "PlannerColors"
+    private const val WATER_INDICATOR_KEY = "WaterIndicator"
+    private const val WATER_ONLY_WITHOUT_PLANNER_KEY = "OnlyWithoutPlanner"
+    private const val HUD_ANYWHERE_KEY = "HudAnywhere"
 
     private const val WARNINGS_KEY = "Warnings"
     private const val TYPES_KEY = "Types"
@@ -41,6 +50,7 @@ object GreenhousePresets : Feature() {
         EventBus.register(OtherProfiles)
         EventBus.register(ChorusCollision)
         EventBus.register(GreenhouseWarnings)
+        EventBus.register(PlannerNeeds)
         CropRegistry
 
         // the attribute api only registers its listeners once something references it, so it is
@@ -51,6 +61,86 @@ object GreenhousePresets : Feature() {
     fun keyWorksAnywhere(): Boolean = baseSetting.getChild<BooleanSetting>(KEY_ANYWHERE)?.value == true
 
     fun turnsGridWithPlayer(): Boolean = baseSetting.getChild<BooleanSetting>(TURN_GRID_KEY)?.value == true
+
+    private val plantTransparencySetting = IntSetting(
+        key = PLANT_TRANSPARENCY_KEY,
+        displayName = "Plant Transparency",
+        description = "How much of the world shows through the planner's ghost blocks and stands",
+        value = 25,
+        range = 0..100,
+        step = 5,
+        scrollable = false
+    )
+
+    /** how solid a planned plant is drawn, 0 to 255 */
+    @JvmStatic
+    fun plantAlpha(): Int = 255 * (100 - plantTransparencySetting.value) / 100
+
+    private val harvestHighlightSetting = BooleanSetting(
+        key = HARVEST_HIGHLIGHT_KEY,
+        displayName = "Harvest Highlight",
+        description = "Pulses green on a target mutation ready to harvest, and red on anything else " +
+                "growing in its slot",
+        value = true
+    )
+
+    fun harvestHighlightOn(): Boolean = baseSetting.value && harvestHighlightSetting.value
+
+    /** One colour of the planner, written as hex. Blank or unreadable leaves the mark its own colour. */
+    private val plannerColorSettings: Map<PlannerMark, TextSetting> = PlannerMark.entries.associateWith { mark ->
+        TextSetting(
+            key = "Color${mark.name}",
+            displayName = mark.displayName,
+            description = "The colour this is marked in, as hex such as FF3333. Left blank, the " +
+                    "default is used",
+            value = ""
+        )
+    }
+
+    private val plannerColorsGroup = ParentSetting(
+        key = PLANNER_COLORS_KEY,
+        displayName = "Planner Colours",
+        description = "The colours the planner marks a greenhouse in",
+        children = plannerColorSettings.values.toList()
+    )
+
+    /** The colour [mark] is drawn in, which is the player's when they typed a readable one. */
+    fun plannerColor(mark: PlannerMark): Int {
+        val typed = plannerColorSettings[mark]?.value?.trim()?.removePrefix("#")?.removePrefix("0x")
+        val rgb = typed?.takeIf { it.length == 6 }?.toIntOrNull(16) ?: return mark.defaultColor
+
+        return rgb or 0xFF000000.toInt()
+    }
+
+    private val waterOnlyWithoutPlannerSetting = BooleanSetting(
+        key = WATER_ONLY_WITHOUT_PLANNER_KEY,
+        displayName = "Only Without Planner",
+        description = "Only render the water indicator when the planner has nothing to show",
+        value = true
+    )
+
+    private val waterIndicatorSetting = BooleanSetting(
+        key = WATER_INDICATOR_KEY,
+        displayName = "Water Indicator",
+        description = "Marks the soil of every plant below full water in the greenhouse you stand in. " +
+                "A plant whose water is unknown is left alone",
+        value = true,
+        children = listOf(waterOnlyWithoutPlannerSetting)
+    )
+
+    fun waterIndicatorOn(): Boolean = baseSetting.value && waterIndicatorSetting.value
+
+    fun waterIndicatorOnlyWithoutPlanner(): Boolean = waterOnlyWithoutPlannerSetting.value
+
+    private val hudAnywhereSetting = BooleanSetting(
+        key = HUD_ANYWHERE_KEY,
+        displayName = "Anywhere In SkyBlock",
+        description = "Shows the panel anywhere in SkyBlock rather than only in your own garden. " +
+                "Outside a greenhouse it shows the next tick only",
+        value = false
+    )
+
+    fun hudAnywhere(): Boolean = hudAnywhereSetting.value
 
     private fun warningsSetting(): BooleanSetting? = baseSetting.getChild<BooleanSetting>(WARNINGS_KEY)
     private fun typesSetting(): BooleanSetting? = warningsSetting()?.getChild<BooleanSetting>(TYPES_KEY)
@@ -85,8 +175,14 @@ object GreenhousePresets : Feature() {
     override val baseSetting = BooleanSetting(
         displayName = displayName,
         description = description,
-        value = true,
+        value = false,
         children = listOf(
+            ParentSetting(
+                key = PLANNER_OPTIONS_KEY,
+                displayName = "Planner Options",
+                description = "How a plan running on a greenhouse is shown",
+                children = listOf(plantTransparencySetting, harvestHighlightSetting, plannerColorsGroup)
+            ),
             BooleanSetting(
                 key = WARNINGS_KEY,
                 displayName = "Warnings",
@@ -97,7 +193,7 @@ object GreenhousePresets : Feature() {
                         key = TYPES_KEY,
                         displayName = "Types",
                         description = "Which warnings are sent. Off, none are",
-                        value = true,
+                        value = false,
                         children = listOf(
                             BooleanSetting(
                                 key = PlantWarnings.HARVEST_KEY,
@@ -165,7 +261,7 @@ object GreenhousePresets : Feature() {
                         key = REMINDERS_KEY,
                         displayName = "Reminders",
                         description = "When a warning about the next tick is sent. Off, none are",
-                        value = true,
+                        value = false,
                         children = listOf(
                             BooleanSetting(
                                 key = AT_TICK_KEY,
@@ -198,10 +294,12 @@ object GreenhousePresets : Feature() {
             BooleanSetting(
                 key = GreenhouseHud.KEY,
                 displayName = "Greenhouse HUD",
-                description = "A small panel on screen while standing in a greenhouse: the next tick, " +
-                        "and how many plants are ready, dry, asleep or about to rot",
-                value = false
+                description = "A small panel on screen in your garden: the next tick, and in a greenhouse " +
+                        "how many plants are ready, dry, asleep or about to rot",
+                value = false,
+                children = listOf(hudAnywhereSetting)
             ),
+            waterIndicatorSetting,
             BooleanSetting(
                 key = KEY_ANYWHERE,
                 displayName = "Greenhouse Screen Anywhere",

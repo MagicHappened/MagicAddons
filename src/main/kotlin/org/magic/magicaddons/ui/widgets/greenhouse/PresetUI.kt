@@ -30,6 +30,8 @@ class PresetUI(
     val onNewPreset: () -> Unit,
     /** What the Delete button is about: the shown plot of a master layout, or the preset itself. */
     val shownLayout: () -> GreenhouseLayout?,
+    /** Turns the shown plot a quarter turn: 1 clockwise, -1 anticlockwise. */
+    val onTurn: (Int) -> Unit,
 ) : ActionPanel() {
 
     private val importButton = ClickableButtonWidget("Import")
@@ -37,13 +39,17 @@ class PresetUI(
     private val applyToButton = ClickableButtonWidget("Planner")
     private val deleteButton = ClickableButtonWidget("Delete")
     private val newButton = ClickableButtonWidget(ClickableButtonWidget.HEIGHT, ClickableButtonWidget.HEIGHT, Component.literal("+"))
+    private val turnLeftButton = ClickableButtonWidget(ClickableButtonWidget.HEIGHT, ClickableButtonWidget.HEIGHT, Component.literal("↺"))
+    private val turnRightButton = ClickableButtonWidget(ClickableButtonWidget.HEIGHT, ClickableButtonWidget.HEIGHT, Component.literal("↻"))
 
     override val buttons: List<ClickableButtonWidget> =
-        listOf(newButton, importButton, exportButton, applyToButton, deleteButton)
+        listOf(newButton, turnLeftButton, turnRightButton, importButton, exportButton, applyToButton, deleteButton)
 
     override fun onPressed(button: ClickableButtonWidget, event: MouseButtonEvent): Boolean {
         when (button) {
             newButton -> onNewPreset()
+            turnLeftButton -> onTurn(-1)
+            turnRightButton -> onTurn(1)
             importButton -> openFormatMenu(event) { importPreset(it) }
             exportButton -> openFormatMenu(event) { exportPreset(it) }
             applyToButton -> openMenu(event, "Assign To:", assignTargets()) { onAssignedLayout(shownLayout(), it) }

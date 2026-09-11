@@ -1,23 +1,15 @@
 package org.magic.magicaddons.ui
 
 /**
- * The colours the mod's panels are drawn in. Only the chrome is here: warnings, water and the other
- * colours that carry a meaning stay the same whichever palette is picked.
+ * The colours the mod's panels are drawn in.
  */
 class PaletteColors(
-    /** The ground of a panel. */
     val background: Int,
-    /** The frame around a panel, lighter than the panel itself. */
     val border: Int,
-    /** The ground of a text field or checkbox, darker than the panel it sits in. */
     val field: Int,
-    /** Plain text on a panel. */
     val text: Int,
-    /** A label beside the value it names, quieter than the value itself. */
     val textDim: Int,
-    /** Text on a control that does nothing at the moment. */
     val disabledText: Int,
-    /** The frame of a picked control, and the used part of a slider. */
     val accent: Int
 )
 
@@ -58,16 +50,17 @@ enum class ColorPalette(private val label: String, val colors: PaletteColors) {
             accent = 0xFFE07AA8.toInt()
         )
     ),
+    // the entry keeps its old name so a saved config still finds it
     EmberAsh(
-        "Ember & Ash",
+        "Crimson & Ash",
         PaletteColors(
-            background = 0xFF2B2523.toInt(),
-            border = 0xFF7A5A4C.toInt(),
-            field = 0xFF1C1715.toInt(),
-            text = 0xFFF4EAE2.toInt(),
-            textDim = 0xFFCBB8AC.toInt(),
-            disabledText = 0xFF8C7A6E.toInt(),
-            accent = 0xFFE8703A.toInt()
+            background = 0xFF2A1B1D.toInt(),
+            border = 0xFF8A3A40.toInt(),
+            field = 0xFF1A1012.toInt(),
+            text = 0xFFF6E8E8.toInt(),
+            textDim = 0xFFD2B4B8.toInt(),
+            disabledText = 0xFF8E6A6E.toInt(),
+            accent = 0xFFE03A3A.toInt()
         )
     ),
     MonoGold(
@@ -83,7 +76,6 @@ enum class ColorPalette(private val label: String, val colors: PaletteColors) {
         )
     ),
 
-    /** The colours are the player's own, typed as hex; these stand in for any field left blank. */
     Custom(
         "Custom",
         PaletteColors(

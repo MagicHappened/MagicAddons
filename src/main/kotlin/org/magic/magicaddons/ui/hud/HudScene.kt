@@ -62,7 +62,7 @@ class HudBox(
         for (index in 1 until parts.size) {
             val part = parts[index]
             val along = if (stacking == Stacking.HORIZONTAL) mouseX.toInt() - (part.x - HudScene.DIVIDER) else mouseY.toInt() - (part.y - HudScene.DIVIDER)
-            if (along in -HudScene.DIVIDER_REACH..HudScene.DIVIDER_REACH) return index - 1
+            if (along in -HudScene.DIVIDER_CURSOR_DROPOFF..HudScene.DIVIDER_CURSOR_DROPOFF) return index - 1
         }
         return null
     }
@@ -77,8 +77,7 @@ class HudAnchorPoint(val state: AnchorState) {
 }
 
 /**
- * Every box and anchor placed for one frame. Built from the layout each time, which is cheap,
- * so the game hud and the editor draw the very same thing.
+ * Every box and anchor placed for one frame. Built from the layout each time.
  */
 class HudScene(val boxes: List<HudBox>, val anchors: List<HudAnchorPoint>) {
 
@@ -102,7 +101,7 @@ class HudScene(val boxes: List<HudBox>, val anchors: List<HudAnchorPoint>) {
     }
 
     /** The boxes and their content; a part's text is cut off at the part's own edge. */
-    fun draw(graphics: GuiGraphicsExtractor) {
+    fun drawBoxes(graphics: GuiGraphicsExtractor) {
         boxes.forEach { box ->
             HudPainter.drawPanel(graphics, box.x, box.y, box.width, box.height, box.alpha)
             box.parts.forEachIndexed { index, part ->
@@ -125,7 +124,7 @@ class HudScene(val boxes: List<HudBox>, val anchors: List<HudAnchorPoint>) {
         const val DIVIDER: Int = 1
 
         /** How far from a divider line the mouse still counts as on it. */
-        const val DIVIDER_REACH: Int = 3
+        const val DIVIDER_CURSOR_DROPOFF: Int = 3
 
         /** Half the side of the box an anchor is drawn and grabbed as, in the editor. */
         const val ANCHOR_HALF: Int = 6
@@ -134,7 +133,7 @@ class HudScene(val boxes: List<HudBox>, val anchors: List<HudAnchorPoint>) {
          * Lays the whole hud out for a screen of [screenWidth] by [screenHeight]. With [sample], an
          * element with nothing to show is laid out with its sample instead of left out.
          */
-        fun build(layout: HudLayout, screenWidth: Int, screenHeight: Int, sample: Boolean, include: (HudElement) -> Boolean = { true }): HudScene {
+        fun buildLayout(layout: HudLayout, screenWidth: Int, screenHeight: Int, sample: Boolean, include: (HudElement) -> Boolean = { true }): HudScene {
             val contents = HudElements.all.filter(include).mapNotNull { element ->
                 val content = element.content() ?: if (sample) element.sample() else null
                 content?.let { element to it }
@@ -269,6 +268,6 @@ object HudRenderer {
     fun onHudRender(event: HudRenderEvent) {
         if (McCompat.hudHidden() || McCompat.currentScreen() != null) return
         val window = Minecraft.getInstance().window
-        HudScene.build(HudLayoutStore.layout, window.guiScaledWidth, window.guiScaledHeight, sample = false).draw(event.graphics)
+        HudScene.buildLayout(HudLayoutStore.layout, window.guiScaledWidth, window.guiScaledHeight, sample = false).drawBoxes(event.graphics)
     }
 }

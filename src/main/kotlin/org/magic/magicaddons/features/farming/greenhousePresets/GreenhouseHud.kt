@@ -12,9 +12,10 @@ import org.magic.magicaddons.ui.hud.HudLine
 import org.magic.magicaddons.ui.hud.HudSituation
 import org.magic.magicaddons.util.toReadableDuration
 import org.magic.magicaddons.util.toShortDuration
+import tech.thatgravyboat.skyblockapi.api.location.LocationAPI
 import java.time.Duration
 
-/** A small panel on screen while standing in a greenhouse: the next tick and what the plants need. */
+/** A small panel on screen in the player's own garden: the next tick, and in a greenhouse what the plants need. */
 object GreenhouseHud : HudElement("greenhouse", "Greenhouse") {
 
     const val KEY: String = "GreenhouseHud"
@@ -22,7 +23,7 @@ object GreenhouseHud : HudElement("greenhouse", "Greenhouse") {
     override val defaultX: Int = 8
     override val defaultY: Int = 8
 
-    override val situations: Set<HudSituation> = setOf(HudSituation.GREENHOUSE)
+    override val situations: Set<HudSituation> = setOf(HudSituation.GARDEN, HudSituation.GREENHOUSE)
 
     /** Under this much time left, a countdown is shown in the danger colour. */
     private val URGENT_MS: Long = Duration.ofHours(1).toMillis()
@@ -38,8 +39,13 @@ object GreenhouseHud : HudElement("greenhouse", "Greenhouse") {
     private class Line(val label: String, val value: String, val valueColor: Int = Common.UI.TEXT_COLOR)
 
     override fun content(): HudContent? {
-        if (!enabled() || !GreenhouseData.inGreenhouse()) return null
-        val grid = GreenhouseData.getCurrentGrid()
+        if (!enabled()) return null
+
+        // own garden only, unless the anywhere switch is on
+        val ownGarden = GreenhouseData.inOwnGarden()
+        if (!ownGarden && !(GreenhousePresets.hudAnywhere() && LocationAPI.isOnSkyBlock)) return null
+
+        val grid = if (ownGarden && GreenhouseData.inGreenhouse()) GreenhouseData.getCurrentGrid() else null
         return content(grid?.layout?.displayName() ?: "Greenhouse", lines(grid))
     }
 

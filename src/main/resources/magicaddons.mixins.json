@@ -17,7 +17,8 @@
     "CustomHeadLayerMixin",
     "LevelExtractorMixin",
     "GuiMixin",
-    "KeyboardHandlerMixin"
+    "KeyboardHandlerMixin",
+    "ChatComponentAccessor"
   ],
   "injectors": {
     "defaultRequire": 1

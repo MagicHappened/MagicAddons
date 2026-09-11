@@ -69,7 +69,7 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, GuiEv
         fun valueFor(instance: GreenhouseElementInstance): String? = when (this) {
             // a plant with one stage never grows, so there is no progress to report on it. Fire,
             // dead plants and the mutations placed by hand are all like this
-            GrowthStage -> if (instance.finishedByPlacing) "Placed" else if (instance.fullyGrown) "Fully grown" else if (instance.cropDef.maxStage <= 1) null else
+            GrowthStage -> if (instance.finishedByPlacing) "Placed" else if (instance.fullyGrown) "Harvestable" else if (instance.cropDef.maxStage <= 1) null else
                 when (val stage = instance.growthStage) {
                 is GrowthStageInfo.Known -> "${stage.stage}/${instance.cropDef.maxStage}"
                 // a guessed stage is worth showing, as long as it does not look measured
@@ -108,13 +108,7 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, GuiEv
         graphics.pose().translate(x + width / 2f, y + height / 2f)
         graphics.pose().scale(scale, scale)
         graphics.pose().translate(-(x + width / 2f), -(y + height / 2f))
-        graphics.renderFakeItem(
-            renderedStack,
-            x + padding,
-            y + padding,
-            width - padding * 2,
-            height - padding * 2
-        )
+        renderCrops(graphics)
         graphics.pose().popMatrix()
 
         deadMarkBox = null
@@ -133,6 +127,41 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, GuiEv
             deadMarkBox = intArrayOf(markX, markY, markX + size, markY + size)
         }
     }
+
+    /** The crop, or for a merged slot two split across a diagonal, more taking turns. */
+    private fun renderCrops(graphics: GuiGraphicsExtractor) {
+        val others = alternativeStacks
+        val inner = width - padding * 2
+
+        when (others.size) {
+            0 -> graphics.renderFakeItem(renderedStack, x + padding, y + padding, inner, height - padding * 2)
+            1 -> {
+                val half = (inner * SPLIT_SHARE).toInt().coerceAtLeast(4)
+                graphics.renderFakeItem(renderedStack, x + padding, y + padding, half, half)
+                graphics.renderFakeItem(others[0], x + width - padding - half, y + height - padding - half, half, half)
+                renderDiagonal(graphics)
+            }
+            else -> {
+                val shown = ((System.currentTimeMillis() / CYCLE_MS) % (others.size + 1)).toInt()
+                val stack = if (shown == 0) renderedStack else others[shown - 1]
+                graphics.renderFakeItem(stack, x + padding, y + padding, inner, height - padding * 2)
+            }
+        }
+    }
+
+    /** a diagonal from the bottom left corner to the top right */
+    private fun renderDiagonal(graphics: GuiGraphicsExtractor) {
+        val inset = padding
+        val span = width - inset * 2
+        for (step in 0 until span) {
+            val lineX = x + inset + step
+            val lineY = y + height - inset - 1 - step * (height - inset * 2) / span
+            graphics.fill(lineX, lineY, lineX + 1, lineY + DIAGONAL_WIDTH, Common.UI.TEXT_COLOR)
+        }
+    }
+
+    /** icons of the crops merged into this slot */
+    private val alternativeStacks: List<ItemStack> by lazy { instance.alternatives.map { ScreenUtil.stackFor(it) } }
 
     private fun renderFire(graphics: GuiGraphicsExtractor) {
         val sprite = FIRE_SPRITE ?: return
@@ -302,10 +331,15 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, GuiEv
         val cropDefinition = instance.cropDef
 
         val lines = buildList {
-            add(Component.literal(cropDefinition.name).withStyle(ChatFormatting.GREEN))
+            add(Component.literal(instance.everyCrop.joinToString(" / ") { it.name }).withStyle(ChatFormatting.GREEN))
 
             instance.slot.slotMark?.let { marking ->
                 add(labelled("Role", marking.name))
+            }
+
+            if (instance.merged) {
+                add(Component.literal("Possible targets:").withStyle(ChatFormatting.GRAY))
+                instance.everyCrop.forEach { add(Component.literal(" - ${it.name}").withStyle(ChatFormatting.WHITE)) }
             }
 
             val growthText = when (val stage = instance.growthStage) {
@@ -321,7 +355,7 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, GuiEv
             if (!inPreset) {
                 when {
                     instance.finishedByPlacing -> add(labelled("Growth", "Placed"))
-                    instance.fullyGrown -> add(labelled("Growth", "Fully grown"))
+                    instance.fullyGrown -> add(labelled("Growth", "Harvestable"))
                     else -> growthText?.let { add(labelled("Growth", it)) }
                 }
 
@@ -378,6 +412,14 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, GuiEv
             In the worst case scenario this plant is dead.
             Enter the greenhouse to verify.
         """.trimIndent()
+
+        /** share of the cell each of two merged crops takes */
+        private const val SPLIT_SHARE: Float = 0.62f
+
+        private const val DIAGONAL_WIDTH: Int = 2
+
+        /** how long each crop of a slot merged three or more ways is shown */
+        private const val CYCLE_MS: Long = 900
 
         /** The pop on arriving: how small it starts and how long it takes. */
         private const val POP_MS: Long = 150

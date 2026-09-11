@@ -36,18 +36,17 @@ import org.magic.magicaddons.util.VersionChecker
 import org.magic.magicaddons.util.compat.McCompat
 
 /**
- * The config, filling the window: a header with the search, the categories down the left, and the
- * picked category's features as blocks in a scrolling view on the right.
+ magic addons config screen
  */
 class ConfigScreen(val parent: Screen?) : MagicScreen(Component.literal("Magic Addons Config"), "the config screen"), OverlayContext, ScrollView {
 
-    /** Open lists and histories, drawn over the blocks and offered every input first. */
+    /** currently opened overlays */
     override val overlays: MutableList<OverlayRenderable> = mutableListOf()
 
     private val categories = FeatureManager.categories()
     private var selected: FeatureManager.Category = categories.first()
 
-    /** One root widget per feature, kept across category switches so what was unfolded stays so. */
+    /** One root widget per feature, kept as a list so switching categories keep the unfolds  */
     private val blocks = mutableMapOf<Feature, SettingWidget<Boolean>>()
 
     private val search = TextField(0, SEARCH_HEIGHT, Component.literal(Common.UI.SEARCH_HINT)).also {
@@ -55,12 +54,12 @@ class ConfigScreen(val parent: Screen?) : MagicScreen(Component.literal("Magic A
         it.setResponder { rebuildHits() }
     }
 
-    /** A setting the search found: where it is, and the names down to it. */
-    private class SearchHit(val category: FeatureManager.Category, val feature: Feature, val path: List<SettingNode<*>>) {
+    /** describes search results to display */
+    private class SearchResult(val category: FeatureManager.Category, val feature: Feature, val path: List<SettingNode<*>>) {
         val label: String = path.joinToString(" › ") { it.displayName }
     }
 
-    private var hits: List<SearchHit> = emptyList()
+    private var searchResults: List<SearchResult> = emptyList()
     private var dropdownOpen = false
     private var dropdownOpenedAt = 0L
     private var dropdownScroll = 0
@@ -69,8 +68,8 @@ class ConfigScreen(val parent: Screen?) : MagicScreen(Component.literal("Magic A
     private var contentHeight = 0
     private var draggingBar = false
 
-    /** A widget to scroll into view on the next layout, set by the search or the edit command. */
-    private var pendingReveal: SettingWidget<*>? = null
+    /** a widget that is displayed by automatically navigating to it (eg edit command or search) */
+    private var navigatedWidget: SettingWidget<*>? = null
 
     private var loaded = false
 
@@ -90,7 +89,7 @@ class ConfigScreen(val parent: Screen?) : MagicScreen(Component.literal("Magic A
     private val clipTop: Int get() = panelsTop + Common.UI.BORDER_SIZE
     private val clipBottom: Int get() = panelsBottom - Common.UI.BORDER_SIZE
 
-    /** Where the blocks lie, in content coordinates: screen coordinates at a scroll of zero. */
+    /** where the content is placed in relation to scroll of zero. */
     private val contentLeft: Int get() = clipLeft + MAIN_PAD
     private val contentRight: Int get() = clipRight - MAIN_PAD - Common.UI.SCROLLBAR_WIDTH - 2
     private val contentTop: Int get() = clipTop + MAIN_PAD
@@ -109,7 +108,7 @@ class ConfigScreen(val parent: Screen?) : MagicScreen(Component.literal("Magic A
     private fun overClose(mouseX: Double, mouseY: Double): Boolean =
         inRect(mouseX, mouseY, closeLeft, closeTop, CLOSE_SIZE, CLOSE_SIZE)
 
-    /** Each category's row in the side panel, with the thick divider before the developer ones. */
+    /** category rows definitions, with a boolean for ones below the separator */
     private class CategoryRow(val category: FeatureManager.Category, val top: Int, val dividerAbove: Boolean)
 
     private var categoryRows: List<CategoryRow> = emptyList()
@@ -162,7 +161,7 @@ class ConfigScreen(val parent: Screen?) : MagicScreen(Component.literal("Magic A
         var rowTop = panelsTop + Common.UI.BORDER_SIZE + Common.UI.SPACING
         var dividerPlaced = false
         categoryRows = categories.map { category ->
-            val divider = category.belowDivider && !dividerPlaced
+            val divider = category.isUnrelatedToGame && !dividerPlaced
             if (divider) {
                 dividerPlaced = true
                 rowTop += Common.UI.SPACING * 2 + THICK_DIVIDER
@@ -186,9 +185,9 @@ class ConfigScreen(val parent: Screen?) : MagicScreen(Component.literal("Magic A
         }
         contentHeight = currentY - BLOCK_GAP + MAIN_PAD - contentTop
 
-        pendingReveal?.let { widget ->
+        navigatedWidget?.let { widget ->
             scroll = widget.y - contentTop - Common.UI.SPACING
-            pendingReveal = null
+            navigatedWidget = null
         }
         scroll = scroll.coerceIn(0, maxScroll)
     }
@@ -198,7 +197,7 @@ class ConfigScreen(val parent: Screen?) : MagicScreen(Component.literal("Magic A
         selected = categories.firstOrNull { feature in it.features } ?: return
         val widget = blockFor(feature).reveal(path) ?: return
         widget.flashUntil = System.currentTimeMillis() + FLASH_MS
-        pendingReveal = widget
+        navigatedWidget = widget
     }
 
     /** Opens the screen on [feature]'s category with its settings unfolded, for the edit command. */
@@ -207,7 +206,7 @@ class ConfigScreen(val parent: Screen?) : MagicScreen(Component.literal("Magic A
         val block = blockFor(feature)
         block.unfold(true)
         block.flashUntil = System.currentTimeMillis() + FLASH_MS
-        pendingReveal = block
+        navigatedWidget = block
     }
 
     private fun select(category: FeatureManager.Category) {
@@ -223,15 +222,15 @@ class ConfigScreen(val parent: Screen?) : MagicScreen(Component.literal("Magic A
     private fun rebuildHits() {
         val query = search.value.trim()
         if (query.isEmpty()) {
-            hits = emptyList()
+            searchResults = emptyList()
             closeDropdown()
             return
         }
 
-        val found = mutableListOf<SearchHit>()
+        val found = mutableListOf<SearchResult>()
         fun walk(category: FeatureManager.Category, feature: Feature, node: SettingNode<*>, above: List<SettingNode<*>>) {
             val path = above + node
-            if (node.displayName.contains(query, ignoreCase = true)) found.add(SearchHit(category, feature, path))
+            if (node.displayName.contains(query, ignoreCase = true)) found.add(SearchResult(category, feature, path))
             val under = node.children.orEmpty() + ((node as? EnumSetting<*>)?.providedChildren ?: emptyList())
             under.forEach { walk(category, feature, it, path) }
         }
@@ -239,7 +238,7 @@ class ConfigScreen(val parent: Screen?) : MagicScreen(Component.literal("Magic A
             category.features.forEach { feature -> walk(category, feature, feature.baseSetting, emptyList()) }
         }
 
-        hits = found.sortedBy { it.path.size }
+        searchResults = found.sortedBy { it.path.size }
         dropdownScroll = 0
         openDropdown()
     }
@@ -257,24 +256,24 @@ class ConfigScreen(val parent: Screen?) : MagicScreen(Component.literal("Magic A
     private val dropdownWidth: Int get() = (search.width + DROPDOWN_EXTRA).coerceAtMost(width - MARGIN * 2)
     private val dropdownLeft: Int get() = (search.x + search.width / 2 - dropdownWidth / 2).coerceIn(MARGIN, width - MARGIN - dropdownWidth)
     private val dropdownTop: Int get() = search.y + search.height + Common.UI.SPACING_SMALL
-    private val dropdownRows: Int get() = hits.size.coerceIn(1, DROPDOWN_MAX_ROWS)
+    private val dropdownRows: Int get() = searchResults.size.coerceIn(1, DROPDOWN_MAX_ROWS)
     private val dropdownHeight: Int get() = dropdownRows * DROPDOWN_ROW_HEIGHT + Common.UI.BORDER_SIZE * 2
 
     private fun overDropdown(mouseX: Double, mouseY: Double): Boolean =
         dropdownOpen && inRect(mouseX, mouseY, dropdownLeft, dropdownTop, dropdownWidth, dropdownHeight)
 
-    private fun hitAt(mouseX: Double, mouseY: Double): SearchHit? {
+    private fun hitAt(mouseX: Double, mouseY: Double): SearchResult? {
         if (!overDropdown(mouseX, mouseY)) return null
         val row = (mouseY.toInt() - dropdownTop - Common.UI.BORDER_SIZE) / DROPDOWN_ROW_HEIGHT
-        return hits.getOrNull(dropdownScroll + row)
+        return searchResults.getOrNull(dropdownScroll + row)
     }
 
     /** Goes to the setting: its category shown, the rows above it unfolded, and it scrolled to and flashed. */
-    private fun navigate(hit: SearchHit) {
+    private fun navigate(hit: SearchResult) {
         select(hit.category)
         val widget = blockFor(hit.feature).reveal(hit.path) ?: return
         widget.flashUntil = System.currentTimeMillis() + FLASH_MS
-        pendingReveal = widget
+        navigatedWidget = widget
         closeDropdown()
         search.focused = false
     }
@@ -298,13 +297,13 @@ class ConfigScreen(val parent: Screen?) : MagicScreen(Component.literal("Magic A
         val textRoom = dropdownWidth - Common.UI.BORDER_SIZE * 2 - Common.UI.TEXT_X_PAD * 2 - Common.UI.SCROLLBAR_WIDTH
         var rowTop = top + Common.UI.BORDER_SIZE
 
-        if (hits.isEmpty()) {
+        if (searchResults.isEmpty()) {
             graphics.modText(font, Component.literal("Nothing matches"), left + Common.UI.BORDER_SIZE + Common.UI.TEXT_X_PAD, rowTop + (DROPDOWN_ROW_HEIGHT - font.lineHeight) / 2, Common.UI.DISABLED_TEXT_COLOR)
             if (stillOpening) graphics.disableScissor()
             return
         }
 
-        hits.drop(dropdownScroll).take(DROPDOWN_MAX_ROWS).forEach { hit ->
+        searchResults.drop(dropdownScroll).take(DROPDOWN_MAX_ROWS).forEach { hit ->
             if (hit === hovered) graphics.fill(left + Common.UI.BORDER_SIZE, rowTop, left + dropdownWidth - Common.UI.BORDER_SIZE, rowTop + DROPDOWN_ROW_HEIGHT, Common.UI.HOVER_WASH)
 
             // the category in the quiet colour, then the names down to the setting
@@ -319,7 +318,7 @@ class ConfigScreen(val parent: Screen?) : MagicScreen(Component.literal("Magic A
             rowTop += DROPDOWN_ROW_HEIGHT
         }
 
-        graphics.drawScrollBar(left + dropdownWidth - Common.UI.BORDER_SIZE - Common.UI.SCROLLBAR_WIDTH, top + Common.UI.BORDER_SIZE, dropdownRows * DROPDOWN_ROW_HEIGHT, hits.size, DROPDOWN_MAX_ROWS, dropdownScroll)
+        graphics.drawScrollBar(left + dropdownWidth - Common.UI.BORDER_SIZE - Common.UI.SCROLLBAR_WIDTH, top + Common.UI.BORDER_SIZE, dropdownRows * DROPDOWN_ROW_HEIGHT, searchResults.size, DROPDOWN_MAX_ROWS, dropdownScroll)
         if (stillOpening) graphics.disableScissor()
     }
 
@@ -603,7 +602,7 @@ class ConfigScreen(val parent: Screen?) : MagicScreen(Component.literal("Magic A
         val mouseY = rawY / drawScale
 
         if (overDropdown(mouseX, mouseY)) {
-            dropdownScroll = stepScroll(dropdownScroll, scrollY, hits.size, DROPDOWN_MAX_ROWS)
+            dropdownScroll = stepScroll(dropdownScroll, scrollY, searchResults.size, DROPDOWN_MAX_ROWS)
             return true
         }
         if (!overMain(mouseX, mouseY)) return false
@@ -637,7 +636,7 @@ class ConfigScreen(val parent: Screen?) : MagicScreen(Component.literal("Magic A
         }
         if (search.focused) {
             if (keyEvent.key() == GLFW.GLFW_KEY_ENTER || keyEvent.key() == GLFW.GLFW_KEY_KP_ENTER) {
-                hits.firstOrNull()?.let { navigate(it) }
+                searchResults.firstOrNull()?.let { navigate(it) }
                 return true
             }
             if (search.keyPressed(keyEvent)) return true

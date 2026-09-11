@@ -33,6 +33,16 @@ object WorldRender {
     /** Every side a model files its quads under, the unculled ones included. */
     private val QUAD_SIDES: List<Direction?> = Direction.entries + null
 
+    /** An alpha swinging between [low] and [high], for a mark that has to stand out from a steady one. */
+    fun pulsedAlpha(low: Int, high: Int): Int {
+        val swing = (kotlin.math.sin(System.currentTimeMillis() % PULSE_MS / PULSE_MS.toDouble() * Math.PI * 2) + 1) / 2
+
+        return low + ((high - low) * swing).toInt()
+    }
+
+    /** How long one swing of [pulsedAlpha] takes. */
+    private const val PULSE_MS: Long = 1600
+
     /** Pulls an outlined box off its faces, so two marked blocks side by side stay two boxes. */
     private const val OUTLINE_INSET: Double = 0.012
 

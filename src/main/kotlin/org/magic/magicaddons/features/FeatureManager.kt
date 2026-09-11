@@ -23,20 +23,20 @@ object FeatureManager {
         MobHitDebugInfo
     )
 
-    /** A category of the config screen: its key, the name shown, and its features. */
-    data class Category(val key: String, val name: String, val features: List<Feature>, val belowDivider: Boolean)
+    /** a config category, its key, the name displayed, and a list of features. */
+    data class Category(val key: String, val name: String, val features: List<Feature>, val isUnrelatedToGame: Boolean)
 
-    /** The side panel's order; a category not listed here comes after these, alphabetically. */
+    /** hardcoded panel order, ones not listed come after alphabetically */
     private val CATEGORY_ORDER = listOf("farming", "mining", "foraging", "combat", "kuudra")
 
-    /** Categories shown under the thick divider, after the ones a player plays with. */
+    /** categories that are unrelated to game features. */
     private val BELOW_DIVIDER = setOf(Customization.CATEGORY, "debug")
 
     fun categories(): List<Category> = features
         .groupBy { it.category }
         .map { (key, list) -> Category(key, key.replaceFirstChar { it.uppercase() }, list, key in BELOW_DIVIDER) }
         .sortedWith(
-            compareBy<Category> { it.belowDivider }
+            compareBy<Category> { it.isUnrelatedToGame }
                 .thenBy { CATEGORY_ORDER.indexOf(it.key).let { index -> if (index < 0) CATEGORY_ORDER.size else index } }
                 .thenBy { it.key }
         )

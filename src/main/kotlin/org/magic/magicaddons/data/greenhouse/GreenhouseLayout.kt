@@ -32,6 +32,37 @@ data class GreenhouseLayout(
             elementInstances.add(instance.copyForPrediction(slot))
         }
     }
+    /** a copy turned [turns] quarter turns clockwise */
+    fun turned(turns: Int): GreenhouseLayout {
+        val copy = GreenhouseLayout(id = id, name = name, size = size)
+
+        slots.forEach { slot ->
+            val (x, y) = turnedOrigin(slot.x, slot.y, 1, turns)
+            copy.getSlot(x, y)?.let {
+                it.placedBlock = slot.placedBlock
+                it.slotMark = slot.slotMark
+            }
+        }
+        elementInstances.forEach { instance ->
+            val (x, y) = turnedOrigin(instance.slot.x, instance.slot.y, instance.cropDef.footprint.width, turns)
+            val slot = copy.getSlot(x, y) ?: return@forEach
+            copy.elementInstances.add(instance.copyForPrediction(slot))
+        }
+
+        return copy
+    }
+
+    /** where the corner of a [span] wide square at ([x], [y]) lands after [turns] quarter turns clockwise */
+    private fun turnedOrigin(x: Int, y: Int, span: Int, turns: Int): Pair<Int, Int> {
+        val last = size - span
+        return when (Math.floorMod(turns, 4)) {
+            1 -> (last - y) to x
+            2 -> (last - x) to (last - y)
+            3 -> y to (last - x)
+            else -> x to y
+        }
+    }
+
     override fun toString(): String = displayName()
 
     enum class Kind { PLOT, PRESET }
