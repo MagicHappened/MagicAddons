@@ -17,6 +17,28 @@ public class EntityRenderStateMixin implements WrappedEntityRenderState {
     @Unique
     public int magicaddons$headOutline;
 
+    @Unique
+    public float magicaddons$smolBodyFactor = 1f;
+
+    @Unique
+    public float magicaddons$smolHeadFactor = 1f;
+
+    @Override
+    public float magicaddons$smolBody() {
+        return magicaddons$smolBodyFactor;
+    }
+
+    @Override
+    public float magicaddons$smolHead() {
+        return magicaddons$smolHeadFactor;
+    }
+
+    @Override
+    public void magicaddons$setSmolFactors(float body, float head) {
+        magicaddons$smolBodyFactor = body;
+        magicaddons$smolHeadFactor = head;
+    }
+
     @Override
     public int magicaddons$headOutlineColor() {
         return magicaddons$headOutline;

@@ -16,4 +16,11 @@ public interface WrappedEntityRenderState {
     int magicaddons$headOutlineColor();
 
     void magicaddons$setHeadOutlineColor(int value);
+
+    /** How much Smol People shrinks this entity's body and its head; 1 and 1 when it does not. */
+    float magicaddons$smolBody();
+
+    float magicaddons$smolHead();
+
+    void magicaddons$setSmolFactors(float body, float head);
 }
