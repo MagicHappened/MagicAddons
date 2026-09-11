@@ -8,6 +8,7 @@ import org.magic.magicaddons.features.farming.greenhousePresets.GreenhousePreset
 import org.magic.magicaddons.features.foraging.safarihelper.SafariHelper
 import org.magic.magicaddons.features.kuudra.CustomRendSound
 import org.magic.magicaddons.features.mining.HidePowderCoatingParticles
+import org.magic.magicaddons.features.misc.SmolPeople
 
 object FeatureManager {
     // listing the objects here is what makes them initialise
@@ -17,6 +18,7 @@ object FeatureManager {
         HighlightMobs,
         SafariHelper,
         CustomRendSound,
+        SmolPeople,
         Customization,
         MobHitDebugInfo
     )
