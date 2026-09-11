@@ -56,7 +56,10 @@ import org.magic.magicaddons.util.ScreenUtil.boxHeight
 import org.magic.magicaddons.util.ScreenUtil.component4
 import org.magic.magicaddons.util.ScreenUtil.drawMultilineBoxCentered
 import org.magic.magicaddons.util.ScreenUtil.drawPanel
+import net.minecraft.ChatFormatting
 import org.magic.magicaddons.util.ScreenUtil.drawShelf
+import org.magic.magicaddons.util.ScreenUtil.drawTooltipLines
+import org.magic.magicaddons.util.ScreenUtil.stackFor
 import org.magic.magicaddons.util.ScreenUtil.drawWarningBadge
 import org.magic.magicaddons.util.ScreenUtil.drawSimpleTooltip
 import org.magic.magicaddons.util.ScreenUtil.drawTooltipAtCursor
@@ -113,7 +116,11 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
         onUnplan = {
             displayedGrid()?.let { GreenhouseData.unplanGreenhouse(it) }
             initGreenhouseLayout()
-        }
+        },
+        onPickPreset = { event -> openAssignMenu(event) },
+        onTurnPlan = { turnPlan() },
+        onEditPreset = { editAssignedPreset() },
+        onSaveAsPreset = { saveGreenhouseAsPreset() }
     )
 
     /** Where a mode's own buttons begin, shared so the two modes line up with each other. */
@@ -165,7 +172,8 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
         onImported = { imported(it) },
         onRemove = { removePresetLayout(it) },
         onNewPreset = { newPreset() },
-        shownLayout = { displayedGridWidget?.layout }
+        shownLayout = { displayedGridWidget?.layout },
+        onTurn = { turnShownPlot(it) }
     )
 
     private var displayedName: String = "Error loading name."
@@ -627,6 +635,21 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
                     sy in plant.slot.y until plant.slot.y + plant.cropDef.footprint.height
         }
 
+    /** Picks up what a cell holds, the plant over the soil, the way creative picks a block. */
+    private fun pickFromCell(event: MouseButtonEvent): Boolean {
+        val grid = displayedGridWidget ?: return false
+        val (sx, sy) = grid.slotAt(event.x, event.y) ?: return false
+
+        val plant = plantsCovering(grid.layout, sx, sy).firstOrNull()
+        val picked = when {
+            plant != null -> PaletteItem.Crop(plant.cropDef)
+            else -> grid.layout.getSlot(sx, sy)?.placedBlock?.block?.let { PaletteItem.Soil(it) }
+        } ?: return false
+
+        plantPalette.pickUp(picked)
+        return true
+    }
+
     /** Empties a cell of the preset: the plant covering it and the soil under it. */
     private fun clearCell(sx: Int, sy: Int): Boolean {
         val grid = displayedGridWidget ?: return false
@@ -692,6 +715,14 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
             return
         }
         val def = (item as PaletteItem.Crop).def
+
+        // with Merge on, a crop dropped on a plant joins that slot
+        val standing = plantsCovering(grid.layout, sx, sy).firstOrNull()
+        if (plantPalette.mergeMode && standing != null) {
+            mergeInto(grid, standing, def)
+            return
+        }
+
         if (!canPlace(grid.layout, def, sx, sy)) return
 
         remember(grid.layout)
@@ -712,21 +743,52 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
         grid.init()
     }
 
+    /** Adds [def] to the crops [standing]'s slot may hold; the plant is swapped for a copy so undo works. */
+    private fun mergeInto(grid: GridWidget, standing: GreenhouseElementInstance, def: CropDefinition) {
+        if (standing.cropDef.footprint != def.footprint) {
+            ChatUtils.sendWithPrefix("Only crops of the same size can share a slot.")
+            return
+        }
+        if (standing.accepts(def)) return
+
+        remember(grid.layout)
+        val merged = standing.copyForPrediction(standing.slot).also { it.alternatives.add(def) }
+        grid.layout.elementInstances.remove(standing)
+        grid.layout.elementInstances.add(merged)
+        merged.slot.slotMark = LayoutSlot.Marking.Target
+        grid.justMarked.add(merged)
+        grid.init()
+    }
+
     /** Lets the player say what a plant in the plan stands for, written onto its slot. */
     private fun openMarkContext(instance: GreenhouseElementInstance, event: MouseButtonEvent) {
         val grid = displayedGridWidget ?: return
 
-        val menu = PickContext(event.x.toInt(), event.y.toInt(), "Mark as:", MarkOption.entries, this) { option ->
+        // a merged slot is always a target; clearing the mark unmerges it
+        val options = if (instance.merged) listOf(MarkOption.Target, MarkOption.None) else MarkOption.entries
+        val menu = PickContext(event.x.toInt(), event.y.toInt(), "Mark as:", options, this) { option ->
             applyMark(instance, option.marking)
         }
         menu.init()
         addContext(menu)
     }
 
-    /** Writes a mark onto a plant's slot. */
+    /** Writes a mark onto a plant's slot; clearing a merged slot's mark unmerges it. */
     private fun applyMark(instance: GreenhouseElementInstance, marking: LayoutSlot.Marking?) {
         val grid = displayedGridWidget ?: return
+        if (instance.merged && marking == LayoutSlot.Marking.Ingredient) return
+
         remember(grid.layout)
+        if (instance.merged && marking == null) {
+            val single = instance.copyForPrediction(instance.slot).also { it.alternatives.clear() }
+            grid.layout.elementInstances.remove(instance)
+            grid.layout.elementInstances.add(single)
+            single.slot.slotMark = null
+            grid.justMarked.add(single)
+            grid.init()
+            return
+        }
+
         instance.slot.slotMark = marking
         grid.justMarked.add(instance)
         grid.init()
@@ -818,8 +880,30 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
                 it.placedBlock = null
                 it.slotMark = null
             }
+            stopPlannersOn(grid.layout)
             grid.init()
         })
+    }
+
+    /** Stops every planner running [plot]. */
+    private fun stopPlannersOn(plot: GreenhouseLayout) {
+        GreenhouseData.greenhouseGrids
+            .filter { it.state.assignedLayout === plot }
+            .forEach { GreenhouseData.unplanGreenhouse(it) }
+    }
+
+    /** Turns the shown plot a quarter turn, clockwise for 1; a planner running it keeps its place in the world. */
+    private fun turnShownPlot(turns: Int) {
+        val grid = displayedGridWidget ?: return
+
+        remember(grid.layout)
+        grid.layout.takeContentsFrom(grid.layout.turned(turns))
+
+        GreenhouseData.greenhouseGrids
+            .filter { it.state.assignedLayout === grid.layout }
+            .forEach { it.state.planTurns = Math.floorMod(it.state.planTurns - turns, 4) }
+
+        grid.init()
     }
 
     /** A new preset with one empty plot, shown at once. */
@@ -863,6 +947,9 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
     /** The whole screen, in layout units. */
     private fun extractScaled(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
         followPlayerTurn()
+
+        // read before the shelves are drawn, since what the panel says decides how tall it is
+        greenhousePanel.assigned = displayedGrid()?.state?.assignedLayout?.let { GreenhouseData.nameInFull(it) }
 
         // the bookmarks first, so the frame drawn next covers where they tuck under it
         if (displayedGridWidget != null) {
@@ -965,7 +1052,10 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
         }
 
         val hovered = hoveredElement
-        if (hovered !is ElementWidget) return
+        if (hovered !is ElementWidget) {
+            renderContents(graphics)
+            return
+        }
 
         // hovering the star beside a water time shows the star's own tooltip instead of the plant's
         hovered.deadTooltipAt(mouseX, mouseY)?.let {
@@ -983,6 +1073,48 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
             hoverControls.x + hoverControls.width + Common.UI.SPACING_LARGE,
             startY)
     }
+
+    /** What the grid on screen holds, one line a crop, where a hovered plant's tooltip would be. */
+    private fun renderContents(graphics: GuiGraphicsExtractor) {
+        val layout = displayedGridWidget?.layout ?: return
+        val counted = layout.elementInstances
+            .groupingBy { it.cropDef }
+            .eachCount()
+            .entries
+            .sortedWith(compareByDescending<Map.Entry<CropDefinition, Int>> { it.value }.thenBy { it.key.name })
+
+        if (counted.isEmpty()) return
+
+        val lines = buildList {
+            add(Component.literal(GreenhouseData.nameInFull(layout)).withColor(rgb(Common.UI.ACCENT_COLOR)))
+            counted.forEach { (def, count) ->
+                add(
+                    Component.literal(def.name).withColor(rgb(contentsColor(layout, def)))
+                        .append(Component.literal(" x$count").withStyle(ChatFormatting.GRAY))
+                )
+            }
+        }
+
+        graphics.drawTooltipLines(
+            lines.map { it.visualOrderText },
+            hoverControls.x + hoverControls.width + Common.UI.SPACING_LARGE,
+            startY
+        ) { index -> counted.getOrNull(index - 1)?.let { listOf(stackFor(it.key)) } ?: emptyList() }
+    }
+
+    /** A crop of the list takes the colour of the mark it wears, and plain text when it wears none. */
+    private fun contentsColor(layout: GreenhouseLayout, def: CropDefinition): Int {
+        val marks = layout.elementInstances.filter { it.cropDef == def }.mapNotNull { it.slot.slotMark }
+
+        return when {
+            LayoutSlot.Marking.Target in marks -> LayoutSlot.Marking.Target.color
+            LayoutSlot.Marking.Ingredient in marks -> LayoutSlot.Marking.Ingredient.color
+            else -> Common.UI.TEXT_COLOR
+        }
+    }
+
+    /** A text colour carries no alpha. */
+    private fun rgb(color: Int): Int = color and 0xFFFFFF
 
     /** The next tick box, top left: a button like the delete switch, washed under the mouse and framed bright while pinned. */
     private fun drawTimeBox(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int) {
@@ -1016,7 +1148,7 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
 
         // only where there is a plan to stop, since a button that does nothing is a question the
         // player has to answer every time they look at the screen
-        greenhousePanel.showUnplan = plannerRunning()
+        greenhousePanel.showButtons = currentDisplay == CurrentDisplay.Greenhouses && displayedGrid() != null
         greenhousePanel.extractRenderState(graphics, mouseX, mouseY, delta)
     }
 
@@ -1148,6 +1280,8 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
             plantPalette.clearTools()
             return true
         }
+
+        if (event.button() == 2 && pickFromCell(event)) return true
 
         if (plantPalette.mouseClicked(event, doubled)) return true
 
@@ -1430,9 +1564,66 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
     }
 
     /** Whether the greenhouse on screen has a plan running, which is what the button is for. */
-    private fun plannerRunning(): Boolean =
-        currentDisplay == CurrentDisplay.Greenhouses &&
-                displayedGrid()?.state?.assignedLayout != null
+    /** The preset plots to choose between, each named by its preset and its place in it. */
+    private class PlotChoice(val plot: GreenhouseLayout) {
+        override fun toString(): String = GreenhouseData.nameInFull(plot)
+    }
+
+    /** Asks which preset plot this greenhouse should run, and hands the answer to the planner. */
+    private fun openAssignMenu(event: MouseButtonEvent) {
+        val grid = displayedGrid() ?: return
+        val choices = GreenhouseData.presetGrids.flatMap { it.plots }.map { PlotChoice(it) }
+
+        if (choices.isEmpty()) {
+            ChatUtils.sendWithPrefix("There are no presets to assign yet.")
+            return
+        }
+
+        val menu = PickContext(event.x.toInt(), event.y.toInt(), "Assign:", choices, this) {
+            assignPresetLayout(it.plot, grid)
+        }
+        menu.init()
+        addContext(menu)
+    }
+
+    /** Lays the assigned plan a quarter turn further round on this greenhouse, for a wrong auto fit. */
+    private fun turnPlan() {
+        val grid = displayedGrid() ?: return
+        if (grid.state.assignedLayout == null) return
+
+        grid.state.planTurns = Math.floorMod(grid.state.planTurns + 1, 4)
+        GreenhouseData.regenRender()
+    }
+
+    /** Shows the plot this greenhouse runs in preset mode, so it can be changed. */
+    private fun editAssignedPreset() {
+        val plot = displayedGrid()?.state?.assignedLayout ?: return
+        val master = GreenhouseData.masterOf(plot) ?: return
+
+        GreenhouseData.currentPreset = master
+        shownPlot = plot
+        presetCleared = false
+        showDisplay(CurrentDisplay.Presets)
+    }
+
+    /**
+     * Keeps what stands in this greenhouse as a preset of its own. Empty slots are left unsaid
+     * rather than saved as air, which a plan would then demand.
+     */
+    private fun saveGreenhouseAsPreset() {
+        val grid = displayedGrid() ?: return
+        val master = MasterLayout.create(GreenhouseData.computeNextAvailableId())
+        val plot = master.plots.first()
+
+        plot.takeContentsFrom(grid.layout)
+        plot.slots.forEach { slot -> if (slot.placedBlock?.isAir == true) slot.placedBlock = null }
+
+        presetCleared = false
+        addPresetLayout(master)
+        showDisplay(CurrentDisplay.Presets)
+
+        ChatUtils.sendWithPrefix("Saved ${grid.layout.displayName()} as ${master.displayName()}")
+    }
 
     /** The greenhouse on screen is whichever the selector shows, not the one being stood in. */
     private fun displayedGrid(): GreenhouseGrid? {
@@ -1449,8 +1640,10 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
             return
         }
         grid.state.assignedLayout = layout
-        grid.state.completionMuted = false
-        PlannerNeeds.forget(grid)
+        // turned the way it best fits what is already built
+        grid.state.planTurns = grid.bestTurnFor(layout)
+        grid.state.buildAnnounced = false
+        PlannerNeeds.forgetSentMessage(grid)
         GreenhouseData.regenRender()
 
         ChatUtils.sendWithPrefix(
@@ -1485,6 +1678,7 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
         val master = GreenhouseData.currentPreset
         if (master != null && plot != null && master.plots.size > 1) {
             master.plots.remove(plot)
+            stopPlannersOn(plot)
             shownPlot = null
             initPresetLayout()
             return
@@ -1494,6 +1688,7 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
             ChatUtils.sendWithPrefix("No preset to remove.")
             return
         }
+        current.plots.forEach { stopPlannersOn(it) }
         val presets = GreenhouseData.presetGrids
         val index = presets.indexOf(current)
         presets.remove(current)

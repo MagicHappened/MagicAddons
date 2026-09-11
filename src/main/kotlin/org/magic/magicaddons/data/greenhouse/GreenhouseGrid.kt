@@ -47,6 +47,26 @@ class GreenhouseGrid(
         return BlockPos(worldX, GREENHOUSE_SOIL_Y, worldZ)
     }
 
+    /** the quarter turn of [wanted] matching most of what stands here */
+    fun bestTurnFor(wanted: GreenhouseLayout): Int =
+        (0 until 4).maxBy { turns -> agreement(wanted.turned(turns)) }
+
+    /** how many of [wanted]'s soil blocks and plants are in place */
+    private fun agreement(wanted: GreenhouseLayout): Int {
+        val soil = wanted.slots.count { slot ->
+            val wantedBlock = slot.placedBlock?.block ?: return@count false
+            wantedBlock == layout.getSlot(slot.x, slot.y)?.placedBlock?.block
+        }
+        val plants = wanted.elementInstances.count { instance ->
+            elements.any {
+                it.instance.cropDef == instance.cropDef &&
+                        it.instance.slot.x == instance.slot.x && it.instance.slot.y == instance.slot.y
+            }
+        }
+
+        return soil + plants
+    }
+
     fun getPosForSlotCoords(x: Int, y: Int): BlockPos? {
         layout.getSlot(x,y)?.let {
             return getPosForSlot(it)
@@ -393,9 +413,14 @@ class GreenhouseGrid(
 
             instance.age = instance.age?.plus(ticks * tickMs)
 
+            // a plant stops drinking once it has grown out, so only the ticks it spends growing take
+            // water off it. In debt the low end never moves, so it is given every tick
+            val stagesLeft = lowestStage?.let { (maxStage - it).coerceAtLeast(0) } ?: ticks
+            val drinkingTicks = if (inDebt) ticks else ticks.coerceAtMost(stagesLeft)
+
             if (instance.needsWater) {
                 instance.waterLevel = instance.waterLevel?.let {
-                    WaterModel.after(it, ticks, layout.waterEffectAt(instance.slot))
+                    WaterModel.after(it, drinkingTicks, layout.waterEffectAt(instance.slot))
                 }
             }
 
@@ -598,8 +623,10 @@ class GreenhouseGrid(
         var assignedLayout: GreenhouseLayout? = null,
         var hasRuntimeReferences: Boolean = false,
         var pendingGrowthTicks: Int = 0,
-        /** Whether the player is tired of hearing this particular greenhouse's plan is finished. */
-        var completionMuted: Boolean = false
+        /** Whether this greenhouse has already said its plan was built. */
+        var buildAnnounced: Boolean = false,
+        /** quarter turns the assigned layout is laid with */
+        var planTurns: Int = 0
     ) {
         /** The assigned layout's id as read from disk, resolved to the layout once the presets are loaded too. */
         var assignedLayoutId: String? = null

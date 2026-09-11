@@ -13,7 +13,7 @@ import org.magic.magicaddons.util.ScreenUtil.drawBorder
 import kotlin.math.max
 
 /**
- * A titled panel listing [values] as rows under a search field, the field narrowing the rows as
+ * A panel listing [values] as rows under a search field, the field narrowing the rows as
  * the player types. Picking a row hands the value to [onValueSelected]. Opened at ([x], [y]) and
  * folded back on screen by [init] once its size is known.
  */
@@ -22,7 +22,6 @@ abstract class AbstractSelectorContextMenu<T>(
     y: Int,
     val values: List<T>,
     private val title: String,
-    /** A handful of rows needs no search field; a long list gets one. */
     private val withSearch: Boolean = true
 ) : AbstractContextMenu() {
 
@@ -39,22 +38,22 @@ abstract class AbstractSelectorContextMenu<T>(
     private val paddingLeft: Int = Common.UI.TEXT_X_PAD
     private val paddingRight: Int = Common.UI.TEXT_X_PAD
 
-    private val titlePad = Common.UI.SPACING
+    private val titlePadding = Common.UI.SPACING
 
-    private val search = TextField(0, rowHeight, Component.literal(Common.UI.SEARCH_HINT)).apply {
+    private val searchBox = TextField(0, rowHeight, Component.literal(Common.UI.SEARCH_HINT)).apply {
         setResponder { buildWidgets(); layoutRows() }
     }
 
     protected val valueWidgets: MutableList<ClickableRowWidget<T>> = mutableListOf()
 
-    /** Wide enough for the longest row and the title. */
+    /** dynamically acquired for the longest names in the overlay. */
     override val overlayWidth: Int
         get() {
             val longest = values.maxOfOrNull { font.width(it.toString()) } ?: 0
             return max(longest, font.width(title)) + paddingLeft + paddingRight
         }
 
-    private val titleHeight: Int get() = font.lineHeight + titlePad * 2
+    private val titleHeight: Int get() = font.lineHeight + titlePadding * 2
 
     private val searchHeight: Int get() = if (withSearch) rowHeight else 0
 
@@ -63,8 +62,8 @@ abstract class AbstractSelectorContextMenu<T>(
 
     /** Builds the rows, then moves the menu so the whole of it is on screen. */
     open fun init() {
-        search.value = ""
-        search.focused = true
+        searchBox.value = ""
+        searchBox.focused = true
         buildWidgets()
 
         val (x, y) = OverlayRenderable.placeOnScreen(overlayX, overlayY, overlayWidth, overlayHeight)
@@ -77,17 +76,17 @@ abstract class AbstractSelectorContextMenu<T>(
         valueWidgets.clear()
 
         values
-            .filter { it.toString().contains(search.value.trim(), ignoreCase = true) }
+            .filter { it.toString().contains(searchBox.value.trim(), ignoreCase = true) }
             .forEach { valueWidgets.add(createRow(it)) }
         valueWidgets.lastOrNull()?.dividerBelow = false
     }
 
     private fun layoutRows() {
-        search.x = overlayX
-        search.y = overlayY + titleHeight
-        search.width = overlayWidth
+        searchBox.x = overlayX
+        searchBox.y = overlayY + titleHeight
+        searchBox.width = overlayWidth
 
-        var currentY = search.y + searchHeight
+        var currentY = searchBox.y + searchHeight
 
         valueWidgets.forEach { widget ->
             widget.x = overlayX
@@ -108,15 +107,15 @@ abstract class AbstractSelectorContextMenu<T>(
             font,
             Component.literal(title),
             overlayX + paddingLeft,
-            overlayY + titlePad,
+            overlayY + titlePadding,
             Common.UI.TEXT_COLOR,
             false
         )
 
         if (withSearch) {
-            search.render(graphics)
+            searchBox.render(graphics)
         } else {
-            // a line parts the title from the rows
+            // a line separates the title from the rows
             val lineY = overlayY + titleHeight - 1
             graphics.fill(overlayX, lineY, overlayX + overlayWidth, lineY + 1, Common.UI.DIVIDER_COLOR)
         }
@@ -126,7 +125,7 @@ abstract class AbstractSelectorContextMenu<T>(
 
     override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
         if (!isMouseOver(mouseButtonEvent.x, mouseButtonEvent.y)) return false
-        if (withSearch && search.mouseClicked(mouseButtonEvent, doubled)) return true
+        if (withSearch && searchBox.mouseClicked(mouseButtonEvent, doubled)) return true
 
         valueWidgets.toList().forEach {
             if (it.mouseClicked(mouseButtonEvent, doubled)) return true
@@ -134,9 +133,9 @@ abstract class AbstractSelectorContextMenu<T>(
         return true
     }
 
-    override fun charTyped(characterEvent: CharacterEvent): Boolean = withSearch && search.charTyped(characterEvent)
+    override fun charTyped(characterEvent: CharacterEvent): Boolean = withSearch && searchBox.charTyped(characterEvent)
 
-    override fun keyPressed(keyEvent: KeyEvent): Boolean = withSearch && search.keyPressed(keyEvent)
+    override fun keyPressed(keyEvent: KeyEvent): Boolean = withSearch && searchBox.keyPressed(keyEvent)
 
     override fun mouseMoved(mouseX: Double, mouseY: Double) {
         hoveredElement = null

@@ -2,6 +2,7 @@ package org.magic.magicaddons.util.compat
 
 import net.minecraft.ChatFormatting
 import net.minecraft.client.Minecraft
+import net.minecraft.client.gui.components.ChatComponent
 import net.minecraft.client.gui.screens.Screen
 //? if >=26.2 {
 /*import net.minecraft.network.chat.TextColor
@@ -21,6 +22,15 @@ object McCompat {
         /*return Minecraft.getInstance().gui.screen()
         *///?} else {
         return Minecraft.getInstance().screen
+        //?}
+    }
+
+    /** the chat panel */
+    fun chat(): ChatComponent {
+        //? if >=26.2 {
+        /*return Minecraft.getInstance().gui.hud.chat
+        *///?} else {
+        return Minecraft.getInstance().gui.chat
         //?}
     }
 

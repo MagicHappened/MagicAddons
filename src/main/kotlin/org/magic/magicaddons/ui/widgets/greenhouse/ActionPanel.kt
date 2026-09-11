@@ -26,14 +26,14 @@ abstract class ActionPanel : Renderable, HoverableContainer {
     var width: Int = 0
         private set
 
-    /**
-     * Every button, showing or not: a panel is laid out once and drawn many times, so one left out
-     * of the layout stays wherever it was born.
-     */
+    /** Every button the panel has; only the ones [isShown] allows are placed, drawn and clicked. */
     protected abstract val buttons: List<ClickableButtonWidget>
 
     /** Whether [button] is worth showing right now. Everything is, unless a panel says otherwise. */
     protected open fun isShown(button: ClickableButtonWidget): Boolean = true
+
+    /** Room kept above the buttons for whatever a panel draws there. */
+    protected open fun headerHeight(): Int = 0
 
     /** What each button does, asked in the same order the buttons are laid out. */
     protected abstract fun onPressed(button: ClickableButtonWidget, event: MouseButtonEvent): Boolean
@@ -45,10 +45,10 @@ abstract class ActionPanel : Renderable, HoverableContainer {
         this.width = width
 
         var rowX = x + PADDING
-        var rowY = y + PADDING
+        var rowY = y + PADDING + headerHeight()
         var rowHeight = 0
 
-        buttons.forEach { button ->
+        buttons.filter { isShown(it) }.forEach { button ->
             if (rowX + button.width > x + width - PADDING && rowX > x + PADDING) {
                 rowX = x + PADDING
                 rowY += rowHeight + Common.UI.SPACING
@@ -69,7 +69,7 @@ abstract class ActionPanel : Renderable, HoverableContainer {
     /** How tall the panel's buttons actually came out, which a caller may want to lay out below. */
     val contentHeight: Int
         get() {
-            val bottom = buttons.maxOfOrNull { it.y + it.height } ?: return 0
+            val bottom = buttons.filter { isShown(it) }.maxOfOrNull { it.y + it.height } ?: return 0
 
             return bottom - y + PADDING
         }

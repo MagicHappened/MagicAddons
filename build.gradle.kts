@@ -96,6 +96,9 @@ dependencies {
     api("tech.thatgravyboat:skyblock-api:${project.property("skyblock_api_version")}") {
         capabilities { requireCapability("tech.thatgravyboat:${project.property("skyblock_api_capability")}") }
     }
+
+    // read at compile time only: the planner asks it for storage contents when the player runs it
+    compileOnly("maven.modrinth:skyblock-enhanced-storage:${project.property("enhanced_storage_version")}")
 }
 
 

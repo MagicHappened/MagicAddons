@@ -320,9 +320,15 @@ open class CropStage(
                 ?: role?.headAt(baseBlock.x, baseBlock.z, standDef.offset)
 
             head?.let { stand.headPose = it }
-            stand.yRot = Mth.wrapDegrees(
-                (standDef.yRotation ?: role?.yRotation ?: 0f) + 90f * worldStep
-            )
+            val yaw = Mth.wrapDegrees((standDef.yRotation ?: role?.yRotation ?: 0f) + 90f * worldStep)
+
+            // a ghost stand is never ticked, so every yaw field is set here
+            stand.yRot = yaw
+            stand.yRotO = yaw
+            stand.yBodyRot = yaw
+            stand.yBodyRotO = yaw
+            stand.yHeadRot = yaw
+            stand.yHeadRotO = yaw
             stand.xRot = standDef.xRotation ?: role?.xRotation ?: 0f
             stand.setItemSlot(if (standDef.hashString != null) EquipmentSlot.HEAD else standDef.itemSlot, held)
             renderStands.add(stand)
@@ -532,7 +538,17 @@ data class GreenhouseElementInstance(
      * What the scan learned about this plant beyond its stage: hunger, sleep, craving and the like.
      */
     val readings: MutableMap<String, Int> = mutableMapOf(),
+    /** other crops that may appear on this slot instead; such a slot is always a target */
+    val alternatives: MutableList<CropDefinition> = mutableListOf(),
 ) {
+    val merged: Boolean get() = alternatives.isNotEmpty()
+
+    /** whether [def] is this crop or one merged into the slot */
+    fun accepts(def: CropDefinition): Boolean = def == cropDef || def in alternatives
+
+    /** every crop of the slot, the main one first */
+    val everyCrop: List<CropDefinition> get() = listOf(cropDef) + alternatives
+
     /** Whether this plant is asleep and will not grow until it is woken. */
     val isAsleep: Boolean get() = readings[CropStandReader.ASLEEP] == 1
 
@@ -572,7 +588,7 @@ data class GreenhouseElementInstance(
 
     /** A copy on [slot], readings included, for a prediction that must not move the real plant. */
     fun copyForPrediction(slot: LayoutSlot): GreenhouseElementInstance =
-        copy(slot = slot, readings = readings.toMutableMap()).also {
+        copy(slot = slot, readings = readings.toMutableMap(), alternatives = alternatives.toMutableList()).also {
             it.waterPredictedInDebt = waterPredictedInDebt
             it.waterExact = waterExact
             it.firstSeenStage = firstSeenStage

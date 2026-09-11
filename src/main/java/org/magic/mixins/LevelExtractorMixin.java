@@ -45,9 +45,10 @@ public class LevelExtractorMixin {
         EntityRenderState state = original.call(instance, entity, partialTickTime);
 
         try {
-            if (LayoutRenderState.INSTANCE.getBadStandsUUID().contains(entity.getUUID())){
+            int tint = LayoutRenderState.INSTANCE.standTint(entity.getUUID());
+            if (tint != 0) {
                 ((WrappedEntityRenderState)state).magicaddons$setWrappedEntity(true);
-                ((WrappedEntityRenderState)state).magicaddons$setWrappedEntityTintColor(LayoutRenderState.RED_TINT);
+                ((WrappedEntityRenderState)state).magicaddons$setWrappedEntityTintColor(tint);
             }
         } catch (Throwable error) {
             ErrorReporter.INSTANCE.report("the stand tinting", error);

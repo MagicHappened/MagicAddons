@@ -86,7 +86,7 @@ class HudEditorScreen : MagicScreen(Component.literal("HUD Editor"), "the hud ed
     private fun shownHere(element: HudElement): Boolean = element.showsIn(situation) && !layout.isHidden(situation, element.id)
 
     private fun rebuild() {
-        scene = HudScene.build(layout, width, height, sample = true, include = ::shownHere)
+        scene = HudScene.buildLayout(layout, width, height, sample = true, include = ::shownHere)
     }
 
     override fun onInit() {
@@ -449,7 +449,7 @@ class HudEditorScreen : MagicScreen(Component.literal("HUD Editor"), "the hud ed
         this.mouseY = mouseY
         rebuild()
 
-        scene.draw(graphics)
+        scene.drawBoxes(graphics)
 
         val hovered = if (overlays.isEmpty()) hoveredBox() else null
         val shown = draggedBox() ?: hovered

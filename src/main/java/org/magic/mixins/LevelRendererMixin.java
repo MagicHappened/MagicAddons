@@ -33,6 +33,7 @@ import org.magic.magicaddons.commands.debug.FarmingDebug;
 import org.magic.magicaddons.commands.debug.CropCollector;
 import org.magic.magicaddons.features.farming.greenhousePresets.LayoutRenderState;
 import org.magic.magicaddons.features.farming.greenhousePresets.PlantSpotlight;
+import org.magic.magicaddons.features.farming.greenhousePresets.WaterIndicator;
 import org.magic.magicaddons.util.EntityUtils;
 import org.magic.misc.EntityRenderModifier;
 import org.magic.misc.WrappedEntityRenderState;
@@ -137,6 +138,13 @@ public abstract class LevelRendererMixin {
                     levelRenderState.cameraRenderState.pos
             );
 
+            // soil of plants short of water
+            WaterIndicator.INSTANCE.submit(
+                    poseStack,
+                    submitNodeCollector,
+                    levelRenderState.cameraRenderState.pos
+            );
+
             // whatever the farming debug last listed, lit up so it can be counted by eye
             FarmingDebug.INSTANCE.submitHighlights(
                     poseStack,
@@ -175,7 +183,7 @@ public abstract class LevelRendererMixin {
                         // alone says this head is a plan rather than a plant
                         if (state instanceof WrappedEntityRenderState wrapped) {
                             wrapped.magicaddons$setHeadOutlineColor(
-                                    LayoutRenderState.GHOST_OUTLINE_COLOR
+                                    LayoutRenderState.getGhostOutlineColor()
                             );
                         }
                     },

@@ -26,5 +26,8 @@
     "fabric-language-kotlin": ">=${kotlin_loader_version}",
     "fabric-api": "*",
     "minecraft": "${minecraft_version}"
+  },
+  "suggests": {
+    "enhanced_storage": ">=1.2.0"
   }
 }

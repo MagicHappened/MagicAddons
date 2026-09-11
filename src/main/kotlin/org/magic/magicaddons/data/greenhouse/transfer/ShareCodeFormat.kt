@@ -33,16 +33,24 @@ import java.io.DataOutputStream
  *     u8 crop: 0 for none, else the crop's index plus one, on the plant's top left cell only
  *     u8 flags: bits 0-1 the mark (0 none, 1 target, 2 ingredient), bits 2-7 the soil
  *              (0 unset, 1 air required, else the soil's index plus two)
+ *     payload version 2, after a cell with a crop: u8 count of merged crops, then that many
+ *              u8 crop indices plus one
  * ```
+ *
+ * Version 2 is only written when a plot holds a merged slot, so a plain preset still reads on
+ * older builds.
  */
 object ShareCodeFormat : LayoutFormat {
 
     override val displayName: String = "MagicAddons"
 
     private const val PREFIX: String = "MAGH"
-    private const val WRAPPER_VERSION: Int = 1
+    private const val WRAPPER_VERSION: Int = 2
     private const val SEPARATOR: Char = '|'
-    private const val PAYLOAD_VERSION: Int = 1
+    private const val PAYLOAD_VERSION: Int = 2
+
+    /** The version before merged slots, still written when nothing is merged. */
+    private const val PLAIN_VERSION: Int = 1
 
     private const val SOIL_UNSET: Int = 0
     private const val SOIL_AIR: Int = 1
@@ -106,7 +114,12 @@ object ShareCodeFormat : LayoutFormat {
                     SOIL_AIR -> slot.placedBlock = Blocks.AIR.defaultBlockState()
                     else -> soils.getOrNull(soil - SOIL_FIRST)?.let { slot.placedBlock = it.defaultBlockState() }
                 }
-                if (crop > 0) crops.getOrNull(crop - 1)?.let { plant(layout, it, slot, notes) }
+                val merged = if (crop > 0 && version >= PAYLOAD_VERSION) {
+                    List(input.readUnsignedByte()) { crops.getOrNull(input.readUnsignedByte() - 1) }.filterNotNull()
+                } else {
+                    emptyList()
+                }
+                if (crop > 0) crops.getOrNull(crop - 1)?.let { plant(layout, it, slot, notes, merged) }
             }
             layout
         }.take(MasterLayout.MAX_PLOTS)
@@ -117,7 +130,13 @@ object ShareCodeFormat : LayoutFormat {
     }
 
     /** Puts [definition] down with its top left on [slot], its own soil under any cell not given one. */
-    private fun plant(layout: GreenhouseLayout, definition: CropDefinition, slot: LayoutSlot, notes: MutableList<String>) {
+    private fun plant(
+        layout: GreenhouseLayout,
+        definition: CropDefinition,
+        slot: LayoutSlot,
+        notes: MutableList<String>,
+        merged: List<CropDefinition> = emptyList()
+    ) {
         val footprint = definition.footprint
         if (slot.x + footprint.width > layout.size || slot.y + footprint.height > layout.size) {
             notes.add("${definition.name} at ${slot.x},${slot.y} does not fit the grid")
@@ -129,7 +148,9 @@ object ShareCodeFormat : LayoutFormat {
                 if (covered.placedBlock == null) covered.placedBlock = definition.requiredSoil.firstOrNull()?.defaultBlockState()
             }
         }
-        layout.elementInstances.add(GreenhouseElementInstance(definition.elementId, slot, cropDef = definition))
+        layout.elementInstances.add(
+            GreenhouseElementInstance(definition.elementId, slot, cropDef = definition, alternatives = merged.toMutableList())
+        )
     }
 
     override fun export(layout: GreenhouseLayout): LayoutTransferResult = write(layout.name, listOf(layout))
@@ -137,13 +158,15 @@ object ShareCodeFormat : LayoutFormat {
     override fun exportAll(master: MasterLayout): LayoutTransferResult = write(master.name, master.plots)
 
     private fun write(name: String?, plots: List<GreenhouseLayout>): LayoutTransferResult {
-        val crops = plots.flatMap { plot -> plot.elementInstances.map { it.cropDef } }.distinct()
+        val crops = plots.flatMap { plot -> plot.elementInstances.flatMap { it.everyCrop } }.distinct()
+        val anyMerged = plots.any { plot -> plot.elementInstances.any { it.merged } }
+        val version = if (anyMerged) PAYLOAD_VERSION else PLAIN_VERSION
         val soils = plots.flatMap { plot -> plot.slots.mapNotNull { it.placedBlock?.block } }.filter { it != Blocks.AIR }.distinct()
         if (crops.size > 255 || soils.size > 250) return LayoutTransferResult.Failure("Too many different crops or soils for a share code.")
 
         val bytes = ByteArrayOutputStream()
         val out = DataOutputStream(bytes)
-        out.writeByte(PAYLOAD_VERSION)
+        out.writeByte(version)
         out.writeUTF(name ?: "")
         out.writeByte(plots.first().size)
         out.writeByte(crops.size)
@@ -170,12 +193,18 @@ object ShareCodeFormat : LayoutFormat {
                     else -> soils.indexOf(block) + SOIL_FIRST
                 }
                 out.writeByte(mark or (soil shl 2))
+
+                if (plant != null && version >= PAYLOAD_VERSION) {
+                    out.writeByte(plant.alternatives.size)
+                    plant.alternatives.forEach { out.writeByte(crops.indexOf(it) + 1) }
+                }
             }
         }
 
         val code = RawDeflate.encode(bytes.toByteArray())
         val label = (name ?: "").replace(SEPARATOR, ' ').trim()
-        return LayoutTransferResult.Exported("$PREFIX$WRAPPER_VERSION$SEPARATOR$label$SEPARATOR$code")
+        val wrapper = if (anyMerged) WRAPPER_VERSION else PLAIN_VERSION
+        return LayoutTransferResult.Exported("$PREFIX$wrapper$SEPARATOR$label$SEPARATOR$code")
     }
 
     private fun idOf(block: Block): String = BuiltInRegistries.BLOCK.getKey(block).toString()

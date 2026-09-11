@@ -1,14 +1,9 @@
 package org.magic.magicaddons.features.farming.greenhousePresets
 
-import org.magic.magicaddons.commands.internal.MainInternal
 import java.time.Instant
 import java.time.Duration
 import org.magic.magicaddons.data.greenhouse.GreenhouseLayout
-import net.minecraft.network.chat.Style
-import net.minecraft.network.chat.HoverEvent
 import net.minecraft.network.chat.Component
-import net.minecraft.network.chat.ClickEvent
-import net.minecraft.ChatFormatting
 import java.util.UUID
 import com.mojang.blaze3d.vertex.PoseStack
 import net.minecraft.world.phys.Vec3
@@ -17,6 +12,7 @@ import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.Level
 import org.magic.magicaddons.data.greenhouse.CROP_HEIGHT
 import org.magic.magicaddons.data.greenhouse.LayoutSlot
+import org.magic.magicaddons.data.greenhouse.GreenhouseElementInstance
 import org.magic.magicaddons.data.greenhouse.ElementRuntimeState
 import org.magic.magicaddons.data.greenhouse.Footprint
 import net.minecraft.client.renderer.SubmitNodeCollector
@@ -26,6 +22,7 @@ import net.minecraft.core.BlockPos
 import net.minecraft.world.level.block.FarmlandBlock
 import net.minecraft.world.level.block.state.properties.IntegerProperty
 import net.minecraft.world.level.block.state.BlockState
+import net.minecraft.world.phys.shapes.Shapes
 import net.minecraft.world.phys.shapes.VoxelShape
 import org.magic.magicaddons.data.greenhouse.CropDefinition
 import org.magic.magicaddons.data.greenhouse.CropStage
@@ -40,28 +37,25 @@ import org.magic.magicaddons.util.EntityUtils
  */
 object LayoutRenderState {
 
-    /**
-     * What a marked block is told to do: red swap it, orange work on it, purple remove it, blue
-     * place it.
-     */
-    private enum class Mark(val color: Int) {
-        Wrong(0xFFFF3333.toInt()),
-        Adjust(0xFFFF9922.toInt()),
-        Remove(0xFFAA44EE.toInt()),
-        Missing(GHOST_OUTLINE_COLOR)
-    }
+    /** the box a soil block is marked with, for a plant made only of stands */
+    private val FULL_BLOCK: VoxelShape = Shapes.block()
+
+    /** the watch marks pulse between these, the way the water indicator does */
+    private const val PULSE_ALPHA_LOW: Int = 0x28
+    private const val PULSE_ALPHA_HIGH: Int = 0x70
 
     /** Enough colour to read the mark through, little enough to see the block under it. */
     private const val FILL_ALPHA: Int = 0x4D
 
-    /** Far more solid than a mark's fill: a ghost is the block's texture tinted and then faded. */
-    private const val GHOST_ALPHA: Int = 0xC0
+    /** how solid a ghost block is drawn */
+    private fun ghostAlpha(): Int = GreenhousePresets.plantAlpha()
 
     /** Pale on purpose: the tint multiplies the texture, and a saturated one drains the block's colour. */
     private const val GHOST_TINT: Int = 0xFFB8CCFF.toInt()
 
     /** The glow around a ghosted head, drawn as itself rather than multiplied over a texture. */
-    const val GHOST_OUTLINE_COLOR: Int = 0xFF3399FF.toInt()
+    @JvmStatic
+    val ghostOutlineColor: Int get() = PlannerMark.Missing.color
 
     /** State a plan does not care about, because nothing the player does decides it. */
     private val IGNORED_PROPERTIES: List<IntegerProperty> = listOf(FarmlandBlock.MOISTURE)
@@ -98,7 +92,7 @@ object LayoutRenderState {
      */
     private class Plan(
         val phase: Phase,
-        val marks: Map<BlockPos, Pair<VoxelShape, Mark>>,
+        val marks: Map<BlockPos, Pair<VoxelShape, PlannerMark>>,
         val ghosts: Map<BlockPos, BlockState>,
         val badStands: Set<UUID>,
         /** Soil of crops left unplanned because something already stands on it. */
@@ -107,7 +101,10 @@ object LayoutRenderState {
          * Ghost stands kept apart by crop, so an unchanged crop keeps its stands. Rebuilding an
          * entity is not the same to a renderer as leaving it alone.
          */
-        val standGroups: Map<String, List<ArmorStand>>
+        val standGroups: Map<String, List<ArmorStand>>,
+        /** What the target slots say, which is not part of the building and never ends it. */
+        val watchMarks: Map<BlockPos, Pair<VoxelShape, PlannerMark>> = emptyMap(),
+        val watchStands: Map<UUID, Int> = emptyMap()
     ) {
         val ghostStands: List<ArmorStand> = standGroups.values.flatten()
 
@@ -125,6 +122,11 @@ object LayoutRenderState {
             blocked.map { it.asLong() }.sorted().forEach { append(it).append(',') }
             append('|')
             standGroups.keys.sorted().forEach { append(it).append(';') }
+            append('|')
+            watchMarks.entries.sortedBy { it.key.asLong() }
+                .forEach { append(it.key.asLong()).append(':').append(it.value.second).append(',') }
+            append('|')
+            watchStands.keys.map { it.toString() }.sorted().forEach { append(it).append(',') }
         }
 
         companion object {
@@ -135,11 +137,22 @@ object LayoutRenderState {
     @Volatile
     private var plan: Plan = Plan.NOTHING
 
-    /** Stands in the way of a crop. Tinted rather than outlined, since entities draw one at a time. */
-    val badStandsUUID: Set<UUID> get() = plan.badStands
+    /** The tint a stand is drawn in, or zero for one the plan says nothing about. */
+    fun standTint(stand: UUID): Int {
+        val current = plan
+
+        return when {
+            stand in current.badStands -> RED_TINT
+            else -> current.watchStands[stand] ?: 0
+        }
+    }
 
     /** The stands a ghosted crop is made of, drawn as part of showing what to plant. */
     val ghostStands: List<ArmorStand> get() = plan.ghostStands
+
+    /** whether the plan shows anything */
+    val hasSomethingToShow: Boolean
+        get() = plan.marks.isNotEmpty() || plan.ghosts.isNotEmpty() || plan.badStands.isNotEmpty() || plan.blocked.isNotEmpty()
 
     /** Whether the plan was finished the last time it was worked out. */
     private var lastFinished: Boolean = false
@@ -156,12 +169,15 @@ object LayoutRenderState {
     /** Draws the plan from the frame's own render pass, against the camera that frame uses. */
     fun submit(poseStack: PoseStack, collector: SubmitNodeCollector, cameraPos: Vec3) {
         val plan = this.plan
-        if (plan.marks.isEmpty() && plan.ghosts.isEmpty()) return
+        if (plan.marks.isEmpty() && plan.ghosts.isEmpty() && plan.watchMarks.isEmpty()) return
 
         // gathered first and handed over as one batch a render type; see WorldRender.Batch
         val batch = WorldRender.Batch(cameraPos)
+        val pulse = WorldRender.pulsedAlpha(PULSE_ALPHA_LOW, PULSE_ALPHA_HIGH)
+
         plan.marks.forEach { (pos, mark) -> batch.mark(pos, mark.first, mark.second.color, FILL_ALPHA) }
-        plan.ghosts.forEach { (pos, state) -> batch.ghost(pos, state, GHOST_TINT, Mark.Missing.color, GHOST_ALPHA) }
+        plan.watchMarks.forEach { (pos, mark) -> batch.mark(pos, mark.first, mark.second.color, pulse) }
+        plan.ghosts.forEach { (pos, state) -> batch.ghost(pos, state, GHOST_TINT, PlannerMark.Missing.color, ghostAlpha()) }
         batch.submit(poseStack, collector)
     }
 
@@ -192,14 +208,17 @@ object LayoutRenderState {
 
         // the plan belongs to this greenhouse, so standing in another shows that one's plan or
         // nothing rather than carrying the last one around the garden
-        val layout = grid.state.assignedLayout
+        val assigned = grid.state.assignedLayout
 
-        if (layout == null) {
+        if (assigned == null) {
             hide()
             return
         }
 
-        val marks = mutableMapOf<BlockPos, Pair<VoxelShape, Mark>>()
+        // turned the way it was found to fit on assign
+        val layout = assigned.turned(grid.state.planTurns)
+
+        val marks = mutableMapOf<BlockPos, Pair<VoxelShape, PlannerMark>>()
         val ghosts = mutableMapOf<BlockPos, BlockState>()
         val badStands = mutableSetOf<UUID>()
         val blocked = mutableSetOf<BlockPos>()
@@ -237,17 +256,14 @@ object LayoutRenderState {
                 }
                 val growing = footprintSlots.mapNotNull { grid.elementCovering(it) }.distinct()
 
-                // the target plant appears on its own once the ingredients are right, so nothing is
-                // planned for it, but it needs an empty slot to appear on
-                if (instance.slot.slotMark == LayoutSlot.Marking.Target) {
-                    growing.forEach { markInTheWay(level, it, marks, badStands) }
-                    return@forEach
-                }
+                // a target appears on its own, so nothing is planned for its slot and whatever grows
+                // there is the watch pass's business rather than the building's
+                if (instance.slot.slotMark == LayoutSlot.Marking.Target) return@forEach
 
                 if (growing.isNotEmpty()) {
                     // the right plant in the right place, so there is nothing to plan and nothing in the way
                     val right = growing.singleOrNull()?.takeIf {
-                        it.instance.cropDef == instance.cropDef &&
+                        instance.accepts(it.instance.cropDef) &&
                                 it.instance.slot.x == instance.slot.x && it.instance.slot.y == instance.slot.y
                     }
                     if (right != null) return@forEach
@@ -289,7 +305,11 @@ object LayoutRenderState {
             }
         }
 
-        val next = Plan(soilPhase, marks, ghosts, badStands, blocked, standGroups)
+        val watchMarks = mutableMapOf<BlockPos, Pair<VoxelShape, PlannerMark>>()
+        val watchStands = mutableMapOf<UUID, Int>()
+        watchTargets(level, grid, layout, watchMarks, watchStands)
+
+        val next = Plan(soilPhase, marks, ghosts, badStands, blocked, standGroups, watchMarks, watchStands)
 
         if (soilComplete) PlannerNeeds.tellPlants(grid, cropsNeeded)
         else PlannerNeeds.tellSoil(grid, soilNeeded)
@@ -309,7 +329,7 @@ object LayoutRenderState {
      * that finishes again within half a minute is not announced twice.
      */
     private fun announceIfFinished(grid: GreenhouseGrid, layout: GreenhouseLayout, next: Plan) {
-        if (grid.state.completionMuted) return
+        if (grid.state.buildAnnounced) return
 
         // a crop skipped for a slot that reads as taken is not a crop that got planted
         val finished = next.marks.isEmpty() && next.ghosts.isEmpty() && next.badStands.isEmpty() &&
@@ -324,27 +344,85 @@ object LayoutRenderState {
         if (announcedAt?.let { now.isBefore(it.plus(ANNOUNCE_COOLDOWN)) } == true) return
 
         announcedAt = now
+        grid.state.buildAnnounced = true
 
+        // the plan stays on the greenhouse after it is built: it is what the target marks are read from
         ChatUtils.sendWithPrefix(
             "${layout.displayName()} successfully built on ${grid.layout.displayName()}"
         )
-        ChatUtils.send(
-            Component.literal("  Turn the planner off for this greenhouse? ")
-                .withStyle(ChatFormatting.GRAY)
-                .append(answer("YES", ChatFormatting.GREEN, "unplan"))
-                .append(Component.literal(" / ").withStyle(ChatFormatting.DARK_GRAY))
-                .append(answer("NO", ChatFormatting.RED, "keepPlanner"))
-        )
     }
 
-    /** One of the two answers, as a word the player clicks rather than a command they type. */
-    private fun answer(word: String, color: ChatFormatting, command: String): Component =
-        Component.literal(word).withStyle(
-            Style.EMPTY
-                .withColor(color)
-                .withClickEvent(ClickEvent.RunCommand("${MainInternal.COMMAND} $command"))
-                .withHoverEvent(HoverEvent.ShowText(Component.literal("Click to answer $word")))
-        )
+    /**
+     * What the target slots of a running plan say: green on a target mutation ready to take, red on
+     * anything else that grew in its footprint.
+     */
+    private fun watchTargets(
+        level: Level,
+        grid: GreenhouseGrid,
+        layout: GreenhouseLayout,
+        marks: MutableMap<BlockPos, Pair<VoxelShape, PlannerMark>>,
+        stands: MutableMap<UUID, Int>
+    ) {
+        if (!GreenhousePresets.harvestHighlightOn()) return
+
+        layout.elementInstances
+            .filter { it.slot.slotMark == LayoutSlot.Marking.Target }
+            .forEach { target ->
+                val footprint = target.cropDef.footprint
+                val covering = buildList {
+                    for (offsetX in 0 until footprint.width) {
+                        for (offsetY in 0 until footprint.height) {
+                            layout.getSlot(target.slot.x + offsetX, target.slot.y + offsetY)
+                                ?.let { slot -> grid.elementCovering(slot)?.let { add(it) } }
+                        }
+                    }
+                }.distinct()
+
+                covering.forEach { growing ->
+                    // the target itself is only worth saying something about once it can be taken
+                    val mark = when {
+                        !target.accepts(growing.instance.cropDef) -> PlannerMark.Blocking
+                        harvestable(growing.instance) -> PlannerMark.Ready
+                        else -> return@forEach
+                    }
+
+                    markPlant(level, growing, marks, mark).forEach { stands[it] = mark.color }
+                    soilOf(grid, growing).forEach { marks[it] = FULL_BLOCK to mark }
+                }
+            }
+    }
+
+    /** Whether a mutation that appeared on a target slot has grown out; a one stage crop arrives grown. */
+    private fun harvestable(plant: GreenhouseElementInstance): Boolean =
+        plant.cropDef.isMutation && !plant.placed && (plant.highestStage ?: 0) >= plant.cropDef.maxStage
+
+    /** The soil under a plant, so a crop made only of stands still has a box to pulse. */
+    private fun soilOf(grid: GreenhouseGrid, growing: ElementRuntimeState): List<BlockPos> {
+        val origin = growing.instance.slot
+        val footprint = growing.instance.cropDef.footprint
+
+        return buildList {
+            for (offsetX in 0 until footprint.width) {
+                for (offsetY in 0 until footprint.height) {
+                    grid.getPosForSlotCoords(origin.x + offsetX, origin.y + offsetY)?.let { add(it) }
+                }
+            }
+        }
+    }
+
+    /** Marks every block a plant is made of and hands back its stands, for the caller to tint. */
+    private fun markPlant(
+        level: Level,
+        growing: ElementRuntimeState,
+        marks: MutableMap<BlockPos, Pair<VoxelShape, PlannerMark>>,
+        mark: PlannerMark
+    ): List<UUID> {
+        growing.blocksMap?.keys?.forEach { pos ->
+            marks[pos] = level.getBlockState(pos).getShape(level, pos) to mark
+        }
+
+        return growing.standEntities?.map { it.uuid } ?: emptyList()
+    }
 
     /**
      * Marks a plant as being in the way rather than absent.
@@ -355,11 +433,11 @@ object LayoutRenderState {
     private fun markInTheWay(
         level: Level,
         growing: ElementRuntimeState,
-        marks: MutableMap<BlockPos, Pair<VoxelShape, Mark>>,
+        marks: MutableMap<BlockPos, Pair<VoxelShape, PlannerMark>>,
         badStands: MutableSet<UUID>
     ) {
         growing.blocksMap?.keys?.forEach { pos ->
-            marks[pos] = level.getBlockState(pos).getShape(level, pos) to Mark.Wrong
+            marks[pos] = level.getBlockState(pos).getShape(level, pos) to PlannerMark.Wrong
         }
 
         growing.standEntities?.forEach { badStands.add(it.uuid) }
@@ -413,7 +491,7 @@ object LayoutRenderState {
         level: Level,
         pos: BlockPos,
         wanted: BlockState,
-        marks: MutableMap<BlockPos, Pair<VoxelShape, Mark>>,
+        marks: MutableMap<BlockPos, Pair<VoxelShape, PlannerMark>>,
         ghosts: MutableMap<BlockPos, BlockState>
     ): Boolean {
         val standing = level.getBlockState(pos)
@@ -424,7 +502,7 @@ object LayoutRenderState {
         if (wanted.isAir) {
             if (standing.isAir) return true
 
-            marks[pos] = standing.getShape(level, pos) to Mark.Remove
+            marks[pos] = standing.getShape(level, pos) to PlannerMark.Remove
             return false
         }
 
@@ -438,7 +516,7 @@ object LayoutRenderState {
         val adjustable = standing.block == wanted.block ||
                 (standing.block in TILLABLE && wanted.block in TILLABLE)
 
-        marks[pos] = standing.getShape(level, pos) to if (adjustable) Mark.Adjust else Mark.Wrong
+        marks[pos] = standing.getShape(level, pos) to if (adjustable) PlannerMark.Adjust else PlannerMark.Wrong
         return false
     }
 

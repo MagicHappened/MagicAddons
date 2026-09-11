@@ -72,7 +72,13 @@ class PlantPalette(
     /** Whether any tool is picked up: a plant, the Delete or Uniques switch, or a mark. */
     val holdsTool: Boolean get() = selected != null || deleteMode || uniquesMode || markChoice.applies
 
-    /** Puts every tool down. One tool is held at a time, so picking one up calls this first. */
+    /** Picks [item] up, as a middle click on the grid does. */
+    fun pickUp(item: PaletteItem) {
+        clearTools()
+        selected = item
+    }
+
+    /** Puts every tool down. One tool is held at a time, so picking one up calls this first. Merge is a mode and stays. */
     fun clearTools(keepMark: Boolean = false) {
         selected = null
         deleteMode = false
@@ -96,9 +102,14 @@ class PlantPalette(
     private val clearButton = ClickableButtonWidget(ClickableButtonWidget.widthFor("Clear all"), ROW, Component.literal("Clear all"))
     private val deleteButton = ClickableButtonWidget(ClickableButtonWidget.widthFor("Delete"), ROW, Component.literal("Delete"))
     private val uniquesButton = ClickableButtonWidget(ClickableButtonWidget.widthFor("Uniques"), ROW, Component.literal("Uniques"))
+    private val mergeButton = ClickableButtonWidget(ClickableButtonWidget.widthFor("Merge"), ROW, Component.literal("Merge"))
 
     /** With the switch on, a crop the preset has no unique of yet is marked red on the shelf. */
     var uniquesMode: Boolean = false
+
+    /** with the switch on, a crop dropped on a planted slot joins it instead of replacing it */
+    var mergeMode: Boolean = false
+        private set
 
     /** While on, clicking a plant on the grid takes it off the preset. */
     var deleteMode: Boolean = false
@@ -242,30 +253,38 @@ class PlantPalette(
         search.y = y + titleHeight()
         search.width = width - EDGE_PAD * 2
 
-        clearButton.x = search.x
-        clearButton.y = search.y + ROW + Common.UI.SPACING
-        deleteButton.x = clearButton.x + clearButton.width + Common.UI.SPACING
-        deleteButton.y = clearButton.y
-
-        uniquesButton.x = deleteButton.x + deleteButton.width + Common.UI.SPACING
-        uniquesButton.y = clearButton.y
-
-        // the mark selector, as wide as its longest word, and the arrows follow Uniques on the same
-        // row when they fit, else take the next row
-        val afterDelete = uniquesButton.x + uniquesButton.width + Common.UI.SPACING
-        val arrows = ARROW_WIDTH * 2 + Common.UI.SPACING * 2
+        // the switches in a row under the search field, wrapping onto the next row as they run out
+        // of shelf, with the mark selector and the arrows after them
         val right = x + width - EDGE_PAD
-        markSelector.fitToValues(right - search.x - arrows)
-        val fitsBeside = afterDelete + markSelector.width + arrows <= right
-        buttonRows = if (fitsBeside) 1 else 2
+        var rowX = search.x
+        var rowY = search.y + ROW + Common.UI.SPACING
+        buttonRows = 1
 
-        markSelector.x = if (fitsBeside) afterDelete else search.x
-        markSelector.y = if (fitsBeside) clearButton.y else clearButton.y + ROW + Common.UI.SPACING
+        fun nextRow() {
+            rowX = search.x
+            rowY += ROW + Common.UI.SPACING
+            buttonRows++
+        }
+
+        listOf(clearButton, deleteButton, uniquesButton, mergeButton).forEach { button ->
+            if (rowX > search.x && rowX + button.width > right) nextRow()
+
+            button.x = rowX
+            button.y = rowY
+            rowX += button.width + Common.UI.SPACING
+        }
+
+        val arrows = ARROW_WIDTH * 2 + Common.UI.SPACING * 2
+        markSelector.fitToValues(right - search.x - arrows)
+        if (rowX > search.x && rowX + markSelector.width + arrows > right) nextRow()
+
+        markSelector.x = rowX
+        markSelector.y = rowY
         markSelector.height = ROW
         undoButton.x = markSelector.x + markSelector.width + Common.UI.SPACING
-        undoButton.y = markSelector.y
+        undoButton.y = rowY
         redoButton.x = undoButton.x + ARROW_WIDTH + Common.UI.SPACING
-        redoButton.y = markSelector.y
+        redoButton.y = rowY
 
         // the cells fill the room under the buttons exactly: as many rows of about the usual size
         // as fit, each row then stretched to use the whole height, within sane bounds
@@ -304,9 +323,11 @@ class PlantPalette(
         search.render(graphics)
         deleteButton.pressed = deleteMode
         uniquesButton.pressed = uniquesMode
+        mergeButton.pressed = mergeMode
         clearButton.extractRenderState(graphics, mouseX, mouseY, delta)
         deleteButton.extractRenderState(graphics, mouseX, mouseY, delta)
         uniquesButton.extractRenderState(graphics, mouseX, mouseY, delta)
+        mergeButton.extractRenderState(graphics, mouseX, mouseY, delta)
 
         // the box wears the colour of the mark it would give, and red while set to clear marks
         markSelector.frameColor = when (markChoice) {
@@ -416,6 +437,7 @@ class PlantPalette(
         undoButton.mouseMoved(mouseX, mouseY)
         redoButton.mouseMoved(mouseX, mouseY)
         uniquesButton.mouseMoved(mouseX, mouseY)
+        mergeButton.mouseMoved(mouseX, mouseY)
     }
 
     fun mouseClicked(event: MouseButtonEvent, doubled: Boolean): Boolean {
@@ -451,6 +473,11 @@ class PlantPalette(
             val turnOn = !uniquesMode
             clearTools()
             uniquesMode = turnOn
+            return true
+        }
+        // merge is a mode, not a tool, so it stays on beside one
+        if (mergeButton.mouseClicked(event, doubled)) {
+            mergeMode = !mergeMode
             return true
         }
 
