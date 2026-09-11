@@ -1,5 +1,6 @@
 package org.magic.magicaddons.ui.screens
 
+import org.magic.magicaddons.util.ScreenUtil.modText
 import com.mojang.blaze3d.platform.InputConstants
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
@@ -529,7 +530,7 @@ class HudEditorScreen : MagicScreen(Component.literal("HUD Editor"), "the hud ed
         graphics.drawPanel(left, panelTop, panelRight(), panelTop + panelHeight())
 
         val rows = panelRows()
-        graphics.text(font, Component.literal("Show"), left + PANEL_PAD, panelTop + PANEL_PAD + (PANEL_ROW - font.lineHeight) / 2, Common.UI.TEXT_DIM_COLOR, false)
+        graphics.modText(font, Component.literal("Show"), left + PANEL_PAD, panelTop + PANEL_PAD + (PANEL_ROW - font.lineHeight) / 2, Common.UI.TEXT_DIM_COLOR)
 
         // the line between the situations and the elements
         rows.firstOrNull { it.element != null }?.let { first ->
@@ -549,13 +550,13 @@ class HudEditorScreen : MagicScreen(Component.literal("HUD Editor"), "the hud ed
                 } else if (over) {
                     graphics.fill(left + Common.UI.BORDER_SIZE, rowY, panelRight() - Common.UI.BORDER_SIZE, rowY + PANEL_ROW, Common.UI.HOVER_WASH)
                 }
-                graphics.text(font, Component.literal(candidate.label), left + PANEL_PAD + 3, textY, if (candidate == situation) Common.UI.TEXT_COLOR else Common.UI.TEXT_DIM_COLOR, false)
+                graphics.modText(font, Component.literal(candidate.label), left + PANEL_PAD + 3, textY, if (candidate == situation) Common.UI.TEXT_COLOR else Common.UI.TEXT_DIM_COLOR)
             }
 
             row.element?.let { element ->
                 val shown = !layout.isHidden(situation, element.id)
                 if (over) graphics.fill(left + Common.UI.BORDER_SIZE, rowY, panelRight() - Common.UI.BORDER_SIZE, rowY + PANEL_ROW, Common.UI.HOVER_WASH)
-                graphics.text(font, Component.literal(element.name), left + PANEL_PAD + 3, textY, if (shown) Common.UI.TEXT_COLOR else Common.UI.DISABLED_TEXT_COLOR, false)
+                graphics.modText(font, Component.literal(element.name), left + PANEL_PAD + 3, textY, if (shown) Common.UI.TEXT_COLOR else Common.UI.DISABLED_TEXT_COLOR)
                 val switch = panelSwitches.getOrPut(element.id) { SwitchWidget(shown, PANEL_SWITCH_WIDTH, PANEL_SWITCH_HEIGHT) }
                 switch.set(shown)
                 switch.x = panelRight() - PANEL_PAD - switch.width
@@ -614,7 +615,10 @@ class HudEditorScreen : MagicScreen(Component.literal("HUD Editor"), "the hud ed
         }
     }
 
-    /** The line between two parts lit with arrows either way while the mouse is on it. */
+    /**
+     * The line between two parts lit while the mouse is on it, with a grip of three short bars
+     * across its middle: the usual sign for something that drags, and always centred on the line.
+     */
     private fun drawDividerHandle(graphics: GuiGraphicsExtractor, box: HudBox) {
         val index = (drag as? Drag.Divider)?.index ?: box.dividerAt(mouseX.toDouble(), mouseY.toDouble()) ?: return
         val next = box.parts.getOrNull(index + 1) ?: return
@@ -622,18 +626,21 @@ class HudEditorScreen : MagicScreen(Component.literal("HUD Editor"), "the hud ed
         if (box.stacking == Stacking.HORIZONTAL) {
             val lineX = next.x - HudScene.DIVIDER
             graphics.fill(lineX - 1, box.y, lineX + 2, box.y + box.height, color)
+
+            // three bars across the line, spaced GRIP_GAP apart around its middle
             val cy = box.centerY
-            for (i in 0..2) {
-                graphics.fill(lineX - 4 - i, cy - i, lineX - 3 - i, cy + i + 1, color)
-                graphics.fill(lineX + 4 + i, cy - i, lineX + 5 + i, cy + i + 1, color)
+            for (bar in -1..1) {
+                val barY = cy + bar * GRIP_GAP
+                graphics.fill(lineX - GRIP_REACH, barY, lineX + GRIP_REACH + 1, barY + 1, color)
             }
         } else {
             val lineY = next.y - HudScene.DIVIDER
             graphics.fill(box.x, lineY - 1, box.x + box.width, lineY + 2, color)
+
             val cx = box.centerX
-            for (i in 0..2) {
-                graphics.fill(cx - i, lineY - 4 - i, cx + i + 1, lineY - 3 - i, color)
-                graphics.fill(cx - i, lineY + 4 + i, cx + i + 1, lineY + 5 + i, color)
+            for (bar in -1..1) {
+                val barX = cx + bar * GRIP_GAP
+                graphics.fill(barX, lineY - GRIP_REACH, barX + 1, lineY + GRIP_REACH + 1, color)
             }
         }
     }
@@ -748,7 +755,7 @@ class HudEditorScreen : MagicScreen(Component.literal("HUD Editor"), "the hud ed
 
         graphics.drawPanel(left, top, left + boxWidth, top + boxHeight)
         lines.forEachIndexed { index, (text, color) ->
-            graphics.text(font, Component.literal(text), left + pad, top + pad + index * (font.lineHeight + 1), color, false)
+            graphics.modText(font, Component.literal(text), left + pad, top + pad + index * (font.lineHeight + 1), color)
         }
     }
 
@@ -941,7 +948,7 @@ class HudEditorScreen : MagicScreen(Component.literal("HUD Editor"), "the hud ed
         return super.onKeyPressed(keyEvent)
     }
 
-    override fun onClose() {
+    override fun finishClose() {
         HudLayoutStore.save()
         McCompat.setScreen(null)
     }
@@ -976,6 +983,10 @@ class HudEditorScreen : MagicScreen(Component.literal("HUD Editor"), "the hud ed
         /** How far from a corner dot the mouse still grabs it. */
         const val HANDLE_REACH: Int = 5
         const val ANCHOR_ARM: Int = 4
+
+        /** The grip on a lit divider: how far each bar reaches across the line, and the space between bars. */
+        const val GRIP_REACH: Int = 3
+        const val GRIP_GAP: Int = 3
         const val ALPHA_STEP: Float = 0.05f
         const val SCALE_STEP: Float = 0.1f
         const val MIN_SCALE: Float = 0.5f

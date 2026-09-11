@@ -1,5 +1,7 @@
 package org.magic.magicaddons.ui.widgets
 
+import org.magic.magicaddons.util.ScreenUtil.eased
+import org.magic.magicaddons.util.ScreenUtil.modText
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.components.Renderable
@@ -40,7 +42,7 @@ class EnumWidget<T>(
     val overlay = EnumOverlay()
 
     /** The gap between frame and contents, wide enough that the name is not touching the frame. */
-    private val textPad: Int = Common.UI.TEXT_X_PAD + Common.UI.BORDER_SIZE
+    private val textPad: Int = Common.UI.TEXT_X_PAD + Common.UI.CONTROL_BORDER_SIZE
 
     /** Narrow enough to still look like a selector when every value is a short word. */
     private val minWidth: Int = 60
@@ -70,9 +72,13 @@ class EnumWidget<T>(
         search.value = ""
         search.focused = searchable
         overlayOpen = true
+        openedAt = System.currentTimeMillis()
         overlay.rebuildRows()
         overlayContext.addOverlay(overlay)
     }
+
+    /** When the list was opened, so it can grow out from the selector rather than appear whole. */
+    private var openedAt: Long = 0L
 
     private fun close() {
         overlayOpen = false
@@ -94,10 +100,10 @@ class EnumWidget<T>(
      * is only ellipsised when it is too long for the screen.
      */
     fun fitToValues(maxWidth: Int) {
-        val shown = values.map { it.toString() } + listOfNotNull(currentValue?.toString()) + PLACEHOLDER
-        val longest = shown.maxOfOrNull { font.width(it) } ?: 0
+        val everyName = values.map { it.toString() } + listOfNotNull(currentValue?.toString()) + PLACEHOLDER
+        val longestNameWidth = everyName.maxOfOrNull { font.width(it) } ?: 0
 
-        width = (longest + textPad * 2 + font.width(ARROW) + Common.UI.SPACING)
+        width = (longestNameWidth + textPad * 2 + font.width(ARROW) + Common.UI.SPACING)
             .coerceIn(minWidth, maxWidth.coerceAtLeast(minWidth))
     }
 
@@ -107,7 +113,7 @@ class EnumWidget<T>(
 
         // the arrow keeps to the far side and the name is given what is left, so a long name runs
         // out of room before it runs into the arrow rather than under it
-        val room = arrowLeft() - Common.UI.SPACING - (x + textPad)
+        val roomForName = arrowLeft() - Common.UI.SPACING - (x + textPad)
 
         // open, the whole box is the search field; closed, it is a button showing the pick
         if (overlayOpen && searchable) {
@@ -117,12 +123,17 @@ class EnumWidget<T>(
             search.height = height
             search.render(graphics)
         } else {
-            graphics.drawButtonPanel(x, y, x + width, y + height, hovered, pressed = overlayOpen, frame = frameColor ?: Common.UI.BORDER_COLOR)
-            val shown = ellipsised(font, currentValue?.toString() ?: PLACEHOLDER, room)
-            graphics.text(font, Component.literal(shown), x + textPad, textY, Common.UI.TEXT_COLOR, false)
+            graphics.drawButtonPanel(
+                x, y, x + width, y + height, hovered,
+                pressed = overlayOpen,
+                frame = frameColor ?: Common.UI.BORDER_COLOR,
+                frameSize = Common.UI.CONTROL_BORDER_SIZE
+            )
+            val shownName = ellipsised(font, currentValue?.toString() ?: PLACEHOLDER, roomForName)
+            graphics.modText(font, Component.literal(shownName), x + textPad, textY, Common.UI.TEXT_COLOR)
         }
 
-        graphics.text(font, Component.literal(arrow), arrowLeft(), textY, Common.UI.TEXT_COLOR, false)
+        graphics.modText(font, Component.literal(arrow), arrowLeft(), textY, Common.UI.TEXT_COLOR)
     }
 
     fun mouseMoved(mouseX: Double, mouseY: Double) {
@@ -181,6 +192,12 @@ class EnumWidget<T>(
 
         /** The visible edges in the widget's own coordinates, which scroll on a scrolling screen. */
         private fun viewTop(): Int = (McCompat.currentScreen() as? ScrollView)?.viewTop ?: 0
+
+        /** The far side of the room an overlay may take, which is the panel's edge or the screen's. */
+        private fun viewRight(): Int =
+            (McCompat.currentScreen() as? ScrollView)?.viewRight
+                ?: McCompat.currentScreen()?.width
+                ?: Minecraft.getInstance().window.guiScaledWidth
         private fun viewBottom(): Int =
             (McCompat.currentScreen() as? ScrollView)?.viewBottom
                 ?: McCompat.currentScreen()?.height
@@ -200,13 +217,13 @@ class EnumWidget<T>(
 
             opensDown = wouldOpenDown(matching.size)
 
-            val space = (if (opensDown) {
+            val roomForRows = (if (opensDown) {
                 viewBottom() - (this@EnumWidget.y + this@EnumWidget.height)
             } else {
                 this@EnumWidget.y - viewTop()
             }).coerceAtMost(overlayBudget ?: Int.MAX_VALUE)
 
-            visibleRows = (space / overlayRowHeight).coerceAtLeast(1)
+            visibleRows = (roomForRows / overlayRowHeight).coerceAtLeast(1)
 
             buildWindow()
         }
@@ -216,7 +233,13 @@ class EnumWidget<T>(
             valueWidgets.clear()
 
             matching.drop(scroll).take(visibleRows).forEach { value ->
-                valueWidgets.add(ClickableRowWidget(value).apply { selected = value == currentValue })
+                valueWidgets.add(
+                    ClickableRowWidget(value).apply {
+                        selected = value == currentValue
+                        // a long file name reads better cut short than wrapped onto a second line
+                        wrapText = false
+                    }
+                )
             }
             valueWidgets.lastOrNull()?.dividerBelow = false
 
@@ -243,8 +266,18 @@ class EnumWidget<T>(
             } else {
                 (this@EnumWidget.y - overlayHeight).coerceAtLeast(viewTop())
             }
+        /**
+         * As wide as the longest name needs, but never past the room left between the selector and
+         * the edge it opens against. Names that still do not fit are cut short by the rows instead.
+         */
         override val overlayWidth: Int
-            get() = this@EnumWidget.width
+            get() {
+                val longestNameWidth = matching.maxOfOrNull { font.width(it.toString()) } ?: 0
+                val wantedWidth = longestNameWidth + textPad * 2
+                val roomToEdge = viewRight() - overlayX
+
+                return wantedWidth.coerceAtMost(roomToEdge).coerceAtLeast(this@EnumWidget.width)
+            }
         override val overlayHeight: Int
             get() = heightFor(valueWidgets.size)
 
@@ -263,6 +296,17 @@ class EnumWidget<T>(
         override fun renderOverlay(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
             layoutOverlay()
 
+            // clipped to how far it has opened, growing away from the selector on whichever side it
+            // sits; not clipped at all once open, since on a scaled screen the clip rounds down and
+            // shaves the right and bottom borders off
+            val opened = eased(openedAt, OPEN_MS)
+            val stillOpening = opened < 1f
+            if (stillOpening) {
+                val shownHeight = kotlin.math.round(overlayHeight * opened).toInt()
+                val clipTop = if (opensDown) overlayY else overlayY + overlayHeight - shownHeight
+                graphics.enableScissor(overlayX, clipTop, overlayX + overlayWidth, clipTop + shownHeight)
+            }
+
             valueWidgets.forEach { it.extractRenderState(graphics, mouseX, mouseY) }
             graphics.drawBorder(overlayX, overlayY, overlayX + overlayWidth, overlayY + overlayHeight, Common.UI.BORDER_SIZE, Common.UI.BORDER_COLOR)
 
@@ -276,6 +320,8 @@ class EnumWidget<T>(
                     scroll
                 )
             }
+
+            if (stillOpening) graphics.disableScissor()
         }
 
         override fun charTyped(characterEvent: CharacterEvent): Boolean = searchable && search.charTyped(characterEvent)
@@ -310,5 +356,8 @@ class EnumWidget<T>(
         const val ARROW: String = "↓"
         const val ARROW_UP: String = "↑"
         const val PLACEHOLDER: String = "Select…"
+
+        /** How long an opening list takes to grow to its full height. */
+        const val OPEN_MS: Long = 150
     }
 }

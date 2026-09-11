@@ -1,5 +1,6 @@
 package org.magic.magicaddons.ui.widgets.config
 
+import org.magic.magicaddons.util.ScreenUtil.modText
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.input.CharacterEvent
 import net.minecraft.client.input.KeyEvent
@@ -47,7 +48,9 @@ class ChoiceListSettingWidget(
     /** The list ends on the row's own edge, closed by whatever line follows the row. */
     override val bottomPad: Int = 0
 
-    private fun rowsTop(): Int = extraTop() + ROW_HEIGHT + Common.UI.SPACING_SMALL
+    /** Without a search box the rows start at the top of the strip instead of under it. */
+    private fun rowsTop(): Int =
+        if (listSetting.searchable) extraTop() + ROW_HEIGHT + Common.UI.SPACING_SMALL else extraTop()
     private fun listHeight(): Int = VISIBLE_ROWS * ROW_HEIGHT
 
     private fun isOn(name: String): Boolean = listSetting.value.any { it.value == name }
@@ -68,7 +71,8 @@ class ChoiceListSettingWidget(
             .sortedWith(compareByDescending<String> { isOn(it) }.thenBy { it.lowercase() })
     }
 
-    override fun extraHeight(): Int = ROW_HEIGHT + Common.UI.SPACING_SMALL + listHeight()
+    override fun extraHeight(): Int =
+        if (listSetting.searchable) ROW_HEIGHT + Common.UI.SPACING_SMALL + listHeight() else listHeight()
 
     override fun layoutControl() {
         searchBox.x = extraLeft()
@@ -121,14 +125,14 @@ class ChoiceListSettingWidget(
     override fun renderControl(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {}
 
     override fun renderExtra(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
-        searchBox.render(graphics)
+        if (listSetting.searchable) searchBox.render(graphics)
 
         val top = rowsTop()
         graphics.fill(extraLeft(), top, extraLeft() + extraWidth(), top + listHeight(), Common.UI.FIELD_COLOR)
         rows.forEach { it.extractRenderState(graphics, mouseX, mouseY) }
 
         if (rows.isEmpty()) {
-            graphics.text(font, Component.literal("Nothing matches"), extraLeft() + Common.UI.TEXT_X_PAD, top + (ROW_HEIGHT - font.lineHeight) / 2, Common.UI.DISABLED_TEXT_COLOR, false)
+            graphics.modText(font, Component.literal("Nothing matches"), extraLeft() + Common.UI.TEXT_X_PAD, top + (ROW_HEIGHT - font.lineHeight) / 2, Common.UI.DISABLED_TEXT_COLOR)
         }
 
         graphics.drawScrollBar(extraLeft() + extraWidth() - Common.UI.SCROLLBAR_WIDTH - 1, top, listHeight(), matching.size, VISIBLE_ROWS, scroll)
@@ -157,7 +161,7 @@ class ChoiceListSettingWidget(
     }
 
     override fun controlClicked(event: MouseButtonEvent, doubled: Boolean): Boolean {
-        if (searchBox.mouseClicked(event, doubled)) return true
+        if (listSetting.searchable && searchBox.mouseClicked(event, doubled)) return true
         return rows.any { it.mouseClicked(event, doubled) }
     }
 

@@ -72,11 +72,21 @@ object HighlightMobs : HighlightFeature() {
         choices = { SingleMobs.names }
     )
 
+    private val throughWallsSetting = BooleanSetting(
+        key = "ThroughWalls",
+        displayName = "Through Walls",
+        description = "§cThis feature might be considered as a cheat and is therefore used at your own risk.",
+        value = false
+    )
+
+    override val throughWalls: Boolean get() = throughWallsSetting.value
+
     override val baseSetting: BooleanSetting = BooleanSetting(
         displayName = displayName,
         description = description,
         value = false,
         children = listOf(
+            throughWallsSetting,
             BooleanSetting(
                 key = "PresetsEnabled",
                 displayName = "Mob Presets",

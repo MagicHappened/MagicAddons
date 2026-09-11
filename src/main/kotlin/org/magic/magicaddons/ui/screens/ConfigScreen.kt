@@ -1,5 +1,7 @@
 package org.magic.magicaddons.ui.screens
 
+import org.magic.magicaddons.util.ScreenUtil.splitMod
+import org.magic.magicaddons.util.ScreenUtil.modText
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.input.CharacterEvent
@@ -13,6 +15,7 @@ import org.magic.magicaddons.data.config.EnumSetting
 import org.magic.magicaddons.data.config.SettingNode
 import org.magic.magicaddons.features.Feature
 import org.magic.magicaddons.features.FeatureManager
+import org.magic.magicaddons.features.customization.Customization
 import org.magic.magicaddons.ui.OverlayContext
 import org.magic.magicaddons.ui.OverlayRenderable
 import org.magic.magicaddons.ui.ScrollView
@@ -22,6 +25,7 @@ import org.magic.magicaddons.ui.widgets.config.SettingWidget
 import org.magic.magicaddons.util.ScreenUtil.at
 import org.magic.magicaddons.util.ScreenUtil.drawButtonPanel
 import org.magic.magicaddons.util.ScreenUtil.drawLine
+import org.magic.magicaddons.ui.background.ConfigBackground
 import org.magic.magicaddons.util.ScreenUtil.drawPanel
 import org.magic.magicaddons.util.ScreenUtil.drawScrollBar
 import org.magic.magicaddons.util.ScreenUtil.eased
@@ -110,6 +114,12 @@ class ConfigScreen(val parent: Screen?) : MagicScreen(Component.literal("Magic A
 
     private var categoryRows: List<CategoryRow> = emptyList()
 
+    /** How much smaller everything is drawn than it is laid out, so the player's scale is honoured. */
+    private var drawScale: Float = 1f
+
+    /** Whether a mouse button is down, which is what tells a slider being dragged from one let go of. */
+    private var mouseHeld: Boolean = false
+
     override fun onInit() {
         super.onInit()
         if (!loaded) {
@@ -117,9 +127,22 @@ class ConfigScreen(val parent: Screen?) : MagicScreen(Component.literal("Magic A
             loaded = true
         }
         VersionChecker.check()
+
+        // laid out in as many units as the scale asks for, then drawn at that scale to fit the window
+        drawScale = Customization.uiScale
+        width = (width / drawScale).toInt()
+        height = (height / drawScale).toInt()
+
         closeOverlays()
         closeDropdown()
         layoutPanels()
+    }
+
+    /** Lays the screen out again at the scale just picked. */
+    private fun rebuildAtNewScale() {
+        val window = minecraft?.window ?: return
+
+        resize(window.guiScaledWidth, window.guiScaledHeight)
     }
 
     private fun layoutPanels() {
@@ -139,7 +162,7 @@ class ConfigScreen(val parent: Screen?) : MagicScreen(Component.literal("Magic A
         var rowTop = panelsTop + Common.UI.BORDER_SIZE + Common.UI.SPACING
         var dividerPlaced = false
         categoryRows = categories.map { category ->
-            val divider = category.dev && !dividerPlaced
+            val divider = category.belowDivider && !dividerPlaced
             if (divider) {
                 dividerPlaced = true
                 rowTop += Common.UI.SPACING * 2 + THICK_DIVIDER
@@ -261,9 +284,14 @@ class ConfigScreen(val parent: Screen?) : MagicScreen(Component.literal("Magic A
         val left = dropdownLeft
         val top = dropdownTop
 
-        // clipped to how far it has opened, so it slides out under the field
-        val shown = kotlin.math.round(dropdownHeight * eased(dropdownOpenedAt, DROPDOWN_MS)).toInt()
-        graphics.enableScissor(left, top, left + dropdownWidth, top + shown)
+        // clipped to how far it has opened, so it slides out under the field; not clipped once open,
+        // since on a scaled screen the clip rounds down and shaves the borders off
+        val opened = eased(dropdownOpenedAt, DROPDOWN_MS)
+        val stillOpening = opened < 1f
+        if (stillOpening) {
+            val shown = kotlin.math.round(dropdownHeight * opened).toInt()
+            graphics.enableScissor(left, top, left + dropdownWidth, top + shown)
+        }
         graphics.drawPanel(left, top, left + dropdownWidth, top + dropdownHeight)
 
         val hovered = hitAt(mouseX.toDouble(), mouseY.toDouble())
@@ -271,8 +299,8 @@ class ConfigScreen(val parent: Screen?) : MagicScreen(Component.literal("Magic A
         var rowTop = top + Common.UI.BORDER_SIZE
 
         if (hits.isEmpty()) {
-            graphics.text(font, Component.literal("Nothing matches"), left + Common.UI.BORDER_SIZE + Common.UI.TEXT_X_PAD, rowTop + (DROPDOWN_ROW_HEIGHT - font.lineHeight) / 2, Common.UI.DISABLED_TEXT_COLOR, false)
-            graphics.disableScissor()
+            graphics.modText(font, Component.literal("Nothing matches"), left + Common.UI.BORDER_SIZE + Common.UI.TEXT_X_PAD, rowTop + (DROPDOWN_ROW_HEIGHT - font.lineHeight) / 2, Common.UI.DISABLED_TEXT_COLOR)
+            if (stillOpening) graphics.disableScissor()
             return
         }
 
@@ -283,28 +311,44 @@ class ConfigScreen(val parent: Screen?) : MagicScreen(Component.literal("Magic A
             val textY = rowTop + (DROPDOWN_ROW_HEIGHT - font.lineHeight) / 2
             var textX = left + Common.UI.BORDER_SIZE + Common.UI.TEXT_X_PAD
             val prefix = "${hit.category.name} › "
-            graphics.text(font, Component.literal(prefix), textX, textY, Common.UI.TEXT_DIM_COLOR, false)
+            graphics.modText(font, Component.literal(prefix), textX, textY, Common.UI.TEXT_DIM_COLOR)
             textX += font.width(prefix)
 
             val label = ellipsised(font, hit.label, textRoom - font.width(prefix))
-            graphics.text(font, Component.literal(label), textX, textY, Common.UI.TEXT_COLOR, false)
+            graphics.modText(font, Component.literal(label), textX, textY, Common.UI.TEXT_COLOR)
             rowTop += DROPDOWN_ROW_HEIGHT
         }
 
         graphics.drawScrollBar(left + dropdownWidth - Common.UI.BORDER_SIZE - Common.UI.SCROLLBAR_WIDTH, top + Common.UI.BORDER_SIZE, dropdownRows * DROPDOWN_ROW_HEIGHT, hits.size, DROPDOWN_MAX_ROWS, dropdownScroll)
-        graphics.disableScissor()
+        if (stillOpening) graphics.disableScissor()
     }
 
     // ------------------------------------------------------------------ drawing
 
     override fun onRender(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
+        // the slider that sets it lives on this screen, so a change is noticed here rather than sent.
+        // Laying out again mid-drag would take the slider out from under the mouse, so it waits
+        if (Customization.uiScale != drawScale && !mouseHeld) {
+            rebuildAtNewScale()
+            return
+        }
+
         super.onRender(graphics, mouseX, mouseY, delta)
+
+        graphics.pose().pushMatrix()
+        graphics.pose().scale(drawScale, drawScale)
+
+        val scaledMouseX = (mouseX / drawScale).toInt()
+        val scaledMouseY = (mouseY / drawScale).toInt()
+
         layoutBlocks()
 
-        renderHeader(graphics, mouseX, mouseY)
-        renderSidePanel(graphics, mouseX, mouseY)
-        renderMain(graphics, mouseX, mouseY, delta)
-        renderDropdown(graphics, mouseX, mouseY)
+        renderHeader(graphics, scaledMouseX, scaledMouseY)
+        renderSidePanel(graphics, scaledMouseX, scaledMouseY)
+        renderMain(graphics, scaledMouseX, scaledMouseY, delta)
+        renderDropdown(graphics, scaledMouseX, scaledMouseY)
+
+        graphics.pose().popMatrix()
     }
 
     private fun renderHeader(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int) {
@@ -316,11 +360,11 @@ class ConfigScreen(val parent: Screen?) : MagicScreen(Component.literal("Magic A
         graphics.pose().pushMatrix()
         graphics.pose().translate(titleX.toFloat(), titleY)
         graphics.pose().scale(TITLE_SCALE, TITLE_SCALE)
-        graphics.text(font, Component.literal(Common.MOD_NAME), 0, 0, Common.UI.TEXT_COLOR, false)
+        graphics.modText(font, Component.literal(Common.MOD_NAME), 0, 0, Common.UI.TEXT_COLOR)
         graphics.pose().popMatrix()
 
         val subtitleX = titleX + (font.width(Common.MOD_NAME) * TITLE_SCALE).toInt() + Common.UI.SPACING
-        graphics.text(font, Component.literal("Config"), subtitleX, (titleY + (font.lineHeight * TITLE_SCALE - font.lineHeight)).toInt(), Common.UI.TEXT_DIM_COLOR, false)
+        graphics.modText(font, Component.literal("Config"), subtitleX, (titleY + (font.lineHeight * TITLE_SCALE - font.lineHeight)).toInt(), Common.UI.TEXT_DIM_COLOR)
 
         search.render(graphics)
 
@@ -365,22 +409,30 @@ class ConfigScreen(val parent: Screen?) : MagicScreen(Component.literal("Magic A
         // the version at the bottom, and above it the update line when there is a newer one
         val textWidth = rowRight - rowLeft - SIDE_PAD * 2
         var lineY = panelsBottom - Common.UI.BORDER_SIZE - Common.UI.SPACING - font.lineHeight
-        val version = font.split(Component.literal(VersionChecker.currentVersion()), textWidth)
+        val version = font.splitMod(Component.literal(VersionChecker.currentVersion()), textWidth)
         version.asReversed().forEach {
-            graphics.text(font, it, rowLeft + SIDE_PAD, lineY, Common.UI.DISABLED_TEXT_COLOR, false)
+            graphics.modText(font, it, rowLeft + SIDE_PAD, lineY, Common.UI.DISABLED_TEXT_COLOR)
             lineY -= font.lineHeight
         }
         VersionChecker.result?.takeIf { it.outdated }?.let { found ->
             lineY -= Common.UI.SPACING
-            font.split(Component.literal(found.headline()), textWidth).asReversed().forEach {
-                graphics.text(font, it, rowLeft + SIDE_PAD, lineY, Common.UI.SELECTED_FRAME_COLOR, false)
+            font.splitMod(Component.literal(found.headline()), textWidth).asReversed().forEach {
+                graphics.modText(font, it, rowLeft + SIDE_PAD, lineY, Common.UI.SELECTED_FRAME_COLOR)
                 lineY -= font.lineHeight
             }
         }
+
+        restoreBottom = lineY - Common.UI.SPACING
+        renderRestoreButton(graphics, mouseX, mouseY)
     }
 
     private fun renderMain(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
         graphics.drawPanel(mainLeft, panelsTop, mainRight, panelsBottom)
+        // drawn inside the settings panel rather than over the whole screen, so the categories and
+        // the header keep their own ground
+        if (Customization.backgroundShowsOn(Customization.CONFIG_SCREEN)) {
+            ConfigBackground.draw(graphics, clipLeft, clipTop, clipRight, clipBottom)
+        }
 
         val contentMouseY = mouseY + scroll
         graphics.enableScissor(clipLeft, clipTop, clipRight, clipBottom)
@@ -401,6 +453,47 @@ class ConfigScreen(val parent: Screen?) : MagicScreen(Component.literal("Magic A
         graphics.drawScrollBar(clipRight - Common.UI.SCROLLBAR_WIDTH - 1, clipTop, viewHeight, contentHeight, viewHeight, scroll)
     }
 
+    /** Whether the category on screen is the one whose settings decide how the mod looks. */
+    private fun showsAppearance(): Boolean = selected.key == Customization.CATEGORY
+
+    /** Where the button's underside sits, settled by the side panel once the version is placed. */
+    private var restoreBottom: Int = 0
+
+    private val restoreLeft: Int get() = sideLeft + Common.UI.BORDER_SIZE + SIDE_PAD
+    private val restoreWidth: Int get() = sideRight - Common.UI.BORDER_SIZE - SIDE_PAD - restoreLeft
+    private val restoreTop: Int get() = restoreBottom - RESTORE_HEIGHT
+
+    private fun overRestore(mouseX: Double, mouseY: Double): Boolean =
+        showsAppearance() && inRect(mouseX, mouseY, restoreLeft, restoreTop, restoreWidth, RESTORE_HEIGHT)
+
+    /**
+     * The button that puts the appearance settings back. It is drawn from the palette rather than
+     * from Common.UI, so the transparency sliders cannot fade the one control that undoes them.
+     */
+    private fun renderRestoreButton(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int) {
+        if (!showsAppearance()) return
+
+        val right = restoreLeft + restoreWidth
+        val bottom = restoreTop + RESTORE_HEIGHT
+
+        graphics.drawButtonPanel(
+            restoreLeft, restoreTop, right, bottom,
+            hovered = overRestore(mouseX.toDouble(), mouseY.toDouble()),
+            fill = Customization.palette.background or OPAQUE,
+            frame = Customization.palette.border or OPAQUE
+        )
+
+        val label = Component.literal(ellipsised(font, RESTORE_LABEL, restoreWidth - Common.UI.TEXT_X_PAD * 2))
+        graphics.text(
+            font,
+            label,
+            restoreLeft + (restoreWidth - font.width(label)) / 2,
+            restoreTop + (RESTORE_HEIGHT - font.lineHeight) / 2,
+            Customization.palette.text or OPAQUE,
+            false
+        )
+    }
+
     // ------------------------------------------------------------------ input
 
     private fun overMain(mouseX: Double, mouseY: Double): Boolean =
@@ -412,9 +505,17 @@ class ConfigScreen(val parent: Screen?) : MagicScreen(Component.literal("Magic A
     /** The event moved into content coordinates, which the blocks live in. */
     private fun shifted(event: MouseButtonEvent): MouseButtonEvent = event.at(event.x, event.y + scroll)
 
-    override fun onMouseClicked(event: MouseButtonEvent, doubled: Boolean): Boolean {
+    /** The window's coordinates in the units this screen lays out in. */
+    private fun scaled(event: MouseButtonEvent): MouseButtonEvent =
+        event.at(event.x / drawScale, event.y / drawScale)
+
+    override fun onMouseClicked(rawEvent: MouseButtonEvent, doubled: Boolean): Boolean {
         // the second event of a double click is the same click again; acting on it would undo the first
         if (doubled) return true
+
+        // the window's coordinates are turned into the ones this screen laid itself out in
+        val event = scaled(rawEvent)
+        mouseHeld = true
 
         hitAt(event.x, event.y)?.let {
             navigate(it)
@@ -451,6 +552,12 @@ class ConfigScreen(val parent: Screen?) : MagicScreen(Component.literal("Magic A
             return super.onMouseClicked(event, doubled)
         }
 
+        // read off the screen rather than the scrolled content, since the button does not scroll
+        if (overRestore(event.x, event.y)) {
+            Customization.restoreDefaults()
+            return true
+        }
+
         val content = shifted(event)
         // an open list takes the click if it lands inside it; anywhere else closes every list and
         // the click goes on to the settings underneath
@@ -462,7 +569,10 @@ class ConfigScreen(val parent: Screen?) : MagicScreen(Component.literal("Magic A
         return handled
     }
 
-    override fun onMouseReleased(event: MouseButtonEvent): Boolean {
+    override fun onMouseReleased(rawEvent: MouseButtonEvent): Boolean {
+        val event = scaled(rawEvent)
+        mouseHeld = false
+
         if (draggingBar) {
             draggingBar = false
             return true
@@ -470,21 +580,28 @@ class ConfigScreen(val parent: Screen?) : MagicScreen(Component.literal("Magic A
         return shownBlocks().any { it.mouseReleased(shifted(event)) }
     }
 
-    override fun onMouseDragged(event: MouseButtonEvent, dragX: Double, dragY: Double): Boolean {
+    override fun onMouseDragged(rawEvent: MouseButtonEvent, dragX: Double, dragY: Double): Boolean {
+        val event = scaled(rawEvent)
+
         if (draggingBar) {
             scroll = (((event.y - clipTop) / viewHeight) * contentHeight - viewHeight / 2).toInt().coerceIn(0, maxScroll)
             return true
         }
-        return shownBlocks().any { it.mouseDragged(shifted(event), dragX, dragY) }
+        return shownBlocks().any { it.mouseDragged(shifted(event), dragX / drawScale, dragY / drawScale) }
     }
 
-    override fun onMouseMoved(mouseX: Double, mouseY: Double) {
-        val contentY = mouseY + scroll
+    override fun onMouseMoved(rawX: Double, rawY: Double) {
+        val mouseX = rawX / drawScale
+        val contentY = rawY / drawScale + scroll
+
         overlaysMouseMoved(mouseX, contentY)
         shownBlocks().forEach { it.mouseMoved(mouseX, contentY) }
     }
 
-    override fun onMouseScrolled(mouseX: Double, mouseY: Double, scrollX: Double, scrollY: Double): Boolean {
+    override fun onMouseScrolled(rawX: Double, rawY: Double, scrollX: Double, scrollY: Double): Boolean {
+        val mouseX = rawX / drawScale
+        val mouseY = rawY / drawScale
+
         if (overDropdown(mouseX, mouseY)) {
             dropdownScroll = stepScroll(dropdownScroll, scrollY, hits.size, DROPDOWN_MAX_ROWS)
             return true
@@ -530,7 +647,7 @@ class ConfigScreen(val parent: Screen?) : MagicScreen(Component.literal("Magic A
         return super.onKeyPressed(keyEvent)
     }
 
-    override fun onClose() {
+    override fun finishClose() {
         McCompat.setScreen(parent)
     }
 
@@ -569,5 +686,11 @@ class ConfigScreen(val parent: Screen?) : MagicScreen(Component.literal("Magic A
 
         /** How long a row found by the search stays framed. */
         const val FLASH_MS: Long = 1500
+
+        const val RESTORE_LABEL: String = "Restore Defaults"
+        const val RESTORE_HEIGHT: Int = 18
+
+        /** A palette colour drawn at full strength, whatever the transparency settings say. */
+        const val OPAQUE: Int = 0xFF000000.toInt()
     }
 }

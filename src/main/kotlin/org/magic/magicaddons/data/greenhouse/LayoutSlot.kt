@@ -14,8 +14,7 @@ class LayoutSlot(
      */
     enum class Marking(val color: Int) {
         Target(0xFF2DBCF6.toInt()),
-        Ingredient(0xFF89F336.toInt()),
-        UniqueCrop(0xFFBB00BB.toInt())
+        Ingredient(0xFF89F336.toInt())
     }
 
     override fun toString(): String {

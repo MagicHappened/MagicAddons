@@ -1191,7 +1191,16 @@ object GreenhouseData : GridCallbacks {
         // than any guess: stage, water and age exactly
         listening?.let { element ->
             age?.parseDurationToMs()?.let { element.instance.age = it }
-            stageRaw?.let { element.instance.growthStage = GrowthStageInfo.Known(it) }
+            stageRaw?.let { stage ->
+                element.instance.growthStage = GrowthStageInfo.Known(stage)
+
+                // a placed mutation is finished and stays at its last stage, so one the tool shows
+                // still growing was never placed, whatever the flag said
+                val plant = element.instance
+                if (plant.placed && plant.cropDef.isMutation && stage < plant.cropDef.maxStage) {
+                    plant.placed = false
+                }
+            }
 
             // read rather than predicted, so whatever was assumed about the ticks it may have been
             // passed over for no longer applies

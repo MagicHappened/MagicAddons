@@ -6,6 +6,7 @@ import net.minecraft.network.chat.Component
 import org.magic.magicaddons.Common
 import org.magic.magicaddons.ui.Focusable
 import org.magic.magicaddons.util.ScreenUtil.drawWrappedText
+import org.magic.magicaddons.util.ScreenUtil.ellipsised
 import org.magic.magicaddons.util.ScreenUtil.inRect
 import org.magic.magicaddons.util.ScreenUtil.wrappedHeight
 
@@ -37,6 +38,9 @@ open class BaseRowWidget<T>(
     /** Room kept above and below the text when the row grows to fit it. */
     open val textVerticalPadding = 2
 
+    /** Whether long text wraps onto more lines; off, it is cut short with an ellipsis instead. */
+    open var wrapText: Boolean = true
+
     protected val font get() = Minecraft.getInstance().font
 
     open fun getRightReservedWidth(): Int = 0
@@ -51,7 +55,9 @@ open class BaseRowWidget<T>(
 
     /** Grows the row to hold its wrapped text, never below [minHeight]. Call after setting the width. */
     fun fitHeight(minHeight: Int) {
-        height = (wrappedHeight(font, label(), textWidth()) + textVerticalPadding * 2).coerceAtLeast(minHeight)
+        val textHeight = if (wrapText) wrappedHeight(font, label(), textWidth()) else font.lineHeight
+
+        height = (textHeight + textVerticalPadding * 2).coerceAtLeast(minHeight)
     }
 
     /** Whether the row is lit: the mouse on it, or focus handed to it. */
@@ -67,12 +73,27 @@ open class BaseRowWidget<T>(
         if (dividerBelow) graphics.fill(x, y + height - 1, x + width, y + height, Common.UI.DIVIDER_COLOR)
 
         val text = label()
+        val textLeft = x + textLeftPadding + getLeftReservedWidth()
+
+        if (!wrapText) {
+            val shown = ellipsised(font, text.string, textWidth())
+            graphics.text(
+                font,
+                Component.literal(shown),
+                textLeft,
+                y + (height - font.lineHeight) / 2,
+                Common.UI.TEXT_COLOR,
+                false
+            )
+            return
+        }
+
         val textHeight = wrappedHeight(font, text, textWidth())
 
         graphics.drawWrappedText(
             font,
             text,
-            x + textLeftPadding + getLeftReservedWidth(),
+            textLeft,
             y + (height - textHeight) / 2,
             textWidth(),
             Common.UI.TEXT_COLOR

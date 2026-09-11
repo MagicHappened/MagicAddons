@@ -96,6 +96,10 @@ public abstract class LevelRendererMixin {
             Entity entity = entry.getKey();
             EntityUtils.HighlightSource source = entry.getValue();
 
+            if (!source.getThroughWalls() && !EntityUtils.inSight(levelRenderState.cameraRenderState.pos, entity)) {
+                continue;
+            }
+
             // any entity, not just living ones: the grass treasure and several safari uniques
             // are item displays, and renderFakeEntity is generic over the renderer already
             if (entity instanceof Player) {

@@ -98,12 +98,22 @@ object SafariHelper : HighlightFeature() {
         value = false
     )
 
+    private val throughWallsSetting = BooleanSetting(
+        key = "ThroughWalls",
+        displayName = "Through Walls",
+        description = "§cThis feature might be considered as a cheat and is therefore used at your own risk.",
+        value = false
+    )
+
+    override val throughWalls: Boolean get() = throughWallsSetting.value
+
     private val mobHighlight = BooleanSetting(
         key = "MobHighlight",
         displayName = "Mob Highlight",
         description = "Highlights the mobs and the grass treasure belonging to the safari zone you are in.",
         value = false,
         children = listOf(
+            throughWallsSetting,
             onlyUncaught
         )
     )

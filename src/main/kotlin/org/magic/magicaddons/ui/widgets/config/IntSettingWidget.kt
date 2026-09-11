@@ -27,6 +27,7 @@ class IntSettingWidget(
 
     private val valueBox = TextField(BOX_WIDTH, FIELD_HEIGHT).also {
         it.setMaxLength(12)
+        it.framed = true
         it.value = setting.value.toString()
         it.setResponder { typed ->
             // an empty box is somebody halfway through typing, not a request for zero
@@ -80,7 +81,8 @@ class IntSettingWidget(
         val filled = (barWidth() * fraction()).toInt()
         val top = barTop()
 
-        graphics.fill(barLeft(), top, barLeft() + barWidth(), top + BAR_HEIGHT, Common.UI.FIELD_COLOR)
+        // the track is the frame colour: the field colour is too close to the row behind it to be seen
+        graphics.fill(barLeft(), top, barLeft() + barWidth(), top + BAR_HEIGHT, Common.UI.BORDER_COLOR)
         graphics.fill(barLeft(), top, barLeft() + filled, top + BAR_HEIGHT, Common.UI.ACCENT_COLOR)
 
         // the knob rides the end of the filled part, kept inside the track at either extreme
@@ -116,6 +118,7 @@ class IntSettingWidget(
 
     override fun mouseScrolled(mouseX: Double, mouseY: Double, scrollX: Double, scrollY: Double): Boolean {
         if (super.mouseScrolled(mouseX, mouseY, scrollX, scrollY)) return true
+        if (!setting.scrollable) return false
         if (!overBar(mouseX, mouseY) || scrollY == 0.0) return false
 
         val direction = if (scrollY > 0) 1 else -1

@@ -62,6 +62,8 @@ class ToggleListSetting(
     val choices: () -> List<String>,
     /** What the closed selector says. It searches the whole catalogue, listed and not. */
     val searchLabel: String = "Search",
+    /** Whether a search box sits above the rows; a short fixed list has nothing worth searching. */
+    val searchable: Boolean = true,
     detail: (() -> SettingDetail?)? = null
 ) : SettingNode<MutableList<ListEntry>>(key, displayName, description, value, detail) {
 
@@ -156,6 +158,8 @@ class IntSetting(
     override var value: Int,
     val range: IntRange,
     val step: Int = 1,
+    /** Whether the wheel over the bar moves the number, for one a stray scroll should not change. */
+    val scrollable: Boolean = true,
     detail: (() -> SettingDetail?)? = null
 ) : SettingNode<Int>(key, displayName, description, value, detail) {
 
@@ -215,6 +219,168 @@ class TextSetting(
 }
 
 
+/**
+ * A row with a button. Pressing it runs [onPressed], which may write what it produced back into
+ * [value]; that value is what gets stored, so a file the player picked is still picked next time.
+ */
+class ActionSetting(
+    key: String,
+    displayName: String,
+    description: String,
+    /** What the button itself reads. */
+    val buttonLabel: String,
+    override var value: String = "",
+    val onPressed: (ActionSetting) -> Unit,
+    detail: (() -> SettingDetail?)? = null
+) : SettingNode<String>(key, displayName, description, value, detail) {
+
+    override fun parseValue(value: Any): String = value.toString()
+}
+
+/**
+ * Named copies of a group of settings. A preset holds the same map the config file itself stores, so
+ * saving one is the settings serialised and applying one is that map handed back to them.
+ */
+class PresetLibrarySetting(
+    key: String,
+    displayName: String,
+    description: String,
+    /** The settings a preset is taken from and applied to. */
+    val subject: () -> SettingNode<*>,
+    /** The preset every list starts with, which cannot be written over or removed. */
+    val defaultName: String,
+    detail: (() -> SettingDetail?)? = null
+) : SettingNode<String>(key, displayName, description, defaultName, detail) {
+
+    /** Each saved preset by name, holding what the settings looked like when it was saved. */
+    val presets: MutableMap<String, MutableMap<String, Any>> = mutableMapOf()
+
+    /** What the settings looked like before any config was read, which is what Default restores. */
+    private var shipped: MutableMap<String, Any>? = null
+
+    /** The names to choose between, the default one first. */
+    fun names(): List<String> = listOf(defaultName) + presets.keys.sorted()
+
+    /** Remembers the settings as they ship, the first time anything asks. */
+    fun rememberShipped() {
+        if (shipped == null) shipped = subject().serializeSettings()
+    }
+
+    fun save(name: String) {
+        if (name.isBlank() || name == defaultName) return
+
+        presets[name] = subject().serializeSettings()
+        value = name
+    }
+
+    fun delete(name: String) {
+        if (name == defaultName) return
+
+        presets.remove(name)
+        if (value == name) apply(defaultName)
+    }
+
+    /** Puts a preset's settings back, or the shipped ones for the default. */
+    fun apply(name: String) {
+        val saved = if (name == defaultName) shipped else presets[name]
+
+        value = name
+        saved?.let { subject().updateSettings(it) }
+    }
+
+    /** Where edits would be saved: the picked preset, or the first free "Preset N" when it is the default. */
+    fun saveTarget(): String {
+        if (value != defaultName) return value
+
+        return generateSequence(1) { it + 1 }.map { "Preset $it" }.first { it !in presets }
+    }
+
+    /** Whether the settings have moved away from the preset picked, so it shows as edited. */
+    fun edited(): Boolean {
+        val saved = if (value == defaultName) shipped else presets[value]
+
+        return saved != null && saved != subject().serializeSettings()
+    }
+
+    override fun parseValue(value: Any): String = value.toString()
+
+    override fun serializeSettings(parentPath: String): MutableMap<String, Any> = mutableMapOf(
+        pathIn(parentPath) to mutableMapOf<String, Any>(
+            "current_value" to value,
+            "presets" to presets
+        )
+    )
+
+    override fun updateSettings(settings: Map<String, Any>, parentPath: String) {
+        val nested = settings[pathIn(parentPath)] as? Map<*, *> ?: return
+
+        nested["current_value"]?.let { value = parseValue(it) }
+
+        val saved = nested["presets"] as? Map<*, *> ?: return
+
+        presets.clear()
+        saved.forEach { (name, contents) ->
+            val asMap = contents as? Map<*, *> ?: return@forEach
+            val entries = mutableMapOf<String, Any>()
+
+            asMap.forEach { (key, entry) -> if (key is String && entry != null) entries[key] = entry }
+            if (name is String) presets[name] = entries
+        }
+    }
+}
+
+/**
+ * A heading with settings under it. It holds no value of its own, so nothing is written for the
+ * heading itself, but it still namespaces what is under it: two settings may share a key as long as
+ * they sit under different headings.
+ */
+class ParentSetting(
+    key: String,
+    displayName: String,
+    description: String,
+    override val children: List<SettingNode<*>>
+) : SettingNode<Unit>(key, displayName, description, Unit) {
+
+    override fun parseValue(value: Any) = Unit
+
+    override fun serializeSettings(parentPath: String): MutableMap<String, Any> {
+        val map = mutableMapOf<String, Any>()
+        val childPath = pathIn(parentPath)
+
+        children.forEach { map.putAll(it.serializeSettings(childPath)) }
+
+        return map
+    }
+
+    override fun updateSettings(settings: Map<String, Any>, parentPath: String) {
+        val childPath = pathIn(parentPath)
+
+        children.forEach { it.updateSettings(settings, childPath) }
+    }
+}
+
+/**
+ * A value picked from a list that is not known ahead of time, such as the files in a folder. The
+ * options are asked for afresh each time the row is drawn.
+ */
+class ChoiceSetting(
+    key: String,
+    displayName: String,
+    description: String,
+    override var value: String = "",
+    val options: () -> List<String>,
+    val onChosen: ((ChoiceSetting) -> Unit)? = null,
+    /** What to ask before a value is taken, or null for one that needs no asking. */
+    val confirm: ((String) -> Confirmation?)? = null,
+    detail: (() -> SettingDetail?)? = null
+) : SettingNode<String>(key, displayName, description, value, detail) {
+
+    /** A question put before a value is taken, with a warning under it when there is one. */
+    class Confirmation(val question: String, val warning: String? = null)
+
+    override fun parseValue(value: Any): String = value.toString()
+}
+
 class EnumSetting<T : Enum<T>>(
     key: String,
     displayName: String,
@@ -238,19 +404,27 @@ class EnumSetting<T : Enum<T>>(
             activeChildren = childrenProvider?.invoke(newValue)
         }
 
+    /** The fixed settings under this one and the ones the picked value brought with it. */
+    private fun everyChild(): List<SettingNode<*>> = children.orEmpty() + providedChildren
+
     override fun serializeSettings(parentPath: String): MutableMap<String, Any> {
         val map = super.serializeSettings(parentPath)
         val childPath = pathIn(parentPath)
-        children?.forEach { child ->
+
+        // what the value brought with it is stored too, or a picture picked under one value would be
+        // forgotten the moment the game closed
+        everyChild().forEach { child ->
             map.putAll(child.serializeSettings(childPath))
         }
         return map
     }
 
     override fun updateSettings(settings: Map<String, Any>, parentPath: String) {
+        // the value is read first, so the settings it brings with it exist before they are read
         super.updateSettings(settings, parentPath)
+
         val childPath = pathIn(parentPath)
-        children?.forEach { child ->
+        everyChild().forEach { child ->
             child.updateSettings(settings, childPath)
         }
     }

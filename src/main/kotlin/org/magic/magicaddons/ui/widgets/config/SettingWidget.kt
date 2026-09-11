@@ -1,5 +1,7 @@
 package org.magic.magicaddons.ui.widgets.config
 
+import org.magic.magicaddons.util.ScreenUtil.splitMod
+import org.magic.magicaddons.util.ScreenUtil.modText
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.input.CharacterEvent
@@ -134,10 +136,10 @@ abstract class SettingWidget<T>(
         this.y = y
         this.width = width
 
-        nameLines = font.split(Component.literal(node.displayName), textWidth().coerceAtLeast(font.width("W")))
+        nameLines = font.splitMod(Component.literal(node.displayName), textWidth().coerceAtLeast(font.width("W")))
         descriptionLines = description().takeIf { it.isNotBlank() }
             ?.lines()
-            ?.flatMap { font.split(Component.literal(it), textWidth().coerceAtLeast(font.width("W"))) }
+            ?.flatMap { font.splitMod(Component.literal(it), textWidth().coerceAtLeast(font.width("W"))) }
             ?: emptyList()
 
         val textHeight = nameLines.size * font.lineHeight +
@@ -199,12 +201,12 @@ abstract class SettingWidget<T>(
 
         var textY = y + ROW_PAD
         nameLines.forEach {
-            graphics.text(font, it, textLeft(), textY, Common.UI.TEXT_COLOR, false)
+            graphics.modText(font, it, textLeft(), textY, Common.UI.TEXT_COLOR)
             textY += font.lineHeight
         }
         textY += Common.UI.SPACING_SMALL
         descriptionLines.forEach {
-            graphics.text(font, it, textLeft(), textY, Common.UI.TEXT_DIM_COLOR, false)
+            graphics.modText(font, it, textLeft(), textY, Common.UI.TEXT_DIM_COLOR)
             textY += font.lineHeight
         }
 
@@ -249,7 +251,7 @@ abstract class SettingWidget<T>(
     private fun renderChevron(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int) {
         val color = if (overChevron(mouseX.toDouble(), mouseY.toDouble())) Common.UI.SELECTED_FRAME_COLOR else Common.UI.TEXT_DIM_COLOR
 
-        graphics.text(font, Component.literal(descendantCount().toString()), chevronLeft, chevronTop + (CHEVRON_HEIGHT - font.lineHeight) / 2 + 1, color, false)
+        graphics.modText(font, Component.literal(descendantCount().toString()), chevronLeft, chevronTop + (CHEVRON_HEIGHT - font.lineHeight) / 2 + 1, color)
 
         // the chevron turns over as the group opens
         val left = chevronLeft + chevronWidth - CHEVRON_SIZE

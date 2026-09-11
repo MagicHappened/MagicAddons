@@ -1,5 +1,6 @@
 package org.magic.magicaddons.ui.widgets
 
+import org.magic.magicaddons.util.ScreenUtil.modText
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.components.EditBox
@@ -38,7 +39,7 @@ class TextField(
             box.value = text
         }
 
-    /** Framed in the panel colour while it does not have the keyboard, for a field standing alone. */
+    /** Thinly framed in the panel colour while it does not have the keyboard, for a field standing alone. */
     var framed: Boolean = false
 
     var focused: Boolean
@@ -68,8 +69,9 @@ class TextField(
 
     fun render(graphics: GuiGraphicsExtractor) {
         place()
-        graphics.drawField(x, y, x + width, y + height, focused)
-        if (framed && !focused) graphics.drawBorder(x, y, x + width, y + height, Common.UI.BORDER_SIZE, Common.UI.BORDER_COLOR)
+        val frameSize = if (framed) Common.UI.CONTROL_BORDER_SIZE else Common.UI.BORDER_SIZE
+        graphics.drawField(x, y, x + width, y + height, focused, frameSize)
+        if (framed && !focused) graphics.drawBorder(x, y, x + width, y + height, frameSize, Common.UI.BORDER_COLOR)
 
         val text = value
         val caretX = font.width(text.substring(0, box.cursorPosition.coerceIn(0, text.length)))
@@ -82,9 +84,9 @@ class TextField(
         graphics.enableScissor(textLeft(), y, textLeft() + room(), y + height)
 
         if (text.isEmpty() && !focused) {
-            hint?.let { graphics.text(font, it, left, textTop(), Common.UI.DISABLED_TEXT_COLOR, false) }
+            hint?.let { graphics.modText(font, it, left, textTop(), Common.UI.DISABLED_TEXT_COLOR) }
         } else {
-            graphics.text(font, Component.literal(text), left, textTop(), Common.UI.TEXT_COLOR, false)
+            graphics.modText(font, Component.literal(text), left, textTop(), Common.UI.TEXT_COLOR)
         }
 
         if (focused && System.currentTimeMillis() / CARET_BLINK_MS % 2 == 0L) {

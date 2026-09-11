@@ -1,5 +1,8 @@
 package org.magic.magicaddons.ui.widgets.greenhouse
 
+import org.magic.magicaddons.util.ScreenUtil.withAlpha
+import org.magic.magicaddons.util.ScreenUtil.eased
+import org.magic.magicaddons.util.ScreenUtil.modText
 import net.minecraft.ChatFormatting
 import net.minecraft.client.Minecraft
 import kotlin.math.absoluteValue
@@ -33,6 +36,9 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, GuiEv
 
     /** When this plant was dropped into its slot, for the pop it makes on arriving; zero for none. */
     var appearedAt: Long = 0L
+
+    /** When the plant was last marked, for the flash; zero for one never marked while on screen. */
+    var markedAt: Long = 0L
 
     /** Whether this plant stands in a plan rather than a greenhouse, so it has no stage or water. */
     var inPreset: Boolean = false
@@ -88,6 +94,12 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, GuiEv
             renderFire(graphics)
             return
         }
+        // a plant just marked flashes white for a moment, so a stroke of marks reads one by one
+        if (markedAt != 0L) {
+            val faded = eased(markedAt, FLASH_MS)
+            if (faded < 1f) graphics.fill(x, y, x + width, y + height, withAlpha(FLASH_COLOR, 1f - faded))
+        }
+
         // a plant just dropped in grows from small to full over its first moments
         val elapsed = System.currentTimeMillis() - appearedAt
         val scale = if (appearedAt == 0L || elapsed >= POP_MS) 1f else POP_FROM + (1f - POP_FROM) * elapsed / POP_MS
@@ -174,7 +186,7 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, GuiEv
         try {
             pose.translate(textX, top)
             pose.scale(INFO_TEXT_SCALE, INFO_TEXT_SCALE)
-            graphics.text(font, text, 0, 0, color, false)
+            graphics.modText(font, text, 0, 0, color)
         } finally {
             pose.popMatrix()
         }
@@ -369,6 +381,10 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, GuiEv
 
         /** The pop on arriving: how small it starts and how long it takes. */
         private const val POP_MS: Long = 150
+
+        /** The flash on a plant just marked: how long it lasts, and the white it starts from. */
+        private const val FLASH_MS: Long = 250
+        private const val FLASH_COLOR: Int = 0xA0FFFFFF.toInt()
         private const val POP_FROM: Float = 0.5f
 
         /** Resolved once: only the fire element draws one, and resolving can throw. */

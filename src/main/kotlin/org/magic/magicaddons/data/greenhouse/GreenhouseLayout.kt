@@ -28,7 +28,8 @@ data class GreenhouseLayout(
         elementInstances.clear()
         other.elementInstances.forEach { instance ->
             val slot = getSlot(instance.slot.x, instance.slot.y) ?: return@forEach
-            elementInstances.add(instance.copy(slot = slot))
+            // a plain copy keeps the constructor's fields and drops the rest, placed among them
+            elementInstances.add(instance.copyForPrediction(slot))
         }
     }
     override fun toString(): String = displayName()
