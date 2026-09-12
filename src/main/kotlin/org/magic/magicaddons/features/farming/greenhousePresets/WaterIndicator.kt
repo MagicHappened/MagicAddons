@@ -5,6 +5,9 @@ import net.minecraft.client.renderer.SubmitNodeCollector
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
 import net.minecraft.world.phys.shapes.Shapes
+import org.magic.magicaddons.data.greenhouse.ElementRuntimeState
+import org.magic.magicaddons.data.greenhouse.GreenhouseGrid
+import org.magic.magicaddons.data.greenhouse.GrowthStageInfo
 import org.magic.magicaddons.data.greenhouse.WaterModel
 import org.magic.magicaddons.render.WorldRenderer
 
@@ -22,12 +25,18 @@ object WaterIndicator {
         if (GreenhousePresets.waterIndicatorOnlyWithoutPlanner() && LayoutRenderState.hasSomethingToShow) return
 
         val grid = GreenhouseData.getCurrentGrid() ?: return
-        if (!GreenhouseData.inGreenhouse()) return
+        // the grid is found by plot number, which a visited garden has too, so the plot standing
+        // where the player's own greenhouse would be is not theirs to mark
+        if (!GreenhouseData.inOwnGarden() || !GreenhouseData.inGreenhouse()) return
+
+        val ignoreGrown = GreenhousePresets.waterIndicatorIgnoresGrown()
 
         val thirsty = grid.elements.filter { element ->
             val plant = element.instance
             val water = plant.waterLevel
-            plant.needsWater && water != null && water < WaterModel.FULL
+
+            plant.needsWater && water != null && water < WaterModel.FULL &&
+                    !(ignoreGrown && reachesFullGrowth(grid, element))
         }
         if (thirsty.isEmpty()) return
 
@@ -41,5 +50,25 @@ object WaterIndicator {
             presetBatch.fillWithOutline(soil, box, CYAN, alpha)
         }
         presetBatch.submitBatch(poseStack, collector)
+    }
+
+    /**
+     * Whether the plant has the water to reach its last stage without ever falling below zero, which
+     * is the plant that never skips a tick for want of water and so is worth leaving alone. A stage
+     * only estimated is taken at its lowest, since that is the most growing it may still have to do.
+     */
+    private fun reachesFullGrowth(grid: GreenhouseGrid, element: ElementRuntimeState): Boolean {
+        val plant = element.instance
+        val water = plant.waterLevel ?: return false
+
+        val stage = when (val growth = plant.growthStage) {
+            is GrowthStageInfo.Known -> growth.stage
+            is GrowthStageInfo.Estimated -> growth.range.first
+            null -> return false
+        }
+
+        val ticksLeft = (plant.cropDef.maxStage - stage).coerceAtLeast(0)
+
+        return WaterModel.after(water, ticksLeft, grid.layout.waterEffectAt(plant.slot)) >= 0
     }
 }

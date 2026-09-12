@@ -10,6 +10,7 @@ import net.minecraft.client.renderer.SubmitNodeCollector
 import net.minecraft.core.BlockPos
 import net.minecraft.network.chat.ClickEvent
 import net.minecraft.network.chat.Component
+import net.minecraft.network.chat.MutableComponent
 import net.minecraft.network.chat.HoverEvent
 import net.minecraft.network.chat.Style
 import net.minecraft.network.chat.TextColor
@@ -313,13 +314,59 @@ object CropCollector : EntityUtils.HighlightSource {
 
         s.entries.sortBy { it.status.ordinal.let { o -> if (it.status == Status.Current) 9 else o } }
 
-        ChatUtils.sendWithPrefix("${s.entries.size} plants found, click the right ones to confirm:")
-        s.entries.forEach { sendLine(it) }
+        sendInstructions(s.entries.size)
+    }
+
+    /** What a run asks of the player, said once, since the screen carries the plants themselves. */
+    private fun sendInstructions(found: Int) {
+        ChatUtils.sendWithPrefix("$found plants found.")
+
+        ChatUtils.send(hint("Open the collection screen with G keybind (only while this is active)"))
+
         ChatUtils.send(
-            Component.literal("  press G for the checklist, collect finish writes the file, collect quit dismisses")
-                .withStyle(ChatFormatting.DARK_GRAY)
+            hint("Correct plants that seem incorrect or the mod says they've matched, but actually don't exist in the ")
+                .append(
+                    Component.literal("plantDex").setStyle(
+                        Style.EMPTY
+                            .withColor(ChatFormatting.AQUA)
+                            .withUnderlined(true)
+                            .withClickEvent(ClickEvent.RunCommand(PLANT_DEX_COMMAND))
+                            .withHoverEvent(HoverEvent.ShowText(Component.literal("click to run $PLANT_DEX_COMMAND")))
+                    )
+                )
+                .append(hint(" with the diagnostic tool"))
+        )
+
+        ChatUtils.send(
+            hint("After done press \"Write the file\" in the screen and send the file to developer to go through it")
         )
     }
+
+    /** One plant as a chat line, for the diagnostic tool's answer about the plant just poked. */
+    private fun sendLine(entry: Entry) {
+        val mark = if (entry.confirmed) "[✔] " else ""
+        val body = "$mark[${entry.id}] ${rowLabel(entry)}"
+
+        val style = when (entry.status) {
+            Status.Unknown -> Style.EMPTY.withColor(ChatFormatting.WHITE)
+            else -> Style.EMPTY
+                .withColor(TextColor.fromRgb(entry.color and 0xFFFFFF))
+                .withClickEvent(ClickEvent.RunCommand("${MainInternal.COMMAND} ${CollectToggle.NAME} ${entry.id}"))
+                .withHoverEvent(
+                    HoverEvent.ShowText(
+                        Component.literal(if (entry.confirmed) "Click to drop from the file" else "Click to confirm")
+                    )
+                )
+        }
+
+        ChatUtils.send(Component.literal("  ").append(Component.literal(body).withStyle(style)))
+    }
+
+    private fun hint(text: String): MutableComponent =
+        Component.literal(text).withStyle(ChatFormatting.GRAY)
+
+    /** The listing of what the dex still wants, which is what a wrong looking plant is checked against. */
+    private const val PLANT_DEX_COMMAND: String = "/ma debug farming plantDex missing"
 
     private fun addEntry(
         def: CropDefinition?,
@@ -575,7 +622,7 @@ object CropCollector : EntityUtils.HighlightSource {
     } ?: emptyList()
 
     /** The click on an entry's line, from chat or from the checklist screen. */
-    fun toggle(id: Int, announce: Boolean = true) {
+    fun toggle(id: Int) {
         val s = session ?: run {
             ChatUtils.sendWithPrefix("No collection running.")
             return
@@ -610,7 +657,6 @@ object CropCollector : EntityUtils.HighlightSource {
             }
         }
 
-        if (announce) sendLine(entry)
     }
 
     /**
@@ -852,24 +898,6 @@ object CropCollector : EntityUtils.HighlightSource {
         return entry.toolNote ?: "$name (${entry.origin.x}, ${entry.origin.z}) $stage — ${entry.status.label}"
     }
 
-    private fun sendLine(entry: Entry) {
-        val mark = if (entry.confirmed) "[✔] " else ""
-        val body = "$mark[${entry.id}] ${rowLabel(entry)}"
-
-        val style = when (entry.status) {
-            Status.Unknown -> Style.EMPTY.withColor(ChatFormatting.WHITE)
-            else -> Style.EMPTY
-                .withColor(TextColor.fromRgb(entry.color and 0xFFFFFF))
-                .withClickEvent(ClickEvent.RunCommand("${MainInternal.COMMAND} ${CollectToggle.NAME} ${entry.id}"))
-                .withHoverEvent(
-                    HoverEvent.ShowText(
-                        Component.literal(if (entry.confirmed) "Click to drop from the file" else "Click to confirm")
-                    )
-                )
-        }
-
-        ChatUtils.send(Component.literal("  ").append(Component.literal(body).withStyle(style)))
-    }
 
     // ------------------------------------------------------------------ lifetime
 

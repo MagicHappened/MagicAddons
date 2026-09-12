@@ -21,6 +21,7 @@ object GreenhousePresets : Feature() {
     private const val PLANNER_COLORS_KEY = "PlannerColors"
     private const val WATER_INDICATOR_KEY = "WaterIndicator"
     private const val WATER_ONLY_WITHOUT_PLANNER_KEY = "OnlyWithoutPlanner"
+    private const val WATER_IGNORE_GROWN_KEY = "IgnoreWillFullyGrow"
     private const val HUD_ANYWHERE_KEY = "HudAnywhere"
 
     private const val WARNINGS_KEY = "Warnings"
@@ -119,18 +120,28 @@ object GreenhousePresets : Feature() {
         value = true
     )
 
+    private val waterIgnoreGrownSetting = BooleanSetting(
+        key = WATER_IGNORE_GROWN_KEY,
+        displayName = "Ignore crops that will fully grow",
+        description = "Ignore crops that have enough water to reach full growth with no negative " +
+                "water values, so your plant doesnt skip a tick.",
+        value = false
+    )
+
     private val waterIndicatorSetting = BooleanSetting(
         key = WATER_INDICATOR_KEY,
         displayName = "Water Indicator",
         description = "Marks the soil of every plant below full water in the greenhouse you stand in. " +
                 "A plant whose water is unknown is left alone",
         value = true,
-        children = listOf(waterOnlyWithoutPlannerSetting)
+        children = listOf(waterOnlyWithoutPlannerSetting, waterIgnoreGrownSetting)
     )
 
     fun waterIndicatorOn(): Boolean = baseSetting.value && waterIndicatorSetting.value
 
     fun waterIndicatorOnlyWithoutPlanner(): Boolean = waterOnlyWithoutPlannerSetting.value
+
+    fun waterIndicatorIgnoresGrown(): Boolean = waterIgnoreGrownSetting.value
 
     private val hudAnywhereSetting = BooleanSetting(
         key = HUD_ANYWHERE_KEY,
