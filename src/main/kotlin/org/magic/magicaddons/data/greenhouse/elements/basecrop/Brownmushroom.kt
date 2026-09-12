@@ -65,7 +65,7 @@ object Brownmushroom : CropDefinitionProvider {
 
         ),
         maxStage = 6,
-        requiredSoil = setOf(Blocks.MYCELIUM),
+        requiredSoil = setOf(Blocks.MYCELIUM, Blocks.PODZOL),
         needsWater = false,
         isBaseCrop = true
     )

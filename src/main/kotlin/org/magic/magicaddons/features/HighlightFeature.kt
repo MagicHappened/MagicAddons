@@ -25,10 +25,19 @@ abstract class HighlightFeature : Feature(), EntityUtils.HighlightSource {
     /** What each matched entity is currently outlining, so a match that moves can be cleaned up. */
     private val targets: MutableMap<Entity, Entity> = mutableMapOf()
 
+    /** What the outlined entity matched as, for the marker drawn when it is far away. */
+    private val marks: MutableMap<Entity, EntityUtils.HighlightMark> = mutableMapOf()
+
+    /** What a marker calls this match and draws for it; nothing unless the feature says. */
+    open fun markOf(info: EntityInfo): EntityUtils.HighlightMark? = null
+
+    final override fun highlightMark(entity: Entity): EntityUtils.HighlightMark? = marks[entity]
+
     /** Drops every highlight owned by this feature and rebuilds it from the current entity list. */
     fun invalidateHighlights() {
         EntityUtils.removeAllForSource(this)
         targets.clear()
+        marks.clear()
 
         if (!baseSetting.value) return
 
@@ -49,6 +58,7 @@ abstract class HighlightFeature : Feature(), EntityUtils.HighlightSource {
 
         if (wanted != null) {
             targets[info.entity] = wanted
+            markOf(info)?.let { marks[wanted] = it }
             EntityUtils.add(wanted, this)
         }
     }
@@ -57,6 +67,7 @@ abstract class HighlightFeature : Feature(), EntityUtils.HighlightSource {
     private fun releaseIfUnused(target: Entity) {
         if (targets.containsValue(target)) return
 
+        marks.remove(target)
         EntityUtils.remove(target, this)
     }
 

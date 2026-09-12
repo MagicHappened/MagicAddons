@@ -37,7 +37,7 @@ object Veilshroom : CropDefinitionProvider {
                 1..1
             )
         ),
-        requiredSoil = setOf(Blocks.MYCELIUM),
+        requiredSoil = setOf(Blocks.MYCELIUM, Blocks.PODZOL),
         needsWater = false,
         isMutation = true,
         placedSameAsGrown = true

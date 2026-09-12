@@ -60,7 +60,7 @@ data class CropPreviewRenderState(
  * texture, submitted by the crop preview screen each frame.
  *
  * The scene is built from the same pieces the in-world holograms use: blocks go through
- * [WorldRender.solid] and stands through the entity render dispatcher, both against the scene's
+ * [WorldRenderer.submitSolidBlock] and stands through the entity render dispatcher, both against the scene's
  * centre so the plant turns about its own middle.
  */
 //? if >=26.2 {
@@ -111,7 +111,7 @@ class CropPreviewRenderer(
         )
 
         state.blocks.forEach { (pos, blockState) ->
-            WorldRender.solid(poseStack, collector, state.sceneCenter, pos, blockState)
+            WorldRenderer.submitSolidBlock(poseStack, collector, state.sceneCenter, pos, blockState)
         }
 
         val dispatcher = Minecraft.getInstance().entityRenderDispatcher

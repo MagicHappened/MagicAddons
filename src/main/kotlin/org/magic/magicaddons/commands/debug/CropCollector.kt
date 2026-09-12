@@ -33,7 +33,7 @@ import org.magic.magicaddons.data.greenhouse.GrowthStageInfo
 import org.magic.magicaddons.data.greenhouse.LayoutSlot
 import org.magic.magicaddons.data.greenhouse.PlantDex
 import org.magic.magicaddons.data.greenhouse.WorldRotation
-import org.magic.magicaddons.render.WorldRender
+import org.magic.magicaddons.render.WorldRenderer
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.EntityUtils
 import org.magic.magicaddons.util.PlayerUtils
@@ -44,24 +44,20 @@ import kotlin.math.max
 import kotlin.math.roundToInt
 
 /**
- * Collects stage definitions from a whole greenhouse at once. Run standing one block south of the
- * grid's south-eastern corner, facing north; confirm a listed line by clicking it, then `collect finish`.
+ * Collects stage definitions from a whole greenhouse at once. until we finish collecting the data.
  */
 object CropCollector : EntityUtils.HighlightSource {
 
-    /** Above the mob highlighter, since a collection run is the thing being looked at. */
     override val highlightPriority: Int = 100
 
     override fun highlightColor(entity: Entity): Int = standColors[entity] ?: GRAY
 
     private const val GRID: Int = 10
 
-    /** The devourer's roots are their own element, though the diagnosis names the devourer. */
     private const val DEVOURER: String = "Devourer"
     private const val DEVOURER_ROOTS: String = "DevourerRoots"
 
-    /** How far above the soil a plant can reach, for the stand search and the block columns. */
-    private const val PLANT_HEIGHT: Int = 15
+    private const val MAX_PLANT_HEIGHT: Int = 15
 
     /** How long the boxes stay up after the file is written. */
     private const val FINISHED_HIGHLIGHT_SECONDS: Long = 10
@@ -197,7 +193,7 @@ object CropCollector : EntityUtils.HighlightSource {
             ArmorStand::class.java,
             AABB(
                 origin.x.toDouble(), origin.y - 2.0, origin.z.toDouble(),
-                origin.x + GRID.toDouble(), origin.y + PLANT_HEIGHT.toDouble(), origin.z + GRID.toDouble()
+                origin.x + GRID.toDouble(), origin.y + MAX_PLANT_HEIGHT.toDouble(), origin.z + GRID.toDouble()
             )
         )
             .filterNot { it.isMarker }
@@ -545,7 +541,7 @@ object CropCollector : EntityUtils.HighlightSource {
                     add(AABB(soil))
 
                     var pos = soil.above()
-                    while (!level.getBlockState(pos).isAir && pos.y <= soil.y + PLANT_HEIGHT) {
+                    while (!level.getBlockState(pos).isAir && pos.y <= soil.y + MAX_PLANT_HEIGHT) {
                         add(AABB(pos))
                         pos = pos.above()
                     }
@@ -663,7 +659,7 @@ object CropCollector : EntityUtils.HighlightSource {
             ArmorStand::class.java,
             AABB(
                 standingOn.x - 1.0, standingOn.y - 2.0, standingOn.z - 1.0,
-                standingOn.x + w + 1.0, standingOn.y + PLANT_HEIGHT.toDouble(), standingOn.z + h + 1.0
+                standingOn.x + w + 1.0, standingOn.y + MAX_PLANT_HEIGHT.toDouble(), standingOn.z + h + 1.0
             )
         )
             .filterNot { it.isMarker }
@@ -892,7 +888,7 @@ object CropCollector : EntityUtils.HighlightSource {
             if (entry.confirmed) return@forEach
 
             entry.boxes.forEach { box ->
-                WorldRender.markBox(poseStack, collector, cameraPos, box, entry.color, BLOCK_ALPHA)
+                WorldRenderer.markBox(poseStack, collector, cameraPos, box, entry.color, BLOCK_ALPHA)
             }
         }
     }

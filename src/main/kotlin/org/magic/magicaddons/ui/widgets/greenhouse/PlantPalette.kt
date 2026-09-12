@@ -34,17 +34,11 @@ import org.magic.magicaddons.util.ScreenUtil.stepScroll
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
-/**
- * Every plant and soil as an icon on a shelf, searched from the top, dragged or clicked from here
- * onto a preset's grid. Above the icons sit the Clear all button, the Delete switch, the mark
- * selector and the undo and redo arrows, which the owning screen acts on.
- */
 class PlantPalette(
     overlayContext: OverlayContext,
     private val onClearAll: (MouseButtonEvent) -> Unit,
     private val onUndo: () -> Unit,
     private val onRedo: () -> Unit,
-    /** Whether a crop has no plant of its kind in the preset yet, for the Uniques switch to mark. */
     private val uniqueMissing: (CropDefinition) -> Boolean
 ) {
 
@@ -63,7 +57,6 @@ class PlantPalette(
         currentValue = MarkChoice.Off,
         overlayContext = overlayContext,
         searchable = false,
-        // a mark being chosen puts every other tool down, the way picking any tool does
         valueChanged = { picked -> if (picked.applies) clearTools(keepMark = true) }
     )
 

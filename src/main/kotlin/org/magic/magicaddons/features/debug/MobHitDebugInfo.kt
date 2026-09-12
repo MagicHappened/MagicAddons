@@ -5,7 +5,9 @@ import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import net.minecraft.ChatFormatting
 import net.minecraft.client.Minecraft
+import net.minecraft.core.component.DataComponentType
 import net.minecraft.core.component.DataComponents
+import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.network.chat.ClickEvent
 import net.minecraft.network.chat.Component
 import net.minecraft.network.chat.HoverEvent
@@ -93,7 +95,7 @@ object MobHitDebugInfo : Feature() {
             )
 
         summary.append(clickable("[copy]", ChatFormatting.GREEN, "Copies the full dump as json",
-            ClickEvent.CopyToClipboard(json(entity, subject, neighbours))))
+            ClickEvent.CopyToClipboard(json(entity, nearby))))
 
         if (entity is Player) {
             PlayerUtils.getSkinUrl(entity)?.let { url ->
@@ -216,12 +218,9 @@ object MobHitDebugInfo : Feature() {
         ).filter { it !== entity }
     }
 
-    /** The whole dump, for the clipboard: full hashes, positions and every flag. */
-    private fun json(entity: Entity, subject: EntityLine, neighbours: List<EntityLine>): String {
-        val root = entityJson(subject)
-
-        root.addProperty("uuid", entity.uuid.toString())
-        root.addProperty("pos", "%.2f %.2f %.2f".format(entity.x, entity.y, entity.z))
+    /** every part of the entity information as json */
+    private fun json(entity: Entity, neighbours: List<Entity>): String {
+        val root = entityJson(entity)
 
         val nearbyArray = JsonArray()
         neighbours.forEach { nearbyArray.add(entityJson(it)) }
@@ -230,28 +229,109 @@ object MobHitDebugInfo : Feature() {
         return GSON.toJson(root)
     }
 
-    private fun entityJson(line: EntityLine): JsonObject {
+    private fun entityJson(entity: Entity): JsonObject {
         val obj = JsonObject()
 
-        obj.addProperty("type", line.type)
-        obj.addProperty("name", line.name)
-        obj.addProperty("invisible", line.invisible)
-        line.marker?.let { obj.addProperty("marker", it) }
-        line.skinHash?.let { obj.addProperty("skinHash", it) }
-
-        val items = JsonArray()
-        line.items.forEach { item ->
-            val itemObj = JsonObject()
-            itemObj.addProperty("slot", item.slot)
-            itemObj.addProperty("id", item.id)
-            item.dyeColor?.let { itemObj.addProperty("dye", "#%06X".format(it and 0xFFFFFF)) }
-            item.skullHash?.let { itemObj.addProperty("skullHash", it) }
-            items.add(itemObj)
+        obj.addProperty("type", entity.typePath())
+        obj.addProperty("name", entity.customName?.string)
+        obj.addProperty("uuid", entity.uuid.toString())
+        obj.addProperty("networkId", entity.id)
+        obj.addProperty("pos", "%.2f %.2f %.2f".format(entity.x, entity.y, entity.z))
+        obj.addProperty("rotation", "%.1f %.1f".format(entity.yRot, entity.xRot))
+        obj.addProperty("invisible", entity.isInvisible)
+        obj.addProperty("glowing", entity.isCurrentlyGlowing)
+        obj.addProperty("pose", entity.pose.name)
+        obj.addProperty("size", "%.2f x %.2f".format(entity.bbWidth, entity.bbHeight))
+        (entity as? ArmorStand)?.let { obj.addProperty("marker", it.isMarker) }
+        (entity as? Player)?.let { player ->
+            PlayerUtils.getSkinHash(player)?.let { obj.addProperty("skinHash", it) }
         }
-        obj.add("equipment", items)
+        (entity as? LivingEntity)?.let { living ->
+            obj.addProperty("scale", living.scale)
+            obj.add("attributes", attributesJson(living))
+        }
+
+        obj.add("components", componentsJson(entity))
+        obj.add("syncedData", syncedDataJson(entity))
+        obj.add("equipment", equipmentJson(entity))
 
         return obj
     }
+
+    /**
+     * all the unique components such as shulker color parrot varient etc...
+     */
+    private fun componentsJson(entity: Entity): JsonObject {
+        val obj = JsonObject()
+
+        BuiltInRegistries.DATA_COMPONENT_TYPE.forEach { type ->
+            val value = runCatching { entity.get(type) }.getOrNull() ?: return@forEach
+
+            componentName(type)?.let { obj.addProperty(it, value.toString()) }
+        }
+
+        return obj
+    }
+
+    /** all the attributes of an entity to a json object */
+    private fun attributesJson(entity: LivingEntity): JsonObject {
+        val obj = JsonObject()
+
+        entity.attributes.syncableAttributes.forEach { instance ->
+            val name = BuiltInRegistries.ATTRIBUTE.getKey(instance.attribute.value()) ?: return@forEach
+
+            obj.addProperty(name.toString(), instance.value)
+        }
+
+        return obj
+    }
+
+    /** last sent server information for the entity */
+    private fun syncedDataJson(entity: Entity): JsonObject {
+        val obj = JsonObject()
+
+        entity.entityData.nonDefaultValues?.forEach { entry ->
+            obj.addProperty(entry.id().toString(), entry.value()?.toString())
+        }
+
+        return obj
+    }
+
+    private fun equipmentJson(entity: Entity): JsonArray {
+        val array = JsonArray()
+
+        when (entity) {
+            is LivingEntity -> ARMOR_SLOTS.forEach { slot ->
+                itemJson(slot.getName(), entity.getItemBySlot(slot))?.let { array.add(it) }
+            }
+
+            is Display.ItemDisplay -> itemJson("item", entity.itemStack)?.let { array.add(it) }
+        }
+
+        return array
+    }
+
+    private fun itemJson(slot: String, stack: ItemStack): JsonObject? {
+        if (stack.isEmpty) return null
+
+        val obj = JsonObject()
+
+        obj.addProperty("slot", slot)
+        obj.addProperty("id", stack.item.toString())
+        obj.addProperty("count", stack.count)
+        obj.addProperty("name", stack.hoverName.string)
+
+        val components = JsonObject()
+        stack.components.forEach { component ->
+            componentName(component.type())?.let { components.addProperty(it, component.value()?.toString()) }
+        }
+        obj.add("components", components)
+
+        return obj
+    }
+
+    private fun componentName(type: DataComponentType<*>): String? =
+        BuiltInRegistries.DATA_COMPONENT_TYPE.getKey(type)?.toString()
 
     private val ARMOR_SLOTS = listOf(
         EquipmentSlot.HEAD,
@@ -262,10 +342,10 @@ object MobHitDebugInfo : Feature() {
         EquipmentSlot.OFFHAND
     )
 
-    /** Hashes up to this long are shown whole; longer ones as their two ends. */
+    /** max size for a hash */
     private const val SHORT_HASH_LENGTH: Int = 20
 
-    /** A hash as the hover shows one: enough of both ends to recognise it. */
+    /** shortened hash for displaying */
     private fun shorten(hash: String): String =
         if (hash.length <= SHORT_HASH_LENGTH) hash else "${hash.take(8)}…${hash.takeLast(6)}"
 

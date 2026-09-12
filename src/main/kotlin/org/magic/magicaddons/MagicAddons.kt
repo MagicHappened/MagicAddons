@@ -11,6 +11,7 @@ import org.magic.magicaddons.config.ConfigNotices
 import org.magic.magicaddons.config.MagicAddonsConfigJsonHandler
 import org.magic.magicaddons.data.handlers.DataHandler
 import org.magic.magicaddons.render.CropPreviewRenderer
+import org.magic.magicaddons.render.MarkerRenderer
 import org.magic.magicaddons.render.ItemIconRenderer
 import org.magic.magicaddons.util.ScreenUtil
 import org.magic.magicaddons.util.EntityUtils
@@ -38,6 +39,7 @@ class MagicAddons : ClientModInitializer {
         GreenhouseKey
         HudEditorKey
         HudRenderer
+        MarkerRenderer
         DataHandler.init()
         // listening before the config loads, since a migration may have something to say
         ConfigNotices

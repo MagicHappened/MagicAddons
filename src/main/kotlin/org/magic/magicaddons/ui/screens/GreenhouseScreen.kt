@@ -27,7 +27,7 @@ import org.magic.magicaddons.data.greenhouse.GreenhouseGrid
 import org.magic.magicaddons.data.greenhouse.GreenhouseLayout
 import org.magic.magicaddons.features.customization.Customization
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData
-import org.magic.magicaddons.features.farming.greenhousePresets.PlantSpotlight
+import org.magic.magicaddons.features.farming.greenhousePresets.PlantHighlight
 import org.magic.magicaddons.features.farming.greenhousePresets.PlannerNeeds
 import org.magic.magicaddons.ui.HoverableContainer
 import org.magic.magicaddons.ui.OverlayContext
@@ -63,10 +63,8 @@ import org.magic.magicaddons.util.ScreenUtil.stackFor
 import org.magic.magicaddons.util.ScreenUtil.drawWarningBadge
 import org.magic.magicaddons.util.ScreenUtil.drawSimpleTooltip
 import org.magic.magicaddons.util.ScreenUtil.drawTooltipAtCursor
-import org.magic.magicaddons.util.ScreenUtil.drawTooltipLines
 import org.magic.magicaddons.util.ScreenUtil.drawTooltipLinesAtCursor
 import org.magic.magicaddons.util.ScreenUtil.inRect
-import org.magic.magicaddons.util.ScreenUtil.stackFor
 import tech.thatgravyboat.skyblockapi.api.location.LocationAPI
 import tech.thatgravyboat.skyblockapi.api.profile.garden.PlotAPI
 
@@ -1231,29 +1229,23 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
         return super.onMouseClicked(mouseButtonEvent, doubled)
     }
 
-    /**
-     * Outlines the real plant in the world, for a plant of the greenhouse being stood in. A plant of
-     * any other greenhouse has no stands or blocks loaded to outline.
-     */
-    private fun spotlight(instance: GreenhouseElementInstance): Boolean {
+    private fun highlightPlant(instance: GreenhouseElementInstance): Boolean {
         val grid = GreenhouseData.getCurrentGrid() ?: return false
         if (grid !== displayedGrid()) return false
 
         val runtime = grid.elements.firstOrNull { it.instance === instance } ?: return false
 
-        PlantSpotlight.show(runtime)
+        if (PlantHighlight.showPlant(runtime)) onClose()
         return true
     }
 
     /** The clicks greenhouse mode takes: the middle click, the Unplan button, the bookmarks and the swatches. */
     private fun greenhouseClicked(event: MouseButtonEvent, doubled: Boolean): Boolean {
         if (event.button() == 0) {
-            val clicked = displayedGridWidget?.elementAt(event.x, event.y)
-            if (clicked != null && spotlight(clicked)) return true
+            val clicked = displayedGridWidget?.elementAtPos(event.x, event.y)
+            if (clicked != null && highlightPlant(clicked)) return true
         }
 
-        // the wheel's other job: a middle click in greenhouse mode makes it walk the swatches
-        // instead of the plots, and another puts it back. Remembered past the screen, not to disk
         if (event.button() == 2) {
             scrollPicksInfo = !scrollPicksInfo
             return true
@@ -1266,12 +1258,9 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
             if (teleportTab.mouseClicked(event)) return true
         }
 
-        // the swatches are only beside a greenhouse, and off screen they still sit where they
-        // were last laid out, so they are asked only where they exist
         return hoverControls.mouseClicked(event)
     }
 
-    /** The clicks preset mode takes: the part bookmarks, the plants shelf, placing, deleting and marking, and the preset buttons. */
     private fun presetClicked(event: MouseButtonEvent, doubled: Boolean): Boolean {
         if (displayedGridWidget != null && partTabs.mouseClicked(event)) return true
 

@@ -208,6 +208,17 @@ object Customization : Feature() {
         ConfigBackground.forgetLoadedPicture()
     }
 
+    /**
+     * Puts into effect what was written straight into the settings rather than picked in the ui: the
+     * font has to be installed before it can be drawn with, and the background picture is cached.
+     */
+    fun reapplyAppearance() {
+        val font = fontSetting.value
+        if (!SystemFonts.isBuiltIn(font)) SystemFonts.install(font)
+
+        ConfigBackground.forgetLoadedPicture()
+    }
+
     private val savedPictureSetting = ChoiceSetting(
         key = "SavedBackground",
         displayName = "Saved Image",

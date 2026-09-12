@@ -3,7 +3,6 @@ package org.magic.magicaddons.features.farming.greenhousePresets
 import java.time.Instant
 import java.time.Duration
 import org.magic.magicaddons.data.greenhouse.GreenhouseLayout
-import net.minecraft.network.chat.Component
 import java.util.UUID
 import com.mojang.blaze3d.vertex.PoseStack
 import net.minecraft.world.phys.Vec3
@@ -27,24 +26,22 @@ import net.minecraft.world.phys.shapes.VoxelShape
 import org.magic.magicaddons.data.greenhouse.CropDefinition
 import org.magic.magicaddons.data.greenhouse.CropStage
 import org.magic.magicaddons.data.greenhouse.GreenhouseGrid
-import org.magic.magicaddons.render.WorldRender
+import org.magic.magicaddons.render.WorldRenderer
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.EntityUtils
 
 /**
- * Shows the player how to build a layout: the soil row first, then the crops on it, each drawn at
- * its first stage. Missing blocks are ghosted, blocks in the way are outlined.
+ * preset hologram in world renderer starting with soil blocks then plants
  */
 object LayoutRenderState {
 
-    /** the box a soil block is marked with, for a plant made only of stands */
+    /** full block outline for stand only plants */
     private val FULL_BLOCK: VoxelShape = Shapes.block()
 
-    /** the watch marks pulse between these, the way the water indicator does */
     private const val PULSE_ALPHA_LOW: Int = 0x28
     private const val PULSE_ALPHA_HIGH: Int = 0x70
 
-    /** Enough colour to read the mark through, little enough to see the block under it. */
+    /** Enough color to read the mark through, little enough to see the block under it. */
     private const val FILL_ALPHA: Int = 0x4D
 
     /** how solid a ghost block is drawn */
@@ -87,29 +84,27 @@ object LayoutRenderState {
     }
 
     /**
-     * Everything the plan says, held as one object: a frame drawn mid-rescan would otherwise catch
-     * the new answer to one question beside the old answer to the next.
+     * everything about the hologram, stage or soil phase, what marks, ghosts to render and things in the way
      */
-    private class Plan(
+    private class PlannerLayout(
         val phase: Phase,
         val marks: Map<BlockPos, Pair<VoxelShape, PlannerMark>>,
         val ghosts: Map<BlockPos, BlockState>,
         val badStands: Set<UUID>,
-        /** Soil of crops left unplanned because something already stands on it. */
+        /** soils to replace with another block. */
         val blocked: Set<BlockPos>,
         /**
-         * Ghost stands kept apart by crop, so an unchanged crop keeps its stands. Rebuilding an
-         * entity is not the same to a renderer as leaving it alone.
+         * ghost stands are separated by crops to not reconstruct plant ghosts that havent been touched.
          */
         val standGroups: Map<String, List<ArmorStand>>,
-        /** What the target slots say, which is not part of the building and never ends it. */
+
         val watchMarks: Map<BlockPos, Pair<VoxelShape, PlannerMark>> = emptyMap(),
         val watchStands: Map<UUID, Int> = emptyMap()
     ) {
         val ghostStands: List<ArmorStand> = standGroups.values.flatten()
 
-        /** What this plan asks for, as one string, so two plans compare without comparing stands. */
-        val signature: String = buildString {
+        /** plan strings to compare, cheaper than using entity matching. */
+        val plannerLayoutString: String = buildString {
             append(phase).append('|')
             marks.entries.sortedBy { it.key.asLong() }
                 .forEach { append(it.key.asLong()).append(':').append(it.value.second).append(',') }
@@ -130,16 +125,15 @@ object LayoutRenderState {
         }
 
         companion object {
-            val NOTHING = Plan(Phase.Soil, emptyMap(), emptyMap(), emptySet(), emptySet(), emptyMap())
+            val NOTHING = PlannerLayout(Phase.Soil, emptyMap(), emptyMap(), emptySet(), emptySet(), emptyMap())
         }
     }
 
     @Volatile
-    private var plan: Plan = Plan.NOTHING
+    private var plannerLayout: PlannerLayout = PlannerLayout.NOTHING
 
-    /** The tint a stand is drawn in, or zero for one the plan says nothing about. */
     fun standTint(stand: UUID): Int {
-        val current = plan
+        val current = plannerLayout
 
         return when {
             stand in current.badStands -> RED_TINT
@@ -147,38 +141,33 @@ object LayoutRenderState {
         }
     }
 
-    /** The stands a ghosted crop is made of, drawn as part of showing what to plant. */
-    val ghostStands: List<ArmorStand> get() = plan.ghostStands
+    val ghostStands: List<ArmorStand> get() = plannerLayout.ghostStands
 
-    /** whether the plan shows anything */
     val hasSomethingToShow: Boolean
-        get() = plan.marks.isNotEmpty() || plan.ghosts.isNotEmpty() || plan.badStands.isNotEmpty() || plan.blocked.isNotEmpty()
+        get() = plannerLayout.marks.isNotEmpty() || plannerLayout.ghosts.isNotEmpty() || plannerLayout.badStands.isNotEmpty() || plannerLayout.blocked.isNotEmpty()
 
-    /** Whether the plan was finished the last time it was worked out. */
     private var lastFinished: Boolean = false
 
-    /** When the player was last told, so finishing twice quickly is only said once. */
-    private var announcedAt: Instant? = null
+    private var lastAnnouncedAt: Instant? = null
 
-    /** How long after saying it the plan holds its tongue, however often it is finished again. */
     private val ANNOUNCE_COOLDOWN: Duration = Duration.ofSeconds(30)
 
-    /** Crops with no first stage described yet, so each is only ever mentioned once. */
+    /** crops with no first stage to avoid repeat messages */
     private val reportedMissingStage = mutableSetOf<String>()
 
     /** Draws the plan from the frame's own render pass, against the camera that frame uses. */
-    fun submit(poseStack: PoseStack, collector: SubmitNodeCollector, cameraPos: Vec3) {
-        val plan = this.plan
+    fun submitPlan(poseStack: PoseStack, collector: SubmitNodeCollector, cameraPos: Vec3) {
+        val plan = this.plannerLayout
         if (plan.marks.isEmpty() && plan.ghosts.isEmpty() && plan.watchMarks.isEmpty()) return
 
         // gathered first and handed over as one batch a render type; see WorldRender.Batch
-        val batch = WorldRender.Batch(cameraPos)
-        val pulse = WorldRender.pulsedAlpha(PULSE_ALPHA_LOW, PULSE_ALPHA_HIGH)
+        val presetBatch = WorldRenderer.BlockRenderBatch(cameraPos)
+        val pulse = WorldRenderer.pulsedAlpha(PULSE_ALPHA_LOW, PULSE_ALPHA_HIGH)
 
-        plan.marks.forEach { (pos, mark) -> batch.mark(pos, mark.first, mark.second.color, FILL_ALPHA) }
-        plan.watchMarks.forEach { (pos, mark) -> batch.mark(pos, mark.first, mark.second.color, pulse) }
-        plan.ghosts.forEach { (pos, state) -> batch.ghost(pos, state, GHOST_TINT, PlannerMark.Missing.color, ghostAlpha()) }
-        batch.submit(poseStack, collector)
+        plan.marks.forEach { (pos, mark) -> presetBatch.fillWithOutline(pos, mark.first, mark.second.color, FILL_ALPHA) }
+        plan.watchMarks.forEach { (pos, mark) -> presetBatch.fillWithOutline(pos, mark.first, mark.second.color, pulse) }
+        plan.ghosts.forEach { (pos, state) -> presetBatch.ghostBlockWithOutline(pos, state, GHOST_TINT, PlannerMark.Missing.color, ghostAlpha()) }
+        presetBatch.submitBatch(poseStack, collector)
     }
 
     /** Starts over on the plan of whichever greenhouse the player is in. */
@@ -190,7 +179,7 @@ object LayoutRenderState {
     }
 
     fun hide() {
-        plan = Plan.NOTHING
+        plannerLayout = PlannerLayout.NOTHING
         reportedMissingStage.clear()
     }
 
@@ -225,7 +214,7 @@ object LayoutRenderState {
         val standGroups = mutableMapOf<String, List<ArmorStand>>()
 
         // what is already up, to take the unchanged parts of it over rather than build them again
-        val previous = plan
+        val previous = plannerLayout
 
         var soilComplete = true
         val soilNeeded = linkedMapOf<Block, Int>()
@@ -309,17 +298,17 @@ object LayoutRenderState {
         val watchStands = mutableMapOf<UUID, Int>()
         watchTargets(level, grid, layout, watchMarks, watchStands)
 
-        val next = Plan(soilPhase, marks, ghosts, badStands, blocked, standGroups, watchMarks, watchStands)
+        val next = PlannerLayout(soilPhase, marks, ghosts, badStands, blocked, standGroups, watchMarks, watchStands)
 
         if (soilComplete) PlannerNeeds.tellPlants(grid, cropsNeeded)
         else PlannerNeeds.tellSoil(grid, soilNeeded)
 
         // a plan asking for what is already up is not a new plan: swapping it in handed the renderer
         // a fresh set of ghost stands for nothing
-        if (next.signature == plan.signature) return
+        if (next.plannerLayoutString == plannerLayout.plannerLayoutString) return
 
         // one swap, so nothing drawn is ever half of this plan and half of the last
-        plan = next
+        plannerLayout = next
 
         announceIfFinished(grid, layout, next)
     }
@@ -328,7 +317,7 @@ object LayoutRenderState {
      * Sends the finished message once, when a plan first has nothing left to mark or ghost. A plan
      * that finishes again within half a minute is not announced twice.
      */
-    private fun announceIfFinished(grid: GreenhouseGrid, layout: GreenhouseLayout, next: Plan) {
+    private fun announceIfFinished(grid: GreenhouseGrid, layout: GreenhouseLayout, next: PlannerLayout) {
         if (grid.state.buildAnnounced) return
 
         // a crop skipped for a slot that reads as taken is not a crop that got planted
@@ -341,9 +330,9 @@ object LayoutRenderState {
         if (!finished || was) return
 
         val now = Instant.now()
-        if (announcedAt?.let { now.isBefore(it.plus(ANNOUNCE_COOLDOWN)) } == true) return
+        if (lastAnnouncedAt?.let { now.isBefore(it.plus(ANNOUNCE_COOLDOWN)) } == true) return
 
-        announcedAt = now
+        lastAnnouncedAt = now
         grid.state.buildAnnounced = true
 
         // the plan stays on the greenhouse after it is built: it is what the target marks are read from

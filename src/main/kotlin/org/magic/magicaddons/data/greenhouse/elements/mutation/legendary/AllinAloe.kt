@@ -278,7 +278,7 @@ object AllinAloe : CropDefinitionProvider {
             )),
         decayTimeMs = NEVER_DECAYS,
         maxStage = 27,
-        requiredSoil = setOf(Blocks.SAND),
+        requiredSoil = setOf(Blocks.SAND, Blocks.RED_SAND),
         needsWater = false,
         isMutation = true
     )

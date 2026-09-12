@@ -102,7 +102,7 @@ object Blastberry : CropDefinitionProvider {
                 placed = true
             )),
         maxStage = 6,
-        requiredSoil = setOf(Blocks.SAND),
+        requiredSoil = setOf(Blocks.SAND, Blocks.RED_SAND),
         isMutation = true
     )
 }

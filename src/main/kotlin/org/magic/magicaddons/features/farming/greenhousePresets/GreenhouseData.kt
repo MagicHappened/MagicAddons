@@ -643,7 +643,7 @@ object GreenhouseData : GridCallbacks {
         runDueReconcile()
         ensureProfile()
         if (DataHandler.activeProfile == null) return
-        OtherProfiles.advance()
+        OtherProfiles.advanceTicks()
 
         val now = Instant.now()
         val last = lastCheckTime
