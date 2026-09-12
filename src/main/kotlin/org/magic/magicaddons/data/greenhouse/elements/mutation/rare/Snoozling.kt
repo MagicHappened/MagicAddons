@@ -166,8 +166,7 @@ object Snoozling : CropDefinitionProvider {
                         hashString = "b82d442528456547474dd88166a97818f057ecc4b3ed350ef9a5e4dbd27f98d7"
                     )
                 ),
-                5..5,
-                readers = listOf(CropStandReader.presence(CropStandReader.ASLEEP, "z"))
+                5..5
             ),
             CropStage(
                 blocks = CropBlockState.blockStatePattern(

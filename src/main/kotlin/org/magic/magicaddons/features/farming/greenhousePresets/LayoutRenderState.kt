@@ -224,7 +224,7 @@ object LayoutRenderState {
             val wanted = slot.placedBlock ?: return@forEach
             val pos = grid.getPosForSlotCoords(slot.x, slot.y) ?: return@forEach
 
-            if (compare(level, pos, wanted, marks, ghosts)) return@forEach
+            if (compare(level, pos, wanted, layout.soilsAcceptedAt(slot), marks, ghosts)) return@forEach
 
             soilComplete = false
             if (needsPlacing(level, pos, wanted)) soilNeeded.merge(wanted.block, 1, Int::plus)
@@ -277,7 +277,8 @@ object LayoutRenderState {
                 val render = stage.toRenderData(level, soil, instance.cropDef.footprint, instance.cropDef.standPoses, instance.cropDef.rotatesWithPlot)
 
                 render.blockMap.forEach { (pos, state) ->
-                    compare(level, pos, state, marks, ghosts)
+                    // the plant's own blocks, which have no second form the way its soil does
+                    compare(level, pos, state, emptySet(), marks, ghosts)
                 }
 
                 // a crop in the same place at the same stage wants the same stands it already
@@ -480,12 +481,18 @@ object LayoutRenderState {
         level: Level,
         pos: BlockPos,
         wanted: BlockState,
+        accepted: Set<Block>,
         marks: MutableMap<BlockPos, Pair<VoxelShape, PlannerMark>>,
         ghosts: MutableMap<BlockPos, BlockState>
     ): Boolean {
         val standing = level.getBlockState(pos)
 
         if (standing.sameEnoughAs(wanted)) return true
+
+        // ground the plant would grow in anyway, which the preset simply did not happen to name:
+        // a dead plant takes any of eight soils, and digging one out for another grows nothing new.
+        // A cell the preset wants bare is still wanted bare
+        if (!wanted.isAir && standing.block in accepted) return true
 
         // nothing belongs here, so anything standing here is in the way
         if (wanted.isAir) {

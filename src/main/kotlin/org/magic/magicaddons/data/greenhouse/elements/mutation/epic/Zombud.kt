@@ -137,6 +137,7 @@ object Zombud : CropDefinitionProvider {
                         CropArmorStand(
                             offset = Vec3(0.0, -0.28125, 0.0),
                             hashString = "7a65b2ac222b9b875d7bd33d0fbe60c60434eb86fe16ce451e9f8c4d81cc6455",
+                            isSmall = false
                         )
                     )
                 ,
@@ -169,11 +170,11 @@ object Zombud : CropDefinitionProvider {
                         CropArmorStand(
                             offset = Vec3(0.0, 0.40625, 0.0),
                             hashString = "de090b85462e85f7f44be07e55f1486602c141bb6fd0c277d5bb7c68deda265d",
-                            isSmall = false
                         ),
                         CropArmorStand(
                             offset = Vec3(0.0, -0.09375, 0.0),
                             hashString = "7a65b2ac222b9b875d7bd33d0fbe60c60434eb86fe16ce451e9f8c4d81cc6455",
+                            isSmall = false
                         )
                     )
                 ,
@@ -191,11 +192,11 @@ object Zombud : CropDefinitionProvider {
                         CropArmorStand(
                             offset = Vec3(0.0, 0.0, 0.0),
                             hashString = "7a65b2ac222b9b875d7bd33d0fbe60c60434eb86fe16ce451e9f8c4d81cc6455",
+                            isSmall = false
                         ),
                         CropArmorStand(
                             offset = Vec3(0.0, 0.40625, 0.0),
                             hashString = "de090b85462e85f7f44be07e55f1486602c141bb6fd0c277d5bb7c68deda265d",
-                            isSmall = false
                         )
                     )
                 ,

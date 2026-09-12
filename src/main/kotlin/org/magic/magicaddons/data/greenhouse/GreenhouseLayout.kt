@@ -1,5 +1,6 @@
 package org.magic.magicaddons.data.greenhouse
 
+import net.minecraft.world.level.block.Block
 import kotlin.math.abs
 
 
@@ -132,6 +133,18 @@ data class GreenhouseLayout(
      * negative. Measured rather than assumed, in notes/water-formula.md.
      */
     fun waterEffectAt(slot: LayoutSlot): Int = CropEffect.total(effectsAt(slot), CropEffect.Kind.Water)
+
+    /** The plant whose footprint lies over [slot], or null when the cell is bare. */
+    fun plantCovering(slot: LayoutSlot): GreenhouseElementInstance? =
+        elementInstances.firstOrNull { it.covers(slot) }
+
+    /**
+     * Every soil the plant on [slot] grows in, so ground that is already one of them is left alone
+     * rather than dug up for the one the preset happens to name. A bare cell takes only what it was
+     * given.
+     */
+    fun soilsAcceptedAt(slot: LayoutSlot): Set<Block> =
+        plantCovering(slot)?.everyCrop?.flatMapTo(mutableSetOf()) { it.requiredSoil }.orEmpty()
 
     private fun GreenhouseElementInstance.covers(slot: LayoutSlot): Boolean =
         slot.x in this.slot.x until this.slot.x + cropDef.footprint.width &&

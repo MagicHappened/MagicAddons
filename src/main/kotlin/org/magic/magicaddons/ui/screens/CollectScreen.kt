@@ -165,7 +165,7 @@ class CollectScreen : MagicScreen(Component.literal("Crop Collection"), "the col
             val row = CropCollector.rows().getOrNull(scroll + (y - listTop) / ROW_HEIGHT)
 
             if (row != null && row.collectable) {
-                CropCollector.toggle(row.id, announce = false)
+                CropCollector.toggle(row.id)
             }
             return true
         }
