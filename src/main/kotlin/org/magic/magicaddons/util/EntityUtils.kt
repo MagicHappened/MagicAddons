@@ -39,6 +39,12 @@ object EntityUtils {
     /** Real accounts have a version 4 uuid; a server side npc does not. */
     private const val PLAYER_UUID_VERSION: Int = 4
 
+    /**
+     * What a far marker draws for a highlighted entity. A null [icon] means the entity itself is
+     * drawn, which is how a mob with no item to stand for it still looks like what it is.
+     */
+    class HighlightMark(val name: String, val icon: ItemStack? = null)
+
     interface HighlightSource {
         val highlightPriority: Int
 
@@ -50,6 +56,9 @@ object EntityUtils {
 
         /** Whether an outline is drawn when a wall stands between the camera and the entity. */
         val throughWalls: Boolean get() = true
+
+        /** What this entity matched as, or null when the source cannot name what it outlined. */
+        fun highlightMark(entity: Entity): HighlightMark? = null
     }
 
     /** Whether the camera has a clear line to [entity], looked up once a tick for each entity. */

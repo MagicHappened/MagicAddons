@@ -10,6 +10,7 @@ import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.network.chat.Component
 import org.lwjgl.glfw.GLFW
 import org.magic.magicaddons.Common
+import org.magic.magicaddons.config.ConfigShare
 import org.magic.magicaddons.config.MagicAddonsConfigJsonHandler
 import org.magic.magicaddons.data.config.EnumSetting
 import org.magic.magicaddons.data.config.SettingNode
@@ -28,6 +29,8 @@ import org.magic.magicaddons.util.ScreenUtil.drawLine
 import org.magic.magicaddons.ui.background.ConfigBackground
 import org.magic.magicaddons.util.ScreenUtil.drawPanel
 import org.magic.magicaddons.util.ScreenUtil.drawScrollBar
+import org.magic.magicaddons.util.ScreenUtil.drawSimpleTooltip
+import org.magic.magicaddons.util.ScreenUtil.drawTooltipAtCursor
 import org.magic.magicaddons.util.ScreenUtil.eased
 import org.magic.magicaddons.util.ScreenUtil.ellipsised
 import org.magic.magicaddons.util.ScreenUtil.inRect
@@ -44,7 +47,10 @@ class ConfigScreen(val parent: Screen?) : MagicScreen(Component.literal("Magic A
     override val overlays: MutableList<OverlayRenderable> = mutableListOf()
 
     private val categories = FeatureManager.categories()
-    private var selected: FeatureManager.Category = categories.first()
+
+    /** The category last looked at, so reopening the screen carries on where it left off. */
+    private var selected: FeatureManager.Category =
+        categories.firstOrNull { it.key == lastCategoryKey } ?: categories.first()
 
     /** One root widget per feature, kept as a list so switching categories keep the unfolds  */
     private val blocks = mutableMapOf<Feature, SettingWidget<Boolean>>()
@@ -108,6 +114,16 @@ class ConfigScreen(val parent: Screen?) : MagicScreen(Component.literal("Magic A
     private fun overClose(mouseX: Double, mouseY: Double): Boolean =
         inRect(mouseX, mouseY, closeLeft, closeTop, CLOSE_SIZE, CLOSE_SIZE)
 
+    /** The export arrow, then the import one, in from the close button. */
+    private val exportLeft: Int get() = closeLeft - HEADER_PAD - CLOSE_SIZE
+    private val importLeft: Int get() = exportLeft - HEADER_PAD - CLOSE_SIZE
+
+    private fun overExport(mouseX: Double, mouseY: Double): Boolean =
+        inRect(mouseX, mouseY, exportLeft, closeTop, CLOSE_SIZE, CLOSE_SIZE)
+
+    private fun overImport(mouseX: Double, mouseY: Double): Boolean =
+        inRect(mouseX, mouseY, importLeft, closeTop, CLOSE_SIZE, CLOSE_SIZE)
+
     /** category rows definitions, with a boolean for ones below the separator */
     private class CategoryRow(val category: FeatureManager.Category, val top: Int, val dividerAbove: Boolean)
 
@@ -135,6 +151,10 @@ class ConfigScreen(val parent: Screen?) : MagicScreen(Component.literal("Magic A
         closeOverlays()
         closeDropdown()
         layoutPanels()
+
+        // put back where the screen was left, once the blocks have been laid out and there is a
+        // height to hold it against
+        scroll = lastScroll
     }
 
     /** Lays the screen out again at the scale just picked. */
@@ -214,7 +234,9 @@ class ConfigScreen(val parent: Screen?) : MagicScreen(Component.literal("Magic A
         shownBlocks().forEach { it.dropFocus() }
         closeOverlays()
         selected = category
+        lastCategoryKey = category.key
         scroll = 0
+        lastScroll = 0
     }
 
     // ------------------------------------------------------------------ search
@@ -346,8 +368,50 @@ class ConfigScreen(val parent: Screen?) : MagicScreen(Component.literal("Magic A
         renderSidePanel(graphics, scaledMouseX, scaledMouseY)
         renderMain(graphics, scaledMouseX, scaledMouseY, delta)
         renderDropdown(graphics, scaledMouseX, scaledMouseY)
+        renderShareNote(graphics, scaledMouseX, scaledMouseY)
 
         graphics.pose().popMatrix()
+    }
+
+    /** What the last copy or import did, and what the arrows are for while the mouse is on them. */
+    private fun renderShareNote(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int) {
+        if (System.currentTimeMillis() < shareNoteUntil && shareNote.isNotEmpty()) {
+            graphics.drawSimpleTooltip(shareNote, MARGIN + HEADER_PAD, headerBottom + Common.UI.SPACING)
+        }
+
+        if (overExport(mouseX.toDouble(), mouseY.toDouble())) {
+            graphics.drawTooltipAtCursor(EXPORT_SHARE_TOOLTIP, mouseX, mouseY)
+        }
+        if (overImport(mouseX.toDouble(), mouseY.toDouble())) {
+            graphics.drawTooltipAtCursor(IMPORT_SHARE_TOOLTIP, mouseX, mouseY)
+        }
+    }
+
+    private var shareNote: String = ""
+    private var shareNoteUntil: Long = 0
+
+    private fun noteShare(text: String) {
+        shareNote = text
+        shareNoteUntil = System.currentTimeMillis() + SHARE_NOTE_MS
+    }
+
+    /** Copies half the config out, saying which half went. */
+    private fun copyConfig(kind: ConfigShare.Kind) {
+        val copied = ConfigShare.copy(kind)
+
+        noteShare(if (copied == null) "There is no ${kind.label} to copy" else "Copied your ${kind.label} to the clipboard")
+    }
+
+    /** Takes half a config off the clipboard, saying whose it was. */
+    private fun pasteConfig(kind: ConfigShare.Kind) {
+        when (val pasted = ConfigShare.paste(kind)) {
+            is ConfigShare.Pasted.Applied -> {
+                noteShare("Loaded ${pasted.author}'s ${kind.label}, ${pasted.settings} settings")
+                rebuildAtNewScale()
+            }
+
+            is ConfigShare.Pasted.Failed -> noteShare(pasted.reason)
+        }
     }
 
     private fun renderHeader(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int) {
@@ -370,6 +434,22 @@ class ConfigScreen(val parent: Screen?) : MagicScreen(Component.literal("Magic A
         graphics.drawButtonPanel(closeLeft, closeTop, closeLeft + CLOSE_SIZE, closeTop + CLOSE_SIZE, overClose(mouseX.toDouble(), mouseY.toDouble()))
         graphics.drawLine(closeLeft + CLOSE_INSET, closeTop + CLOSE_INSET, closeLeft + CLOSE_SIZE - CLOSE_INSET, closeTop + CLOSE_SIZE - CLOSE_INSET, 1, Common.UI.TEXT_COLOR)
         graphics.drawLine(closeLeft + CLOSE_SIZE - CLOSE_INSET, closeTop + CLOSE_INSET, closeLeft + CLOSE_INSET, closeTop + CLOSE_SIZE - CLOSE_INSET, 1, Common.UI.TEXT_COLOR)
+
+        arrowButton(graphics, exportLeft, up = true, hovered = overExport(mouseX.toDouble(), mouseY.toDouble()))
+        arrowButton(graphics, importLeft, up = false, hovered = overImport(mouseX.toDouble(), mouseY.toDouble()))
+    }
+
+    /** An arrow out of the screen for the export, and one into it for the import. */
+    private fun arrowButton(graphics: GuiGraphicsExtractor, left: Int, up: Boolean, hovered: Boolean) {
+        graphics.drawButtonPanel(left, closeTop, left + CLOSE_SIZE, closeTop + CLOSE_SIZE, hovered)
+
+        val middleX = left + CLOSE_SIZE / 2
+        val headY = if (up) closeTop + CLOSE_INSET else closeTop + CLOSE_SIZE - CLOSE_INSET
+        val tailY = if (up) closeTop + CLOSE_SIZE - CLOSE_INSET else closeTop + CLOSE_INSET
+
+        graphics.drawLine(middleX, headY, middleX, tailY, 1, Common.UI.TEXT_COLOR)
+        graphics.drawLine(middleX - ARROW_HEAD, headY + if (up) ARROW_HEAD else -ARROW_HEAD, middleX, headY, 1, Common.UI.TEXT_COLOR)
+        graphics.drawLine(middleX, headY, middleX + ARROW_HEAD, headY + if (up) ARROW_HEAD else -ARROW_HEAD, 1, Common.UI.TEXT_COLOR)
     }
 
     private fun renderSidePanel(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int) {
@@ -423,6 +503,7 @@ class ConfigScreen(val parent: Screen?) : MagicScreen(Component.literal("Magic A
 
         restoreBottom = lineY - Common.UI.SPACING
         renderRestoreButton(graphics, mouseX, mouseY)
+        renderUiShareButtons(graphics, mouseX, mouseY)
     }
 
     private fun renderMain(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
@@ -493,6 +574,43 @@ class ConfigScreen(val parent: Screen?) : MagicScreen(Component.literal("Magic A
         )
     }
 
+    /** The copy button sits right above the restore one, the import above that. */
+    private val copyUiTop: Int get() = restoreTop - Common.UI.SPACING - RESTORE_HEIGHT
+    private val importUiTop: Int get() = copyUiTop - Common.UI.SPACING - RESTORE_HEIGHT
+
+    private fun overCopyUi(mouseX: Double, mouseY: Double): Boolean =
+        showsAppearance() && inRect(mouseX, mouseY, restoreLeft, copyUiTop, restoreWidth, RESTORE_HEIGHT)
+
+    private fun overImportUi(mouseX: Double, mouseY: Double): Boolean =
+        showsAppearance() && inRect(mouseX, mouseY, restoreLeft, importUiTop, restoreWidth, RESTORE_HEIGHT)
+
+    /** Handing the look to someone else, and taking theirs, drawn like the restore button under them. */
+    private fun renderUiShareButtons(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int) {
+        if (!showsAppearance()) return
+
+        sidePanelButton(graphics, copyUiTop, COPY_UI_LABEL, overCopyUi(mouseX.toDouble(), mouseY.toDouble()))
+        sidePanelButton(graphics, importUiTop, IMPORT_UI_LABEL, overImportUi(mouseX.toDouble(), mouseY.toDouble()))
+    }
+
+    private fun sidePanelButton(graphics: GuiGraphicsExtractor, top: Int, text: String, hovered: Boolean) {
+        graphics.drawButtonPanel(
+            restoreLeft, top, restoreLeft + restoreWidth, top + RESTORE_HEIGHT,
+            hovered = hovered,
+            fill = Customization.palette.background or OPAQUE,
+            frame = Customization.palette.border or OPAQUE
+        )
+
+        val label = Component.literal(ellipsised(font, text, restoreWidth - Common.UI.TEXT_X_PAD * 2))
+        graphics.text(
+            font,
+            label,
+            restoreLeft + (restoreWidth - font.width(label)) / 2,
+            top + (RESTORE_HEIGHT - font.lineHeight) / 2,
+            Customization.palette.text or OPAQUE,
+            false
+        )
+    }
+
     // ------------------------------------------------------------------ input
 
     private fun overMain(mouseX: Double, mouseY: Double): Boolean =
@@ -530,6 +648,24 @@ class ConfigScreen(val parent: Screen?) : MagicScreen(Component.literal("Magic A
 
         if (overClose(event.x, event.y)) {
             onClose()
+            return true
+        }
+
+        if (overExport(event.x, event.y)) {
+            copyConfig(ConfigShare.Kind.Features)
+            return true
+        }
+        if (overImport(event.x, event.y)) {
+            pasteConfig(ConfigShare.Kind.Features)
+            return true
+        }
+
+        if (overCopyUi(event.x, event.y)) {
+            copyConfig(ConfigShare.Kind.Ui)
+            return true
+        }
+        if (overImportUi(event.x, event.y)) {
+            pasteConfig(ConfigShare.Kind.Ui)
             return true
         }
 
@@ -651,10 +787,16 @@ class ConfigScreen(val parent: Screen?) : MagicScreen(Component.literal("Magic A
     }
 
     override fun removed() {
+        lastCategoryKey = selected.key
+        lastScroll = scroll
         MagicAddonsConfigJsonHandler.save()
     }
 
     private companion object {
+        /** Where the screen was last left, kept past the screen so reopening returns to it. */
+        var lastCategoryKey: String? = null
+        var lastScroll: Int = 0
+
         const val MARGIN: Int = 6
         const val PANEL_GAP: Int = Common.UI.SPACING
         const val HEADER_HEIGHT: Int = 30
@@ -688,6 +830,23 @@ class ConfigScreen(val parent: Screen?) : MagicScreen(Component.literal("Magic A
 
         const val RESTORE_LABEL: String = "Restore Defaults"
         const val RESTORE_HEIGHT: Int = 18
+
+        const val COPY_UI_LABEL: String = "Copy UI Config"
+        const val IMPORT_UI_LABEL: String = "Import UI Config"
+
+        /** How far the head of an arrow spreads from its line. */
+        const val ARROW_HEAD: Int = 3
+
+        /** Where the other half is shared from, said under both arrows. */
+        const val SHARE_UI_NOTE: String = "\n\n§7§oFor UI import and export, there are buttons above " +
+                "the version reference while inside the customization category"
+
+        const val EXPORT_SHARE_TOOLTIP: String = "Export config options (Excludes UI)$SHARE_UI_NOTE"
+
+        const val IMPORT_SHARE_TOOLTIP: String = "Import config options (Excludes UI)$SHARE_UI_NOTE"
+
+        /** How long what a copy or an import did stays on screen. */
+        const val SHARE_NOTE_MS: Long = 4000
 
         /** A palette colour drawn at full strength, whatever the transparency settings say. */
         const val OPAQUE: Int = 0xFF000000.toInt()

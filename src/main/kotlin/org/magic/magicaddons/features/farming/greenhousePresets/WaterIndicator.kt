@@ -6,7 +6,7 @@ import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
 import net.minecraft.world.phys.shapes.Shapes
 import org.magic.magicaddons.data.greenhouse.WaterModel
-import org.magic.magicaddons.render.WorldRender
+import org.magic.magicaddons.render.WorldRenderer
 
 /** Marks the soil of every plant below full water in the greenhouse the player stands in. */
 object WaterIndicator {
@@ -31,15 +31,15 @@ object WaterIndicator {
         }
         if (thirsty.isEmpty()) return
 
-        val alpha = WorldRender.pulsedAlpha(FILL_ALPHA_LOW, FILL_ALPHA_HIGH)
+        val alpha = WorldRenderer.pulsedAlpha(FILL_ALPHA_LOW, FILL_ALPHA_HIGH)
 
-        val batch = WorldRender.Batch(cameraPos)
+        val presetBatch = WorldRenderer.BlockRenderBatch(cameraPos)
         thirsty.forEach { element ->
             val soil = grid.getPosForSlot(element.instance.slot) ?: return@forEach
             val footprint = element.instance.cropDef.footprint
             val box = Shapes.create(AABB(0.0, 0.0, 0.0, footprint.width.toDouble(), 1.0, footprint.height.toDouble()))
-            batch.mark(soil, box, CYAN, alpha)
+            presetBatch.fillWithOutline(soil, box, CYAN, alpha)
         }
-        batch.submit(poseStack, collector)
+        presetBatch.submitBatch(poseStack, collector)
     }
 }

@@ -30,8 +30,8 @@ object OtherProfiles {
         }
     }
 
-    /** Moves each profile's plants on by however many of its ticks have passed; nobody is there to see them. */
-    fun advance() {
+    /** advances each profile's plants on by however many of its ticks have passed */
+    fun advanceTicks() {
         val now = Instant.now()
 
         profiles.forEach { profile ->

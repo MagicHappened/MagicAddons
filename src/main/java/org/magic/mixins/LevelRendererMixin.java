@@ -32,7 +32,8 @@ import org.jspecify.annotations.Nullable;
 import org.magic.magicaddons.commands.debug.FarmingDebug;
 import org.magic.magicaddons.commands.debug.CropCollector;
 import org.magic.magicaddons.features.farming.greenhousePresets.LayoutRenderState;
-import org.magic.magicaddons.features.farming.greenhousePresets.PlantSpotlight;
+import org.magic.magicaddons.features.misc.HighlightMarkers;
+import org.magic.magicaddons.features.farming.greenhousePresets.PlantHighlight;
 import org.magic.magicaddons.features.farming.greenhousePresets.WaterIndicator;
 import org.magic.magicaddons.util.EntityUtils;
 import org.magic.misc.EntityRenderModifier;
@@ -101,8 +102,11 @@ public abstract class LevelRendererMixin {
                 continue;
             }
 
-            // any entity, not just living ones: the grass treasure and several safari uniques
-            // are item displays, and renderFakeEntity is generic over the renderer already
+            // far enough off to be marked instead, and the marker is drawn in the outline's place
+            if (HighlightMarkers.replacesOutline(entity, source)) {
+                continue;
+            }
+
             if (entity instanceof Player) {
                 entity.setCustomNameVisible(false);
             }
@@ -121,18 +125,14 @@ public abstract class LevelRendererMixin {
             );
         }
 
-        // the layout plan, drawn from this pass so it is placed against the camera the frame is
-        // actually drawn with rather than one read at some other moment. An error in it is said
-        // once in chat rather than ending the frame
         try {
-            LayoutRenderState.INSTANCE.submit(
+            LayoutRenderState.INSTANCE.submitPlan(
                     poseStack,
                     submitNodeCollector,
                     levelRenderState.cameraRenderState.pos
             );
 
-            // the plant picked on the greenhouse screen, outlined until its ten seconds run out
-            PlantSpotlight.INSTANCE.submit(
+            PlantHighlight.INSTANCE.submitPlantHighlight(
                     poseStack,
                     submitNodeCollector,
                     levelRenderState.cameraRenderState.pos

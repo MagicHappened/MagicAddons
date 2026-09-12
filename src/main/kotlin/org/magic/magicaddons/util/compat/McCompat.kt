@@ -1,6 +1,7 @@
 package org.magic.magicaddons.util.compat
 
 import net.minecraft.ChatFormatting
+import net.minecraft.client.Camera
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.components.ChatComponent
 import net.minecraft.client.gui.screens.Screen
@@ -22,6 +23,15 @@ object McCompat {
         /*return Minecraft.getInstance().gui.screen()
         *///?} else {
         return Minecraft.getInstance().screen
+        //?}
+    }
+
+    /** The camera the world is drawn from. */
+    fun camera(): Camera {
+        //? if >=26.2 {
+        /*return Minecraft.getInstance().gameRenderer.mainCamera()
+        *///?} else {
+        return Minecraft.getInstance().gameRenderer.mainCamera
         //?}
     }
 

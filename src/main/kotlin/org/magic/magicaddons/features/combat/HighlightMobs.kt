@@ -21,6 +21,7 @@ import org.magic.magicaddons.events.world.EntityAddedEvent
 import org.magic.magicaddons.events.world.EntityRemovedEvent
 import org.magic.magicaddons.events.world.EntityUpdatedEvent
 import org.magic.magicaddons.features.HighlightFeature
+import org.magic.magicaddons.features.misc.HighlightMarkers
 import org.magic.magicaddons.util.EntityUtils
 import org.magic.magicaddons.util.EntityUtils.typeId
 import org.magic.magicaddons.util.PlayerUtils
@@ -76,7 +77,8 @@ object HighlightMobs : HighlightFeature() {
         key = "ThroughWalls",
         displayName = "Through Walls",
         description = "§cThis feature might be considered as a cheat and is therefore used at your own risk.",
-        value = false
+        value = false,
+        children = listOf(HighlightMarkers.linkSetting())
     )
 
     override val throughWalls: Boolean get() = throughWallsSetting.value
@@ -310,14 +312,17 @@ object HighlightMobs : HighlightFeature() {
     }
 
     /** The entity one of the picked single mobs wants outlined, or null. */
-    private fun singleMobTarget(info: EntityInfo): Entity? {
+    private fun singleMobTarget(info: EntityInfo): Entity? = singleMobMatch(info)?.second
+
+    /** The picked mob that matched and what it wants outlined, or null when none did. */
+    private fun singleMobMatch(info: EntityInfo): Pair<SingleMobs.Mob, Entity>? {
         if (baseSetting.getChild<BooleanSetting>("SingleMobsEnabled")?.value != true) return null
 
         return singleMobsList.value
             .asSequence()
             .filter { it.enabled }
             .mapNotNull { SingleMobs.byName(it.value) }
-            .mapNotNull { SingleMobs.target(it, info) }
+            .mapNotNull { mob -> SingleMobs.target(mob, info)?.let { mob to it } }
             .firstOrNull()
     }
 
@@ -378,5 +383,15 @@ object HighlightMobs : HighlightFeature() {
             ?: singleMobTarget(info)
             ?: nameTarget(info)
             ?: advancedTarget(info)
+    }
+
+    /**
+     * Only a picked mob is marked: it is the one match the player named, so it has a name worth
+     * writing and an item worth drawing. The other filters match whatever they match.
+     */
+    override fun markOf(info: EntityInfo): EntityUtils.HighlightMark? {
+        val mob = singleMobMatch(info)?.first ?: return null
+
+        return EntityUtils.HighlightMark(mob.name, SingleMobs.iconFor(mob))
     }
 }

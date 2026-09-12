@@ -38,7 +38,7 @@ object Shadevine : CropDefinitionProvider {
                 1..1,
             )
         ),
-        requiredSoil = setOf(Blocks.FARMLAND, Blocks.SAND),
+        requiredSoil = setOf(Blocks.FARMLAND, Blocks.SAND, Blocks.RED_SAND),
         needsWater = false,
         isMutation = true,
         placedSameAsGrown = true

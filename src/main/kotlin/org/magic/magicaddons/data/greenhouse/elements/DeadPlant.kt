@@ -28,7 +28,7 @@ object DeadPlant : CropDefinitionProvider {
             )
         ),
         decayTimeMs = NEVER_DECAYS,
-        requiredSoil = setOf(Blocks.SAND, Blocks.DIRT, Blocks.FARMLAND, Blocks.MYCELIUM, Blocks.SOUL_SAND, Blocks.END_STONE),
+        requiredSoil = setOf(Blocks.SAND, Blocks.RED_SAND, Blocks.DIRT, Blocks.FARMLAND, Blocks.MYCELIUM, Blocks.PODZOL, Blocks.SOUL_SAND, Blocks.END_STONE),
         needsWater = false,
         isMutation = false,
         displayItem = Items.DEAD_BUSH

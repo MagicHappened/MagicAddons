@@ -132,7 +132,7 @@ object Sugarcane : CropDefinitionProvider {
 
         ),
         maxStage = 8,
-        requiredSoil = setOf(Blocks.DIRT,Blocks.SAND),
+        requiredSoil = setOf(Blocks.DIRT,Blocks.SAND, Blocks.RED_SAND),
         isBaseCrop = true
     )
 

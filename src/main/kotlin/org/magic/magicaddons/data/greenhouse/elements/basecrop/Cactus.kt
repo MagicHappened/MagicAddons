@@ -172,7 +172,7 @@ object Cactus : CropDefinitionProvider {
 
         ),
         maxStage = 8,
-        requiredSoil = setOf(Blocks.SAND),
+        requiredSoil = setOf(Blocks.SAND, Blocks.RED_SAND),
         needsWater = false,
         isBaseCrop = true
     )

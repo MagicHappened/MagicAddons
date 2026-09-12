@@ -17,12 +17,14 @@ import org.magic.magicaddons.events.world.EntityRemovedEvent
 import org.magic.magicaddons.events.world.EntityUpdatedEvent
 import org.magic.magicaddons.events.world.WorldTickEvent
 import org.magic.magicaddons.features.HighlightFeature
+import org.magic.magicaddons.features.misc.HighlightMarkers
 import org.magic.magicaddons.ui.hud.ConfigTarget
 import org.magic.magicaddons.ui.hud.HudContent
 import org.magic.magicaddons.ui.hud.HudElement
 import org.magic.magicaddons.ui.hud.HudLine
 import org.magic.magicaddons.ui.hud.HudSituation
 import org.magic.magicaddons.util.ChatUtils
+import org.magic.magicaddons.util.EntityUtils
 import tech.thatgravyboat.skyblockapi.api.SkyBlockAPI
 import tech.thatgravyboat.skyblockapi.api.events.base.Subscription
 import tech.thatgravyboat.skyblockapi.api.events.location.IslandChangeEvent
@@ -102,7 +104,8 @@ object SafariHelper : HighlightFeature() {
         key = "ThroughWalls",
         displayName = "Through Walls",
         description = "§cThis feature might be considered as a cheat and is therefore used at your own risk.",
-        value = false
+        value = false,
+        children = listOf(HighlightMarkers.linkSetting())
     )
 
     override val throughWalls: Boolean get() = throughWallsSetting.value
@@ -420,6 +423,15 @@ object SafariHelper : HighlightFeature() {
 
         // a sparkling stays worth catching after its unique is done, it is far rarer than the unique
         return sparkling || !onlyUncaught.value || !isCaught(mob.displayName)
+    }
+
+    /** A unique is marked by its own name; the grass hiding treasure is not one of the zone's mobs. */
+    override fun markOf(info: EntityInfo): EntityUtils.HighlightMark? {
+        if (isTreasureDisplay(info.entity)) return null
+
+        val mob = currentZone?.mobMatching(info) ?: return null
+
+        return EntityUtils.HighlightMark(mob.displayName)
     }
 
     private fun isSparkling(info: EntityInfo): Boolean =

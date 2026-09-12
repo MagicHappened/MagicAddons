@@ -141,7 +141,7 @@ object Glasscorn : CropDefinitionProvider {
             )),
         maxStage = 9,
         footprint = Footprint(2, 2),
-        requiredSoil = setOf(Blocks.SAND),
+        requiredSoil = setOf(Blocks.SAND, Blocks.RED_SAND),
         isMutation = true
     )
 }

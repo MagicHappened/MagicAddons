@@ -1,8 +1,7 @@
 package org.magic.magicaddons.features.farming.greenhousePresets
 
 /**
- * What a marked block is told to do, and the colour it is told in: the default, and whatever the
- * player has set instead.
+ * each planner mark and its color
  */
 enum class PlannerMark(val displayName: String, val defaultColor: Int) {
     Wrong("Wrong Block", 0xFFFF3333.toInt()),

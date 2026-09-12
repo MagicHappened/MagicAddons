@@ -22,34 +22,27 @@ import net.minecraft.world.phys.Vec3
 import net.minecraft.world.phys.shapes.Shapes
 import net.minecraft.world.phys.shapes.VoxelShape
 
-/**
- * Draws single blocks into the world, to show a player what a plot should look like. The camera
- * comes from the frame being drawn, or the marks lag behind the player as they walk.
- */
-object WorldRender {
+object WorldRenderer {
 
     private val RANDOM: RandomSource = RandomSource.create(0)
 
-    /** Every side a model files its quads under, the unculled ones included. */
     private val QUAD_SIDES: List<Direction?> = Direction.entries + null
 
-    /** An alpha swinging between [low] and [high], for a mark that has to stand out from a steady one. */
-    fun pulsedAlpha(low: Int, high: Int): Int {
-        val swing = (kotlin.math.sin(System.currentTimeMillis() % PULSE_MS / PULSE_MS.toDouble() * Math.PI * 2) + 1) / 2
-
-        return low + ((high - low) * swing).toInt()
-    }
-
-    /** How long one swing of [pulsedAlpha] takes. */
     private const val PULSE_MS: Long = 1600
 
-    /** Pulls an outlined box off its faces, so two marked blocks side by side stay two boxes. */
+    /** alpha between low and high for a pulsating render */
+    fun pulsedAlpha(low: Int, high: Int): Int {
+        val range = (kotlin.math.sin(System.currentTimeMillis() % PULSE_MS / PULSE_MS.toDouble() * Math.PI * 2) + 1) / 2
+
+        return low + ((high - low) * range).toInt()
+    }
+
+    /** margin added for block outlines to not render inside each other */
     private const val OUTLINE_INSET: Double = 0.012
 
-    /** Pushes a filled box past the block it covers, or it fights the block's own faces for depth. */
+    /** margin added for the render to not z fight with the block itself */
     private const val FILL_EXPAND: Double = 0.002
 
-    /** The least a box can measure and still be seen, for entities that occupy nothing at all. */
     private const val MIN_BOX: Double = 0.08
 
     /** A world-space box filled and outlined, for entities. A box too thin to see is widened to MIN_BOX. */
@@ -62,7 +55,7 @@ object WorldRender {
         fillAlpha: Int
     ) {
         val visible = if (box.xsize < MIN_BOX || box.ysize < MIN_BOX || box.zsize < MIN_BOX) {
-            box.grow(MIN_BOX / 2)
+            box.expand(MIN_BOX / 2)
         } else {
             box
         }
@@ -72,7 +65,7 @@ object WorldRender {
 
         try {
             collector.submitCustomGeometry(poseStack, RenderTypes.debugFilledBox()) { transform, consumer ->
-                consumer.fillBox(transform, visible.grow(FILL_EXPAND), ARGB.color(fillAlpha, color))
+                consumer.fillBox(transform, visible.expand(FILL_EXPAND), ARGB.color(fillAlpha, color))
             }
 
             RenderCompat.outline(collector, poseStack, Shapes.create(visible), color)
@@ -81,8 +74,7 @@ object WorldRender {
         }
     }
 
-    /** Draws a block exactly as it is: full colour, no outline. What the crop preview is made of. */
-    fun solid(
+    fun submitSolidBlock(
         poseStack: PoseStack,
         collector: SubmitNodeCollector,
         cameraPos: Vec3,
@@ -167,8 +159,7 @@ object WorldRender {
         }
     }
 
-    /** [by] out on every face, or in when it is negative. */
-    private fun AABB.grow(by: Double): AABB = AABB(
+    private fun AABB.expand(by: Double): AABB = AABB(
         minX - by, minY - by, minZ - by,
         maxX + by, maxY + by, maxZ + by
     )
@@ -218,21 +209,19 @@ object WorldRender {
 
 
     /**
-     * Everything a plan draws in one frame, handed to the collector as one batch a render type.
-     * A batch a block made the buffer source flush and rebind its target on every switch between
-     * boxes, lines and blocks, which cost more than the drawing itself.
+     * a batch of blocks to pass to the renderer.
      */
-    class Batch(private val cameraPos: Vec3) {
+    class BlockRenderBatch(private val cameraPos: Vec3) {
         private class Fill(val pos: BlockPos, val boxes: List<AABB>, val color: Int)
-        private class Ghost(val pos: BlockPos, val state: BlockState, val color: Int)
+        private class GhostBlock(val pos: BlockPos, val state: BlockState, val color: Int)
         private class Outline(val pos: BlockPos, val shape: VoxelShape, val color: Int)
 
         private val fills = mutableListOf<Fill>()
-        private val ghosts = mutableListOf<Ghost>()
+        private val ghostBlocks = mutableListOf<GhostBlock>()
         private val outlines = mutableListOf<Outline>()
 
-        /** Marks whatever stands at a position: its shape filled, its edges drawn on top. */
-        fun mark(pos: BlockPos, shape: VoxelShape, color: Int, fillAlpha: Int) {
+
+        fun fillWithOutline(pos: BlockPos, shape: VoxelShape, color: Int, fillAlpha: Int) {
             if (shape.isEmpty) return
             fills.add(Fill(pos, shape.toAabbs(), ARGB.color(fillAlpha, color)))
             outline(pos, shape, color)
@@ -244,14 +233,14 @@ object WorldRender {
         }
 
         /** A block as it would look if it were there, tinted and see through, boxed as a plan. */
-        fun ghost(pos: BlockPos, state: BlockState, tint: Int, outlineColor: Int, alpha: Int) {
-            ghosts.add(Ghost(pos, state, ARGB.color(alpha, tint)))
+        fun ghostBlockWithOutline(pos: BlockPos, state: BlockState, tint: Int, outlineColor: Int, alpha: Int) {
+            ghostBlocks.add(GhostBlock(pos, state, ARGB.color(alpha, tint)))
             val level = Minecraft.getInstance().level ?: return
             outline(pos, state.getShape(level, pos), outlineColor)
         }
 
-        fun submit(poseStack: PoseStack, collector: SubmitNodeCollector) {
-            if (fills.isEmpty() && ghosts.isEmpty() && outlines.isEmpty()) return
+        fun submitBatch(poseStack: PoseStack, collector: SubmitNodeCollector) {
+            if (fills.isEmpty() && ghostBlocks.isEmpty() && outlines.isEmpty()) return
 
             poseStack.pushPose()
             poseStack.translate(-cameraPos.x, -cameraPos.y, -cameraPos.z)
@@ -262,14 +251,14 @@ object WorldRender {
                     collector.submitCustomGeometry(poseStack, RenderTypes.debugFilledBox()) { transform, consumer ->
                         batch.forEach { fill ->
                             fill.boxes.forEach { box ->
-                                consumer.fillBox(transform, box.move(fill.pos.x.toDouble(), fill.pos.y.toDouble(), fill.pos.z.toDouble()).grow(FILL_EXPAND), fill.color)
+                                consumer.fillBox(transform, box.move(fill.pos.x.toDouble(), fill.pos.y.toDouble(), fill.pos.z.toDouble()).expand(FILL_EXPAND), fill.color)
                             }
                         }
                     }
                 }
 
-                if (ghosts.isNotEmpty()) {
-                    val batch = ghosts.toList()
+                if (ghostBlocks.isNotEmpty()) {
+                    val batch = ghostBlocks.toList()
                     collector.submitCustomGeometry(poseStack, RenderTypes.translucentMovingBlock()) { transform, consumer ->
                         val stack = PoseStack()
                         stack.mulPose(transform.pose())
@@ -309,12 +298,11 @@ object WorldRender {
                 }
 
                 if (outlines.isNotEmpty()) {
-                    // one call per box, so two marked blocks side by side stay two boxes
                     val edges = outlines.flatMap { outline ->
                         outline.shape.toAabbs().map { box ->
                             RenderCompat.OutlineItem(
                                 Vec3(outline.pos.x.toDouble(), outline.pos.y.toDouble(), outline.pos.z.toDouble()),
-                                Shapes.create(box.grow(-OUTLINE_INSET)),
+                                Shapes.create(box.expand(-OUTLINE_INSET)),
                                 outline.color
                             )
                         }
