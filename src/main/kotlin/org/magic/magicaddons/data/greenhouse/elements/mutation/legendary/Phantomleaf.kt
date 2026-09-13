@@ -5,6 +5,7 @@ import net.minecraft.core.Rotations
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.CropArmorStand
+import org.magic.magicaddons.data.greenhouse.FIVE_DAY_DECAY_TIME_MS
 import org.magic.magicaddons.data.greenhouse.CropBlockState
 import org.magic.magicaddons.data.greenhouse.CropDefinition
 import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
@@ -75,7 +76,7 @@ object Phantomleaf : CropDefinitionProvider {
                         hashString = "988eaca2c41056ed3fb34669548843c62bae0b406441ea9d224fd7bd2f73f86e"
                     )
                 ),
-                5..5,
+                5..5
             ),
             CropStage(
                 blocks = listOf(
@@ -160,12 +161,10 @@ object Phantomleaf : CropDefinitionProvider {
                 ),
                 15..15
             )),
-        //five days decay time
+        decayTimeMs = FIVE_DAY_DECAY_TIME_MS,
         maxStage = 15,
         requiredSoil = setOf(Blocks.SOUL_SAND),
         needsWater = false,
-        isMutation = true,
-        // a placed one is the grown look of the stage it arrives at, so the stage above serves both
-        placedSameAsGrown = true
+        isMutation = true
     )
 }

@@ -186,7 +186,7 @@ object FarmingDebug : AbstractCommand() {
                     .executes {
                         GreenhouseData.toolUpdatesState = !GreenhouseData.toolUpdatesState
                         ChatUtils.sendWithPrefix(
-                            "Diagnosis tool readings ${allowed(GreenhouseData.toolUpdatesState)} update the mod's data."
+                            "Diagnostic tool readings ${allowed(GreenhouseData.toolUpdatesState)} update the mod's data."
                         )
                         return@executes 1
                     }

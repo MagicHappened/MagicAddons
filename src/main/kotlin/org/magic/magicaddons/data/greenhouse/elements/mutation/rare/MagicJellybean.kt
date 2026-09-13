@@ -117,7 +117,7 @@ object MagicJellybean : CropDefinitionProvider {
                             blockState = melonStemState(top.stemAge)
                         ),
                         armorStands = caneStands + listOfNotNull(melonStand),
-                        stageRange = first..last,
+                        stageRange = first..last
                     )
                 )
             }
@@ -141,39 +141,6 @@ object MagicJellybean : CropDefinitionProvider {
         stageRange = MAX_STAGE..MAX_STAGE
     )
 
-    /** As placed: the whole cane at its full height, taken from a bought one put down. */
-    private val placedLook: CropStage = CropStage(
-            blocks = CropBlockState.blockStatePattern(
-                listOf(
-                    BlockPos(0, 1, 0),
-                    BlockPos(0, 2, 0),
-                    BlockPos(0, 3, 0),
-                    BlockPos(0, 4, 0),
-                    BlockPos(0, 5, 0),
-                    BlockPos(0, 6, 0),
-                    BlockPos(0, 7, 0),
-                    BlockPos(0, 8, 0),
-                    BlockPos(0, 9, 0)
-                ),
-                blockState = sugarcaneState()
-            ) + listOf(
-                CropBlockState(
-                    offset = BlockPos(0, 10, 0),
-                    blockState = melonStemState(6)
-                )
-            ),
-            armorStands = (0 until MAX_CANE).map { height ->
-                CropArmorStand(
-                    offset = Vec3(0.0, CANE_STAND_Y + height, 0.0),
-                    // the top cane's head is turned its own way rather than where the cycle puts it
-                    headRotation = if (height == MAX_CANE - 1) Rotations(22.5f, 22.5f, 22.5f) else null,
-                    hashString = CANE_HASH,
-                    isSmall = false
-                )
-            },
-            120..120,
-            placed = true
-        )
 
     override val definition = CropDefinition(
         name = "Magic Jellybean",
@@ -182,7 +149,7 @@ object MagicJellybean : CropDefinitionProvider {
             CropEffect.HarvestLoss
         ),
         skyblockId = SkyBlockItemId.item("MAGIC_JELLYBEAN"),
-        stageDefs = generateStages() + placedLook,
+        stageDefs = generateStages(),
         standPoses = mapOf(
             CANE_HASH to StandPose.Cycle(CANE_POSES),
             MELON_HASH to StandPose.Fixed(Rotations(0.0f, 22.5f, 22.5f))

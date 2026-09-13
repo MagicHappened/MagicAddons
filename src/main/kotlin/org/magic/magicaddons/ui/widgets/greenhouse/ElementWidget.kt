@@ -6,6 +6,7 @@ import org.magic.magicaddons.util.ScreenUtil.modText
 import net.minecraft.ChatFormatting
 import net.minecraft.client.Minecraft
 import kotlin.math.absoluteValue
+import kotlin.math.ceil
 import org.magic.magicaddons.Common
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.components.Renderable
@@ -53,8 +54,20 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, GuiEv
     /** The water effects reaching this plant, set by whoever knows what stands beside it. */
     var waterEffect: Int = 0
 
-    /** Where the debt mark sits on screen, so hovering it can explain itself. Null when none was drawn. */
+    /** Soggybuds still growing beside this plant, each taking its share every tick. */
+    var drinkers: Int = 0
+
+    /** For a soggybud, ticks until it has grown with the greenhouse left as it stands; null for never. */
+    var soggybudTicksToGrow: Int? = null
+
+    /** Whether [soggybudTicksToGrow] was worked out at all, since null there means never rather than unknown. */
+    var soggybudSimulated: Boolean = false
+
+    /** Where the debt figure sits on screen, so hovering it can explain itself. Null when none was drawn. */
     private var debtMarkBox: IntArray? = null
+
+    /** What hovering the debt figure says: which of the two cases the plant is in. */
+    private var debtExplanation: String? = null
 
     /** Where the dead bush was drawn, so hovering it can explain itself. */
     private var deadMarkBox: IntArray? = null
@@ -76,7 +89,7 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, GuiEv
                 is GrowthStageInfo.Estimated -> "~${stage.range.first}-${stage.range.last}"
                 null -> null
             }
-            WaterLevel -> if (!instance.needsWater) null else instance.waterLevel?.let { "$it%" }
+            WaterLevel -> if (!instance.cropDef.needsWater || instance.finishedByPlacing) null else waterText(instance)
             DecayTime -> instance.decayRemainingMs?.let { readableDuration(it) }
         }
     }
@@ -115,7 +128,7 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, GuiEv
 
         // the worst case has this plant dead already, and only a scan can settle it: it either finds
         // a dead bush or finds the plant standing, one tick from death
-        if (instance.needsWater && (instance.waterLevel ?: 0) <= WaterModel.DEATH) {
+        if (instance.needsWater && (instance.waterLevel ?: 0.0) <= WaterModel.DEATH) {
             // a third of a single slot, half a slot on anything wider
             val footprint = instance.cropDef.footprint
             val size = (if (footprint.width > 1) width / footprint.width / 2 else width / 3).coerceAtLeast(8)
@@ -171,12 +184,20 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, GuiEv
     /** Writes the pinned fact over the plant. Nothing is drawn while that fact is unknown. */
     fun renderHoverButtonInfo(graphics: GuiGraphicsExtractor, info: HoverInfo) {
         // water is a level, and a meter says that faster than a number. A plant that never drinks is
-        // left alone rather than shown an empty meter
+        // left alone rather than shown an empty meter; a grown one keeps its meter while a soggybud
+        // beside it is drinking from it
         if (info == HoverInfo.WaterLevel) {
-            if (!instance.needsWater) return
+            // a soggybud's water is what it banked, which the player cannot do anything about, so
+            // it gets its growth time and no meter
+            if (instance.cropDef.drainsNeighbours) {
+                if (instance.needsWater) instance.waterLevel?.let { renderWaterVerdict(graphics, it, y + height) }
+                return
+            }
+
+            if (!instance.needsWater && drinkers == 0) return
 
             instance.waterLevel?.let {
-                renderWaterBar(graphics, it.coerceAtLeast(WaterModel.DEATH))
+                renderWaterBar(graphics, it.coerceAtLeast(WaterModel.DEATH.toDouble()))
             }
             return
         }
@@ -227,7 +248,7 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, GuiEv
      * The water meter: a positive level fills from the left in blue, a negative one from the right
      * in red, as the game's own bar does.
      */
-    private fun renderWaterBar(graphics: GuiGraphicsExtractor, waterLevel: Int) {
+    private fun renderWaterBar(graphics: GuiGraphicsExtractor, waterLevel: Double) {
         val barWidth = width - WATER_BAR_INSET * 2
         if (barWidth < WATER_BAR_MIN_WIDTH) return
 
@@ -236,11 +257,12 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, GuiEv
         val bottom = y + height - WATER_BAR_INSET
         val top = bottom - WATER_BAR_HEIGHT
 
-        renderWaterVerdict(graphics, waterLevel, top)
+        // the time is about growing, which a grown donor has none left of
+        if (instance.needsWater) renderWaterVerdict(graphics, waterLevel, top)
 
         graphics.fillRounded(left, top, right, bottom, WATER_BAR_RADIUS, Common.UI.WATER_TRACK_COLOR)
 
-        val filled = barWidth * waterLevel.absoluteValue.coerceAtMost(100) / 100
+        val filled = (barWidth * waterLevel.absoluteValue.coerceAtMost(100.0) / 100).toInt()
         if (filled <= 0) return
 
         if (waterLevel >= 0) {
@@ -265,41 +287,77 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, GuiEv
     }
 
     /**
-     * Ticks of water left, above the meter. Green when that sees the plant to its last stage, red
-     * when it runs dry first, white when something is unknown. Judged by the lowest stage it might be at.
+     * The time above the meter. Red when the plant can run dry before it has grown out: the time
+     * until it does. Green otherwise: the time until it has grown out, which is exact while its water
+     * stays at or above zero and a least once it may skip ticks. White when something is unknown.
      */
-    private fun renderWaterVerdict(graphics: GuiGraphicsExtractor, waterLevel: Int, barTop: Int) {
+    private fun renderWaterVerdict(graphics: GuiGraphicsExtractor, waterLevel: Double, barTop: Int) {
         debtMarkBox = null
+        debtExplanation = null
 
         // past death in the estimate there is no time left to state; the dead bush says it instead
         if (waterLevel <= WaterModel.DEATH) return
 
-        val ticksLeft = WaterModel.ticksUntilDeath(waterLevel, waterEffect)
         val remainingMs = GreenhouseData.remainingTickMs()
-
-        val outlasts = instance.outlastsGrowth(waterEffect)
         val tickMs = GreenhouseData.currentGrowthTickMs()
+        val inDebt = instance.waterPredictedInDebt
+
+        // the ticks the plant can still take, which are all that can cost it water: from the low
+        // end while every tick is taken, from the high end in debt, where the low end took none
+        val stage = if (inDebt) instance.highestStage else instance.lowestStage
 
         val text: String
         val color: Int
 
-        if (ticksLeft == null || outlasts == null || tickMs == null || remainingMs == null) {
+        if (stage == null || tickMs == null || remainingMs == null) {
             text = "?"
             color = Common.UI.TEXT_COLOR
+        } else if (instance.cropDef.drainsNeighbours) {
+            // a soggybud never runs dry: it grows on what the plants around it give, which the grid
+            // has walked out with those plants drying as they will
+            val ticksToGrow = soggybudTicksToGrow
+
+            if (!soggybudSimulated) {
+                text = "?"
+                color = Common.UI.TEXT_COLOR
+            } else if (ticksToGrow == null) {
+                text = "stalls" + DEBT_MARK
+                color = Common.UI.DANGER_COLOR
+                debtExplanation = SOGGYBUD_STALL
+            } else {
+                text = readableDuration(remainingMs + (ticksToGrow - 1) * tickMs)
+                color = Common.UI.SUCCESS_COLOR
+            }
         } else {
-            text = readableDuration(remainingMs + (ticksLeft - 1) * tickMs) +
-                    if (instance.waterPredictedInDebt) DEBT_MARK else ""
-            color = if (outlasts) Common.UI.SUCCESS_COLOR else Common.UI.DANGER_COLOR
+            val takeable = (instance.cropDef.maxStage - stage).coerceAtLeast(1)
+
+            // its own loss, and the share every soggybud beside it takes on top
+            val loss = WaterModel.lossPerTick(waterEffect) + WaterModel.DRAIN_PER_DONOR * drinkers
+            val ticksToDeath = if (loss <= 0.0) null else ceil((waterLevel - WaterModel.DEATH) / loss).toInt()
+
+            fun timeOf(ticks: Int): String = readableDuration(remainingMs + (ticks - 1) * tickMs)
+
+            if (ticksToDeath != null && ticksToDeath <= takeable) {
+                // in debt the ticks may be skipped, so this is the soonest
+                text = (if (inDebt) "≤" else "") + timeOf(ticksToDeath) + (if (inDebt) DEBT_MARK else "")
+                color = Common.UI.DANGER_COLOR
+                if (inDebt) debtExplanation = DEBT_MAY_DIE
+            } else {
+                // it grows out on what it holds. Under zero on the way, ticks may be skipped, so the
+                // time is the least it takes
+                val maySkip = inDebt || waterLevel - loss * takeable < 0
+                text = (if (maySkip) "≥" else "") + timeOf(takeable) + (if (maySkip) DEBT_MARK else "")
+                color = Common.UI.SUCCESS_COLOR
+                if (maySkip) debtExplanation = DEBT_MAY_STALL
+            }
         }
 
         val font = Minecraft.getInstance().font
         val textHeight = font.lineHeight * INFO_TEXT_SCALE
         val box = drawScaledLabel(graphics, text, barTop - textHeight - 1f, color)
 
-        if (instance.waterPredictedInDebt) {
-            val markWidth = (font.width(DEBT_MARK) * INFO_TEXT_SCALE).toInt()
-            debtMarkBox = intArrayOf(box[2] - markWidth, box[1], box[2], box[3])
-        }
+        // the whole figure explains itself in debt, not only the mark on its end
+        if (debtExplanation != null) debtMarkBox = box
     }
 
     override fun isMouseOver(mouseX: Double, mouseY: Double): Boolean = inRect(mouseX, mouseY, x, y, width, height)
@@ -322,7 +380,7 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, GuiEv
     fun debtTooltipAt(mouseX: Int, mouseY: Int): String? {
         val box = debtMarkBox ?: return null
 
-        return DEBT_EXPLANATION.takeIf {
+        return debtExplanation?.takeIf {
             mouseX in box[0]..box[2] && mouseY in box[1]..box[3]
         }
     }
@@ -359,9 +417,10 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, GuiEv
                     else -> growthText?.let { add(labelled("Growth", it)) }
                 }
 
-                // a plant that never drinks has no water level worth a line of its own
-                if (instance.needsWater) {
-                    add(labelled("Water", instance.waterLevel?.let { "$it%" } ?: "Unknown"))
+                // a plant that never drinks has no water level worth a line of its own; a grown one
+                // keeps its line, since what it holds is what a soggybud beside it drinks
+                if (instance.cropDef.needsWater && !instance.finishedByPlacing) {
+                    add(labelled("Water", waterText(instance) ?: "Unknown"))
                 }
 
                 instance.decayRemainingMs?.let { add(labelled("Decays in", readableDuration(it))) }
@@ -395,15 +454,29 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, GuiEv
         /** Appended to a water time that assumes no skipped ticks. */
         private const val DEBT_MARK: String = "*"
 
-        /** What the mark means, said in full rather than left as a symbol nobody can look up. */
-        private val DEBT_EXPLANATION: String = """
-            When the plant's water is negative, it has a chance to skip ticks entirely,
-            therefore not draining water. This estimate assumes it never skips ticks,
-            so your plants don't die.
+        /** Hover of a soggybud that the greenhouse, left as it stands, never feeds to its last stage. */
+        private const val SOGGYBUD_STALL: String =
+            "This soggybud will not have enough neighbours with water in the current situation to reach full growth without decaying first."
+
+        private val DEBT_MAY_DIE: String = """
+            With negative water the plant may skip ticks, and a skipped tick costs no water.
+            This is the soonest this plant could die, only if every tick wasn't skipped which may not be the case.
+            It stops needing water once fully grown, so it cannot die after that.
         """.trimIndent()
 
-        /** Worn in the corner of a plant the worst case has already killed. */
+        private val DEBT_MAY_STALL: String = """
+            With negative water the plant may skip ticks, and a skipped tick costs no water.
+            This plant has enough water regardless, so it will not die of thirst.
+            The time is with no tick skipped; it grows on the ticks it doesn't skip, which may be the next one or many away.
+        """.trimIndent()
+
         private val DEAD_MARK: ItemStack = ItemStack(Items.DEAD_BUSH)
+
+        private fun waterText(instance: GreenhouseElementInstance): String? = instance.waterLevel?.let { worst ->
+            val best = instance.waterBestCase
+            if (best == null || best == worst) "${WaterModel.shown(worst)}%"
+            else "${WaterModel.shown(worst)}% to ${WaterModel.shown(best)}%"
+        }
 
         /** Behind the bush, so a slot that might already be dead reads as such at a glance. */
         private const val DEAD_MARK_BACKGROUND: Int = 0xC0201010.toInt()

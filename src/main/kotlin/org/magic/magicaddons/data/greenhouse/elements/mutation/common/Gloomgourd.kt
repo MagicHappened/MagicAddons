@@ -44,7 +44,6 @@ object Gloomgourd : CropDefinitionProvider {
             )
         ),
         needsWater = false,
-        isMutation = true,
-        placedSameAsGrown = true
+        isMutation = true
     )
 }

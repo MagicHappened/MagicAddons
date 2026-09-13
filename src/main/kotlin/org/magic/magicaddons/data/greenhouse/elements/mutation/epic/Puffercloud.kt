@@ -4,6 +4,7 @@ import net.minecraft.core.BlockPos
 import net.minecraft.core.Rotations
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.CropArmorStand
+import org.magic.magicaddons.data.greenhouse.FIVE_DAY_DECAY_TIME_MS
 import org.magic.magicaddons.data.greenhouse.CropBlockState
 import org.magic.magicaddons.data.greenhouse.CropDefinition
 import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
@@ -188,7 +189,7 @@ object Puffercloud : CropDefinitionProvider {
                         CropArmorStand(
                             offset = Vec3(0.0, -0.59375, 0.0),
                             hashString = "fb1e911b28a5bc539bba0e159256c415c6f74833cbee9c32fbcac4ca7b98a77b",
-                            isSmall = false,
+                            isSmall = false
                         )
                     )
                 ,
@@ -206,7 +207,7 @@ object Puffercloud : CropDefinitionProvider {
                         CropArmorStand(
                             offset = Vec3(0.0, -0.53125, 0.0),
                             hashString = "fb1e911b28a5bc539bba0e159256c415c6f74833cbee9c32fbcac4ca7b98a77b",
-                            isSmall = false,
+                            isSmall = false
                         )
                     )
                 ,
@@ -245,9 +246,8 @@ object Puffercloud : CropDefinitionProvider {
                 14..14
             )
         ),
-        // five days decay time
+        decayTimeMs = FIVE_DAY_DECAY_TIME_MS,
         maxStage = 14,
-        isMutation = true,
-        placedSameAsGrown = true
+        isMutation = true
     )
 }

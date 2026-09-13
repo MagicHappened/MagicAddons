@@ -4,6 +4,7 @@ import net.minecraft.core.BlockPos
 import net.minecraft.core.Rotations
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.CropArmorStand
+import org.magic.magicaddons.data.greenhouse.FIVE_DAY_DECAY_TIME_MS
 import org.magic.magicaddons.data.greenhouse.CropBlockState
 import org.magic.magicaddons.data.greenhouse.CropDefinition
 import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
@@ -54,7 +55,7 @@ object PlantBoyAdvance : CropDefinitionProvider {
                         hashString = "a842c0c12f515281c228b2827f1c34d12b19833fa84083c6bee831245ceaa914"
                     )
                 ),
-                1..1,
+                1..1
             ),
             CropStage(
                 blocks = CropBlockState.blockStatePattern(
@@ -89,7 +90,7 @@ object PlantBoyAdvance : CropDefinitionProvider {
                         hashString = "a842c0c12f515281c228b2827f1c34d12b19833fa84083c6bee831245ceaa914"
                     )
                 ),
-                2..2,
+                2..2
             ),
             CropStage(
                 blocks = CropBlockState.blockStatePattern(
@@ -123,7 +124,7 @@ object PlantBoyAdvance : CropDefinitionProvider {
                         hashString = "f10e337f0a17a99e94bed4e8b13d5c7863debdd301f457da19763cf73a34d200"
                     )
                 ),
-                3..3,
+                3..3
             ),
             CropStage(
                 blocks = listOf(
@@ -148,7 +149,7 @@ object PlantBoyAdvance : CropDefinitionProvider {
                     listOf(
                         CropArmorStand(
                             offset = Vec3(0.0, -0.5625, 0.0),
-                            hashString = "1822281949d048a10d54ed72cdd4c222312a86fbf946ba56aea35f5142d0ee7a",
+                            hashString = "1822281949d048a10d54ed72cdd4c222312a86fbf946ba56aea35f5142d0ee7a"
                         )
                     )
                             +
@@ -168,7 +169,7 @@ object PlantBoyAdvance : CropDefinitionProvider {
                                 hashString = "9eaf5fc0bf98649111f53d7516b18dec5d9d13f19273bef2b2b04f068ca9d337",
                                 isSmall = false
                             ),
-                9..9,
+                9..9
             ),
             CropStage(
                 blocks = CropBlockState.blockStatePattern(
@@ -188,7 +189,7 @@ object PlantBoyAdvance : CropDefinitionProvider {
                     listOf(
                         CropArmorStand(
                             offset = Vec3(0.0, -0.5625, 0.0),
-                            hashString = "1822281949d048a10d54ed72cdd4c222312a86fbf946ba56aea35f5142d0ee7a",
+                            hashString = "1822281949d048a10d54ed72cdd4c222312a86fbf946ba56aea35f5142d0ee7a"
                         )
                     )
                             +
@@ -208,7 +209,7 @@ object PlantBoyAdvance : CropDefinitionProvider {
                                 hashString = "9eaf5fc0bf98649111f53d7516b18dec5d9d13f19273bef2b2b04f068ca9d337",
                                 isSmall = false
                             ),
-                10..10,
+                10..10
             ),
             CropStage(
                 blocks =             CropBlockState.blockStatePattern(
@@ -246,53 +247,12 @@ object PlantBoyAdvance : CropDefinitionProvider {
                     isSmall = false
                     )
                 ),
-                12..12,
+                12..12
             )
 
 
-        ,
-            // as placed
-            CropStage(
-                blocks = CropBlockState.blockStatePattern(
-                    listOf(
-                        BlockPos(0, 1, 0),
-                        BlockPos(1, 1, 0)
-                    ),
-                    blockState = melonStemState(7)
-                ) +             CropBlockState.blockStatePattern(
-                    listOf(
-                        BlockPos(0, 1, 1),
-                        BlockPos(1, 1, 1)
-                    ),
-                    blockState = melonStemState(4)
-                ),
-                armorStands = CropArmorStand.matcherPattern(
-                    offsets = listOf(
-                        Vec3(0.5, -0.65625, 0.0),
-                        Vec3(-0.5, -0.65625, 0.0)
-                    ),
-                    rotations = listOf(
-                        Rotations(45.0f, 180.0f, 0.0f),
-                        Rotations(45.0f, 0.0f, 0.0f)
-                    ),
-                    yRotations = listOf(
-                        90.0f,
-                        90.0f
-                    ),
-                    hashString = "9eaf5fc0bf98649111f53d7516b18dec5d9d13f19273bef2b2b04f068ca9d337",
-                    isSmall = false
-                ) +
-                listOf(
-                    CropArmorStand(
-                        offset = Vec3(0.0, -0.4375, 0.0),
-                        hashString = "765accb195aad0d7212eedd647e3f80ed5d4acdffe4329ead074f7587f366457",
-                        isSmall = false
-                    )
-                ),
-                12..12,
-                placed = true
-            )),
-        // five days decay time
+        ),
+        decayTimeMs = FIVE_DAY_DECAY_TIME_MS,
         maxStage = 12,
         footprint = Footprint(2, 2),
         rotatesWithPlot = false,

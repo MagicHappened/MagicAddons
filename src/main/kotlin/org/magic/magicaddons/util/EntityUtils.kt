@@ -32,36 +32,26 @@ object EntityUtils {
         EventBus.register(this)
     }
 
-    /** How far around an entity its name tags and item displays are looked for. */
     private const val NEARBY_RADIUS: Double = 0.5
     private const val NEARBY_HEIGHT: Double = 2.0
 
-    /** Real accounts have a version 4 uuid; a server side npc does not. */
     private const val PLAYER_UUID_VERSION: Int = 4
 
-    /**
-     * What a far marker draws for a highlighted entity. A null [icon] means the entity itself is
-     * drawn, which is how a mob with no item to stand for it still looks like what it is.
-     */
     class HighlightMark(val name: String, val icon: ItemStack? = null)
 
     interface HighlightSource {
         val highlightPriority: Int
 
-        /**
-         * Outline colour for this entity, as ARGB. Takes the entity so one source can colour
-         * treasure and mobs differently.
-         */
+        /** the outline color for this entity, as ARGB */
         fun highlightColor(entity: Entity): Int
 
-        /** Whether an outline is drawn when a wall stands between the camera and the entity. */
+        /** whether to be funny or not */
         val throughWalls: Boolean get() = true
 
-        /** What this entity matched as, or null when the source cannot name what it outlined. */
+        /** which marking should be applied to this entity, defaulting to null */
         fun highlightMark(entity: Entity): HighlightMark? = null
     }
 
-    /** Whether the camera has a clear line to [entity], looked up once a tick for each entity. */
     @JvmStatic
     fun inSight(camera: Vec3, entity: Entity): Boolean {
         val level = entity.level()
@@ -72,17 +62,14 @@ object EntityUtils {
             inSight.clear()
         }
 
-        return inSight.getOrPut(entity) { clearLine(level, camera, entity) }
+        return inSight.getOrPut(entity) { inSightRayCheck(level, camera, entity) }
     }
 
     private var sightCheckedAt: Long = -1
     private val inSight: MutableMap<Entity, Boolean> = mutableMapOf()
 
-    /**
-     * Rays from the camera to the middle, top and feet of the entity; one that gets there, or is
-     * only stopped by the block the entity stands in, such as grass, is enough.
-     */
-    private fun clearLine(level: Level, camera: Vec3, entity: Entity): Boolean {
+
+    private fun inSightRayCheck(level: Level, camera: Vec3, entity: Entity): Boolean {
         val box = entity.boundingBox
         val middleX = (box.minX + box.maxX) / 2
         val middleZ = (box.minZ + box.maxZ) / 2
@@ -99,7 +86,6 @@ object EntityUtils {
         }
     }
 
-    /** Keeps the top and bottom rays inside the entity rather than on its edge. */
     private const val SIGHT_INSET: Double = 0.1
 
 
@@ -168,8 +154,6 @@ object EntityUtils {
         val newList = mutableListOf<EntityInfo>()
         val newMap = mutableMapOf<String, EntityInfo>()
 
-        // the neighbour query behind every entity is what the highlight features read tags from;
-        // with none of them on, only who came and went is worth knowing, and that needs no query
         val detailed = FeatureManager.features.any { it is HighlightFeature && it.baseSetting.value }
 
         level.entitiesForRendering().forEach { entity ->
@@ -182,8 +166,7 @@ object EntityUtils {
                     return@forEach
                 }
 
-                // collected for every entity, not just mobs: a lot of entities are an item display with a
-                // name tag next to it and nothing else, and that name tag is all we know about them
+
                 informationEntities = nearby
                     .filter {
                         it !== entity && (
@@ -239,23 +222,13 @@ object EntityUtils {
         entityMapCurr = newMap
     }
 
-    /** What the tags around an entity say, so a tag that was rewritten counts as a change. */
     private fun EntityInfo.tagSignature(): List<String> =
         informationEntities.orEmpty().map { "${it.id}:${it.customName?.string}" }
 
-    /**
-     * Whether this stand or display is decoration belonging to a mob standing beside it, rather than
-     * a thing in its own right.
-     *
-     * A stand has to be invisible to count: a label is invisible and only its name or its head is
-     * drawn, while a mineshaft corpse is a visible stand wearing armour and stays its own entity
-     * however many mobs walk past it. The box is generous upwards, since a name tag floats over the
-     * mob's head, and tight sideways, so something merely standing next to a mob is left alone.
-     */
+
     private fun isNearMeaningfulEntity(entity: Entity, nearby: List<Entity>): Boolean {
         if (entity is ArmorStand && !entity.isInvisible) return false
 
-        // the same neighbours the caller already asked the world for, rather than a second query
         return nearby.any { other ->
             when (other) {
                 is ArmorStand -> false
@@ -284,9 +257,7 @@ object EntityUtils {
         else -> null
     }
 
-    /**
-     * The entity to outline when [hash] is the skull on the mob, or on a stand or display beside it.
-     * An invisible mob is drawn by whatever carries its skull, so that carrier comes back instead.
+    /** returns the entity that we actually want to highlight (eg item display for rat instead of zombie)
      */
     fun skullCarrier(info: EntityInfo, hash: String): Entity? {
         val entity = info.entity
@@ -336,7 +307,6 @@ object EntityUtils {
             else slot to BuiltInRegistries.ITEM.getKey(stack.item).toString()
         }
 
-    /** The plain item in one slot, as "minecraft:gold_block", or null when there is none. */
     fun itemIdIn(entity: LivingEntity, slot: EquipmentSlot): String? {
         val stack = entity.getItemBySlot(slot)
         if (stack.isEmpty || PlayerUtils.getSkinHash(stack) != null) return null
@@ -344,7 +314,6 @@ object EntityUtils {
         return BuiltInRegistries.ITEM.getKey(stack.item).toString()
     }
 
-    /** One of whatever [itemId] names, or null when nothing is registered under it. */
     fun itemStackOf(itemId: String): ItemStack? =
         runCatching { BuiltInRegistries.ITEM.getOptional(Identifier.parse(itemId)).orElse(null) }
             .getOrNull()

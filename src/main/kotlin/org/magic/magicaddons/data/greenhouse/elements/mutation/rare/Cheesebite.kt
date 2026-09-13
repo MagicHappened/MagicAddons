@@ -192,7 +192,6 @@ object Cheesebite : CropDefinitionProvider {
             )
         ),
         maxStage = 10,
-        isMutation = true,
-        placedSameAsGrown = true
+        isMutation = true
     )
 }

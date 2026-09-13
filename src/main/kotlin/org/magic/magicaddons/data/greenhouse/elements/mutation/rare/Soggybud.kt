@@ -21,6 +21,7 @@ object Soggybud : CropDefinitionProvider {
         ),
         skyblockId = SkyBlockItemId.item("SOGGYBUD"),
         maxStage = 10,
+        drainsNeighbours = true,
         /** Each skull's pose, found constant across every stage it appears in. */
         standPoses = mapOf(
             "b4bdf477d2f417f75798ad6377b131aca787be9bc05a2fddc1972d81d40c7356" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f))
@@ -147,7 +148,6 @@ object Soggybud : CropDefinitionProvider {
                 10..10
             )
         ),
-        isMutation = true,
-        placedSameAsGrown = true
+        isMutation = true
     )
 }

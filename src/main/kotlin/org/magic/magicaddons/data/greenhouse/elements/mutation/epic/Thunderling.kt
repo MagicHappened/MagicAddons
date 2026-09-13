@@ -1,6 +1,7 @@
 package org.magic.magicaddons.data.greenhouse.elements.mutation.epic
 
 import org.magic.magicaddons.data.greenhouse.StandPose
+import org.magic.magicaddons.data.greenhouse.FIVE_DAY_DECAY_TIME_MS
 import net.minecraft.core.Rotations
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.CropEffect
@@ -85,7 +86,7 @@ object Thunderling : CropDefinitionProvider {
                         hashString = "b35914deb539a1fde1b1c473f8e05cacca257b959e7270d444c1dc5ad2bf7cc8"
                     )
                 ),
-                8..8,
+                8..8
             ),
             CropStage(
                 blocks = listOf(),
@@ -119,13 +120,12 @@ object Thunderling : CropDefinitionProvider {
                     hashString = "3724327576a20876fc95f41bb37fd0e2f2c79014455f19262f185ce88b155385",
                     isSmall = false
                 ),
-                16..16,
+                16..16
             )
         ),
-        // five days decay timer
+        decayTimeMs = FIVE_DAY_DECAY_TIME_MS,
         maxStage = 16,
         needsWater = false,
-        isMutation = true,
-        placedSameAsGrown = true
+        isMutation = true
     )
 }

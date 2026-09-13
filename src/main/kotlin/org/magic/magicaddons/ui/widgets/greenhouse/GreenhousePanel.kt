@@ -21,7 +21,9 @@ class GreenhousePanel(
     /** Shows the assigned plot in preset mode, ready to edit. */
     private val onEditPreset: () -> Unit,
     /** Keeps what is built here as a preset of its own. */
-    private val onSaveAsPreset: () -> Unit
+    private val onSaveAsPreset: () -> Unit,
+    /** Forgets every plant of this greenhouse and reads it again, after asking. */
+    private val onRescan: (MouseButtonEvent) -> Unit
 ) : ActionPanel() {
 
     private val unplanButton = ClickableButtonWidget("Remove assigned preset")
@@ -30,6 +32,7 @@ class GreenhousePanel(
     private val turnButton = ClickableButtonWidget("Turn plan \u21bb")
     private val editButton = ClickableButtonWidget("Edit preset")
     private val saveButton = ClickableButtonWidget("Save as preset")
+    private val rescanButton = ClickableButtonWidget("Forcibly rescan greenhouse")
 
     private val font = Minecraft.getInstance().font
 
@@ -53,11 +56,11 @@ class GreenhousePanel(
         }
 
     override val buttons: List<ClickableButtonWidget> =
-        listOf(assignButton, changeButton, turnButton, editButton, saveButton, unplanButton)
+        listOf(assignButton, changeButton, turnButton, editButton, saveButton, unplanButton, rescanButton)
 
     override fun isShown(button: ClickableButtonWidget): Boolean = when (button) {
         assignButton -> showButtons && assigned == null
-        saveButton -> showButtons
+        saveButton, rescanButton -> showButtons
         else -> showButtons && assigned != null
     }
 
@@ -79,6 +82,7 @@ class GreenhousePanel(
             turnButton -> onTurnPlan()
             editButton -> onEditPreset()
             saveButton -> onSaveAsPreset()
+            rescanButton -> onRescan(event)
             else -> return false
         }
 

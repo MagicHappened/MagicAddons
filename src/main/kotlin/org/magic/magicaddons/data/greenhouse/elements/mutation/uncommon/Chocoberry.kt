@@ -31,7 +31,7 @@ object Chocoberry : CropDefinitionProvider {
                         isSmall = false
                     )
                 ),
-                1..1,
+                1..1
             ),
 
             CropStage(
@@ -102,7 +102,6 @@ object Chocoberry : CropDefinitionProvider {
             )
         ),
         maxStage = 6,
-        isMutation = true,
-        placedSameAsGrown = true
+        isMutation = true
     )
 }

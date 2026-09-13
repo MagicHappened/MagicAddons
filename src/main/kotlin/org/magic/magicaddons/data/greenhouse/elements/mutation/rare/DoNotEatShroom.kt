@@ -83,7 +83,7 @@ object DoNotEatShroom : CropDefinitionProvider {
                 baseStageStandOffset = Vec3(0.0, 0.03125, 0.0),
                 stageOffsetMultipliers = mapOf(
                     6 to 0,
-                    7 to 2,
+                    7 to 2
                 )
             ),
             CropStage(
@@ -100,7 +100,6 @@ object DoNotEatShroom : CropDefinitionProvider {
             )
         ),
         maxStage = 8,
-        isMutation = true,
-        placedSameAsGrown = true
+        isMutation = true
     )
 }

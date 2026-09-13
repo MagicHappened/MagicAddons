@@ -82,25 +82,7 @@ object Blastberry : CropDefinitionProvider {
                 6..6
             )
 
-        ,
-            // as placed
-            CropStage(
-                blocks = listOf(
-                    CropBlockState(
-                        offset = BlockPos(0, 1, 0),
-                        blockState = stateOf("minecraft:redstone_torch[lit=false]")
-                    )
-                ),
-                armorStands = listOf(
-                    CropArmorStand(
-                        offset = Vec3(0.0, -0.53125, 0.0),
-                        hashString = "bacae0e87ffeadb750260c2e6531004d69d14473376cb22577fafe70569349f3",
-                        isSmall = false
-                    )
-                ),
-                6..6,
-                placed = true
-            )),
+        ),
         maxStage = 6,
         requiredSoil = setOf(Blocks.SAND, Blocks.RED_SAND),
         isMutation = true

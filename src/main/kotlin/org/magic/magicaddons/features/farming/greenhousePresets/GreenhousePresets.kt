@@ -17,11 +17,14 @@ object GreenhousePresets : Feature() {
     private const val TURN_GRID_KEY = "TurnGridWithPlayer"
     private const val PLANNER_OPTIONS_KEY = "PlannerOptions"
     private const val PLANT_TRANSPARENCY_KEY = "PlantTransparency"
+    private const val PLANT_HIGHLIGHTS_KEY = "PlantHighlights"
     private const val HARVEST_HIGHLIGHT_KEY = "HarvestHighlight"
+    private const val HARVEST_ONLY_TARGETS_KEY = "OnlyPresetTargets"
     private const val PLANNER_COLORS_KEY = "PlannerColors"
     private const val WATER_INDICATOR_KEY = "WaterIndicator"
     private const val WATER_ONLY_WITHOUT_PLANNER_KEY = "OnlyWithoutPlanner"
     private const val WATER_IGNORE_GROWN_KEY = "IgnoreWillFullyGrow"
+    private const val FLAT_WATER_KEY = "AssumeFlatWaterLoss"
     private const val HUD_ANYWHERE_KEY = "HudAnywhere"
 
     private const val WARNINGS_KEY = "Warnings"
@@ -77,15 +80,25 @@ object GreenhousePresets : Feature() {
     @JvmStatic
     fun plantAlpha(): Int = 255 * (100 - plantTransparencySetting.value) / 100
 
+    private val harvestOnlyTargetsSetting = BooleanSetting(
+        key = HARVEST_ONLY_TARGETS_KEY,
+        displayName = "Only highlight based on the Target marking from the assigned preset",
+        description = "Only the target slots of the assigned preset are watched: green on a target " +
+                "mutation ready to harvest, and red on anything else growing in its slot",
+        value = false
+    )
+
     private val harvestHighlightSetting = BooleanSetting(
         key = HARVEST_HIGHLIGHT_KEY,
         displayName = "Harvest Highlight",
-        description = "Pulses green on a target mutation ready to harvest, and red on anything else " +
-                "growing in its slot",
-        value = true
+        description = "Pulses green on every mutation ready to harvest in the greenhouse you stand in",
+        value = true,
+        children = listOf(harvestOnlyTargetsSetting)
     )
 
     fun harvestHighlightOn(): Boolean = baseSetting.value && harvestHighlightSetting.value
+
+    fun harvestHighlightOnlyTargets(): Boolean = harvestOnlyTargetsSetting.value
 
     /** One colour of the planner, written as hex. Blank or unreadable leaves the mark its own colour. */
     private val plannerColorSettings: Map<PlannerMark, TextSetting> = PlannerMark.entries.associateWith { mark ->
@@ -130,7 +143,7 @@ object GreenhousePresets : Feature() {
 
     private val waterIndicatorSetting = BooleanSetting(
         key = WATER_INDICATOR_KEY,
-        displayName = "Water Indicator",
+        displayName = "Water Highlight",
         description = "Marks the soil of every plant below full water in the greenhouse you stand in. " +
                 "A plant whose water is unknown is left alone",
         value = true,
@@ -142,6 +155,23 @@ object GreenhousePresets : Feature() {
     fun waterIndicatorOnlyWithoutPlanner(): Boolean = waterOnlyWithoutPlannerSetting.value
 
     fun waterIndicatorIgnoresGrown(): Boolean = waterIgnoreGrownSetting.value
+
+    private val assumeFlatWaterSetting = BooleanSetting(
+        key = FLAT_WATER_KEY,
+        displayName = "Assume No Water Retain Or Drain",
+        description = "Assumes water retain and drain are bugged for prediction.\n\n" +
+                "§7§oSkyBlock is a great, consistent game, where water retain has been observed to " +
+                "work on multiple occasions, showing the base water drain of -20 rectified to -15 and " +
+                "-10 with 50% and 100% water retain respectively; and even with water drain, it " +
+                "consumes 23, which is perfect. But in another case, no matter the water retain or " +
+                "drain, it is a flat -20 with absolutely no consistency. If you have further findings " +
+                "about this, please let me know. This is exactly the kind of consistency tied to " +
+                "SkyBlock: no consistency.",
+        value = false
+    )
+
+    /** Whether every prediction takes the plain loss, retain and drain set aside until they are trusted. */
+    fun assumeFlatWater(): Boolean = baseSetting.value && assumeFlatWaterSetting.value
 
     private val hudAnywhereSetting = BooleanSetting(
         key = HUD_ANYWHERE_KEY,
@@ -192,7 +222,13 @@ object GreenhousePresets : Feature() {
                 key = PLANNER_OPTIONS_KEY,
                 displayName = "Planner Options",
                 description = "How a plan running on a greenhouse is shown",
-                children = listOf(plantTransparencySetting, harvestHighlightSetting, plannerColorsGroup)
+                children = listOf(plantTransparencySetting, plannerColorsGroup)
+            ),
+            ParentSetting(
+                key = PLANT_HIGHLIGHTS_KEY,
+                displayName = "Plant Highlights",
+                description = "What is marked on the plants of the greenhouse you stand in",
+                children = listOf(harvestHighlightSetting, waterIndicatorSetting)
             ),
             BooleanSetting(
                 key = WARNINGS_KEY,
@@ -310,7 +346,7 @@ object GreenhousePresets : Feature() {
                 value = false,
                 children = listOf(hudAnywhereSetting)
             ),
-            waterIndicatorSetting,
+            assumeFlatWaterSetting,
             BooleanSetting(
                 key = KEY_ANYWHERE,
                 displayName = "Greenhouse Screen Anywhere",

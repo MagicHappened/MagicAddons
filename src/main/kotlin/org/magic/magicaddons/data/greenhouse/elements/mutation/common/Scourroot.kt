@@ -32,11 +32,10 @@ object Scourroot : CropDefinitionProvider {
                         hashString = "a9da3b8dcffbb5dd9708b83e54746fced475f0ee16c6c0ce4668cca7999c4d1e"
                     )
                 ),
-                1..1,
+                1..1
             )
         ),
         needsWater = false,
-        isMutation = true,
-        placedSameAsGrown = true
+        isMutation = true
     )
 }

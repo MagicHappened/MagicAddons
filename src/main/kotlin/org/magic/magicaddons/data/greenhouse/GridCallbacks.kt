@@ -15,6 +15,9 @@ interface GridCallbacks {
     /** The crop the player put down on the soil at [soil] this session, if any. */
     fun placedHereAt(soil: BlockPos): CropDefinition?
 
+    /** Whether a prediction should ignore retain and drain and take the plain loss every time. */
+    fun assumeFlatWater(): Boolean = false
+
     /** The soil at [soil] no longer holds what was put down there. */
     fun forgetPlacementAt(soil: BlockPos)
 

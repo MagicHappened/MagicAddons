@@ -79,6 +79,7 @@ object Moonflower : CropDefinitionProvider {
                         CropArmorStand(
                             offset = Vec3(0.0, -0.15625, 0.1875),
                             hashString = "10ba39f5a3bdb0f3ed6547e6e688fc43d64fabc056f3418b2bbbdfedd7248ba9",
+                            isSmall = false
                         )
                     )
                 ,

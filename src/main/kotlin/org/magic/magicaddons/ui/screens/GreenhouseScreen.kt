@@ -118,7 +118,8 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
         onPickPreset = { event -> openAssignMenu(event) },
         onTurnPlan = { turnPlan() },
         onEditPreset = { editAssignedPreset() },
-        onSaveAsPreset = { saveGreenhouseAsPreset() }
+        onSaveAsPreset = { saveGreenhouseAsPreset() },
+        onRescan = { askRescan(it) }
     )
 
     /** Where a mode's own buttons begin, shared so the two modes line up with each other. */
@@ -880,6 +881,24 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
             }
             stopPlannersOn(grid.layout)
             grid.init()
+        })
+    }
+
+    /** Asks before forgetting every plant of the greenhouse on show and reading it again from nothing. */
+    private fun askRescan(event: MouseButtonEvent) {
+        val grid = displayedGrid() ?: return
+        val question = "Forcibly rescan ${grid.layout.displayName()}?"
+        val warning = "This will cause placed mutation to possibly be detected as harvestable until " +
+                "clicked with diagnostic tool, or not detected at all and possibly other problems, Proceed?"
+        val (menuX, menuY) = OverlayRenderable.placeOnScreen(
+            event.x.toInt(),
+            event.y.toInt(),
+            ConfirmContext.widthFor(question, warning),
+            ConfirmContext.heightFor(question, warning)
+        )
+        addContext(ConfirmContext(menuX, menuY, question, this, warning) {
+            GreenhouseData.rescanFromScratch(grid)
+            initGreenhouseLayout()
         })
     }
 

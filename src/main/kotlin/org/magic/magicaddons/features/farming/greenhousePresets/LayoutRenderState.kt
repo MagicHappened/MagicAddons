@@ -5,6 +5,7 @@ import java.time.Duration
 import org.magic.magicaddons.data.greenhouse.GreenhouseLayout
 import java.util.UUID
 import com.mojang.blaze3d.vertex.PoseStack
+import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.level.block.Block
@@ -178,11 +179,6 @@ object LayoutRenderState {
         refresh()
     }
 
-    fun hide() {
-        plannerLayout = PlannerLayout.NOTHING
-        reportedMissingStage.clear()
-    }
-
     /** Works out what to draw from what the plot holds now. Cheap enough to run on every change. */
     fun refresh() {
         val grid = GreenhouseData.getCurrentGrid()
@@ -199,8 +195,15 @@ object LayoutRenderState {
         // nothing rather than carrying the last one around the garden
         val assigned = grid.state.assignedLayout
 
+        // no plan here, so only the harvest pass has anything to say
         if (assigned == null) {
-            hide()
+            reportedMissingStage.clear()
+
+            val watchMarks = mutableMapOf<BlockPos, Pair<VoxelShape, PlannerMark>>()
+            val watchStands = mutableMapOf<UUID, Int>()
+            watchHarvestable(level, grid, watchMarks, watchStands)
+
+            plannerLayout = PlannerLayout(Phase.Soil, emptyMap(), emptyMap(), emptySet(), emptySet(), emptyMap(), watchMarks, watchStands)
             return
         }
 
@@ -297,7 +300,8 @@ object LayoutRenderState {
 
         val watchMarks = mutableMapOf<BlockPos, Pair<VoxelShape, PlannerMark>>()
         val watchStands = mutableMapOf<UUID, Int>()
-        watchTargets(level, grid, layout, watchMarks, watchStands)
+        if (GreenhousePresets.harvestHighlightOnlyTargets()) watchTargets(level, grid, layout, watchMarks, watchStands)
+        else watchHarvestable(level, grid, watchMarks, watchStands)
 
         val next = PlannerLayout(soilPhase, marks, ghosts, badStands, blocked, standGroups, watchMarks, watchStands)
 
@@ -342,6 +346,29 @@ object LayoutRenderState {
         )
     }
 
+    /** Green on every mutation in the greenhouse ready to take, whatever the plan says about its slot. */
+    private fun watchHarvestable(
+        level: Level,
+        grid: GreenhouseGrid,
+        marks: MutableMap<BlockPos, Pair<VoxelShape, PlannerMark>>,
+        stands: MutableMap<UUID, Int>
+    ) {
+        if (!GreenhousePresets.harvestHighlightOn()) return
+
+        grid.elements
+            .filter { harvestable(it.instance) }
+            .forEach { growing -> markReady(grid, growing, marks) }
+    }
+
+    /** The same mark the water highlight draws: one box over the plant's soil, footprint wide. */
+    private fun markReady(grid: GreenhouseGrid, growing: ElementRuntimeState, marks: MutableMap<BlockPos, Pair<VoxelShape, PlannerMark>>) {
+        val soil = grid.getPosForSlot(growing.instance.slot) ?: return
+        val footprint = growing.instance.cropDef.footprint
+        val box = Shapes.create(AABB(0.0, 0.0, 0.0, footprint.width.toDouble(), 1.0, footprint.height.toDouble()))
+
+        marks[soil] = box to PlannerMark.Ready
+    }
+
     /**
      * What the target slots of a running plan say: green on a target mutation ready to take, red on
      * anything else that grew in its footprint.
@@ -370,14 +397,13 @@ object LayoutRenderState {
 
                 covering.forEach { growing ->
                     // the target itself is only worth saying something about once it can be taken
-                    val mark = when {
-                        !target.accepts(growing.instance.cropDef) -> PlannerMark.Blocking
-                        harvestable(growing.instance) -> PlannerMark.Ready
-                        else -> return@forEach
+                    when {
+                        !target.accepts(growing.instance.cropDef) -> {
+                            markPlant(level, growing, marks, PlannerMark.Blocking).forEach { stands[it] = PlannerMark.Blocking.color }
+                            soilOf(grid, growing).forEach { marks[it] = FULL_BLOCK to PlannerMark.Blocking }
+                        }
+                        harvestable(growing.instance) -> markReady(grid, growing, marks)
                     }
-
-                    markPlant(level, growing, marks, mark).forEach { stands[it] = mark.color }
-                    soilOf(grid, growing).forEach { marks[it] = FULL_BLOCK to mark }
                 }
             }
     }
@@ -533,8 +559,7 @@ object LayoutRenderState {
      */
     private fun ghostStageOf(definition: CropDefinition): CropStage? {
         val at = definition.stagePlacedAt
-        val candidates = definition.stages.filter { at in it.stageRange }
-        val stage = candidates.firstOrNull { it.placed } ?: candidates.firstOrNull()
+        val stage = definition.stages.firstOrNull { at in it.stageRange }
 
         if (stage == null && reportedMissingStage.add(definition.name)) {
             ChatUtils.sendWithPrefix("No stage $at described for ${definition.name}, skipping it.")

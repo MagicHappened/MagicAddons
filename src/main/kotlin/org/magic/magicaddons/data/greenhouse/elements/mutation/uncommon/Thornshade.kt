@@ -146,7 +146,7 @@ object Thornshade : CropDefinitionProvider {
                         CropArmorStand(
                             isSmall = false,
                             offset = Vec3(0.0, 0.15625, 0.0),
-                            hashString = "dcc9a4a7aadb373adc3be05242924c8985e2f993dd8e4d96f20721052ff7e7a8",
+                            hashString = "dcc9a4a7aadb373adc3be05242924c8985e2f993dd8e4d96f20721052ff7e7a8"
                         )
                     )
                 ,
@@ -154,7 +154,6 @@ object Thornshade : CropDefinitionProvider {
             )
         ),
         maxStage = 8,
-        isMutation = true,
-        placedSameAsGrown = true
+        isMutation = true
     )
 }

@@ -97,9 +97,6 @@ object CropCollector : EntityUtils.HighlightSource {
         /** Named for a crop we know, standing at a stage nobody has recorded. */
         Unrecorded("unrecorded"),
 
-        /** A mutation the player put down, whose placed look nobody has recorded. */
-        PlacedMissing("needs placed data"),
-
         /** Named for nothing in the registry, reported but not collectable. */
         Unknown("unknown crop")
     }
@@ -118,9 +115,7 @@ object CropCollector : EntityUtils.HighlightSource {
         var confirmed: Boolean = false,
         var boxes: List<AABB> = emptyList(),
         /** What the diagnosis tool and the matcher said about it, shown in place of the usual label. */
-        var toolNote: String? = null,
-        /** A mutation the player put down in their own garden: what is recorded is its placed look. */
-        var placedLook: Boolean = false
+        var toolNote: String? = null
     )
 
     private class Session(
@@ -738,16 +733,6 @@ object CropCollector : EntityUtils.HighlightSource {
         val def = if (onRoots) roots else diagnosed
         val stage = if (onRoots) 1 else diagnosedStage
 
-        // a mutation the player put down in their own garden wears its placed look, which is
-        // recorded apart from the grown look of the same stage and matched apart from it
-        val ownGarden = LocationAPI.island == SkyBlockIsland.GARDEN && !LocationAPI.isGuest
-        val placedLook = ownGarden && def.isMutation && GreenhouseData.getCurrentGrid()?.let { grid ->
-            val plant = grid.getSlotAt(standingOn, false)?.let { grid.elementCovering(it) }?.instance
-            // flagged when it was put down, or first seen at the stage it is placed at and never
-            // grown since; a spawn is first seen at one, so a single-stage plant cannot be told this way
-            plant != null && (plant.placed || (def.stagePlacedAt > 1 && (plant.firstSeenStage ?: 0) >= def.stagePlacedAt))
-        } == true || (ownGarden && GreenhouseData.placedHereAt(standingOn) == def)
-
         val absorbed = s.entries.filter { entry ->
             val ew = entry.def?.footprint?.width ?: 1
             val eh = entry.def?.footprint?.height ?: 1
@@ -769,12 +754,11 @@ object CropCollector : EntityUtils.HighlightSource {
         // the diagnosis names the plant, but the definitions may already describe this very
         // stage: a fresh entry is only unrecorded when nothing recorded matches what stands here
         val recorded = def.stages
-            .filter { stage in it.stageRange && (it.placed == placedLook || (placedLook && def.placedSameAsGrown)) }
+            .filter { stage in it.stageRange }
             .map { it.matchesStage(standingOn, stands, def.footprint, def.rotatesWithPlot) }
             .firstOrNull { it.matched }
 
         val status = when {
-            recorded == null && placedLook -> Status.PlacedMissing
             recorded == null -> Status.Unrecorded
             recorded.rotationLegacy -> Status.Legacy
             else -> sizeMismatch(def, stage, stands) ?: Status.Current
@@ -804,17 +788,11 @@ object CropCollector : EntityUtils.HighlightSource {
         val matcher = if (recorded != null) "matcher matched stage $stage" else "matcher found nothing at stage $stage"
 
         s.entries.lastOrNull()?.let { entry ->
-            entry.placedLook = placedLook
-            val placedNote = if (placedLook) " (placed)" else ""
-            entry.toolNote = "${def.name}: tool says stage $diagnosedStage/${diagnosed.maxStage}$placedNote, $matcher - ${turned.label}, " +
+            entry.toolNote = "${def.name}: tool says stage $diagnosedStage/${diagnosed.maxStage}, $matcher - ${turned.label}, " +
                     "started at (${standingOn.x}, ${standingOn.z})$note"
             sendLine(entry)
         }
     }
-
-    /** The exported stage with the placed-look flag on it, so it never stands in for the grown look. */
-    private fun markPlaced(code: String): String =
-        Regex("""(\d+\.\.\d+)(\s*\)\s*)$""").replace(code) { "${it.groupValues[1]},\n    placed = true${it.groupValues[2]}" }
 
     // ------------------------------------------------------------------ output
 
@@ -861,7 +839,7 @@ object CropCollector : EntityUtils.HighlightSource {
                     foundDefinition = def,
                     quiet = true,
                     knownStands = entry.stands
-                )?.let { if (entry.placedLook) markPlaced(it) else it }
+                )
                 appendLine(code ?: "// world went away while writing this one")
                 appendLine()
             }

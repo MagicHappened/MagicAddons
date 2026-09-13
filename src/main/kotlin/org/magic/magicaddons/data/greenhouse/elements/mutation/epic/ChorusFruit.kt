@@ -1,6 +1,7 @@
 package org.magic.magicaddons.data.greenhouse.elements.mutation.epic
 
 import org.magic.magicaddons.data.greenhouse.StandPose
+import org.magic.magicaddons.data.greenhouse.FIVE_DAY_DECAY_TIME_MS
 import net.minecraft.core.Rotations
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.phys.Vec3
@@ -31,7 +32,7 @@ object ChorusFruit : CropDefinitionProvider {
                     CropArmorStand(
                         offset = Vec3(0.0, 0.21875, 0.0),
                         headRotation = Rotations(0.0f, 0.0f, 0.0f),
-                        hashString = "e044238503102f64f30f4d58f0843b215d8dd54fc9f1f70cc17d8dd891bb3e5e",
+                        hashString = "e044238503102f64f30f4d58f0843b215d8dd54fc9f1f70cc17d8dd891bb3e5e"
                     )
                 ),
                 1..1
@@ -157,7 +158,7 @@ object ChorusFruit : CropDefinitionProvider {
                         CropArmorStand(
                             offset = Vec3(0.1875, 1.3125, 0.21875),
                             headRotation = Rotations(45.0f, 0.0f, 45.0f),
-                            hashString = "e044238503102f64f30f4d58f0843b215d8dd54fc9f1f70cc17d8dd891bb3e5e",
+                            hashString = "e044238503102f64f30f4d58f0843b215d8dd54fc9f1f70cc17d8dd891bb3e5e"
                         )
                     )
                             +
@@ -169,7 +170,7 @@ object ChorusFruit : CropDefinitionProvider {
                                 hashString = "c5214cc92140cdf9b402b3e7ed1fa0bac7fb4b39e39b46d11b06301caf0f9c3d",
                                 isSmall = false
                             ),
-                10..10,
+                10..10
             ),
             CropStage(
                 blocks = listOf(
@@ -195,7 +196,7 @@ object ChorusFruit : CropDefinitionProvider {
                                 ),
                                 hashString = "e044238503102f64f30f4d58f0843b215d8dd54fc9f1f70cc17d8dd891bb3e5e"
                             ),
-                11..11,
+                11..11
             ),
             CropStage(
                 blocks = listOf(),
@@ -224,11 +225,10 @@ object ChorusFruit : CropDefinitionProvider {
                 12..12
             )
         ),
-        // decay time is 5 days
+        decayTimeMs = FIVE_DAY_DECAY_TIME_MS,
         maxStage = 12,
         requiredSoil = setOf(Blocks.END_STONE),
         needsWater = false,
-        isMutation = true,
-        placedSameAsGrown = true
+        isMutation = true
     )
 }
