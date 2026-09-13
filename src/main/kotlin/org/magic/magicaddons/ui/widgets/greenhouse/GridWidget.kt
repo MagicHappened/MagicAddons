@@ -11,6 +11,8 @@ import net.minecraft.client.input.MouseButtonEvent
 import org.magic.magicaddons.data.greenhouse.Footprint
 import org.magic.magicaddons.data.greenhouse.GreenhouseElementInstance
 import org.magic.magicaddons.Common
+import org.magic.magicaddons.data.greenhouse.GreenhouseGrid
+import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData
 import org.magic.magicaddons.data.greenhouse.GreenhouseLayout
 import org.magic.magicaddons.ui.HoverableContainer
 import org.magic.magicaddons.util.ScreenUtil.inRect
@@ -146,7 +148,23 @@ class GridWidget(
             widget.y = rect[1]
             widget.width = rect[2] - rect[0]
             widget.height = rect[3] - rect[1]
-            widget.waterEffect = layout.waterEffectAt(instance.slot)
+            widget.waterEffect = GreenhouseGrid.waterEffectAt(layout, instance.slot)
+
+            // the soggybuds still growing around the plant, each taking its share of its water
+            widget.drinkers = layout.plantsAround(instance).count { it.cropDef.drainsNeighbours && !it.grownOut }
+
+            // a soggybud's time is walked on the whole greenhouse, its donors drying out as they
+            // will, once per build rather than every frame
+            if (instance.cropDef.drainsNeighbours && layout.kind != GreenhouseLayout.Kind.PRESET) {
+                val grid = GreenhouseData.greenhouseGrids.find { it.layout.id == layout.id }
+                val tickMs = GreenhouseData.currentGrowthTickMs()
+                if (grid != null && tickMs != null) {
+                    val horizon = instance.decayRemainingMs?.let { (it / tickMs).toInt() } ?: GreenhouseGrid.GROWTH_HORIZON_TICKS
+                    widget.soggybudTicksToGrow = grid.ticksUntilGrown(layout, instance.slot, tickMs, horizon)
+                    widget.soggybudSimulated = true
+                }
+            }
+
             widget.renderedStack = stackFor(instance.cropDef)
             if (instance in justPlaced) widget.appearedAt = System.currentTimeMillis()
             if (instance in justMarked) widget.markedAt = System.currentTimeMillis()

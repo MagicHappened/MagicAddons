@@ -4,6 +4,7 @@ import net.minecraft.core.BlockPos
 import net.minecraft.core.Rotations
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.CropArmorStand
+import org.magic.magicaddons.data.greenhouse.TEN_DAY_DECAY_TIME_MS
 import org.magic.magicaddons.data.greenhouse.CropBlockState
 import org.magic.magicaddons.data.greenhouse.CropDefinition
 import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
@@ -115,7 +116,7 @@ object Godseed : CropDefinitionProvider {
                         hashString = "ab849bae7ab0927a52836da1a45768527d1c7be5853a9290a283ae9aca0c908b"
                     )
                 ),
-                13..13,
+                13..13
             ),
             CropStage(
                 blocks = CropBlockState.blockStatePattern(
@@ -228,62 +229,8 @@ object Godseed : CropDefinitionProvider {
                 34..37 // 34 35 and 37 same so assuming for 36
             )
 
-        ,
-            // as placed
-            CropStage(
-                blocks = CropBlockState.blockStatePattern(
-                    positions = surroundWheatPositions,
-                    blockState = wheatState(6)
-                ) + listOf(
-                    CropBlockState(
-                        offset = BlockPos(1, 1, 1),
-                        blockState = melonStemState(7)
-                    )
-                ),
-                armorStands = CropArmorStand.matcherPattern(
-                    offsets = listOf(
-                        Vec3(-1.0, -0.4375, 1.0),
-                        Vec3(-1.0, -0.4375, -1.0),
-                        Vec3(-1.0, 0.75, 1.0),
-                        Vec3(-1.0, 0.71875, -1.0),
-                        Vec3(0.0, 0.0625, 1.0),
-                        Vec3(0.0, 0.0625, -1.0),
-                        Vec3(-1.0, 0.0625, 0.0),
-                        Vec3(1.0, -0.4375, 1.0),
-                        Vec3(1.0, -0.4375, -1.0),
-                        Vec3(1.0, 0.75, -1.0),
-                        Vec3(1.0, 0.0625, 0.0),
-                        Vec3(1.0, 0.75, 1.0)
-                    ),
-                    rotations = listOf(
-                        Rotations(0.0f, 0.0f, 0.0f),
-                        Rotations(0.0f, 0.0f, 0.0f),
-                        Rotations(180.0f, 90.0f, 0.0f),
-                        Rotations(180.0f, 90.0f, 0.0f),
-                        Rotations(180.0f, 0.0f, 0.0f),
-                        Rotations(180.0f, 0.0f, 0.0f),
-                        Rotations(180.0f, 0.0f, 0.0f),
-                        Rotations(0.0f, 0.0f, 0.0f),
-                        Rotations(0.0f, 0.0f, 0.0f),
-                        Rotations(180.0f, 90.0f, 0.0f),
-                        Rotations(180.0f, 0.0f, 0.0f),
-                        Rotations(180.0f, 90.0f, 0.0f)
-                    ),
-                    hashString = "a0cc95bd6b1e5c007cf0d2b8c613a33a7ad3500b27638947c0b6b1db8fcb4887",
-                    isSmall = false
-                ) +
-                listOf(
-                    CropArmorStand(
-                        offset = Vec3(0.0, 1.4375, 0.0),
-                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
-                        hashString = "9d6bdd07abe3f398720e5f010648c2c194a2ba0f5ef3e27013b0670336eb4f3c",
-                        isSmall = false
-                    )
-                ),
-                40..40,
-                placed = true
-            )),
-        // 10 days decay time
+        ),
+        decayTimeMs = TEN_DAY_DECAY_TIME_MS,
         maxStage = 40,
         isMutation = true
     )

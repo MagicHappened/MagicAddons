@@ -81,13 +81,6 @@ object PlantDex {
     }
 
     /**
-     * Whether a mutation has no recording of how it looks when placed. Not a stage of
-     * its own and not counted against the dex, only listed: only the hologram and the collector want it.
-     */
-    fun lacksPlacedLook(def: CropDefinition): Boolean =
-        def.isMutation && !def.placedSameAsGrown && def.stageDefs.none { it.placed }
-
-    /**
      * A plant that changes its look without changing stage has two looks to record at such a
      * stage: asleep and awake at a snoozling's sleeping stages, day and night for anything that
      * craves a time of day. Whichever is missing is listed, without counting against the dex.
@@ -133,7 +126,6 @@ object PlantDex {
 
         val parts = mutableListOf<String>()
         if (missing.isNotEmpty()) parts += "stages ${ranges(missing)} unrecorded"
-        if (lacksPlacedLook(def)) parts += "placed look unrecorded"
         parts += variantGaps(def)
         if (legacy.isNotEmpty()) parts += "stages ${ranges(legacy)} need normalization"
         if (unturned.isNotEmpty()) parts += "stages ${ranges(unturned)} need rotation data"

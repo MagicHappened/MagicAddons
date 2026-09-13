@@ -3,6 +3,7 @@ package org.magic.magicaddons.data.greenhouse.elements.mutation.epic
 import net.minecraft.core.BlockPos
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.CropEffect
+import org.magic.magicaddons.data.greenhouse.FIVE_DAY_DECAY_TIME_MS
 import org.magic.magicaddons.data.greenhouse.CropArmorStand
 import org.magic.magicaddons.data.greenhouse.CropBlockState
 import org.magic.magicaddons.data.greenhouse.CropDefinition
@@ -208,26 +209,8 @@ object Startlevine : CropDefinitionProvider {
 
 
 
-        ,
-            // as placed
-            CropStage(
-                blocks = listOf(
-                    CropBlockState(
-                        offset = BlockPos(0, 1, 0),
-                        blockState = melonStemState(7)
-                    )
-                ),
-                armorStands = listOf(
-                    CropArmorStand(
-                        offset = Vec3(0.0, -0.4375, 0.0),
-                        hashString = "98bef15a64354093d26b8f002e476b8012ed3ad9b061796953b6b1dad447d7",
-                        isSmall = false
-                    )
-                ),
-                12..12,
-                placed = true
-            )),
-        // five days decay time
+        ),
+        decayTimeMs = FIVE_DAY_DECAY_TIME_MS,
         maxStage = 12,
         isMutation = true
     )

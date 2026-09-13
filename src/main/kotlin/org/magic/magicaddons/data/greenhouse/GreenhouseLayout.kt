@@ -33,6 +33,9 @@ data class GreenhouseLayout(
             elementInstances.add(instance.copyForPrediction(slot))
         }
     }
+    /** A copy on plants of its own, so nothing done to it reaches this layout. */
+    fun copy(): GreenhouseLayout = GreenhouseLayout(id = id, name = name, size = size).also { it.takeContentsFrom(this) }
+
     /** a copy turned [turns] quarter turns clockwise */
     fun turned(turns: Int): GreenhouseLayout {
         val copy = GreenhouseLayout(id = id, name = name, size = size)
@@ -145,6 +148,18 @@ data class GreenhouseLayout(
      */
     fun soilsAcceptedAt(slot: LayoutSlot): Set<Block> =
         plantCovering(slot)?.everyCrop?.flatMapTo(mutableSetOf()) { it.requiredSoil }.orEmpty()
+
+    /** Every other plant with a cell beside one of [instance]'s, corners included. */
+    fun plantsAround(instance: GreenhouseElementInstance): List<GreenhouseElementInstance> =
+        elementInstances.filter { other -> other !== instance && other.isAround(instance) }
+
+    private fun GreenhouseElementInstance.isAround(other: GreenhouseElementInstance): Boolean {
+        val mine = cropDef.footprint
+        val theirs = other.cropDef.footprint
+
+        return slot.x <= other.slot.x + theirs.width && other.slot.x <= slot.x + mine.width &&
+                slot.y <= other.slot.y + theirs.height && other.slot.y <= slot.y + mine.height
+    }
 
     private fun GreenhouseElementInstance.covers(slot: LayoutSlot): Boolean =
         slot.x in this.slot.x until this.slot.x + cropDef.footprint.width &&

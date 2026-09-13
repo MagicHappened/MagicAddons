@@ -39,11 +39,10 @@ object Choconut : CropDefinitionProvider {
                         hashString = "2a8d74b77a0e510d058c544c7292a8844e70b9293880caffc562ce5ab5a49ad8"
                     )
                 ),
-                1..1,
+                1..1
             )
         ),
         needsWater = false,
-        isMutation = true,
-        placedSameAsGrown = true
+        isMutation = true
     )
 }

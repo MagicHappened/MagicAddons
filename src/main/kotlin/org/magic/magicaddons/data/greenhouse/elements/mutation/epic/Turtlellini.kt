@@ -32,7 +32,6 @@ object Turtlellini : CropDefinitionProvider {
             )
         ),
         needsWater = false,
-        isMutation = true,
-        placedSameAsGrown = true
+        isMutation = true
     )
 }

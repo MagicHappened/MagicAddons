@@ -101,7 +101,7 @@ object Codecs {
                 GREENHOUSE_SLOT_CODEC.optionalFieldOf("slot")
                     .forGetter { Optional.ofNullable(it.slot) },
 
-                Codec.INT.optionalFieldOf("waterLevel")
+                Codec.DOUBLE.optionalFieldOf("waterLevel")
                     .forGetter { Optional.ofNullable(it.waterLevel) },
 
                 GROWTH_STAGE_INFO_CODEC.optionalFieldOf("growthStage")

@@ -70,7 +70,7 @@ object Glasscorn : CropDefinitionProvider {
                     hashString = "ac18dc1867944dd869d085e4084e3e4013a6be4860608e3c54f0d6e542c5149f",
                     isSmall = false
                 ),
-                4..4,
+                4..4
             ),
             // the glass on top changes with the stage, so it is neither matched nor drawn
             CropStage(
@@ -104,41 +104,8 @@ object Glasscorn : CropDefinitionProvider {
                     isSmall = false
                 ),
                 5..5
-            ),
-            // as placed
-            CropStage(
-                blocks = CropBlockState.blockStatePattern(
-                    listOf(
-                        BlockPos(0, 1, 0),
-                        BlockPos(0, 1, 1),
-                        BlockPos(1, 1, 0),
-                        BlockPos(1, 1, 1)
-                    ),
-                    blockState = sunflowerState(DoubleBlockHalf.LOWER)
-                ),
-                armorStands = CropArmorStand.matcherPattern(
-                    offsets = listOf(
-                        Vec3(0.5, 0.5, 0.5),
-                        Vec3(-0.5, 0.5, 0.5),
-                        Vec3(-0.5, 0.5, -0.5),
-                        Vec3(0.5, 0.5, -0.5)
-                    ),
-                    hashString = "297de27338b9f876e570d1cc01fe1beccfc940467c5c97c467e93e79c81c25ee",
-                    isSmall = false
-                ) +
-                CropArmorStand.matcherPattern(
-                    offsets = listOf(
-                        Vec3(0.5, 1.03125, 0.5),
-                        Vec3(-0.5, 1.03125, 0.5),
-                        Vec3(-0.5, 1.03125, -0.5),
-                        Vec3(0.5, 1.03125, -0.5)
-                    ),
-                    hashString = "c85e9fa773337f43de3afc9e2a60b26299f5eea9fd8490d19ed2ab34fc0c9cbb",
-                    isSmall = false
-                ),
-                9..9,
-                placed = true
-            )),
+            )
+        ),
         maxStage = 9,
         footprint = Footprint(2, 2),
         requiredSoil = setOf(Blocks.SAND, Blocks.RED_SAND),

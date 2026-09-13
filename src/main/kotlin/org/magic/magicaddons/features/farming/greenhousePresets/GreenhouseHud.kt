@@ -88,7 +88,7 @@ object GreenhouseHud : HudElement("greenhouse", "Greenhouse") {
             .filter { it.needsWater }
             .mapNotNull { plant ->
                 val water = plant.waterLevel ?: return@mapNotNull null
-                val effect = grid.layout.waterEffectAt(plant.slot)
+                val effect = GreenhouseGrid.waterEffectAt(grid.layout, plant.slot)
 
                 // a plant that reaches its last stage on the water it holds is not dying of thirst
                 if (plant.outlastsGrowth(effect) == true) return@mapNotNull null

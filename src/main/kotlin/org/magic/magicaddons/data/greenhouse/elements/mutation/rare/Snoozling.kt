@@ -21,7 +21,7 @@ object Snoozling : CropDefinitionProvider {
         BlockPos(0, 1, 0),
         BlockPos(0, 1, 2),
         BlockPos(2, 1, 0),
-        BlockPos(2, 1, 2),
+        BlockPos(2, 1, 2)
     )
 
     override val definition = CropDefinition(
@@ -40,18 +40,18 @@ object Snoozling : CropDefinitionProvider {
             CropStage(
                 blocks = CropBlockState.blockStatePattern(
                     positions = wheatPositions,
-                    blockState = wheatState(0),
+                    blockState = wheatState(0)
                 ),
                 armorStands =
                     listOf(
                         CropArmorStand(
                             offset = Vec3(0.0, 0.15625, 0.03125),
-                            hashString = "b82d442528456547474dd88166a97818f057ecc4b3ed350ef9a5e4dbd27f98d7",
+                            hashString = "b82d442528456547474dd88166a97818f057ecc4b3ed350ef9a5e4dbd27f98d7"
                         ),
                         CropArmorStand(
                             isSmall = false,
                             offset = Vec3(0.0, -0.46875, 0.5625),
-                            hashString = "77bb86dedeb827f2489aa0103d58d0e12e64a8152d5a0f5b1d4d208a3cb55999",
+                            hashString = "77bb86dedeb827f2489aa0103d58d0e12e64a8152d5a0f5b1d4d208a3cb55999"
                         )
                     ),
                 // collected at stages one and two and identical at both, so the two are one stage
@@ -753,7 +753,6 @@ object Snoozling : CropDefinitionProvider {
         // there is no sleep at 20, it goes straight to harvestable
         sleepStages = setOf(5, 10, 15),
         footprint = Footprint(3, 3),
-        isMutation = true,
-        placedSameAsGrown = true
+        isMutation = true
     )
 }

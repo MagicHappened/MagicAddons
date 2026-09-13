@@ -25,7 +25,7 @@ object Noctilume : CropDefinitionProvider {
         BlockPos(0, 1, 0),
         BlockPos(0, 1, 1),
         BlockPos(1, 1, 0),
-        BlockPos(1, 1, 1),
+        BlockPos(1, 1, 1)
     )
 
     /** At the first stage all four stands ride high; the fourth settles a stage later. */
@@ -73,8 +73,7 @@ object Noctilume : CropDefinitionProvider {
         craving: Int?,
         wheatAge: Int,
         offsets: List<Vec3>,
-        fullSized: Set<Int> = emptySet(),
-        placed: Boolean = false
+        fullSized: Set<Int> = emptySet()
     ): CropStage = CropStage(
         blocks = CropBlockState.blockStatePattern(
             positions = wheatPositions,
@@ -89,8 +88,7 @@ object Noctilume : CropDefinitionProvider {
             )
         },
         stageRange = stage..stage,
-        traits = craving?.let { mapOf(CropStandReader.CRAVES to it) } ?: emptyMap(),
-        placed = placed
+        traits = craving?.let { mapOf(CropStandReader.CRAVES to it) } ?: emptyMap()
     )
 
     override val definition = CropDefinition(
@@ -148,16 +146,6 @@ object Noctilume : CropDefinitionProvider {
                 offsets = settlingOffsets,
                 fullSized = setOf(0, 1, 3)
             ),
-            // as placed, craving day
-            look(
-                stage = 4,
-                hash = "5cdd8c3d5d76a1dc07cdbedc5fd0bb230852df9c1864896f8893f5bfdf3d4c96",
-                craving = CropStandReader.CRAVES_DAY,
-                wheatAge = 5,
-                offsets = grownOffsets,
-                fullSized = setOf(0, 1, 2, 3),
-                placed = true
-            ),
             // todo: grown look at stage 4 craving day was recorded wrong, record it again
             // grown at four, craving night
             look(
@@ -167,17 +155,6 @@ object Noctilume : CropDefinitionProvider {
                 wheatAge = 6,
                 offsets = grownOffsets,
                 fullSized = setOf(0, 1, 2, 3)
-            ),
-            // as placed, craving night
-            look( //todo check if this is the only placed varient as observed by someone with blastberry
-                  // a placed blastberry rearms its redstone torch after 1 stage
-                stage = 4,
-                hash = "b1b18493d50ff8972f7ef359893d9063fdc54cb822c679002957c294fc8b0005",
-                craving = CropStandReader.CRAVES_NIGHT,
-                wheatAge = 5,
-                offsets = grownOffsets,
-                fullSized = setOf(0, 1, 2, 3),
-                placed = true
             )
         ),
         decayTimeMs = SIX_DAY_DECAY_TIME_MS,

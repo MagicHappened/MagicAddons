@@ -119,7 +119,6 @@ object Creambloom : CropDefinitionProvider {
             )
         ),
         maxStage = 6,
-        isMutation = true,
-        placedSameAsGrown = true
+        isMutation = true
     )
 }

@@ -123,7 +123,7 @@ object Chloronite : CropDefinitionProvider {
                         hashString = "3d9bcd3946c162aa361e537a455eddae3b55fb4bcf6208e84662b622b3ff6737"
                     )
                 ),
-                10..10,
+                10..10
             ),
             CropStage(
                 // the head is the whole of the match. A chloronite that grew to its last stage
@@ -149,7 +149,6 @@ object Chloronite : CropDefinitionProvider {
 
         ),
         maxStage = 10,
-        isMutation = true,
-        placedSameAsGrown = true
+        isMutation = true
     )
 }

@@ -110,15 +110,15 @@ object GreenhouseWatering {
             lastNotches[stand.uuid] = notches
             if (seen == notches) return@forEach
             if (seen == null) {
-                val implied = ((element.instance.waterLevel ?: 0) * BAR_NOTCHES / 100)
+                val implied = ((element.instance.waterLevel ?: 0.0) * BAR_NOTCHES / 100).toInt()
                 if (notches <= implied) return@forEach
             }
 
             // the bar can skip ticks, so the level is the can's gain times at least one tick more than
             // before, capped where the game caps it
             val before = element.instance.waterLevel
-            val held = before ?: 0
-            val ticksHeld = if (held <= 0) 0 else held / gain
+            val held = before ?: 0.0
+            val ticksHeld = if (held <= 0.0) 0 else (held / gain).toInt()
             val ticksShown = Math.round(bar.percent.toDouble() / gain).toInt()
             val counted = if (bar.percent >= WaterModel.FULL) WaterModel.FULL else (gain * maxOf(ticksHeld + 1, ticksShown)).coerceAtMost(WaterModel.FULL)
             // an exact level keeps the count; one only ever read off bars is overruled by the bar when
@@ -127,7 +127,8 @@ object GreenhouseWatering {
                 element.instance.waterExact -> counted
                 abs(counted - bar.percent) <= NOTCH_PERCENT -> counted
                 else -> bar.percent
-            }
+            }.toDouble()
+            element.instance.waterBestCase = null
             element.instance.waterPredictedInDebt = false
         }
     }

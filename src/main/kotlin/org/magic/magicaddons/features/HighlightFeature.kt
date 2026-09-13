@@ -4,36 +4,22 @@ import net.minecraft.world.entity.Entity
 import org.magic.magicaddons.data.EntityInfo
 import org.magic.magicaddons.util.EntityUtils
 
-/**
- * A feature that contributes entity outlines. Subclasses decide which entity a match should outline
- * and in what colour; keeping EntityUtils in step is owned here.
- *
- * Event wiring stays in the subclass, since EventBus only scans declared methods.
- */
+/** a feature that uses highlights */
 abstract class HighlightFeature : Feature(), EntityUtils.HighlightSource {
 
-    /**
-     * The entity to outline for this match, or null when nothing here matched.
-     *
-     * Usually the entity itself, but not always: a rat is an invisible zombie whose skull is a
-     * separate item display, so the match is made on the display and the display is what should be
-     * drawn. Whatever is returned is also what [EntityUtils.HighlightSource.highlightColor] is asked
-     * about.
-     */
+    /** returns the entity to outline for the entity info bundle*/
     abstract fun highlightTarget(info: EntityInfo): Entity?
 
-    /** What each matched entity is currently outlining, so a match that moves can be cleaned up. */
     private val targets: MutableMap<Entity, Entity> = mutableMapOf()
 
-    /** What the outlined entity matched as, for the marker drawn when it is far away. */
+    /** what mark to draw if the entity is far away for each entity */
     private val marks: MutableMap<Entity, EntityUtils.HighlightMark> = mutableMapOf()
 
-    /** What a marker calls this match and draws for it; nothing unless the feature says. */
+    /** what should the marker draw for this entity default null */
     open fun markOf(info: EntityInfo): EntityUtils.HighlightMark? = null
 
     final override fun highlightMark(entity: Entity): EntityUtils.HighlightMark? = marks[entity]
 
-    /** Drops every highlight owned by this feature and rebuilds it from the current entity list. */
     fun invalidateHighlights() {
         EntityUtils.removeAllForSource(this)
         targets.clear()

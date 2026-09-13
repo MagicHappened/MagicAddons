@@ -1,5 +1,6 @@
 package org.magic.magicaddons.features.farming.greenhousePresets
 
+import kotlin.math.roundToInt
 import org.magic.magicaddons.commands.internal.MainInternal
 import org.magic.magicaddons.commands.debug.CropCollector
 import org.magic.magicaddons.commands.internal.farming.SetTimestalkAttribute
@@ -31,6 +32,7 @@ import org.magic.magicaddons.events.interact.*
 import org.magic.magicaddons.events.world.WorldTickEvent
 import org.magic.magicaddons.events.world.EntityAddedEvent
 import org.magic.magicaddons.events.world.EntityRemovedEvent
+import org.magic.magicaddons.events.world.LevelUnloadingEvent
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhousePresets.baseSetting
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.ui.widgets.config.SettingDetail
@@ -104,14 +106,16 @@ object GreenhouseData : GridCallbacks {
     private val placements = mutableListOf<Placement>()
 
     /**
-     * Every crop put down this session, by the soil block under it. A placed mutation with no
-     * placed look recorded matches nothing, so this is how the scan still knows what stands there.
+     * Every crop put down this session, by the soil block under it. A placed mutation wears a look
+     * no grown stage has, so this is how the scan knows what stands there until its flag is saved.
      */
     private val placedHere = mutableMapOf<BlockPos, PlacedHere>()
 
     private class PlacedHere(val def: CropDefinition, val at: Long)
 
     override fun placedHereAt(soil: BlockPos): CropDefinition? = placedHere[BlockPos(soil.x, GREENHOUSE_SOIL_Y, soil.z)]?.def
+
+    override fun assumeFlatWater(): Boolean = GreenhousePresets.assumeFlatWater()
 
     /**
      * The soil at [soil] no longer holds what was put down there: a recorded look has matched it,
@@ -175,6 +179,45 @@ object GreenhouseData : GridCallbacks {
         checkGreenhouses = true
     }
 
+    /**
+     * Whether the plot has fully arrived: every chunk under it has been sent, and no entity has
+     * turned up in it for [ENTITY_QUIET_MS]. Stands come in their own packets after their chunk, so
+     * a scan run on the chunks alone reads a plant with half its stands as another crop, or as
+     * nothing. A scan over a half-sent plot drops what it cannot see and finds it again as new,
+     * so none runs until the plot has gone quiet.
+     */
+    private fun plotReady(plot: Plot): Boolean {
+        // a plot on its way out is never read again until the player next arrives at it
+        if (plotUnloading) return false
+
+        val level = Minecraft.getInstance().level ?: return false
+        val area = plot.getBuildableArea() ?: return false
+
+        if (!level.hasChunksAt(area.minX.toInt(), area.minZ.toInt(), area.maxX.toInt(), area.maxZ.toInt())) return false
+        if (!arrivalScanPending) return true
+
+        // the plot is named as current off the scoreboard, which can come before its first stand
+        // has, so the quiet is counted from the arrival as well as from the last entity
+        val quietSince = maxOf(lastEntityArrivalAt ?: 0L, arrivalPendingSince)
+
+        return System.currentTimeMillis() - quietSince >= ENTITY_QUIET_MS
+    }
+
+    /** Whether the level is being torn down around the player, see [onLevelUnloading]. */
+    private var plotUnloading: Boolean = false
+
+    /** When the arrival scan was asked for, so a plot whose stands never come still gets read. */
+    private var arrivalPendingSince: Long = 0L
+
+    /** How long the plot has to go without a new entity before it is taken as fully sent. */
+    private const val ENTITY_QUIET_MS: Long = 1_000
+
+    /** When an entity last turned up inside the plot being stood in. */
+    private var lastEntityArrivalAt: Long? = null
+
+    /** Whether the first scan since arriving at the plot, or since it was dumped, is still to run. */
+    private var arrivalScanPending: Boolean = false
+
     private fun scanGridData() {
         if (!scanUpdatesState) return
         if (!greenhousesInitialized) return
@@ -183,13 +226,19 @@ object GreenhouseData : GridCallbacks {
         val grid = getCurrentGrid() ?: return
         if (grid.state.hasRuntimeReferences && !grid.state.needsUpdate) return
 
+        // read again on a later tick, once the rest of the plot has been sent
+        if (!plotReady(plot)) {
+            fullScanWanted = true
+            return
+        }
+
         grid.plot = plot
 
         grid.createSlotDataForGrid()
 
         // a merge, so whatever the plot cannot say for a plant that is still there is carried over,
         // and any stage predicted while away is corrected by what is actually standing
-        grid.setPlantData()
+        if (!grid.setPlantData()) return
 
         claimPlantedCrop(grid)
 
@@ -201,6 +250,7 @@ object GreenhouseData : GridCallbacks {
         grid.state.needsUpdate = false
         grid.state.lastUpdateTimestamp = Instant.now()
         grid.state.pendingGrowthTicks = 0
+        arrivalScanPending = false
     }
 
 
@@ -237,6 +287,26 @@ object GreenhouseData : GridCallbacks {
     }
 
     /**
+     * Forgets every plant of [grid] and reads the plot again as if it had never been seen, so a
+     * placed mutation is only known again once the player is seen placing it. Read at once when
+     * the player stands in it, otherwise on their next visit.
+     */
+    fun rescanFromScratch(grid: GreenhouseGrid) {
+        grid.elements.clear()
+        grid.layout.elementInstances.clear()
+        grid.state.hasRuntimeReferences = false
+        grid.state.lastUpdateTimestamp = null
+        grid.state.needsUpdate = true
+
+        if (getCurrentGrid() === grid) {
+            arrivalScanPending = true
+            arrivalPendingSince = System.currentTimeMillis()
+            plotUnloading = false
+            scanGridData()
+        }
+    }
+
+    /**
      * Each tick: the slots around this tick's changes are read again at once, and after the plot
      * has been quiet for a moment the whole of it is read once, so nothing drifts from the world.
      */
@@ -266,10 +336,14 @@ object GreenhouseData : GridCallbacks {
             return
         }
         val plot = PlotAPI.getCurrentPlot() ?: return
+        if (!plotReady(plot)) {
+            fullScanWanted = true
+            return
+        }
         grid.plot = plot
 
         grid.createSlotDataForGrid()
-        grid.setPlantData(grid.regionAround(positions))
+        if (!grid.setPlantData(grid.regionAround(positions))) return
         claimPlantedCrop(grid)
         LayoutRenderState.refresh()
     }
@@ -416,7 +490,7 @@ object GreenhouseData : GridCallbacks {
                 val lowestStage = instance.lowestStage
                 if (lowestStage != null && lowestStage >= instance.cropDef.maxStage) return@forEach
 
-                val effect = grid.layout.waterEffectAt(instance.slot)
+                val effect = GreenhouseGrid.waterEffectAt(grid.layout, instance.slot)
                 val ticksLeft = WaterModel.ticksUntilDeath(water, effect) ?: return@forEach
 
                 if (ticksLeft <= 1) {
@@ -744,6 +818,15 @@ object GreenhouseData : GridCallbacks {
     fun onPlotChanged(event: PlotChangedEvent) {
         if (!baseSetting.value) return
         initKnownIds()
+
+        // leaving is not a reason to read: on the way out of the garden, and on a disconnect, the
+        // plot is still named as current while its plants are already being unloaded, and a scan
+        // then found a near-empty greenhouse and saved it over the good copy written a moment before
+        if (event.new == null) return
+
+        arrivalScanPending = true
+        arrivalPendingSince = System.currentTimeMillis()
+        plotUnloading = false
         scanGridData()
         regenRender()
     }
@@ -840,14 +923,20 @@ object GreenhouseData : GridCallbacks {
 
     @EventHandler
     fun onEntityAdded(event: EntityAddedEvent) {
+        // entities are reported for the whole world at once, so only the ones that turned up in
+        // this plot count, each at its own place
+        val gridArea = PlotAPI.getCurrentPlot()?.getBuildableArea() ?: return
+        val arrived = event.addedEntityList.map { it.entity.position() }.filter { gridArea.contains(it) }
+        if (arrived.isEmpty()) return
+
+        // noted before anything is read, since the first scan of a plot is the one most likely to
+        // run while its stands are still coming in
+        lastEntityArrivalAt = System.currentTimeMillis()
+
         val grid = getCurrentGrid() ?: return
         if (!grid.hasRuntime()) return
 
-        val gridArea = grid.plot?.getBuildableArea() ?: return
-
-        // entities are reported for the whole world at once, so only the ones that turned up in
-        // this plot count, each at its own place
-        requestReconcile(event.addedEntityList.map { it.entity.position() }.filter { gridArea.contains(it) }.map { BlockPos.containing(it) })
+        requestReconcile(arrived.map { BlockPos.containing(it) })
     }
 
     @EventHandler
@@ -891,6 +980,19 @@ object GreenhouseData : GridCallbacks {
 
         val area = grid.plot?.getBuildableArea() ?: return
         requestReconcile(event.removedEntityList.map { it.entity.position() }.filter { area.contains(it) }.map { BlockPos.containing(it) })
+    }
+
+    /**
+     * The level is about to be torn down, whichever way: nothing in it can be read any more, so
+     * every scan waits until the player next arrives at a plot. Anything that had asked for one is
+     * forgotten with it, since it would only have read what was left.
+     */
+    @EventHandler
+    fun onLevelUnloading(event: LevelUnloadingEvent) {
+        plotUnloading = true
+        touched.clear()
+        lastChangeAt = null
+        fullScanWanted = false
     }
 
     @EventHandler
@@ -1042,35 +1144,35 @@ object GreenhouseData : GridCallbacks {
 
         // a placed mutation is finished and drinks nothing; a placed base crop starts dry and grows
         if (instance.needsWater) {
-            instance.waterLevel = 0
+            instance.waterLevel = 0.0
             instance.waterExact = true
         } else {
             instance.waterLevel = null
             instance.waterExact = false
         }
+        instance.waterBestCase = null
         instance.firstSeenStage = instance.lowestStage
     }
 
-    /**
-     * A mutation found where nothing stood at the last look. It spawned dry at stage one, and a
-     * plant with no water debt takes every tick, so each stage it has climbed cost exactly one
-     * tick of water. Its age is counted from the garden loading, whatever stage it is at: the
-     * game starts a mutation that spawned while the player was away at zero.
-     */
+
     override fun claimSpawnedMutation(instance: GreenhouseElementInstance, layout: GreenhouseLayout) {
         val grown = ((instance.lowestStage ?: 1) - 1).coerceAtLeast(0)
         val now = Instant.now()
 
-        if (instance.cropDef.needsWater) {
-            instance.waterLevel = WaterModel.after(0, grown, layout.waterEffectAt(instance.slot))
+
+        if (instance.cropDef.drainsNeighbours) {
+            instance.waterLevel = WaterModel.DRAIN_PER_STAGE * grown
+            instance.waterExact = false
+        } else if (instance.cropDef.needsWater) {
+            instance.waterLevel = WaterModel.after(0.0, grown, GreenhouseGrid.waterEffectAt(layout, instance.slot))
             instance.waterExact = true
         }
 
+        instance.waterBestCase = null
         instance.age = Duration.between(gardenArrivedAt ?: now, now).toMillis().coerceAtLeast(0L)
         instance.firstSeenStage = 1
     }
 
-    /** What the server says when a placement did not happen, so the claim is dropped rather than reused. */
     private val PLACE_REFUSALS: List<Regex> = listOf(
         Regex("can only grow on ", RegexOption.IGNORE_CASE),
         Regex("There is already a crop planted here", RegexOption.IGNORE_CASE),
@@ -1082,30 +1184,23 @@ object GreenhouseData : GridCallbacks {
         if (placements.isEmpty()) return
         if (PLACE_REFUSALS.none { it.containsMatchIn(event.text) }) return
 
-        // the refusal is about the last thing put down
         placements.removeAt(placements.lastIndex)
     }
 
-    /** The diagnosis tool was pointed at a block: the plant that block belongs to is what the pages describe. */
     private fun listenAtBlock(pos: BlockPos, grid: GreenhouseGrid) {
         plantDiagnosticListeningElement = grid.elements.find { it.blocksMap?.keys?.contains(pos) == true }
             ?: elementAround(pos, grid)
     }
 
-    /** The diagnosis tool was pointed at a stand: the plant that stand belongs to is what the pages describe. */
     private fun listenAtStand(stand: ArmorStand, grid: GreenhouseGrid) {
         plantDiagnosticListeningElement = grid.elements.find { it.standEntities?.contains(stand) == true }
             ?: elementAround(stand.blockPosition(), grid)
     }
 
-    /**
-     * The plant whose footprint holds [pos], whether or not its stage names what was hit, so pointing
-     * the tool at a hunger bar or an unnamed block still finds the plant.
-     */
+
     private fun elementAround(pos: BlockPos, grid: GreenhouseGrid): ElementRuntimeState? =
         grid.getSlotAt(BlockPos(pos.x, GREENHOUSE_SOIL_Y, pos.z), false)?.let { grid.elementCovering(it) }
 
-    /** Reads a diagnosis: the tick countdown, and what the pages say about [listening], the plant the tool was pointed at over [hit]. */
     private fun getDiagnosesData(realItems: List<ItemStack>, listening: ElementRuntimeState?, hit: BlockPos?) {
         if (!baseSetting.value) return
         val identifyStack = realItems.firstOrNull() ?: return
@@ -1140,10 +1235,10 @@ object GreenhouseData : GridCallbacks {
         }
 
         val waterLevel = runCatching {
-            bucketLore[0].siblings[1].string.toInt()
+            bucketLore[0].siblings[1].string.trim().toDouble()
         }.getOrNull()
 
-        val status = runCatching {
+        val status = beaconLore.valueFor("Status") ?: runCatching {
             beaconLore[0].siblings[1].string
         }.getOrNull()
 
@@ -1197,25 +1292,24 @@ object GreenhouseData : GridCallbacks {
             }
         }
 
-        // what the pages say about the plant pointed at, and the one thing the game knows better
-        // than any guess: stage, water and age exactly
         listening?.let { element ->
             age?.parseDurationToMs()?.let { element.instance.age = it }
-            stageRaw?.let { stage ->
-                element.instance.growthStage = GrowthStageInfo.Known(stage)
+            stageRaw?.let { element.instance.growthStage = GrowthStageInfo.Known(it) }
 
-                // a placed mutation is finished and stays at its last stage, so one the tool shows
-                // still growing was never placed, whatever the flag said
-                val plant = element.instance
-                if (plant.placed && plant.cropDef.isMutation && stage < plant.cropDef.maxStage) {
-                    plant.placed = false
+            val plant = element.instance
+            if (plant.cropDef.isMutation) {
+                val stage = stageRaw ?: plant.highestStage
+                val grown = stage != null && stage >= plant.cropDef.maxStage
+                when {
+                    grown && status?.contains("Uncollectable", ignoreCase = true) == true -> plant.placed = true
+                    status?.contains("Harvestable", ignoreCase = true) == true -> Unit
+                    stage != null && !grown && plant.placed -> plant.placed = false
                 }
             }
 
-            // read rather than predicted, so whatever was assumed about the ticks it may have been
-            // passed over for no longer applies
             waterLevel?.let {
                 element.instance.waterLevel = it
+                element.instance.waterBestCase = null
                 element.instance.waterPredictedInDebt = false
                 element.instance.waterExact = true
             }
@@ -1258,9 +1352,7 @@ object GreenhouseData : GridCallbacks {
             ChatUtils.sendWithPrefix("Nothing was pointed at, so there is no plant to correct.")
             return
         }
-
-        // the only caller left, and it rescans the whole footprint itself, so what the tool
-        // hands over is the crop, the stage the page just named and where the tool was pointed
+        
         CropCollector.correct(def, stageRaw, hit)
     }
 

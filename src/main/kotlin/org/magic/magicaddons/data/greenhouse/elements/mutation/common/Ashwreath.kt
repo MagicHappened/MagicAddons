@@ -46,8 +46,7 @@ object Ashwreath : CropDefinitionProvider {
         ),
         requiredSoil = setOf(Blocks.SOUL_SAND),
         needsWater = false,
-        isMutation = true,
-        placedSameAsGrown = true
+        isMutation = true
     )
 
 }

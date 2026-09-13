@@ -18,6 +18,7 @@ import org.magic.magicaddons.util.EntityUtils
 import org.magic.magicaddons.util.PlayerUtils
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockId
 import kotlin.math.abs
+import kotlin.math.floor
 
 sealed interface GrowthStageInfo {
 
@@ -89,10 +90,6 @@ data class CropArmorStand(
 data class CropBlockState(
     val offset: BlockPos,
     val blockState: BlockState,
-    /**
-     * Whether the block must be there to match, or is only drawn. A chloronite's green glass says
-     * the plant is finished without being what makes it finished, so requiring it would hide placed ones.
-     */
     val required: Boolean = true
 ){
 
@@ -120,30 +117,19 @@ data class CropBlockState(
 
 
 open class CropStage(
-    /** The blocks this stage is made of; null means no blocks are required. */
     val blocks: List<CropBlockState>? = null,
-    /** The stands this stage is made of; null means no stands are required. */
     val armorStands: List<CropArmorStand>? = null,
     val stageRange: IntRange,
-    /**
-     * Facts the matched stage implies, such as which time of day a noctilume craves. They land in
-     * the same readings map the stand readers write to.
-     */
     val traits: Map<String, Int> = emptyMap(),
-    /** The look a placed plant arrives with, when it differs from the grown look of the same stage. */
-    val placed: Boolean = false,
-    /** Values taken off the stands after matching. They never decide whether it matched. */
     val readers: List<CropStandReader> = emptyList()
 ) {
 
-    /** Runs every reader over a matched plant. A reader that recognises nothing leaves no reading. */
     fun read(stands: List<ArmorStand>): Map<String, Int> = readers.mapNotNull { reader ->
         stands.firstOrNull { reader.matches(it) }
             ?.let { reader.read(it) }
             ?.let { reader.key to it }
     }.toMap()
 
-    /** What the matcher reads off a stand: read once per scan, not once per stage tried against it. */
     class StandReadings {
         class Reading(
             val position: Vec3,
@@ -153,7 +139,6 @@ open class CropStage(
         ) {
             private val items = HashMap<EquipmentSlot, String?>()
 
-            /** The plain item this stand carries in one slot, read once per slot. */
             fun itemIn(slot: EquipmentSlot): String? =
                 items.getOrPut(slot) { EntityUtils.itemIdIn(stand, slot) }
         }
@@ -185,8 +170,6 @@ open class CropStage(
         val matchedBlocks = mutableMapOf<BlockPos, BlockState>()
 
         this.blocks?.forEach { blockDef ->
-            // drawn but never demanded, so a stage is not refused for the absence of
-            // something that was only ever decoration
             if (!blockDef.required) return@forEach
 
             val pos = origin.offset(blockDef.offset)
@@ -202,8 +185,7 @@ open class CropStage(
             origin.y.toDouble(),
             origin.z + footprint.height / 2.0
         )
-        // the world's own rotation is tried first, since exports are normalized to rotation zero.
-        // matching only at zero means a pre-normalization recording, which the result reports
+
         val worldStep = WorldRotation.step(origin.x, origin.z)
 
         val candidateSteps = when {
@@ -275,7 +257,6 @@ open class CropStage(
         val renderStands = mutableListOf<ArmorStand>()
         val blockMap = mutableMapOf<BlockPos, BlockState>()
 
-        // definitions describe the plant at rotation zero; the world decides how this one stands
         val worldStep = if (rotatesWithPlot) WorldRotation.step(baseBlock.x, baseBlock.z) else 0
         val center = Vec3(
             baseBlock.x + footprint.width / 2.0,
@@ -419,19 +400,14 @@ object WorldRotation {
     }
 }
 
-/** Everything in a greenhouse that decays does so three days after it was planted. */
 const val DEFAULT_DECAY_TIME_MS: Long = 3L * 24 * 60 * 60 * 1000
 
-/** [CropDefinition.decayTimeMs] for a plant that never decays, such as the fleshtrap. */
 const val NEVER_DECAYS: Long = -1L
 
-/** The longer life a few of the harder mutations get, twice the usual three days. */
+const val FIVE_DAY_DECAY_TIME_MS: Long = 5L * 24 * 60 * 60 * 1000
 const val SIX_DAY_DECAY_TIME_MS: Long = 6L * 24 * 60 * 60 * 1000
+const val TEN_DAY_DECAY_TIME_MS: Long = 10L * 24 * 60 * 60 * 1000
 
-/**
- * How the stands of one role are turned, declared once per crop. A head pose belongs to the skull
- * it carries rather than to the stage, so stages hold only their offsets.
- */
 sealed interface StandPose {
 
     /** The head pose a stand of this role has at world position (x, z) with that offset. */
@@ -454,7 +430,7 @@ sealed interface StandPose {
      */
     data class Cycle(val poses: List<Rotations>) : StandPose {
         override fun headAt(x: Int, z: Int, offset: Vec3): Rotations =
-            poses[Math.floorMod(x + z + Math.floor(offset.y + 0.5).toInt(), poses.size)]
+            poses[Math.floorMod(x + z + floor(offset.y + 0.5).toInt(), poses.size)]
     }
 }
 
@@ -469,33 +445,21 @@ data class CropDefinition(
     val footprint: Footprint = Footprint(1,1),
     val requiredSoil: Set<Block> = setOf(Blocks.FARMLAND),
     val needsWater: Boolean = true,
+
+    val drainsNeighbours: Boolean = false,
     val isBaseCrop: Boolean = false,
     val isMutation: Boolean = false,
-    /** The stage a plant is placed at, when it is not the last for a mutation or the first otherwise. */
-    val placedStage: Int? = null,
-    /** The placed look is the grown look of the stage it is placed at, so no placed stage is recorded. */
-    val placedSameAsGrown: Boolean = false,
-    /** Shown in the ui when skyblock has no item of its own for this crop, a dead plant has none. */
     val displayItem: Item? = null,
-    /** The buffs and debuffs this crop carries, which are what make a layout worth planning. */
+
     val effects: Set<CropEffect> = emptySet(),
-    /** Each skull hash's pose, held once here instead of repeated on every stage that shows it. */
+
     val standPoses: Map<String, StandPose> = emptyMap(),
-    /**
-     * Stages this crop drops asleep on arriving at, so a prediction stops there instead of walking
-     * it past a sleep it could not have slept through. A snoozling sleeps at 5, 10 and 15.
-     */
     val sleepStages: Set<Int> = emptySet(),
-    /** Whether the plant turns with its plot. PlantBoy Advance stands the same way in every plot. */
     val rotatesWithPlot: Boolean = true
 ){
-    /** The stage a plant is placed at: the last for a mutation, the first for anything else. */
-    val stagePlacedAt: Int get() = placedStage ?: if (isMutation) maxStage else 1
-
-    /** The id a layout stores for this crop: its skyblock id, or its name when it has none. */
+    val stagePlacedAt: Int get() = if (isMutation) maxStage else 1
     val elementId: String get() = skyblockId?.id ?: name
 
-    /** Every look this crop can have, patterns expanded to one stage each. Built once, read by every scan. */
     val stages: List<CropStage> = stageDefs.flatMap { if (it is CropStagePattern) it.expand() else listOf(it) }
 
     override fun toString(): String {
@@ -512,7 +476,6 @@ data class StageMatchResult(
     val rotationLegacy: Boolean = false
 ) {
     companion object {
-        /** No match. */
         val NONE = StageMatchResult(false, 0, emptyList(), emptyMap())
     }
 }
@@ -527,18 +490,13 @@ data class ElementRuntimeState(
 )
 
 data class GreenhouseElementInstance(
-    /** [CropDefinition.elementId] of the crop. */
     val elementId: String,
     val slot: LayoutSlot,
-    var waterLevel: Int? = null,
+    var waterLevel: Double? = null,
     var growthStage: GrowthStageInfo? = null,
     var age: Long? = null,
     val cropDef: CropDefinition,
-    /**
-     * What the scan learned about this plant beyond its stage: hunger, sleep, craving and the like.
-     */
     val readings: MutableMap<String, Int> = mutableMapOf(),
-    /** other crops that may appear on this slot instead; such a slot is always a target */
     val alternatives: MutableList<CropDefinition> = mutableListOf(),
 ) {
     val merged: Boolean get() = alternatives.isNotEmpty()
@@ -576,6 +534,13 @@ data class GreenhouseElementInstance(
     /** Whether the player put this plant down, as opposed to it growing or appearing on its own. */
     var placed: Boolean = false
 
+    /**
+     * The water had every tick spent in debt been skipped, which costs nothing, against [waterLevel]
+     * which charges every one. Null until a prediction has walked the plant into debt, and cleared
+     * by any reading, since a reading is neither case but the truth. Not written to disk.
+     */
+    var waterBestCase: Double? = null
+
     /** A placed mutation has nothing left to grow, so it is shown as placed rather than at a stage. */
     val finishedByPlacing: Boolean get() = placed && cropDef.isMutation
 
@@ -584,7 +549,7 @@ data class GreenhouseElementInstance(
         cropDef.isMutation && !placed && (growthStage as? GrowthStageInfo.Known)?.let { it.stage >= cropDef.maxStage } == true
 
     /** Whether this plant drinks: a finished mutation, placed or grown out, never does; a base crop always does. */
-    val needsWater: Boolean get() = cropDef.needsWater && !finishedByPlacing && !fullyGrown
+    val needsWater: Boolean get() = cropDef.needsWater && !finishedByPlacing && !grownOut
 
     /** A copy on [slot], readings included, for a prediction that must not move the real plant. */
     fun copyForPrediction(slot: LayoutSlot): GreenhouseElementInstance =
@@ -593,6 +558,7 @@ data class GreenhouseElementInstance(
             it.waterExact = waterExact
             it.firstSeenStage = firstSeenStage
             it.placed = placed
+            it.waterBestCase = waterBestCase
         }
 
     /**
@@ -600,17 +566,25 @@ data class GreenhouseElementInstance(
      * the crop has only the one stage, so there is nothing to outlast and nothing to say.
      */
     fun outlastsGrowth(waterEffectPercent: Int): Boolean? {
-        if (!needsWater) return true
+        if (!needsWater || cropDef.drainsNeighbours) return true
 
         val water = waterLevel ?: return null
         if (water <= WaterModel.DEATH) return false
 
         val ticksLeft = WaterModel.ticksUntilDeath(water, waterEffectPercent) ?: return true
-        val stage = lowestStage ?: return null
+
+        // in debt the water was charged for every tick while the low end of the stage took none,
+        // and a skipped tick costs no water: only the stages the high end took are what the water
+        // paid for, so that end is the one the water agrees with. Outside debt the lowest is the
+        // stage with the most left to pay for
+        val stage = (if (waterPredictedInDebt) highestStage else lowestStage) ?: return null
         if (cropDef.maxStage <= 1) return null
 
         return ticksLeft > cropDef.maxStage - stage
     }
+
+    /** Whether even the lowest stage this plant might be at is its last. */
+    val grownOut: Boolean get() = (lowestStage ?: 0) >= cropDef.maxStage
 
     /** The lowest stage this plant might be at now, which is all a scan can promise about most. */
     val lowestStage: Int?

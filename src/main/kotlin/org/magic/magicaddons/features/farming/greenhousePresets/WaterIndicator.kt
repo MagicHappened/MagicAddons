@@ -35,8 +35,11 @@ object WaterIndicator {
             val plant = element.instance
             val water = plant.waterLevel
 
-            plant.needsWater && water != null && water < WaterModel.FULL &&
-                    !(ignoreGrown && reachesFullGrowth(grid, element))
+            // a grown plant has stopped drinking, but one a soggybud drinks from is still worth water
+            val feedsDrainer = plant.cropDef.needsWater && grid.layout.plantsAround(plant).any { it.cropDef.drainsNeighbours && !it.grownOut }
+
+            (plant.needsWater || feedsDrainer) && !plant.cropDef.drainsNeighbours && water != null && water < WaterModel.FULL &&
+                    !(ignoreGrown && !feedsDrainer && reachesFullGrowth(grid, element))
         }
         if (thirsty.isEmpty()) return
 
@@ -69,6 +72,6 @@ object WaterIndicator {
 
         val ticksLeft = (plant.cropDef.maxStage - stage).coerceAtLeast(0)
 
-        return WaterModel.after(water, ticksLeft, grid.layout.waterEffectAt(plant.slot)) >= 0
+        return WaterModel.after(water, ticksLeft, GreenhouseGrid.waterEffectAt(grid.layout, plant.slot)) >= 0
     }
 }

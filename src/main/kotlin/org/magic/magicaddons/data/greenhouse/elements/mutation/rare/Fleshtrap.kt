@@ -52,7 +52,7 @@ object Fleshtrap : CropDefinitionProvider {
                         hashString = "c7f45f6cb2e4bbf45c5537c4dc3055a323021d62db7d91cc60beb02956401fb9"
                     )
                 ),
-                8..8,
+                8..8
             ),
             CropStage(
                 blocks = listOf(
@@ -122,7 +122,6 @@ object Fleshtrap : CropDefinitionProvider {
             )),
         maxStage = 14,
         decayTimeMs = NEVER_DECAYS,
-        isMutation = true,
-        placedSameAsGrown = true
+        isMutation = true
     )
 }
