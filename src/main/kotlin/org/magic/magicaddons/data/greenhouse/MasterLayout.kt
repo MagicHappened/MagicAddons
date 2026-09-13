@@ -20,7 +20,39 @@ data class MasterLayout(
     fun plotTitle(plot: GreenhouseLayout): String = plot.name ?: "Plot ${plots.indexOf(plot) + 1}"
 
     /** One more empty plot at the end of the list. */
-    fun addPlot(): GreenhouseLayout = GreenhouseLayout(id = plotId(plots.size)).also { plots.add(it) }
+    fun addPlot(): GreenhouseLayout = GreenhouseLayout(id = freePlotId()).also { plots.add(it) }
+
+    /**
+     * The lowest plot id no plot here carries. Removing a plot leaves a gap in the numbering, and
+     * the next plot takes the gap rather than the id of the plot now last in the list.
+     */
+    private fun freePlotId(): String =
+        generateSequence(0) { it + 1 }.map { plotId(it) }.first { id -> plots.none { it.id == id } }
+
+    /**
+     * Gives every plot sharing an id with an earlier one a free id of its own. A file written while
+     * a new plot could take the id of the plot last in the list holds such pairs, and a greenhouse
+     * assigned one of them was resolving to whichever came first.
+     */
+    fun repairPlotIds(): Boolean {
+        var repaired = false
+
+        for (index in plots.indices) {
+            val plot = plots[index]
+            if (plots.subList(0, index).none { it.id == plot.id }) continue
+
+            plots[index] = GreenhouseLayout(
+                id = freePlotId(),
+                name = plot.name,
+                size = plot.size,
+                slots = plot.slots,
+                elementInstances = plot.elementInstances
+            )
+            repaired = true
+        }
+
+        return repaired
+    }
 
     fun isEmpty(): Boolean = plots.all { it.elementInstances.isEmpty() }
 

@@ -161,11 +161,5 @@ class PresetUI(
     private fun LayoutFormat.isSinglePlot(): Boolean = this === SkyMutationsFormat || this === SkyShardsFormat
 
     /** The format behind a menu entry. */
-    private fun formatFor(type: LayoutFormatType): LayoutFormat =
-        when (type) {
-            LayoutFormatType.SkyMutations -> SkyMutationsFormat
-            LayoutFormatType.SkyShards -> SkyShardsFormat
-            LayoutFormatType.SkyLayouts -> SkyLayoutsFormat
-            LayoutFormatType.MagicAddons -> ShareCodeFormat
-        }
+    private fun formatFor(type: LayoutFormatType): LayoutFormat = type.format
 }

@@ -166,6 +166,31 @@ object Cindershade : CropDefinitionProvider {
                     )
                 ),
                 8..8
+            ),
+            // the same last stage wearing younger wart: four plants read this way, each in a plot
+            // turned its own way
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = netherwartState(1)
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, -0.5, 0.0),
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
+                        hashString = "66aa7b369efc0186937373242fe406e196281f0caf76899a4661c960b47fb74c",
+                        isSmall = false
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(0.0, 0.09375, 0.0),
+                        headRotation = Rotations(0.0f, 45.0f, 0.0f),
+                        hashString = "a0646bc0558155207204711cf5d3d07920e0e98c9b2be0b6107becb409a97427",
+                        isSmall = false
+                    )
+                ),
+                8..8
             )
         ),
         maxStage = 8,

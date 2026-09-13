@@ -135,17 +135,18 @@ object Melon : CropDefinitionProvider {
                         blockState = melonStemState(6)
                     )
                 ),
-                armorStands = CropArmorStand.matcherPattern(
-                    offsets = listOf(
-                        Vec3(0.21875, 0.1875, 0.1875),
-                        Vec3(0.0, -0.53125, 0.0)
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.21875, 0.1875, 0.1875),
+                        headRotation = Rotations(22.5f, 0.0f, 22.5f),
+                        hashString = "afa92dd43afed9e640cf3d3b008ca5199634ec8512de5e1f5eeaecd761296cb9"
                     ),
-                    rotations = listOf(
-                        Rotations(22.5f, 0.0f, 22.5f),
-                        Rotations(0.0f, 0.0f, -22.5f)
-                    ),
-                    hashString = "afa92dd43afed9e640cf3d3b008ca5199634ec8512de5e1f5eeaecd761296cb9",
-                    isSmall = false
+                    CropArmorStand(
+                        offset = Vec3(0.0, -0.53125, 0.0),
+                        headRotation = Rotations(0.0f, 0.0f, -22.5f),
+                        hashString = "afa92dd43afed9e640cf3d3b008ca5199634ec8512de5e1f5eeaecd761296cb9",
+                        isSmall = false
+                    )
                 ),
                 7..7,
             ),

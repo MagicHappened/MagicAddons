@@ -47,6 +47,7 @@ object GreenhousePresets : Feature() {
         EventBus.register(GreenhouseData)
         SkyBlockAPI.eventBus.register(GreenhouseData)
         EventBus.register(GreenhouseWatering)
+        EventBus.register(HungerBars)
         EventBus.register(PlantWarnings)
         EventBus.register(GreenhouseKey)
         EventBus.register(GreenhouseHud)

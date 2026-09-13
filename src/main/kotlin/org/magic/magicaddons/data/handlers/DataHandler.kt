@@ -132,6 +132,10 @@ object DataHandler {
             return@run mutableListOf()
         }
 
+        GreenhouseData.presetGrids.forEach { preset ->
+            if (preset.repairPlotIds()) Common.LOGGER.warn("Preset ${preset.displayName()} had plots sharing an id, renumbered")
+        }
+
         GreenhouseData.greenhousesInitialized = true
         GreenhouseData.greenhouseGrids = CodecStorage.load(
             file,

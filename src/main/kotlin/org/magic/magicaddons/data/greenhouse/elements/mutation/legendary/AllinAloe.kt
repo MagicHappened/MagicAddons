@@ -11,6 +11,7 @@ import org.magic.magicaddons.data.greenhouse.CropDefinition
 import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
 import org.magic.magicaddons.data.greenhouse.CropStage
 import org.magic.magicaddons.data.greenhouse.CropStates.melonStemState
+import org.magic.magicaddons.data.greenhouse.CropStates.stateOf
 import org.magic.magicaddons.data.greenhouse.NEVER_DECAYS
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockId
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
@@ -246,6 +247,32 @@ object AllinAloe : CropDefinitionProvider {
                     )
                 ),
                 9..9,
+                readers = listOf(
+                    CropStandReader.aloeStageLabel(),
+                    CropStandReader.hungerPercentLabel(CropStandReader.REWARDS_RESET, "reset"),
+                    CropStandReader.aloeMultiplierLabel(CropStandReader.REWARDS_MULTIPLIER, "reward")
+                )
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = stateOf("minecraft:spruce_fence[east=false,north=false,south=false,waterlogged=false,west=false]")
+                    ),
+                    CropBlockState(
+                        offset = BlockPos(0, 2, 0),
+                        blockState = melonStemState(7)
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, 1.25, 0.09375),
+                        headRotation = Rotations(-45.0f, 0.0f, 0.0f),
+                        hashString = "d846f1f7ea8b021e1feedb00811baa8d3eb4de88800a7ebd8f852e806e60af90",
+                        isSmall = false
+                    )
+                ),
+                14..14,
                 readers = listOf(
                     CropStandReader.aloeStageLabel(),
                     CropStandReader.hungerPercentLabel(CropStandReader.REWARDS_RESET, "reset"),

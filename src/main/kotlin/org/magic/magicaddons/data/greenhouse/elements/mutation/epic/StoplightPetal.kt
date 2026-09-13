@@ -56,7 +56,8 @@ object StoplightPetal : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.46875, 0.0),
-                        hashString = "57f6c922e742b5c571b1cf091d6d4bc06360f4f03443d79c5174097b0b373d7e"
+                        hashString = "57f6c922e742b5c571b1cf091d6d4bc06360f4f03443d79c5174097b0b373d7e",
+                        isSmall = false
                     )
                 ),
                 2..2
@@ -87,12 +88,13 @@ object StoplightPetal : CropDefinitionProvider {
                 blocks = listOf(
                     CropBlockState(
                         offset = BlockPos(0, 1, 0),
-                        blockState = melonStemState(7)
+                        blockState = melonStemState(5)
                     )
                 ),
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, 0.75, 0.0),
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
                         hashString = "f15bd3a726eee1f2f8ffd3a92ae95c44a2f37f6b0345a795b44e0360564c67fe"
                     ),
                     CropArmorStand(
@@ -116,12 +118,12 @@ object StoplightPetal : CropDefinitionProvider {
                     CropArmorStand(
                         offset = Vec3(0.0, -0.4375, 0.0),
                         headRotation = Rotations(0.0f, 0.0f, 0.0f),
-                        hashString = "57f6c922e742b5c571b1cf091d6d4bc06360f4f03443d79c5174097b0b373d7e"
+                        hashString = "57f6c922e742b5c571b1cf091d6d4bc06360f4f03443d79c5174097b0b373d7e",
+                        isSmall = false
                     ),
                     CropArmorStand(
                         offset = Vec3(0.0, 0.84375, 0.0),
-                        hashString = "f15bd3a726eee1f2f8ffd3a92ae95c44a2f37f6b0345a795b44e0360564c67fe",
-                        isSmall = false
+                        hashString = "f15bd3a726eee1f2f8ffd3a92ae95c44a2f37f6b0345a795b44e0360564c67fe"
                     )
                 ),
                 5..5

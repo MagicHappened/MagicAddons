@@ -22,6 +22,12 @@ const val GREENHOUSE_SIZE: Int = 10
 /** How far above the soil a plant reaches: its stands are read and whatever is in its way is found within this. */
 const val CROP_HEIGHT: Int = 5
 
+/** What a tick takes off a hunger bar, read off fleshtraps going from 100 to 80 over one tick. */
+const val HUNGER_LOSS_PER_TICK: Int = 20
+
+/** How many ticks a plant with [hunger] left still grows through before its bar is empty. */
+fun ticksFedFrom(hunger: Int): Int = (hunger + HUNGER_LOSS_PER_TICK - 1) / HUNGER_LOSS_PER_TICK
+
 class GreenhouseGrid(
     var state: GridState,
     var layout: GreenhouseLayout
@@ -52,8 +58,33 @@ class GreenhouseGrid(
     fun bestTurnFor(wanted: GreenhouseLayout): Int =
         (0 until 4).maxBy { turns -> agreement(wanted.turned(turns)) }
 
-    /** how many of [wanted]'s soil blocks and plants are in place */
-    private fun agreement(wanted: GreenhouseLayout): Int {
+    /**
+     * The turn of [wanted] the plot agrees with, keeping [current] unless another turn agrees
+     * strictly better: an empty plot agrees with every turn alike, and must not undo a turn the
+     * player chose.
+     */
+    fun bestTurnKeeping(wanted: GreenhouseLayout, current: Int): Int {
+        val best = bestTurnFor(wanted)
+
+        return if (agreement(wanted.turned(best)) > agreement(wanted.turned(current))) best else current
+    }
+
+    /** How many of [wanted]'s plants and soil blocks are in place, for saying which turn fits. */
+    fun agreementWith(wanted: GreenhouseLayout): Agreement = agreement(wanted)
+
+    /**
+     * How much of [wanted] is in place. Plants decide before soil: a soil block is cheap and often
+     * lies where several turns would put one, while a plant standing where the plan puts it says
+     * which way the plan was built.
+     */
+    class Agreement(val plants: Int, val soil: Int) : Comparable<Agreement> {
+        override fun compareTo(other: Agreement): Int =
+            compareValuesBy(this, other, { it.plants }, { it.soil })
+
+        override fun toString(): String = "$plants plants, $soil soil"
+    }
+
+    private fun agreement(wanted: GreenhouseLayout): Agreement {
         val soil = wanted.slots.count { slot ->
             val wantedBlock = slot.placedBlock?.block ?: return@count false
             wantedBlock == layout.getSlot(slot.x, slot.y)?.placedBlock?.block
@@ -65,7 +96,7 @@ class GreenhouseGrid(
             }
         }
 
-        return soil + plants
+        return Agreement(plants, soil)
     }
 
     fun getPosForSlotCoords(x: Int, y: Int): BlockPos? {
@@ -245,13 +276,15 @@ class GreenhouseGrid(
                     if (standing != null && standing.elementId == read.instance.elementId) {
                         carryOver(standing, read)
                     } else {
-                        if (standing == null && def.isMutation && state.lastUpdateTimestamp != null) {
-                            // only a plant the player was seen putting down counts as placed; anything
-                            // else where nothing stood at the last look grew there on its own
+                        // only a plant the player was seen putting down counts as placed. The look
+                        // before may have read the slot as another crop while its stands were still
+                        // coming, so a placement is claimed whatever stood there; anything else where
+                        // nothing stood at the last look grew there on its own
+                        if (def.isMutation && state.lastUpdateTimestamp != null) {
                             val placedNow = callbacks.placementConfirmed(def, read.instance.slot, this)
                             if (read.instance.placed || placedNow) {
                                 callbacks.markAsPlacedPlant(read.instance)
-                            } else {
+                            } else if (standing == null) {
                                 callbacks.claimSpawnedMutation(read.instance, layout)
                                 capToTicksSinceLook(read.instance)
                             }
@@ -343,6 +376,14 @@ class GreenhouseGrid(
         // rather than the one this scan happens to find it at
         found.instance.firstSeenStage = standing.firstSeenStage ?: found.instance.lowestStage
         found.instance.placed = standing.placed
+
+        // a reading the scan found no stand for is kept: the game takes a hunger bar down while a
+        // watering can is held, and the plant is no less fed for it. Only what a reader supplies,
+        // since a trait the matched look no longer carries, such as being asleep, is gone
+        val readerKeys = found.instance.cropDef.stages.flatMapTo(mutableSetOf()) { stage -> stage.readers.map { it.key } }
+        standing.readings.forEach { (key, value) ->
+            if (key in readerKeys) found.instance.readings.putIfAbsent(key, value)
+        }
 
         // predicted past death and still standing means ticks were skipped. The fewest that leave
         // it alive put it one tick from dying, so that is assumed and said out loud
@@ -483,6 +524,12 @@ class GreenhouseGrid(
         instances.forEach { instance ->
             val maxStage = instance.cropDef.maxStage
 
+            // a hunger bar loses a fixed share every tick, grown or not, and the plant grows only on
+            // the ticks it starts with something left in it
+            val hunger = instance.hunger
+            val fedTicks = if (hunger == null) ticks else ticks.coerceAtMost(ticksFedFrom(hunger))
+            if (hunger != null) instance.readings[CropStandReader.HUNGER] = (hunger - ticks * HUNGER_LOSS_PER_TICK).coerceAtLeast(0)
+
             // a finished plant stops drinking, so no water is taken off one. Judged by the lowest
             // stage it might be at, so a plant only probably grown keeps drying
             val lowestStage = instance.lowestStage
@@ -514,19 +561,21 @@ class GreenhouseGrid(
                 instance.waterBestCase = if (inDebt) instance.waterBestCase ?: before else instance.waterLevel
             }
 
-            if (instance.isAsleep || cravingUnfulfilled || instance.isStarving) {
+            if (instance.isAsleep || cravingUnfulfilled || fedTicks == 0) {
                 dry(ticks)
                 return@forEach
             }
 
-            instance.age = instance.age?.plus(ticks * tickMs)
+            instance.age = instance.age?.plus(fedTicks * tickMs)
 
             // a plant stops drinking once it has grown out, so only the ticks it spends growing take
             // water off it. Outside debt every tick is taken and the low end has the most left to
             // take; in debt only a taken tick costs water, and the high end is the one that took
-            // them, so once it has grown out nothing more can be charged
+            // them, so once it has grown out nothing more can be charged. A plant that starves
+            // before growing out dries through every tick, fed or not
             val stageToGrow = if (inDebt) instance.highestStage else lowestStage
-            val drinkingTicks = if (stageToGrow == null) ticks else ticks.coerceAtMost((maxStage - stageToGrow).coerceAtLeast(0))
+            val stagesLeft = stageToGrow?.let { (maxStage - it).coerceAtLeast(0) }
+            val drinkingTicks = if (stagesLeft == null || fedTicks < stagesLeft) ticks else stagesLeft
 
             dry(drinkingTicks)
 
@@ -543,7 +592,7 @@ class GreenhouseGrid(
 
                 fun climbed(from: Int): Int {
                     var stage = from
-                    repeat(ticks) {
+                    repeat(fedTicks) {
                         if (stage < maxStage && banked >= WaterModel.DRAIN_PER_STAGE * stage) stage++
                     }
                     return stage
@@ -565,8 +614,8 @@ class GreenhouseGrid(
 
             // in debt every tick may have been skipped, so the low end stays where it was while the
             // high end takes every tick: a 3 becomes 3 to 4
-            val first = if (inDebt) range.first else (range.first + ticks).coerceAtMost(ceiling(range.first))
-            val last = (range.last + ticks).coerceAtMost(ceiling(range.last))
+            val first = if (inDebt) range.first else (range.first + fedTicks).coerceAtMost(ceiling(range.first))
+            val last = (range.last + fedTicks).coerceAtMost(ceiling(range.last))
 
             // both ends landing on the same stage leaves nothing to estimate
             instance.growthStage =
@@ -713,12 +762,14 @@ class GreenhouseGrid(
             return ElementRuntimeState(instance = instance, standEntities = stands, blocksMap = blocks)
         }
 
-        /** Every stand sharing the space a crop of [footprint] occupies from [origin]. */
+        /**
+         * Every stand sharing the space a crop of [footprint] occupies from [origin], markers
+         * included: a bar hung over a plant is a marker stand carrying only a name.
+         */
         private fun standsAround(origin: BlockPos, footprint: Footprint): List<ArmorStand> {
             val level = Minecraft.getInstance().level ?: return emptyList()
 
             return level.getEntitiesOfClass(ArmorStand::class.java, footprint.spaceAbove(origin, CROP_HEIGHT))
-                .filterNot { it.isMarker }
         }
 
         /** The unclaimed stands and the blocks above the soil across [footprint] from [origin]. */

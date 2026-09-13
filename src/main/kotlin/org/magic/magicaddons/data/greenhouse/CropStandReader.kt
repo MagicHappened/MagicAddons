@@ -64,11 +64,21 @@ class CropStandReader(
             (it.filled + it.debt + it.other) * 100 / it.total
         }
 
+        /**
+         * A bar of the plant's own, told by notches in a colour the water bar never uses. While a
+         * can is held the water bar hangs where this one did, and an empty water bar is all white,
+         * so a bar with no coloured notch is not read: the reading already held stands until the
+         * plant's own bar is back.
+         */
         fun bar(key: String): CropStandReader = CropStandReader(
             key = key,
-            matches = { it.customName?.let { name -> barPercent(name) != null } == true },
-            read = { it.customName?.let { name -> barPercent(name) } }
+            matches = { it.customName?.let { name -> ownBarPercent(name) } != null },
+            read = { it.customName?.let { name -> ownBarPercent(name) } }
         )
+
+        fun ownBarPercent(name: Component): Int? = barNotches(name)
+            ?.takeIf { it.filled == 0 && it.debt == 0 && it.other > 0 }
+            ?.let { it.other * 100 / it.total }
 
         fun hungerPercentLabel(key: String, contains: String): CropStandReader = CropStandReader(
             key = key,

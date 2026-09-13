@@ -12,6 +12,7 @@ import org.magic.magicaddons.data.greenhouse.CropStage
 import org.magic.magicaddons.data.greenhouse.CropStandReader
 import org.magic.magicaddons.data.greenhouse.NEVER_DECAYS
 import org.magic.magicaddons.data.greenhouse.CropStates.melonStemState
+import org.magic.magicaddons.data.greenhouse.CropStates.wheatState
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
 object Fleshtrap : CropDefinitionProvider {
@@ -22,6 +23,61 @@ object Fleshtrap : CropDefinitionProvider {
         ),
         skyblockId = SkyBlockItemId.item("FLESHTRAP"),
         stageDefs = listOf(
+            // the hunger label floats above every stage and is read, not matched
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = wheatState(1)
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, -0.65625, 0.0),
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
+                        hashString = "c7f45f6cb2e4bbf45c5537c4dc3055a323021d62db7d91cc60beb02956401fb9",
+                        isSmall = false
+                    )
+                ),
+                1..1,
+                readers = listOf(CropStandReader.bar(CropStandReader.HUNGER))
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = wheatState(3)
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, -0.4375, 0.0),
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
+                        hashString = "c7f45f6cb2e4bbf45c5537c4dc3055a323021d62db7d91cc60beb02956401fb9",
+                        isSmall = false
+                    )
+                ),
+                2..2,
+                readers = listOf(CropStandReader.bar(CropStandReader.HUNGER))
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = wheatState(3)
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, -0.34375, 0.0),
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
+                        hashString = "c7f45f6cb2e4bbf45c5537c4dc3055a323021d62db7d91cc60beb02956401fb9",
+                        isSmall = false
+                    )
+                ),
+                3..3,
+                readers = listOf(CropStandReader.bar(CropStandReader.HUNGER))
+            ),
             CropStage(
                 blocks = listOf(
                     CropBlockState(
@@ -32,10 +88,13 @@ object Fleshtrap : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.15625, 0.0),
-                        hashString = "c7f45f6cb2e4bbf45c5537c4dc3055a323021d62db7d91cc60beb02956401fb9"
+                        headRotation = Rotations(22.5f, 0.0f, 0.0f),
+                        hashString = "c7f45f6cb2e4bbf45c5537c4dc3055a323021d62db7d91cc60beb02956401fb9",
+                        isSmall = false
                     )
                 ),
-                4..4
+                4..4,
+                readers = listOf(CropStandReader.bar(CropStandReader.HUNGER))
             ),
             CropStage(
                 blocks = listOf(

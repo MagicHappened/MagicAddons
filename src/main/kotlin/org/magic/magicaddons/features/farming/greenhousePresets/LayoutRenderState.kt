@@ -30,6 +30,8 @@ import org.magic.magicaddons.data.greenhouse.GreenhouseGrid
 import org.magic.magicaddons.render.WorldRenderer
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.EntityUtils
+import org.magic.magicaddons.data.greenhouse.CropRegistry
+import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockId.Companion.getSkyBlockId
 
 /**
  * preset hologram in world renderer starting with soil blocks then plants
@@ -51,9 +53,21 @@ object LayoutRenderState {
     /** Pale on purpose: the tint multiplies the texture, and a saturated one drains the block's colour. */
     private const val GHOST_TINT: Int = 0xFFB8CCFF.toInt()
 
-    /** The glow around a ghosted head, drawn as itself rather than multiplied over a texture. */
+    /**
+     * The glow around a ghosted head, drawn as itself rather than multiplied over a texture. A head
+     * of the crop the player is holding glows in its own colour, so the slots that item goes to
+     * stand apart from the rest of the plan.
+     */
     @JvmStatic
-    val ghostOutlineColor: Int get() = PlannerMark.Missing.color
+    fun ghostOutlineColorOf(stand: UUID): Int {
+        val held = heldCrop()
+
+        return if (held != null && plannerLayout.standCrops[stand] == held) PlannerMark.InHand.color else PlannerMark.Missing.color
+    }
+
+    /** The crop the item in the player's hand puts down, null for anything else. */
+    private fun heldCrop(): String? =
+        Minecraft.getInstance().player?.mainHandItem?.getSkyBlockId()?.id?.let { CropRegistry.get(it)?.elementId }
 
     /** State a plan does not care about, because nothing the player does decides it. */
     private val IGNORED_PROPERTIES: List<IntegerProperty> = listOf(FarmlandBlock.MOISTURE)
@@ -100,7 +114,10 @@ object LayoutRenderState {
         val standGroups: Map<String, List<ArmorStand>>,
 
         val watchMarks: Map<BlockPos, Pair<VoxelShape, PlannerMark>> = emptyMap(),
-        val watchStands: Map<UUID, Int> = emptyMap()
+        val watchStands: Map<UUID, Int> = emptyMap(),
+        /** Which crop each ghost block and each ghost stand belongs to, by [CropDefinition.elementId]. */
+        val ghostCrops: Map<BlockPos, String> = emptyMap(),
+        val standCrops: Map<UUID, String> = emptyMap()
     ) {
         val ghostStands: List<ArmorStand> = standGroups.values.flatten()
 
@@ -134,6 +151,8 @@ object LayoutRenderState {
     private var plannerLayout: PlannerLayout = PlannerLayout.NOTHING
 
     fun standTint(stand: UUID): Int {
+        if (!GreenhouseData.inOwnGarden()) return 0
+
         val current = plannerLayout
 
         return when {
@@ -142,7 +161,7 @@ object LayoutRenderState {
         }
     }
 
-    val ghostStands: List<ArmorStand> get() = plannerLayout.ghostStands
+    val ghostStands: List<ArmorStand> get() = if (GreenhouseData.inOwnGarden()) plannerLayout.ghostStands else emptyList()
 
     val hasSomethingToShow: Boolean
         get() = plannerLayout.marks.isNotEmpty() || plannerLayout.ghosts.isNotEmpty() || plannerLayout.badStands.isNotEmpty() || plannerLayout.blocked.isNotEmpty()
@@ -158,6 +177,10 @@ object LayoutRenderState {
 
     /** Draws the plan from the frame's own render pass, against the camera that frame uses. */
     fun submitPlan(poseStack: PoseStack, collector: SubmitNodeCollector, cameraPos: Vec3) {
+        // asked here rather than only where the plan is built: nothing is read in a visited garden,
+        // so the last plan of the player's own would otherwise stay on screen over somebody else's plot
+        if (!GreenhouseData.inOwnGarden()) return
+
         val plan = this.plannerLayout
         if (plan.marks.isEmpty() && plan.ghosts.isEmpty() && plan.watchMarks.isEmpty()) return
 
@@ -167,7 +190,12 @@ object LayoutRenderState {
 
         plan.marks.forEach { (pos, mark) -> presetBatch.fillWithOutline(pos, mark.first, mark.second.color, FILL_ALPHA) }
         plan.watchMarks.forEach { (pos, mark) -> presetBatch.fillWithOutline(pos, mark.first, mark.second.color, pulse) }
-        plan.ghosts.forEach { (pos, state) -> presetBatch.ghostBlockWithOutline(pos, state, GHOST_TINT, PlannerMark.Missing.color, ghostAlpha()) }
+        // a ghost of the crop in the player's hand is boxed in its own colour, so where that item goes is told from the rest
+        val held = heldCrop()
+        plan.ghosts.forEach { (pos, state) ->
+            val mark = if (held != null && plan.ghostCrops[pos] == held) PlannerMark.InHand else PlannerMark.Missing
+            presetBatch.ghostBlockWithOutline(pos, state, GHOST_TINT, mark.color, ghostAlpha())
+        }
         presetBatch.submitBatch(poseStack, collector)
     }
 
@@ -219,6 +247,8 @@ object LayoutRenderState {
 
         val marks = mutableMapOf<BlockPos, Pair<VoxelShape, PlannerMark>>()
         val ghosts = mutableMapOf<BlockPos, BlockState>()
+        val ghostCrops = mutableMapOf<BlockPos, String>()
+        val standCrops = mutableMapOf<UUID, String>()
         val badStands = mutableSetOf<UUID>()
         val blocked = mutableSetOf<BlockPos>()
         val standGroups = mutableMapOf<String, List<ArmorStand>>()
@@ -255,12 +285,11 @@ object LayoutRenderState {
                 }
                 val growing = footprintSlots.mapNotNull { grid.elementCovering(it) }.distinct()
 
-                // a target appears on its own, so nothing is planned for its slot and whatever grows
-                // there is the watch pass's business rather than the building's
-                if (instance.slot.slotMark == LayoutSlot.Marking.Target) return@forEach
+                val target = instance.slot.slotMark == LayoutSlot.Marking.Target
 
                 if (growing.isNotEmpty()) {
-                    // the right plant in the right place, so there is nothing to plan and nothing in the way
+                    // the right plant in the right place, so there is nothing to plan and nothing in
+                    // the way. A target appears on its own, so anything but its crop is in its way
                     val right = growing.singleOrNull()?.takeIf {
                         instance.defInSlot(it.instance.cropDef) &&
                                 it.instance.slot.x == instance.slot.x && it.instance.slot.y == instance.slot.y
@@ -274,12 +303,14 @@ object LayoutRenderState {
                 val soil = grid.getPosForSlotCoords(instance.slot.x, instance.slot.y)
                     ?: return@forEach
 
-                // a plant at a stage nobody has described matches nothing, and planning for its slot
-                // as bare put a ghost inside it. Anything growing on the soil is a plant
-                if (isOccupied(level, soil, instance.cropDef.footprint)) {
+                // nothing recognised, but something stands there: a plant at a stage nobody has
+                // described, a decorative stand, a block. It is marked as in the way rather than
+                // planned through; a target slot with nothing on it is left to spawn
+                if (markObstructions(level, soil, instance.cropDef.footprint, marks, badStands)) {
                     blocked.add(soil)
                     return@forEach
                 }
+                if (target) return@forEach
 
                 cropsNeeded.merge(instance.cropDef, 1, Int::plus)
 
@@ -289,6 +320,7 @@ object LayoutRenderState {
                 render.blockMap.forEach { (pos, state) ->
                     // the plant's own blocks, which have no second form the way its soil does
                     compare(level, pos, state, emptySet(), marks, ghosts)
+                    if (pos in ghosts) ghostCrops[pos] = instance.cropDef.elementId
                 }
 
                 // a crop in the same place at the same stage wants the same stands it already
@@ -297,10 +329,14 @@ object LayoutRenderState {
                         "${instance.cropDef.name},${stage.stageRange}"
 
                 standGroups[key] = previous.standGroups[key] ?: render.stands
+                standGroups[key]?.forEach { standCrops[it.uuid] = instance.cropDef.elementId }
 
                 // a stand already standing in the crop's space is in the way of it
-                level.getEntitiesOfClass(ArmorStand::class.java, instance.cropDef.footprint.spaceAbove(soil, CROP_HEIGHT))
-                    .filter { EntityUtils.carriesAnything(it) }
+                // by where the stand's feet are, not its box: a stand at the edge of the slot next
+                // door has a box reaching into this one, and is not in the way of anything
+                val space = instance.cropDef.footprint.spaceAbove(soil, CROP_HEIGHT)
+                level.getEntitiesOfClass(ArmorStand::class.java, space)
+                    .filter { space.contains(it.position()) && EntityUtils.carriesAnything(it) }
                     .forEach { badStands.add(it.uuid) }
             }
         }
@@ -310,7 +346,7 @@ object LayoutRenderState {
         if (GreenhousePresets.harvestHighlightOnlyTargets()) watchTargets(level, grid, layout, watchMarks, watchStands)
         else watchHarvestable(level, grid, watchMarks, watchStands)
 
-        val next = PlannerLayout(soilPhase, marks, ghosts, badStands, blocked, standGroups, watchMarks, watchStands)
+        val next = PlannerLayout(soilPhase, marks, ghosts, badStands, blocked, standGroups, watchMarks, watchStands, ghostCrops, standCrops)
 
         if (soilComplete) PlannerNeeds.tellPlants(grid, cropsNeeded)
         else PlannerNeeds.tellSoil(grid, soilNeeded)
@@ -466,20 +502,43 @@ object LayoutRenderState {
     }
 
     /**
-     * Whether anything is growing on the soil a plan wants to fill. Any block or armor stand counts,
-     * even one no definition matches, so a plan is never drawn through an existing plant.
+     * Marks whatever stands on soil a plan wants to fill as in the way, and says whether anything
+     * did: every block above the soil, and every stand that is not a name tag. A plan is never drawn
+     * through an existing plant, even one no definition matches.
      */
-    private fun isOccupied(level: Level, soil: BlockPos, footprint: Footprint): Boolean {
+    private fun markObstructions(
+        level: Level,
+        soil: BlockPos,
+        footprint: Footprint,
+        marks: MutableMap<BlockPos, Pair<VoxelShape, PlannerMark>>,
+        badStands: MutableSet<UUID>
+    ): Boolean {
+        var found = false
+
         for (offsetX in 0 until footprint.width) {
             for (offsetY in 0 until footprint.height) {
-                if (!level.getBlockState(soil.offset(offsetX, 1, offsetY)).isAir) return true
+                for (offsetUp in 1..CROP_HEIGHT) {
+                    val pos = soil.offset(offsetX, offsetUp, offsetY)
+                    val state = level.getBlockState(pos)
+                    if (state.isAir) continue
+
+                    marks[pos] = state.getShape(level, pos) to PlannerMark.Wrong
+                    found = true
+                }
             }
         }
 
-        // hypixel hangs a player's level and name off invisible stands that follow them about, and
-        // one walking past a slot is not a plant standing in it
-        return level.getEntitiesOfClass(ArmorStand::class.java, footprint.spaceAbove(soil, CROP_HEIGHT))
-            .any { !it.isMarker && EntityUtils.carriesAnything(it) }
+        // a stand counts when it can be seen or wears anything: hypixel hangs a player's level and
+        // name off invisible, bare stands that follow them about, and those are not in anything's way
+        val space = footprint.spaceAbove(soil, CROP_HEIGHT)
+        level.getEntitiesOfClass(ArmorStand::class.java, space)
+            .filter { space.contains(it.position()) && !it.isMarker && (!it.isInvisible || EntityUtils.carriesAnything(it)) }
+            .forEach {
+                badStands.add(it.uuid)
+                found = true
+            }
+
+        return found
     }
 
     /**

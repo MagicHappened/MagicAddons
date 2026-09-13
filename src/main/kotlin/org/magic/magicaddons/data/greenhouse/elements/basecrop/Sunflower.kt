@@ -190,6 +190,23 @@ object Sunflower : CropDefinitionProvider {
                 blocks = listOf(
                     CropBlockState(
                         offset = BlockPos(0, 1, 0),
+                        blockState = sunflowerState(DoubleBlockHalf.LOWER)
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, 0.5625, 0.1875),
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
+                        hashString = "f942c5e8426609a132549b7df5300739fade9122dad08a1d0265347795cf51ad",
+                        isSmall = false
+                    )
+                ),
+                14..14
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0, 1, 0),
                         blockState = sunflowerState()
                     )
                 ),

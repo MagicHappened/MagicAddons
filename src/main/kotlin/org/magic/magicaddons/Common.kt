@@ -76,5 +76,7 @@ object Common {
         const val WATER_FULL_COLOR: Int = 0xFF3F7FDF.toInt()
         const val WATER_DEBT_COLOR: Int = 0xFFCC3333.toInt()
         const val WATER_TRACK_COLOR: Int = 0xB0202020.toInt()
+        const val MEAT_FULL_COLOR: Int = 0xFF8B5A2B.toInt()
+        const val MEAT_TRACK_COLOR: Int = WATER_TRACK_COLOR
     }
 }

@@ -34,7 +34,8 @@ enum class SafariZone(val displayName: String, val uniqueMobs: List<SafariMob>) 
             SafariMob("Bluebird") { isParrot(it, Parrot.Variant.BLUE) },
             SafariMob("Fluffling") { isType(it, "panda") },
             SafariMob("Foxtrot") { isType(it, "fox") },
-            SafariMob("Hideonfloor") { isType(it, "shulker") },
+            // a shulker until a capture on it fails, a silverfish wearing the shulker's look after
+            SafariMob("Hideonfloor") { isType(it, "shulker") || isType(it, "silverfish") },
             SafariMob("Honeybug") { isType(it, "bee") },
             SafariMob("Macaw") { isParrot(it, Parrot.Variant.RED_BLUE) },
             SafariMob("Parakeet") { isParrot(it, Parrot.Variant.GREEN) },
