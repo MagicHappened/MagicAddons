@@ -8,6 +8,7 @@ enum class PlannerMark(val displayName: String, val defaultColor: Int) {
     Adjust("Needs Adjusting", 0xFFFF9922.toInt()),
     Remove("To Remove", 0xFFAA44EE.toInt()),
     Missing("Missing", 0xFF3399FF.toInt()),
+    InHand("Missing, In Hand", 0xFFFFD54F.toInt()),
     Ready("Harvestable", 0xFF33FF66.toInt()),
     Blocking("Blocking A Target", 0xFFFF3333.toInt());
 

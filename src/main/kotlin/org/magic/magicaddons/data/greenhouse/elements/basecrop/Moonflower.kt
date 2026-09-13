@@ -207,6 +207,23 @@ object Moonflower : CropDefinitionProvider {
                 blocks = listOf(
                     CropBlockState(
                         offset = BlockPos(0, 1, 0),
+                        blockState = sunflowerState(DoubleBlockHalf.LOWER)
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, 0.5625, 0.1875),
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
+                        hashString = "24f985b13feff57c62440a1b88fc093da03966878a48a513bce57ee9d5004980",
+                        isSmall = false
+                    )
+                ),
+                14..14
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0, 1, 0),
                         blockState = sunflowerState()
                     )
                 ),

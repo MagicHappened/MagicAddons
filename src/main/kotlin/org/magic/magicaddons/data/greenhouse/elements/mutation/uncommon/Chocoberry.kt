@@ -44,12 +44,29 @@ object Chocoberry : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.34375, 0.0),
+                        headRotation = Rotations(0.0f, 0.0f, -65.0f),
+                        hashString = "4478a25a4c5189aa292e6076ae5938cf6c8253b7719e310118fb8312a9b62470",
+                        isSmall = false
+                    )
+                ),
+                2..2
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = melonStemState(3)
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, -0.34375, 0.0),
                         headRotation = Rotations(0.0f, 0.0f, -45.0f),
                         hashString = "4478a25a4c5189aa292e6076ae5938cf6c8253b7719e310118fb8312a9b62470",
                         isSmall = false
                     )
                 ),
-                2..3
+                3..3
             ),
             CropStage(
                 blocks = listOf(
@@ -61,7 +78,9 @@ object Chocoberry : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.25, 0.0),
-                        hashString = "4478a25a4c5189aa292e6076ae5938cf6c8253b7719e310118fb8312a9b62470"
+                        headRotation = Rotations(0.0f, 0.0f, -45.0f),
+                        hashString = "4478a25a4c5189aa292e6076ae5938cf6c8253b7719e310118fb8312a9b62470",
+                        isSmall = false
                     )
                 ),
                 4..4

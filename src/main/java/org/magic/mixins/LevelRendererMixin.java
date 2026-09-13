@@ -183,7 +183,7 @@ public abstract class LevelRendererMixin {
                         // alone says this head is a plan rather than a plant
                         if (state instanceof WrappedEntityRenderState wrapped) {
                             wrapped.magicaddons$setHeadOutlineColor(
-                                    LayoutRenderState.getGhostOutlineColor()
+                                    LayoutRenderState.ghostOutlineColorOf(stand.getUUID())
                             );
                         }
                     },

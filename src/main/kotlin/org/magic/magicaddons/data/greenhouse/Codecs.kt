@@ -3,6 +3,8 @@ package org.magic.magicaddons.data.greenhouse
 import com.mojang.datafixers.util.Either
 import com.mojang.serialization.Codec
 import com.mojang.serialization.codecs.RecordCodecBuilder
+import net.minecraft.core.registries.BuiltInRegistries
+import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.state.BlockState
 import org.magic.magicaddons.data.greenhouse.GreenhouseGrid.GridState
 import org.magic.magicaddons.data.greenhouse.GrowthStageInfo.Estimated
@@ -162,13 +164,25 @@ object Codecs {
         }
     }
 
+    /**
+     * A soil as its block name alone. No soil a greenhouse takes has state worth keeping: farmland's
+     * moisture is the only one, and the planner ignores it. Read either way, since files written
+     * before this carried the whole state.
+     */
+    private val SOIL_CODEC: Codec<BlockState> by lazy {
+        Codec.either(BuiltInRegistries.BLOCK.byNameCodec(), BlockState.CODEC).xmap(
+            { either: Either<Block, BlockState> -> either.map({ it.defaultBlockState() }, { it }) },
+            { state: BlockState -> Either.left<Block, BlockState>(state.block) }
+        )
+    }
+
     val GREENHOUSE_SLOT_CODEC: Codec<LayoutSlot> by lazy {
         RecordCodecBuilder.create { instance ->
             instance.group(
                 Codec.INT.fieldOf("x").forGetter { it.x },
                 Codec.INT.fieldOf("y").forGetter { it.y },
 
-                BlockState.CODEC
+                SOIL_CODEC
                     .optionalFieldOf("block")
                     .forGetter { Optional.ofNullable(it.placedBlock) },
                 Codec.INT.optionalFieldOf("slot_marking")

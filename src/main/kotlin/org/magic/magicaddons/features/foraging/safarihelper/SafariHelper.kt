@@ -3,6 +3,9 @@ package org.magic.magicaddons.features.foraging.safarihelper
 import net.minecraft.ChatFormatting
 import net.minecraft.client.Minecraft
 import net.minecraft.network.chat.Component
+import net.minecraft.sounds.SoundEvents
+import org.magic.magicaddons.util.compat.McCompat
+import java.util.UUID
 import net.minecraft.world.entity.Display
 import net.minecraft.world.entity.Entity
 import net.minecraft.world.item.Items
@@ -84,6 +87,14 @@ object SafariHelper : HighlightFeature() {
     /** Marks the rarer version of a mob, written on the name tag standing next to it. */
     private const val SPARKLING_TAG: String = "sparkling"
 
+    /** The title fades over these many ticks either side of staying two seconds. */
+    private const val SPARKLING_TITLE_FADE: Int = 5
+    private const val SPARKLING_TITLE_STAY: Int = 40
+
+    /** A rising run of three plings, this many ticks apart. */
+    private val SPARKLING_PLING_PITCHES: List<Float> = listOf(1.0f, 1.0f, 1.0f)
+    private const val SPARKLING_PLING_GAP: Int = 4
+
     private const val MACAW: String = "Macaw"
 
     private val catchPatterns = listOf(
@@ -124,6 +135,14 @@ object SafariHelper : HighlightFeature() {
 
     override val throughWalls: Boolean get() = throughWallsSetting.value
 
+    private val sparklingWarning = BooleanSetting(
+        key = "SparklingWarning",
+        displayName = "Sparkling Warning",
+        description = "Puts a title on screen, sends a chat message and plays a few plings the first " +
+                "time a sparkling is seen, on top of its glow. Once for each sparkling.",
+        value = false
+    )
+
     private val mobHighlight = BooleanSetting(
         key = "MobHighlight",
         displayName = "Mob Highlight",
@@ -131,7 +150,8 @@ object SafariHelper : HighlightFeature() {
         value = false,
         children = listOf(
             throughWallsSetting,
-            onlyUncaught
+            onlyUncaught,
+            sparklingWarning
         )
     )
 
@@ -254,6 +274,34 @@ object SafariHelper : HighlightFeature() {
 
     private val sparklingEntities = mutableSetOf<Entity>()
 
+    private val warnedSparklings = mutableSetOf<UUID>()
+
+    private val pendingPlings = ArrayDeque<Pair<Int, Float>>()
+
+    private fun warnOfSparkling(entity: Entity, mobName: String) {
+        if (!sparklingWarning.value || !warnedSparklings.add(entity.uuid)) return
+
+        McCompat.showTitle(
+            Component.literal("Sparkling $mobName Detected!").withStyle(ChatFormatting.YELLOW),
+            SPARKLING_TITLE_FADE, SPARKLING_TITLE_STAY, SPARKLING_TITLE_FADE
+        )
+        ChatUtils.sendWithPrefix("Sparkling $mobName detected!")
+
+        SPARKLING_PLING_PITCHES.forEachIndexed { index, pitch -> pendingPlings.addLast(index * SPARKLING_PLING_GAP to pitch) }
+    }
+
+    /** Plays whatever pling is due this tick and counts the rest down. */
+    private fun playDuePlings() {
+        if (pendingPlings.isEmpty()) return
+
+        val player = Minecraft.getInstance().player ?: run { pendingPlings.clear(); return }
+        val due = pendingPlings.filter { it.first <= 0 }
+        due.forEach { (_, pitch) -> player.playSound(SoundEvents.NOTE_BLOCK_PLING.value(), 1f, pitch) }
+        pendingPlings.removeAll(due)
+
+        for (index in pendingPlings.indices) pendingPlings[index] = pendingPlings[index].let { (ticks, pitch) -> (ticks - 1) to pitch }
+    }
+
     override fun highlightColor(entity: Entity): Int = when {
         entity in sparklingEntities -> SPARKLING_HIGHLIGHT_COLOR
         isTreasureDisplay(entity) -> TREASURE_HIGHLIGHT_COLOR
@@ -273,6 +321,7 @@ object SafariHelper : HighlightFeature() {
             invalidateHighlights()
         }
 
+        playDuePlings()
     }
 
     @EventHandler
@@ -479,6 +528,7 @@ object SafariHelper : HighlightFeature() {
 
         if (highlight && sparkling) {
             sparklingEntities.add(target)
+            currentZone?.mobMatching(info)?.let { warnOfSparkling(info.entity, it.displayName) }
         } else {
             sparklingEntities.remove(target)
             sparklingEntities.remove(info.entity)
@@ -519,11 +569,15 @@ object SafariHelper : HighlightFeature() {
         } == true
 
 
+
     private fun visiblePartOf(info: EntityInfo): Entity {
         val entity = info.entity
         if (!entity.isInvisible) return entity
 
-        return info.informationEntities?.firstOrNull { EntityUtils.carriedSkullHash(it) != null } ?: entity
+        return info.informationEntities?.firstOrNull { EntityUtils.carriedSkullHash(it) != null }
+            ?: entity.passengers.firstOrNull { !it.isInvisible }
+            ?: entity.vehicle?.takeIf { !it.isInvisible }
+            ?: entity
     }
 
     private fun isTreasureDisplay(entity: Entity): Boolean =

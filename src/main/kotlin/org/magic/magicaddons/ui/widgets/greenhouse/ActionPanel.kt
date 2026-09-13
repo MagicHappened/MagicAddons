@@ -1,6 +1,8 @@
 package org.magic.magicaddons.ui.widgets.greenhouse
 
+import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
+import org.magic.magicaddons.util.ScreenUtil.modText
 import net.minecraft.client.gui.components.Renderable
 import net.minecraft.client.gui.components.events.GuiEventListener
 import net.minecraft.client.input.MouseButtonEvent
@@ -38,28 +40,53 @@ abstract class ActionPanel : Renderable, HoverableContainer {
     /** What each button does, asked in the same order the buttons are laid out. */
     protected abstract fun onPressed(button: ClickableButtonWidget, event: MouseButtonEvent): Boolean
 
-    /** Puts the panel in the given box, buttons in a row along the top, wrapping when room runs out. */
+    /** Which group [button] is laid out in; each group starts its own row. Everything is in the first unless a panel says otherwise. */
+    protected open fun groupOf(button: ClickableButtonWidget): Int = 0
+
+    /** A small label written above a group's row, null for none. */
+    protected open fun groupLabel(group: Int): String? = null
+
+    /** Where each group's label was put, for drawing. */
+    private val labelAt = mutableMapOf<Int, Pair<Int, Int>>()
+
+    private val font get() = Minecraft.getInstance().font
+
+    /**
+     * Puts the panel in the given box: each group of buttons on its own row under its label, a row
+     * wrapping when room runs out.
+     */
     fun layoutIn(x: Int, y: Int, width: Int) {
         this.x = x
         this.y = y
         this.width = width
+        labelAt.clear()
 
-        var rowX = x + PADDING
         var rowY = y + PADDING + headerHeight()
-        var rowHeight = 0
 
-        buttons.filter { isShown(it) }.forEach { button ->
-            if (rowX + button.width > x + width - PADDING && rowX > x + PADDING) {
-                rowX = x + PADDING
-                rowY += rowHeight + Common.UI.SPACING
-                rowHeight = 0
+        buttons.filter { isShown(it) }.groupBy { groupOf(it) }.toSortedMap().forEach { (group, shown) ->
+            groupLabel(group)?.let {
+                labelAt[group] = (x + PADDING) to rowY
+                rowY += font.lineHeight + Common.UI.SPACING
             }
 
-            button.x = rowX
-            button.y = rowY
+            var rowX = x + PADDING
+            var rowHeight = 0
 
-            rowX += button.width + Common.UI.SPACING
-            rowHeight = maxOf(rowHeight, button.height)
+            shown.forEach { button ->
+                if (rowX + button.width > x + width - PADDING && rowX > x + PADDING) {
+                    rowX = x + PADDING
+                    rowY += rowHeight + Common.UI.SPACING
+                    rowHeight = 0
+                }
+
+                button.x = rowX
+                button.y = rowY
+
+                rowX += button.width + Common.UI.SPACING
+                rowHeight = maxOf(rowHeight, button.height)
+            }
+
+            rowY += rowHeight + Common.UI.SPACING_LARGE
         }
     }
 
@@ -75,6 +102,9 @@ abstract class ActionPanel : Renderable, HoverableContainer {
         }
 
     override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
+        labelAt.forEach { (group, at) ->
+            groupLabel(group)?.let { graphics.modText(font, it, at.first, at.second, Common.UI.TEXT_DIM_COLOR) }
+        }
         buttons.filter { isShown(it) }
             .forEach { it.extractRenderState(graphics, mouseX, mouseY, delta) }
     }

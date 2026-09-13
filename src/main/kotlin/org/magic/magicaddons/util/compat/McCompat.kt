@@ -5,6 +5,7 @@ import net.minecraft.client.Camera
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.components.ChatComponent
 import net.minecraft.client.gui.screens.Screen
+import net.minecraft.network.chat.Component
 //? if >=26.2 {
 /*import net.minecraft.network.chat.TextColor
 *///?}
@@ -59,6 +60,19 @@ object McCompat {
         /*minecraft.gui.hud.extractDeferredSubtitles()
         *///?} else {
         minecraft.gui.extractDeferredSubtitles()
+        //?}
+    }
+
+    /** Puts [title] up in the middle of the screen, fading in and out around [stay] ticks, all in ticks. */
+    fun showTitle(title: Component, fadeIn: Int, stay: Int, fadeOut: Int) {
+        //? if >=26.2 {
+        /*val hud = Minecraft.getInstance().gui.hud
+        hud.setTimes(fadeIn, stay, fadeOut)
+        hud.setTitle(title)
+        *///?} else {
+        val gui = Minecraft.getInstance().gui
+        gui.setTimes(fadeIn, stay, fadeOut)
+        gui.setTitle(title)
         //?}
     }
 

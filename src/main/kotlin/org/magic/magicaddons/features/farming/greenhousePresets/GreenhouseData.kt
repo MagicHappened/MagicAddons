@@ -238,6 +238,18 @@ object GreenhouseData : GridCallbacks {
         // and any stage predicted while away is corrected by what is actually standing
         if (!grid.setPlantData()) return
 
+        // the plan is laid the way the plot agrees with, judged afresh on arriving: what stands now
+        // says which way it was built, and a turn picked on assign may be stale by then
+        if (arrivalScanPending) {
+            grid.state.assignedLayout?.let { plan ->
+                val turns = grid.bestTurnKeeping(plan, grid.state.planTurns)
+                if (turns != grid.state.planTurns) {
+                    grid.state.planTurns = turns
+                    ChatUtils.sendWithPrefix("Plan on ${grid.layout.displayName()} re-laid at ${turns * 90}°, the turn what stands fits best.")
+                }
+            }
+        }
+
         claimPlantedCrop(grid)
 
         // the plan on screen is read off the plot, so it is only right until the plot changes

@@ -98,8 +98,13 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, GuiEv
         }
 
         /** The colour that fact is written in: a stage the plant has nothing left to grow past stands out. */
-        fun colorFor(instance: GreenhouseElementInstance): Int =
-            if (this == GrowthStage && instance.readyToHarvest) Common.UI.SUCCESS_COLOR else Common.UI.OVERLAY_TEXT_COLOR
+        fun colorFor(instance: GreenhouseElementInstance): Int = when {
+            this != GrowthStage -> Common.UI.OVERLAY_TEXT_COLOR
+            instance.readyToHarvest -> Common.UI.SUCCESS_COLOR
+            // a placed mutation can be picked back up until its first tick, after which it is stuck
+            instance.fullyGrownByPlacing && instance.uncollectable -> Common.UI.DANGER_COLOR
+            else -> Common.UI.OVERLAY_TEXT_COLOR
+        }
     }
 
     override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, deltaTick: Float) {
@@ -265,6 +270,17 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, GuiEv
         val bottom = y + height - WATER_BAR_INSET
         val top = bottom - WATER_BAR_HEIGHT
 
+        // a plant that has to be fed carries its hunger as a second meter along the top of the slot
+        val hunger = instance.hunger
+        if (hunger != null) {
+            val meatTop = y + WATER_BAR_INSET
+            val meatBottom = meatTop + WATER_BAR_HEIGHT
+
+            graphics.fillRounded(left, meatTop, right, meatBottom, WATER_BAR_RADIUS, Common.UI.MEAT_TRACK_COLOR)
+            val fed = barWidth * hunger.coerceIn(0, 100) / 100
+            if (fed > 0) graphics.fillRounded(left, meatTop, left + fed, meatBottom, WATER_BAR_RADIUS, Common.UI.MEAT_FULL_COLOR)
+        }
+
         // the time is about growing, which a grown donor has none left of
         if (instance.consumesWater) renderWaterVerdict(graphics, waterLevel, top)
 
@@ -420,7 +436,7 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, GuiEv
 
             if (!inPreset) {
                 when {
-                    instance.fullyGrownByPlacing -> add(labelled("Growth", "Placed"))
+                    instance.fullyGrownByPlacing -> add(labelled("Growth", if (instance.uncollectable) "Placed, uncollectable" else "Placed"))
                     instance.readyToHarvest -> add(labelled("Growth", "Harvestable"))
                     else -> growthText?.let { add(labelled("Growth", it)) }
                 }

@@ -1,6 +1,7 @@
 package org.magic.magicaddons.ui.screens
 
 import org.magic.magicaddons.util.ScreenUtil.modText
+import org.magic.magicaddons.util.toShortDuration
 import org.magic.magicaddons.commands.internal.MainInternal
 import org.magic.magicaddons.data.greenhouse.Footprint
 import org.magic.magicaddons.ui.widgets.greenhouse.PaletteItem
@@ -33,6 +34,7 @@ import org.magic.magicaddons.ui.HoverableContainer
 import org.magic.magicaddons.ui.OverlayContext
 import org.magic.magicaddons.ui.OverlayRenderable
 import org.magic.magicaddons.ui.widgets.PickContext
+import org.magic.magicaddons.ui.widgets.greenhouse.LayoutFormatType
 import org.magic.magicaddons.ui.widgets.SliderWidget
 import org.magic.magicaddons.ui.widgets.greenhouse.EditLayoutContextMenu
 import org.magic.magicaddons.ui.widgets.EnumWidget
@@ -119,7 +121,8 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
         onTurnPlan = { turnPlan() },
         onEditPreset = { editAssignedPreset() },
         onSaveAsPreset = { saveGreenhouseAsPreset() },
-        onRescan = { askRescan(it) }
+        onRescan = { askRescan(it) },
+        onExport = { askExport(it) }
     )
 
     /** Where a mode's own buttons begin, shared so the two modes line up with each other. */
@@ -342,7 +345,7 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
 
         predictShelfY = viewShelfY + viewShelfHeight + Common.UI.SPACING_LARGE
         predictShelfHeight = if (currentDisplay == CurrentDisplay.Greenhouses) {
-            shelfTitleHeight() + ActionPanel.PADDING * 2 + SliderWidget.HEIGHT
+            shelfTitleHeight() + ActionPanel.PADDING * 2 + SliderWidget.HEIGHT + Common.UI.SPACING + font.lineHeight
         } else {
             0
         }
@@ -877,6 +880,49 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
         })
     }
 
+    private fun askExport(event: MouseButtonEvent) {
+        val grid = displayedGrid() ?: return
+        val menu = PickContext(event.x.toInt(), event.y.toInt(), "Format:", LayoutFormatType.entries, this) { type ->
+            val result = type.format.export(asPreset(grid.layout))
+
+            result.notes.forEach { ChatUtils.sendWithPrefix(it) }
+
+            when (result) {
+                is LayoutTransferResult.Failure -> ChatUtils.sendWithPrefix(result.reason)
+                is LayoutTransferResult.Exported -> {
+                    Minecraft.getInstance().keyboardHandler.clipboard = result.text
+                    ChatUtils.sendWithPrefix(
+                        "Copied a ${type.format.displayName} layout for ${grid.layout.displayName()} to your clipboard"
+                    )
+                }
+                is LayoutTransferResult.Imported -> Unit
+            }
+        }
+        menu.init()
+        addContext(menu)
+    }
+
+    /**
+     * A greenhouse as a preset of it: its soils, marks and crops, and nothing only a standing plant
+     * has, such as water, stage or age.
+     */
+    private fun asPreset(layout: GreenhouseLayout): GreenhouseLayout {
+        val preset = GreenhouseLayout(id = layout.id, name = layout.displayName(), size = layout.size)
+
+        preset.slots.forEach { slot ->
+            val theirs = layout.getSlot(slot.x, slot.y)
+            slot.placedBlock = theirs?.placedBlock
+            slot.slotMark = theirs?.slotMark
+        }
+        layout.elementInstances.forEach { instance ->
+            val slot = preset.getSlot(instance.slot.x, instance.slot.y) ?: return@forEach
+            preset.elementInstances.add(
+                GreenhouseElementInstance(instance.elementId, slot, cropDef = instance.cropDef, alternatives = instance.alternatives.toMutableList())
+            )
+        }
+        return preset
+    }
+
     /** Asks before forgetting every plant of the greenhouse on show and reading it again from nothing. */
     private fun askRescan(event: MouseButtonEvent) {
         val grid = displayedGrid() ?: return
@@ -959,7 +1005,12 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
         followPlayerTurn()
 
         // read before the shelves are drawn, since what the panel says decides how tall it is
-        greenhousePanel.assigned = displayedGrid()?.state?.assignedLayout?.let { GreenhouseData.nameInFull(it) }
+        greenhousePanel.assigned = displayedGrid()?.let { grid ->
+            grid.state.assignedLayout?.let { plan ->
+                // the turn the plan is laid at is what decides which slot is which, so it is said
+                GreenhouseData.nameInFull(plan) + if (grid.state.planTurns == 0) "" else " (turned ${grid.state.planTurns * 90}°)"
+            }
+        }
 
         // the bookmarks first, so the frame drawn next covers where they tuck under it
         if (displayedGridWidget != null) {
@@ -1004,6 +1055,14 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
                 Component.literal(predictLabel()),
                 predictSlider.x + predictSlider.width + Common.UI.SPACING,
                 predictSlider.y + (SliderWidget.HEIGHT - font.lineHeight) / 2 + 1,
+                Common.UI.TEXT_COLOR,
+                false
+            )
+            graphics.text(
+                font,
+                Component.literal(predictWindow()),
+                predictSlider.x,
+                predictSlider.y + SliderWidget.HEIGHT + Common.UI.SPACING,
                 Common.UI.TEXT_COLOR,
                 false
             )
@@ -1546,6 +1605,24 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
     private fun predictLabel(): String =
         if (predictSlider.value == 0) PREDICT_NOW else "+${predictSlider.value}"
 
+    /**
+     * When the plot looks the way the slider shows it, as the chorus setting puts its absence: from
+     * the tick that many ahead landing until the one after it, counted from the tick already running.
+     */
+    private fun predictWindow(): String {
+        val ticks = predictSlider.value
+        if (ticks == 0) return ""
+
+        val tickMs = GreenhouseData.currentGrowthTickMs()
+        val remaining = GreenhouseData.remainingTickMs()
+        if (tickMs == null || remaining == null) return PREDICT_WINDOW_UNKNOWN
+
+        val from = remaining + (ticks - 1) * tickMs
+        val until = remaining + ticks * tickMs
+
+        return "in ${from.toShortDuration()} - ${until.toShortDuration()}"
+    }
+
     /** Shows the greenhouse with [layout], which also becomes the current greenhouse for the rest of the mod. */
     private fun gridWidgetChanged(layout: GreenhouseLayout) {
         dropPrediction()
@@ -1594,6 +1671,11 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
 
         grid.state.planTurns = Math.floorMod(grid.state.planTurns + 1, 4)
         GreenhouseData.regenRender()
+
+        // how well each turn fits what stands, so a plan that does not line up can be turned to
+        val plan = grid.state.assignedLayout ?: return
+        val fits = (0 until 4).joinToString("; ") { turns -> "${turns * 90}°: ${grid.agreementWith(plan.turned(turns))}" }
+        ChatUtils.sendWithPrefix("Plan turned to ${grid.state.planTurns * 90}°. In place per turn - $fits")
     }
 
     /** Shows the plot this greenhouse runs in preset mode, so it can be changed. */
@@ -1757,6 +1839,9 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
 
         /** Room kept beside the slider for the number of ticks. */
         private const val PREDICT_LABEL_WIDTH: Int = 22
+
+        /** What the window line reads while the tick clock has nothing to count from. */
+        private const val PREDICT_WINDOW_UNKNOWN: String = "tick time unknown"
 
         /** The furthest ahead the slider looks. */
         private const val MAX_PREDICT_TICKS: Int = 10

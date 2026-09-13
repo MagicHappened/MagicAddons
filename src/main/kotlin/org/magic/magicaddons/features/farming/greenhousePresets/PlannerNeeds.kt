@@ -54,14 +54,26 @@ object PlannerNeeds {
 
     private val SEEDS: SkyBlockId = SkyBlockItemId.item("SEEDS")
 
+    /**
+     * A crop put down as a seed rather than as itself: the seed it takes, what the sacks give for
+     * it, how many seeds one of those makes, and the sack's name for it. A pumpkin makes four.
+     */
+    private class Seeding(val seed: SkyBlockId, val source: SkyBlockId, val seedsPerSource: Int, val sackName: String)
+
+    private val SEEDINGS: Map<SkyBlockId, Seeding> = mapOf(
+        SkyBlockItemId.item("WHEAT") to Seeding(SEEDS, SEEDS, 1, "seeds"),
+        SkyBlockItemId.item("PUMPKIN") to Seeding(SkyBlockItemId.item("PUMPKIN_SEEDS"), SkyBlockItemId.item("PUMPKIN"), 4, "pumpkin"),
+        SkyBlockItemId.item("MELON") to Seeding(SkyBlockItemId.item("MELON_SEEDS"), SkyBlockItemId.item("MELON"), 1, "melon")
+    )
+
     /** map of each message a greenhouse sent to not repeat them */
     private val messageMap = mutableMapOf<String, Instant>()
 
     /** the requested item and its properties for the planner */
     private class RequestedItem(val label: String, val command: String?, val hover: Component)
 
-    /** the line last sent, and how to count it again */
-    private class LastPlannerMessage(val count: () -> List<RequestedItem>, var body: Component, var line: Component)
+    /** the line last sent, which greenhouse and phase it is for, and how to count it again */
+    private class LastPlannerMessage(val key: String, var count: () -> List<RequestedItem>, var body: Component, var line: Component)
 
     /** what to wait for before recounting */
     private enum class Answer { SACKS, MENU }
@@ -94,9 +106,15 @@ object PlannerNeeds {
 
     /** Names the soil still to place, once per visit to the greenhouse. */
     fun tellSoil(grid: GreenhouseGrid, blocks: Map<Block, Int>) {
-        if (blocks.isEmpty() || quiet(grid, "soil")) return
+        val count = { soilNeeds(blocks) }
 
-        send(grid, "soil") { soilNeeds(blocks) }
+        if (quiet(grid, "soil")) {
+            refreshCount(grid, "soil", count)
+            return
+        }
+        if (blocks.isEmpty()) return
+
+        send(grid, "soil", count)
     }
 
     private fun soilNeeds(blocks: Map<Block, Int>): List<RequestedItem> = blocks.mapNotNull { (block, count) ->
@@ -118,15 +136,24 @@ object PlannerNeeds {
 
     /** Names the plants still to put down, once per visit to the greenhouse. */
     fun tellPlants(grid: GreenhouseGrid, crops: Map<CropDefinition, Int>) {
-        if (crops.isEmpty() || quiet(grid, "plants")) return
+        val count = { plantNeeds(crops) }
 
-        send(grid, "plants") { plantNeeds(crops) }
+        if (quiet(grid, "plants")) {
+            refreshCount(grid, "plants", count)
+            return
+        }
+        if (crops.isEmpty()) return
+
+        send(grid, "plants", count)
     }
 
     private fun plantNeeds(crops: Map<CropDefinition, Int>): List<RequestedItem> = crops.mapNotNull { (def, count) ->
-        val wheat = def.skyblockId == SkyBlockItemId.item("WHEAT")
-        val label = if (wheat) "Seeds" else def.name
-        val id = if (wheat) SEEDS else def.skyblockId
+        val seeding = def.skyblockId?.let { SEEDINGS[it] }
+
+        if (seeding != null) return@mapNotNull seedNeed(def, count, seeding)
+
+        val label = def.name
+        val id = def.skyblockId
         val left = count - (id?.let { heldItems(it) } ?: 0)
         val name = label.lowercase()
 
@@ -140,6 +167,28 @@ object PlannerNeeds {
                 }
         }
     }
+
+    /**
+     * The need for a crop put down as a seed: what is held as seeds counts as is, what is held as
+     * the thing the seeds are made from counts for as many seeds as it makes, and the sacks are
+     * asked for just enough of that thing to make the rest.
+     */
+    private fun seedNeed(def: CropDefinition, count: Int, seeding: Seeding): RequestedItem? {
+        val held = heldItems(seeding.seed) + heldItems(seeding.source) * seeding.seedsPerSource
+        val left = count - held
+        if (left <= 0) return null
+
+        val label = if (seeding.seed == seeding.source) "Seeds" else "${def.name} Seeds"
+        val sources = (left + seeding.seedsPerSource - 1) / seeding.seedsPerSource
+
+        return fromStorage(label, left) { it.getSkyBlockId() == seeding.seed || it.getSkyBlockId() == seeding.source }
+            ?: RequestedItem(label, "/gfs ${seeding.sackName} $sources", seedSackHover(left, sources, seeding))
+    }
+
+    /** The sack hover for a seed need, saying what the sacks give and what that makes when they differ. */
+    private fun seedSackHover(seeds: Int, sources: Int, seeding: Seeding): Component =
+        if (seeding.seedsPerSource == 1 && seeding.seed == seeding.source) sackHover(seeds, seeding.sackName)
+        else Component.literal("Click here to get $sources ${seeding.sackName} from sacks, for $seeds seeds!")
 
     /** the need pointed at storage, when its pages hold enough */
     private fun fromStorage(label: String, left: Int, matches: (ItemStack) -> Boolean): RequestedItem? {
@@ -160,9 +209,22 @@ object PlannerNeeds {
         val needs = count()
         if (needs.isEmpty()) return
 
-        messageMap["${grid.layout.id}|$phase"] = Instant.now()
+        val key = "${grid.layout.id}|$phase"
+        messageMap[key] = Instant.now()
         val body = line(needs)
-        lastMessage = LastPlannerMessage(count, body, ChatUtils.sendWithPrefix(body))
+        lastMessage = LastPlannerMessage(key, count, body, ChatUtils.sendWithPrefix(body))
+    }
+
+    /**
+     * The plot changed under a line that is up: the next recount, which only a click brings, counts
+     * against what stands now rather than what stood when the line was sent. Nothing is redrawn
+     * here, so the line does not move on every plant put down.
+     */
+    private fun refreshCount(grid: GreenhouseGrid, phase: String, count: () -> List<RequestedItem>) {
+        val sent = lastMessage ?: return
+        if (sent.key != "${grid.layout.id}|$phase") return
+
+        sent.count = count
     }
 
     /** Runs the command behind a clicked item and takes the line out of chat until the game has answered. */

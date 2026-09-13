@@ -24,10 +24,10 @@ object Timestalk : CropDefinitionProvider {
             CropEffect.HarvestLoss
         ),
         skyblockId = SkyBlockItemId.item("TIMESTALK"),
-        /** Each skull's pose, found constant across every stage it appears in. */
         standPoses = mapOf(
             "d2306f4c5946990204517a73bbfa8281fd7d9a294f908b0286e708c51f79a063" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f)),
-            "7cf25e2106b1f8ac856c2d13e8850cdb6b4f96ae9df243a605d6a6d2e1fdacf8" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f))
+            "7cf25e2106b1f8ac856c2d13e8850cdb6b4f96ae9df243a605d6a6d2e1fdacf8" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f)),
+            "1b9add43e0e770b7c4ccdcf6708f8b9e875ff13b2a75ab63ff69f2f0e57af9e5" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f))
         ),
         stageDefs = listOf(
             CropStage(
@@ -153,6 +153,69 @@ object Timestalk : CropDefinitionProvider {
                 6..6
             ),
             CropStage(
+                blocks = CropBlockState.blockStatePattern(
+                    listOf(
+                        BlockPos(0, 1, 0),
+                        BlockPos(0, 2, 0)
+                    ),
+                    blockState = melonStemState(7)
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, -0.21875, 0.0),
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
+                        hashString = "d2306f4c5946990204517a73bbfa8281fd7d9a294f908b0286e708c51f79a063",
+                        isSmall = false
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(0.0, 0.375, 0.0),
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
+                        hashString = "7cf25e2106b1f8ac856c2d13e8850cdb6b4f96ae9df243a605d6a6d2e1fdacf8",
+                        isSmall = false
+                    )
+                ),
+                7..7
+            ),
+            CropStage(
+                blocks = CropBlockState.blockStatePattern(
+                    listOf(
+                        BlockPos(0, 1, 0),
+                        BlockPos(0, 2, 0)
+                    ),
+                    blockState = melonStemState(7)
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, -0.3125, 0.0),
+                        hashString = "d2306f4c5946990204517a73bbfa8281fd7d9a294f908b0286e708c51f79a063",
+                        isSmall = false
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(0.0, 0.25, 0.0),
+                        hashString = "7cf25e2106b1f8ac856c2d13e8850cdb6b4f96ae9df243a605d6a6d2e1fdacf8",
+                        isSmall = false
+                    )
+                ),
+                8..8
+            ),
+            CropStage(
+                blocks = CropBlockState.blockStatePattern(
+                    listOf(
+                        BlockPos(0, 1, 0),
+                        BlockPos(0, 2, 0)
+                    ),
+                    blockState = melonStemState(7)
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, -0.40625, 0.0),
+                        hashString = "d2306f4c5946990204517a73bbfa8281fd7d9a294f908b0286e708c51f79a063",
+                        isSmall = false
+                    )
+                ),
+                9..9
+            ),
+            CropStage(
                 blocks = listOf(
                     CropBlockState(
                         offset = BlockPos(0, 1, 0),
@@ -186,12 +249,71 @@ object Timestalk : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.40625, 0.0),
-                        hashString = "d2306f4c5946990204517a73bbfa8281fd7d9a294f908b0286e708c51f79a063"
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
+                        hashString = "d2306f4c5946990204517a73bbfa8281fd7d9a294f908b0286e708c51f79a063",
+                        isSmall = false
                     )
                 ),
                 11..11
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = melonStemState(5)
+                    ),
+                    CropBlockState(
+                        offset = BlockPos(0, 2, 0),
+                        blockState = melonStemState(7)
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, -0.46875, 0.0),
+                        hashString = "d2306f4c5946990204517a73bbfa8281fd7d9a294f908b0286e708c51f79a063",
+                        isSmall = false
+                    )
+                ),
+                12..12
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = melonStemState(5)
+                    ),
+                    CropBlockState(
+                        offset = BlockPos(0, 2, 0),
+                        blockState = melonStemState(7)
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, 0.3125, 0.0),
+                        hashString = "d2306f4c5946990204517a73bbfa8281fd7d9a294f908b0286e708c51f79a063"
+                    )
+                ),
+                13..13
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = melonStemState(5)
+                    ),
+                    CropBlockState(
+                        offset = BlockPos(0, 2, 0),
+                        blockState = melonStemState(7)
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, 0.3125, 0.0),
+                        hashString = "1b9add43e0e770b7c4ccdcf6708f8b9e875ff13b2a75ab63ff69f2f0e57af9e5"
+                    )
+                ),
+                14..14
             )
-
         ),
         decayTimeMs = FIVE_DAY_DECAY_TIME_MS,
         maxStage = 14,

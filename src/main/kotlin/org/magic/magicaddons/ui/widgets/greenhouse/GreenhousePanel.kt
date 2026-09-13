@@ -23,16 +23,19 @@ class GreenhousePanel(
     /** Keeps what is built here as a preset of its own. */
     private val onSaveAsPreset: () -> Unit,
     /** Forgets every plant of this greenhouse and reads it again, after asking. */
-    private val onRescan: (MouseButtonEvent) -> Unit
+    private val onRescan: (MouseButtonEvent) -> Unit,
+    /** Writes this greenhouse out as a preset would be, in a format picked at the mouse. */
+    private val onExport: (MouseButtonEvent) -> Unit
 ) : ActionPanel() {
 
-    private val unplanButton = ClickableButtonWidget("Remove assigned preset")
+    private val unplanButton = ClickableButtonWidget("Remove")
     private val assignButton = ClickableButtonWidget("Assign preset")
-    private val changeButton = ClickableButtonWidget("Change preset")
-    private val turnButton = ClickableButtonWidget("Turn plan \u21bb")
-    private val editButton = ClickableButtonWidget("Edit preset")
+    private val changeButton = ClickableButtonWidget("Change")
+    private val turnButton = ClickableButtonWidget("\u21bb")
+    private val editButton = ClickableButtonWidget("Edit")
     private val saveButton = ClickableButtonWidget("Save as preset")
-    private val rescanButton = ClickableButtonWidget("Forcibly rescan greenhouse")
+    private val rescanButton = ClickableButtonWidget("Rescan")
+    private val exportButton = ClickableButtonWidget("Export")
 
     private val font = Minecraft.getInstance().font
 
@@ -56,13 +59,21 @@ class GreenhousePanel(
         }
 
     override val buttons: List<ClickableButtonWidget> =
-        listOf(assignButton, changeButton, turnButton, editButton, saveButton, unplanButton, rescanButton)
+        listOf(assignButton, changeButton, turnButton, editButton, saveButton, exportButton, unplanButton, rescanButton)
 
     override fun isShown(button: ClickableButtonWidget): Boolean = when (button) {
         assignButton -> showButtons && assigned == null
-        saveButton, rescanButton -> showButtons
+        saveButton, exportButton, rescanButton -> showButtons
         else -> showButtons && assigned != null
     }
+
+    /** The plan's buttons under the plan's name, the greenhouse's own under a label of their own. */
+    override fun groupOf(button: ClickableButtonWidget): Int = when (button) {
+        saveButton, exportButton, rescanButton -> 1
+        else -> 0
+    }
+
+    override fun groupLabel(group: Int): String? = if (group == 1) "This greenhouse" else null
 
     override fun headerHeight(): Int = if (assigned == null) 0 else font.lineHeight + Common.UI.SPACING
 
@@ -83,6 +94,7 @@ class GreenhousePanel(
             editButton -> onEditPreset()
             saveButton -> onSaveAsPreset()
             rescanButton -> onRescan(event)
+            exportButton -> onExport(event)
             else -> return false
         }
 

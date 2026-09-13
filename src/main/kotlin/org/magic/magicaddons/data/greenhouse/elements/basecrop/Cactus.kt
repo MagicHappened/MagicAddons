@@ -130,14 +130,19 @@ object Cactus : CropDefinitionProvider {
                     ),
                     blockState = cactusState()
                 ),
-                armorStands = CropArmorStand.matcherPattern(
+                armorStands = listOf(
+                    // the top pad is the one small stand of the three
+                    CropArmorStand(
+                        offset = Vec3(-0.15625, 2.59375, -0.03125),
+                        headRotation = Rotations(0.0f, 0.0f, -67.5f),
+                        hashString = "d4b3ea5cb6b6f046e326621ca11ffb7d6aec22d66c0d81e5039b19ee4400309f"
+                    )
+                ) + CropArmorStand.matcherPattern(
                     offsets = listOf(
-                        Vec3(-0.15625, 2.59375, -0.03125),
                         Vec3(0.3125, 1.0, 0.0),
                         Vec3(0.0, 1.5, 0.0)
                     ),
                     rotations = listOf(
-                        Rotations(0.0f, 0.0f, -67.5f),
                         Rotations(0.0f, 0.0f, 67.5f),
                         Rotations(0.0f, 0.0f, 0.0f)
                     ),

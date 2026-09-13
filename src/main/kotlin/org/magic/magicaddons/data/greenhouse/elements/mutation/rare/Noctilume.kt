@@ -146,12 +146,18 @@ object Noctilume : CropDefinitionProvider {
                 offsets = settlingOffsets,
                 fullSized = setOf(0, 1, 3)
             ),
-            // todo: grown look at stage 4 craving day was recorded wrong, record it again
-            // grown at four, craving night
             look(
                 stage = 4,
                 hash = "b1b18493d50ff8972f7ef359893d9063fdc54cb822c679002957c294fc8b0005",
                 craving = CropStandReader.NEEDS_NIGHT,
+                wheatAge = 6,
+                offsets = grownOffsets,
+                fullSized = setOf(0, 1, 2, 3)
+            ),
+            look(
+                stage = 4,
+                hash = "5cdd8c3d5d76a1dc07cdbedc5fd0bb230852df9c1864896f8893f5bfdf3d4c96",
+                craving = CropStandReader.NEEDS_DAY,
                 wheatAge = 6,
                 offsets = grownOffsets,
                 fullSized = setOf(0, 1, 2, 3)

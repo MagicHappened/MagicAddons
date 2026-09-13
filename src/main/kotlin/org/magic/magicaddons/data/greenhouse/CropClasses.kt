@@ -124,9 +124,14 @@ open class CropStage(
     val readers: List<CropStandReader> = emptyList()
 ) {
 
+    /**
+     * Each reader's value off the stands, the highest when several stands answer it: an empty water
+     * bar reads as an empty bar of any kind, and must not outrank the plant's own.
+     */
     fun read(stands: List<ArmorStand>): Map<String, Int> = readers.mapNotNull { reader ->
-        stands.firstOrNull { reader.matches(it) }
-            ?.let { reader.read(it) }
+        stands.filter { reader.matches(it) }
+            .mapNotNull { reader.read(it) }
+            .maxOrNull()
             ?.let { reader.key to it }
     }.toMap()
 
@@ -449,6 +454,9 @@ data class CropDefinition(
     val elementId: String get() = skyblockId?.id ?: name
     val stages: List<CropStage> = stageDefs.flatMap { if (it is CropStagePattern) it.expand() else listOf(it) }
 
+    /** Whether the plant hangs a hunger bar over itself at any stage. */
+    val readsHunger: Boolean get() = stages.any { stage -> stage.readers.any { it.key == CropStandReader.HUNGER } }
+
     override fun toString(): String {
         return name
     }
@@ -498,6 +506,9 @@ data class GreenhouseElementInstance(
 
     val isStarving: Boolean get() = readings[CropStandReader.HUNGER] == 0
 
+    /** How fed a plant with a hunger bar is, 0 to 100, or null when it has none. */
+    val hunger: Int? get() = readings[CropStandReader.HUNGER]
+
     /** if a tick has passed with negative water, then we don't know if it truly passed or not */
     var waterPredictedInDebt: Boolean = false
 
@@ -510,6 +521,12 @@ data class GreenhouseElementInstance(
     var waterBestCase: Double? = null
 
     val fullyGrownByPlacing: Boolean get() = placed && cropDef.isMutation
+
+    /**
+     * A placed mutation that has been through a tick: the game lets one be picked back up only
+     * until then. One whose age is unknown is taken as past it, which is the safer reading.
+     */
+    val uncollectable: Boolean get() = fullyGrownByPlacing && (age ?: 1L) > 0L
 
     /**
      * A crop with nothing left to grow, worth harvesting: a mutation that grew here or a base crop at
