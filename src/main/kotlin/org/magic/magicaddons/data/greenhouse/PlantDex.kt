@@ -97,10 +97,10 @@ object PlantDex {
             if (awakeMissing.isNotEmpty()) parts += "awake look unrecorded at stages ${ranges(awakeMissing)}"
         }
 
-        if (looks.any { CropStandReader.CRAVES in it.traits }) {
+        if (looks.any { CropStandReader.NEEDS_TIME in it.traits }) {
             val stages = (1..def.maxStage).toList()
-            val dayMissing = stages.filter { stage -> looks.none { stage in it.stageRange && it.traits[CropStandReader.CRAVES] == CropStandReader.CRAVES_DAY } }
-            val nightMissing = stages.filter { stage -> looks.none { stage in it.stageRange && it.traits[CropStandReader.CRAVES] == CropStandReader.CRAVES_NIGHT } }
+            val dayMissing = stages.filter { stage -> looks.none { stage in it.stageRange && it.traits[CropStandReader.NEEDS_TIME] == CropStandReader.NEEDS_DAY } }
+            val nightMissing = stages.filter { stage -> looks.none { stage in it.stageRange && it.traits[CropStandReader.NEEDS_TIME] == CropStandReader.NEEDS_NIGHT } }
             if (dayMissing.isNotEmpty()) parts += "day look unrecorded at stages ${ranges(dayMissing)}"
             if (nightMissing.isNotEmpty()) parts += "night look unrecorded at stages ${ranges(nightMissing)}"
         }

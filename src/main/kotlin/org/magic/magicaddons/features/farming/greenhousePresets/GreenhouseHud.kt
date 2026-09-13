@@ -85,7 +85,7 @@ object GreenhouseHud : HudElement("greenhouse", "Greenhouse") {
         val tickMs = GreenhouseData.currentGrowthTickMs()
         val remainingMs = GreenhouseData.remainingTickMs()
         val thirst = if (tickMs == null || remainingMs == null) null else plants
-            .filter { it.needsWater }
+            .filter { it.consumesWater }
             .mapNotNull { plant ->
                 val water = plant.waterLevel ?: return@mapNotNull null
                 val effect = GreenhouseGrid.waterEffectAt(grid.layout, plant.slot)

@@ -236,7 +236,7 @@ class GreenhouseGrid(
                 // a placed mutation is still there until the plot says otherwise: bare soil means it
                 // was broken, a dead bush means it rotted. Anything else read on it is the matcher's
                 // confusion, since its placed look is not recorded and it never grows into another
-                val runtime = if (standing != null && standing.finishedByPlacing && !replacesPlaced(standing, found)) {
+                val runtime = if (standing != null && standing.fullyGrownByPlacing && !replacesPlaced(standing, found)) {
                     stillPlaced(standing, remainingStands) ?: continue
                 } else {
                     val read = found ?: continue
@@ -248,9 +248,9 @@ class GreenhouseGrid(
                         if (standing == null && def.isMutation && state.lastUpdateTimestamp != null) {
                             // only a plant the player was seen putting down counts as placed; anything
                             // else where nothing stood at the last look grew there on its own
-                            val placedNow = callbacks.takePlacement(def, read.instance.slot, this)
+                            val placedNow = callbacks.placementConfirmed(def, read.instance.slot, this)
                             if (read.instance.placed || placedNow) {
-                                callbacks.claimPlacedPlant(read.instance)
+                                callbacks.markAsPlacedPlant(read.instance)
                             } else {
                                 callbacks.claimSpawnedMutation(read.instance, layout)
                                 capToTicksSinceLook(read.instance)
@@ -348,7 +348,7 @@ class GreenhouseGrid(
         // it alive put it one tick from dying, so that is assumed and said out loud
         val water = standing.waterLevel
 
-        if (water != null && water <= WaterModel.DEATH && found.instance.needsWater) {
+        if (water != null && water <= WaterModel.DEATH && found.instance.consumesWater) {
             found.instance.waterLevel =
                 WaterModel.aliveFloor(water, waterEffectAt(layout, found.instance.slot))
             found.instance.waterBestCase = null
@@ -412,7 +412,7 @@ class GreenhouseGrid(
         val bud = preview.elementInstances.find { it.slot.x == slot.x && it.slot.y == slot.y } ?: return null
 
         var ticks = 0
-        while (!bud.grownOut) {
+        while (!bud.isFullyGrown) {
             if (ticks >= horizon) return null
             advance(preview.elementInstances, preview, 1, tickMs)
             ticks++
@@ -435,10 +435,10 @@ class GreenhouseGrid(
         }
 
         // a drain is taken from whatever the donor still holds that tick, so the ticks are walked one
-        // at a time rather than closed over. A bud that has grown out stops draining from then on
-        // TODO check if full grown soggybud still drains 2.5 water, right now the logic based on that it doesnt drain at full growth
+        // at a time rather than closed over. A bud that has grown out stops draining from then on,
+        // as observed; a grown donor is still drained, also observed (a grown melon at 100 read 97.5)
         repeat(ticks) {
-            drain(draining.filter { !it.grownOut }, layout)
+            drain(draining.filter { !it.isFullyGrown }, layout)
             advanceBy(instances, layout, 1, tickMs)
         }
     }
@@ -505,7 +505,7 @@ class GreenhouseGrid(
             // the tick may have been skipped, which costs no water, so the best case stays where it
             // was while the worst case is charged
             fun dry(byTicks: Int) {
-                if (!instance.needsWater || instance.cropDef.drainsNeighbours) return
+                if (!instance.consumesWater || instance.cropDef.drainsNeighbours) return
 
                 val before = instance.waterLevel
                 instance.waterLevel = before?.let {
@@ -580,24 +580,22 @@ class GreenhouseGrid(
 
     companion object {
 
-        /** Who a scan reports placements and survivors to; the feature installs itself here. */
         var callbacks: GridCallbacks = GridCallbacks.None
 
-        /** How far a plant that never decays is walked before it is given up on growing. */
+        /** how many ticks before a never decaying plant is considered stalled. */
         const val GROWTH_HORIZON_TICKS: Int = 200
 
-        /** The water effect beside [slot] as a prediction should take it: none at all when told so. */
         fun waterEffectAt(layout: GreenhouseLayout, slot: LayoutSlot): Int =
             if (callbacks.assumeFlatWater()) 0 else layout.waterEffectAt(slot)
 
-        /** The garden clock as a craving value: its custom time reaches the client as world time. */
+        /** returns which noctilume need is met based on the time of day of the world */
         fun timeOfDayNow(): Int {
             val time = (Minecraft.getInstance().level?.overworldClockTime ?: 0L) % 24000L
 
             return if (time in 13000L..22999L) {
-                CropStandReader.CRAVES_NIGHT
+                CropStandReader.NEEDS_NIGHT
             } else {
-                CropStandReader.CRAVES_DAY
+                CropStandReader.NEEDS_DAY
             }
         }
 
@@ -663,7 +661,7 @@ class GreenhouseGrid(
             instance.firstSeenStage = instance.lowestStage
 
             // a recorded look matched, so the memory of putting a plant down here has served its purpose
-            callbacks.forgetPlacementAt(origin)
+            callbacks.forgetPlayerPlacementAt(origin)
 
             // what winning this stage implies, filed before the stand readings: a noctilume's craving
             // is carried by which skull matched
@@ -694,12 +692,12 @@ class GreenhouseGrid(
             remainingStands: MutableList<ArmorStand>,
             slot: LayoutSlot
         ): ElementRuntimeState? {
-            val definition = callbacks.placedHereAt(origin) ?: return null
+            val definition = callbacks.placedDefinitionAt(origin) ?: return null
             if (soil !in definition.requiredSoil) return null
 
             val (stands, blocks) = partsInFootprint(origin, definition.footprint, remainingStands)
             if (stands.isEmpty() && blocks.isEmpty()) {
-                callbacks.forgetPlacementAt(origin)
+                callbacks.forgetPlayerPlacementAt(origin)
                 return null
             }
 

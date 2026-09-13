@@ -1,6 +1,5 @@
 package org.magic.magicaddons.data.greenhouse.elements.mutation.legendary
 
-import org.magic.magicaddons.data.greenhouse.CropStates.stateOf
 import org.magic.magicaddons.data.greenhouse.CropStandReader
 import net.minecraft.core.BlockPos
 import net.minecraft.world.level.block.Blocks
@@ -49,9 +48,9 @@ object AllinAloe : CropDefinitionProvider {
                 ),
                 1..1,
                 readers = listOf(
-                    CropStandReader.stageLabel(),
-                    CropStandReader.percentLabel(CropStandReader.REWARDS_RESET, "reset"),
-                    CropStandReader.multiplierLabel(CropStandReader.REWARDS_MULTIPLIER, "reward")
+                    CropStandReader.aloeStageLabel(),
+                    CropStandReader.hungerPercentLabel(CropStandReader.REWARDS_RESET, "reset"),
+                    CropStandReader.aloeMultiplierLabel(CropStandReader.REWARDS_MULTIPLIER, "reward")
                 )
             ),
             CropStage(
@@ -70,9 +69,9 @@ object AllinAloe : CropDefinitionProvider {
                 ),
                 2..2,
                 readers = listOf(
-                    CropStandReader.stageLabel(),
-                    CropStandReader.percentLabel(CropStandReader.REWARDS_RESET, "reset"),
-                    CropStandReader.multiplierLabel(CropStandReader.REWARDS_MULTIPLIER, "reward")
+                    CropStandReader.aloeStageLabel(),
+                    CropStandReader.hungerPercentLabel(CropStandReader.REWARDS_RESET, "reset"),
+                    CropStandReader.aloeMultiplierLabel(CropStandReader.REWARDS_MULTIPLIER, "reward")
                 )
             ),
             CropStage(
@@ -95,9 +94,9 @@ object AllinAloe : CropDefinitionProvider {
                 ),
                 3..3,
                 readers = listOf(
-                    CropStandReader.stageLabel(),
-                    CropStandReader.percentLabel(CropStandReader.REWARDS_RESET, "reset"),
-                    CropStandReader.multiplierLabel(CropStandReader.REWARDS_MULTIPLIER, "reward")
+                    CropStandReader.aloeStageLabel(),
+                    CropStandReader.hungerPercentLabel(CropStandReader.REWARDS_RESET, "reset"),
+                    CropStandReader.aloeMultiplierLabel(CropStandReader.REWARDS_MULTIPLIER, "reward")
                 )
             ),
             CropStage(
@@ -120,9 +119,9 @@ object AllinAloe : CropDefinitionProvider {
                 ),
                 4..4,
                 readers = listOf(
-                    CropStandReader.stageLabel(),
-                    CropStandReader.percentLabel(CropStandReader.REWARDS_RESET, "reset"),
-                    CropStandReader.multiplierLabel(CropStandReader.REWARDS_MULTIPLIER, "reward")
+                    CropStandReader.aloeStageLabel(),
+                    CropStandReader.hungerPercentLabel(CropStandReader.REWARDS_RESET, "reset"),
+                    CropStandReader.aloeMultiplierLabel(CropStandReader.REWARDS_MULTIPLIER, "reward")
                 )
             ),
             CropStage(
@@ -145,9 +144,9 @@ object AllinAloe : CropDefinitionProvider {
                 ),
                 5..5,
                 readers = listOf(
-                    CropStandReader.stageLabel(),
-                    CropStandReader.percentLabel(CropStandReader.REWARDS_RESET, "reset"),
-                    CropStandReader.multiplierLabel(CropStandReader.REWARDS_MULTIPLIER, "reward")
+                    CropStandReader.aloeStageLabel(),
+                    CropStandReader.hungerPercentLabel(CropStandReader.REWARDS_RESET, "reset"),
+                    CropStandReader.aloeMultiplierLabel(CropStandReader.REWARDS_MULTIPLIER, "reward")
                 )
             ),
             CropStage(
@@ -170,9 +169,9 @@ object AllinAloe : CropDefinitionProvider {
                 ),
                 6..6,
                 readers = listOf(
-                    CropStandReader.stageLabel(),
-                    CropStandReader.percentLabel(CropStandReader.REWARDS_RESET, "reset"),
-                    CropStandReader.multiplierLabel(CropStandReader.REWARDS_MULTIPLIER, "reward")
+                    CropStandReader.aloeStageLabel(),
+                    CropStandReader.hungerPercentLabel(CropStandReader.REWARDS_RESET, "reset"),
+                    CropStandReader.aloeMultiplierLabel(CropStandReader.REWARDS_MULTIPLIER, "reward")
                 )
             ),
             CropStage(
@@ -196,9 +195,9 @@ object AllinAloe : CropDefinitionProvider {
                 ),
                 7..7,
                 readers = listOf(
-                    CropStandReader.stageLabel(),
-                    CropStandReader.percentLabel(CropStandReader.REWARDS_RESET, "reset"),
-                    CropStandReader.multiplierLabel(CropStandReader.REWARDS_MULTIPLIER, "reward")
+                    CropStandReader.aloeStageLabel(),
+                    CropStandReader.hungerPercentLabel(CropStandReader.REWARDS_RESET, "reset"),
+                    CropStandReader.aloeMultiplierLabel(CropStandReader.REWARDS_MULTIPLIER, "reward")
                 )
             ),
             CropStage(
@@ -222,9 +221,9 @@ object AllinAloe : CropDefinitionProvider {
                 ),
                 8..8,
                 readers = listOf(
-                    CropStandReader.stageLabel(),
-                    CropStandReader.percentLabel(CropStandReader.REWARDS_RESET, "reset"),
-                    CropStandReader.multiplierLabel(CropStandReader.REWARDS_MULTIPLIER, "reward")
+                    CropStandReader.aloeStageLabel(),
+                    CropStandReader.hungerPercentLabel(CropStandReader.REWARDS_RESET, "reset"),
+                    CropStandReader.aloeMultiplierLabel(CropStandReader.REWARDS_MULTIPLIER, "reward")
                 )
             ),
             CropStage(
@@ -248,9 +247,9 @@ object AllinAloe : CropDefinitionProvider {
                 ),
                 9..9,
                 readers = listOf(
-                    CropStandReader.stageLabel(),
-                    CropStandReader.percentLabel(CropStandReader.REWARDS_RESET, "reset"),
-                    CropStandReader.multiplierLabel(CropStandReader.REWARDS_MULTIPLIER, "reward")
+                    CropStandReader.aloeStageLabel(),
+                    CropStandReader.hungerPercentLabel(CropStandReader.REWARDS_RESET, "reset"),
+                    CropStandReader.aloeMultiplierLabel(CropStandReader.REWARDS_MULTIPLIER, "reward")
                 )
             )
         ),

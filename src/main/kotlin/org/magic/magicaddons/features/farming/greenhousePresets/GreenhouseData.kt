@@ -1,6 +1,5 @@
 package org.magic.magicaddons.features.farming.greenhousePresets
 
-import kotlin.math.roundToInt
 import org.magic.magicaddons.commands.internal.MainInternal
 import org.magic.magicaddons.commands.debug.CropCollector
 import org.magic.magicaddons.commands.internal.farming.SetTimestalkAttribute
@@ -105,15 +104,12 @@ object GreenhouseData : GridCallbacks {
     /** Every placement still waiting on the plot: several go down in a row faster than a scan. */
     private val placements = mutableListOf<Placement>()
 
-    /**
-     * Every crop put down this session, by the soil block under it. A placed mutation wears a look
-     * no grown stage has, so this is how the scan knows what stands there until its flag is saved.
-     */
-    private val placedHere = mutableMapOf<BlockPos, PlacedHere>()
+    /** every crop the player placed. */
+    private val cropPlacements = mutableMapOf<BlockPos, CropPlacement>()
 
-    private class PlacedHere(val def: CropDefinition, val at: Long)
+    private class CropPlacement(val def: CropDefinition, val at: Long)
 
-    override fun placedHereAt(soil: BlockPos): CropDefinition? = placedHere[BlockPos(soil.x, GREENHOUSE_SOIL_Y, soil.z)]?.def
+    override fun placedDefinitionAt(soil: BlockPos): CropDefinition? = cropPlacements[BlockPos(soil.x, GREENHOUSE_SOIL_Y, soil.z)]?.def
 
     override fun assumeFlatWater(): Boolean = GreenhousePresets.assumeFlatWater()
 
@@ -123,11 +119,11 @@ object GreenhouseData : GridCallbacks {
      * A placement younger than [PLACE_SETTLE_MS] is kept: the scan on the tick of the click runs
      * before the server has put the plant's stands down.
      */
-    override fun forgetPlacementAt(soil: BlockPos) {
+    override fun forgetPlayerPlacementAt(soil: BlockPos) {
         val key = BlockPos(soil.x, GREENHOUSE_SOIL_Y, soil.z)
-        val placed = placedHere[key] ?: return
+        val placed = cropPlacements[key] ?: return
         if (System.currentTimeMillis() - placed.at < PLACE_SETTLE_MS) return
-        placedHere.remove(key)
+        cropPlacements.remove(key)
     }
 
     /** How long after the click a placement's stands may still be on their way. */
@@ -138,8 +134,7 @@ object GreenhouseData : GridCallbacks {
         aOrigin.x < bOrigin.x + b.footprint.width && bOrigin.x < aOrigin.x + a.footprint.width &&
                 aOrigin.z < bOrigin.z + b.footprint.height && bOrigin.z < aOrigin.z + a.footprint.height
 
-    /** How long a placement the server never confirmed is still worth waiting for. */
-    private val PLACE_WINDOW: Duration = Duration.ofSeconds(5)
+    private val SERVER_PLACE_WINDOW: Duration = Duration.ofSeconds(5)
 
     private var plantDiagnosticHitBaseBlock: BlockPos? = null
 
@@ -221,6 +216,9 @@ object GreenhouseData : GridCallbacks {
     private fun scanGridData() {
         if (!scanUpdatesState) return
         if (!greenhousesInitialized) return
+        // the grid is found by plot number, which a visited garden has too: read there, somebody
+        // else's plants would land in the player's own record
+        if (!inOwnGarden()) return
         val plot = PlotAPI.getCurrentPlot() ?: return
 
         val grid = getCurrentGrid() ?: return
@@ -330,6 +328,7 @@ object GreenhouseData : GridCallbacks {
 
     /** Reads only the slots a change at [positions] can have reached; a plot never read gets the full scan. */
     private fun rescanAround(positions: List<BlockPos>) {
+        if (!inOwnGarden()) return
         val grid = getCurrentGrid() ?: return
         if (!grid.state.hasRuntimeReferences) {
             fullScanWanted = true
@@ -481,7 +480,7 @@ object GreenhouseData : GridCallbacks {
 
         greenhouseGrids.forEach { grid ->
             grid.layout.elementInstances.forEach { instance ->
-                if (!instance.needsWater) return@forEach
+                if (!instance.consumesWater) return@forEach
 
                 val water = instance.waterLevel ?: return@forEach
                 if (water <= WaterModel.DEATH) return@forEach
@@ -1057,8 +1056,8 @@ object GreenhouseData : GridCallbacks {
 
             // nothing can be placed over a plant, so whatever was remembered in the way is gone
             val soil = BlockPos(pos.x, GREENHOUSE_SOIL_Y, pos.z)
-            placedHere.entries.removeAll { (at, placed) -> overlaps(at, placed.def, soil, foundCrop) }
-            placedHere[soil] = PlacedHere(foundCrop, System.currentTimeMillis())
+            cropPlacements.entries.removeAll { (at, placed) -> overlaps(at, placed.def, soil, foundCrop) }
+            cropPlacements[soil] = CropPlacement(foundCrop, System.currentTimeMillis())
             requestReconcile(pos)
         }
     }
@@ -1108,21 +1107,21 @@ object GreenhouseData : GridCallbacks {
      */
     private fun claimPlantedCrop(grid: GreenhouseGrid) {
         val now = Instant.now()
-        placements.removeAll { now.isAfter(it.at.plus(PLACE_WINDOW)) }
+        placements.removeAll { now.isAfter(it.at.plus(SERVER_PLACE_WINDOW)) }
 
         placements.toList().forEach { placement ->
             val slot = grid.getSlotAt(placement.pos, false) ?: return@forEach
             val element = grid.elementCovering(slot) ?: return@forEach
 
-            if (takePlacement(element.instance.cropDef, slot, grid)) claimPlacedPlant(element.instance)
+            if (placementConfirmed(element.instance.cropDef, slot, grid)) markAsPlacedPlant(element.instance)
         }
     }
 
-    override fun takePlacement(def: CropDefinition, slot: LayoutSlot, grid: GreenhouseGrid): Boolean {
+    override fun placementConfirmed(def: CropDefinition, slot: LayoutSlot, grid: GreenhouseGrid): Boolean {
         val now = Instant.now()
         val index = placements.indexOfFirst { placement ->
             placement.def == def &&
-                    !now.isAfter(placement.at.plus(PLACE_WINDOW)) &&
+                    !now.isAfter(placement.at.plus(SERVER_PLACE_WINDOW)) &&
                     grid.getSlotAt(placement.pos, false)?.let { it.x == slot.x && it.y == slot.y } == true
         }
         if (index < 0) return false
@@ -1130,20 +1129,16 @@ object GreenhouseData : GridCallbacks {
         return true
     }
 
-    /** A plant the player put down: new, dry, and never to count as grown here. */
-    override fun claimPlacedPlant(instance: GreenhouseElementInstance) {
+    override fun markAsPlacedPlant(instance: GreenhouseElementInstance) {
         instance.placed = true
         instance.age = 0L
 
-        // looks alike across its first stages, a nether wart scans as somewhere in one to three;
-        // just put down, it is at the stage it is placed at
         val stage = instance.growthStage
         if (stage is GrowthStageInfo.Estimated && instance.cropDef.stagePlacedAt in stage.range) {
             instance.growthStage = GrowthStageInfo.Known(instance.cropDef.stagePlacedAt)
         }
 
-        // a placed mutation is finished and drinks nothing; a placed base crop starts dry and grows
-        if (instance.needsWater) {
+        if (instance.consumesWater) {
             instance.waterLevel = 0.0
             instance.waterExact = true
         } else {
@@ -1292,7 +1287,8 @@ object GreenhouseData : GridCallbacks {
             }
         }
 
-        listening?.let { element ->
+        // a plant read in somebody else's garden is not the player's to remember
+        listening?.takeIf { inOwnGarden() }?.let { element ->
             age?.parseDurationToMs()?.let { element.instance.age = it }
             stageRaw?.let { element.instance.growthStage = GrowthStageInfo.Known(it) }
 

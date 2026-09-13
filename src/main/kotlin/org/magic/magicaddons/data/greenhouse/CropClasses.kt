@@ -327,11 +327,8 @@ open class CropStage(
     )
 
     companion object {
-        /** Below every id the world assigns, so a stand of ours is never taken for a real one. */
         private const val FAKE_ENTITY_ID: Int = -1
     }
-
-
 }
 
 
@@ -358,8 +355,6 @@ class CropStagePattern(
             val multiplier = stageOffsetMultipliers[stage]
                 ?: (stage - start) // good fallback
 
-            // the stand as described, moved along by the stage. Rebuilding it from two fields lost
-            // its rotations, the name it looks for, and how it is built
             val newStands = armorStands?.map { stand ->
                 stand.copy(
                     offset = stand.offset.add(
@@ -382,16 +377,11 @@ class CropStagePattern(
     }
 
 }
-/**
- * How the greenhouse turns its plants: a quarter turn per `(z - x) mod 4` of the base block,
- * measured across four greenhouses and three hundred stands.
- */
+/** how skyblock turns its plants, a quarter turn per `(z - x) mod 4` of the base block */
 object WorldRotation {
 
-    /** The quarter turns the world gives a plant whose base block is at ([x], [z]). */
     fun step(x: Int, z: Int): Int = Math.floorMod(z - x, 4)
 
-    /** [offset] turned by [steps] quarter turns about the plant's centre. */
     fun rotate(offset: Vec3, steps: Int): Vec3 = when (Math.floorMod(steps, 4)) {
         1 -> Vec3(-offset.z, offset.y, offset.x)
         2 -> Vec3(-offset.x, offset.y, -offset.z)
@@ -410,13 +400,11 @@ const val TEN_DAY_DECAY_TIME_MS: Long = 10L * 24 * 60 * 60 * 1000
 
 sealed interface StandPose {
 
-    /** The head pose a stand of this role has at world position (x, z) with that offset. */
     fun headAt(x: Int, z: Int, offset: Vec3): Rotations
 
     val xRotation: Float get() = 0f
     val yRotation: Float get() = 0f
 
-    /** One pose everywhere the role appears, which is nearly every role there is. */
     data class Fixed(
         val headRotation: Rotations,
         override val xRotation: Float = 0f,
@@ -440,7 +428,7 @@ data class CropDefinition(
     val aliases: List<SkyBlockId>? = null,
     val stageDefs: List<CropStage>,
     val maxStage: Int = 1,
-    /** How long after planting this crop rots, three days unless it says otherwise. */
+
     val decayTimeMs: Long = DEFAULT_DECAY_TIME_MS,
     val footprint: Footprint = Footprint(1,1),
     val requiredSoil: Set<Block> = setOf(Blocks.FARMLAND),
@@ -459,7 +447,6 @@ data class CropDefinition(
 ){
     val stagePlacedAt: Int get() = if (isMutation) maxStage else 1
     val elementId: String get() = skyblockId?.id ?: name
-
     val stages: List<CropStage> = stageDefs.flatMap { if (it is CropStagePattern) it.expand() else listOf(it) }
 
     override fun toString(): String {
@@ -485,7 +472,7 @@ data class ElementRuntimeState(
     val instance: GreenhouseElementInstance,
     val standEntities: List<Entity>?,
     val blocksMap: Map<BlockPos,BlockState>?,
-    /** See [StageMatchResult.rotationLegacy]: matched, but from a pre-normalization recording. */
+
     val rotationLegacy: Boolean = false
 )
 
@@ -501,55 +488,39 @@ data class GreenhouseElementInstance(
 ) {
     val merged: Boolean get() = alternatives.isNotEmpty()
 
-    /** whether [def] is this crop or one merged into the slot */
-    fun accepts(def: CropDefinition): Boolean = def == cropDef || def in alternatives
+    fun defInSlot(def: CropDefinition): Boolean = def == cropDef || def in alternatives
 
-    /** every crop of the slot, the main one first */
     val everyCrop: List<CropDefinition> get() = listOf(cropDef) + alternatives
 
-    /** Whether this plant is asleep and will not grow until it is woken. */
     val isAsleep: Boolean get() = readings[CropStandReader.ASLEEP] == 1
 
-    /** The time of day this plant craves, null for one that craves nothing. Flips on every advance. */
-    val craving: Int? get() = readings[CropStandReader.CRAVES]
+    val needsTime: Int? get() = readings[CropStandReader.NEEDS_TIME]
 
-    /** Whether hunger has run out. A starving fleshtrap stops growing until it is fed. */
     val isStarving: Boolean get() = readings[CropStandReader.HUNGER] == 0
 
-    /**
-     * Whether a tick was counted against this plant while its water was already negative, so the
-     * level shown is the worst it could be in. Cleared as soon as anything is read off the plant.
-     */
+    /** if a tick has passed with negative water, then we don't know if it truly passed or not */
     var waterPredictedInDebt: Boolean = false
 
-    /** Whether the level is known to the point, from a diagnosis or a count of spray ticks, rather than read off a bar. */
     var waterExact: Boolean = false
 
-    /**
-     * The lowest stage this plant was ever seen at. A plant that climbed away from it grew here; one
-     * still sitting at it was placed, which is what tells a grown jellybean from a bought one.
-     */
     var firstSeenStage: Int? = null
 
-    /** Whether the player put this plant down, as opposed to it growing or appearing on its own. */
     var placed: Boolean = false
 
-    /**
-     * The water had every tick spent in debt been skipped, which costs nothing, against [waterLevel]
-     * which charges every one. Null until a prediction has walked the plant into debt, and cleared
-     * by any reading, since a reading is neither case but the truth. Not written to disk.
-     */
     var waterBestCase: Double? = null
 
-    /** A placed mutation has nothing left to grow, so it is shown as placed rather than at a stage. */
-    val finishedByPlacing: Boolean get() = placed && cropDef.isMutation
+    val fullyGrownByPlacing: Boolean get() = placed && cropDef.isMutation
 
-    /** A mutation known, not guessed, to stand at its last stage; it grew here and is ready to take. */
-    val fullyGrown: Boolean get() =
-        cropDef.isMutation && !placed && (growthStage as? GrowthStageInfo.Known)?.let { it.stage >= cropDef.maxStage } == true
+    /**
+     * A crop with nothing left to grow, worth harvesting: a mutation that grew here or a base crop at
+     * its last stage. Judged by the highest stage it might be at, so a plant possibly grown is looked
+     * at rather than left standing. A placed mutation is finished but was never grown, so never.
+     */
+    val readyToHarvest: Boolean
+        get() = (cropDef.isMutation || cropDef.isBaseCrop) && !fullyGrownByPlacing && (highestStage ?: 0) >= cropDef.maxStage
 
-    /** Whether this plant drinks: a finished mutation, placed or grown out, never does; a base crop always does. */
-    val needsWater: Boolean get() = cropDef.needsWater && !finishedByPlacing && !grownOut
+    /** Whether this plant still takes water each tick: one of a crop that needs it, neither placed nor grown out. */
+    val consumesWater: Boolean get() = cropDef.needsWater && !fullyGrownByPlacing && !isFullyGrown
 
     /** A copy on [slot], readings included, for a prediction that must not move the real plant. */
     fun copyForPrediction(slot: LayoutSlot): GreenhouseElementInstance =
@@ -566,7 +537,7 @@ data class GreenhouseElementInstance(
      * the crop has only the one stage, so there is nothing to outlast and nothing to say.
      */
     fun outlastsGrowth(waterEffectPercent: Int): Boolean? {
-        if (!needsWater || cropDef.drainsNeighbours) return true
+        if (!consumesWater || cropDef.drainsNeighbours) return true
 
         val water = waterLevel ?: return null
         if (water <= WaterModel.DEATH) return false
@@ -583,8 +554,7 @@ data class GreenhouseElementInstance(
         return ticksLeft > cropDef.maxStage - stage
     }
 
-    /** Whether even the lowest stage this plant might be at is its last. */
-    val grownOut: Boolean get() = (lowestStage ?: 0) >= cropDef.maxStage
+    val isFullyGrown: Boolean get() = (lowestStage ?: 0) >= cropDef.maxStage
 
     /** The lowest stage this plant might be at now, which is all a scan can promise about most. */
     val lowestStage: Int?
@@ -615,13 +585,9 @@ data class GreenhouseElementInstance(
             return now > first
         }
 
-    /** A mutation this plant grew here to its last stage, judged by the highest stage it might be at. */
-    val readyToHarvest: Boolean
-        get() = cropDef.isMutation && grewInPlace && (highestStage ?: 0) >= cropDef.maxStage
-
     /** Whether this plant craves a time of day other than [now], while it still has stages to grow. */
     fun cravesOtherTime(now: Int): Boolean {
-        val wants = craving ?: return false
+        val wants = needsTime ?: return false
         val stage = lowestStage
         return wants != now && (stage == null || stage < cropDef.maxStage)
     }
