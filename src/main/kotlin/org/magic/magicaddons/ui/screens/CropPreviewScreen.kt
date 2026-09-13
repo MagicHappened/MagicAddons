@@ -87,7 +87,7 @@ class CropPreviewScreen(
     private val variant: Variant? get() = variantSelector.currentValue
 
     private fun variantsFor(def: CropDefinition): List<Variant> = when {
-        def.stageDefs.any { CropStandReader.CRAVES in it.traits } -> listOf(Variant.Day, Variant.Night)
+        def.stageDefs.any { CropStandReader.NEEDS_TIME in it.traits } -> listOf(Variant.Day, Variant.Night)
         def.sleepStages.isNotEmpty() -> listOf(Variant.Awake, Variant.Asleep)
         else -> emptyList()
     }
@@ -97,8 +97,8 @@ class CropPreviewScreen(
      * Asleep only means anything at the stages a plant sleeps at; elsewhere it is awake either way.
      */
     private fun CropStage.wears(variant: Variant?, def: CropDefinition, stage: Int): Boolean = when (variant) {
-        Variant.Day -> traits[CropStandReader.CRAVES] == CropStandReader.CRAVES_DAY
-        Variant.Night -> traits[CropStandReader.CRAVES] == CropStandReader.CRAVES_NIGHT
+        Variant.Day -> traits[CropStandReader.NEEDS_TIME] == CropStandReader.NEEDS_DAY
+        Variant.Night -> traits[CropStandReader.NEEDS_TIME] == CropStandReader.NEEDS_NIGHT
         Variant.Asleep -> if (stage in def.sleepStages) readers.any { it.key == CropStandReader.ASLEEP } else readers.none { it.key == CropStandReader.ASLEEP }
         Variant.Awake -> readers.none { it.key == CropStandReader.ASLEEP }
         null -> true

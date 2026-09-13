@@ -275,9 +275,7 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
 
         // opening this screen is the player asking about their greenhouses, which is the one moment a
         // missing number is worth interrupting them for
-        if (!GreenhouseData.miscInfo.shouldIgnoreWarning) {
-            GreenhouseData.warnUnknownValues()
-        }
+        GreenhouseData.warnUnknownValues()
     }
 
     /** Places the grid, the name box, the shelves and the buttons, then lays out whichever mode is on. */
@@ -409,25 +407,20 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
         greenhouseGridWidgets.clear()
         val amountInitialized = GreenhouseData.greenhouseGrids.count { it.state.lastUpdateTimestamp != null }
         if (PlotAPI.plots.any { it.data == null }) {
-            if (!GreenhouseData.miscInfo.shouldIgnoreWarning) {
-                if (!LocationAPI.isOnSkyBlock) {
-                    ChatUtils.sendWithPrefix("Plot data is null, please join skyblock.")
-                } else {
-                    ChatUtils.sendWithCommand(
-                        "Plot data is null, please open /desk and go to \"configure plots\" to load it.",
-                        "/desk"
-                    )
-                }
+            if (!LocationAPI.isOnSkyBlock) {
+                ChatUtils.sendWithPrefix("Plot data is null, please join skyblock.")
+            } else {
+                ChatUtils.sendWithCommand(
+                    "Plot data is null, please open /desk and go to \"configure plots\" to load it.",
+                    "/desk"
+                )
             }
             return
         }
         if (amountInitialized != PlotAPI.plots.count { it.data?.isGreenhouse ?: throw IllegalStateException("Plot data was null after null check.") }){
-            if (!GreenhouseData.miscInfo.shouldIgnoreWarning && !warnedMissingGreenhouses){
+            if (!warnedMissingGreenhouses){
                 warnedMissingGreenhouses = true
-                ChatUtils.sendWithCommand(
-                    "Not all greenhouses available, enter them to see them. (IGNORE)",
-                    "${MainInternal.COMMAND} ignoreFarmingWarnings"
-                )
+                ChatUtils.sendWithPrefix("Not all greenhouses available, enter them to see them.")
             }
         }
 
@@ -748,7 +741,7 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
             ChatUtils.sendWithPrefix("Only crops of the same size can share a slot.")
             return
         }
-        if (standing.accepts(def)) return
+        if (standing.defInSlot(def)) return
 
         remember(grid.layout)
         val merged = standing.copyForPrediction(standing.slot).also { it.alternatives.add(def) }

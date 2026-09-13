@@ -80,18 +80,26 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, GuiEv
 
         /** This fact about [instance], or null while the game has not told us the value yet. */
         fun valueFor(instance: GreenhouseElementInstance): String? = when (this) {
-            // a plant with one stage never grows, so there is no progress to report on it. Fire,
-            // dead plants and the mutations placed by hand are all like this
-            GrowthStage -> if (instance.finishedByPlacing) "Placed" else if (instance.fullyGrown) "Harvestable" else if (instance.cropDef.maxStage <= 1) null else
-                when (val stage = instance.growthStage) {
-                is GrowthStageInfo.Known -> "${stage.stage}/${instance.cropDef.maxStage}"
-                // a guessed stage is worth showing, as long as it does not look measured
-                is GrowthStageInfo.Estimated -> "~${stage.range.first}-${stage.range.last}"
-                null -> null
+            // a placed mutation was never grown here, so it is said in a word rather than a stage.
+            // A plant with one stage it is not finished at never grows, and has nothing to report:
+            // fire and dead plants are like this
+            GrowthStage -> when {
+                instance.fullyGrownByPlacing -> "Placed"
+                instance.cropDef.maxStage <= 1 && !instance.readyToHarvest -> null
+                else -> when (val stage = instance.growthStage) {
+                    is GrowthStageInfo.Known -> "${stage.stage}/${instance.cropDef.maxStage}"
+                    // a guessed stage is worth showing, as long as it does not look measured
+                    is GrowthStageInfo.Estimated -> "~${stage.range.first}-${stage.range.last}"
+                    null -> null
+                }
             }
-            WaterLevel -> if (!instance.cropDef.needsWater || instance.finishedByPlacing) null else waterText(instance)
+            WaterLevel -> if (!instance.cropDef.needsWater || instance.fullyGrownByPlacing) null else waterText(instance)
             DecayTime -> instance.decayRemainingMs?.let { readableDuration(it) }
         }
+
+        /** The colour that fact is written in: a stage the plant has nothing left to grow past stands out. */
+        fun colorFor(instance: GreenhouseElementInstance): Int =
+            if (this == GrowthStage && instance.readyToHarvest) Common.UI.SUCCESS_COLOR else Common.UI.OVERLAY_TEXT_COLOR
     }
 
     override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, deltaTick: Float) {
@@ -128,7 +136,7 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, GuiEv
 
         // the worst case has this plant dead already, and only a scan can settle it: it either finds
         // a dead bush or finds the plant standing, one tick from death
-        if (instance.needsWater && (instance.waterLevel ?: 0.0) <= WaterModel.DEATH) {
+        if (instance.consumesWater && (instance.waterLevel ?: 0.0) <= WaterModel.DEATH) {
             // a third of a single slot, half a slot on anything wider
             val footprint = instance.cropDef.footprint
             val size = (if (footprint.width > 1) width / footprint.width / 2 else width / 3).coerceAtLeast(8)
@@ -190,11 +198,11 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, GuiEv
             // a soggybud's water is what it banked, which the player cannot do anything about, so
             // it gets its growth time and no meter
             if (instance.cropDef.drainsNeighbours) {
-                if (instance.needsWater) instance.waterLevel?.let { renderWaterVerdict(graphics, it, y + height) }
+                if (instance.consumesWater) instance.waterLevel?.let { renderWaterVerdict(graphics, it, y + height) }
                 return
             }
 
-            if (!instance.needsWater && drinkers == 0) return
+            if (!instance.cropDef.needsWater || (!instance.consumesWater && drinkers == 0)) return
 
             instance.waterLevel?.let {
                 renderWaterBar(graphics, it.coerceAtLeast(WaterModel.DEATH.toDouble()))
@@ -206,7 +214,7 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, GuiEv
         val font = Minecraft.getInstance().font
         val textHeight = font.lineHeight * INFO_TEXT_SCALE
 
-        drawScaledLabel(graphics, text, y + height - textHeight - 1f, Common.UI.OVERLAY_TEXT_COLOR)
+        drawScaledLabel(graphics, text, y + height - textHeight - 1f, info.colorFor(instance))
     }
 
     /**
@@ -258,7 +266,7 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, GuiEv
         val top = bottom - WATER_BAR_HEIGHT
 
         // the time is about growing, which a grown donor has none left of
-        if (instance.needsWater) renderWaterVerdict(graphics, waterLevel, top)
+        if (instance.consumesWater) renderWaterVerdict(graphics, waterLevel, top)
 
         graphics.fillRounded(left, top, right, bottom, WATER_BAR_RADIUS, Common.UI.WATER_TRACK_COLOR)
 
@@ -412,14 +420,14 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, GuiEv
 
             if (!inPreset) {
                 when {
-                    instance.finishedByPlacing -> add(labelled("Growth", "Placed"))
-                    instance.fullyGrown -> add(labelled("Growth", "Harvestable"))
+                    instance.fullyGrownByPlacing -> add(labelled("Growth", "Placed"))
+                    instance.readyToHarvest -> add(labelled("Growth", "Harvestable"))
                     else -> growthText?.let { add(labelled("Growth", it)) }
                 }
 
                 // a plant that never drinks has no water level worth a line of its own; a grown one
                 // keeps its line, since what it holds is what a soggybud beside it drinks
-                if (instance.cropDef.needsWater && !instance.finishedByPlacing) {
+                if (instance.cropDef.needsWater && !instance.fullyGrownByPlacing) {
                     add(labelled("Water", waterText(instance) ?: "Unknown"))
                 }
 
@@ -478,7 +486,6 @@ class ElementWidget(val instance: GreenhouseElementInstance) : Renderable, GuiEv
             else "${WaterModel.shown(worst)}% to ${WaterModel.shown(best)}%"
         }
 
-        /** Behind the bush, so a slot that might already be dead reads as such at a glance. */
         private const val DEAD_MARK_BACKGROUND: Int = 0xC0201010.toInt()
 
         private val DEAD_EXPLANATION: String = """

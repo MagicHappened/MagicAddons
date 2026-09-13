@@ -50,6 +50,7 @@ object SingleMobs {
         Mob("Mountain Goat", Rule.Type("goat"), SkyBlockIsland.TORRHUS_CANYON),
         Mob("Blue Jay", Rule.ParrotVariant(Parrot.Variant.BLUE), SkyBlockIsland.TORRHUS_CANYON),
         Mob("Pangolin", Rule.Type("armadillo"), SkyBlockIsland.TORRHUS_CANYON),
+        Mob("Trinity", Rule.Skin("5841a16a5bd4a646cedb4b5437723226c7cf9f8669e558773fae0a9452c94d90"), SkyBlockIsland.THE_CATACOMBS),
     )
 
     val names: List<String> = all.map { it.name }

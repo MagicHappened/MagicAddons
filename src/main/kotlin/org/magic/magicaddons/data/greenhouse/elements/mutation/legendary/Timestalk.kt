@@ -131,6 +131,28 @@ object Timestalk : CropDefinitionProvider {
                 5..5
             ),
             CropStage(
+                blocks = CropBlockState.blockStatePattern(
+                    listOf(
+                        BlockPos(0, 1, 0),
+                        BlockPos(0, 2, 0)
+                    ),
+                    blockState = melonStemState(7)
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, -0.125, 0.0),
+                        hashString = "d2306f4c5946990204517a73bbfa8281fd7d9a294f908b0286e708c51f79a063",
+                        isSmall = false
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(0.0, 0.46875, 0.0),
+                        hashString = "7cf25e2106b1f8ac856c2d13e8850cdb6b4f96ae9df243a605d6a6d2e1fdacf8",
+                        isSmall = false
+                    )
+                ),
+                6..6
+            ),
+            CropStage(
                 blocks = listOf(
                     CropBlockState(
                         offset = BlockPos(0, 1, 0),
@@ -143,8 +165,9 @@ object Timestalk : CropDefinitionProvider {
                 ),
                 armorStands = listOf(
                     CropArmorStand(
-                    offset = Vec3(0.0, -0.40625, 0.0),
-                    hashString = "d2306f4c5946990204517a73bbfa8281fd7d9a294f908b0286e708c51f79a063"
+                        offset = Vec3(0.0, -0.40625, 0.0),
+                        hashString = "d2306f4c5946990204517a73bbfa8281fd7d9a294f908b0286e708c51f79a063",
+                        isSmall = false
                     )
                 ),
                 10..10

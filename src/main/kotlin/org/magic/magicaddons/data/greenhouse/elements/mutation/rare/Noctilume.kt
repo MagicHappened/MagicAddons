@@ -88,7 +88,7 @@ object Noctilume : CropDefinitionProvider {
             )
         },
         stageRange = stage..stage,
-        traits = craving?.let { mapOf(CropStandReader.CRAVES to it) } ?: emptyMap()
+        traits = craving?.let { mapOf(CropStandReader.NEEDS_TIME to it) } ?: emptyMap()
     )
 
     override val definition = CropDefinition(
@@ -103,21 +103,21 @@ object Noctilume : CropDefinitionProvider {
             look(
                 stage = 1,
                 hash = "281e8164cf7af240cc235d4826996013bd045de20d40abd262145dc24c790a09",
-                craving = CropStandReader.CRAVES_NIGHT,
+                craving = CropStandReader.NEEDS_NIGHT,
                 wheatAge = 3,
                 offsets = seedOffsets
             ),
             look(
                 stage = 1,
                 hash = "329aa65e77ecc216dbadc774121dec2f3d7267289462eb5d11d3bafa6f5996c8",
-                craving = CropStandReader.CRAVES_DAY,
+                craving = CropStandReader.NEEDS_DAY,
                 wheatAge = 3,
                 offsets = seedOffsets
             ),
             look(
                 stage = 2,
                 hash = "329aa65e77ecc216dbadc774121dec2f3d7267289462eb5d11d3bafa6f5996c8",
-                craving = CropStandReader.CRAVES_DAY,
+                craving = CropStandReader.NEEDS_DAY,
                 wheatAge = 4,
                 offsets = youngOffsets,
                 fullSized = setOf(3)
@@ -125,7 +125,7 @@ object Noctilume : CropDefinitionProvider {
             look(
                 stage = 2,
                 hash = "281e8164cf7af240cc235d4826996013bd045de20d40abd262145dc24c790a09",
-                craving = CropStandReader.CRAVES_NIGHT,
+                craving = CropStandReader.NEEDS_NIGHT,
                 wheatAge = 4,
                 offsets = youngOffsets,
                 fullSized = setOf(3)
@@ -133,7 +133,7 @@ object Noctilume : CropDefinitionProvider {
             look(
                 stage = 3,
                 hash = "281e8164cf7af240cc235d4826996013bd045de20d40abd262145dc24c790a09",
-                craving = CropStandReader.CRAVES_NIGHT,
+                craving = CropStandReader.NEEDS_NIGHT,
                 wheatAge = 5,
                 offsets = settlingOffsets,
                 fullSized = setOf(0, 1, 3)
@@ -141,7 +141,7 @@ object Noctilume : CropDefinitionProvider {
             look(
                 stage = 3,
                 hash = "329aa65e77ecc216dbadc774121dec2f3d7267289462eb5d11d3bafa6f5996c8",
-                craving = CropStandReader.CRAVES_DAY,
+                craving = CropStandReader.NEEDS_DAY,
                 wheatAge = 5,
                 offsets = settlingOffsets,
                 fullSized = setOf(0, 1, 3)
@@ -151,7 +151,7 @@ object Noctilume : CropDefinitionProvider {
             look(
                 stage = 4,
                 hash = "b1b18493d50ff8972f7ef359893d9063fdc54cb822c679002957c294fc8b0005",
-                craving = CropStandReader.CRAVES_NIGHT,
+                craving = CropStandReader.NEEDS_NIGHT,
                 wheatAge = 6,
                 offsets = grownOffsets,
                 fullSized = setOf(0, 1, 2, 3)

@@ -9,6 +9,7 @@ import net.minecraft.network.chat.Style
 import org.magic.magicaddons.data.greenhouse.CropStandReader
 import org.magic.magicaddons.data.greenhouse.GreenhouseElementInstance
 import org.magic.magicaddons.data.greenhouse.GreenhouseGrid
+import org.magic.magicaddons.data.greenhouse.LayoutSlot
 import org.magic.magicaddons.events.EventHandler
 import org.magic.magicaddons.events.greenhouse.GrowthTickEvent
 import org.magic.magicaddons.util.toShortDuration
@@ -62,13 +63,27 @@ object PlantWarnings {
     // ------------------------------------------------------------ what each warning is about
 
     /**
-     * Mutations the mod watched grow, now at their last stage. A bought one was never grown, so
-     * harvesting it gains nothing. Judged by the highest stage it might be at, to tell the player early.
+     * Everything the harvest highlight would show: a plant with nothing left to grow, and with the
+     * highlight set to the preset's targets, only one standing on a target slot that wants it.
      */
-    private fun harvestNotes(): List<HouseNote> = notes { instance ->
+    private fun harvestNotes(): List<HouseNote> = notes { grid, instance ->
         if (!instance.readyToHarvest) return@notes null
+        if (GreenhousePresets.harvestHighlightOnlyTargets() && !onWantedTarget(grid, instance)) return@notes null
 
         instance.cropDef.name to null
+    }
+
+    /** Whether [instance] covers a target slot of the plan running on [grid] that accepts its crop. */
+    private fun onWantedTarget(grid: GreenhouseGrid, instance: GreenhouseElementInstance): Boolean {
+        val plan = grid.state.assignedLayout?.turned(grid.state.planTurns) ?: return false
+        val footprint = instance.cropDef.footprint
+
+        return plan.elementInstances.any { target ->
+            target.slot.slotMark == LayoutSlot.Marking.Target &&
+                    target.defInSlot(instance.cropDef) &&
+                    target.slot.x in instance.slot.x until instance.slot.x + footprint.width &&
+                    target.slot.y in instance.slot.y until instance.slot.y + footprint.height
+        }
     }
 
     /**
@@ -83,13 +98,13 @@ object PlantWarnings {
 
         val gardenTime = GreenhouseGrid.timeOfDayNow()
 
-        return notes { instance ->
+        return notes { _, instance ->
             if (snoozling && instance.isAsleep) return@notes instance.cropDef.name to "asleep"
 
             if (!noctilume) return@notes null
             if (!instance.cravesOtherTime(gardenTime)) return@notes null
 
-            val craving = instance.craving ?: return@notes null
+            val craving = instance.needsTime ?: return@notes null
 
             instance.cropDef.name to
                     "garden on ${timeName(gardenTime)}, craves ${timeName(craving)}"
@@ -205,10 +220,10 @@ object PlantWarnings {
 
     /** Groups the plants each greenhouse should report, counting repeats instead of listing them. */
     private fun notes(
-        label: (GreenhouseElementInstance) -> Pair<String, String?>?
+        label: (GreenhouseGrid, GreenhouseElementInstance) -> Pair<String, String?>?
     ): List<HouseNote> = houses().mapNotNull { (grid, house) ->
         val counted = grid.layout.elementInstances
-            .mapNotNull(label)
+            .mapNotNull { label(grid, it) }
             .groupingBy { it }
             .eachCount()
 
@@ -256,7 +271,7 @@ object PlantWarnings {
     }
 
     private fun timeName(craving: Int): String =
-        if (craving == CropStandReader.CRAVES_NIGHT) "Night" else "Day"
+        if (craving == CropStandReader.NEEDS_NIGHT) "Night" else "Day"
 
     /** A rung as the headline says it: "6 hours", "20 minutes", "1 minute". */
     private fun rungText(rung: Duration): String {

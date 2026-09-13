@@ -74,7 +74,7 @@ object Fleshtrap : CropDefinitionProvider {
                 // A missing bonus label means never fed, not fed nothing
                 readers = listOf(
                     CropStandReader.bar(CropStandReader.HUNGER),
-                    CropStandReader.percentLabel(CropStandReader.BONUS, "Bonus")
+                    CropStandReader.hungerPercentLabel(CropStandReader.BONUS, "Bonus")
                 )
             ),
             // the skull changes with hunger, so either look is stage 14
@@ -96,7 +96,7 @@ object Fleshtrap : CropDefinitionProvider {
                 14..14,
                 readers = listOf(
                     CropStandReader.bar(CropStandReader.HUNGER),
-                    CropStandReader.percentLabel(CropStandReader.BONUS, "Bonus")
+                    CropStandReader.hungerPercentLabel(CropStandReader.BONUS, "Bonus")
                 )
             ),
             CropStage(
@@ -117,7 +117,7 @@ object Fleshtrap : CropDefinitionProvider {
                 14..14,
                 readers = listOf(
                     CropStandReader.bar(CropStandReader.HUNGER),
-                    CropStandReader.percentLabel(CropStandReader.BONUS, "Bonus")
+                    CropStandReader.hungerPercentLabel(CropStandReader.BONUS, "Bonus")
                 )
             )),
         maxStage = 14,

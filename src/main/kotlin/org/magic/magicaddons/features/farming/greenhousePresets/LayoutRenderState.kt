@@ -189,6 +189,13 @@ object LayoutRenderState {
         // plan stays up rather than blinking out on every unreadable moment
         if (grid == null) return
 
+        // the grid is found by plot number, which a visited garden has too, so what would be drawn
+        // there is the player's own record laid over somebody else's plot
+        if (!GreenhouseData.inOwnGarden()) {
+            plannerLayout = PlannerLayout.NOTHING
+            return
+        }
+
         val level = Minecraft.getInstance().level ?: return
 
         // the plan belongs to this greenhouse, so standing in another shows that one's plan or
@@ -255,7 +262,7 @@ object LayoutRenderState {
                 if (growing.isNotEmpty()) {
                     // the right plant in the right place, so there is nothing to plan and nothing in the way
                     val right = growing.singleOrNull()?.takeIf {
-                        instance.accepts(it.instance.cropDef) &&
+                        instance.defInSlot(it.instance.cropDef) &&
                                 it.instance.slot.x == instance.slot.x && it.instance.slot.y == instance.slot.y
                     }
                     if (right != null) return@forEach
@@ -398,7 +405,7 @@ object LayoutRenderState {
                 covering.forEach { growing ->
                     // the target itself is only worth saying something about once it can be taken
                     when {
-                        !target.accepts(growing.instance.cropDef) -> {
+                        !target.defInSlot(growing.instance.cropDef) -> {
                             markPlant(level, growing, marks, PlannerMark.Blocking).forEach { stands[it] = PlannerMark.Blocking.color }
                             soilOf(grid, growing).forEach { marks[it] = FULL_BLOCK to PlannerMark.Blocking }
                         }
@@ -409,8 +416,7 @@ object LayoutRenderState {
     }
 
     /** Whether a mutation that appeared on a target slot has grown out; a one stage crop arrives grown. */
-    private fun harvestable(plant: GreenhouseElementInstance): Boolean =
-        plant.cropDef.isMutation && !plant.placed && (plant.highestStage ?: 0) >= plant.cropDef.maxStage
+    private fun harvestable(plant: GreenhouseElementInstance): Boolean = plant.readyToHarvest
 
     /** The soil under a plant, so a crop made only of stands still has a box to pulse. */
     private fun soilOf(grid: GreenhouseGrid, growing: ElementRuntimeState): List<BlockPos> {

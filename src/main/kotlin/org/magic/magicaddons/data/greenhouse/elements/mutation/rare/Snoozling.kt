@@ -130,7 +130,7 @@ object Snoozling : CropDefinitionProvider {
                 5..5,
                 // read rather than matched: the sleep stand comes and goes, and requiring it would
                 // make a woken snoozling fail to be a snoozling
-                readers = listOf(CropStandReader.presence(CropStandReader.ASLEEP, "z"))
+                readers = listOf(CropStandReader.standPresence(CropStandReader.ASLEEP, "z"))
             ),
             // awake at stage 5; the entry above is the sleeping look
             CropStage(
@@ -322,7 +322,7 @@ object Snoozling : CropDefinitionProvider {
                     )
                 ),
                 10..10,
-                readers = listOf(CropStandReader.presence(CropStandReader.ASLEEP, "z"))
+                readers = listOf(CropStandReader.standPresence(CropStandReader.ASLEEP, "z"))
             ),
             // awake at stage 10, the head level again
             CropStage(
@@ -593,7 +593,7 @@ object Snoozling : CropDefinitionProvider {
                     )
                 ),
                 15..15,
-                readers = listOf(CropStandReader.presence(CropStandReader.ASLEEP, "z"))
+                readers = listOf(CropStandReader.standPresence(CropStandReader.ASLEEP, "z"))
             ),
             CropStage(
                 blocks = CropBlockState.blockStatePattern(

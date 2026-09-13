@@ -6,7 +6,6 @@ import org.magic.magicaddons.Common
 import org.magic.magicaddons.commands.AbstractCommand
 import org.magic.magicaddons.commands.internal.farming.CollectToggle
 import org.magic.magicaddons.commands.internal.farming.GetPlannerItemCommand
-import org.magic.magicaddons.commands.internal.farming.IgnoreFarmingWarnings
 import org.magic.magicaddons.commands.internal.farming.UnplanGreenhouse
 import org.magic.magicaddons.commands.internal.farming.SetTimestalkAttribute
 import org.magic.magicaddons.util.ChatUtils
@@ -21,7 +20,6 @@ object MainInternal : AbstractCommand() {
 
     val internalCommandList = listOf(
         CollectToggle,
-        IgnoreFarmingWarnings,
         UnplanGreenhouse,
         SetTimestalkAttribute,
         GetPlannerItemCommand

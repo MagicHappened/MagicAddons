@@ -14,16 +14,9 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockId
 import java.time.Duration
 import java.time.Instant
 
-/**
- * Reads how much water a greenhouse's plants hold. Skyblock only shows a bar when the level
- * changes, so using a watering can opens a window and the plot is watched for bars while it lasts.
- */
 object GreenhouseWatering {
 
-    /**
-     * Every tier of can and what one spray tick of it adds to a plant's level. Only the top tier has
-     * been measured; the rest fall back to it until they are.
-     */
+
     private val sprayGain: Map<String, Int?> = linkedMapOf(
         "HYDRO_CAN_1000" to null,
         "HYDRO_CAN_TURBO_2000" to null,
@@ -34,10 +27,8 @@ object GreenhouseWatering {
 
     private const val FALLBACK_GAIN: Int = 7
 
-    /** One notch of a bar, the most the bar can be off from the level behind it. */
     private const val NOTCH_PERCENT: Int = 7
 
-    /** How many notches a full water bar has. */
     private const val BAR_NOTCHES: Int = 16
 
     private val waterCanIds: Set<String> get() = sprayGain.keys
@@ -88,6 +79,7 @@ object GreenhouseWatering {
             return
         }
 
+        if (!GreenhouseData.inOwnGarden()) return
         val grid = GreenhouseData.getCurrentGrid() ?: return
         if (!grid.hasRuntime()) return
 
@@ -101,7 +93,9 @@ object GreenhouseWatering {
             val slot = grid.getSlotAt(stand.blockPosition(), matchY = false) ?: return@forEach
             val element = grid.elementCovering(slot) ?: return@forEach
 
-            if (!element.instance.needsWater) return@forEach
+            // any plant that holds water can be watered, grown or not: a grown melon is what a
+            // soggybud beside it drinks from
+            if (!element.instance.cropDef.needsWater || element.instance.fullyGrownByPlacing) return@forEach
 
             // a bar that changed is one spray tick landing; a bar seen for the first time only counts
             // when it shows more than the level already held

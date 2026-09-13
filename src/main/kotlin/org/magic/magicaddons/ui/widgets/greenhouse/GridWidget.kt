@@ -151,7 +151,7 @@ class GridWidget(
             widget.waterEffect = GreenhouseGrid.waterEffectAt(layout, instance.slot)
 
             // the soggybuds still growing around the plant, each taking its share of its water
-            widget.drinkers = layout.plantsAround(instance).count { it.cropDef.drainsNeighbours && !it.grownOut }
+            widget.drinkers = layout.plantsAround(instance).count { it.cropDef.drainsNeighbours && !it.isFullyGrown }
 
             // a soggybud's time is walked on the whole greenhouse, its donors drying out as they
             // will, once per build rather than every frame
