@@ -80,7 +80,9 @@ object Sunflower : CropDefinitionProvider {
                     listOf(
                         CropArmorStand(
                             offset = Vec3(0.0, -0.15625, 0.1875),
+                            headRotation = Rotations(-22.5f, 0.0f, 0.0f),
                             hashString = "b40d6fc1e1b67c58d7f82350bcac083f9e9547f9131236463164417fbdd3bee4",
+                            isSmall = false
                         )
                     )
                 ,

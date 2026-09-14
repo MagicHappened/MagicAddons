@@ -109,7 +109,7 @@ object PlannerNeeds {
         val count = { soilNeeds(blocks) }
 
         if (quiet(grid, "soil")) {
-            refreshCount(grid, "soil", count)
+            if (blocks.isEmpty()) retractLine(grid, "soil") else refreshCount(grid, "soil", count)
             return
         }
         if (blocks.isEmpty()) return
@@ -138,8 +138,11 @@ object PlannerNeeds {
     fun tellPlants(grid: GreenhouseGrid, crops: Map<CropDefinition, Int>) {
         val count = { plantNeeds(crops) }
 
+        // the soil is all down once plants are asked for, so its line has nothing left to name
+        retractLine(grid, "soil")
+
         if (quiet(grid, "plants")) {
-            refreshCount(grid, "plants", count)
+            if (crops.isEmpty()) retractLine(grid, "plants") else refreshCount(grid, "plants", count)
             return
         }
         if (crops.isEmpty()) return
@@ -220,6 +223,15 @@ object PlannerNeeds {
      * against what stands now rather than what stood when the line was sent. Nothing is redrawn
      * here, so the line does not move on every plant put down.
      */
+    /** Takes the line out of chat once nothing it names is left to get. */
+    private fun retractLine(grid: GreenhouseGrid, phase: String) {
+        val sent = lastMessage ?: return
+        if (sent.key != "${grid.layout.id}|$phase") return
+
+        ChatUtils.retract(sent.line)
+        lastMessage = null
+    }
+
     private fun refreshCount(grid: GreenhouseGrid, phase: String, count: () -> List<RequestedItem>) {
         val sent = lastMessage ?: return
         if (sent.key != "${grid.layout.id}|$phase") return

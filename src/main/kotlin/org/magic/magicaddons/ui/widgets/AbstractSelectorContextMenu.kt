@@ -57,8 +57,11 @@ abstract class AbstractSelectorContextMenu<T>(
 
     private val searchHeight: Int get() = if (withSearch) rowHeight else 0
 
+    /** Room kept under the rows for [renderFooter]; none unless a subclass asks for it. */
+    protected open val footerHeight: Int = 0
+
     override val overlayHeight: Int
-        get() = titleHeight + searchHeight + valueWidgets.sumOf { it.height }
+        get() = titleHeight + searchHeight + valueWidgets.sumOf { it.height } + footerHeight
 
     /** Builds the rows, then moves the menu so the whole of it is on screen. */
     open fun init() {
@@ -120,6 +123,11 @@ abstract class AbstractSelectorContextMenu<T>(
             graphics.fill(overlayX, lineY, overlayX + overlayWidth, lineY + 1, Common.UI.DIVIDER_COLOR)
         }
         valueWidgets.forEach { it.extractRenderState(graphics, mouseX, mouseY) }
+        if (footerHeight > 0) {
+            val footerTop = overlayY + overlayHeight - footerHeight
+            graphics.fill(overlayX, footerTop, overlayX + overlayWidth, footerTop + 1, Common.UI.DIVIDER_COLOR)
+            renderFooter(graphics, footerTop, mouseX, mouseY)
+        }
         graphics.drawBorder(overlayX, overlayY, overlayX + overlayWidth, overlayY + overlayHeight, Common.UI.BORDER_SIZE, Common.UI.BORDER_COLOR)
     }
 
@@ -130,8 +138,15 @@ abstract class AbstractSelectorContextMenu<T>(
         valueWidgets.toList().forEach {
             if (it.mouseClicked(mouseButtonEvent, doubled)) return true
         }
+        if (footerHeight > 0 && mouseButtonEvent.y >= overlayY + overlayHeight - footerHeight) footerClicked()
         return true
     }
+
+    /** Draws whatever sits under the rows, from [footerTop] down to the bottom of the menu. */
+    protected open fun renderFooter(graphics: GuiGraphicsExtractor, footerTop: Int, mouseX: Int, mouseY: Int) {}
+
+    /** A click anywhere under the rows. */
+    protected open fun footerClicked() {}
 
     override fun charTyped(characterEvent: CharacterEvent): Boolean = withSearch && searchBox.charTyped(characterEvent)
 

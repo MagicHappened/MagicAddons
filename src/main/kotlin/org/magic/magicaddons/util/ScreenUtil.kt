@@ -70,23 +70,17 @@ object ScreenUtil {
         }
     }
 
-    /** Whether ([mouseX], [mouseY]) lies in the rectangle from ([x], [y]) of [width] by [height]. */
     fun inRect(mouseX: Double, mouseY: Double, x: Int, y: Int, width: Int, height: Int): Boolean =
         inRect(mouseX.toInt(), mouseY.toInt(), x, y, width, height)
 
     fun inRect(mouseX: Int, mouseY: Int, x: Int, y: Int, width: Int, height: Int): Boolean =
         mouseX in x until x + width && mouseY in y until y + height
 
-    /** The same event at another point, for a screen that draws in its own coordinates. */
     fun MouseButtonEvent.at(x: Double, y: Double): MouseButtonEvent =
         MouseButtonEvent(x, y, MouseButtonInfo(button(), modifiers()))
 
     operator fun IntArray.component4(): Int = this[3]
 
-    /**
-     * Writing on one of the mod's screens. Every one of them draws through this, so the text shadow
-     * setting reaches all of it rather than the places that happened to ask for a shadow.
-     */
     fun GuiGraphicsExtractor.modText(font: Font, text: Component, x: Int, y: Int, color: Int) {
         text(font, inModFont(text), x, y, color, Customization.textShadow)
     }
@@ -190,10 +184,7 @@ object ScreenUtil {
         fill(x, thumbY, x + Common.UI.SCROLLBAR_WIDTH, thumbY + thumb, Common.UI.TEXT_COLOR)
     }
 
-    /**
-     * A frame just inside the rectangle: four strips that meet square at the corners, handed to the
-     * gui as one element rather than four, since the gui checks every element against the others.
-     */
+
     fun GuiGraphicsExtractor.drawBorder(x1: Int, y1: Int, x2: Int, y2: Int, thickness: Int, color: Int) {
         fillShape(
             floatArrayOf(
@@ -208,10 +199,6 @@ object ScreenUtil {
 
     private fun x1f(n: Int): Float = n.toFloat()
 
-    /**
-     * Two greys in small squares, the way image editors show see-through: what stands for air. Two
-     * gui elements however big, the dark ground and the light squares together.
-     */
     fun GuiGraphicsExtractor.drawCheckerboard(x1: Int, y1: Int, x2: Int, y2: Int) {
         if (x2 <= x1 || y2 <= y1) return
         fill(x1, y1, x2, y2, CHECKER_DARK)

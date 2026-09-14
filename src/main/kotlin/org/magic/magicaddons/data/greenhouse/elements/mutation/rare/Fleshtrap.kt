@@ -123,6 +123,42 @@ object Fleshtrap : CropDefinitionProvider {
                 ),
                 armorStands = listOf(
                     CropArmorStand(
+                        offset = Vec3(0.0, 0.0625, 0.0),
+                        headRotation = Rotations(67.5f, 0.0f, 0.0f),
+                        hashString = "c7f45f6cb2e4bbf45c5537c4dc3055a323021d62db7d91cc60beb02956401fb9",
+                        isSmall = false
+                    )
+                ),
+                6..6,
+                readers = listOf(CropStandReader.bar(CropStandReader.HUNGER))
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = melonStemState(5)
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, 0.0625, 0.0),
+                        headRotation = Rotations(90.0f, 0.0f, 0.0f),
+                        hashString = "c7f45f6cb2e4bbf45c5537c4dc3055a323021d62db7d91cc60beb02956401fb9",
+                        isSmall = false
+                    )
+                ),
+                7..7,
+                readers = listOf(CropStandReader.bar(CropStandReader.HUNGER))
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = melonStemState(5)
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
                         isSmall = false,
                         offset = Vec3(0.0, 0.25, 0.0),
                         headRotation = Rotations(112.5f, 0.0f, 0.0f),
@@ -135,15 +171,87 @@ object Fleshtrap : CropDefinitionProvider {
                 blocks = listOf(
                     CropBlockState(
                         offset = BlockPos(0, 1, 0),
+                        blockState = melonStemState(6)
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, 0.25, 0.0),
+                        headRotation = Rotations(112.5f, 0.0f, 0.0f),
+                        hashString = "c7f45f6cb2e4bbf45c5537c4dc3055a323021d62db7d91cc60beb02956401fb9",
+                        isSmall = false
+                    )
+                ),
+                9..9,
+                readers = listOf(CropStandReader.bar(CropStandReader.HUNGER))
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = melonStemState(6)
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, 0.34375, 0.0),
+                        headRotation = Rotations(112.5f, 0.0f, 0.0f),
+                        hashString = "c7f45f6cb2e4bbf45c5537c4dc3055a323021d62db7d91cc60beb02956401fb9",
+                        isSmall = false
+                    )
+                ),
+                10..10,
+                readers = listOf(CropStandReader.bar(CropStandReader.HUNGER))
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0, 1, 0),
                         blockState = melonStemState(7)
                     )
                 ),
                 armorStands = listOf(
                     CropArmorStand(
-                        offset = Vec3(0.0, 0.34375, 0.125),
+                        offset = Vec3(0.0, 0.4375, 0.0),
+                        headRotation = Rotations(90.0f, 0.0f, 0.0f),
+                        hashString = "c7f45f6cb2e4bbf45c5537c4dc3055a323021d62db7d91cc60beb02956401fb9",
+                        isSmall = false
+                    )
+                ),
+                11..11,
+                readers = listOf(CropStandReader.bar(CropStandReader.HUNGER))
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = melonStemState(7)
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, 0.4375, -0.125),
+                        headRotation = Rotations(67.5f, 0.0f, 0.0f),
+                        hashString = "c7f45f6cb2e4bbf45c5537c4dc3055a323021d62db7d91cc60beb02956401fb9",
+                        isSmall = false
+                    )
+                ),
+                12..12,
+                readers = listOf(CropStandReader.bar(CropStandReader.HUNGER))
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = melonStemState(7)
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, 0.34375, -0.125),
                         headRotation = Rotations(45.0f, 0.0f, 0.0f),
-                        yRotation = -180.0f,
-                        hashString = "c7f45f6cb2e4bbf45c5537c4dc3055a323021d62db7d91cc60beb02956401fb9"
+                        hashString = "c7f45f6cb2e4bbf45c5537c4dc3055a323021d62db7d91cc60beb02956401fb9",
+                        isSmall = false
                     )
                 ),
                 13..13,

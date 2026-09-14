@@ -136,14 +136,10 @@ object PlantDex {
 
     /** Stages recorded without the way their stands are turned, by crop name, listed by hand. */
     private val UNTURNED: Map<String, Set<Int>> = mapOf(
-        "Cocoa Beans" to setOf(5),
         "Devourer" to (10..12).toSet(),
-        "Fleshtrap" to setOf(8, 13),
         "Godseed" to setOf(32, 34, 35, 36, 37, 40),
-        "Moonflower" to setOf(4),
         "PlantBoy Advance" to setOf(9, 10),
-        "Stoplight Petal" to setOf(1, 2, 8),
-        "Sunflower" to setOf(4),
+        "Stoplight Petal" to setOf(2),
         "Zombud" to setOf(7) + (10..15)
     )
 

@@ -46,7 +46,8 @@ object HudElements {
     val all: List<HudElement>
         get() = listOf(
             org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseHud,
-            org.magic.magicaddons.features.foraging.safarihelper.SafariHelper.hud
+            org.magic.magicaddons.features.foraging.safarihelper.SafariHelper.hud,
+            org.magic.magicaddons.features.mining.PickaxeAbilityCooldown.hud
         )
 
     fun byId(id: String): HudElement? = all.firstOrNull { it.id == id }

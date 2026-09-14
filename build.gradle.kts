@@ -4,12 +4,10 @@ plugins {
     id("maven-publish")
 }
 
-/** What git says, or null when git is missing or this is not a checkout. */
 fun git(vararg args: String): String? = runCatching {
     providers.exec { commandLine("git", *args) }.standardOutput.asText.get().trim()
 }.getOrNull()?.takeIf { it.isNotEmpty() }
 
-/** A local build on the beta branch takes its commit from git; "-dirty" marks uncommitted changes. */
 fun localBetaId(): String? {
     if (git("rev-parse", "--abbrev-ref", "HEAD") != "beta") return null
     val hash = git("rev-parse", "--short", "HEAD") ?: return null
@@ -39,8 +37,6 @@ java {
     withSourcesJar()
 }
 
-// only the version the source tree is currently shaped for can actually be run, so the other one
-// generates no IDE run configuration and its run tasks do nothing: one game starts, not two
 val activeVersion: Boolean = stonecutter.current.isActive
 
 loom {

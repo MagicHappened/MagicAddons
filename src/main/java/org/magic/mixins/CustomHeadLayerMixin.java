@@ -26,7 +26,8 @@ public class CustomHeadLayerMixin {
 
     /**
      * A ghost head is drawn cutout unless plants are see-through: translucent models are drawn a
-     * pass each, cutout models batch by skin.
+     * pass each, cutout models batch by skin. The translucent type culls back faces, since without
+     * culling the inside of the skull shows through its front.
      */
     @WrapOperation(
             method = "resolveSkullRenderType",
@@ -43,7 +44,7 @@ public class CustomHeadLayerMixin {
         if (state instanceof WrappedEntityRenderState wrapped && wrapped.magicaddons$headOutlineColor() != 0) {
             Identifier texture = info.playerSkin().body().texturePath();
             return GreenhousePresets.plantAlpha() < OPAQUE
-                    ? RenderTypes.entityTranslucent(texture)
+                    ? RenderTypes.entityTranslucentCullItemTarget(texture)
                     : RenderTypes.entityCutout(texture);
         }
         return original.call(info);

@@ -33,6 +33,10 @@ data class GreenhouseLayout(
             elementInstances.add(instance.copyForPrediction(slot))
         }
     }
+    /** Whether nothing is set anywhere: no soil, no mark and no plant. */
+    fun isUnset(): Boolean =
+        elementInstances.isEmpty() && slots.all { it.placedBlock == null && it.slotMark == null }
+
     /** A copy on plants of its own, so nothing done to it reaches this layout. */
     fun copy(): GreenhouseLayout = GreenhouseLayout(id = id, name = name, size = size).also { it.takeContentsFrom(this) }
 
@@ -48,8 +52,17 @@ data class GreenhouseLayout(
             }
         }
         elementInstances.forEach { instance ->
-            val (x, y) = turnedOrigin(instance.slot.x, instance.slot.y, instance.cropDef.footprint.width, turns)
+            val span = instance.cropDef.footprint.width
+            val (x, y) = turnedOrigin(instance.slot.x, instance.slot.y, span, turns)
             val slot = copy.getSlot(x, y) ?: return@forEach
+
+            // a plant's mark sits on its top left slot, which the turn above carried to another
+            // corner of the plant, so it is moved onto the plant's new top left
+            if (span > 1) {
+                val (markX, markY) = turnedOrigin(instance.slot.x, instance.slot.y, 1, turns)
+                copy.getSlot(markX, markY)?.slotMark = null
+                slot.slotMark = instance.slot.slotMark
+            }
             copy.elementInstances.add(instance.copyForPrediction(slot))
         }
 
