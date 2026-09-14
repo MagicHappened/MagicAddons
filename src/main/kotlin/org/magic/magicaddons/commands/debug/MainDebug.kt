@@ -9,7 +9,8 @@ object MainDebug : AbstractCommand() {
     override val argument: String = "debug"
     val debugCommandList = listOf(
         ForceUpdate,
-        FarmingDebug
+        FarmingDebug,
+        MiningDebug
     )
 
     override fun build(): LiteralArgumentBuilder<FabricClientCommandSource> {

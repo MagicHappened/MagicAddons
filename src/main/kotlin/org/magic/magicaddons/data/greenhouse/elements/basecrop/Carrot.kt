@@ -71,6 +71,16 @@ object Carrot : CropDefinitionProvider {
                 blocks = listOf(
                     CropBlockState(
                         offset = BlockPos(0,1,0),
+                        blockState = carrotState(5)
+                    )
+                ),
+                armorStands = null,
+                6..6
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0,1,0),
                         blockState = carrotState(6)
                     )
                 ),

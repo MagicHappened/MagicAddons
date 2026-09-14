@@ -342,8 +342,14 @@ object GreenhouseData : GridCallbacks {
 
     /** Reads only the slots a change at [positions] can have reached; a plot never read gets the full scan. */
     private fun rescanAround(positions: List<BlockPos>) {
-        if (!inOwnGarden()) return
         val grid = getCurrentGrid() ?: return
+        rescanSlots(grid, grid.regionAround(positions))
+    }
+
+    /** Reads only [region] of [grid] again, as slot coordinates; every plant outside it is kept as it is. */
+    private fun rescanSlots(grid: GreenhouseGrid, region: Set<Pair<Int, Int>>) {
+        if (!inOwnGarden()) return
+        if (getCurrentGrid() !== grid) return
         if (!grid.state.hasRuntimeReferences) {
             fullScanWanted = true
             return
@@ -356,7 +362,7 @@ object GreenhouseData : GridCallbacks {
         grid.plot = plot
 
         grid.createSlotDataForGrid()
-        if (!grid.setPlantData(grid.regionAround(positions))) return
+        if (!grid.setPlantData(region)) return
         claimPlantedCrop(grid)
         LayoutRenderState.refresh()
     }
@@ -1301,8 +1307,9 @@ object GreenhouseData : GridCallbacks {
             }
         }
 
-        // a plant read in somebody else's garden is not the player's to remember
-        listening?.takeIf { inOwnGarden() }?.let { element ->
+        val target = listening?.takeIf { inOwnGarden() }?.let { disputeRecordWith(it, def, status) }
+
+        target?.let { element ->
             age?.parseDurationToMs()?.let { element.instance.age = it }
             stageRaw?.let { element.instance.growthStage = GrowthStageInfo.Known(it) }
 
@@ -1327,8 +1334,6 @@ object GreenhouseData : GridCallbacks {
 
         if (!CropCollector.isActive()) return
 
-        // every failure is reported in chat rather than returning silently, since the player pointed
-        // the tool at a plant to find out what the mod makes of it
         if (def == null) {
             ChatUtils.sendWithPrefix(
                 "No crop described for ${stackId?.id ?: "an unrecognised plant"}, nothing to match against."
@@ -1345,8 +1350,6 @@ object GreenhouseData : GridCallbacks {
             return
         }
 
-        // the page says how many stages the crop really has, so a definition that disagrees is
-        // wrong about something the game just told us
         saplingLore.valueFor("Stage")
             ?.substringAfter('/', "")
             ?.trim()
@@ -1364,6 +1367,30 @@ object GreenhouseData : GridCallbacks {
         }
         
         CropCollector.correct(def, stageRaw, hit)
+    }
+
+    
+    private fun disputeRecordWith(element: ElementRuntimeState, toolCrop: CropDefinition?, status: String?): ElementRuntimeState? {
+        val plant = element.instance
+        val otherCrop = toolCrop != null && toolCrop != plant.cropDef
+        val toolSaysGrowing = status?.contains("Growing", ignoreCase = true) == true
+
+        if (plant.fullyGrownByPlacing && (otherCrop || toolSaysGrowing)) plant.placed = false
+        if (!otherCrop) return element
+
+        val grid = getCurrentGrid() ?: return null
+        val footprint = plant.cropDef.footprint
+        val slots = buildSet {
+            for (offsetX in 0 until footprint.width) {
+                for (offsetY in 0 until footprint.height) {
+                    add(plant.slot.x + offsetX to plant.slot.y + offsetY)
+                }
+            }
+        }
+        rescanSlots(grid, slots)
+
+        val found = grid.layout.getSlot(plant.slot.x, plant.slot.y)?.let { grid.elementCovering(it) }
+        return found?.takeIf { it.instance.cropDef == toolCrop }
     }
 
     /**

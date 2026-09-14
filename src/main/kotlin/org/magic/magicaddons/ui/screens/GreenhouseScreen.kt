@@ -1,5 +1,9 @@
 package org.magic.magicaddons.ui.screens
 
+import java.util.Locale
+import java.time.format.DateTimeFormatter
+import java.time.ZonedDateTime
+import java.time.Duration
 import org.magic.magicaddons.util.ScreenUtil.modText
 import org.magic.magicaddons.util.toShortDuration
 import org.magic.magicaddons.commands.internal.MainInternal
@@ -11,6 +15,7 @@ import org.magic.magicaddons.features.farming.greenhousePresets.GreenhousePreset
 import net.minecraft.core.Direction
 import org.magic.magicaddons.data.greenhouse.transfer.LayoutTransferResult
 import org.magic.magicaddons.data.greenhouse.MasterLayout
+import org.magic.magicaddons.data.greenhouse.SoftImport
 import net.minecraft.world.level.block.state.BlockState
 import org.magic.magicaddons.data.greenhouse.LayoutSlot
 import org.magic.magicaddons.util.ScreenUtil
@@ -171,7 +176,7 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
         onAssignedLayout = { assignedLayout, selectedGrid ->
             assignPresetLayout(assignedLayout, selectedGrid)
         },
-        onImported = { imported(it) },
+        onImported = { result, soft -> imported(result, soft) },
         onRemove = { removePresetLayout(it) },
         onNewPreset = { newPreset() },
         shownLayout = { displayedGridWidget?.layout },
@@ -184,10 +189,8 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
 
     private val hoverControls = HoverControls()
 
-    /** Sits beside the selector to say the wheel turns it too. */
     private val scrollHint = ScrollHint(SCROLL_HINT_GREENHOUSES)
 
-    /** The greenhouses as bookmarks along the top of the grid; a right click renames one. */
     private val plotTabs = Bookmarks<GreenhouseLayout>(
         side = Bookmarks.Side.Top,
         label = { it.displayName() },
@@ -200,7 +203,6 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
         }
     )
 
-    /** One bookmark under the frame that walks the player to the plot on screen. */
     private val teleportTab = Bookmarks<String>(
         side = Bookmarks.Side.Bottom,
         label = { it },
@@ -212,7 +214,6 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
         }
     ).apply { items = listOf(TELEPORT_LABEL) }
 
-    /** The plants a preset can be built from, under the preset shelf. */
     private val plantPalette = PlantPalette(
         this,
         onClearAll = { askClearPlot(it) },
@@ -221,23 +222,18 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
         uniqueMissing = { uniqueMissingFromPreset(it) }
     )
 
-    /** The slot the last drag stroke acted on, so holding the mouse over it does not act twice. */
     private var lastPainted: Pair<Int, Int>? = null
 
-    /** A bookmark along the top of a preset: one of its plots, or the one that adds a plot. */
     private sealed interface PartTab {
         data class Part(val layout: GreenhouseLayout) : PartTab
         data object Add : PartTab
     }
 
-    /** The title of a plot's bookmark: its name in its preset, or its own when it is in none. */
     private fun partTitle(layout: GreenhouseLayout): String =
         GreenhouseData.masterOf(layout)?.plotTitle(layout) ?: layout.displayName()
 
-    /** Which plot of the current preset is on show; null for its first. */
     private var shownPlot: GreenhouseLayout? = null
 
-    /** The plots of the preset as bookmarks along the top, with a + at the end to add one. */
     private val partTabs = Bookmarks<PartTab>(
         side = Bookmarks.Side.Top,
         label = { tab -> if (tab is PartTab.Part) partTitle(tab.layout) else "+" },
@@ -255,10 +251,8 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
         }
     )
 
-    /** Grid lines with nothing on them, shown while there is no preset, so a plant has somewhere to land. */
     private var emptyGridWidget: GridWidget? = null
 
-    /** Whether the preset canvas was cleared: an empty grid with nothing picked, until a plant lands. */
     private var presetCleared = false
 
     private val cropPreviewButton = ClickableButtonWidget("Crop Preview")
@@ -266,8 +260,6 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
     override fun onInit() {
         super.onInit()
 
-        // a cramped window is laid out as if it had more units, then drawn smaller to fit them in,
-        // and the player's own scale multiplies whatever that came to
         drawScale = DRAW_SCALES.first { it == DRAW_SCALES.last() ||
                 width / it >= COMFORTABLE_WIDTH && height / it >= COMFORTABLE_HEIGHT } *
                 Customization.uiScale
@@ -276,18 +268,12 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
 
         initBaseLayout()
 
-        // opening this screen is the player asking about their greenhouses, which is the one moment a
-        // missing number is worth interrupting them for
         GreenhouseData.warnUnknownValues()
     }
 
-    /** Places the grid, the name box, the shelves and the buttons, then lays out whichever mode is on. */
     private fun initBaseLayout() {
         paddingY = height / 10
 
-        // the name box and the bookmarks sit above the grid, the teleport and preview buttons under
-        // it, and the toolbar down the left and the bookmarks plus a tooltip down the right beside
-        // it, so the grid takes whichever axis runs out first
         startY = maxOf(paddingY, NAME_TOP + boxHeight(" ") + Common.UI.SPACING + Bookmarks.REACH + BORDER_PADDING)
         val bottomRoom = Bookmarks.REACH + Common.UI.SPACING + cropPreviewButton.height + Common.UI.SPACING_LARGE
 
@@ -295,8 +281,6 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
         val heightRoom = height - startY - BORDER_PADDING * 2 - bottomRoom
         val widthRoom = width - sideRoom - BORDER_PADDING * 2
 
-        // the room decides the slot and the slot decides everything else, so the division
-        // happens once and every other measurement is counted up from its answer
         slotSize = GridWidget.slotSizeFor(minOf(heightRoom, widthRoom), GREENHOUSE_SIZE)
             .coerceAtLeast(MIN_SLOT_SIZE)
 
@@ -345,7 +329,7 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
 
         predictShelfY = viewShelfY + viewShelfHeight + Common.UI.SPACING_LARGE
         predictShelfHeight = if (currentDisplay == CurrentDisplay.Greenhouses) {
-            shelfTitleHeight() + ActionPanel.PADDING * 2 + SliderWidget.HEIGHT + Common.UI.SPACING + font.lineHeight
+            shelfTitleHeight() + ActionPanel.PADDING * 2 + SliderWidget.HEIGHT + Common.UI.SPACING + font.lineHeight * 2
         } else {
             0
         }
@@ -359,17 +343,14 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
         actionShelfY = predictShelfY +
                 if (predictShelfHeight > 0) predictShelfHeight + Common.UI.SPACING_LARGE else 0
 
-        // one row under the title, offered to whichever mode is on screen, so the two put their
-        // buttons in the same place without either working out where that is
         actionRowX = shelfLeft
         actionRowY = actionShelfY + shelfTitleHeight()
     }
 
-    /** The plot bookmarks, the teleport tab, the greenhouse buttons and the hover controls around the grid. */
+    
     private fun layoutGreenhouseWidgets() {
         plotTabs.layoutAlong(startX - BORDER_PADDING, startY - BORDER_PADDING, containerSize + BORDER_PADDING * 2)
 
-        // hung off the bottom of the frame, centred
         teleportTab.layoutAlong(
             startX + (containerSize - TELEPORT_WIDTH) / 2,
             startY + containerSize + BORDER_PADDING,
@@ -380,13 +361,11 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
         hoverControls.layoutAgainstGrid(startX + containerSize, startY, containerSize)
     }
 
-    /** The part bookmarks, the preset buttons, the plants shelf and the empty grid. */
     private fun layoutPresetWidgets() {
         partTabs.layoutAlong(startX - BORDER_PADDING, startY - BORDER_PADDING, containerSize + BORDER_PADDING * 2)
 
         presetUI.layoutIn(actionRowX, actionRowY, shelfWidth)
 
-        // the plants shelf takes what is left under the preset buttons, ending with the grid's frame
         val paletteY = actionShelfY + shelfTitleHeight() + presetUI.contentHeight + Common.UI.SPACING_LARGE
         val frameBottom = startY + containerSize + BORDER_PADDING
         plantPalette.layout(shelfLeft, paletteY, shelfWidth, frameBottom - paletteY)
@@ -394,7 +373,7 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
         emptyGridWidget = newGridWidget(GreenhouseLayout(id = EMPTY_GRID_ID), turns = 0)
     }
 
-    /** A grid for [layout] at the grid's place on screen, built and ready to draw. */
+    
     private fun newGridWidget(layout: GreenhouseLayout, turns: Int): GridWidget =
         GridWidget(layout, slotSize).apply {
             this.turns = turns
@@ -1066,6 +1045,14 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
                 Common.UI.TEXT_COLOR,
                 false
             )
+            graphics.text(
+                font,
+                Component.literal(predictWindowClock()),
+                predictSlider.x,
+                predictSlider.y + SliderWidget.HEIGHT + Common.UI.SPACING + font.lineHeight,
+                Common.UI.TEXT_COLOR,
+                false
+            )
         }
 
         val panel = if (currentDisplay == CurrentDisplay.Greenhouses) greenhousePanel else presetUI
@@ -1310,16 +1297,11 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
         return true
     }
 
-    /** The clicks greenhouse mode takes: the middle click, the Unplan button, the bookmarks and the swatches. */
+    /** The clicks greenhouse mode takes: the Unplan button, the bookmarks and the swatches. */
     private fun greenhouseClicked(event: MouseButtonEvent, doubled: Boolean): Boolean {
         if (event.button() == 0) {
             val clicked = displayedGridWidget?.elementAtPos(event.x, event.y)
             if (clicked != null && highlightPlant(clicked)) return true
-        }
-
-        if (event.button() == 2) {
-            scrollPicksInfo = !scrollPicksInfo
-            return true
         }
 
         if (greenhousePanel.mouseClicked(event, doubled)) return true
@@ -1460,12 +1442,10 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
         if (scrollY == 0.0) return super.onMouseScrolled(scaledX, scaledY, scrollX, scrollY)
         if (currentDisplay == CurrentDisplay.Presets && plantPalette.mouseScrolled(scaledX, scaledY, scrollX, scrollY)) return true
 
-        // the wheel walks the plots or presets; in greenhouse mode a middle click points it at
-        // the swatches instead, and presets never care which way that switch is left
-        if (currentDisplay == CurrentDisplay.Greenhouses && scrollPicksInfo) {
-            hoverControls.cycle(down = scrollY < 0)
-        } else {
-            cycleDisplayedGrid(forward = scrollY < 0)
+        // the wheel walks the swatches in greenhouse mode and the presets in preset mode
+        when (currentDisplay) {
+            CurrentDisplay.Greenhouses -> hoverControls.cycle(down = scrollY < 0)
+            CurrentDisplay.Presets -> cycleDisplayedGrid(forward = scrollY < 0)
         }
 
         return true
@@ -1497,38 +1477,83 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
         initPresetLayout()
     }
 
-    /** Puts an imported layout where it belongs: into the empty plot on show, or as a new preset. */
-    private fun imported(result: LayoutTransferResult.Imported) {
+    /**
+     * Puts an imported layout into the preset on show whenever it can.
+     *
+     * A soft import of one plot is laid over the plot on show, at whichever turn and position
+     * destroys the least. Otherwise the incoming plots that hold anything go into the preset's empty
+     * plots: plots with every slot unset, then plots not yet added, the one on show first. When there
+     * are not enough of those, one plot replaces the plot on show and several become a new preset.
+     * A plot laid into nothing is turned so its top points the way the player faces.
+     */
+    private fun imported(result: LayoutTransferResult.Imported, soft: Boolean) {
         val master = GreenhouseData.currentPreset
         val shown = displayedGridWidget?.layout
+        val facing = facingTurns()
+        val incoming = result.plots.filterNot { it.isUnset() }.ifEmpty { result.plots.take(1) }
+
+        if (master == null || shown == null) {
+            importAsNewPreset(result, facing)
+            return
+        }
+        if (master.name == null) master.name = result.nameForPreset
+
+        if (soft && incoming.size == 1 && !shown.isUnset()) {
+            remember(shown)
+            val fit = SoftImport.bestFit(shown, incoming.first(), facing)
+            shown.takeContentsFrom(fit.layout)
+            initPresetLayout()
+            ChatUtils.sendWithPrefix("Imported into ${GreenhouseData.describe(shown)}")
+            ChatUtils.sendWithPrefix(
+                "Soft imported at ${fit.turns * 90}°, ${counted(fit.plantsRemoved, "plant")} and ${counted(fit.soilsReplaced, "soil")} replaced"
+            )
+            return
+        }
+
+        val unsetPlots = master.plots.filter { it.isUnset() }.sortedByDescending { it === shown }
+        val roomLeft = unsetPlots.size + (MasterLayout.MAX_PLOTS - master.plots.size)
 
         when {
-            // one plot into the empty plot on show, keeping the plot's place in its preset
-            master != null && shown != null && result.plots.size == 1 && shown.elementInstances.isEmpty() -> {
-                shown.takeContentsFrom(result.layout)
-                if (master.name == null) master.name = result.nameForPreset
+            incoming.size <= roomLeft -> {
+                val targets = incoming.indices.map { index -> unsetPlots.getOrNull(index) ?: master.addPlot() }
+                incoming.zip(targets).forEach { (plot, target) ->
+                    remember(target)
+                    target.takeContentsFrom(plot.turned(facing))
+                    if (target.name == null && incoming.size > 1) target.name = plot.name
+                }
+                shownPlot = targets.first()
+                initPresetLayout()
+                val into = if (targets.size == 1) GreenhouseData.describe(targets.first()) else master.displayName()
+                ChatUtils.sendWithPrefix("Imported into $into")
+            }
+            incoming.size == 1 -> {
+                remember(shown)
+                shown.takeContentsFrom(incoming.first().turned(facing))
                 initPresetLayout()
                 ChatUtils.sendWithPrefix("Imported into ${GreenhouseData.describe(shown)}")
             }
-            // several plots into a preset with nothing in it, replacing its plots
-            master != null && master.isEmpty() && result.plots.size > 1 -> {
-                master.plots.clear()
-                result.plots.forEachIndexed { index, plot ->
-                    GreenhouseLayout(id = master.plotId(index), name = plot.name).also { it.takeContentsFrom(plot) }.let(master.plots::add)
-                }
-                if (master.name == null) master.name = result.nameForPreset
-                shownPlot = null
-                initPresetLayout()
-                ChatUtils.sendWithPrefix("Imported into ${master.displayName()}")
-            }
-            else -> {
-                val preset = MasterLayout(id = result.layout.id, name = result.nameForPreset)
-                result.plots.forEachIndexed { index, plot ->
-                    GreenhouseLayout(id = preset.plotId(index), name = plot.name.takeIf { index > 0 || result.plots.size > 1 }).also { it.takeContentsFrom(plot) }.let(preset.plots::add)
-                }
-                addPresetLayout(preset)
-            }
+            else -> importAsNewPreset(result, facing)
         }
+    }
+
+    private fun importAsNewPreset(result: LayoutTransferResult.Imported, facing: Int) {
+        val preset = MasterLayout(id = result.layout.id, name = result.nameForPreset)
+        result.plots.forEachIndexed { index, plot ->
+            GreenhouseLayout(id = preset.plotId(index), name = plot.name.takeIf { index > 0 || result.plots.size > 1 })
+                .also { it.takeContentsFrom(plot.turned(facing)) }
+                .let(preset.plots::add)
+        }
+        addPresetLayout(preset)
+    }
+
+    private fun counted(count: Int, noun: String): String = "$count $noun" + if (count == 1) "" else "s"
+
+    /** Quarter turns clockwise that point a plot's top the way the player faces. */
+    private fun facingTurns(): Int = when (Minecraft.getInstance().player?.direction) {
+        Direction.EAST -> 1
+        Direction.SOUTH -> 2
+        Direction.WEST -> 3
+        else -> 0
     }
 
     override fun onKeyPressed(keyEvent: KeyEvent): Boolean {
@@ -1609,18 +1634,35 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
      * When the plot looks the way the slider shows it, as the chorus setting puts its absence: from
      * the tick that many ahead landing until the one after it, counted from the tick already running.
      */
-    private fun predictWindow(): String {
+    private fun predictWindowMs(): LongRange? {
         val ticks = predictSlider.value
-        if (ticks == 0) return ""
+        val tickMs = GreenhouseData.currentGrowthTickMs() ?: return null
+        val remaining = GreenhouseData.remainingTickMs() ?: return null
 
-        val tickMs = GreenhouseData.currentGrowthTickMs()
-        val remaining = GreenhouseData.remainingTickMs()
-        if (tickMs == null || remaining == null) return PREDICT_WINDOW_UNKNOWN
+        return (remaining + (ticks - 1) * tickMs)..(remaining + ticks * tickMs)
+    }
 
-        val from = remaining + (ticks - 1) * tickMs
-        val until = remaining + ticks * tickMs
+    private fun predictWindow(): String {
+        if (predictSlider.value == 0) return ""
+        val window = predictWindowMs() ?: return PREDICT_WINDOW_UNKNOWN
 
-        return "in ${from.toShortDuration()} - ${until.toShortDuration()}"
+        return "in ${window.first.toShortDuration()} - ${window.last.toShortDuration()}"
+    }
+
+    /** The same window on the player's own clock, as "5:52pm - 7:40pm", with the day named when it is not today. */
+    private fun predictWindowClock(): String {
+        if (predictSlider.value == 0) return ""
+        val window = predictWindowMs() ?: return ""
+
+        val now = ZonedDateTime.now()
+        fun clockTime(msFromNow: Long): String {
+            val at = now.plus(Duration.ofMillis(msFromNow))
+            val time = at.format(CLOCK_FORMAT).lowercase()
+
+            return if (at.toLocalDate() == now.toLocalDate()) time else "${at.format(DAY_FORMAT)} $time"
+        }
+
+        return "${clockTime(window.first)} - ${clockTime(window.last)}"
     }
 
     /** Shows the greenhouse with [layout], which also becomes the current greenhouse for the rest of the mod. */
@@ -1782,9 +1824,6 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
 
     companion object {
         private var lastDisplay: CurrentDisplay = CurrentDisplay.Greenhouses
-        /** Whether the wheel walks the swatches rather than the plots, kept for the session. */
-        private var scrollPicksInfo: Boolean = false
-
         /** The "not all greenhouses available" warning is sent at most once per game run. */
         private var warnedMissingGreenhouses: Boolean = false
 
@@ -1843,6 +1882,9 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
         /** What the window line reads while the tick clock has nothing to count from. */
         private const val PREDICT_WINDOW_UNKNOWN: String = "tick time unknown"
 
+        private val CLOCK_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("h:mma", Locale.ENGLISH)
+        private val DAY_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("EEE", Locale.ENGLISH)
+
         /** The furthest ahead the slider looks. */
         private const val MAX_PREDICT_TICKS: Int = 10
         private const val SHELF_GREENHOUSE: String = "Greenhouse"
@@ -1857,7 +1899,7 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
         private const val MAX_ATTRIBUTE: Int = 10
 
         private const val RENAME_HINT: String = "\nRight click a name to rename it: greenhouses, presets and plots"
-        private const val SCROLL_HINT_GREENHOUSES: String = "Scroll the mouse wheel to switch greenhouse$RENAME_HINT"
+        private const val SCROLL_HINT_GREENHOUSES: String = "Scroll the mouse wheel to switch what the plants show$RENAME_HINT"
         private const val SCROLL_HINT_PRESETS: String = "Scroll the mouse wheel to switch preset$RENAME_HINT"
 
         /** How many actions the arrows can walk back. */

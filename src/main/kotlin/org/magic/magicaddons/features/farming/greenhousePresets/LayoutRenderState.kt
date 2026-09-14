@@ -358,19 +358,20 @@ object LayoutRenderState {
         // one swap, so nothing drawn is ever half of this plan and half of the last
         plannerLayout = next
 
-        announceIfFinished(grid, layout, next)
+        announceIfFinished(grid, layout, next, cropsNeeded.isEmpty())
     }
 
     /**
-     * Sends the finished message once, when a plan first has nothing left to mark or ghost. A plan
-     * that finishes again within half a minute is not announced twice.
+     * Sends the finished message once, when a plan first has nothing left to mark, ghost or place. A
+     * plan that finishes again within half a minute is not announced twice.
      */
-    private fun announceIfFinished(grid: GreenhouseGrid, layout: GreenhouseLayout, next: PlannerLayout) {
+    private fun announceIfFinished(grid: GreenhouseGrid, layout: GreenhouseLayout, next: PlannerLayout, nothingToPlace: Boolean) {
         if (grid.state.buildAnnounced) return
 
-        // a crop skipped for a slot that reads as taken is not a crop that got planted
-        val finished = next.marks.isEmpty() && next.ghosts.isEmpty() && next.badStands.isEmpty() &&
-                next.blocked.isEmpty()
+        // a crop skipped for a slot that reads as taken is not a crop that got planted, and a crop
+        // whose ghost is only stands, or that has no ghost at all, is still a crop to place
+        val finished = nothingToPlace && next.marks.isEmpty() && next.ghosts.isEmpty() &&
+                next.badStands.isEmpty() && next.blocked.isEmpty()
         val was = lastFinished
 
         lastFinished = finished

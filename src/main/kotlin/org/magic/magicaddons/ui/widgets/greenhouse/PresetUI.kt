@@ -17,13 +17,15 @@ import org.magic.magicaddons.ui.OverlayContext
 import org.magic.magicaddons.ui.OverlayRenderable
 import org.magic.magicaddons.ui.widgets.ConfirmContext
 import org.magic.magicaddons.ui.widgets.PickContext
+import org.magic.magicaddons.ui.widgets.PickWithOptionContext
 import org.magic.magicaddons.ui.widgets.config.ClickableButtonWidget
 import org.magic.magicaddons.util.ChatUtils
 
 class PresetUI(
     val overlayContext: OverlayContext,
     val onAssignedLayout: (assignedLayout: GreenhouseLayout?, selectedGrid: GreenhouseGrid) -> Unit,
-    val onImported: (LayoutTransferResult.Imported) -> Unit,
+    /** An import to lay into the preset on show; true when it is laid over what is there instead of replacing it. */
+    val onImported: (LayoutTransferResult.Imported, Boolean) -> Unit,
     /** Takes a plot off the preset, or with null the whole preset. */
     val onRemove: (GreenhouseLayout?) -> Unit,
     /** Starts a preset with one empty plot. */
@@ -50,7 +52,7 @@ class PresetUI(
             newButton -> onNewPreset()
             turnLeftButton -> onTurn(-1)
             turnRightButton -> onTurn(1)
-            importButton -> openFormatMenu(event) { importPreset(it) }
+            importButton -> openImportMenu(event)
             exportButton -> openFormatMenu(event) { exportPreset(it) }
             applyToButton -> openMenu(event, "Assign To:", assignTargets()) { onAssignedLayout(shownLayout(), it) }
             deleteButton -> askDelete(event)
@@ -68,6 +70,19 @@ class PresetUI(
     /** The list of formats at the mouse; the picked one goes to [onPick]. */
     private fun openFormatMenu(event: MouseButtonEvent, onPick: (LayoutFormatType) -> Unit) =
         openMenu(event, "Format:", LayoutFormatType.entries, onPick)
+
+    /** The formats with the soft import box under them, which keeps its state until the game closes. */
+    private fun openImportMenu(event: MouseButtonEvent) {
+        val menu = PickWithOptionContext(
+            event.x.toInt(), event.y.toInt(), "Format:", LayoutFormatType.entries,
+            SOFT_IMPORT_LABEL, softImport, SOFT_IMPORT_TOOLTIP, overlayContext
+        ) { type, soft ->
+            softImport = soft
+            importPreset(type, soft)
+        }
+        menu.init()
+        overlayContext.addContext(menu)
+    }
 
     private fun <T> openMenu(event: MouseButtonEvent, title: String, values: List<T>, onPick: (T) -> Unit) {
         val menu = PickContext(event.x.toInt(), event.y.toInt(), title, values, overlayContext, onPick)
@@ -102,7 +117,7 @@ class PresetUI(
         overlayContext.addContext(ConfirmContext(menuX, menuY, question, overlayContext) { onRemove(plot) })
     }
 
-    private fun importPreset(type: LayoutFormatType) {
+    private fun importPreset(type: LayoutFormatType, soft: Boolean) {
         val format = formatFor(type)
         val clipboard = Minecraft.getInstance().keyboardHandler.clipboard
 
@@ -121,7 +136,7 @@ class PresetUI(
                 val plants = result.plots.sumOf { it.elementInstances.size }
                 val plots = if (result.plots.size > 1) " over ${result.plots.size} plots" else ""
                 ChatUtils.sendWithPrefix("Imported $plants plants$plots from ${format.displayName}")
-                onImported.invoke(result)
+                onImported.invoke(result, soft)
             }
             is LayoutTransferResult.Exported -> Unit
         }
@@ -162,4 +177,12 @@ class PresetUI(
 
     /** The format behind a menu entry. */
     private fun formatFor(type: LayoutFormatType): LayoutFormat = type.format
+
+    private companion object {
+        const val SOFT_IMPORT_LABEL: String = "Soft import"
+        const val SOFT_IMPORT_TOOLTIP: String = "Soft import tries to fit your imported preset onto the current preset while " +
+                "destroying as few plants and replacing as little soil as possible.\nMatters greatly for smaller presets"
+
+        var softImport: Boolean = false
+    }
 }

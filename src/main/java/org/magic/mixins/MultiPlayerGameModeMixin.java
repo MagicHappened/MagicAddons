@@ -30,7 +30,7 @@ public abstract class MultiPlayerGameModeMixin {
 
     @Inject(method = "useItem", at = @At("HEAD"))
     private void onUseItem(Player player, InteractionHand interactionHand, CallbackInfoReturnable<InteractionResult> cir){
-        UseEvent event = new UseEvent(player);
+        UseEvent event = new UseEvent(player, player.getItemInHand(interactionHand).copy());
         EventBus.post(event);
     }
 
@@ -41,7 +41,7 @@ public abstract class MultiPlayerGameModeMixin {
             BlockHitResult hit,
             CallbackInfoReturnable<InteractionResult> cir
     ) {
-        BlockUseEvent event = new BlockUseEvent(player,hit);
+        BlockUseEvent event = new BlockUseEvent(player, hit, player.getItemInHand(hand).copy());
         EventBus.post(event);
     }
 

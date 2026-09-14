@@ -9,19 +9,14 @@ import net.minecraft.network.chat.Component
 import org.magic.magicaddons.Common
 import org.magic.magicaddons.ui.OverlayContext
 import org.magic.magicaddons.util.ScreenUtil.drawPanel
-import kotlin.math.max
 
-/**
- * A question with Yes and No under it, and a warning in red between them when there is something
- * the player should know before saying yes. Yes runs [onYes]; either answer closes the panel.
- */
 class ConfirmContext(
     overlayX: Int,
     overlayY: Int,
     private val question: String,
     private val overlayContext: OverlayContext,
     private val warning: String? = null,
-    private val onYes: () -> Unit
+    private val onConfirm: () -> Unit
 ) : ButtonPairContext(overlayX, overlayY, widthFor(question, warning), heightFor(question, warning), "Yes", "No", BUTTON_WIDTH) {
 
     constructor(
@@ -53,7 +48,7 @@ class ConfirmContext(
 
         if (leftButton.mouseClicked(mouseButtonEvent, doubled)) {
             overlayContext.removeOverlay(this)
-            onYes()
+            onConfirm()
         } else if (rightButton.mouseClicked(mouseButtonEvent, doubled)) {
             overlayContext.removeOverlay(this)
         }
