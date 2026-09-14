@@ -15,6 +15,9 @@ interface GridCallbacks {
     /** whether to ignore water retain */
     fun assumeFlatWater(): Boolean = false
 
+    /** Whether the game is hanging water bars over the plants right now, in place of their own bars. */
+    fun waterBarsExpected(): Boolean = false
+
     fun forgetPlayerPlacementAt(soil: BlockPos)
 
     /** after receiving confirmation for a placed crop */

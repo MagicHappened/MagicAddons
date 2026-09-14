@@ -717,9 +717,13 @@ class GreenhouseGrid(
             bestStage?.traits?.let { instance.readings.putAll(it) }
 
             // read after matching and from every stand around the plant: a hunger bar belongs to the
-            // plant without being part of what makes it that plant
-            bestStage?.read(standsAround(origin, definition.footprint))
-                ?.let { instance.readings.putAll(it) }
+            // plant without being part of what makes it that plant. While cans are out the game hangs
+            // water bars in place of the plants' own, and a water bar in debt is red like a low one
+            val waterBarsExpected = callbacks.waterBarsExpected()
+            val standsToRead = standsAround(origin, definition.footprint).filterNot { stand ->
+                waterBarsExpected && stand.customName?.let { CropStandReader.looksLikeWaterBar(it) } == true
+            }
+            bestStage?.read(standsToRead)?.let { instance.readings.putAll(it) }
 
             return ElementRuntimeState(
                 instance = instance,

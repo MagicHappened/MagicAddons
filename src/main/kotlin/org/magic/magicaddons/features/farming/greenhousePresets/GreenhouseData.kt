@@ -113,6 +113,8 @@ object GreenhouseData : GridCallbacks {
 
     override fun assumeFlatWater(): Boolean = GreenhousePresets.assumeFlatWater()
 
+    override fun waterBarsExpected(): Boolean = GreenhouseWatering.wateringWindowOpen()
+
     /**
      * The soil at [soil] no longer holds what was put down there: a recorded look has matched it,
      * or nothing stands there any more. Kept, the entry built phantoms out of the next plant's parts.

@@ -65,10 +65,10 @@ class CropStandReader(
         }
 
         /**
-         * A bar of the plant's own, told by notches in a colour the water bar never uses. While a
-         * can is held the water bar hangs where this one did, and an empty water bar is all white,
-         * so a bar with no coloured notch is not read: the reading already held stands until the
-         * plant's own bar is back.
+         * A bar of the plant's own: any coloured notches but the water bar's blue. A hunger bar goes
+         * green, yellow and presumably red as it empties, and an all-white bar says nothing, so the
+         * reading already held stands until a coloured notch is back. A red-only bar is also what
+         * a water bar in debt looks like, which the caller keeps away while cans are out.
          */
         fun bar(key: String): CropStandReader = CropStandReader(
             key = key,
@@ -77,8 +77,11 @@ class CropStandReader(
         )
 
         fun ownBarPercent(name: Component): Int? = barNotches(name)
-            ?.takeIf { it.filled == 0 && it.debt == 0 && it.other > 0 }
-            ?.let { it.other * 100 / it.total }
+            ?.takeIf { it.filled == 0 && it.debt + it.other > 0 }
+            ?.let { (it.debt + it.other) * 100 / it.total }
+
+        /** Whether [name] is drawn only in the water bar's colours, blue, red and white. */
+        fun looksLikeWaterBar(name: Component): Boolean = barNotches(name)?.let { it.other == 0 } == true
 
         fun hungerPercentLabel(key: String, contains: String): CropStandReader = CropStandReader(
             key = key,
