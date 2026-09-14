@@ -100,6 +100,24 @@ object Fleshtrap : CropDefinitionProvider {
                 blocks = listOf(
                     CropBlockState(
                         offset = BlockPos(0, 1, 0),
+                        blockState = melonStemState(3)
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, -0.15625, -0.125),
+                        headRotation = Rotations(45.0f, 0.0f, 0.0f),
+                        hashString = "c7f45f6cb2e4bbf45c5537c4dc3055a323021d62db7d91cc60beb02956401fb9",
+                        isSmall = false
+                    )
+                ),
+                5..5,
+                readers = listOf(CropStandReader.bar(CropStandReader.HUNGER))
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0, 1, 0),
                         blockState = melonStemState(5)
                     )
                 ),

@@ -50,6 +50,9 @@ object GreenhouseWatering {
     private fun isWaterCan(id: SkyBlockId): Boolean =
         id.id.substringAfter("item:").uppercase() in waterCanIds
 
+    /** Whether a can was held recently enough for the game to still be showing water bars. */
+    fun wateringWindowOpen(): Boolean = wateringUntil?.isAfter(Instant.now()) == true
+
     /** Opens the window if the held item is a watering can, and says whether it did. */
     fun startWateringWindow(heldId: SkyBlockId): Boolean {
         if (!isWaterCan(heldId)) return false

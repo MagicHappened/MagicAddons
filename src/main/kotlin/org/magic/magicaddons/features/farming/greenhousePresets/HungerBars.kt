@@ -38,6 +38,9 @@ object HungerBars {
 
     private fun readHungerBars() {
         if (!GreenhouseData.inOwnGarden()) return
+        // the game hangs water bars in place of the plants' own while a can is out, and a water bar
+        // in debt is red the way a low hunger bar is
+        if (GreenhouseWatering.wateringWindowOpen()) return
         val grid = GreenhouseData.getCurrentGrid() ?: return
         if (!grid.hasRuntime()) return
 
