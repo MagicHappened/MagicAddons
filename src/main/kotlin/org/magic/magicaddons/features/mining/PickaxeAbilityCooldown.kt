@@ -255,6 +255,7 @@ object PickaxeAbilityCooldown : Feature() {
 
         override fun content(): HudContent? {
             if (!baseSetting.value) return null
+            if (miningIslandsOnly.value && LocationAPI.island !in MINING_ISLANDS) return null
 
             val secondsLeft = secondsLeft()
             val waitingOnChat = secondsLeft == null && pendingUse?.awaitingChat() == true
@@ -300,10 +301,17 @@ object PickaxeAbilityCooldown : Feature() {
         value = false
     )
 
+    private val miningIslandsOnly = BooleanSetting(
+        key = "MiningIslandsOnly",
+        displayName = "Display only in mining islands",
+        description = "",
+        value = true
+    )
+
     override val baseSetting: BooleanSetting = BooleanSetting(
         displayName = displayName,
         description = description,
         value = false,
-        children = listOf(readyWarning, useServerTime)
+        children = listOf(readyWarning, useServerTime, miningIslandsOnly)
     )
 }
