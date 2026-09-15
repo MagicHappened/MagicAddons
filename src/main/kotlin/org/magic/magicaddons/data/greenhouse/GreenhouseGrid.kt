@@ -623,7 +623,7 @@ class GreenhouseGrid(
 
             // judged by the lowest it might be at, so a plant only probably asleep is still called
             // awake: the warning for one that has stopped growing is worth being sure about
-            if (first in sleepStages) instance.readings[CropStandReader.ASLEEP] = 1
+            if (first in sleepStages && first > range.first) instance.readings[CropStandReader.ASLEEP] = 1
         }
     }
 
@@ -665,6 +665,7 @@ class GreenhouseGrid(
             var bestGrowth: GrowthStageInfo? = null
             var bestStage: CropStage? = null
             var bestScore = -1
+            var bestPoseAgreement = -1
             var bestUsedStands: List<Entity>? = null
             var bestBlocks: Map<BlockPos, BlockState>? = null
             var bestLegacy = false
@@ -674,9 +675,12 @@ class GreenhouseGrid(
                     val result = stage.matchesStage(origin, remainingStands, candidate.footprint, candidate.rotatesWithPlot, readings = readings)
 
                     if (!result.matched) continue
-                    if (result.score <= bestScore) continue
+                    // two stages that stand the same are told apart by the head poses their stands wear
+                    if (result.score < bestScore) continue
+                    if (result.score == bestScore && result.poseAgreement <= bestPoseAgreement) continue
 
                     bestScore = result.score
+                    bestPoseAgreement = result.poseAgreement
                     bestDef = candidate
                     bestStage = stage
                     bestUsedStands = result.usedStands

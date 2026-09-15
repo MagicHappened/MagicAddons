@@ -238,14 +238,27 @@ open class CropStage(
             score += 2
         }
 
+        // the stands were found in the order of the definition, so each pairs with its own recording
+        val poseAgreement = this.armorStands.orEmpty().zip(matchedStands).count { (standDef, stand) ->
+            val recorded = standDef.headRotation ?: return@count false
+            (stand as? ArmorStand)?.headPose?.let { samePose(it, recorded) } == true
+        }
+
         return StageMatchResult(
             matched = true,
             score = score,
             usedStands = usedStands,
             matchedBlocks = matchedBlocks,
-            rotationLegacy = !matchedFirstCandidate
+            rotationLegacy = !matchedFirstCandidate,
+            poseAgreement = poseAgreement
         )
     }
+
+    /** Whether two head poses are the same to within [POSE_TOLERANCE_DEGREES] on every axis. */
+    private fun samePose(a: Rotations, b: Rotations): Boolean =
+        abs(Mth.wrapDegrees(a.x() - b.x())) < POSE_TOLERANCE_DEGREES &&
+                abs(Mth.wrapDegrees(a.y() - b.y())) < POSE_TOLERANCE_DEGREES &&
+                abs(Mth.wrapDegrees(a.z() - b.z())) < POSE_TOLERANCE_DEGREES
     private fun isClose(a: Vec3, b: Vec3, epsilon: Double = 0.01): Boolean {
         return abs(a.x - b.x) < epsilon &&
                 abs(a.y - b.y) < epsilon &&
@@ -399,6 +412,9 @@ const val DEFAULT_DECAY_TIME_MS: Long = 3L * 24 * 60 * 60 * 1000
 
 const val NEVER_DECAYS: Long = -1L
 
+/** Recorded head poses lie several degrees apart at the closest, so within a degree is the same pose. */
+private const val POSE_TOLERANCE_DEGREES: Float = 1f
+
 const val FIVE_DAY_DECAY_TIME_MS: Long = 5L * 24 * 60 * 60 * 1000
 const val SIX_DAY_DECAY_TIME_MS: Long = 6L * 24 * 60 * 60 * 1000
 const val TEN_DAY_DECAY_TIME_MS: Long = 10L * 24 * 60 * 60 * 1000
@@ -468,7 +484,12 @@ data class StageMatchResult(
     val usedStands: List<Entity>,
     val matchedBlocks: Map<BlockPos, BlockState>,
     /** Matched, but only at rotation zero: a pre-normalization recording that wants re-exporting. */
-    val rotationLegacy: Boolean = false
+    val rotationLegacy: Boolean = false,
+    /**
+     * How many stands wear the head pose their recording gives. Only settles a tie: two stages
+     * standing the same differ by nothing else, and a stage recorded without poses scores none.
+     */
+    val poseAgreement: Int = 0
 ) {
     companion object {
         val NONE = StageMatchResult(false, 0, emptyList(), emptyMap())

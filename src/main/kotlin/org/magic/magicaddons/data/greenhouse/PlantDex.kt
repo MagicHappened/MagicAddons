@@ -139,7 +139,6 @@ object PlantDex {
         "Devourer" to (10..12).toSet(),
         "Godseed" to setOf(32, 34, 35, 36, 37, 40),
         "PlantBoy Advance" to setOf(9, 10),
-        "Stoplight Petal" to setOf(2),
         "Zombud" to setOf(7) + (10..15)
     )
 

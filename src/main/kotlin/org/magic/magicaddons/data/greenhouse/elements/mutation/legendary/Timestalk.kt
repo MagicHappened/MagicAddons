@@ -335,6 +335,24 @@ object Timestalk : CropDefinitionProvider {
                     )
                 ),
                 14..14
+            ),
+            // a stage 14 plant was also seen with its lower stem grown out as well, the rest the same
+            CropStage(
+                blocks = CropBlockState.blockStatePattern(
+                    listOf(
+                        BlockPos(0, 1, 0),
+                        BlockPos(0, 2, 0)
+                    ),
+                    blockState = melonStemState(7)
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, 0.3125, 0.0),
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
+                        hashString = "1b9add43e0e770b7c4ccdcf6708f8b9e875ff13b2a75ab63ff69f2f0e57af9e5"
+                    )
+                ),
+                14..14
             )
         ),
         decayTimeMs = FIVE_DAY_DECAY_TIME_MS,

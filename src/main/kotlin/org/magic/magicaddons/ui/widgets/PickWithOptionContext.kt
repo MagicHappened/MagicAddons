@@ -7,10 +7,6 @@ import org.magic.magicaddons.ui.OverlayContext
 import org.magic.magicaddons.util.ScreenUtil.drawTooltipAtCursor
 import kotlin.math.max
 
-/**
- * A [PickContext] with a checkbox under the rows. Picking a value closes the list and hands it to
- * [onPick] with whether the box was checked.
- */
 class PickWithOptionContext<T>(
     x: Int,
     y: Int,
@@ -18,7 +14,6 @@ class PickWithOptionContext<T>(
     values: List<T>,
     private val optionLabel: String,
     optionChecked: Boolean,
-    /** Shown while the cursor is on the checkbox row; none when null. */
     private val optionTooltip: String?,
     private val context: OverlayContext,
     private val onPick: (T, Boolean) -> Unit
