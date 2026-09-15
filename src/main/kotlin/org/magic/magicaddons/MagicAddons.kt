@@ -15,6 +15,7 @@ import org.magic.magicaddons.render.MarkerRenderer
 import org.magic.magicaddons.render.ItemIconRenderer
 import org.magic.magicaddons.util.ScreenUtil
 import org.magic.magicaddons.util.EntityUtils
+import org.magic.magicaddons.util.ServerClock
 import org.magic.magicaddons.util.ServerUtils
 import org.magic.magicaddons.util.VersionAnnouncer
 
@@ -25,6 +26,7 @@ class MagicAddons : ClientModInitializer {
     override fun onInitializeClient() {
         EntityUtils
         ServerUtils
+        ServerClock
         ScreenUtil.register()
 
         // the gui only draws picture-in-picture states it was handed a renderer for at startup

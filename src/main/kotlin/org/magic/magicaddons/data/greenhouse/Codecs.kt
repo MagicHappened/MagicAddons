@@ -225,14 +225,17 @@ object Codecs {
                 Codec.INT.optionalFieldOf("crop_yield_upgrade")
                         .forGetter { Optional.ofNullable(it.cropYieldUpgradeValue) },
                 Codec.INT.optionalFieldOf("greenhouse_speed_attribute")
-                        .forGetter { Optional.ofNullable(it.greenhouseSpeedAttribute) }
-            ).apply(instance) { tick, cropGrowth, cropSpeed, cropYield, speedAttribute ->
+                        .forGetter { Optional.ofNullable(it.greenhouseSpeedAttribute) },
+                Codec.STRING.listOf().optionalFieldOf("crops_without_info", emptyList())
+                        .forGetter { it.cropsWithoutInfo.sorted() }
+            ).apply(instance) { tick, cropGrowth, cropSpeed, cropYield, speedAttribute, cropsWithoutInfo ->
                 MiscGreenhouseInfo(
                     nextTickTime = tick.orElse(null)?.let { Instant.ofEpochMilli(it) } ,
                     cropGrowthValue = cropGrowth.orElse(null),
                     cropSpeedUpgradeValue = cropSpeed.orElse(null),
                     cropYieldUpgradeValue = cropYield.orElse(null),
-                    greenhouseSpeedAttribute = speedAttribute.orElse(null)
+                    greenhouseSpeedAttribute = speedAttribute.orElse(null),
+                    cropsWithoutInfo = cropsWithoutInfo.toMutableSet()
                     )
             }
         }

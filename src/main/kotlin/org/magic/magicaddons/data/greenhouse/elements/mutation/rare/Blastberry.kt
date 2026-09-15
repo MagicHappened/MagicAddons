@@ -52,6 +52,18 @@ object Blastberry : CropDefinitionProvider {
                 ),
                 2..2
             ),
+            CropStage(
+                blocks = listOf(),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, -0.625, 0.0),
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
+                        hashString = "ba199c78d912ac538f9c2b7994fe7a2918cfae95bcb82d6c4313ee0f2f7ed54d",
+                        isSmall = false
+                    )
+                ),
+                3..3
+            ),
             // the run could not name the block at stage four, so the stand alone says the stage
             CropStage(
                 blocks = null,
@@ -64,6 +76,23 @@ object Blastberry : CropDefinitionProvider {
                     )
                 ),
                 4..4
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = stateOf("minecraft:redstone_torch[lit=false]")
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, -0.5, 0.0),
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
+                        hashString = "b09bffcb94d3b2bf641758f386b3fefa672afa0e342aa6f0c4eb1b7d6ec5b5f6",
+                        isSmall = false
+                    )
+                ),
+                5..5
             ),
             CropStage(
                 blocks = listOf(

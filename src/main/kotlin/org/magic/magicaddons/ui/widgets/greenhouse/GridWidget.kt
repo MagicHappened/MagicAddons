@@ -40,6 +40,9 @@ class GridWidget(
     /** The fact pinned on the hover controls, written over every plant while it is set. */
     var pinnedInfo: ElementWidget.HoverInfo? = null
 
+    /** Crops, by element id, that the pinned fact is not written over. */
+    var cropsWithoutInfo: Set<String> = emptySet()
+
     /** Plants placed since the last build, which arrive with a little pop. Cleared by [init]. */
     val justPlaced: MutableSet<GreenhouseElementInstance> = mutableSetOf()
 
@@ -212,7 +215,9 @@ class GridWidget(
 
         // drawn after every plant so the text of one never ends up under the plant next to it
         pinnedInfo?.let { info ->
-            elementWidgets.forEach { it.renderHoverButtonInfo(graphics, info) }
+            elementWidgets
+                .filter { it.instance.cropDef.elementId !in cropsWithoutInfo }
+                .forEach { it.renderHoverButtonInfo(graphics, info) }
         }
     }
 

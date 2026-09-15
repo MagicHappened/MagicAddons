@@ -67,6 +67,8 @@ import net.minecraft.ChatFormatting
 import org.magic.magicaddons.util.ScreenUtil.drawShelf
 import org.magic.magicaddons.util.ScreenUtil.drawTooltipLines
 import org.magic.magicaddons.util.ScreenUtil.stackFor
+import org.magic.magicaddons.ui.widgets.CheckboxWidget
+import org.magic.magicaddons.util.ScreenUtil.renderFakeItem
 import org.magic.magicaddons.util.ScreenUtil.drawWarningBadge
 import org.magic.magicaddons.util.ScreenUtil.drawSimpleTooltip
 import org.magic.magicaddons.util.ScreenUtil.drawTooltipAtCursor
@@ -286,14 +288,10 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
 
         containerSize = GridWidget.spanFor(slotSize, GREENHOUSE_SIZE)
 
-        // never left of the toolbar, however narrow the window gets
         startX = ((width - containerSize) / 2).coerceAtLeast(TOOLBAR_WIDTH + Common.UI.SPACING_LARGE)
 
-        // the view shelf holds the mode toggle and, for presets, the selector; the action shelf
-        // under it holds whatever the mode can do
         layoutShelves()
 
-        // bottom centre, in the margin the grid already leaves under itself
         cropPreviewButton.x = (width - cropPreviewButton.width) / 2
         cropPreviewButton.y = height - cropPreviewButton.height - Common.UI.SPACING_LARGE - 2
 
@@ -306,10 +304,7 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
         }
     }
 
-    /**
-     * The shelves down the left: what is shown, the prediction slider in greenhouse mode, and what
-     * the mode can do. Measured again on a mode switch, since the middle shelf is greenhouses only.
-     */
+
     private fun layoutShelves() {
         shelfLeft = Common.UI.SPACING_LARGE
         shelfWidth = (startX - BORDER_PADDING - Common.UI.SPACING_LARGE - shelfLeft).coerceAtLeast(MIN_ACTION_ROW_WIDTH)
@@ -414,14 +409,14 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
                 GreenhouseData.currentGridIndex = index
             }
         }
-        // currentGridIndex counts greenhouses, the widget list skips the ones never scanned, so the
-        // index has to go through the grid it names rather than straight into the widgets
+        
+
         val currentLayout = GreenhouseData.greenhouseGrids
             .getOrNull(GreenhouseData.currentGridIndex)?.layout
 
         displayedGridWidget = greenhouseGridWidgets.find { it.layout === currentLayout }
             ?: greenhouseGridWidgets.firstOrNull()
-        // No greenhouse scanned yet: nothing to show, the warning above already covers it.
+        
         if (displayedGridWidget == null) return
 
         displayedName = displayedGridWidget?.layout?.displayName() ?: "Unknown Plot"
@@ -465,16 +460,11 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
         layoutName()
     }
 
-    /**
-     * Sizes the selector to whatever it lists now, which changes when a layout is renamed. The
-     * widget measures itself; the screen only knows how much room there is.
-     */
     private fun relayoutSelector() {
         val room = shelfLeft + shelfWidth - ActionPanel.PADDING - Common.UI.SPACING - ScrollHint.SIZE - gridSelector.x
         gridSelector.fitToValues(room)
     }
 
-    /** Sizes the name box to the name on show, centred at the top, with room beside it for the badge. */
     private fun layoutName() {
         val boxHeight = boxHeight(displayedName)
         val boxWidth = font.width(displayedName) + Common.UI.TEXT_X_PAD * 2
@@ -485,7 +475,7 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
     private fun overName(mouseX: Double, mouseY: Double): Boolean =
         inRect(mouseX, mouseY, nameBox[0], nameBox[1], nameBox[2] - nameBox[0], nameBox[3] - nameBox[1])
 
-    /** The name at the top, framed red with the badge beside it while the greenhouse runs on guessed data. */
+    
     private fun drawNameBox(graphics: GuiGraphicsExtractor) {
         val boxHeight = nameBox[3] - nameBox[1]
         graphics.drawMultilineBoxCentered(
@@ -499,10 +489,7 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
 
     private fun shelfTitleHeight(): Int = font.lineHeight + Common.UI.SPACING * 2
 
-    /**
-     * The breakdown as a panel of its own under the box, staying up while the box is pinned. Its
-     * unique crops line, hovered, names the uniques still missing.
-     */
+    
     private fun drawPinnedClock(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int) {
         val lines = clockTooltip().split('\n').map { Component.literal(it).visualOrderText }
         val box = graphics.drawTooltipLines(lines, TIME_LEFT, timeBox[3] + Common.UI.SPACING)
@@ -512,11 +499,8 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
             drawMissingUniques(graphics, mouseX, mouseY)
         }
     }
-
-    /** One line of the missing uniques list: the crops it stands for, and how they are named. */
     private class UniqueLine(val crops: List<CropDefinition>, val text: String)
 
-    /** The uniques not yet growing, the ones that count as each other written as a pair. */
     private fun missingUniques(): List<UniqueLine> = GreenhouseData.getMissingUniques().map { key ->
         fun named(vararg names: String) = names.mapNotNull { name -> CropRegistry.all.find { it.name == name } }
         when (key) {
@@ -529,7 +513,6 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
         }
     }.sortedBy { it.text }
 
-    /** The missing uniques as a panel at the mouse, each crop's icon drawn text-high before its name. */
     private fun drawMissingUniques(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int) {
         val lines = missingUniques()
         val heading = if (lines.isEmpty()) "§aEvery unique crop is growing" else "§7Missing unique crops:"
@@ -540,7 +523,6 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
         }
     }
 
-    /** Everything the tick period is made of, each level coloured by how far along it is. */
     private fun clockTooltip(): String {
         val misc = GreenhouseData.miscInfo
 
@@ -1056,10 +1038,17 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
         }
 
         val panel = if (currentDisplay == CurrentDisplay.Greenhouses) greenhousePanel else presetUI
+        var belowActionShelf = actionShelfY
         if (panel.hasShown()) {
             val title = if (currentDisplay == CurrentDisplay.Greenhouses) SHELF_GREENHOUSE else SHELF_PRESET
             val bottom = actionShelfY + shelfTitleHeight() + panel.contentHeight
             graphics.drawShelf(shelfLeft, actionShelfY, shelfLeft + shelfWidth, bottom, title)
+            belowActionShelf = bottom + Common.UI.SPACING_LARGE
+        }
+        if (currentDisplay == CurrentDisplay.Greenhouses) {
+            renderContentsShelf(graphics, belowActionShelf, mouseX, mouseY)
+        } else {
+            contentsRows = emptyList()
         }
 
         when (currentDisplay) {
@@ -1107,11 +1096,7 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
             graphics.drawSimpleTooltip(clockTooltip(), TIME_LEFT, TIME_CENTER_Y + boxHeight(" ") / 2 + Common.UI.SPACING)
         }
 
-        val hovered = hoveredElement
-        if (hovered !is ElementWidget) {
-            renderContents(graphics)
-            return
-        }
+        val hovered = hoveredElement as? ElementWidget ?: return
 
         // hovering the star beside a water time shows the star's own tooltip instead of the plant's
         hovered.deadTooltipAt(mouseX, mouseY)?.let {
@@ -1130,32 +1115,74 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
             startY)
     }
 
-    /** What the grid on screen holds, one line a crop, where a hovered plant's tooltip would be. */
-    private fun renderContents(graphics: GuiGraphicsExtractor) {
+    /** One crop of the contents shelf, with where its row was drawn so a click can find it. */
+    private class ContentsRow(val def: CropDefinition, val x: Int, val y: Int, val width: Int)
+
+    private var contentsRows: List<ContentsRow> = emptyList()
+
+    /**
+     * What the grid on screen holds, one row a crop, on its own shelf under the Greenhouse shelf.
+     * Each row's box says whether the pinned fact is written over that crop's plants.
+     */
+    private fun renderContentsShelf(graphics: GuiGraphicsExtractor, shelfTop: Int, mouseX: Int, mouseY: Int) {
+        contentsRows = emptyList()
         val layout = displayedGridWidget?.layout ?: return
         val counted = layout.elementInstances
             .groupingBy { it.cropDef }
             .eachCount()
             .entries
             .sortedWith(compareByDescending<Map.Entry<CropDefinition, Int>> { it.value }.thenBy { it.key.name })
-
         if (counted.isEmpty()) return
 
-        val lines = buildList {
-            add(Component.literal(GreenhouseData.nameInFull(layout)).withColor(rgb(Common.UI.ACCENT_COLOR)))
-            counted.forEach { (def, count) ->
-                add(
-                    Component.literal(def.name).withColor(rgb(contentsColor(layout, def)))
-                        .append(Component.literal(" x$count").withStyle(ChatFormatting.GRAY))
-                )
-            }
-        }
+        val rowsTop = shelfTop + shelfTitleHeight()
+        val frameBottom = startY + containerSize + BORDER_PADDING
+        val rowsThatFit = ((frameBottom - rowsTop - ActionPanel.PADDING) / CONTENTS_ROW_HEIGHT).coerceAtLeast(1)
+        val columns = if (counted.size > rowsThatFit) 2 else 1
+        val rowsPerColumn = (counted.size + columns - 1) / columns
+        val columnWidth = (shelfWidth - ActionPanel.PADDING * 2 - Common.UI.SPACING * (columns - 1)) / columns
 
-        graphics.drawTooltipLines(
-            lines.map { it.visualOrderText },
-            hoverControls.x + hoverControls.width + Common.UI.SPACING_LARGE,
-            startY
-        ) { index -> counted.getOrNull(index - 1)?.let { listOf(stackFor(it.key)) } ?: emptyList() }
+        val bottom = rowsTop + rowsPerColumn * CONTENTS_ROW_HEIGHT + ActionPanel.PADDING
+        graphics.drawShelf(shelfLeft, shelfTop, shelfLeft + shelfWidth, bottom, SHELF_CONTENTS)
+
+        val hidden = GreenhouseData.miscInfo.cropsWithoutInfo
+        contentsRows = counted.mapIndexed { index, (def, count) ->
+            val rowX = shelfLeft + ActionPanel.PADDING + (index / rowsPerColumn) * (columnWidth + Common.UI.SPACING)
+            val rowY = rowsTop + (index % rowsPerColumn) * CONTENTS_ROW_HEIGHT
+            val shown = def.elementId !in hidden
+
+            if (inRect(mouseX, mouseY, rowX, rowY, columnWidth, CONTENTS_ROW_HEIGHT)) {
+                graphics.fill(rowX, rowY, rowX + columnWidth, rowY + CONTENTS_ROW_HEIGHT, Common.UI.HOVER_WASH)
+            }
+
+            graphics.renderFakeItem(stackFor(def), rowX + 1, rowY + 1, CONTENTS_ICON_SIZE, CONTENTS_ICON_SIZE)
+
+            contentsCheckbox.checked = shown
+            contentsCheckbox.x = rowX + columnWidth - CONTENTS_CHECKBOX_SIZE - 1
+            contentsCheckbox.y = rowY + (CONTENTS_ROW_HEIGHT - CONTENTS_CHECKBOX_SIZE) / 2
+            contentsCheckbox.render(graphics)
+
+            val textX = rowX + CONTENTS_ICON_SIZE + Common.UI.SPACING
+            val countText = " x$count"
+            val nameRoom = contentsCheckbox.x - Common.UI.SPACING - textX - font.width(countText)
+            val nameColor = if (shown) contentsColor(layout, def) else Common.UI.DISABLED_TEXT_COLOR
+            val label = Component.literal(font.plainSubstrByWidth(def.name, nameRoom.coerceAtLeast(0))).withColor(rgb(nameColor))
+                .append(Component.literal(countText).withStyle(ChatFormatting.GRAY))
+            graphics.modText(font, label, textX, rowY + (CONTENTS_ROW_HEIGHT - font.lineHeight) / 2 + 1, Common.UI.TEXT_COLOR)
+
+            ContentsRow(def, rowX, rowY, columnWidth)
+        }
+    }
+
+    private val contentsCheckbox = CheckboxWidget(CONTENTS_CHECKBOX_SIZE)
+
+    /** A click on a row of the contents shelf shows or hides the pinned fact on that crop. */
+    private fun contentsClicked(event: MouseButtonEvent): Boolean {
+        if (event.button() != 0) return false
+        val row = contentsRows.firstOrNull { inRect(event.x, event.y, it.x, it.y, it.width, CONTENTS_ROW_HEIGHT) } ?: return false
+
+        val hidden = GreenhouseData.miscInfo.cropsWithoutInfo
+        if (!hidden.remove(row.def.elementId)) hidden.add(row.def.elementId)
+        return true
     }
 
     /** A crop of the list takes the colour of the mark it wears, and plain text when it wears none. */
@@ -1193,6 +1220,7 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
         // read here rather than only on mouse movement: a pick is a click, and a click is
         // not a movement, so the plants kept showing the last fact
         displayedGridWidget?.pinnedInfo = HoverControls.selectedInfo
+        displayedGridWidget?.cropsWithoutInfo = GreenhouseData.miscInfo.cropsWithoutInfo
 
         // at the right end of the bookmark strip, above the frame, ending where the frame ends
         scrollHint.tooltip = SCROLL_HINT_GREENHOUSES
@@ -1305,6 +1333,7 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
         }
 
         if (greenhousePanel.mouseClicked(event, doubled)) return true
+        if (contentsClicked(event)) return true
 
         if (displayedGridWidget != null) {
             if (plotTabs.mouseClicked(event)) return true
@@ -1888,6 +1917,10 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
         /** The furthest ahead the slider looks. */
         private const val MAX_PREDICT_TICKS: Int = 10
         private const val SHELF_GREENHOUSE: String = "Greenhouse"
+        private const val SHELF_CONTENTS: String = "Contents"
+        private const val CONTENTS_ICON_SIZE: Int = 12
+        private const val CONTENTS_ROW_HEIGHT: Int = CONTENTS_ICON_SIZE + 2
+        private const val CONTENTS_CHECKBOX_SIZE: Int = 9
         private const val SHELF_PRESET: String = "Preset"
 
         /** What each part of the tick period runs up to. */
