@@ -1,5 +1,10 @@
 package org.magic.magicaddons.ui.widgets.greenhouse
 
+import net.minecraft.network.chat.Component
+import net.minecraft.client.Minecraft
+import org.magic.magicaddons.data.greenhouse.CropDefinition
+import org.magic.magicaddons.data.greenhouse.LayoutSlot
+import org.magic.magicaddons.data.greenhouse.SpawnOdds
 import org.magic.magicaddons.util.ScreenUtil.component4
 import org.magic.magicaddons.util.ScreenUtil.renderFakeItem
 import org.magic.magicaddons.util.ScreenUtil.eased
@@ -9,7 +14,7 @@ import net.minecraft.client.gui.components.Renderable
 import net.minecraft.client.gui.components.events.GuiEventListener
 import net.minecraft.client.input.MouseButtonEvent
 import org.magic.magicaddons.data.greenhouse.Footprint
-import org.magic.magicaddons.data.greenhouse.GreenhouseElementInstance
+import org.magic.magicaddons.data.greenhouse.Plant
 import org.magic.magicaddons.Common
 import org.magic.magicaddons.data.greenhouse.GreenhouseGrid
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData
@@ -40,14 +45,34 @@ class GridWidget(
     /** The fact pinned on the hover controls, written over every plant while it is set. */
     var pinnedInfo: ElementWidget.HoverInfo? = null
 
-    /** Crops, by element id, that the pinned fact is not written over. */
-    var cropsWithoutInfo: Set<String> = emptySet()
+    var cropIdsWithoutPinnedInfo: Set<String> = emptySet()
+
+    var targetPlan: () -> GreenhouseLayout? = { null }
+
+    var showUnplannedMutations: Boolean = false
+
+    private var unplannedSpotsKey: Int? = null
+    private var unplannedSpotsCache: Map<Pair<Int, Int>, List<CropDefinition>> = emptyMap()
+
+    fun unplannedMutationSpots(): Map<Pair<Int, Int>, List<CropDefinition>> {
+        val plan = targetPlan() ?: return emptyMap()
+        val plannedCropsBySlot = SpawnOdds.targetCropsBySlot(plan)
+        var key = plannedCropsBySlot.hashCode()
+        layout.slots.forEach { key = key * 31 + (it.soil?.block?.hashCode() ?: 0) }
+        layout.plants.forEach { key = key * 31 + (it.slot.x * 64 + it.slot.y) * 31 + it.cropDef.name.hashCode() + (it.slot.mark?.ordinal ?: -1) }
+
+        if (key != unplannedSpotsKey) {
+            unplannedSpotsCache = SpawnOdds.unplannedMutationSpots(layout, plannedCropsBySlot)
+            unplannedSpotsKey = key
+        }
+        return unplannedSpotsCache
+    }
 
     /** Plants placed since the last build, which arrive with a little pop. Cleared by [init]. */
-    val justPlaced: MutableSet<GreenhouseElementInstance> = mutableSetOf()
+    val justPlaced: MutableSet<Plant> = mutableSetOf()
 
     /** Plants marked since the last build, which flash once. Cleared by [init]. */
-    val justMarked: MutableSet<GreenhouseElementInstance> = mutableSetOf()
+    val justMarked: MutableSet<Plant> = mutableSetOf()
 
     /** A plant taken off the grid, drawn shrinking away where it stood for a moment after. */
     private class Vanishing(val rect: IntArray, val stack: ItemStack, val at: Long)
@@ -55,7 +80,7 @@ class GridWidget(
     private val vanishing = mutableListOf<Vanishing>()
 
     /** Notes a plant about to be taken off, so it can be drawn shrinking away rather than gone at once. */
-    fun noteVanishing(instance: GreenhouseElementInstance) {
+    fun noteVanishing(instance: Plant) {
         val footprint = instance.cropDef.footprint
         val rect = cellRect(instance.slot.x, instance.slot.y, footprint.width, footprint.height)
 
@@ -137,8 +162,12 @@ class GridWidget(
             }
         }
 
-        layout.elementInstances.forEach { instance ->
+        layout.plants.forEach { instance ->
             val widget = ElementWidget(instance)
+
+            if (instance.slot.mark == LayoutSlot.Marking.Target && instance.cropDef.spawnRule != null) {
+                widget.missingSpawnConditions = SpawnOdds.missingConditionsForTarget(layout, instance)
+            }
 
             widget.padding = slotSize / 10
 
@@ -162,8 +191,7 @@ class GridWidget(
                 val grid = GreenhouseData.greenhouseGrids.find { it.layout.id == layout.id }
                 val tickMs = GreenhouseData.currentGrowthTickMs()
                 if (grid != null && tickMs != null) {
-                    val horizon = instance.decayRemainingMs?.let { (it / tickMs).toInt() } ?: GreenhouseGrid.GROWTH_HORIZON_TICKS
-                    widget.soggybudTicksToGrow = grid.ticksUntilGrown(layout, instance.slot, tickMs, horizon)
+                    widget.soggybudTicksToGrow = grid.ticksUntilGrown(layout, instance.slot, tickMs)
                     widget.soggybudSimulated = true
                 }
             }
@@ -212,12 +240,29 @@ class GridWidget(
             it.extractRenderState(graphics, mouseX, mouseY, delta)
         }
         renderVanishing(graphics)
+        if (showUnplannedMutations) renderUnplannedMutations(graphics)
 
         // drawn after every plant so the text of one never ends up under the plant next to it
         pinnedInfo?.let { info ->
             elementWidgets
-                .filter { it.instance.cropDef.elementId !in cropsWithoutInfo }
+                .filter { it.instance.cropDef.elementId !in cropIdsWithoutPinnedInfo }
                 .forEach { it.renderHoverButtonInfo(graphics, info) }
+        }
+    }
+
+    private fun renderUnplannedMutations(graphics: GuiGraphicsExtractor) {
+        val font = Minecraft.getInstance().font
+        val cycleStep = System.currentTimeMillis() / UNPLANNED_CYCLE_MS
+
+        unplannedMutationSpots().forEach { (spot, crops) ->
+            val rect = cellRect(spot.first, spot.second, 1, 1)
+            val shownCrop = crops[(cycleStep % crops.size).toInt()]
+            val iconX = rect[0] + (slotSize - UNPLANNED_ICON_SIZE) / 2
+            val iconY = rect[1] + (slotSize - UNPLANNED_ICON_SIZE) / 2
+
+            graphics.renderFakeItem(stackFor(shownCrop), iconX, iconY, UNPLANNED_ICON_SIZE, UNPLANNED_ICON_SIZE)
+            graphics.fill(iconX, iconY, iconX + UNPLANNED_ICON_SIZE, iconY + UNPLANNED_ICON_SIZE, UNPLANNED_VEIL_COLOR)
+            graphics.text(font, Component.literal("!"), rect[2] - font.width("!") - 2, rect[1] + 2, UNPLANNED_MARK_COLOR, true)
         }
     }
 
@@ -225,7 +270,7 @@ class GridWidget(
     fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean =
         isMouseOver(mouseButtonEvent.x, mouseButtonEvent.y)
 
-    fun elementAtPos(mouseX: Double, mouseY: Double): GreenhouseElementInstance? =
+    fun elementAtPos(mouseX: Double, mouseY: Double): Plant? =
         elementWidgets.firstOrNull { it.isMouseOver(mouseX, mouseY) }?.instance
 
     fun isMouseOver(mouseX: Double, mouseY: Double): Boolean =
@@ -238,6 +283,11 @@ class GridWidget(
     companion object {
         /** The line drawn between one slot and the next, and around the outside. */
         const val LINE_WIDTH: Int = 1
+
+        private const val UNPLANNED_ICON_SIZE: Int = 16
+        private const val UNPLANNED_CYCLE_MS: Long = 900
+        private const val UNPLANNED_VEIL_COLOR: Int = 0x88202020.toInt()
+        const val UNPLANNED_MARK_COLOR: Int = 0xFFFFAA33.toInt()
 
         /** How long a plant taken off keeps shrinking where it stood. */
         private const val VANISH_MS: Long = 150

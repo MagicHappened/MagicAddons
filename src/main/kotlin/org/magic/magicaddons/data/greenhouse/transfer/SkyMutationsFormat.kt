@@ -4,7 +4,7 @@ import blazing.chain.LZSEncoding
 import com.google.gson.JsonArray
 import com.google.gson.JsonParser
 import org.magic.magicaddons.data.greenhouse.CropRegistry
-import org.magic.magicaddons.data.greenhouse.GreenhouseElementInstance
+import org.magic.magicaddons.data.greenhouse.Plant
 import org.magic.magicaddons.data.greenhouse.GreenhouseLayout
 import org.magic.magicaddons.data.greenhouse.LayoutSlot
 
@@ -96,8 +96,8 @@ object SkyMutationsFormat : LayoutFormat {
                     occupied[row + offsetY][column + offsetX] = true
 
                     val slot = layout.getSlot(column + offsetX, row + offsetY)
-                    slot?.placedBlock = definition.requiredSoil.firstOrNull()?.defaultBlockState()
-                    slot?.slotMark = marking
+                    slot?.soil = definition.requiredSoil.firstOrNull()?.defaultBlockState()
+                    slot?.mark = marking
 
                     if (offsetX == 0 && offsetY == 0) topLeftSlot = slot
                 }
@@ -105,8 +105,8 @@ object SkyMutationsFormat : LayoutFormat {
 
             val anchor = topLeftSlot ?: return@forEach
 
-            layout.elementInstances.add(
-                GreenhouseElementInstance(definition.elementId, anchor, cropDef = definition)
+            layout.plants.add(
+                Plant(definition.elementId, anchor, cropDef = definition)
             )
         }
 
@@ -117,7 +117,7 @@ object SkyMutationsFormat : LayoutFormat {
         val entries = JsonArray()
         val unsupported = mutableSetOf<String>()
 
-        layout.elementInstances.forEach { instance ->
+        layout.plants.forEach { instance ->
             val definition = instance.cropDef
 
             // the site drops names it does not know, so a crop it never lists is left out of the
@@ -129,7 +129,7 @@ object SkyMutationsFormat : LayoutFormat {
 
             val exportName = NAMES[definition.name] ?: definition.name
             val slot = instance.slot
-            val marking = slot.slotMark ?: LayoutSlot.Marking.Ingredient
+            val marking = slot.mark ?: LayoutSlot.Marking.Ingredient
 
             for (offsetY in 0 until definition.footprint.height) {
                 for (offsetX in 0 until definition.footprint.width) {

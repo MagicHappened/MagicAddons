@@ -133,7 +133,7 @@ class PresetUI(
         when (result) {
             is LayoutTransferResult.Failure -> ChatUtils.sendWithPrefix(result.reason)
             is LayoutTransferResult.Imported -> {
-                val plants = result.plots.sumOf { it.elementInstances.size }
+                val plants = result.plots.sumOf { it.plants.size }
                 val plots = if (result.plots.size > 1) " over ${result.plots.size} plots" else ""
                 ChatUtils.sendWithPrefix("Imported $plants plants$plots from ${format.displayName}")
                 onImported.invoke(result, soft)

@@ -12,8 +12,8 @@ import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.Level
 import org.magic.magicaddons.data.greenhouse.CROP_HEIGHT
 import org.magic.magicaddons.data.greenhouse.LayoutSlot
-import org.magic.magicaddons.data.greenhouse.GreenhouseElementInstance
-import org.magic.magicaddons.data.greenhouse.ElementRuntimeState
+import org.magic.magicaddons.data.greenhouse.Plant
+import org.magic.magicaddons.data.greenhouse.ScannedPlant
 import org.magic.magicaddons.data.greenhouse.Footprint
 import net.minecraft.client.renderer.SubmitNodeCollector
 import net.minecraft.world.entity.decoration.ArmorStand
@@ -261,7 +261,7 @@ object LayoutRenderState {
         val cropsNeeded = linkedMapOf<CropDefinition, Int>()
 
         layout.slots.forEach { slot ->
-            val wanted = slot.placedBlock ?: return@forEach
+            val wanted = slot.soil ?: return@forEach
             val pos = grid.getPosForSlotCoords(slot.x, slot.y) ?: return@forEach
 
             if (compare(level, pos, wanted, layout.soilsAcceptedAt(slot), marks, ghosts)) return@forEach
@@ -273,7 +273,7 @@ object LayoutRenderState {
         val soilPhase = if (soilComplete) Phase.Crops else Phase.Soil
 
         if (soilComplete) {
-            layout.elementInstances.forEach { instance ->
+            layout.plants.forEach { instance ->
                 // every slot the plant would cover, by what covers each rather than what starts on
                 // it: a two by two beginning one slot over still stands here
                 val footprintSlots = buildList {
@@ -283,16 +283,16 @@ object LayoutRenderState {
                         }
                     }
                 }
-                val growing = footprintSlots.mapNotNull { grid.elementCovering(it) }.distinct()
+                val growing = footprintSlots.mapNotNull { grid.elementCoveringSlot(it) }.distinct()
 
-                val target = instance.slot.slotMark == LayoutSlot.Marking.Target
+                val target = instance.slot.mark == LayoutSlot.Marking.Target
 
                 if (growing.isNotEmpty()) {
                     // the right plant in the right place, so there is nothing to plan and nothing in
                     // the way. A target appears on its own, so anything but its crop is in its way
                     val right = growing.singleOrNull()?.takeIf {
-                        instance.defInSlot(it.instance.cropDef) &&
-                                it.instance.slot.x == instance.slot.x && it.instance.slot.y == instance.slot.y
+                        instance.acceptsCrop(it.plant.cropDef) &&
+                                it.plant.slot.x == instance.slot.x && it.plant.slot.y == instance.slot.y
                     }
                     if (right != null) return@forEach
 
@@ -399,15 +399,15 @@ object LayoutRenderState {
     ) {
         if (!GreenhousePresets.harvestHighlightOn()) return
 
-        grid.elements
-            .filter { harvestable(it.instance) }
+        grid.scannedPlants
+            .filter { harvestable(it.plant) }
             .forEach { growing -> markReady(grid, growing, marks) }
     }
 
     /** The same mark the water highlight draws: one box over the plant's soil, footprint wide. */
-    private fun markReady(grid: GreenhouseGrid, growing: ElementRuntimeState, marks: MutableMap<BlockPos, Pair<VoxelShape, PlannerMark>>) {
-        val soil = grid.getPosForSlot(growing.instance.slot) ?: return
-        val footprint = growing.instance.cropDef.footprint
+    private fun markReady(grid: GreenhouseGrid, growing: ScannedPlant, marks: MutableMap<BlockPos, Pair<VoxelShape, PlannerMark>>) {
+        val soil = grid.getPosForSlot(growing.plant.slot) ?: return
+        val footprint = growing.plant.cropDef.footprint
         val box = Shapes.create(AABB(0.0, 0.0, 0.0, footprint.width.toDouble(), 1.0, footprint.height.toDouble()))
 
         marks[soil] = box to PlannerMark.Ready
@@ -426,15 +426,15 @@ object LayoutRenderState {
     ) {
         if (!GreenhousePresets.harvestHighlightOn()) return
 
-        layout.elementInstances
-            .filter { it.slot.slotMark == LayoutSlot.Marking.Target }
+        layout.plants
+            .filter { it.slot.mark == LayoutSlot.Marking.Target }
             .forEach { target ->
                 val footprint = target.cropDef.footprint
                 val covering = buildList {
                     for (offsetX in 0 until footprint.width) {
                         for (offsetY in 0 until footprint.height) {
                             layout.getSlot(target.slot.x + offsetX, target.slot.y + offsetY)
-                                ?.let { slot -> grid.elementCovering(slot)?.let { add(it) } }
+                                ?.let { slot -> grid.elementCoveringSlot(slot)?.let { add(it) } }
                         }
                     }
                 }.distinct()
@@ -442,23 +442,23 @@ object LayoutRenderState {
                 covering.forEach { growing ->
                     // the target itself is only worth saying something about once it can be taken
                     when {
-                        !target.defInSlot(growing.instance.cropDef) -> {
+                        !target.acceptsCrop(growing.plant.cropDef) -> {
                             markPlant(level, growing, marks, PlannerMark.Blocking).forEach { stands[it] = PlannerMark.Blocking.color }
                             soilOf(grid, growing).forEach { marks[it] = FULL_BLOCK to PlannerMark.Blocking }
                         }
-                        harvestable(growing.instance) -> markReady(grid, growing, marks)
+                        harvestable(growing.plant) -> markReady(grid, growing, marks)
                     }
                 }
             }
     }
 
     /** Whether a mutation that appeared on a target slot has grown out; a one stage crop arrives grown. */
-    private fun harvestable(plant: GreenhouseElementInstance): Boolean = plant.readyToHarvest
+    private fun harvestable(plant: Plant): Boolean = plant.readyToHarvest
 
     /** The soil under a plant, so a crop made only of stands still has a box to pulse. */
-    private fun soilOf(grid: GreenhouseGrid, growing: ElementRuntimeState): List<BlockPos> {
-        val origin = growing.instance.slot
-        val footprint = growing.instance.cropDef.footprint
+    private fun soilOf(grid: GreenhouseGrid, growing: ScannedPlant): List<BlockPos> {
+        val origin = growing.plant.slot
+        val footprint = growing.plant.cropDef.footprint
 
         return buildList {
             for (offsetX in 0 until footprint.width) {
@@ -472,15 +472,15 @@ object LayoutRenderState {
     /** Marks every block a plant is made of and hands back its stands, for the caller to tint. */
     private fun markPlant(
         level: Level,
-        growing: ElementRuntimeState,
+        growing: ScannedPlant,
         marks: MutableMap<BlockPos, Pair<VoxelShape, PlannerMark>>,
         mark: PlannerMark
     ): List<UUID> {
-        growing.blocksMap?.keys?.forEach { pos ->
+        growing.blocks?.keys?.forEach { pos ->
             marks[pos] = level.getBlockState(pos).getShape(level, pos) to mark
         }
 
-        return growing.standEntities?.map { it.uuid } ?: emptyList()
+        return growing.stands?.map { it.uuid } ?: emptyList()
     }
 
     /**
@@ -491,15 +491,15 @@ object LayoutRenderState {
      */
     private fun markInTheWay(
         level: Level,
-        growing: ElementRuntimeState,
+        growing: ScannedPlant,
         marks: MutableMap<BlockPos, Pair<VoxelShape, PlannerMark>>,
         badStands: MutableSet<UUID>
     ) {
-        growing.blocksMap?.keys?.forEach { pos ->
+        growing.blocks?.keys?.forEach { pos ->
             marks[pos] = level.getBlockState(pos).getShape(level, pos) to PlannerMark.Wrong
         }
 
-        growing.standEntities?.forEach { badStands.add(it.uuid) }
+        growing.stands?.forEach { badStands.add(it.uuid) }
     }
 
     /**

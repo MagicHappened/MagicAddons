@@ -16,6 +16,7 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Melon : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Melon",
+        dropMultiplier = 0.2,
         effects = setOf(
             CropEffect.WaterRetain
         ),
@@ -36,7 +37,8 @@ object Melon : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, 0.125, 0.0),
-                        hashString = "360549bf880605bba628e89b1cca4b8a0e428b61d879f45edd9f45469d87aec4"
+                        hashString = "360549bf880605bba628e89b1cca4b8a0e428b61d879f45edd9f45469d87aec4",
+                        isSmall = true
                     )
                 ),
                 1..1,
@@ -51,7 +53,8 @@ object Melon : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, 0.28125, 0.0),
-                        hashString = "360549bf880605bba628e89b1cca4b8a0e428b61d879f45edd9f45469d87aec4"
+                        hashString = "360549bf880605bba628e89b1cca4b8a0e428b61d879f45edd9f45469d87aec4",
+                        isSmall = true
                     )
                 ),
                 2..2,
@@ -123,7 +126,8 @@ object Melon : CropDefinitionProvider {
                     CropArmorStand(
                         offset = Vec3(0.21875, 0.1875, 0.1875),
                         headRotation = Rotations(22.5f, 0.0f, 22.5f),
-                        hashString = "360549bf880605bba628e89b1cca4b8a0e428b61d879f45edd9f45469d87aec4"
+                        hashString = "360549bf880605bba628e89b1cca4b8a0e428b61d879f45edd9f45469d87aec4",
+                        isSmall = true
                     )
                 ),
                 6..6
@@ -139,7 +143,8 @@ object Melon : CropDefinitionProvider {
                     CropArmorStand(
                         offset = Vec3(0.21875, 0.1875, 0.1875),
                         headRotation = Rotations(22.5f, 0.0f, 22.5f),
-                        hashString = "afa92dd43afed9e640cf3d3b008ca5199634ec8512de5e1f5eeaecd761296cb9"
+                        hashString = "afa92dd43afed9e640cf3d3b008ca5199634ec8512de5e1f5eeaecd761296cb9",
+                        isSmall = true
                     ),
                     CropArmorStand(
                         offset = Vec3(0.0, -0.53125, 0.0),
@@ -168,6 +173,7 @@ object Melon : CropDefinitionProvider {
                         offset = Vec3(0.21875, 0.1875, 0.1875),
                         headRotation = Rotations(22.5f, 0.0f, 22.5f),
                         hashString = "afa92dd43afed9e640cf3d3b008ca5199634ec8512de5e1f5eeaecd761296cb9",
+                        isSmall = true,
                     )
                 ),
                 8..8,
@@ -202,7 +208,7 @@ object Melon : CropDefinitionProvider {
                         blockState = melonStemState(7)
                     )
                 ),
-                armorStands = CropArmorStand.matcherPattern(
+                armorStands = CropArmorStand.atOffsets(
                     offsets = listOf(
                         Vec3(-0.0625, -0.46875, 0.0),
                         Vec3(0.09375, -0.625, 0.09375)
@@ -223,7 +229,7 @@ object Melon : CropDefinitionProvider {
                         blockState = melonStemState(7)
                     )
                 ),
-                armorStands = CropArmorStand.matcherPattern(
+                armorStands = CropArmorStand.atOffsets(
                     offsets = listOf(
                         Vec3(-0.0625, -0.46875, 0.0),
                         Vec3(0.09375, -0.625, 0.09375)

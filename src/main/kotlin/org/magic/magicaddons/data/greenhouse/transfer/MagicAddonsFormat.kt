@@ -3,7 +3,7 @@ package org.magic.magicaddons.data.greenhouse.transfer
 import com.google.gson.JsonArray
 import com.google.gson.JsonParser
 import org.magic.magicaddons.data.greenhouse.CropRegistry
-import org.magic.magicaddons.data.greenhouse.GreenhouseElementInstance
+import org.magic.magicaddons.data.greenhouse.Plant
 import org.magic.magicaddons.data.greenhouse.GreenhouseLayout
 import org.magic.magicaddons.data.greenhouse.LayoutSlot
 import org.magic.magicaddons.data.greenhouse.MasterLayout
@@ -97,15 +97,15 @@ object MagicAddonsFormat {
             for (offsetX in 0 until footprint.width) {
                 for (offsetY in 0 until footprint.height) {
                     val slot = layout.getSlot(x + offsetX, y + offsetY)
-                    slot?.placedBlock = definition.requiredSoil.firstOrNull()?.defaultBlockState()
-                    slot?.slotMark = marking
+                    slot?.soil = definition.requiredSoil.firstOrNull()?.defaultBlockState()
+                    slot?.mark = marking
 
                     if (offsetX == 0 && offsetY == 0) anchor = slot
                 }
             }
 
-            layout.elementInstances.add(
-                GreenhouseElementInstance(
+            layout.plants.add(
+                Plant(
                     definition.elementId,
                     anchor ?: return@forEach,
                     cropDef = definition

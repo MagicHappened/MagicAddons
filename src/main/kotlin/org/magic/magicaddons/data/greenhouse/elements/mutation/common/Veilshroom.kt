@@ -1,5 +1,6 @@
 package org.magic.magicaddons.data.greenhouse.elements.mutation.common
 
+import org.magic.magicaddons.data.greenhouse.SpawnRule
 import org.magic.magicaddons.data.greenhouse.StandPose
 import net.minecraft.core.Rotations
 import net.minecraft.world.level.block.Blocks
@@ -15,6 +16,7 @@ object Veilshroom : CropDefinitionProvider {
 
     override val definition = CropDefinition(
         name = "Veilshroom",
+        dropMultiplier = 0.15,
         effects = setOf(
             CropEffect.ImprovedHarvestBoost,
             CropEffect.WaterDrain
@@ -39,6 +41,7 @@ object Veilshroom : CropDefinitionProvider {
         ),
         requiredSoil = setOf(Blocks.MYCELIUM, Blocks.PODZOL),
         needsWater = false,
-        isMutation = true
+        isMutation = true,
+        spawnRule = SpawnRule(weight = 30, requiredNeighbourCells = mapOf("Red Mushroom" to 1, "Brown Mushroom" to 1))
     )
 }

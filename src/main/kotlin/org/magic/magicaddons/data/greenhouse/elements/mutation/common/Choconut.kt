@@ -1,5 +1,6 @@
 package org.magic.magicaddons.data.greenhouse.elements.mutation.common
 
+import org.magic.magicaddons.data.greenhouse.SpawnRule
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Rotations
 import net.minecraft.world.phys.Vec3
@@ -16,6 +17,7 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Choconut : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Choconut",
+        dropMultiplier = 0.25,
         effects = setOf(
             CropEffect.Immunity
         ),
@@ -43,6 +45,7 @@ object Choconut : CropDefinitionProvider {
             )
         ),
         needsWater = false,
-        isMutation = true
+        isMutation = true,
+        spawnRule = SpawnRule(weight = 30, requiredNeighbourCells = mapOf("Cocoa Beans" to 2))
     )
 }

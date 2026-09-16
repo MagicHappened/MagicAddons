@@ -1,5 +1,6 @@
 package org.magic.magicaddons.data.greenhouse.elements.mutation.epic
 
+import org.magic.magicaddons.data.greenhouse.SpawnRule
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Rotations
 import net.minecraft.world.phys.Vec3
@@ -17,6 +18,7 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object StoplightPetal : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Stoplight Petal",
+        dropMultiplier = 25.0,
         effects = setOf(
             CropEffect.EffectSpread,
             CropEffect.ImprovedWaterRetain,
@@ -42,7 +44,8 @@ object StoplightPetal : CropDefinitionProvider {
                     CropArmorStand(
                         offset = Vec3(0.0, 0.25, 0.0),
                         headRotation = Rotations(0.0f, 0.0f, 0.0f),
-                        hashString = "57f6c922e742b5c571b1cf091d6d4bc06360f4f03443d79c5174097b0b373d7e"
+                        hashString = "57f6c922e742b5c571b1cf091d6d4bc06360f4f03443d79c5174097b0b373d7e",
+                        isSmall = true
                     )
                 ),
                 1..1
@@ -75,7 +78,8 @@ object StoplightPetal : CropDefinitionProvider {
                     CropArmorStand(
                         offset = Vec3(0.0, 0.875, -0.21875),
                         headRotation = Rotations(90.0f, 0.0f, 0.0f),
-                        hashString = "f15bd3a726eee1f2f8ffd3a92ae95c44a2f37f6b0345a795b44e0360564c67fe"
+                        hashString = "f15bd3a726eee1f2f8ffd3a92ae95c44a2f37f6b0345a795b44e0360564c67fe",
+                        isSmall = true
                     ),
                     CropArmorStand(
                         offset = Vec3(0.0, -0.4375, 0.0),
@@ -97,7 +101,8 @@ object StoplightPetal : CropDefinitionProvider {
                     CropArmorStand(
                         offset = Vec3(0.0, 0.75, 0.0),
                         headRotation = Rotations(0.0f, 0.0f, 0.0f),
-                        hashString = "f15bd3a726eee1f2f8ffd3a92ae95c44a2f37f6b0345a795b44e0360564c67fe"
+                        hashString = "f15bd3a726eee1f2f8ffd3a92ae95c44a2f37f6b0345a795b44e0360564c67fe",
+                        isSmall = true
                     ),
                     CropArmorStand(
                         offset = Vec3(0.0, -0.4375, 0.0),
@@ -109,7 +114,7 @@ object StoplightPetal : CropDefinitionProvider {
                 4..4
             ),
             CropStage(
-                blocks = CropBlockState.blockStatePattern(
+                blocks = CropBlockState.atPositions(
                     positions = listOf(
                         BlockPos(0,1,0),
                         BlockPos(0,2,0)
@@ -125,13 +130,14 @@ object StoplightPetal : CropDefinitionProvider {
                     ),
                     CropArmorStand(
                         offset = Vec3(0.0, 0.84375, 0.0),
-                        hashString = "f15bd3a726eee1f2f8ffd3a92ae95c44a2f37f6b0345a795b44e0360564c67fe"
+                        hashString = "f15bd3a726eee1f2f8ffd3a92ae95c44a2f37f6b0345a795b44e0360564c67fe",
+                        isSmall = true
                     )
                 ),
                 5..5
             ),
             CropStage(
-                blocks =             CropBlockState.blockStatePattern(
+                blocks =             CropBlockState.atPositions(
                     listOf(
                         BlockPos(0, 1, 0),
                         BlockPos(0, 2, 0)
@@ -154,7 +160,7 @@ object StoplightPetal : CropDefinitionProvider {
                 6..6
             ),
             CropStage(
-                blocks = CropBlockState.blockStatePattern(
+                blocks = CropBlockState.atPositions(
                     listOf(
                         BlockPos(0, 1, 0),
                         BlockPos(0, 2, 0)
@@ -169,7 +175,8 @@ object StoplightPetal : CropDefinitionProvider {
                     ),
                     CropArmorStand(
                         offset = Vec3(0.0, 1.4375, -0.21875),
-                        hashString = "57f6c922e742b5c571b1cf091d6d4bc06360f4f03443d79c5174097b0b373d7e"
+                        hashString = "57f6c922e742b5c571b1cf091d6d4bc06360f4f03443d79c5174097b0b373d7e",
+                        isSmall = true
                     ),
                     CropArmorStand(
                         offset = Vec3(0.0, -0.4375, 0.0),
@@ -201,7 +208,8 @@ object StoplightPetal : CropDefinitionProvider {
                     CropArmorStand(
                         offset = Vec3(0.0, 1.21875, 0.0),
                         headRotation = Rotations(0.0f, 0.0f, 0.0f),
-                        hashString = "d6653a481cc301bcf694a70bfb5969485dc42f1e6803288d24d31b7261b61811"
+                        hashString = "d6653a481cc301bcf694a70bfb5969485dc42f1e6803288d24d31b7261b61811",
+                        isSmall = true
                     ),
                     CropArmorStand(
                         offset = Vec3(0.0, 0.15625, 0.0),
@@ -237,13 +245,14 @@ object StoplightPetal : CropDefinitionProvider {
                     ),
                     CropArmorStand(
                         offset = Vec3(0.0, 1.4375, 0.0),
-                        hashString = "d6653a481cc301bcf694a70bfb5969485dc42f1e6803288d24d31b7261b61811"
+                        hashString = "d6653a481cc301bcf694a70bfb5969485dc42f1e6803288d24d31b7261b61811",
+                        isSmall = true
                     )
                 ),
                 9..9
             ),
             CropStage(
-                blocks = CropBlockState.blockStatePattern(
+                blocks = CropBlockState.atPositions(
                     positions = listOf(
                         BlockPos(0,1,0),
                         BlockPos(0,2,0)
@@ -271,7 +280,7 @@ object StoplightPetal : CropDefinitionProvider {
                 10..10
             ),
             CropStage(
-                blocks = CropBlockState.blockStatePattern(
+                blocks = CropBlockState.atPositions(
                     listOf(
                         BlockPos(0, 1, 0),
                         BlockPos(0, 2, 0)
@@ -302,13 +311,14 @@ object StoplightPetal : CropDefinitionProvider {
                     ),
                     CropArmorStand(
                         offset = Vec3(0.03125, 2.125, -0.21875),
-                        hashString = "57f6c922e742b5c571b1cf091d6d4bc06360f4f03443d79c5174097b0b373d7e"
+                        hashString = "57f6c922e742b5c571b1cf091d6d4bc06360f4f03443d79c5174097b0b373d7e",
+                        isSmall = true
                     )
                 ),
                 11..11
             ),
             CropStage(
-                blocks =             CropBlockState.blockStatePattern(
+                blocks =             CropBlockState.atPositions(
                     listOf(
                         BlockPos(0, 1, 0),
                         BlockPos(0, 2, 0),
@@ -334,7 +344,8 @@ object StoplightPetal : CropDefinitionProvider {
                     ),
                     CropArmorStand(
                         offset = Vec3(0.03125, 2.125, -0.21875),
-                        hashString = "57f6c922e742b5c571b1cf091d6d4bc06360f4f03443d79c5174097b0b373d7e"
+                        hashString = "57f6c922e742b5c571b1cf091d6d4bc06360f4f03443d79c5174097b0b373d7e",
+                        isSmall = true
                     )
                 ),
                 12..12
@@ -347,6 +358,7 @@ object StoplightPetal : CropDefinitionProvider {
         ),
         decayTimeMs = FIVE_DAY_DECAY_TIME_MS,
         maxStage = 12,
-        isMutation = true
+        isMutation = true,
+        spawnRule = SpawnRule(weight = 25, requiredNeighbourCells = mapOf("Snoozling" to 4, "Noctilume" to 4))
     )
 }

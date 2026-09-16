@@ -28,17 +28,17 @@ object HungerBars {
         // in debt is red the way a low hunger bar is
         if (GreenhouseWatering.wateringWindowOpen()) return
         val grid = GreenhouseData.getCurrentGrid() ?: return
-        if (!grid.hasRuntime()) return
+        if (!grid.isScannedThisVisit()) return
 
         val area = grid.plot?.getBuildableArea() ?: return
         val level = Minecraft.getInstance().level ?: return
 
         level.getEntitiesOfClass(ArmorStand::class.java, area).forEach { stand ->
-            val percent = stand.customName?.let { CropStandReader.ownBarPercent(it) } ?: return@forEach
+            val percent = stand.customName?.let { CropStandReader.nonWaterBarPercent(it) } ?: return@forEach
 
             val slot = grid.getSlotAt(stand.blockPosition(), matchY = false) ?: return@forEach
-            val instance = grid.elementCovering(slot)?.instance ?: return@forEach
-            if (!instance.cropDef.readsHunger) return@forEach
+            val instance = grid.elementCoveringSlot(slot)?.plant ?: return@forEach
+            if (!instance.cropDef.hasHungerBar) return@forEach
 
             instance.readings[CropStandReader.HUNGER] = percent
         }

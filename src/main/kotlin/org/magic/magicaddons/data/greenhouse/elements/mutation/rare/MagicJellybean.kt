@@ -1,5 +1,6 @@
 package org.magic.magicaddons.data.greenhouse.elements.mutation.rare
 
+import org.magic.magicaddons.data.greenhouse.SpawnRule
 import net.minecraft.core.Rotations
 import net.minecraft.core.BlockPos
 import net.minecraft.world.level.block.Blocks
@@ -106,7 +107,8 @@ object MagicJellybean : CropDefinitionProvider {
                 val melonStand = top.melonStandY?.let {
                     CropArmorStand(
                         offset = Vec3(0.0, caneHeight + it, 0.0),
-                        hashString = MELON_HASH
+                        hashString = MELON_HASH,
+                        isSmall = true
                     )
                 }
 
@@ -144,6 +146,7 @@ object MagicJellybean : CropDefinitionProvider {
 
     override val definition = CropDefinition(
         name = "Magic Jellybean",
+        dropMultiplier = 3.0,
         effects = setOf(
             CropEffect.ImprovedXpBoost,
             CropEffect.HarvestLoss
@@ -157,6 +160,7 @@ object MagicJellybean : CropDefinitionProvider {
         maxStage = MAX_STAGE,
         decayTimeMs = NEVER_DECAYS,
         requiredSoil = setOf(Blocks.SAND, Blocks.RED_SAND),
-        isMutation = true
+        isMutation = true,
+        spawnRule = SpawnRule(weight = 25, requiredNeighbourCells = mapOf("Sugar Cane" to 5, "Duskbloom" to 3))
     )
 }

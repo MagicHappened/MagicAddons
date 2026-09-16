@@ -5,7 +5,7 @@ import net.minecraft.client.renderer.SubmitNodeCollector
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
 import net.minecraft.world.phys.shapes.Shapes
-import org.magic.magicaddons.data.greenhouse.ElementRuntimeState
+import org.magic.magicaddons.data.greenhouse.ScannedPlant
 import org.magic.magicaddons.data.greenhouse.GreenhouseGrid
 import org.magic.magicaddons.data.greenhouse.GrowthStageInfo
 import org.magic.magicaddons.data.greenhouse.WaterModel
@@ -31,14 +31,14 @@ object WaterIndicator {
 
         val ignoreGrown = GreenhousePresets.waterIndicatorIgnoresGrown()
 
-        val thirsty = grid.elements.filter { element ->
-            val plant = element.instance
+        val thirsty = grid.scannedPlants.filter { element ->
+            val plant = element.plant
             val water = plant.waterLevel
 
             // a grown plant has stopped drinking, but one a soggybud drinks from is still worth water
             val feedsDrainer = plant.cropDef.needsWater && grid.layout.plantsAround(plant).any { it.cropDef.drainsNeighbours && !it.isFullyGrown }
 
-            (plant.consumesWater || feedsDrainer) && !plant.cropDef.drainsNeighbours && water != null && water < WaterModel.FULL &&
+            (plant.consumesWater || feedsDrainer) && !plant.cropDef.drainsNeighbours && water != null && water < WaterModel.FULL_LEVEL &&
                     !(ignoreGrown && !feedsDrainer && reachesFullGrowth(grid, element))
         }
         if (thirsty.isEmpty()) return
@@ -47,8 +47,8 @@ object WaterIndicator {
 
         val presetBatch = WorldRenderer.BlockRenderBatch(cameraPos)
         thirsty.forEach { element ->
-            val soil = grid.getPosForSlot(element.instance.slot) ?: return@forEach
-            val footprint = element.instance.cropDef.footprint
+            val soil = grid.getPosForSlot(element.plant.slot) ?: return@forEach
+            val footprint = element.plant.cropDef.footprint
             val box = Shapes.create(AABB(0.0, 0.0, 0.0, footprint.width.toDouble(), 1.0, footprint.height.toDouble()))
             presetBatch.fillWithOutline(soil, box, CYAN, alpha)
         }
@@ -60,8 +60,8 @@ object WaterIndicator {
      * is the plant that never skips a tick for want of water and so is worth leaving alone. A stage
      * only estimated is taken at its lowest, since that is the most growing it may still have to do.
      */
-    private fun reachesFullGrowth(grid: GreenhouseGrid, element: ElementRuntimeState): Boolean {
-        val plant = element.instance
+    private fun reachesFullGrowth(grid: GreenhouseGrid, element: ScannedPlant): Boolean {
+        val plant = element.plant
         val water = plant.waterLevel ?: return false
 
         val stage = when (val growth = plant.growthStage) {
@@ -72,6 +72,6 @@ object WaterIndicator {
 
         val ticksLeft = (plant.cropDef.maxStage - stage).coerceAtLeast(0)
 
-        return WaterModel.after(water, ticksLeft, GreenhouseGrid.waterEffectAt(grid.layout, plant.slot)) >= 0
+        return WaterModel.waterLevelAfter(water, ticksLeft, GreenhouseGrid.waterEffectAt(grid.layout, plant.slot)) >= 0
     }
 }

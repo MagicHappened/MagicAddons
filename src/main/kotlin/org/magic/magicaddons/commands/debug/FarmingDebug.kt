@@ -9,6 +9,7 @@ import com.mojang.blaze3d.vertex.PoseStack
 import net.minecraft.client.renderer.SubmitNodeCollector
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
+import org.magic.magicaddons.features.farming.greenhousePresets.SpawnLog
 import org.magic.magicaddons.render.WorldRenderer
 import java.time.Duration
 import java.time.Instant
@@ -171,6 +172,13 @@ object FarmingDebug : AbstractCommand() {
                 plantDexCommand()
             )
             .then(previewCommand())
+            .then(
+                LiteralArgumentBuilder.literal<FabricClientCommandSource>("spawnLog")
+                    .executes {
+                        SpawnLog.toggle()
+                        return@executes 1
+                    }
+            )
             .then(
                 LiteralArgumentBuilder.literal<FabricClientCommandSource>("scan")
                     .executes {

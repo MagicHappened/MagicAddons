@@ -1,5 +1,6 @@
 package org.magic.magicaddons.data.greenhouse.elements.mutation.rare
 
+import org.magic.magicaddons.data.greenhouse.SpawnRule
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Rotations
 import net.minecraft.world.phys.Vec3
@@ -18,6 +19,7 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Fleshtrap : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Fleshtrap",
+        dropMultiplier = 1.7,
         effects = setOf(
             CropEffect.BonusDrops
         ),
@@ -40,7 +42,7 @@ object Fleshtrap : CropDefinitionProvider {
                     )
                 ),
                 1..1,
-                readers = listOf(CropStandReader.bar(CropStandReader.HUNGER))
+                readers = listOf(CropStandReader.nonWaterBar(CropStandReader.HUNGER))
             ),
             CropStage(
                 blocks = listOf(
@@ -58,7 +60,7 @@ object Fleshtrap : CropDefinitionProvider {
                     )
                 ),
                 2..2,
-                readers = listOf(CropStandReader.bar(CropStandReader.HUNGER))
+                readers = listOf(CropStandReader.nonWaterBar(CropStandReader.HUNGER))
             ),
             CropStage(
                 blocks = listOf(
@@ -76,7 +78,7 @@ object Fleshtrap : CropDefinitionProvider {
                     )
                 ),
                 3..3,
-                readers = listOf(CropStandReader.bar(CropStandReader.HUNGER))
+                readers = listOf(CropStandReader.nonWaterBar(CropStandReader.HUNGER))
             ),
             CropStage(
                 blocks = listOf(
@@ -94,7 +96,7 @@ object Fleshtrap : CropDefinitionProvider {
                     )
                 ),
                 4..4,
-                readers = listOf(CropStandReader.bar(CropStandReader.HUNGER))
+                readers = listOf(CropStandReader.nonWaterBar(CropStandReader.HUNGER))
             ),
             CropStage(
                 blocks = listOf(
@@ -112,7 +114,7 @@ object Fleshtrap : CropDefinitionProvider {
                     )
                 ),
                 5..5,
-                readers = listOf(CropStandReader.bar(CropStandReader.HUNGER))
+                readers = listOf(CropStandReader.nonWaterBar(CropStandReader.HUNGER))
             ),
             CropStage(
                 blocks = listOf(
@@ -130,7 +132,7 @@ object Fleshtrap : CropDefinitionProvider {
                     )
                 ),
                 6..6,
-                readers = listOf(CropStandReader.bar(CropStandReader.HUNGER))
+                readers = listOf(CropStandReader.nonWaterBar(CropStandReader.HUNGER))
             ),
             CropStage(
                 blocks = listOf(
@@ -148,7 +150,7 @@ object Fleshtrap : CropDefinitionProvider {
                     )
                 ),
                 7..7,
-                readers = listOf(CropStandReader.bar(CropStandReader.HUNGER))
+                readers = listOf(CropStandReader.nonWaterBar(CropStandReader.HUNGER))
             ),
             CropStage(
                 blocks = listOf(
@@ -183,7 +185,7 @@ object Fleshtrap : CropDefinitionProvider {
                     )
                 ),
                 9..9,
-                readers = listOf(CropStandReader.bar(CropStandReader.HUNGER))
+                readers = listOf(CropStandReader.nonWaterBar(CropStandReader.HUNGER))
             ),
             CropStage(
                 blocks = listOf(
@@ -201,7 +203,7 @@ object Fleshtrap : CropDefinitionProvider {
                     )
                 ),
                 10..10,
-                readers = listOf(CropStandReader.bar(CropStandReader.HUNGER))
+                readers = listOf(CropStandReader.nonWaterBar(CropStandReader.HUNGER))
             ),
             CropStage(
                 blocks = listOf(
@@ -219,7 +221,7 @@ object Fleshtrap : CropDefinitionProvider {
                     )
                 ),
                 11..11,
-                readers = listOf(CropStandReader.bar(CropStandReader.HUNGER))
+                readers = listOf(CropStandReader.nonWaterBar(CropStandReader.HUNGER))
             ),
             CropStage(
                 blocks = listOf(
@@ -237,7 +239,7 @@ object Fleshtrap : CropDefinitionProvider {
                     )
                 ),
                 12..12,
-                readers = listOf(CropStandReader.bar(CropStandReader.HUNGER))
+                readers = listOf(CropStandReader.nonWaterBar(CropStandReader.HUNGER))
             ),
             CropStage(
                 blocks = listOf(
@@ -258,8 +260,8 @@ object Fleshtrap : CropDefinitionProvider {
                 // hunger and bonus change from moment to moment, so neither can be part of matching.
                 // A missing bonus label means never fed, not fed nothing
                 readers = listOf(
-                    CropStandReader.bar(CropStandReader.HUNGER),
-                    CropStandReader.hungerPercentLabel(CropStandReader.BONUS, "Bonus")
+                    CropStandReader.nonWaterBar(CropStandReader.HUNGER),
+                    CropStandReader.percentLabel(CropStandReader.BONUS, "Bonus")
                 )
             ),
             // the skull changes with hunger, so either look is stage 14
@@ -280,8 +282,8 @@ object Fleshtrap : CropDefinitionProvider {
                 ),
                 14..14,
                 readers = listOf(
-                    CropStandReader.bar(CropStandReader.HUNGER),
-                    CropStandReader.hungerPercentLabel(CropStandReader.BONUS, "Bonus")
+                    CropStandReader.nonWaterBar(CropStandReader.HUNGER),
+                    CropStandReader.percentLabel(CropStandReader.BONUS, "Bonus")
                 )
             ),
             CropStage(
@@ -301,12 +303,13 @@ object Fleshtrap : CropDefinitionProvider {
                 ),
                 14..14,
                 readers = listOf(
-                    CropStandReader.bar(CropStandReader.HUNGER),
-                    CropStandReader.hungerPercentLabel(CropStandReader.BONUS, "Bonus")
+                    CropStandReader.nonWaterBar(CropStandReader.HUNGER),
+                    CropStandReader.percentLabel(CropStandReader.BONUS, "Bonus")
                 )
             )),
         maxStage = 14,
         decayTimeMs = NEVER_DECAYS,
-        isMutation = true
+        isMutation = true,
+        spawnRule = SpawnRule(weight = 25, requiredNeighbourCells = mapOf("Cindershade" to 4, "Lonelily" to 4))
     )
 }

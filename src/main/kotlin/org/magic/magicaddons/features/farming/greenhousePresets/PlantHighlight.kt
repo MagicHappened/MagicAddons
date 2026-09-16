@@ -6,8 +6,8 @@ import net.minecraft.client.renderer.SubmitNodeCollector
 import net.minecraft.core.BlockPos
 import net.minecraft.world.entity.Entity
 import net.minecraft.world.phys.Vec3
-import org.magic.magicaddons.data.greenhouse.ElementRuntimeState
-import org.magic.magicaddons.data.greenhouse.GreenhouseElementInstance
+import org.magic.magicaddons.data.greenhouse.ScannedPlant
+import org.magic.magicaddons.data.greenhouse.Plant
 import org.magic.magicaddons.render.WorldRenderer
 import org.magic.magicaddons.util.EntityUtils
 import java.time.Duration
@@ -25,21 +25,21 @@ object PlantHighlight : EntityUtils.HighlightSource {
 
     override fun highlightColor(entity: Entity): Int = RED
 
-    private var highlightedPlant: GreenhouseElementInstance? = null
+    private var highlightedPlant: Plant? = null
 
     private var blocks: List<BlockPos> = emptyList()
 
     private var highlightUntil: Instant? = null
 
-    fun showPlant(runtime: ElementRuntimeState): Boolean {
-        val samePlant = highlightedPlant === runtime.instance
+    fun showPlant(runtime: ScannedPlant): Boolean {
+        val samePlant = highlightedPlant === runtime.plant
 
         clear()
         if (samePlant) return false
 
-        highlightedPlant = runtime.instance
-        blocks = runtime.blocksMap?.keys?.toList().orEmpty()
-        runtime.standEntities?.forEach { EntityUtils.add(it, this) }
+        highlightedPlant = runtime.plant
+        blocks = runtime.blocks?.keys?.toList().orEmpty()
+        runtime.stands?.forEach { EntityUtils.add(it, this) }
         highlightUntil = Instant.now().plus(HIGHLIGHT_DURATION)
         return true
     }

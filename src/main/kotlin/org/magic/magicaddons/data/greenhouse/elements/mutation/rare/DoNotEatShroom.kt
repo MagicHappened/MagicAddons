@@ -1,5 +1,6 @@
 package org.magic.magicaddons.data.greenhouse.elements.mutation.rare
 
+import org.magic.magicaddons.data.greenhouse.SpawnRule
 import net.minecraft.core.Rotations
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.CropEffect
@@ -14,6 +15,7 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object DoNotEatShroom : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Do-not-eat-shroom",
+        dropMultiplier = 2.1,
         effects = setOf(
             CropEffect.ImprovedHarvestBoost,
             CropEffect.WaterDrain
@@ -32,7 +34,8 @@ object DoNotEatShroom : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, 0.125, 0.0),
-                        hashString = "77a99b274b5e21a3537469b2ae717bb4cedcacca76df7525092a99bc08ea8c9"
+                        hashString = "77a99b274b5e21a3537469b2ae717bb4cedcacca76df7525092a99bc08ea8c9",
+                        isSmall = true
                     )
                 ),
                 1..1
@@ -47,8 +50,8 @@ object DoNotEatShroom : CropDefinitionProvider {
                     )
                 ),
                 stageRange = 2..3,
-                baseStageStandOffset = Vec3(0.0, 0.03125, 0.0),
-                stageOffsetMultipliers = mapOf(
+                baseStandOffset = Vec3(0.0, 0.03125, 0.0),
+                baseStandStageMultipliers = mapOf(
                     2 to 0,
                     3 to 2
                 )
@@ -63,8 +66,8 @@ object DoNotEatShroom : CropDefinitionProvider {
                     )
                 ),
                 stageRange = 4..5,
-                baseStageStandOffset = Vec3(0.0, 0.03125, 0.0),
-                stageOffsetMultipliers = mapOf(
+                baseStandOffset = Vec3(0.0, 0.03125, 0.0),
+                baseStandStageMultipliers = mapOf(
                     4 to 0,
                     5 to 1
                 )
@@ -80,8 +83,8 @@ object DoNotEatShroom : CropDefinitionProvider {
                     )
                 ),
                 stageRange = 6..7,
-                baseStageStandOffset = Vec3(0.0, 0.03125, 0.0),
-                stageOffsetMultipliers = mapOf(
+                baseStandOffset = Vec3(0.0, 0.03125, 0.0),
+                baseStandStageMultipliers = mapOf(
                     6 to 0,
                     7 to 2
                 )
@@ -100,6 +103,7 @@ object DoNotEatShroom : CropDefinitionProvider {
             )
         ),
         maxStage = 8,
-        isMutation = true
+        isMutation = true,
+        spawnRule = SpawnRule(weight = 25, requiredNeighbourCells = mapOf("Veilshroom" to 4, "Scourroot" to 4))
     )
 }

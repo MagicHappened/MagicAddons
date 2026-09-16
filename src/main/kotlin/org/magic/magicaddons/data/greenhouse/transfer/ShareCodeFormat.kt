@@ -6,7 +6,7 @@ import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.Blocks
 import org.magic.magicaddons.data.greenhouse.CropDefinition
 import org.magic.magicaddons.data.greenhouse.CropRegistry
-import org.magic.magicaddons.data.greenhouse.GreenhouseElementInstance
+import org.magic.magicaddons.data.greenhouse.Plant
 import org.magic.magicaddons.data.greenhouse.GreenhouseLayout
 import org.magic.magicaddons.data.greenhouse.LayoutSlot
 import org.magic.magicaddons.data.greenhouse.MasterLayout
@@ -108,11 +108,11 @@ object ShareCodeFormat : LayoutFormat {
                 val y = cell / size
                 val slot = layout.getSlot(x, y) ?: continue
 
-                slot.slotMark = LayoutSlot.Marking.entries.getOrNull((flags and 0b11) - 1)
+                slot.mark = LayoutSlot.Marking.entries.getOrNull((flags and 0b11) - 1)
                 when (val soil = flags shr 2) {
                     SOIL_UNSET -> {}
-                    SOIL_AIR -> slot.placedBlock = Blocks.AIR.defaultBlockState()
-                    else -> soils.getOrNull(soil - SOIL_FIRST)?.let { slot.placedBlock = it.defaultBlockState() }
+                    SOIL_AIR -> slot.soil = Blocks.AIR.defaultBlockState()
+                    else -> soils.getOrNull(soil - SOIL_FIRST)?.let { slot.soil = it.defaultBlockState() }
                 }
                 val merged = if (crop > 0 && version >= PAYLOAD_VERSION) {
                     List(input.readUnsignedByte()) { crops.getOrNull(input.readUnsignedByte() - 1) }.filterNotNull()
@@ -145,11 +145,11 @@ object ShareCodeFormat : LayoutFormat {
         for (dx in 0 until footprint.width) {
             for (dy in 0 until footprint.height) {
                 val covered = layout.getSlot(slot.x + dx, slot.y + dy) ?: continue
-                if (covered.placedBlock == null) covered.placedBlock = definition.requiredSoil.firstOrNull()?.defaultBlockState()
+                if (covered.soil == null) covered.soil = definition.requiredSoil.firstOrNull()?.defaultBlockState()
             }
         }
-        layout.elementInstances.add(
-            GreenhouseElementInstance(definition.elementId, slot, cropDef = definition, alternatives = merged.toMutableList())
+        layout.plants.add(
+            Plant(definition.elementId, slot, cropDef = definition, alternatives = merged.toMutableList())
         )
     }
 
@@ -158,10 +158,10 @@ object ShareCodeFormat : LayoutFormat {
     override fun exportAll(master: MasterLayout): LayoutTransferResult = write(master.name, master.plots)
 
     private fun write(name: String?, plots: List<GreenhouseLayout>): LayoutTransferResult {
-        val crops = plots.flatMap { plot -> plot.elementInstances.flatMap { it.everyCrop } }.distinct()
-        val anyMerged = plots.any { plot -> plot.elementInstances.any { it.merged } }
+        val crops = plots.flatMap { plot -> plot.plants.flatMap { it.acceptedCrops } }.distinct()
+        val anyMerged = plots.any { plot -> plot.plants.any { it.hasAlternatives } }
         val version = if (anyMerged) PAYLOAD_VERSION else PLAIN_VERSION
-        val soils = plots.flatMap { plot -> plot.slots.mapNotNull { it.placedBlock?.block } }.filter { it != Blocks.AIR }.distinct()
+        val soils = plots.flatMap { plot -> plot.slots.mapNotNull { it.soil?.block } }.filter { it != Blocks.AIR }.distinct()
         if (crops.size > 255 || soils.size > 250) return LayoutTransferResult.Failure("Too many different crops or soils for a share code.")
 
         val bytes = ByteArrayOutputStream()
@@ -177,7 +177,7 @@ object ShareCodeFormat : LayoutFormat {
 
         plots.forEach { plot ->
             out.writeUTF(plot.name ?: "")
-            val origins = plot.elementInstances.associateBy { it.slot.x to it.slot.y }
+            val origins = plot.plants.associateBy { it.slot.x to it.slot.y }
             for (cell in 0 until plot.size * plot.size) {
                 val x = cell % plot.size
                 val y = cell / plot.size
@@ -185,8 +185,8 @@ object ShareCodeFormat : LayoutFormat {
                 val plant = origins[x to y]
                 out.writeByte(plant?.let { crops.indexOf(it.cropDef) + 1 } ?: 0)
 
-                val mark = slot?.slotMark?.let { it.ordinal + 1 } ?: 0
-                val block = slot?.placedBlock?.block
+                val mark = slot?.mark?.let { it.ordinal + 1 } ?: 0
+                val block = slot?.soil?.block
                 val soil = when {
                     block == null -> SOIL_UNSET
                     block == Blocks.AIR -> SOIL_AIR

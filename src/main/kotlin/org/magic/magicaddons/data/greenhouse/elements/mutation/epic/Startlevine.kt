@@ -1,5 +1,6 @@
 package org.magic.magicaddons.data.greenhouse.elements.mutation.epic
 
+import org.magic.magicaddons.data.greenhouse.SpawnRule
 import net.minecraft.core.BlockPos
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.CropEffect
@@ -19,6 +20,7 @@ import org.magic.magicaddons.data.greenhouse.StandPose
 object Startlevine : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Startlevine",
+        dropMultiplier = 7.5,
         effects = setOf(
             CropEffect.ImprovedWaterRetain,
             CropEffect.ImprovedXpBoost,
@@ -212,6 +214,7 @@ object Startlevine : CropDefinitionProvider {
         ),
         decayTimeMs = FIVE_DAY_DECAY_TIME_MS,
         maxStage = 12,
-        isMutation = true
+        isMutation = true,
+        spawnRule = SpawnRule(weight = 25, requiredNeighbourCells = mapOf("Blastberry" to 4, "Cheesebite" to 4))
     )
 }

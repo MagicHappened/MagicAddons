@@ -18,6 +18,7 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Brownmushroom : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Brown Mushroom",
+        dropMultiplier = 0.08,
         effects = setOf(
             CropEffect.ImprovedHarvestBoost,
             CropEffect.WaterDrain
@@ -44,7 +45,7 @@ object Brownmushroom : CropDefinitionProvider {
                     )
                 ),
                 stageRange = 1..5,
-                baseStageStandOffset = Vec3(0.0, 0.0625, 0.0)
+                baseStandOffset = Vec3(0.0, 0.0625, 0.0)
             ),
             CropStage(
                 blocks = listOf(

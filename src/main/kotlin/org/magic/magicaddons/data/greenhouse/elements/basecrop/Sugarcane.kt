@@ -14,6 +14,7 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Sugarcane : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Sugar Cane",
+        dropMultiplier = 0.17,
         effects = setOf(
             CropEffect.ImprovedXpBoost,
             CropEffect.HarvestLoss
@@ -49,7 +50,7 @@ object Sugarcane : CropDefinitionProvider {
                 2..2
             ),
             CropStage(
-                blocks = CropBlockState.blockStatePattern(
+                blocks = CropBlockState.atPositions(
                     positions = listOf(
                         BlockPos(0,1,0),
                         BlockPos(0,2,0)
@@ -64,7 +65,7 @@ object Sugarcane : CropDefinitionProvider {
                 3..3
             ),
             CropStage(
-                blocks = CropBlockState.blockStatePattern(
+                blocks = CropBlockState.atPositions(
                     positions = listOf(
                         BlockPos(0, 1, 0),
                         BlockPos(0, 2, 0)
@@ -79,7 +80,7 @@ object Sugarcane : CropDefinitionProvider {
                 4..4
             ),
             CropStage(
-                blocks = CropBlockState.blockStatePattern(
+                blocks = CropBlockState.atPositions(
                     positions = listOf(
                         BlockPos(0, 1, 0),
                         BlockPos(0, 2, 0),
@@ -95,7 +96,7 @@ object Sugarcane : CropDefinitionProvider {
                 5..5
             ),
             CropStage(
-                blocks = CropBlockState.blockStatePattern(
+                blocks = CropBlockState.atPositions(
                     positions = listOf(
                         BlockPos(0, 1, 0),
                         BlockPos(0, 2, 0),
@@ -111,7 +112,7 @@ object Sugarcane : CropDefinitionProvider {
                 6..6
             ),
             CropStage(
-                blocks = CropBlockState.blockStatePattern(
+                blocks = CropBlockState.atPositions(
                     positions = listOf(
                         BlockPos(0,1,0),
                         BlockPos(0,2,0),
@@ -128,7 +129,7 @@ object Sugarcane : CropDefinitionProvider {
                 7..7
             ),
             CropStage(
-                blocks = CropBlockState.blockStatePattern(
+                blocks = CropBlockState.atPositions(
                     positions = listOf(
                         BlockPos(0,1,0),
                         BlockPos(0,2,0),

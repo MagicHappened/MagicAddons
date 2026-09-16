@@ -43,7 +43,7 @@ object OtherProfiles {
             val upgrade = misc.cropSpeedUpgradeValue ?: return@forEach
 
             val uniques = profile.grids
-                .flatMap { it.layout.elementInstances }
+                .flatMap { it.layout.plants }
                 .filter { it.cropDef.isBaseCrop }
                 .map { GreenhouseData.UniqueCropKey.from(it.cropDef) }
                 .toSet()
@@ -54,8 +54,8 @@ object OtherProfiles {
 
             misc.nextTickTime = nextTick.plusMillis(elapsedTicks * tickMs)
             profile.grids.forEach { grid ->
-                grid.state.pendingGrowthTicks += elapsedTicks
-                grid.predictGrowth(elapsedTicks, tickMs)
+                grid.state.ticksSinceLastScan += elapsedTicks
+                grid.simulateGreenhouse(elapsedTicks, tickMs)
             }
         }
     }

@@ -1,5 +1,6 @@
 package org.magic.magicaddons.data.greenhouse.elements.mutation.rare
 
+import org.magic.magicaddons.data.greenhouse.SpawnRule
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Rotations
 import net.minecraft.world.phys.Vec3
@@ -17,6 +18,7 @@ import org.magic.magicaddons.util.compat.McCompat
 object Chloronite : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Chloronite",
+        dropMultiplier = 2.7,
         effects = setOf(
             CropEffect.Immunity
         ),
@@ -149,6 +151,7 @@ object Chloronite : CropDefinitionProvider {
 
         ),
         maxStage = 10,
-        isMutation = true
+        isMutation = true,
+        spawnRule = SpawnRule(weight = 25, requiredNeighbourCells = mapOf("Coalroot" to 6, "Thornshade" to 2))
     )
 }

@@ -28,20 +28,20 @@ object Codecs {
 
                 GREENHOUSE_ELEMENT_INSTANCE_CODEC.listOf()
                     .fieldOf("element_instances")
-                    .forGetter { it.elementInstances },
+                    .forGetter { it.plants },
 
                 // written since air became something asked for; a file without it has air meaning nothing
                 Codec.BOOL.optionalFieldOf("explicit_air").forGetter { Optional.of(true) }
             ).apply(instance) { id, nameOpt, slots, elements, explicitAir ->
                 if (!explicitAir.orElse(false)) {
-                    slots.forEach { slot -> if (slot.placedBlock?.isAir == true) slot.placedBlock = null }
+                    slots.forEach { slot -> if (slot.soil?.isAir == true) slot.soil = null }
                 }
                 GreenhouseLayout(
                     id = id,
                     // older files carry "unnamed" as the name the mod itself wrote, which is no name
                     name = nameOpt.orElse(null)?.takeUnless { it == "unnamed" },
                     slots = slots,
-                    elementInstances = elements.toMutableList()
+                    plants = elements.toMutableList()
                 )
             }
         }
@@ -96,7 +96,7 @@ object Codecs {
         }
     }
 
-    val GREENHOUSE_ELEMENT_INSTANCE_CODEC: Codec<GreenhouseElementInstance> by lazy {
+    val GREENHOUSE_ELEMENT_INSTANCE_CODEC: Codec<Plant> by lazy {
         RecordCodecBuilder.create { instance ->
             instance.group(
                 Codec.STRING.fieldOf("id").forGetter { it.elementId },
@@ -127,7 +127,7 @@ object Codecs {
                 Codec.STRING.listOf().optionalFieldOf("alternatives", emptyList())
                     .forGetter { plant -> plant.alternatives.map { it.elementId } }
             ).apply(instance) { id, slot, waterOpt, growthOpt, ageOpt, readingsOpt, firstSeenOpt, placed, waterExact, alternativeIds ->
-                GreenhouseElementInstance(
+                Plant(
                     elementId = id,
                     slot = slot.orElse(null),
                     waterLevel = waterOpt.orElse(null),
@@ -149,7 +149,7 @@ object Codecs {
         RecordCodecBuilder.create { instance ->
             instance.group(
                 Codec.LONG.optionalFieldOf("lastUpdateTimestamp").forGetter {
-                    Optional.ofNullable(it.lastUpdateTimestamp?.toEpochMilli())
+                    Optional.ofNullable(it.lastScanTime?.toEpochMilli())
                 },
                 Codec.STRING.optionalFieldOf("assigned_layout_id").forGetter {
                     Optional.ofNullable(it.assignedLayout?.id)
@@ -157,7 +157,7 @@ object Codecs {
                 Codec.INT.optionalFieldOf("plan_turns", 0).forGetter { it.planTurns }
             ).apply(instance) { lastUpdate, assignedLayout, planTurns ->
                 GridState(
-                    lastUpdateTimestamp = lastUpdate.orElse(null)?.let { Instant.ofEpochMilli(it) },
+                    lastScanTime = lastUpdate.orElse(null)?.let { Instant.ofEpochMilli(it) },
                     planTurns = planTurns
                 ).also { it.assignedLayoutId = assignedLayout.orElse(null) }
             }
@@ -184,9 +184,9 @@ object Codecs {
 
                 SOIL_CODEC
                     .optionalFieldOf("block")
-                    .forGetter { Optional.ofNullable(it.placedBlock) },
+                    .forGetter { Optional.ofNullable(it.soil) },
                 Codec.INT.optionalFieldOf("slot_marking")
-                    .forGetter { Optional.ofNullable(it.slotMark?.ordinal) }
+                    .forGetter { Optional.ofNullable(it.mark?.ordinal) }
             ).apply(instance) { x, y, block, marking ->
                 LayoutSlot(
                     x,

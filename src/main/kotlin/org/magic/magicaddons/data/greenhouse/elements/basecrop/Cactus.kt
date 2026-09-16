@@ -17,6 +17,7 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Cactus : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Cactus",
+        dropMultiplier = 0.22,
         effects = setOf(
             CropEffect.ImprovedWaterRetain,
             CropEffect.HarvestLoss
@@ -48,14 +49,15 @@ object Cactus : CropDefinitionProvider {
                     ),
                     CropArmorStand(
                         offset = Vec3(0.0, 0.78125, 0.0),
-                        hashString = "d4b3ea5cb6b6f046e326621ca11ffb7d6aec22d66c0d81e5039b19ee4400309f"
+                        hashString = "d4b3ea5cb6b6f046e326621ca11ffb7d6aec22d66c0d81e5039b19ee4400309f",
+                        isSmall = true
                     )
                 ),
                 2..2
             ),
             CropStage(
                 blocks = listOf(),
-                armorStands = CropArmorStand.matcherPattern(
+                armorStands = CropArmorStand.atOffsets(
                     offsets = listOf(
                         Vec3(0.0, 0.09375, 0.0),
                         Vec3(0.0, -0.5, 0.0)
@@ -99,13 +101,14 @@ object Cactus : CropDefinitionProvider {
                     CropArmorStand(
                         offset = Vec3(0.1875, 1.53125, -0.03125),
                         headRotation = Rotations(0.0f, 0.0f, 67.5f),
-                        hashString = "d4b3ea5cb6b6f046e326621ca11ffb7d6aec22d66c0d81e5039b19ee4400309f"
+                        hashString = "d4b3ea5cb6b6f046e326621ca11ffb7d6aec22d66c0d81e5039b19ee4400309f",
+                        isSmall = true
                     )
                 ),
                 5..5,
             ),
             CropStage(
-                blocks = CropBlockState.blockStatePattern(
+                blocks = CropBlockState.atPositions(
                     positions = listOf(
                         BlockPos(0,1,0),
                         BlockPos(0,2,0)
@@ -123,7 +126,7 @@ object Cactus : CropDefinitionProvider {
                 6..6,
             ),
             CropStage(
-                blocks = CropBlockState.blockStatePattern(
+                blocks = CropBlockState.atPositions(
                     positions = listOf(
                         BlockPos(0,1,0),
                         BlockPos(0,2,0)
@@ -135,9 +138,10 @@ object Cactus : CropDefinitionProvider {
                     CropArmorStand(
                         offset = Vec3(-0.15625, 2.59375, -0.03125),
                         headRotation = Rotations(0.0f, 0.0f, -67.5f),
-                        hashString = "d4b3ea5cb6b6f046e326621ca11ffb7d6aec22d66c0d81e5039b19ee4400309f"
+                        hashString = "d4b3ea5cb6b6f046e326621ca11ffb7d6aec22d66c0d81e5039b19ee4400309f",
+                        isSmall = true
                     )
-                ) + CropArmorStand.matcherPattern(
+                ) + CropArmorStand.atOffsets(
                     offsets = listOf(
                         Vec3(0.3125, 1.0, 0.0),
                         Vec3(0.0, 1.5, 0.0)
@@ -152,7 +156,7 @@ object Cactus : CropDefinitionProvider {
                 7..7,
             ),
             CropStage(
-                blocks = CropBlockState.blockStatePattern(
+                blocks = CropBlockState.atPositions(
                     positions = listOf(
                         BlockPos(0, 1, 0),
                         BlockPos(0, 2, 0),
@@ -160,7 +164,7 @@ object Cactus : CropDefinitionProvider {
                     ),
                     blockState = cactusState()
                 ),
-                armorStands = CropArmorStand.matcherPattern(
+                armorStands = CropArmorStand.atOffsets(
                     offsets = listOf(
                         Vec3(0.3125, 1.0, 0.0),
                         Vec3(-0.28125, 2.0, -0.03125)

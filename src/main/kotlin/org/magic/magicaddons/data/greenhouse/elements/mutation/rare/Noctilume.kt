@@ -1,5 +1,6 @@
 package org.magic.magicaddons.data.greenhouse.elements.mutation.rare
 
+import org.magic.magicaddons.data.greenhouse.SpawnRule
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Rotations
 import net.minecraft.world.phys.Vec3
@@ -75,7 +76,7 @@ object Noctilume : CropDefinitionProvider {
         offsets: List<Vec3>,
         fullSized: Set<Int> = emptySet()
     ): CropStage = CropStage(
-        blocks = CropBlockState.blockStatePattern(
+        blocks = CropBlockState.atPositions(
             positions = wheatPositions,
             blockState = wheatState(wheatAge)
         ),
@@ -93,6 +94,7 @@ object Noctilume : CropDefinitionProvider {
 
     override val definition = CropDefinition(
         name = "Noctilume",
+        dropMultiplier = 5.3,
         effects = setOf(
             CropEffect.EffectSpread,
             CropEffect.ImprovedWaterRetain,
@@ -166,6 +168,7 @@ object Noctilume : CropDefinitionProvider {
         decayTimeMs = SIX_DAY_DECAY_TIME_MS,
         maxStage = 4,
         footprint = Footprint(2, 2),
-        isMutation = true
+        isMutation = true,
+        spawnRule = SpawnRule(weight = 25, requiredNeighbourCells = mapOf("Duskbloom" to 6, "Lonelily" to 6))
     )
 }

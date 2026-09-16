@@ -5,19 +5,16 @@ import net.minecraft.world.level.block.state.BlockState
 class LayoutSlot(
     val x: Int,
     val y: Int,
-    var placedBlock: BlockState?,
-    var slotMark: Marking? = null
+    var soil: BlockState?,
+    var mark: Marking? = null
 ) {
-    /**
-     * What a slot is for in a layout. [color] belongs to the marking rather than to whichever
-     * widget happens to draw it, so a role reads as the same colour everywhere in the ui.
-     */
+    /** the colour belongs to the marking, so a role reads the same everywhere */
     enum class Marking(val color: Int) {
         Target(0xFF2DBCF6.toInt()),
         Ingredient(0xFF89F336.toInt())
     }
 
     override fun toString(): String {
-        return "$x,$y block: $placedBlock"
+        return "$x,$y block: $soil"
     }
 }

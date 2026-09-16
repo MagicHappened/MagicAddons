@@ -16,6 +16,7 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Pumpkin : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Pumpkin",
+        dropMultiplier = 0.2,
         effects = setOf(
             CropEffect.BonusDrops
         ),
@@ -36,7 +37,8 @@ object Pumpkin : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, 0.125, 0.0),
-                        hashString = "18bd4aa55673e90a3c611117277d94f6ce185b5d13d2a862a3376f50a6139c4f"
+                        hashString = "18bd4aa55673e90a3c611117277d94f6ce185b5d13d2a862a3376f50a6139c4f",
+                        isSmall = true
                     )
                 ),
                 1..1
@@ -51,7 +53,8 @@ object Pumpkin : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, 0.28125, 0.0),
-                        hashString = "18bd4aa55673e90a3c611117277d94f6ce185b5d13d2a862a3376f50a6139c4f"
+                        hashString = "18bd4aa55673e90a3c611117277d94f6ce185b5d13d2a862a3376f50a6139c4f",
+                        isSmall = true
                     )
                 ),
                 2..2,
@@ -109,7 +112,8 @@ object Pumpkin : CropDefinitionProvider {
                     CropArmorStand(
                         offset = Vec3(0.21875, 0.1875, 0.1875),
                         headRotation = Rotations(22.5f, 0.0f, 22.5f),
-                        hashString = "1408c8f3063204487451961fab8e7d5dd3702c06c8ef88f777ae83a79aa3a36f"
+                        hashString = "1408c8f3063204487451961fab8e7d5dd3702c06c8ef88f777ae83a79aa3a36f",
+                        isSmall = true
                     )
                 ),
                 6..6
@@ -130,6 +134,7 @@ object Pumpkin : CropDefinitionProvider {
                     CropArmorStand(
                         offset = Vec3(0.21875, 0.1875, 0.1875),
                         hashString = "18bd4aa55673e90a3c611117277d94f6ce185b5d13d2a862a3376f50a6139c4f",
+                        isSmall = true,
                     )
                 ),
                 7..7,
@@ -147,6 +152,7 @@ object Pumpkin : CropDefinitionProvider {
                             offset = Vec3(0.21875, 0.1875, 0.1875),
                             headRotation = Rotations(22.5f, 0.0f, 22.5f),
                             hashString = "18bd4aa55673e90a3c611117277d94f6ce185b5d13d2a862a3376f50a6139c4f",
+                            isSmall = true,
                         ),
                         CropArmorStand(
                             offset = Vec3(0.0, -0.53125, 0.0),
@@ -187,7 +193,7 @@ object Pumpkin : CropDefinitionProvider {
                         blockState = melonStemState(7)
                     )
                 ),
-                armorStands = CropArmorStand.matcherPattern(
+                armorStands = CropArmorStand.atOffsets(
                     offsets = listOf(
                         Vec3(0.09375, -0.625, 0.09375),
                         Vec3(-0.0625, -0.46875, 0.0)
@@ -208,7 +214,7 @@ object Pumpkin : CropDefinitionProvider {
                         blockState = melonStemState(7)
                     )
                 ),
-                armorStands = CropArmorStand.matcherPattern(
+                armorStands = CropArmorStand.atOffsets(
                     offsets = listOf(
                         Vec3(-0.0625, -0.46875, 0.0),
                         Vec3(0.09375, -0.625, 0.09375)

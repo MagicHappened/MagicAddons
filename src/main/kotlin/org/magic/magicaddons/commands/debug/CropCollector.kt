@@ -82,9 +82,6 @@ object CropCollector : EntityUtils.HighlightSource {
         /** Matches the definitions as they stand, nothing to collect; listed gray, ignored. */
         Current("matches current data"),
 
-        /** Matched, but through the pre-normalization fallback: worth re-collecting. */
-        Legacy("needs normalization"),
-
         /** Matched, and described, but recorded without the way its stands are turned. */
         Unturned("needs rotation data"),
 
@@ -210,19 +207,19 @@ object CropCollector : EntityUtils.HighlightSource {
                 val soilState = level.getBlockState(slotPos)
                 if (soilState.isAir) continue
 
-                val found = GreenhouseGrid.findElementAt(
+                val found = GreenhouseGrid.matchPlantAt(
                     slotPos,
                     soilState.block,
                     pool,
                     LayoutSlot(slotPos.x, slotPos.z, soilState)
                 ) ?: continue
 
-                val stands = found.standEntities.orEmpty().filterIsInstance<ArmorStand>()
+                val stands = found.stands.orEmpty().filterIsInstance<ArmorStand>()
                 pool.removeAll(stands.toSet())
 
-                val def = found.instance.cropDef
+                val def = found.plant.cropDef
 
-                val (text, num) = when (val g = found.instance.growthStage) {
+                val (text, num) = when (val g = found.plant.growthStage) {
                     is GrowthStageInfo.Known -> g.stage.toString() to g.stage
                     is GrowthStageInfo.Estimated -> "${g.range.first}..${g.range.last}" to null
                     else -> null to null
@@ -231,7 +228,6 @@ object CropCollector : EntityUtils.HighlightSource {
                 // the same promotion the correction pass makes: matched fine, but recorded
                 // without the way its stands are turned, so worth taking again
                 val status = when {
-                    found.rotationLegacy -> Status.Legacy
                     num != null && PlantDex.needsRotation(def, num) -> Status.Unturned
                     else -> Status.Current
                 }.let { if (num != null) sizeMismatch(def, num, stands) ?: it else it }
@@ -755,16 +751,12 @@ object CropCollector : EntityUtils.HighlightSource {
         // stage: a fresh entry is only unrecorded when nothing recorded matches what stands here
         val recorded = def.stages
             .filter { stage in it.stageRange }
-            .map { it.matchesStage(standingOn, stands, def.footprint, def.rotatesWithPlot) }
-            .firstOrNull { it.matched }
+            .firstNotNullOfOrNull { it.matchesStage(standingOn, stands, def.footprint, def.rotatesWithPlot) }
 
         val status = when {
             recorded == null -> Status.Unrecorded
-            recorded.rotationLegacy -> Status.Legacy
             else -> sizeMismatch(def, stage, stands) ?: Status.Current
         }
-
-        if (status == Status.Legacy) PlantDex.noteLegacy(def.name, stage..stage)
 
         // a stage matched from a recording that never said how its stands are turned can be
         // matched but not drawn, so a run is the moment to say it is worth taking again
@@ -829,7 +821,7 @@ object CropCollector : EntityUtils.HighlightSource {
                 appendLine("// ===== ${def.name} at (${entry.origin.x}, ${entry.origin.y}, ${entry.origin.z}) =====")
                 appendLine(
                     "// status=${entry.status.label} stage=${entry.stageText ?: "unread"}" +
-                            " worldStep=${WorldRotation.step(entry.origin.x, entry.origin.z)}" +
+                            " worldStep=${WorldRotation.quarterTurnsAt(entry.origin.x, entry.origin.z)}" +
                             " stands=${entry.stands.size} names=${entry.names}"
                 )
 

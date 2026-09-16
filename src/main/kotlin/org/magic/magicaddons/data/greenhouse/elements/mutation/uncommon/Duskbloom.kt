@@ -1,5 +1,6 @@
 package org.magic.magicaddons.data.greenhouse.elements.mutation.uncommon
 
+import org.magic.magicaddons.data.greenhouse.SpawnRule
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Rotations
 import net.minecraft.world.phys.Vec3
@@ -16,6 +17,7 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Duskbloom : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Duskbloom",
+        dropMultiplier = 2.7,
         effects = setOf(
             CropEffect.BonusDrops
         ),
@@ -154,6 +156,7 @@ object Duskbloom : CropDefinitionProvider {
             )
         ),
         maxStage = 8,
-        isMutation = true
+        isMutation = true,
+        spawnRule = SpawnRule(weight = 25, requiredNeighbourCells = mapOf("Moonflower" to 2, "Shadevine" to 2, "Sunflower" to 2, "Dustgrain" to 2))
     )
 }

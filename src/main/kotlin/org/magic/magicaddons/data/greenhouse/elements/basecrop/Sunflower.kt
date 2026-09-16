@@ -18,6 +18,7 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Sunflower : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Sunflower",
+        dropMultiplier = 0.29,
         effects = setOf(
             CropEffect.BonusDrops
         ),
@@ -35,7 +36,8 @@ object Sunflower : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, 0.25, 0.1875),
-                        hashString = "b40d6fc1e1b67c58d7f82350bcac083f9e9547f9131236463164417fbdd3bee4"
+                        hashString = "b40d6fc1e1b67c58d7f82350bcac083f9e9547f9131236463164417fbdd3bee4",
+                        isSmall = true
                     )
                 ),
                 1..1,

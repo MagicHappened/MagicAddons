@@ -1,5 +1,6 @@
 package org.magic.magicaddons.data.greenhouse.elements.mutation.common
 
+import org.magic.magicaddons.data.greenhouse.SpawnRule
 import org.magic.magicaddons.data.greenhouse.StandPose
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Rotations
@@ -18,6 +19,7 @@ object Witherbloom : CropDefinitionProvider {
 
     override val definition = CropDefinition(
         name = "Witherbloom",
+        dropMultiplier = 0.23,
         effects = setOf(
             CropEffect.EffectSpread
         ),
@@ -46,6 +48,7 @@ object Witherbloom : CropDefinitionProvider {
         ),
         requiredSoil = setOf(Blocks.SOUL_SAND),
         needsWater = false,
-        isMutation = true
+        isMutation = true,
+        spawnRule = SpawnRule(weight = 30, requiredNeighbourCells = mapOf("Dead Plant" to 4))
     )
 }

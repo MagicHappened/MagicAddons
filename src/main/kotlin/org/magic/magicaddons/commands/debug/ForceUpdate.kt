@@ -13,7 +13,7 @@ object ForceUpdate : AbstractCommand() {
         return LiteralArgumentBuilder.literal<FabricClientCommandSource>(argument).executes {
             var count = 0
             GreenhouseData.greenhouseGrids.forEach{
-                it.state.needsUpdate = true
+                it.state.needsRescan = true
                 count++
             }
             ChatUtils.sendWithPrefix("Marked $count Greenhouses for rescan")

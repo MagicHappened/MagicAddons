@@ -12,6 +12,7 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Wheat : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Wheat",
+        dropMultiplier = 0.18,
         effects = setOf(
             CropEffect.HarvestBoost
         ),

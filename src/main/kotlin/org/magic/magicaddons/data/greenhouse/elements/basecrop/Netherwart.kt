@@ -13,6 +13,7 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Netherwart : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Nether Wart",
+        dropMultiplier = 0.09,
         effects = setOf(
             CropEffect.ImprovedHarvestBoost,
             CropEffect.XpLoss

@@ -8,8 +8,8 @@ import org.magic.magicaddons.data.greenhouse.CropDefinition
 import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
 import org.magic.magicaddons.data.greenhouse.CropRegistry
 import org.magic.magicaddons.data.greenhouse.CropStage
-import org.magic.magicaddons.data.greenhouse.ElementRuntimeState
-import org.magic.magicaddons.data.greenhouse.GreenhouseElementInstance
+import org.magic.magicaddons.data.greenhouse.ScannedPlant
+import org.magic.magicaddons.data.greenhouse.Plant
 import org.magic.magicaddons.data.greenhouse.LayoutSlot
 import org.magic.magicaddons.data.greenhouse.NEVER_DECAYS
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
@@ -35,8 +35,8 @@ object FireElement : CropDefinitionProvider {
         requiredSoil = setOf(Blocks.SOUL_SAND, Blocks.NETHERRACK)
 
     )
-    fun getFireAtSlot(slot: LayoutSlot, fireBlockMap: Map<BlockPos, BlockState>): ElementRuntimeState {
-        val instance = GreenhouseElementInstance(
+    fun getFireAtSlot(slot: LayoutSlot, fireBlockMap: Map<BlockPos, BlockState>): ScannedPlant {
+        val instance = Plant(
             elementId = "Fire",
             slot = slot,
             waterLevel = null,
@@ -44,10 +44,10 @@ object FireElement : CropDefinitionProvider {
             cropDef = CropRegistry.get("Fire") ?: throw IllegalStateException("Can't find \"Fire\" Crop Definition")
         )
 
-        return ElementRuntimeState(
-            instance = instance,
-            standEntities = null,
-            blocksMap = fireBlockMap
+        return ScannedPlant(
+            plant = instance,
+            stands = null,
+            blocks = fireBlockMap
         )
     }
 }

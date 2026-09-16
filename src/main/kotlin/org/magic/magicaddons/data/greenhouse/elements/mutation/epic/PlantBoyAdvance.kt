@@ -1,5 +1,6 @@
 package org.magic.magicaddons.data.greenhouse.elements.mutation.epic
 
+import org.magic.magicaddons.data.greenhouse.SpawnRule
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Rotations
 import net.minecraft.world.phys.Vec3
@@ -18,6 +19,7 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object PlantBoyAdvance : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "PlantBoy Advance",
+        dropMultiplier = 23.0,
         effects = setOf(
             CropEffect.HarvestBoost
         ),
@@ -29,14 +31,14 @@ object PlantBoyAdvance : CropDefinitionProvider {
         ),
         stageDefs = listOf(
             CropStage(
-                blocks = CropBlockState.blockStatePattern(
+                blocks = CropBlockState.atPositions(
                     positions = listOf(
                         BlockPos(0, 1, 0),
                         BlockPos(1, 1, 0)
                     ),
                     blockState = melonStemState(2)
                 ),
-                armorStands = CropArmorStand.matcherPattern(
+                armorStands = CropArmorStand.atOffsets(
                     offsets = listOf(
                         Vec3(0.34375, -0.84375, 0.0),
                         Vec3(-0.3125, -0.84375, 0.0)
@@ -62,20 +64,20 @@ object PlantBoyAdvance : CropDefinitionProvider {
                 1..1
             ),
             CropStage(
-                blocks = CropBlockState.blockStatePattern(
+                blocks = CropBlockState.atPositions(
                     positions = listOf(
                         BlockPos(0, 1, 0),
                         BlockPos(1, 1, 0)
                     ),
                     blockState = melonStemState(2)
-                ) + CropBlockState.blockStatePattern(
+                ) + CropBlockState.atPositions(
                     positions = listOf(
                         BlockPos(0, 1, 1),
                         BlockPos(1, 1, 1)
                     ),
                     blockState = melonStemState(1)
                 ),
-                armorStands = CropArmorStand.matcherPattern(
+                armorStands = CropArmorStand.atOffsets(
                     offsets = listOf(
                         Vec3(0.34375, -0.84375, 0.0),
                         Vec3(-0.3125, -0.84375, 0.0)
@@ -101,20 +103,20 @@ object PlantBoyAdvance : CropDefinitionProvider {
                 2..2
             ),
             CropStage(
-                blocks = CropBlockState.blockStatePattern(
+                blocks = CropBlockState.atPositions(
                     positions = listOf(
                         BlockPos(0, 1, 0),
                         BlockPos(1, 1, 0)
                     ),
                     blockState = melonStemState(3)
-                ) + CropBlockState.blockStatePattern(
+                ) + CropBlockState.atPositions(
                     positions = listOf(
                         BlockPos(0, 1, 1),
                         BlockPos(1, 1, 1)
                     ),
                     blockState = melonStemState(1)
                 ),
-                armorStands = CropArmorStand.matcherPattern(
+                armorStands = CropArmorStand.atOffsets(
                     offsets = listOf(
                         Vec3(0.28125, -0.75, 0.0),
                         Vec3(-0.3125, -0.75, 0.0)
@@ -157,11 +159,12 @@ object PlantBoyAdvance : CropDefinitionProvider {
                     listOf(
                         CropArmorStand(
                             offset = Vec3(0.0, -0.5625, 0.0),
-                            hashString = "1822281949d048a10d54ed72cdd4c222312a86fbf946ba56aea35f5142d0ee7a"
+                            hashString = "1822281949d048a10d54ed72cdd4c222312a86fbf946ba56aea35f5142d0ee7a",
+                            isSmall = true
                         )
                     )
                             +
-                            CropArmorStand.matcherPattern(
+                            CropArmorStand.atOffsets(
                                 offsets = listOf(
                                     Vec3(-0.5, -0.65625, 0.0),
                                     Vec3(0.5, -0.65625, 0.0)
@@ -180,13 +183,13 @@ object PlantBoyAdvance : CropDefinitionProvider {
                 9..9
             ),
             CropStage(
-                blocks = CropBlockState.blockStatePattern(
+                blocks = CropBlockState.atPositions(
                     positions = listOf(
                         BlockPos(0, 1, 0),
                         BlockPos(1, 1, 0)
                     ),
                     blockState = melonStemState(7)
-                ) + CropBlockState.blockStatePattern(
+                ) + CropBlockState.atPositions(
                     positions = listOf(
                         BlockPos(0, 1, 1),
                         BlockPos(1, 1, 1)
@@ -197,11 +200,12 @@ object PlantBoyAdvance : CropDefinitionProvider {
                     listOf(
                         CropArmorStand(
                             offset = Vec3(0.0, -0.5625, 0.0),
-                            hashString = "1822281949d048a10d54ed72cdd4c222312a86fbf946ba56aea35f5142d0ee7a"
+                            hashString = "1822281949d048a10d54ed72cdd4c222312a86fbf946ba56aea35f5142d0ee7a",
+                            isSmall = true
                         )
                     )
                             +
-                            CropArmorStand.matcherPattern(
+                            CropArmorStand.atOffsets(
                                 offsets = listOf(
                                     Vec3(0.5, -0.65625, 0.0),
                                     Vec3(-0.5, -0.65625, 0.0)
@@ -220,20 +224,20 @@ object PlantBoyAdvance : CropDefinitionProvider {
                 10..10
             ),
             CropStage(
-                blocks =             CropBlockState.blockStatePattern(
+                blocks =             CropBlockState.atPositions(
                     listOf(
                         BlockPos(0, 1, 0),
                         BlockPos(1, 1, 0)
                     ),
                     blockState = melonStemState(7)
-                ) +             CropBlockState.blockStatePattern(
+                ) +             CropBlockState.atPositions(
                     listOf(
                         BlockPos(0, 1, 1),
                         BlockPos(1, 1, 1)
                     ),
                     blockState = melonStemState(5)
                 ),
-                armorStands = CropArmorStand.matcherPattern(
+                armorStands = CropArmorStand.atOffsets(
                     offsets = listOf(
                         Vec3(0.5, -0.65625, 0.0),
                         Vec3(-0.5, -0.65625, 0.0)
@@ -265,6 +269,7 @@ object PlantBoyAdvance : CropDefinitionProvider {
         footprint = Footprint(2, 2),
         rotatesWithPlot = false,
         needsWater = false,
-        isMutation = true
+        isMutation = true,
+        spawnRule = SpawnRule(weight = 25, requiredNeighbourCells = mapOf("Snoozling" to 6, "Thunderling" to 6))
     )
 }

@@ -1,5 +1,6 @@
 package org.magic.magicaddons.data.greenhouse.elements.mutation.common
 
+import org.magic.magicaddons.data.greenhouse.SpawnRule
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Rotations
 import net.minecraft.world.phys.Vec3
@@ -15,6 +16,7 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Gloomgourd : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Gloomgourd",
+        dropMultiplier = 0.2,
         effects = setOf(
             CropEffect.WaterRetain,
             CropEffect.BonusDrops
@@ -28,7 +30,7 @@ object Gloomgourd : CropDefinitionProvider {
                         blockState = wheatState(6)
                     )
                 ),
-                armorStands = CropArmorStand.matcherPattern(
+                armorStands = CropArmorStand.atOffsets(
                     offsets = listOf(
                         Vec3(0.0, 0.78125, 0.0),
                         Vec3(0.0, -0.40625, 0.0)
@@ -44,6 +46,7 @@ object Gloomgourd : CropDefinitionProvider {
             )
         ),
         needsWater = false,
-        isMutation = true
+        isMutation = true,
+        spawnRule = SpawnRule(weight = 30, requiredNeighbourCells = mapOf("Pumpkin" to 1, "Melon" to 1))
     )
 }
