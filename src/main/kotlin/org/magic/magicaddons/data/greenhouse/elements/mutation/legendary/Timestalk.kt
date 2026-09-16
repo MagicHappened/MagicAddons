@@ -1,5 +1,6 @@
 package org.magic.magicaddons.data.greenhouse.elements.mutation.legendary
 
+import org.magic.magicaddons.data.greenhouse.SpawnRule
 import net.minecraft.core.Rotations
 import net.minecraft.core.BlockPos
 import net.minecraft.world.level.block.Blocks
@@ -18,6 +19,7 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Timestalk : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Timestalk",
+        dropMultiplier = 9.0,
         effects = setOf(
             CropEffect.ImprovedWaterRetain,
             CropEffect.ImprovedXpBoost,
@@ -31,7 +33,7 @@ object Timestalk : CropDefinitionProvider {
         ),
         stageDefs = listOf(
             CropStage(
-                blocks = CropBlockState.blockStatePattern(
+                blocks = CropBlockState.atPositions(
                     listOf(
                         BlockPos(0, 1, 0),
                         BlockPos(0, 2, 0)
@@ -153,7 +155,7 @@ object Timestalk : CropDefinitionProvider {
                 5..5
             ),
             CropStage(
-                blocks = CropBlockState.blockStatePattern(
+                blocks = CropBlockState.atPositions(
                     listOf(
                         BlockPos(0, 1, 0),
                         BlockPos(0, 2, 0)
@@ -175,7 +177,7 @@ object Timestalk : CropDefinitionProvider {
                 6..6
             ),
             CropStage(
-                blocks = CropBlockState.blockStatePattern(
+                blocks = CropBlockState.atPositions(
                     listOf(
                         BlockPos(0, 1, 0),
                         BlockPos(0, 2, 0)
@@ -199,7 +201,7 @@ object Timestalk : CropDefinitionProvider {
                 7..7
             ),
             CropStage(
-                blocks = CropBlockState.blockStatePattern(
+                blocks = CropBlockState.atPositions(
                     listOf(
                         BlockPos(0, 1, 0),
                         BlockPos(0, 2, 0)
@@ -221,7 +223,7 @@ object Timestalk : CropDefinitionProvider {
                 8..8
             ),
             CropStage(
-                blocks = CropBlockState.blockStatePattern(
+                blocks = CropBlockState.atPositions(
                     listOf(
                         BlockPos(0, 1, 0),
                         BlockPos(0, 2, 0)
@@ -312,7 +314,8 @@ object Timestalk : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, 0.3125, 0.0),
-                        hashString = "d2306f4c5946990204517a73bbfa8281fd7d9a294f908b0286e708c51f79a063"
+                        hashString = "d2306f4c5946990204517a73bbfa8281fd7d9a294f908b0286e708c51f79a063",
+                        isSmall = true
                     )
                 ),
                 13..13
@@ -331,14 +334,15 @@ object Timestalk : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, 0.3125, 0.0),
-                        hashString = "1b9add43e0e770b7c4ccdcf6708f8b9e875ff13b2a75ab63ff69f2f0e57af9e5"
+                        hashString = "1b9add43e0e770b7c4ccdcf6708f8b9e875ff13b2a75ab63ff69f2f0e57af9e5",
+                        isSmall = true
                     )
                 ),
                 14..14
             ),
             // a stage 14 plant was also seen with its lower stem grown out as well, the rest the same
             CropStage(
-                blocks = CropBlockState.blockStatePattern(
+                blocks = CropBlockState.atPositions(
                     listOf(
                         BlockPos(0, 1, 0),
                         BlockPos(0, 2, 0)
@@ -349,7 +353,8 @@ object Timestalk : CropDefinitionProvider {
                     CropArmorStand(
                         offset = Vec3(0.0, 0.3125, 0.0),
                         headRotation = Rotations(0.0f, 0.0f, 0.0f),
-                        hashString = "1b9add43e0e770b7c4ccdcf6708f8b9e875ff13b2a75ab63ff69f2f0e57af9e5"
+                        hashString = "1b9add43e0e770b7c4ccdcf6708f8b9e875ff13b2a75ab63ff69f2f0e57af9e5",
+                        isSmall = true
                     )
                 ),
                 14..14
@@ -358,6 +363,7 @@ object Timestalk : CropDefinitionProvider {
         decayTimeMs = FIVE_DAY_DECAY_TIME_MS,
         maxStage = 14,
         requiredSoil = setOf(Blocks.END_STONE),
-        isMutation = true
+        isMutation = true,
+        spawnRule = SpawnRule(weight = 20, requiredNeighbourCells = mapOf("Stoplight Petal" to 4, "Chorus Fruit" to 2, "Shellfruit" to 2))
     )
 }

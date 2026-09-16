@@ -1,5 +1,6 @@
 package org.magic.magicaddons.data.greenhouse.elements.mutation.rare
 
+import org.magic.magicaddons.data.greenhouse.SpawnRule
 import net.minecraft.core.BlockPos
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.CropArmorStand
@@ -18,6 +19,7 @@ import net.minecraft.core.Rotations
 object Cheesebite : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Cheesebite",
+        dropMultiplier = 4.0,
         effects = setOf(
             CropEffect.ImprovedWaterRetain,
             CropEffect.HarvestLoss
@@ -192,6 +194,7 @@ object Cheesebite : CropDefinitionProvider {
             )
         ),
         maxStage = 10,
-        isMutation = true
+        isMutation = true,
+        spawnRule = SpawnRule(weight = 25, requiredNeighbourCells = mapOf("Creambloom" to 4, "Fermento" to 4))
     )
 }

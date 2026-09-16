@@ -1,5 +1,6 @@
 package org.magic.magicaddons.data.greenhouse.elements.mutation.uncommon
 
+import org.magic.magicaddons.data.greenhouse.SpawnRule
 import org.magic.magicaddons.data.greenhouse.StandPose
 import net.minecraft.core.Rotations
 import net.minecraft.core.BlockPos
@@ -17,6 +18,7 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Coalroot : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Coalroot",
+        dropMultiplier = 1.7,
         effects = setOf(
             CropEffect.XpBoost
         ),
@@ -31,7 +33,8 @@ object Coalroot : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, 0.0625, 0.0),
-                        hashString = "f946443fa0039354edd31a70c749c4f963464744dc20b79137bd9910356ee90"
+                        hashString = "f946443fa0039354edd31a70c749c4f963464744dc20b79137bd9910356ee90",
+                        isSmall = true
                     )
                 ),
                 1..1
@@ -146,6 +149,7 @@ object Coalroot : CropDefinitionProvider {
 
         ),
         maxStage = 8,
-        isMutation = true
+        isMutation = true,
+        spawnRule = SpawnRule(weight = 25, requiredNeighbourCells = mapOf("Scourroot" to 3, "Ashwreath" to 5))
     )
 }

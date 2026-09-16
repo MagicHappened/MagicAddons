@@ -1,5 +1,6 @@
 package org.magic.magicaddons.data.greenhouse.elements.mutation.legendary
 
+import org.magic.magicaddons.data.greenhouse.SpawnRule
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Rotations
 import net.minecraft.world.level.block.Blocks
@@ -18,6 +19,7 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Phantomleaf : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Phantomleaf",
+        dropMultiplier = 5.0,
         effects = setOf(
             CropEffect.XpBoost,
             CropEffect.Immunity
@@ -149,6 +151,7 @@ object Phantomleaf : CropDefinitionProvider {
         maxStage = 15,
         requiredSoil = setOf(Blocks.SOUL_SAND),
         needsWater = false,
-        isMutation = true
+        isMutation = true,
+        spawnRule = SpawnRule(weight = 20, requiredNeighbourCells = mapOf("Chorus Fruit" to 4, "Shellfruit" to 4))
     )
 }

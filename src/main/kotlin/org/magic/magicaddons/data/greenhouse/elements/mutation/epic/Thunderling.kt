@@ -1,5 +1,6 @@
 package org.magic.magicaddons.data.greenhouse.elements.mutation.epic
 
+import org.magic.magicaddons.data.greenhouse.SpawnRule
 import org.magic.magicaddons.data.greenhouse.StandPose
 import org.magic.magicaddons.data.greenhouse.FIVE_DAY_DECAY_TIME_MS
 import net.minecraft.core.Rotations
@@ -14,6 +15,7 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Thunderling : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Thunderling",
+        dropMultiplier = 11.0,
         effects = setOf(
             CropEffect.EffectSpread
         ),
@@ -29,7 +31,8 @@ object Thunderling : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, 0.09375, 0.0),
-                        hashString = "b35914deb539a1fde1b1c473f8e05cacca257b959e7270d444c1dc5ad2bf7cc8"
+                        hashString = "b35914deb539a1fde1b1c473f8e05cacca257b959e7270d444c1dc5ad2bf7cc8",
+                        isSmall = true
                     )
                 ),
                 2..2
@@ -39,7 +42,8 @@ object Thunderling : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                     offset = Vec3(0.0, 0.1875, 0.0),
-                    hashString = "b35914deb539a1fde1b1c473f8e05cacca257b959e7270d444c1dc5ad2bf7cc8"
+                    hashString = "b35914deb539a1fde1b1c473f8e05cacca257b959e7270d444c1dc5ad2bf7cc8",
+                    isSmall = true
                     )
                 ),
                 3..3
@@ -61,7 +65,8 @@ object Thunderling : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(-0.21875, 0.09375, 0.03125),
-                        hashString = "b35914deb539a1fde1b1c473f8e05cacca257b959e7270d444c1dc5ad2bf7cc8"
+                        hashString = "b35914deb539a1fde1b1c473f8e05cacca257b959e7270d444c1dc5ad2bf7cc8",
+                        isSmall = true
                     ),
                     CropArmorStand(
                         offset = Vec3(0.0625, -0.71875, -0.25),
@@ -83,14 +88,15 @@ object Thunderling : CropDefinitionProvider {
                     ),
                     CropArmorStand(
                         offset = Vec3(-0.21875, 0.1875, 0.03125),
-                        hashString = "b35914deb539a1fde1b1c473f8e05cacca257b959e7270d444c1dc5ad2bf7cc8"
+                        hashString = "b35914deb539a1fde1b1c473f8e05cacca257b959e7270d444c1dc5ad2bf7cc8",
+                        isSmall = true
                     )
                 ),
                 8..8
             ),
             CropStage(
                 blocks = listOf(),
-                armorStands = CropArmorStand.matcherPattern(
+                armorStands = CropArmorStand.atOffsets(
                     offsets = listOf(
                         Vec3(-0.21875, -0.625, 0.03125),
                         Vec3(0.0625, -0.71875, -0.25)
@@ -106,7 +112,7 @@ object Thunderling : CropDefinitionProvider {
             ),
             CropStage(
                 blocks = listOf(),
-                armorStands = CropArmorStand.matcherPattern(
+                armorStands = CropArmorStand.atOffsets(
                     offsets = listOf(
                         Vec3(0.15625, -0.5, 0.21875),
                         Vec3(0.0625, -0.625, -0.25),
@@ -126,6 +132,7 @@ object Thunderling : CropDefinitionProvider {
         decayTimeMs = FIVE_DAY_DECAY_TIME_MS,
         maxStage = 16,
         needsWater = false,
-        isMutation = true
+        isMutation = true,
+        spawnRule = SpawnRule(weight = 25, requiredNeighbourCells = mapOf("Soggybud" to 5, "Noctilume" to 3))
     )
 }

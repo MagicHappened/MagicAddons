@@ -1,5 +1,6 @@
 package org.magic.magicaddons.data.greenhouse.elements.mutation.common
 
+import org.magic.magicaddons.data.greenhouse.SpawnRule
 import org.magic.magicaddons.data.greenhouse.StandPose
 import net.minecraft.core.Rotations
 import net.minecraft.world.phys.Vec3
@@ -13,6 +14,7 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Scourroot : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Scourroot",
+        dropMultiplier = 0.17,
         effects = setOf(
             CropEffect.XpBoost,
             CropEffect.Immunity
@@ -36,6 +38,7 @@ object Scourroot : CropDefinitionProvider {
             )
         ),
         needsWater = false,
-        isMutation = true
+        isMutation = true,
+        spawnRule = SpawnRule(weight = 30, requiredNeighbourCells = mapOf("Potato" to 1, "Carrot" to 1))
     )
 }

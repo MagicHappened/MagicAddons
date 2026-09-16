@@ -76,10 +76,10 @@ object GreenhouseHud : HudElement("greenhouse", "Greenhouse") {
     private fun lines(grid: GreenhouseGrid?): List<Line> = buildList {
         add(Line("Next tick", GreenhouseData.miscInfo.nextTickTime?.toReadableDuration() ?: "unknown"))
 
-        val plants = grid?.layout?.elementInstances ?: return@buildList
+        val plants = grid?.layout?.plants ?: return@buildList
         add(Line("Plants", plants.size.toString()))
 
-        val gardenTime = GreenhouseGrid.timeOfDayNow()
+        val gardenTime = GreenhouseGrid.dayOrNightNow()
         val ready = plants.count { it.readyToHarvest }
         // the soonest a plant here dies of thirst, by the same clock the warnings use
         val tickMs = GreenhouseData.currentGrowthTickMs()
@@ -91,13 +91,13 @@ object GreenhouseHud : HudElement("greenhouse", "Greenhouse") {
                 val effect = GreenhouseGrid.waterEffectAt(grid.layout, plant.slot)
 
                 // a plant that reaches its last stage on the water it holds is not dying of thirst
-                if (plant.outlastsGrowth(effect) == true) return@mapNotNull null
-                if (water <= WaterModel.DEATH) 0L
+                if (plant.waterLastsUntilGrown(effect) == true) return@mapNotNull null
+                if (water <= WaterModel.DEATH_LEVEL) 0L
                 else WaterModel.timeUntilDeath(water, effect, remainingMs, tickMs)
             }
             .minOrNull()
         val asleep = plants.count { it.isAsleep }
-        val craving = plants.count { it.cravesOtherTime(gardenTime) }
+        val craving = plants.count { it.needsOtherTimeOfDay(gardenTime) }
         val decaying = plants.mapNotNull { it.decayRemainingMs }.minOrNull()
 
         if (ready > 0) add(Line("Ready to harvest", ready.toString(), Common.UI.SUCCESS_COLOR))

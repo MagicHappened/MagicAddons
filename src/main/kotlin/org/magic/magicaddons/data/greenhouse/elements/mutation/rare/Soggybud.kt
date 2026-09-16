@@ -1,5 +1,6 @@
 package org.magic.magicaddons.data.greenhouse.elements.mutation.rare
 
+import org.magic.magicaddons.data.greenhouse.SpawnRule
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Rotations
 import net.minecraft.world.phys.Vec3
@@ -16,6 +17,7 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Soggybud : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Soggybud",
+        dropMultiplier = 1.2,
         effects = setOf(
             CropEffect.WaterRetain
         ),
@@ -33,7 +35,8 @@ object Soggybud : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, 0.0625, 0.0),
-                        hashString = "b4bdf477d2f417f75798ad6377b131aca787be9bc05a2fddc1972d81d40c7356"
+                        hashString = "b4bdf477d2f417f75798ad6377b131aca787be9bc05a2fddc1972d81d40c7356",
+                        isSmall = true
                     )
                 ),
                 1..2
@@ -44,7 +47,8 @@ object Soggybud : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, 0.15625, 0.0),
-                        hashString = "b4bdf477d2f417f75798ad6377b131aca787be9bc05a2fddc1972d81d40c7356"
+                        hashString = "b4bdf477d2f417f75798ad6377b131aca787be9bc05a2fddc1972d81d40c7356",
+                        isSmall = true
                     )
                 ),
                 3..3
@@ -54,7 +58,8 @@ object Soggybud : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, 0.1875, 0.0),
-                        hashString = "b4bdf477d2f417f75798ad6377b131aca787be9bc05a2fddc1972d81d40c7356"
+                        hashString = "b4bdf477d2f417f75798ad6377b131aca787be9bc05a2fddc1972d81d40c7356",
+                        isSmall = true
                     )
                 ),
                 4..4
@@ -148,6 +153,7 @@ object Soggybud : CropDefinitionProvider {
                 10..10
             )
         ),
-        isMutation = true
+        isMutation = true,
+        spawnRule = SpawnRule(weight = 25, requiredNeighbourCells = mapOf("Melon" to 2, "Gloomgourd" to 2))
     )
 }

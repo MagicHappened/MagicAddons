@@ -1,5 +1,6 @@
 package org.magic.magicaddons.data.greenhouse.elements.mutation.common
 
+import org.magic.magicaddons.data.greenhouse.SpawnRule
 import org.magic.magicaddons.data.greenhouse.StandPose
 import net.minecraft.core.Rotations
 import net.minecraft.world.level.block.Blocks
@@ -15,6 +16,7 @@ object Shadevine : CropDefinitionProvider {
 
     override val definition = CropDefinition(
         name = "Shadevine",
+        dropMultiplier = 0.26,
         effects = setOf(
             CropEffect.ImprovedWaterRetain,
             CropEffect.ImprovedXpBoost,
@@ -40,6 +42,7 @@ object Shadevine : CropDefinitionProvider {
         ),
         requiredSoil = setOf(Blocks.FARMLAND, Blocks.SAND, Blocks.RED_SAND),
         needsWater = false,
-        isMutation = true
+        isMutation = true,
+        spawnRule = SpawnRule(weight = 30, requiredNeighbourCells = mapOf("Cactus" to 1, "Sugar Cane" to 1))
     )
 }

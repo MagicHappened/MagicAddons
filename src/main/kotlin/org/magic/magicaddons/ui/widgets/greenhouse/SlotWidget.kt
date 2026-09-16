@@ -27,7 +27,7 @@ class SlotWidget(
     private var air: Boolean = false
 
     fun init() {
-        val block = slot.placedBlock
+        val block = slot.soil
         val isAir = block?.block == Blocks.AIR
         air = isAir && inPreset
         sprite = if (block == null || isAir) null else ScreenUtil.getSpriteForState(block, Direction.UP)

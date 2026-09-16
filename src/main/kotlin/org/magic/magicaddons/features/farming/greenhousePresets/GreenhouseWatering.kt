@@ -84,7 +84,7 @@ object GreenhouseWatering {
 
         if (!GreenhouseData.inOwnGarden()) return
         val grid = GreenhouseData.getCurrentGrid() ?: return
-        if (!grid.hasRuntime()) return
+        if (!grid.isScannedThisVisit()) return
 
         val area = grid.plot?.getBuildableArea() ?: return
         val level = Minecraft.getInstance().level ?: return
@@ -94,11 +94,11 @@ object GreenhouseWatering {
         level.getEntitiesOfClass(ArmorStand::class.java, area).forEach { stand ->
             val bar = stand.customName?.let { parseBar(it) } ?: return@forEach
             val slot = grid.getSlotAt(stand.blockPosition(), matchY = false) ?: return@forEach
-            val element = grid.elementCovering(slot) ?: return@forEach
+            val element = grid.elementCoveringSlot(slot) ?: return@forEach
 
             // any plant that holds water can be watered, grown or not: a grown melon is what a
             // soggybud beside it drinks from
-            if (!element.instance.cropDef.needsWater || element.instance.fullyGrownByPlacing) return@forEach
+            if (!element.plant.cropDef.needsWater || element.plant.isPlacedMutation) return@forEach
 
             // a bar that changed is one spray tick landing; a bar seen for the first time only counts
             // when it shows more than the level already held
@@ -107,26 +107,26 @@ object GreenhouseWatering {
             lastNotches[stand.uuid] = notches
             if (seen == notches) return@forEach
             if (seen == null) {
-                val implied = ((element.instance.waterLevel ?: 0.0) * BAR_NOTCHES / 100).toInt()
+                val implied = ((element.plant.waterLevel ?: 0.0) * BAR_NOTCHES / 100).toInt()
                 if (notches <= implied) return@forEach
             }
 
             // the bar can skip ticks, so the level is the can's gain times at least one tick more than
             // before, capped where the game caps it
-            val before = element.instance.waterLevel
+            val before = element.plant.waterLevel
             val held = before ?: 0.0
             val ticksHeld = if (held <= 0.0) 0 else (held / gain).toInt()
             val ticksShown = Math.round(bar.percent.toDouble() / gain).toInt()
-            val counted = if (bar.percent >= WaterModel.FULL) WaterModel.FULL else (gain * maxOf(ticksHeld + 1, ticksShown)).coerceAtMost(WaterModel.FULL)
+            val counted = if (bar.percent >= WaterModel.FULL_LEVEL) WaterModel.FULL_LEVEL else (gain * maxOf(ticksHeld + 1, ticksShown)).coerceAtMost(WaterModel.FULL_LEVEL)
             // an exact level keeps the count; one only ever read off bars is overruled by the bar when
             // they disagree by more than a notch
-            element.instance.waterLevel = when {
-                element.instance.waterExact -> counted
+            element.plant.waterLevel = when {
+                element.plant.waterExact -> counted
                 abs(counted - bar.percent) <= NOTCH_PERCENT -> counted
                 else -> bar.percent
             }.toDouble()
-            element.instance.waterBestCase = null
-            element.instance.waterPredictedInDebt = false
+            element.plant.waterBestCase = null
+            element.plant.waterPredictedInDebt = false
         }
     }
 
@@ -139,7 +139,7 @@ object GreenhouseWatering {
      */
     private fun parseBar(name: Component): Bar? {
         val counted = CropStandReader.barNotches(name) ?: return null
-        if (counted.other > 0) return null
+        if (counted.otherColoured > 0) return null
 
         // a bar cannot show both at once, and a negative level is the one worth reporting
         if (counted.debt > 0) return Bar(-(counted.debt * 100 / counted.total), -counted.debt)

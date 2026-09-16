@@ -94,7 +94,7 @@ object CropStageExporter {
 
         // how far the world has turned this plant, undone so the stage exports identically wherever
         // it stands. The head pose rides on the body and needs nothing
-        val worldStep = if (foundDefinition?.rotatesWithPlot == false) 0 else WorldRotation.step(basePos.x, basePos.z)
+        val worldStep = if (foundDefinition?.rotatesWithPlot == false) 0 else WorldRotation.quarterTurnsAt(basePos.x, basePos.z)
         val unturn = Math.floorMod(-worldStep, 4)
 
         // the middle of the footprint on both axes, which is what the mirroring check measures
@@ -145,7 +145,7 @@ object CropStageExporter {
                 ArmorStandExport(
                     // negative zero is zero wearing the sign the un-rotation left on it, and it
                     // made byte-identical stages read as two different ones
-                    offset = WorldRotation.rotate(offset, unturn).let {
+                    offset = WorldRotation.turned(offset, unturn).let {
                         Vec3(it.x + 0.0, it.y + 0.0, it.z + 0.0)
                     },
                     rotation = headRotations,
@@ -195,8 +195,8 @@ object CropStageExporter {
                     }
 
                     parts += """
-            CropBlockState.blockStatePattern(
-                listOf(
+            CropBlockState.atPositions(
+                positions = listOf(
                     $posList
                 ),
                 blockState = ${toCode(it.first().blockState)}
@@ -300,6 +300,7 @@ object CropStageExporter {
                     val fields = mutableListOf<String>()
 
                     fields.add("offsets = listOf(\n$offsets\n)")
+                    fields.add("isSmall = ${group.first().isSmall}")
 
                     // the head poses are always written, poses of zeros included
                     fields.add("rotations = listOf(\n$rotations\n)")
@@ -311,17 +312,13 @@ object CropStageExporter {
                     // only written when the stand has one, so no export contains the string "null"
                     // as a hash
                     if (hash != null) fields.add("hashString = \"$hash\"")
-                    if (name != null) fields.add("customName = \"$name\"")
-                    if (itemId != null) fields.add("itemId = \"$itemId\"")
+                    if (name != null) fields.add("nameContains = \"$name\"")
+                    if (itemId != null) fields.add("heldItemId = \"$itemId\"")
                     if (itemSlot != null && itemSlot != EquipmentSlot.HEAD) {
                         fields.add("itemSlot = EquipmentSlot.$itemSlot")
                     }
 
-                    // a fact the singleton branch always kept and this one silently dropped, so
-                    // full-size plants exported as small ones whenever their stands grouped
-                    if (group.any { !it.isSmall }) fields.add("isSmall = false")
-
-                    patternSections += "CropArmorStand.matcherPattern(\n" +
+                    patternSections += "CropArmorStand.atOffsets(\n" +
                             indent(fields.joinToString(",\n")) +
                             "\n)"
                 }
@@ -336,6 +333,7 @@ object CropStageExporter {
 
                         val fields = mutableListOf<String>()
                         fields.add("offset = Vec3(${stand.offset.x}, ${stand.offset.y}, ${stand.offset.z})")
+                        fields.add("isSmall = ${stand.isSmall}")
                         // the head pose is always written, a pose of zeros included
                         fields.add("headRotation = Rotations(${stand.rotation.x}f, ${stand.rotation.y}f, ${stand.rotation.z}f)")
 
@@ -346,17 +344,13 @@ object CropStageExporter {
                             fields.add("hashString = \"${stand.hash}\"")
                         }
                         if (stand.customName != null){
-                            fields.add("containsCustomName = \"${stand.customName}\"")
+                            fields.add("nameContains = \"${stand.customName}\"")
                         }
                         if (stand.itemId != null){
-                            fields.add("itemId = \"${stand.itemId}\"")
+                            fields.add("heldItemId = \"${stand.itemId}\"")
                         }
                         if (stand.itemSlot != null && stand.itemSlot != EquipmentSlot.HEAD){
                             fields.add("itemSlot = EquipmentSlot.${stand.itemSlot}")
-                        }
-                        // written only when it differs, since a definition takes small as read
-                        if (!stand.isSmall) {
-                            fields.add("isSmall = false")
                         }
 
                         append("CropArmorStand(\n")

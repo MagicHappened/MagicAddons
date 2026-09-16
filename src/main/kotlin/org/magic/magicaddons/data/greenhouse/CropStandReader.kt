@@ -25,17 +25,21 @@ class CropStandReader(
 
         private const val BAR_CHAR: Char = '|'
 
+        private val PERCENT_REGEX = Regex("""(-?\d+)\s*%""")
+        private val STAGE_LABEL_REGEX = Regex("""(?i)stage\s*\d+.*""")
+        private val STAGE_NUMBER_REGEX = Regex("""(?i)stage\s*(\d+)""")
+        private val MULTIPLIER_REGEX = Regex("""(\d+)\s*x""", RegexOption.IGNORE_CASE)
+
         private val FILLED = McCompat.chatColor(ChatFormatting.BLUE)
         private val DEBT = McCompat.chatColor(ChatFormatting.RED)
         private val EMPTY = McCompat.chatColor(ChatFormatting.WHITE)
 
-        class BarNotches(val filled: Int, val debt: Int, val other: Int, val total: Int)
+        class BarNotches(val filled: Int, val debt: Int, val otherColoured: Int, val total: Int)
 
-        /** bar notches for a given component */
         fun barNotches(name: Component): BarNotches? {
             var filled = 0
             var debt = 0
-            var other = 0
+            var otherColoured = 0
             var total = 0
 
             name.visit({ style, text ->
@@ -46,7 +50,7 @@ class CropStandReader(
                         FILLED -> filled += notches
                         DEBT -> debt += notches
                         EMPTY -> Unit
-                        else -> other += notches
+                        else -> otherColoured += notches
                     }
 
                     total += notches
@@ -57,38 +61,33 @@ class CropStandReader(
 
             if (total == 0) return null
 
-            return BarNotches(filled, debt, other, total)
+            return BarNotches(filled, debt, otherColoured, total)
         }
 
         fun barPercent(name: Component): Int? = barNotches(name)?.let {
-            (it.filled + it.debt + it.other) * 100 / it.total
+            (it.filled + it.debt + it.otherColoured) * 100 / it.total
         }
 
-        /**
-         * A bar of the plant's own: any coloured notches but the water bar's blue. A hunger bar goes
-         * green, yellow and presumably red as it empties, and an all-white bar says nothing, so the
-         * reading already held stands until a coloured notch is back. A red-only bar is also what
-         * a water bar in debt looks like, which the caller keeps away while cans are out.
-         */
-        fun bar(key: String): CropStandReader = CropStandReader(
+        /** any coloured notches but the water bar's blue; an all-white bar says nothing */
+        fun nonWaterBar(key: String): CropStandReader = CropStandReader(
             key = key,
-            matches = { it.customName?.let { name -> ownBarPercent(name) } != null },
-            read = { it.customName?.let { name -> ownBarPercent(name) } }
+            matches = { it.customName?.let { name -> nonWaterBarPercent(name) } != null },
+            read = { it.customName?.let { name -> nonWaterBarPercent(name) } }
         )
 
-        fun ownBarPercent(name: Component): Int? = barNotches(name)
-            ?.takeIf { it.filled == 0 && it.debt + it.other > 0 }
-            ?.let { (it.debt + it.other) * 100 / it.total }
+        fun nonWaterBarPercent(name: Component): Int? = barNotches(name)
+            ?.takeIf { it.filled == 0 && it.debt + it.otherColoured > 0 }
+            ?.let { (it.debt + it.otherColoured) * 100 / it.total }
 
-        /** Whether [name] is drawn only in the water bar's colours, blue, red and white. */
-        fun looksLikeWaterBar(name: Component): Boolean = barNotches(name)?.let { it.other == 0 } == true
+        /** drawn only in the water bar's colours: blue, red and white */
+        fun looksLikeWaterBar(name: Component): Boolean = barNotches(name)?.let { it.otherColoured == 0 } == true
 
-        fun hungerPercentLabel(key: String, contains: String): CropStandReader = CropStandReader(
+        fun percentLabel(key: String, contains: String): CropStandReader = CropStandReader(
             key = key,
             matches = { it.customName?.string?.contains(contains, ignoreCase = true) == true },
             read = {
                 it.customName?.string
-                    ?.let { text -> Regex("""(-?\d+)\s*%""").find(text)?.groupValues?.get(1) }
+                    ?.let { text -> PERCENT_REGEX.find(text)?.groupValues?.get(1) }
                     ?.toIntOrNull()
             }
         )
@@ -97,16 +96,16 @@ class CropStandReader(
         const val REWARDS_RESET: String = "rewardsReset"
         const val REWARDS_MULTIPLIER: String = "rewardsMultiplier"
 
-        fun aloeStageLabel(key: String = LABEL_STAGE): CropStandReader = CropStandReader(
+        fun stageNumberLabel(key: String = LABEL_STAGE): CropStandReader = CropStandReader(
             key = key,
-            matches = { it.customName?.string?.trim()?.matches(Regex("""(?i)stage\s*\d+.*""")) == true },
-            read = { it.customName?.string?.let { text -> Regex("""(?i)stage\s*(\d+)""").find(text)?.groupValues?.get(1) }?.toIntOrNull() }
+            matches = { it.customName?.string?.trim()?.matches(STAGE_LABEL_REGEX) == true },
+            read = { it.customName?.string?.let { text -> STAGE_NUMBER_REGEX.find(text)?.groupValues?.get(1) }?.toIntOrNull() }
         )
 
-        fun aloeMultiplierLabel(key: String, contains: String): CropStandReader = CropStandReader(
+        fun multiplierLabel(key: String, contains: String): CropStandReader = CropStandReader(
             key = key,
             matches = { it.customName?.string?.contains(contains, ignoreCase = true) == true },
-            read = { it.customName?.string?.let { text -> Regex("""(\d+)\s*x""", RegexOption.IGNORE_CASE).find(text)?.groupValues?.get(1) }?.toIntOrNull() }
+            read = { it.customName?.string?.let { text -> MULTIPLIER_REGEX.find(text)?.groupValues?.get(1) }?.toIntOrNull() }
         )
 
         fun standPresence(key: String, contains: String): CropStandReader = CropStandReader(

@@ -3,7 +3,7 @@ package org.magic.magicaddons.data.greenhouse.transfer
 import org.magic.magicaddons.data.greenhouse.CropDefinition
 import org.magic.magicaddons.data.greenhouse.CropRegistry
 import org.magic.magicaddons.data.greenhouse.GREENHOUSE_SIZE
-import org.magic.magicaddons.data.greenhouse.GreenhouseElementInstance
+import org.magic.magicaddons.data.greenhouse.Plant
 import org.magic.magicaddons.data.greenhouse.GreenhouseLayout
 import org.magic.magicaddons.data.greenhouse.LayoutSlot
 
@@ -164,15 +164,15 @@ object SkyShardsFormat : LayoutFormat {
                     claimed[row + offsetY][column + offsetX] = true
 
                     val slot = layout.getSlot(column + offsetX, row + offsetY)
-                    slot?.placedBlock = definition.requiredSoil.firstOrNull()?.defaultBlockState()
-                    slot?.slotMark = marking
+                    slot?.soil = definition.requiredSoil.firstOrNull()?.defaultBlockState()
+                    slot?.mark = marking
 
                     if (offsetX == 0 && offsetY == 0) anchor = slot
                 }
             }
 
-            layout.elementInstances.add(
-                GreenhouseElementInstance(definition.elementId, anchor ?: continue, cropDef = definition)
+            layout.plants.add(
+                Plant(definition.elementId, anchor ?: continue, cropDef = definition)
             )
         }
 
@@ -194,7 +194,7 @@ object SkyShardsFormat : LayoutFormat {
         val inputOrder = LinkedHashMap<String, MutableList<Int>>()
         val targetOrder = LinkedHashMap<String, MutableList<Int>>()
 
-        layout.elementInstances.forEach { instance ->
+        layout.plants.forEach { instance ->
             val definition = instance.cropDef
             val id = idOf[definition]
 
@@ -203,7 +203,7 @@ object SkyShardsFormat : LayoutFormat {
                 return@forEach
             }
 
-            val isTarget = instance.slot.slotMark == LayoutSlot.Marking.Target
+            val isTarget = instance.slot.mark == LayoutSlot.Marking.Target
 
             // a target is the plant being grown towards, which is always a mutation. A base crop
             // marked as one has nowhere to go in the share, so it travels as an input instead

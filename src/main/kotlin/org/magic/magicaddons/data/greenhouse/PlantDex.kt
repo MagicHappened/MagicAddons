@@ -2,16 +2,9 @@ package org.magic.magicaddons.data.greenhouse
 
 /**
  * What the definitions know and what they are missing, crop by crop. Coverage is read off the stage
- * ranges; stages needing a normalized re-export are learned by watching matches fall back this session.
+ * ranges.
  */
 object PlantDex {
-
-    /** Stage numbers per crop seen matching only through the legacy rotation fallback. */
-    private val legacySeen: MutableMap<String, MutableSet<Int>> = mutableMapOf()
-
-    fun noteLegacy(cropName: String, range: IntRange) {
-        legacySeen.getOrPut(cropName) { mutableSetOf() }.addAll(range)
-    }
 
     /** Per crop, the stages whose stands stood at the other size, with the isSmall the definition needs. */
     private val sizeSeen: MutableMap<String, MutableMap<Int, Boolean>> = mutableMapOf()
@@ -116,9 +109,7 @@ object PlantDex {
 
     /** What one crop is missing, one part per kind of gap; empty when it wants for nothing. */
     private fun partsFor(def: CropDefinition): List<String> {
-        val covered = def.stageDefs.flatMap { it.stageRange }.toSet()
         val missing = unrecorded(def)
-        val legacy = legacySeen[def.name].orEmpty().filter { it in covered }.sorted()
         val unturned = rotationGaps(def)
         val sizes = sizeSeen[def.name].orEmpty()
         val oversized = sizes.filterValues { !it }.keys.sorted()
@@ -127,7 +118,6 @@ object PlantDex {
         val parts = mutableListOf<String>()
         if (missing.isNotEmpty()) parts += "stages ${ranges(missing)} unrecorded"
         parts += variantGaps(def)
-        if (legacy.isNotEmpty()) parts += "stages ${ranges(legacy)} need normalization"
         if (unturned.isNotEmpty()) parts += "stages ${ranges(unturned)} need rotation data"
         if (oversized.isNotEmpty()) parts += "stages ${ranges(oversized)} need isSmall = false"
         if (undersized.isNotEmpty()) parts += "stages ${ranges(undersized)} need isSmall = true"

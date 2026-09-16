@@ -3,153 +3,107 @@ package org.magic.magicaddons.features.farming.greenhousePresets
 import org.magic.magicaddons.data.greenhouse.GREENHOUSE_SIZE
 import org.magic.magicaddons.data.greenhouse.GreenhouseGrid
 import org.magic.magicaddons.data.greenhouse.GreenhouseLayout
+import org.magic.magicaddons.data.greenhouse.SpawnOdds
+import org.magic.magicaddons.data.greenhouse.elements.mutation.epic.ChorusFruit
+import org.magic.magicaddons.data.greenhouse.elements.mutation.rare.MagicJellybean
 import kotlin.math.ceil
 import kotlin.math.sqrt
 
-/**
- * Whether the chorus in a greenhouse will run out of tiles to teleport into and start destroying
- * the plot. Sizes the mutations born while the player is away pessimistically, and says how many
- * young chorus to break. Model and simulation: notes/chorus-teleport-model.md, notes/chorus-sim.js.
- */
+/** whether a greenhouse's chorus will run out of tiles and start breaking the other crops in it */
 object ChorusCollision {
 
-    /** The crops the rule is about, by the names the registry files them under. */
-    const val CHORUS: String = "Chorus Fruit"
-    const val JELLYBEAN: String = "Magic Jellybean"
-    const val CHLORONITE: String = "Chloronite"
+    /** a lost jellybean costs far more than a chorus given up */
+    const val PLANNED_FOR_DEVIATIONS: Double = 2.33
 
-    /** A spawner is an empty tile ringed by exactly three jellybeans and five chloronite. */
-    const val RING_JELLYBEANS: Int = 3
-    const val RING_CHLORONITE: Int = 5
-
-    /** An open spawn tile's chance of producing a chorus in one growth tick. */
-    const val SPAWN_CHANCE: Double = 0.25
-
-    /** Standard deviations of births to plan for: the ninety-ninth percentile, since a lost
-     * jellybean costs far more than the chorus given up to avoid it. */
-    const val QUANTILE: Double = 2.33
-
-    /**
-     * One greenhouse weighed against one absence: the margin it has, the margin it needs, and how
-     * many young chorus to break to cover the difference.
-     */
     data class Report(
-        val movers: Int,
-        val free: Int,
-        val spawnOpen: Int,
-        val ripening: Int,
-        val margin: Int,
-        val need: Int,
-        val cull: Int,
-        val jelliesAtRisk: Int,
-        val ticks: Int
+        val movingChorus: Int,
+        val freeTiles: Int,
+        val openSpawners: Int,
+        val ripeningChorus: Int,
+        val tilesSpare: Int,
+        val tilesNeeded: Int,
+        val chorusToBreak: Int,
+        val growingJellybeansAtRisk: Int,
+        val ticksAway: Int
     ) {
-        val warns: Boolean get() = cull > 0
+        val needsWarning: Boolean get() = chorusToBreak > 0
     }
 
-    /** What the greenhouse looks like that many ticks from now. Null when it holds no chorus. */
-    fun analyse(grid: GreenhouseGrid, ticks: Int): Report? = analyse(grid.layout, ticks)
+    /** null when the greenhouse holds no chorus */
+    fun reportFor(grid: GreenhouseGrid, ticks: Int, weightMultiplier: Double): Report? =
+        reportFor(grid.layout, ticks, weightMultiplier)
 
-    fun analyse(layout: GreenhouseLayout, ticks: Int): Report? {
+    fun reportFor(layout: GreenhouseLayout, ticks: Int, weightMultiplier: Double): Report? {
         if (ticks <= 0) return null
 
-        val chorus = layout.elementInstances.filter { it.cropDef.name == CHORUS }
-        if (chorus.isEmpty()) return null
+        val chorusPlants = layout.plants.filter { it.cropDef == ChorusFruit.definition }
+        if (chorusPlants.isEmpty()) return null
 
-        val maxStage = chorus.first().cropDef.maxStage
+        val maxStage = ChorusFruit.definition.maxStage
 
-        // the lowest stage a plant might be at, so a plant only probably grown is still counted as
-        // one that might teleport. Every guess here leans the same way: towards warning
-        val movers = chorus.filter { (it.lowestStage ?: 1) < maxStage }
+        // the lowest possible stage, so a maybe-grown chorus still counts as moving
+        val movingChorus = chorusPlants.filter { (it.lowestStage ?: 1) < maxStage }
 
-        // a mover this close to the end stops moving inside the window, handing its tile back
-        val ripening = movers.count { (it.lowestStage ?: 1) >= maxStage - ticks }
+        // a chorus this close to the end stops moving inside the window, handing its tile back
+        val ripeningChorus = movingChorus.count { (it.lowestStage ?: 1) >= maxStage - ticks }
 
-        val occupied = occupancy(layout)
-        val free = GREENHOUSE_SIZE * GREENHOUSE_SIZE - occupied.count { it != null }
-        val spawnOpen = countSpawners(occupied)
+        val occupied = occupiedTiles(layout)
+        val freeTiles = occupied.count { !it }
 
-        val mean = SPAWN_CHANCE * spawnOpen * ticks
-        val deviation = sqrt(spawnOpen * ticks * SPAWN_CHANCE * (1 - SPAWN_CHANCE))
+        val spawnChances = occupied.indices.filter { !occupied[it] }.mapNotNull { tile ->
+            SpawnOdds.mutationChancesAtSlot(layout, tile % GREENHOUSE_SIZE, tile / GREENHOUSE_SIZE, weightMultiplier)
+                .firstOrNull { it.crop == ChorusFruit.definition }
+                ?.chance
+        }
 
-        // a birth costs two margin: it fills a free tile and adds a mover to teleport into one
-        val need = 2 * ceil(mean + QUANTILE * deviation).toInt()
-        val margin = free - movers.size
-        val have = margin + ripening
+        val expectedBirths = spawnChances.sum() * ticks
+        val birthDeviation = sqrt(spawnChances.sumOf { it * (1 - it) } * ticks)
 
-        // breaking a mover returns two margin, harvesting a ripe chorus returns one
-        val cull = if (have < need) ceil((need - have) / 2.0).toInt() else 0
+        // a birth costs two tiles: it fills one and adds a chorus to teleport into one
+        val tilesNeeded = 2 * ceil(expectedBirths + PLANNED_FOR_DEVIATIONS * birthDeviation).toInt()
+        val tilesSpare = freeTiles - movingChorus.size
+        val spareWithRipening = tilesSpare + ripeningChorus
+
+        // breaking a moving chorus frees two tiles, harvesting a ripe one frees one
+        val chorusToBreak = if (spareWithRipening < tilesNeeded) ceil((tilesNeeded - spareWithRipening) / 2.0).toInt() else 0
 
         return Report(
-            movers = movers.size,
-            free = free,
-            spawnOpen = spawnOpen,
-            ripening = ripening,
-            margin = margin,
-            need = need,
-            cull = cull,
-            // only jellybeans this plot grew itself: a bought one is scenery, a grown one is the
-            // nine million coins the warning exists to protect
-            jelliesAtRisk = layout.elementInstances.count {
-                it.cropDef.name == JELLYBEAN &&
+            movingChorus = movingChorus.size,
+            freeTiles = freeTiles,
+            openSpawners = spawnChances.size,
+            ripeningChorus = ripeningChorus,
+            tilesSpare = tilesSpare,
+            tilesNeeded = tilesNeeded,
+            chorusToBreak = chorusToBreak,
+            // only jellybeans this plot grew itself
+            growingJellybeansAtRisk = layout.plants.count {
+                it.cropDef == MagicJellybean.definition &&
                         it.grewInPlace &&
                         (it.lowestStage ?: 1) < it.cropDef.maxStage
             },
-            ticks = ticks
+            ticksAway = ticks
         )
     }
 
-    /** Which crop stands on each tile, by name, null for air. A big crop fills every tile it covers. */
-    private fun occupancy(layout: GreenhouseLayout): Array<String?> {
-        val tiles = arrayOfNulls<String>(GREENHOUSE_SIZE * GREENHOUSE_SIZE)
+    /** a big crop fills every tile it covers */
+    private fun occupiedTiles(layout: GreenhouseLayout): BooleanArray {
+        val occupied = BooleanArray(GREENHOUSE_SIZE * GREENHOUSE_SIZE)
 
-        layout.elementInstances.forEach { instance ->
-            val footprint = instance.cropDef.footprint
+        layout.plants.forEach { plant ->
+            val footprint = plant.cropDef.footprint
 
             for (dy in 0 until footprint.height) {
                 for (dx in 0 until footprint.width) {
-                    val x = instance.slot.x + dx
-                    val y = instance.slot.y + dy
+                    val x = plant.slot.x + dx
+                    val y = plant.slot.y + dy
 
                     if (x in 0 until GREENHOUSE_SIZE && y in 0 until GREENHOUSE_SIZE) {
-                        tiles[y * GREENHOUSE_SIZE + x] = instance.cropDef.name
+                        occupied[y * GREENHOUSE_SIZE + x] = true
                     }
                 }
             }
         }
 
-        return tiles
-    }
-
-    /**
-     * Empty tiles with a full spawner ring around them. A chorus standing on one blocks it, and
-     * rings may overlap.
-     */
-    private fun countSpawners(tiles: Array<String?>): Int {
-        var open = 0
-
-        for (y in 1 until GREENHOUSE_SIZE - 1) {
-            for (x in 1 until GREENHOUSE_SIZE - 1) {
-                if (tiles[y * GREENHOUSE_SIZE + x] != null) continue
-
-                var jellybeans = 0
-                var chloronite = 0
-
-                for (dy in -1..1) {
-                    for (dx in -1..1) {
-                        if (dx == 0 && dy == 0) continue
-
-                        when (tiles[(y + dy) * GREENHOUSE_SIZE + (x + dx)]) {
-                            JELLYBEAN -> jellybeans++
-                            CHLORONITE -> chloronite++
-                        }
-                    }
-                }
-
-                if (jellybeans == RING_JELLYBEANS && chloronite == RING_CHLORONITE) open++
-            }
-        }
-
-        return open
+        return occupied
     }
 }

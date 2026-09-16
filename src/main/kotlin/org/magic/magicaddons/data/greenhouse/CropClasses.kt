@@ -31,7 +31,6 @@ sealed interface GrowthStageInfo {
 
 
 data class Footprint(val width: Int, val height: Int) {
-    /** The box a crop of this footprint fills from [soil] up to [height] blocks above it. */
     fun spaceAbove(soil: BlockPos, height: Int): AABB = AABB(
         soil.x.toDouble(), soil.y.toDouble(), soil.z.toDouble(),
         (soil.x + width).toDouble(),
@@ -41,49 +40,41 @@ data class Footprint(val width: Int, val height: Int) {
 }
 
 data class CropArmorStand(
-    /** Where the stand's feet are, measured from the centre of the footprint at soil height. */
+    /** feet position from the footprint centre at soil height */
     val offset: Vec3,
+    val isSmall: Boolean,
     val headRotation: Rotations? = null,
     val xRotation: Float? = null,
     val yRotation: Float? = null,
     val hashString: String? = null,
-    val containsCustomName: String? = null,
-    /** What the stand holds when it holds something other than a skull, as "minecraft:gold_block". */
-    val itemId: String? = null,
-    /** Which slot [itemId] is carried in. Skulls and nearly everything else ride on the head. */
+    val nameContains: String? = null,
+    /** a held item other than a skull, as "minecraft:gold_block" */
+    val heldItemId: String? = null,
     val itemSlot: EquipmentSlot = EquipmentSlot.HEAD,
-    /** A stand's position is its feet, so size decides where its skull lands. Nearly all are small. */
-    val isSmall: Boolean = true,
 ) {
     companion object {
-        fun matcherPattern(
+        fun atOffsets(
             offsets: List<Vec3>,
+            isSmall: Boolean,
             rotations: List<Rotations>? = null,
             xRotations: List<Float>? = null,
             yRotations: List<Float>? = null,
             hashString: String? = null,
-            customName: String? = null,
-            itemId: String? = null,
-            itemSlot: EquipmentSlot = EquipmentSlot.HEAD,
-            isSmall: Boolean = true
-        ): List<CropArmorStand> {
-            val result = mutableListOf<CropArmorStand>()
-            offsets.forEachIndexed { i, offset ->
-                result.add(
-                    CropArmorStand(
-                        offset = offset,
-                        headRotation = rotations?.getOrNull(i),
-                        xRotation = xRotations?.getOrNull(i),
-                        yRotation = yRotations?.getOrNull(i),
-                        hashString = hashString,
-                        containsCustomName = customName,
-                        itemId = itemId,
-                        itemSlot = itemSlot,
-                        isSmall = isSmall
-                    )
-                )
-            }
-            return result
+            nameContains: String? = null,
+            heldItemId: String? = null,
+            itemSlot: EquipmentSlot = EquipmentSlot.HEAD
+        ): List<CropArmorStand> = offsets.mapIndexed { i, offset ->
+            CropArmorStand(
+                offset = offset,
+                isSmall = isSmall,
+                headRotation = rotations?.getOrNull(i),
+                xRotation = xRotations?.getOrNull(i),
+                yRotation = yRotations?.getOrNull(i),
+                hashString = hashString,
+                nameContains = nameContains,
+                heldItemId = heldItemId,
+                itemSlot = itemSlot
+            )
         }
     }
 }
@@ -94,23 +85,11 @@ data class CropBlockState(
 ){
 
     companion object {
-        fun blockStatePattern(
+        fun atPositions(
             positions: List<BlockPos>,
             blockState: BlockState,
             required: Boolean = true
-        ): List<CropBlockState> {
-            val result = mutableListOf<CropBlockState>()
-            positions.forEach {
-                result.add(
-                    CropBlockState(
-                        it,
-                        blockState,
-                        required
-                    )
-                )
-            }
-            return result
-        }
+        ): List<CropBlockState> = positions.map { CropBlockState(it, blockState, required) }
     }
 }
 
@@ -124,19 +103,16 @@ open class CropStage(
     val readers: List<CropStandReader> = emptyList()
 ) {
 
-    /**
-     * Each reader's value off the stands, the highest when several stands answer it: an empty water
-     * bar reads as an empty bar of any kind, and must not outrank the plant's own.
-     */
-    fun read(stands: List<ArmorStand>): Map<String, Int> = readers.mapNotNull { reader ->
+    /** the highest value when several stands are found */
+    fun readValues(stands: List<ArmorStand>): Map<String, Int> = readers.mapNotNull { reader ->
         stands.filter { reader.matches(it) }
             .mapNotNull { reader.read(it) }
             .maxOrNull()
             ?.let { reader.key to it }
     }.toMap()
 
-    class StandReadings {
-        class Reading(
+    class StandCache {
+        class CachedStand(
             val position: Vec3,
             val skullHash: String?,
             val name: String?,
@@ -148,10 +124,10 @@ open class CropStage(
                 items.getOrPut(slot) { EntityUtils.itemIdIn(stand, slot) }
         }
 
-        private val readings = HashMap<Int, Reading>()
+        private val cachedStands = HashMap<Int, CachedStand>()
 
-        fun of(stand: ArmorStand): Reading = readings.getOrPut(stand.id) {
-            Reading(
+        fun lookUp(stand: ArmorStand): CachedStand = cachedStands.getOrPut(stand.id) {
+            CachedStand(
                 stand.position(),
                 PlayerUtils.getSkullHash(stand),
                 stand.customName?.string,
@@ -165,104 +141,71 @@ open class CropStage(
         remainingStands: List<ArmorStand>,
         footprint: Footprint,
         rotatesWithPlot: Boolean = true,
-        readings: StandReadings = StandReadings()
-    ): StageMatchResult {
-        val level = Minecraft.getInstance().level ?: return StageMatchResult.NONE
+        standCache: StandCache = StandCache()
+    ): StageMatchResult? {
+        val level = Minecraft.getInstance().level ?: return null
 
         var score = 0
-        var matchedFirstCandidate = true
-        val usedStands = mutableListOf<Entity>()
         val matchedBlocks = mutableMapOf<BlockPos, BlockState>()
 
-        this.blocks?.forEach { blockDef ->
-            if (!blockDef.required) return@forEach
+        this.blocks?.forEach { recordedBlock ->
+            if (!recordedBlock.required) return@forEach
 
-            val pos = origin.offset(blockDef.offset)
-            val state = level.getBlockState(pos)
+            val blockPos = origin.offset(recordedBlock.offset)
+            val worldBlockState = level.getBlockState(blockPos)
 
-            if (state != blockDef.blockState) return StageMatchResult.NONE
+            if (worldBlockState != recordedBlock.blockState) return null
 
-            matchedBlocks[pos] = state
+            matchedBlocks[blockPos] = worldBlockState
             score += 1
         }
-        val center = Vec3(
+        val footprintCenter = Vec3(
             origin.x + footprint.width / 2.0,
             origin.y.toDouble(),
             origin.z + footprint.height / 2.0
         )
 
-        val worldStep = WorldRotation.step(origin.x, origin.z)
+        val quarterTurns = if (rotatesWithPlot) WorldRotation.quarterTurnsAt(origin.x, origin.z) else 0
+        val matchedStands = mutableListOf<Entity>()
 
-        val candidateSteps = when {
-            this.armorStands.isNullOrEmpty() || !rotatesWithPlot -> listOf(0)
-            else -> listOf(worldStep, 0).distinct()
-        }
+        for (recordedStand in this.armorStands.orEmpty()) {
+            val expectedOffset = WorldRotation.turned(recordedStand.offset, quarterTurns)
 
-        var matchedStands: List<Entity>? = null
+            val matchingStand = remainingStands.firstOrNull { entity ->
+                val cachedStand = standCache.lookUp(entity)
 
-        for (step in candidateSteps) {
-            val used = mutableListOf<Entity>()
-            var allFound = true
+                offsetsMatch(cachedStand.position.subtract(footprintCenter), expectedOffset) &&
+                        (recordedStand.hashString?.let { it == cachedStand.skullHash } ?: true) &&
+                        (recordedStand.nameContains?.let { cachedStand.name?.contains(it) == true } ?: true) &&
+                        (recordedStand.heldItemId?.let { it == cachedStand.itemIn(recordedStand.itemSlot) } ?: true)
+            } ?: return null
 
-            for (standDef in this.armorStands.orEmpty()) {
-                val expected = WorldRotation.rotate(standDef.offset, step)
-
-                val match = remainingStands.firstOrNull { entity ->
-                    val reading = readings.of(entity)
-
-                    isClose(reading.position.subtract(center), expected) &&
-                            (standDef.hashString?.let { it == reading.skullHash } ?: true) &&
-                            (standDef.containsCustomName?.let { reading.name?.contains(it) == true } ?: true) &&
-                            (standDef.itemId?.let { it == reading.itemIn(standDef.itemSlot) } ?: true)
-                }
-
-                if (match == null) {
-                    allFound = false
-                    break
-                }
-
-                used.add(match)
-            }
-
-            if (allFound) {
-                matchedStands = used
-                matchedFirstCandidate = step == candidateSteps.first()
-                break
-            }
-        }
-
-        if (matchedStands == null) return StageMatchResult.NONE
-
-        matchedStands.forEach { match ->
-            usedStands.add(match)
+            matchedStands.add(matchingStand)
             score += 2
         }
 
-        // the stands were found in the order of the definition, so each pairs with its own recording
-        val poseAgreement = this.armorStands.orEmpty().zip(matchedStands).count { (standDef, stand) ->
-            val recorded = standDef.headRotation ?: return@count false
-            (stand as? ArmorStand)?.headPose?.let { samePose(it, recorded) } == true
+        val matchingHeadPoses = this.armorStands.orEmpty().zip(matchedStands).count { (recordedStand, stand) ->
+            val recordedHeadPose = recordedStand.headRotation ?: return@count false
+            (stand as? ArmorStand)?.headPose?.let { headPosesMatch(it, recordedHeadPose) } == true
         }
 
         return StageMatchResult(
-            matched = true,
             score = score,
-            usedStands = usedStands,
+            usedStands = matchedStands,
             matchedBlocks = matchedBlocks,
-            rotationLegacy = !matchedFirstCandidate,
-            poseAgreement = poseAgreement
+            matchingHeadPoses = matchingHeadPoses
         )
     }
 
-    /** Whether two head poses are the same to within [POSE_TOLERANCE_DEGREES] on every axis. */
-    private fun samePose(a: Rotations, b: Rotations): Boolean =
-        abs(Mth.wrapDegrees(a.x() - b.x())) < POSE_TOLERANCE_DEGREES &&
-                abs(Mth.wrapDegrees(a.y() - b.y())) < POSE_TOLERANCE_DEGREES &&
-                abs(Mth.wrapDegrees(a.z() - b.z())) < POSE_TOLERANCE_DEGREES
-    private fun isClose(a: Vec3, b: Vec3, epsilon: Double = 0.01): Boolean {
-        return abs(a.x - b.x) < epsilon &&
-                abs(a.y - b.y) < epsilon &&
-                abs(a.z - b.z) < epsilon
+    private fun headPosesMatch(worldPose: Rotations, recordedPose: Rotations): Boolean =
+        abs(Mth.wrapDegrees(worldPose.x() - recordedPose.x())) < HEAD_POSE_TOLERANCE_DEGREES &&
+                abs(Mth.wrapDegrees(worldPose.y() - recordedPose.y())) < HEAD_POSE_TOLERANCE_DEGREES &&
+                abs(Mth.wrapDegrees(worldPose.z() - recordedPose.z())) < HEAD_POSE_TOLERANCE_DEGREES
+
+    private fun offsetsMatch(actual: Vec3, expected: Vec3): Boolean {
+        return abs(actual.x - expected.x) < OFFSET_TOLERANCE &&
+                abs(actual.y - expected.y) < OFFSET_TOLERANCE &&
+                abs(actual.z - expected.z) < OFFSET_TOLERANCE
     }
 
     fun toRenderData(
@@ -275,61 +218,57 @@ open class CropStage(
         val renderStands = mutableListOf<ArmorStand>()
         val blockMap = mutableMapOf<BlockPos, BlockState>()
 
-        val worldStep = if (rotatesWithPlot) WorldRotation.step(baseBlock.x, baseBlock.z) else 0
-        val center = Vec3(
+        val quarterTurns = if (rotatesWithPlot) WorldRotation.quarterTurnsAt(baseBlock.x, baseBlock.z) else 0
+        val footprintCenter = Vec3(
             baseBlock.x + footprint.width / 2.0,
             baseBlock.y.toDouble(),
             baseBlock.z + footprint.height / 2.0
         )
 
-        blocks?.forEach { blockDef ->
-            val worldPos = baseBlock.offset(blockDef.offset)
-            val state = blockDef.blockState
-            blockMap[worldPos] = state
+        blocks?.forEach { recordedBlock ->
+            blockMap[baseBlock.offset(recordedBlock.offset)] = recordedBlock.blockState
         }
-        armorStands?.forEach { standDef ->
-            val held = standDef.hashString?.let { PlayerUtils.getItemFromHash(it) }
-                ?: standDef.itemId?.let { EntityUtils.itemStackOf(it) }
+        armorStands?.forEach { recordedStand ->
+            val heldItem = recordedStand.hashString?.let { PlayerUtils.getItemFromHash(it) }
+                ?: recordedStand.heldItemId?.let { EntityUtils.itemStackOf(it) }
                 ?: return@forEach
-            val turned = WorldRotation.rotate(standDef.offset, worldStep)
+            val turnedOffset = WorldRotation.turned(recordedStand.offset, quarterTurns)
             val stand = ArmorStand(
                 level,
-                center.x + turned.x,
-                center.y + turned.y,
-                center.z + turned.z
+                footprintCenter.x + turnedOffset.x,
+                footprintCenter.y + turnedOffset.y,
+                footprintCenter.z + turnedOffset.z
             )
 
-            // the flags ride in synched data rather than in setters, which are not ours to call
-            if (standDef.isSmall) {
+            // isSmall has no public setter
+            if (recordedStand.isSmall) {
                 stand.entityData.set(
                     ArmorStand.DATA_CLIENT_FLAGS,
                     ArmorStand.CLIENT_FLAG_SMALL.toByte()
                 )
             }
 
-            // rendering a stand holding an item asks for its entity id and throws without one. Any
-            // id will do, so long as the world never handed it out
+            // rendering a held item needs an entity id the world never hands out
             stand.id = FAKE_ENTITY_ID
 
             stand.isInvisible = true
-            // an explicit pose on the stand wins; otherwise the role says, and the role may
-            // care where in the world the plant stands
-            val role = standDef.hashString?.let { standPoses[it] }
-            val head = standDef.headRotation
-                ?: role?.headAt(baseBlock.x, baseBlock.z, standDef.offset)
+            // the stand's own rotation wins over the crop's standPoses
+            val cropStandPose = recordedStand.hashString?.let { standPoses[it] }
+            val headPose = recordedStand.headRotation
+                ?: cropStandPose?.headAt(baseBlock.x, baseBlock.z, recordedStand.offset)
 
-            head?.let { stand.headPose = it }
-            val yaw = Mth.wrapDegrees((standDef.yRotation ?: role?.yRotation ?: 0f) + 90f * worldStep)
+            headPose?.let { stand.headPose = it }
+            val yaw = Mth.wrapDegrees((recordedStand.yRotation ?: cropStandPose?.yRotation ?: 0f) + 90f * quarterTurns)
 
-            // a ghost stand is never ticked, so every yaw field is set here
+            // never ticked, so the previous-tick yaws are set too
             stand.yRot = yaw
             stand.yRotO = yaw
             stand.yBodyRot = yaw
             stand.yBodyRotO = yaw
             stand.yHeadRot = yaw
             stand.yHeadRotO = yaw
-            stand.xRot = standDef.xRotation ?: role?.xRotation ?: 0f
-            stand.setItemSlot(if (standDef.hashString != null) EquipmentSlot.HEAD else standDef.itemSlot, held)
+            stand.xRot = recordedStand.xRotation ?: cropStandPose?.xRotation ?: 0f
+            stand.setItemSlot(if (recordedStand.hashString != null) EquipmentSlot.HEAD else recordedStand.itemSlot, heldItem)
             renderStands.add(stand)
         }
         return RenderData(
@@ -346,6 +285,10 @@ open class CropStage(
 
     companion object {
         private const val FAKE_ENTITY_ID: Int = -1
+        private const val OFFSET_TOLERANCE: Double = 0.01
+
+        /** recorded head poses are several degrees apart at the closest */
+        private const val HEAD_POSE_TOLERANCE_DEGREES: Float = 1f
     }
 }
 
@@ -355,52 +298,36 @@ class CropStagePattern(
     armorStands: List<CropArmorStand>? = null,
     stageRange: IntRange,
     traits: Map<String, Int> = emptyMap(),
-    val baseStageStandOffset: Vec3,
-    val stageOffsetMultipliers: Map<Int, Int> = emptyMap()
+    val baseStandOffset: Vec3,
+    val baseStandStageMultipliers: Map<Int, Int> = emptyMap()
 ) : CropStage(
     blocks = blocks,
     armorStands = armorStands,
     stageRange = stageRange,
     traits = traits
 ){
-    fun expand(): List<CropStage> {
-        val result = mutableListOf<CropStage>()
+    fun expandToStages(): List<CropStage> = stageRange.map { stage ->
+        val offsetMultiplier = baseStandStageMultipliers[stage] ?: (stage - stageRange.first)
 
-        val start = stageRange.first
-
-        for (stage in stageRange) {
-
-            val multiplier = stageOffsetMultipliers[stage]
-                ?: (stage - start) // good fallback
-
-            val newStands = armorStands?.map { stand ->
-                stand.copy(
-                    offset = stand.offset.add(
-                        baseStageStandOffset.scale(multiplier.toDouble())
-                    )
-                )
-            }
-
-            result.add(
-                CropStage(
-                    blocks = blocks,
-                    armorStands = newStands,
-                    stageRange = stage..stage,
-                    traits = traits
-                )
-            )
+        val offsetStands = armorStands?.map { stand ->
+            stand.copy(offset = stand.offset.add(baseStandOffset.scale(offsetMultiplier.toDouble())))
         }
 
-        return result
+        CropStage(
+            blocks = blocks,
+            armorStands = offsetStands,
+            stageRange = stage..stage,
+            traits = traits
+        )
     }
 
 }
 /** how skyblock turns its plants, a quarter turn per `(z - x) mod 4` of the base block */
 object WorldRotation {
 
-    fun step(x: Int, z: Int): Int = Math.floorMod(z - x, 4)
+    fun quarterTurnsAt(x: Int, z: Int): Int = Math.floorMod(z - x, 4)
 
-    fun rotate(offset: Vec3, steps: Int): Vec3 = when (Math.floorMod(steps, 4)) {
+    fun turned(offset: Vec3, quarterTurns: Int): Vec3 = when (Math.floorMod(quarterTurns, 4)) {
         1 -> Vec3(-offset.z, offset.y, offset.x)
         2 -> Vec3(-offset.x, offset.y, -offset.z)
         3 -> Vec3(offset.z, offset.y, -offset.x)
@@ -408,13 +335,9 @@ object WorldRotation {
     }
 }
 
-const val DEFAULT_DECAY_TIME_MS: Long = 3L * 24 * 60 * 60 * 1000
-
 const val NEVER_DECAYS: Long = -1L
 
-/** Recorded head poses lie several degrees apart at the closest, so within a degree is the same pose. */
-private const val POSE_TOLERANCE_DEGREES: Float = 1f
-
+const val THREE_DAY_DECAY_TIME_MS: Long = 3L * 24 * 60 * 60 * 1000
 const val FIVE_DAY_DECAY_TIME_MS: Long = 5L * 24 * 60 * 60 * 1000
 const val SIX_DAY_DECAY_TIME_MS: Long = 6L * 24 * 60 * 60 * 1000
 const val TEN_DAY_DECAY_TIME_MS: Long = 10L * 24 * 60 * 60 * 1000
@@ -434,9 +357,7 @@ sealed interface StandPose {
         override fun headAt(x: Int, z: Int, offset: Vec3): Rotations = headRotation
     }
 
-    /**
-     * A pose walking a fixed cycle: poses[(x + z + height) mod size], as the jellybean's canes do.
-     */
+    /** poses[(x + z + height) mod size], as the jellybean's canes do */
     data class Cycle(val poses: List<Rotations>) : StandPose {
         override fun headAt(x: Int, z: Int, offset: Vec3): Rotations =
             poses[Math.floorMod(x + z + floor(offset.y + 0.5).toInt(), poses.size)]
@@ -450,7 +371,7 @@ data class CropDefinition(
     val stageDefs: List<CropStage>,
     val maxStage: Int = 1,
 
-    val decayTimeMs: Long = DEFAULT_DECAY_TIME_MS,
+    val decayTimeMs: Long = THREE_DAY_DECAY_TIME_MS,
     val footprint: Footprint = Footprint(1,1),
     val requiredSoil: Set<Block> = setOf(Blocks.FARMLAND),
     val needsWater: Boolean = true,
@@ -464,14 +385,15 @@ data class CropDefinition(
 
     val standPoses: Map<String, StandPose> = emptyMap(),
     val sleepStages: Set<Int> = emptySet(),
-    val rotatesWithPlot: Boolean = true
+    val rotatesWithPlot: Boolean = true,
+    val spawnRule: SpawnRule? = null,
+    val dropMultiplier: Double? = null
 ){
     val stagePlacedAt: Int get() = if (isMutation) maxStage else 1
     val elementId: String get() = skyblockId?.id ?: name
-    val stages: List<CropStage> = stageDefs.flatMap { if (it is CropStagePattern) it.expand() else listOf(it) }
+    val stages: List<CropStage> = stageDefs.flatMap { if (it is CropStagePattern) it.expandToStages() else listOf(it) }
 
-    /** Whether the plant hangs a hunger bar over itself at any stage. */
-    val readsHunger: Boolean get() = stages.any { stage -> stage.readers.any { it.key == CropStandReader.HUNGER } }
+    val hasHungerBar: Boolean get() = stages.any { stage -> stage.readers.any { it.key == CropStandReader.HUNGER } }
 
     override fun toString(): String {
         return name
@@ -479,33 +401,20 @@ data class CropDefinition(
 }
 
 data class StageMatchResult(
-    val matched: Boolean,
     val score: Int,
     val usedStands: List<Entity>,
     val matchedBlocks: Map<BlockPos, BlockState>,
-    /** Matched, but only at rotation zero: a pre-normalization recording that wants re-exporting. */
-    val rotationLegacy: Boolean = false,
-    /**
-     * How many stands wear the head pose their recording gives. Only settles a tie: two stages
-     * standing the same differ by nothing else, and a stage recorded without poses scores none.
-     */
-    val poseAgreement: Int = 0
-) {
-    companion object {
-        val NONE = StageMatchResult(false, 0, emptyList(), emptyMap())
-    }
-}
-
-
-data class ElementRuntimeState(
-    val instance: GreenhouseElementInstance,
-    val standEntities: List<Entity>?,
-    val blocksMap: Map<BlockPos,BlockState>?,
-
-    val rotationLegacy: Boolean = false
+    val matchingHeadPoses: Int
 )
 
-data class GreenhouseElementInstance(
+
+data class ScannedPlant(
+    val plant: Plant,
+    val stands: List<Entity>?,
+    val blocks: Map<BlockPos,BlockState>?
+)
+
+data class Plant(
     val elementId: String,
     val slot: LayoutSlot,
     var waterLevel: Double? = null,
@@ -515,19 +424,17 @@ data class GreenhouseElementInstance(
     val readings: MutableMap<String, Int> = mutableMapOf(),
     val alternatives: MutableList<CropDefinition> = mutableListOf(),
 ) {
-    val merged: Boolean get() = alternatives.isNotEmpty()
+    val hasAlternatives: Boolean get() = alternatives.isNotEmpty()
 
-    fun defInSlot(def: CropDefinition): Boolean = def == cropDef || def in alternatives
+    fun acceptsCrop(crop: CropDefinition): Boolean = crop == cropDef || crop in alternatives
 
-    val everyCrop: List<CropDefinition> get() = listOf(cropDef) + alternatives
+    val acceptedCrops: List<CropDefinition> get() = listOf(cropDef) + alternatives
 
     val isAsleep: Boolean get() = readings[CropStandReader.ASLEEP] == 1
 
-    val needsTime: Int? get() = readings[CropStandReader.NEEDS_TIME]
+    val timeOfDayNeeded: Int? get() = readings[CropStandReader.NEEDS_TIME]
 
-    val isStarving: Boolean get() = readings[CropStandReader.HUNGER] == 0
-
-    /** How fed a plant with a hunger bar is, 0 to 100, or null when it has none. */
+    /** 0 to 100, null without a hunger bar */
     val hunger: Int? get() = readings[CropStandReader.HUNGER]
 
     /** if a tick has passed with negative water, then we don't know if it truly passed or not */
@@ -541,27 +448,16 @@ data class GreenhouseElementInstance(
 
     var waterBestCase: Double? = null
 
-    val fullyGrownByPlacing: Boolean get() = placed && cropDef.isMutation
+    val isPlacedMutation: Boolean get() = placed && cropDef.isMutation
 
-    /**
-     * A placed mutation that has been through a tick: the game lets one be picked back up only
-     * until then. One whose age is unknown is taken as past it, which is the safer reading.
-     */
-    val uncollectable: Boolean get() = fullyGrownByPlacing && (age ?: 1L) > 0L
+    val isCollectable: Boolean get() = isPlacedMutation && (age ?: 1L) <= 0L
 
-    /**
-     * A crop with nothing left to grow, worth harvesting: a mutation that grew here or a base crop at
-     * its last stage. Judged by the highest stage it might be at, so a plant possibly grown is looked
-     * at rather than left standing. A placed mutation is finished but was never grown, so never.
-     */
     val readyToHarvest: Boolean
-        get() = (cropDef.isMutation || cropDef.isBaseCrop) && !fullyGrownByPlacing && (highestStage ?: 0) >= cropDef.maxStage
+        get() = (cropDef.isMutation || cropDef.isBaseCrop) && !isPlacedMutation && (highestStage ?: 0) >= cropDef.maxStage
 
-    /** Whether this plant still takes water each tick: one of a crop that needs it, neither placed nor grown out. */
-    val consumesWater: Boolean get() = cropDef.needsWater && !fullyGrownByPlacing && !isFullyGrown
+    val consumesWater: Boolean get() = cropDef.needsWater && !isPlacedMutation && !isFullyGrown
 
-    /** A copy on [slot], readings included, for a prediction that must not move the real plant. */
-    fun copyForPrediction(slot: LayoutSlot): GreenhouseElementInstance =
+    fun copyForPrediction(slot: LayoutSlot): Plant =
         copy(slot = slot, readings = readings.toMutableMap(), alternatives = alternatives.toMutableList()).also {
             it.waterPredictedInDebt = waterPredictedInDebt
             it.waterExact = waterExact
@@ -570,22 +466,16 @@ data class GreenhouseElementInstance(
             it.waterBestCase = waterBestCase
         }
 
-    /**
-     * Whether the water it holds now sees it to its last stage. Null when the stage is unknown or
-     * the crop has only the one stage, so there is nothing to outlast and nothing to say.
-     */
-    fun outlastsGrowth(waterEffectPercent: Int): Boolean? {
+    /** null when the stage is unknown or the crop has one stage */
+    fun waterLastsUntilGrown(waterEffectPercent: Int): Boolean? {
         if (!consumesWater || cropDef.drainsNeighbours) return true
 
         val water = waterLevel ?: return null
-        if (water <= WaterModel.DEATH) return false
+        if (water <= WaterModel.DEATH_LEVEL) return false
 
         val ticksLeft = WaterModel.ticksUntilDeath(water, waterEffectPercent) ?: return true
 
-        // in debt the water was charged for every tick while the low end of the stage took none,
-        // and a skipped tick costs no water: only the stages the high end took are what the water
-        // paid for, so that end is the one the water agrees with. Outside debt the lowest is the
-        // stage with the most left to pay for
+        // in debt the highest stage is the one the water paid for
         val stage = (if (waterPredictedInDebt) highestStage else lowestStage) ?: return null
         if (cropDef.maxStage <= 1) return null
 
@@ -594,7 +484,6 @@ data class GreenhouseElementInstance(
 
     val isFullyGrown: Boolean get() = (lowestStage ?: 0) >= cropDef.maxStage
 
-    /** The lowest stage this plant might be at now, which is all a scan can promise about most. */
     val lowestStage: Int?
         get() = when (val stage = growthStage) {
             is GrowthStageInfo.Known -> stage.stage
@@ -602,10 +491,6 @@ data class GreenhouseElementInstance(
             null -> null
         }
 
-    /**
-     * The highest stage this plant might be at, which is what anything about profit asks for: better
-     * a wasted look than a grown mutation left standing.
-     */
     val highestStage: Int?
         get() = when (val stage = growthStage) {
             is GrowthStageInfo.Known -> stage.stage
@@ -613,24 +498,22 @@ data class GreenhouseElementInstance(
             null -> null
         }
 
-    /** Whether this plant grew where it stands rather than being placed there. */
     val grewInPlace: Boolean
         get() {
             if (placed) return false
-            val first = firstSeenStage ?: return false
-            val now = lowestStage ?: return false
+            val firstStage = firstSeenStage ?: return false
+            val currentStage = lowestStage ?: return false
 
-            return now > first
+            return currentStage > firstStage
         }
 
-    /** Whether this plant craves a time of day other than [now], while it still has stages to grow. */
-    fun cravesOtherTime(now: Int): Boolean {
-        val wants = needsTime ?: return false
+    fun needsOtherTimeOfDay(dayOrNight: Int): Boolean {
+        val needed = timeOfDayNeeded ?: return false
         val stage = lowestStage
-        return wants != now && (stage == null || stage < cropDef.maxStage)
+        return needed != dayOrNight && (stage == null || stage < cropDef.maxStage)
     }
 
-    /** Time left before this plant rots. Null when it never rots, or its age was never measured. */
+    /** null when it never decays or its age is unknown */
     val decayRemainingMs: Long?
         get() {
             val decayTime = cropDef.decayTimeMs

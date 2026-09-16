@@ -1,5 +1,6 @@
 package org.magic.magicaddons.data.greenhouse.elements.mutation.uncommon
 
+import org.magic.magicaddons.data.greenhouse.SpawnRule
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Rotations
 import net.minecraft.world.level.block.Blocks
@@ -17,6 +18,7 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Cindershade : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Cindershade",
+        dropMultiplier = 1.7,
         effects = setOf(
             CropEffect.EffectSpread,
             CropEffect.ImprovedHarvestBoost,
@@ -35,7 +37,8 @@ object Cindershade : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, 0.09375, 0.0),
-                        hashString = "7bd5a39c3f9b1f513ecc299afaa5f90040fdb7424a5cd592e9ff31de7a3aafb3"
+                        hashString = "7bd5a39c3f9b1f513ecc299afaa5f90040fdb7424a5cd592e9ff31de7a3aafb3",
+                        isSmall = true
                     )
                 ),
                 1..1
@@ -196,6 +199,7 @@ object Cindershade : CropDefinitionProvider {
         maxStage = 8,
         requiredSoil = setOf(Blocks.SOUL_SAND),
         needsWater = false,
-        isMutation = true
+        isMutation = true,
+        spawnRule = SpawnRule(weight = 25, requiredNeighbourCells = mapOf("Ashwreath" to 4, "Witherbloom" to 4))
     )
 }

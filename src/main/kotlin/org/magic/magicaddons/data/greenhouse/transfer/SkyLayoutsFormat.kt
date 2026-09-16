@@ -3,7 +3,7 @@ package org.magic.magicaddons.data.greenhouse.transfer
 import org.magic.magicaddons.data.greenhouse.MasterLayout
 import org.magic.magicaddons.data.greenhouse.CropDefinition
 import org.magic.magicaddons.data.greenhouse.CropRegistry
-import org.magic.magicaddons.data.greenhouse.GreenhouseElementInstance
+import org.magic.magicaddons.data.greenhouse.Plant
 import org.magic.magicaddons.data.greenhouse.GreenhouseLayout
 import org.magic.magicaddons.data.greenhouse.LayoutSlot
 import java.math.BigInteger
@@ -123,13 +123,13 @@ object SkyLayoutsFormat : LayoutFormat {
                 }
                 val slot = layout.getSlot(x, y) ?: continue
 
-                layout.elementInstances.add(GreenhouseElementInstance(def.elementId, slot, cropDef = def))
+                layout.plants.add(Plant(def.elementId, slot, cropDef = def))
                 val soil = def.requiredSoil.firstOrNull()?.defaultBlockState()
                 for (dx in 0 until def.footprint.width) {
                     for (dy in 0 until def.footprint.height) {
                         if (x + dx >= layout.size || y + dy >= layout.size) continue
                         taken[x + dx][y + dy] = true
-                        soil?.let { layout.getSlot(x + dx, y + dy)?.placedBlock = it }
+                        soil?.let { layout.getSlot(x + dx, y + dy)?.soil = it }
                     }
                 }
             }
@@ -141,9 +141,9 @@ object SkyLayoutsFormat : LayoutFormat {
                 for (x in 0 until layout.size) {
                     if (taken[x][y]) continue
                     val slot = layout.getSlot(x, y) ?: continue
-                    slot.slotMark = LayoutSlot.Marking.Target
-                    target.requiredSoil.firstOrNull()?.let { slot.placedBlock = it.defaultBlockState() }
-                    layout.elementInstances.add(GreenhouseElementInstance(target.elementId, slot, cropDef = target))
+                    slot.mark = LayoutSlot.Marking.Target
+                    target.requiredSoil.firstOrNull()?.let { slot.soil = it.defaultBlockState() }
+                    layout.plants.add(Plant(target.elementId, slot, cropDef = target))
                 }
             }
         } else if (target != null) {
@@ -160,8 +160,8 @@ object SkyLayoutsFormat : LayoutFormat {
         val notes = mutableListOf<String>()
 
         // the site files a layout under the mutation it grows: the plant marked as the target
-        val target = plots.flatMap { it.elementInstances }
-            .firstOrNull { it.slot.slotMark == LayoutSlot.Marking.Target && it.cropDef.isMutation }
+        val target = plots.flatMap { it.plants }
+            .firstOrNull { it.slot.mark == LayoutSlot.Marking.Target && it.cropDef.isMutation }
             ?.let { kindOf[it.cropDef] }
         val head = "1" + letter(target?.plus(1) ?: 0) + letter(VISIT_INTERVAL)
 
@@ -175,9 +175,9 @@ object SkyLayoutsFormat : LayoutFormat {
         val kinds = mutableListOf<Int>()
         val cells = IntArray(layout.size * layout.size) { -1 }
 
-        layout.elementInstances.forEach { instance ->
+        layout.plants.forEach { instance ->
             // the site keeps the target's spots empty and names the mutation in the link instead
-            if (instance.slot.slotMark == LayoutSlot.Marking.Target && instance.cropDef.isMutation) return@forEach
+            if (instance.slot.mark == LayoutSlot.Marking.Target && instance.cropDef.isMutation) return@forEach
 
             val kind = kindOf[instance.cropDef] ?: run {
                 notes.add("${instance.cropDef.name} is not on SkyLayouts and was left out.")

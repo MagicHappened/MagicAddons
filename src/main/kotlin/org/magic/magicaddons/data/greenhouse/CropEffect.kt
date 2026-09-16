@@ -1,9 +1,6 @@
 package org.magic.magicaddons.data.greenhouse
 
-/**
- * A buff or debuff a crop carries. Several are the same effect at a different strength, so each
- * says which kind it belongs to and by how much. The percentage is signed, zero when it does not scale.
- */
+/** a buff or debuff a crop gives its neighbours; the percentage is signed */
 enum class CropEffect(val kind: Kind, val percent: Int, val label: String) {
 
     HarvestBoost(Kind.Yield, 20, "Harvest Boost"),
@@ -28,7 +25,7 @@ enum class CropEffect(val kind: Kind, val percent: Int, val label: String) {
     /** Passes whatever this crop carries on to the crops beside it. */
     EffectSpread(Kind.Spread, 0, "Effect Spread");
 
-    /** What an effect acts on, so effects of one kind can be totalled together. */
+    /** what an effect acts on, so effects of one kind can be totalled together */
     enum class Kind {
         Yield,
         Xp,
@@ -39,7 +36,7 @@ enum class CropEffect(val kind: Kind, val percent: Int, val label: String) {
     }
 
     companion object {
-        /** How much a kind adds up to across [effects], as a signed percentage. */
+        /** a signed percentage */
         fun total(effects: Iterable<CropEffect>, kind: Kind): Int =
             effects.filter { it.kind == kind }.sumOf { it.percent }
     }

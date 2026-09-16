@@ -13,6 +13,7 @@ import org.magic.magicaddons.data.greenhouse.StandPose
 object Shellfruit : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Shellfruit",
+        dropMultiplier = 0.5,
         effects = setOf(
             CropEffect.WaterRetain,
             CropEffect.Immunity

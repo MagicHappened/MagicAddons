@@ -12,6 +12,7 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Carrot : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Carrot",
+        dropMultiplier = 0.125,
         effects = setOf(
             CropEffect.XpBoost
         ),

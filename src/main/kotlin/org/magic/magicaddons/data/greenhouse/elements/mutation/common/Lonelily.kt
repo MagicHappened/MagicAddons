@@ -1,5 +1,6 @@
 package org.magic.magicaddons.data.greenhouse.elements.mutation.common
 
+import org.magic.magicaddons.data.greenhouse.SpawnRule
 import net.minecraft.core.BlockPos
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.CropEffect
@@ -17,6 +18,7 @@ object Lonelily : CropDefinitionProvider {
 
     override val definition = CropDefinition(
         name = "Lonelily",
+        dropMultiplier = 1.75,
         effects = setOf(
             CropEffect.BonusDrops
         ),
@@ -44,6 +46,7 @@ object Lonelily : CropDefinitionProvider {
             )
         ),
         needsWater = false,
-        isMutation = true
+        isMutation = true,
+        spawnRule = SpawnRule(weight = 6, needsNoNeighbours = true)
     )
 }

@@ -61,8 +61,8 @@ object SoftImport {
 
     /** The smallest box around every slot [layout] sets, or null when it sets nothing. */
     private fun boxOf(layout: GreenhouseLayout): Box? {
-        val cells = layout.slots.filter { it.placedBlock != null || it.slotMark != null }.map { it.x to it.y } +
-                layout.elementInstances.flatMap { cellsOf(it) }
+        val cells = layout.slots.filter { it.soil != null || it.mark != null }.map { it.x to it.y } +
+                layout.plants.flatMap { cellsOf(it) }
         if (cells.isEmpty()) return null
 
         return Box(cells.minOf { it.first }, cells.minOf { it.second }, cells.maxOf { it.first }, cells.maxOf { it.second })
@@ -75,13 +75,13 @@ object SoftImport {
         val moved = GreenhouseLayout(id = layout.id, name = layout.name, size = layout.size)
         layout.slots.forEach { slot ->
             moved.getSlot(slot.x + offsetX, slot.y + offsetY)?.let {
-                it.placedBlock = slot.placedBlock
-                it.slotMark = slot.slotMark
+                it.soil = slot.soil
+                it.mark = slot.mark
             }
         }
-        layout.elementInstances.forEach { plant ->
+        layout.plants.forEach { plant ->
             val slot = moved.getSlot(plant.slot.x + offsetX, plant.slot.y + offsetY) ?: return@forEach
-            moved.elementInstances.add(plant.copyForPrediction(slot))
+            moved.plants.add(plant.copyForPrediction(slot))
         }
         return moved
     }
@@ -93,22 +93,22 @@ object SoftImport {
     }
 
     private fun laidOver(existing: GreenhouseLayout, incoming: GreenhouseLayout, turns: Int, offsetX: Int, offsetY: Int, box: Box?): Fit {
-        val merged = existing.copy()
+        val merged = existing.deepCopy()
         var soilsReplaced = 0
         var soilsReused = 0
 
-        val incomingPlantAt = mutableMapOf<Pair<Int, Int>, GreenhouseElementInstance>()
-        incoming.elementInstances.forEach { plant -> cellsOf(plant).forEach { incomingPlantAt[it] = plant } }
+        val incomingPlantAt = mutableMapOf<Pair<Int, Int>, Plant>()
+        incoming.plants.forEach { plant -> cellsOf(plant).forEach { incomingPlantAt[it] = plant } }
 
         val touchedSlots = incoming.slots.filter { slot ->
-            slot.placedBlock != null || slot.slotMark != null || (slot.x to slot.y) in incomingPlantAt
+            slot.soil != null || slot.mark != null || (slot.x to slot.y) in incomingPlantAt
         }
 
         // a plant stays only where the import leaves its cells alone, or puts the same plant in the
         // same place, and never on a soil the import brings that it cannot grow on
-        val samePlants = mutableSetOf<GreenhouseElementInstance>()
-        val removedPlants = merged.elementInstances.filter { plant ->
-            val twin = incoming.elementInstances.firstOrNull { it.sameAs(plant) }
+        val samePlants = mutableSetOf<Plant>()
+        val removedPlants = merged.plants.filter { plant ->
+            val twin = incoming.plants.firstOrNull { it.sameAs(plant) }
             if (twin != null) {
                 samePlants.add(twin)
                 return@filter false
@@ -117,15 +117,15 @@ object SoftImport {
             val accepted = acceptedSoils(plant)
             cellsOf(plant).any { cell ->
                 cell in incomingPlantAt ||
-                        incoming.getSlot(cell.first, cell.second)?.placedBlock?.let { it.block !in accepted } == true
+                        incoming.getSlot(cell.first, cell.second)?.soil?.let { it.block !in accepted } == true
             }
         }
-        merged.elementInstances.removeAll(removedPlants.toSet())
+        merged.plants.removeAll(removedPlants.toSet())
 
         touchedSlots.forEach { incomingSlot ->
             val slot = merged.getSlot(incomingSlot.x, incomingSlot.y) ?: return@forEach
-            val standingSoil = slot.placedBlock
-            val incomingSoil = incomingSlot.placedBlock
+            val standingSoil = slot.soil
+            val incomingSoil = incomingSlot.soil
             val incomingPlant = incomingPlantAt[incomingSlot.x to incomingSlot.y]
 
             if (incomingSoil != null) {
@@ -134,21 +134,21 @@ object SoftImport {
                     standingSoil.block == incomingSoil.block -> soilsReused++
                     else -> soilsReplaced++
                 }
-                slot.placedBlock = incomingSoil
+                slot.soil = incomingSoil
             } else if (incomingPlant != null && standingSoil != null && standingSoil.block !in acceptedSoils(incomingPlant)) {
                 // a soil the imported plant cannot grow on is cleared rather than guessed at
                 soilsReplaced++
-                slot.placedBlock = null
+                slot.soil = null
             }
 
-            if (incomingPlant != null || incomingSlot.slotMark != null) slot.slotMark = incomingSlot.slotMark
+            if (incomingPlant != null || incomingSlot.mark != null) slot.mark = incomingSlot.mark
         }
 
-        incoming.elementInstances
+        incoming.plants
             .filter { it !in samePlants }
             .forEach { plant ->
                 val slot = merged.getSlot(plant.slot.x, plant.slot.y) ?: return@forEach
-                merged.elementInstances.add(plant.copyForPrediction(slot))
+                merged.plants.add(plant.copyForPrediction(slot))
             }
 
         val snugness = box?.let { snugnessOf(existing, it) } ?: 0
@@ -163,7 +163,7 @@ object SoftImport {
     private fun snugnessOf(existing: GreenhouseLayout, box: Box): Int {
         fun blocked(x: Int, y: Int): Boolean {
             val slot = existing.getSlot(x, y) ?: return true
-            return slot.placedBlock != null || slot.slotMark != null || existing.plantCovering(slot) != null
+            return slot.soil != null || slot.mark != null || existing.plantCovering(slot) != null
         }
 
         val sides = listOf(
@@ -175,13 +175,13 @@ object SoftImport {
         return sides.count { it }
     }
 
-    private fun GreenhouseElementInstance.sameAs(other: GreenhouseElementInstance): Boolean =
-        slot.x == other.slot.x && slot.y == other.slot.y && everyCrop.toSet() == other.everyCrop.toSet()
+    private fun Plant.sameAs(other: Plant): Boolean =
+        slot.x == other.slot.x && slot.y == other.slot.y && acceptedCrops.toSet() == other.acceptedCrops.toSet()
 
-    private fun acceptedSoils(plant: GreenhouseElementInstance) =
-        plant.everyCrop.flatMapTo(mutableSetOf()) { it.requiredSoil }
+    private fun acceptedSoils(plant: Plant) =
+        plant.acceptedCrops.flatMapTo(mutableSetOf()) { it.requiredSoil }
 
-    private fun cellsOf(plant: GreenhouseElementInstance): List<Pair<Int, Int>> = buildList {
+    private fun cellsOf(plant: Plant): List<Pair<Int, Int>> = buildList {
         for (offsetX in 0 until plant.cropDef.footprint.width) {
             for (offsetY in 0 until plant.cropDef.footprint.height) {
                 add(plant.slot.x + offsetX to plant.slot.y + offsetY)

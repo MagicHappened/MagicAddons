@@ -13,20 +13,15 @@ import tech.thatgravyboat.skyblockapi.api.profile.garden.Plot
 import tech.thatgravyboat.skyblockapi.api.profile.garden.PlotAPI
 import java.time.Instant
 
-/** The y every greenhouse plants on, the grid is a single flat row of soil. */
 const val GREENHOUSE_SOIL_Y: Int = 73
-
-/** A greenhouse is ten by ten. */
 const val GREENHOUSE_SIZE: Int = 10
 
-/** How far above the soil a plant reaches: its stands are read and whatever is in its way is found within this. */
+/** blocks above the soil searched for a plant's stands and blocks */
 const val CROP_HEIGHT: Int = 5
 
-/** What a tick takes off a hunger bar, read off fleshtraps going from 100 to 80 over one tick. */
 const val HUNGER_LOSS_PER_TICK: Int = 20
 
-/** How many ticks a plant with [hunger] left still grows through before its bar is empty. */
-fun ticksFedFrom(hunger: Int): Int = (hunger + HUNGER_LOSS_PER_TICK - 1) / HUNGER_LOSS_PER_TICK
+fun ticksUntilHungry(hunger: Int): Int = (hunger + HUNGER_LOSS_PER_TICK - 1) / HUNGER_LOSS_PER_TICK
 
 class GreenhouseGrid(
     var state: GridState,
@@ -36,17 +31,17 @@ class GreenhouseGrid(
     val width = GREENHOUSE_SIZE
     val height = GREENHOUSE_SIZE
 
-    val elements = mutableListOf<ElementRuntimeState>()
+    val scannedPlants = mutableListOf<ScannedPlant>()
 
-    fun hasRuntime(): Boolean {
-        return state.hasRuntimeReferences
+    fun isScannedThisVisit(): Boolean {
+        return state.scannedThisVisit
     }
 
     fun getPosForSlot(slot: LayoutSlot): BlockPos? {
-        val box = plot?.getBuildableArea() ?: return null
+        val buildArea = plot?.getBuildableArea() ?: return null
 
-        val minX = box.minX.toInt()
-        val minZ = box.minZ.toInt()
+        val minX = buildArea.minX.toInt()
+        val minZ = buildArea.minZ.toInt()
 
         val worldX = minX + slot.x
         val worldZ = minZ + slot.y
@@ -54,29 +49,17 @@ class GreenhouseGrid(
         return BlockPos(worldX, GREENHOUSE_SOIL_Y, worldZ)
     }
 
-    /** the quarter turn of [wanted] matching most of what stands here */
-    fun bestTurnFor(wanted: GreenhouseLayout): Int =
-        (0 until 4).maxBy { turns -> agreement(wanted.turned(turns)) }
+    fun bestTurnFor(plan: GreenhouseLayout): Int =
+        (0 until 4).maxBy { turns -> agreementWith(plan.turned(turns)) }
 
-    /**
-     * The turn of [wanted] the plot agrees with, keeping [current] unless another turn agrees
-     * strictly better: an empty plot agrees with every turn alike, and must not undo a turn the
-     * player chose.
-     */
-    fun bestTurnKeeping(wanted: GreenhouseLayout, current: Int): Int {
-        val best = bestTurnFor(wanted)
+    /** keeps [currentTurns] unless another turn agrees strictly better */
+    fun bestTurnKeeping(plan: GreenhouseLayout, currentTurns: Int): Int {
+        val bestTurns = bestTurnFor(plan)
 
-        return if (agreement(wanted.turned(best)) > agreement(wanted.turned(current))) best else current
+        return if (agreementWith(plan.turned(bestTurns)) > agreementWith(plan.turned(currentTurns))) bestTurns else currentTurns
     }
 
-    /** How many of [wanted]'s plants and soil blocks are in place, for saying which turn fits. */
-    fun agreementWith(wanted: GreenhouseLayout): Agreement = agreement(wanted)
-
-    /**
-     * How much of [wanted] is in place. Plants decide before soil: a soil block is cheap and often
-     * lies where several turns would put one, while a plant standing where the plan puts it says
-     * which way the plan was built.
-     */
+    /** plants compare before soil */
     class Agreement(val plants: Int, val soil: Int) : Comparable<Agreement> {
         override fun compareTo(other: Agreement): Int =
             compareValuesBy(this, other, { it.plants }, { it.soil })
@@ -84,15 +67,15 @@ class GreenhouseGrid(
         override fun toString(): String = "$plants plants, $soil soil"
     }
 
-    private fun agreement(wanted: GreenhouseLayout): Agreement {
-        val soil = wanted.slots.count { slot ->
-            val wantedBlock = slot.placedBlock?.block ?: return@count false
-            wantedBlock == layout.getSlot(slot.x, slot.y)?.placedBlock?.block
+    fun agreementWith(plan: GreenhouseLayout): Agreement {
+        val soil = plan.slots.count { plannedSlot ->
+            val plannedSoil = plannedSlot.soil?.block ?: return@count false
+            plannedSoil == layout.getSlot(plannedSlot.x, plannedSlot.y)?.soil?.block
         }
-        val plants = wanted.elementInstances.count { instance ->
-            elements.any {
-                it.instance.cropDef == instance.cropDef &&
-                        it.instance.slot.x == instance.slot.x && it.instance.slot.y == instance.slot.y
+        val plants = plan.plants.count { plannedPlant ->
+            scannedPlants.any {
+                it.plant.cropDef == plannedPlant.cropDef &&
+                        it.plant.slot.x == plannedPlant.slot.x && it.plant.slot.y == plannedPlant.slot.y
             }
         }
 
@@ -123,28 +106,27 @@ class GreenhouseGrid(
     }
 
 
-    /** The element standing on a slot, including a big crop covering it from its corner. */
-    fun elementCovering(slot: LayoutSlot): ElementRuntimeState? = elements.find { element ->
-        val origin = element.instance.slot
-        val footprint = element.instance.cropDef.footprint
+    fun elementCoveringSlot(slot: LayoutSlot): ScannedPlant? = scannedPlants.find { scannedPlant ->
+        val origin = scannedPlant.plant.slot
+        val footprint = scannedPlant.plant.cropDef.footprint
 
         slot.x in origin.x until origin.x + footprint.width &&
                 slot.y in origin.y until origin.y + footprint.height
     }
 
-    fun removeMatchingBlock(blockPos: BlockPos): ElementRuntimeState? {
-        return elements.find { element ->
-            element.blocksMap
+    fun removePlantWithBlockAt(blockPos: BlockPos): ScannedPlant? {
+        return scannedPlants.find { scannedPlant ->
+            scannedPlant.blocks
                 ?.keys
                 ?.any { it == blockPos }
                 ?: false
         }?.also {
-            elements.remove(it)
-            layout.elementInstances.remove(it.instance)
+            scannedPlants.remove(it)
+            layout.plants.remove(it.plant)
         }
     }
 
-    fun createSlotDataForGrid() {
+    fun readSoilBlocks() {
         val world = Minecraft.getInstance().level ?: return
         val plot = PlotAPI.getCurrentPlot() ?: return
         if (plot != this.plot) return
@@ -166,14 +148,14 @@ class GreenhouseGrid(
             )
 
             layout.getSlot(gridX, gridY)?.let {
-                it.placedBlock = state
+                it.soil = state
             }
         }
     }
 
 
-    /** The slots a change at [positions] can have reached: every slot within a crop's width of each. */
-    fun regionAround(positions: Collection<BlockPos>): Set<Pair<Int, Int>> {
+    /** every slot within a crop's width of each position */
+    fun scanSlotsReachedFrom(positions: Collection<BlockPos>): Set<Pair<Int, Int>> {
         val reach = CropRegistry.all.maxOf { maxOf(it.footprint.width, it.footprint.height) } - 1
         val region = mutableSetOf<Pair<Int, Int>>()
         positions.forEach { pos ->
@@ -187,10 +169,9 @@ class GreenhouseGrid(
         return region
     }
 
-    /** Whether any slot of [element]'s footprint lies in [region]. */
-    private fun touches(element: ElementRuntimeState, region: Set<Pair<Int, Int>>): Boolean {
-        val origin = element.instance.slot
-        val footprint = element.instance.cropDef.footprint
+    private fun footprintOverlaps(scannedPlant: ScannedPlant, region: Set<Pair<Int, Int>>): Boolean {
+        val origin = scannedPlant.plant.slot
+        val footprint = scannedPlant.plant.cropDef.footprint
         for (dx in 0 until footprint.width) {
             for (dy in 0 until footprint.height) {
                 if ((origin.x + dx) to (origin.y + dy) in region) return true
@@ -199,12 +180,11 @@ class GreenhouseGrid(
         return false
     }
 
-    /** [region] grown to hold the whole footprint of every plant it touches, so a big crop's corner is read with the rest. */
-    private fun wholePlants(region: Set<Pair<Int, Int>>): Set<Pair<Int, Int>> {
+    private fun withWholeFootprints(region: Set<Pair<Int, Int>>): Set<Pair<Int, Int>> {
         val grown = region.toMutableSet()
-        elements.filter { touches(it, region) }.forEach { element ->
-            val origin = element.instance.slot
-            val footprint = element.instance.cropDef.footprint
+        scannedPlants.filter { footprintOverlaps(it, region) }.forEach { scannedPlant ->
+            val origin = scannedPlant.plant.slot
+            val footprint = scannedPlant.plant.cropDef.footprint
             for (dx in 0 until footprint.width) {
                 for (dy in 0 until footprint.height) grown.add((origin.x + dx) to (origin.y + dy))
             }
@@ -212,40 +192,30 @@ class GreenhouseGrid(
         return grown
     }
 
-    /**
-     * Reads the plot and brings the elements into line with it. A merge, not a rebuild: a plant
-     * still in its slot keeps its age, water and confirmed stage.
-     *
-     * Given a [region], only its slots are read again and the plants outside it stay as they are.
-     *
-     * Returns false, changing nothing, when there was no world to read.
-     */
-    fun setPlantData(touchedRegion: Set<Pair<Int, Int>>? = null): Boolean {
-        val region = touchedRegion?.let { wholePlants(it) }
+    fun rescanPlants(onlySlots: Set<Pair<Int, Int>>? = null): Boolean {
+        val region = onlySlots?.let { withWholeFootprints(it) }
         val visitedSlots = Array(width) { BooleanArray(height) }
 
         val level = Minecraft.getInstance().level ?: return false
         val buildableArea = plot?.getBuildableArea() ?: return false
 
-        // a greenhouse is full of plot marker stands that hold nothing and belong to no plant, so a
-        // crop stand described without a skull would bind to one
+        // ignore marker stands
         val remainingStands = level.getEntitiesOfClass(ArmorStand::class.java, buildableArea)
             .filterNot { it.isMarker }
             .toMutableList()
 
-        // from the instances, not the runtime wrappers: the wrappers are rebuilt every scan, while
-        // the instances carry the age, water and stage, and are what goes to disk
-        val previous = layout.elementInstances.associateBy { it.slot.x to it.slot.y }
-        val readings = CropStage.StandReadings()
-        val reconciled = mutableListOf<ElementRuntimeState>()
+        // the instances carry age, water and stage; the wrappers are rebuilt each scan
+        val previousBySlot = layout.plants.associateBy { it.slot.x to it.slot.y }
+        val standCache = CropStage.StandCache()
+        val merged = mutableListOf<ScannedPlant>()
 
-        // outside the region nothing is read again: those plants, their slots and their stands are taken as they are
+        // outside the region nothing is read again
         if (region != null) {
-            elements.filterNot { touches(it, region) }.forEach { kept ->
-                reconciled.add(kept)
-                remainingStands.removeAll((kept.standEntities ?: emptyList()).toSet())
-                val origin = kept.instance.slot
-                val footprint = kept.instance.cropDef.footprint
+            scannedPlants.filterNot { footprintOverlaps(it, region) }.forEach { kept ->
+                merged.add(kept)
+                remainingStands.removeAll((kept.stands ?: emptyList()).toSet())
+                val origin = kept.plant.slot
+                val footprint = kept.plant.cropDef.footprint
                 for (dx in 0 until footprint.width) {
                     for (dy in 0 until footprint.height) {
                         if (origin.x + dx < width && origin.y + dy < height) visitedSlots[origin.y + dy][origin.x + dx] = true
@@ -261,41 +231,36 @@ class GreenhouseGrid(
 
                 val slot = layout.getSlot(x, y) ?: continue
 
-                val standing = previous[x to y]
-                val found = findElementAtSlot(slot, remainingStands, readings)
+                val previous = previousBySlot[x to y]
+                val scanned = readPlantOn(slot, remainingStands, standCache)
 
-                // a placed mutation is still there until the plot says otherwise: bare soil means it
-                // was broken, a dead bush means it rotted. Anything else read on it is the matcher's
-                // confusion, since its placed look is not recorded and it never grows into another
-                val runtime = if (standing != null && standing.fullyGrownByPlacing && !replacesPlaced(standing, found)) {
-                    stillPlaced(standing, remainingStands) ?: continue
+                // a placed mutation stays until the soil is bare or it decays
+                val runtime = if (previous != null && previous.isPlacedMutation && !shouldReplacePlacedPlant(previous, scanned)) {
+                    stillPlaced(previous, remainingStands) ?: continue
                 } else {
-                    val read = found ?: continue
-                    val def = read.instance.cropDef
+                    val scannedPlant = scanned ?: continue
+                    val def = scannedPlant.plant.cropDef
 
-                    if (standing != null && standing.elementId == read.instance.elementId) {
-                        carryOver(standing, read)
+                    if (previous != null && previous.elementId == scannedPlant.plant.elementId) {
+                        keepRecordedState(previous, scannedPlant)
                     } else {
-                        // only a plant the player was seen putting down counts as placed. The look
-                        // before may have read the slot as another crop while its stands were still
-                        // coming, so a placement is claimed whatever stood there; anything else where
-                        // nothing stood at the last look grew there on its own
-                        if (def.isMutation && state.lastUpdateTimestamp != null) {
-                            val placedNow = callbacks.placementConfirmed(def, read.instance.slot, this)
-                            if (read.instance.placed || placedNow) {
-                                callbacks.markAsPlacedPlant(read.instance)
-                            } else if (standing == null) {
-                                callbacks.claimSpawnedMutation(read.instance, layout)
-                                capToTicksSinceLook(read.instance)
+                        // only a plant placed down counts as placed
+                        if (def.isMutation && state.lastScanTime != null) {
+                            val placedNow = callbacks.placementConfirmed(def, scannedPlant.plant.slot, this)
+                            if (scannedPlant.plant.placed || placedNow) {
+                                callbacks.markAsPlaced(scannedPlant.plant)
+                            } else if (previous == null) {
+                                callbacks.claimSpawnedMutation(scannedPlant.plant, layout)
+                                capToTicksSinceLook(scannedPlant.plant)
                             }
                         }
-                        read
+                        scannedPlant
                     }
                 }
 
-                val def = runtime.instance.cropDef
+                val def = runtime.plant.cropDef
 
-                remainingStands.removeAll((runtime.standEntities ?: emptyList()).toSet())
+                remainingStands.removeAll((runtime.stands ?: emptyList()).toSet())
 
                 if (x + def.footprint.width > width ||
                     y + def.footprint.height > height
@@ -307,338 +272,271 @@ class GreenhouseGrid(
                     }
                 }
 
-                reconciled.add(runtime)
+                merged.add(runtime)
             }
         }
 
-        elements.clear()
-        elements.addAll(reconciled)
+        scannedPlants.clear()
+        scannedPlants.addAll(merged)
 
-        layout.elementInstances.clear()
-        layout.elementInstances.addAll(reconciled.map { it.instance })
+        layout.plants.clear()
+        layout.plants.addAll(merged.map { it.plant })
 
         return true
     }
 
-    /**
-     * Narrows a plant that spawned since the last look: it started at stage one then, so it cannot
-     * be further along than the ticks that have passed. One tick means it is still at stage one.
-     */
-    private fun capToTicksSinceLook(instance: GreenhouseElementInstance) {
-        val ticks = state.pendingGrowthTicks
+    private fun capToTicksSinceLook(plant: Plant) {
+        val ticks = state.ticksSinceLastScan
         if (ticks <= 0) return
 
-        val range = (instance.growthStage as? GrowthStageInfo.Estimated)?.range ?: return
-        val last = range.last.coerceAtMost(ticks)
-        if (last < range.first) return
+        val stageRange = (plant.growthStage as? GrowthStageInfo.Estimated)?.range ?: return
+        val highestStage = stageRange.last.coerceAtMost(ticks)
+        if (highestStage < stageRange.first) return
 
-        instance.growthStage =
-            if (range.first == last) GrowthStageInfo.Known(last) else GrowthStageInfo.Estimated(range.first..last)
+        plant.growthStage =
+            if (stageRange.first == highestStage) GrowthStageInfo.Known(highestStage) else GrowthStageInfo.Estimated(stageRange.first..highestStage)
     }
 
-    /**
-     * Whether what the scan read on a placed mutation's slot may take its place: the same crop, or
-     * the dead bush it rots into. A placed plant leaves no other way than being broken or rotting.
-     */
-    private fun replacesPlaced(standing: GreenhouseElementInstance, found: ElementRuntimeState?): Boolean {
-        val read = found?.instance ?: return false
+    /** the same crop, or the dead plant it decays into */
+    private fun shouldReplacePlacedPlant(previous: Plant, scanned: ScannedPlant?): Boolean {
+        val scannedPlant = scanned?.plant ?: return false
 
-        return read.elementId == standing.elementId || read.cropDef === DeadPlant.definition
+        return scannedPlant.elementId == previous.elementId || scannedPlant.cropDef === DeadPlant.definition
     }
 
-    /**
-     * The placed mutation as it still stands, with whatever sits in its footprint. Null once the
-     * soil is bare, which is the plant having been broken.
-     */
+    /** null once the soil is bare */
     private fun stillPlaced(
-        standing: GreenhouseElementInstance,
+        previous: Plant,
         remainingStands: MutableList<ArmorStand>
-    ): ElementRuntimeState? {
-        val origin = getPosForSlot(standing.slot) ?: return null
+    ): ScannedPlant? {
+        val origin = getPosForSlot(previous.slot) ?: return null
 
-        val (stands, blocks) = partsInFootprint(origin, standing.cropDef.footprint, remainingStands)
+        val (stands, blocks) = whatRemainsInFootprint(origin, previous.cropDef.footprint, remainingStands)
         if (stands.isEmpty() && blocks.isEmpty()) return null
 
-        return ElementRuntimeState(instance = standing, standEntities = stands, blocksMap = blocks)
+        return ScannedPlant(plant = previous, stands = stands, blocks = blocks)
     }
 
-    /**
-     * The plant the world just described, wearing what was known about the one already standing
-     * there: the world knows the crop and its stage, not when it was planted or what it holds.
-     */
-    private fun carryOver(
-        standing: GreenhouseElementInstance,
-        found: ElementRuntimeState
-    ): ElementRuntimeState {
-        found.instance.age = standing.age
+    private fun keepRecordedState(
+        previous: Plant,
+        scanned: ScannedPlant
+    ): ScannedPlant {
+        val scannedPlant = scanned.plant
+        scannedPlant.age = previous.age
 
-        // the plant is the one that was standing here, so it keeps the stage it was first seen at
-        // rather than the one this scan happens to find it at
-        found.instance.firstSeenStage = standing.firstSeenStage ?: found.instance.lowestStage
-        found.instance.placed = standing.placed
+        scannedPlant.firstSeenStage = previous.firstSeenStage ?: scannedPlant.lowestStage
+        scannedPlant.placed = previous.placed
 
-        // a reading the scan found no stand for is kept: the game takes a hunger bar down while a
-        // watering can is held, and the plant is no less fed for it. Only what a reader supplies,
-        // since a trait the matched look no longer carries, such as being asleep, is gone
-        val readerKeys = found.instance.cropDef.stages.flatMapTo(mutableSetOf()) { stage -> stage.readers.map { it.key } }
-        standing.readings.forEach { (key, value) ->
-            if (key in readerKeys) found.instance.readings.putIfAbsent(key, value)
+        val readerKeys = scannedPlant.cropDef.stages.flatMapTo(mutableSetOf()) { stage -> stage.readers.map { it.key } }
+        previous.readings.forEach { (key, value) ->
+            if (key in readerKeys) scannedPlant.readings.putIfAbsent(key, value)
         }
 
-        // predicted past death and still standing means ticks were skipped. The fewest that leave
-        // it alive put it one tick from dying, so that is assumed and said out loud
-        val water = standing.waterLevel
+        val previousWater = previous.waterLevel
 
-        if (water != null && water <= WaterModel.DEATH && found.instance.consumesWater) {
-            found.instance.waterLevel =
-                WaterModel.aliveFloor(water, waterEffectAt(layout, found.instance.slot))
-            found.instance.waterBestCase = null
-            found.instance.waterPredictedInDebt = true
+        if (previousWater != null && previousWater <= WaterModel.DEATH_LEVEL && scannedPlant.consumesWater) {
+            scannedPlant.waterLevel =
+                WaterModel.lowestWaterLevelStillAlive(previousWater, waterEffectAt(layout, scannedPlant.slot))
+            scannedPlant.waterBestCase = null
+            scannedPlant.waterPredictedInDebt = true
 
             callbacks.warnSurvivor(
-                DyingPlant(found.instance.cropDef.name, layout.displayName(), layout.id)
+                DyingPlant(scannedPlant.cropDef.name, layout.displayName(), layout.id)
             )
         } else {
-            found.instance.waterLevel = water
-            found.instance.waterBestCase = standing.waterBestCase
-            found.instance.waterPredictedInDebt = standing.waterPredictedInDebt
-            found.instance.waterExact = standing.waterExact
+            scannedPlant.waterLevel = previousWater
+            scannedPlant.waterBestCase = previous.waterBestCase
+            scannedPlant.waterPredictedInDebt = previous.waterPredictedInDebt
+            scannedPlant.waterExact = previous.waterExact
         }
 
-        // a diagnostic pins a stage down to one number, a scan often cannot, so a reading already
-        // taken is not thrown away for a guess that covers it
-        val standingStage = standing.growthStage
-        val foundStage = found.instance.growthStage
+        val previousStage = previous.growthStage
+        val scannedStage = scannedPlant.growthStage
 
-        if (standingStage is GrowthStageInfo.Known && foundStage is GrowthStageInfo.Estimated &&
-            standingStage.stage in foundStage.range
+        if (previousStage is GrowthStageInfo.Known && scannedStage is GrowthStageInfo.Estimated &&
+            previousStage.stage in scannedStage.range
         ) {
-            found.instance.growthStage = standingStage
+            scannedPlant.growthStage = previousStage
         }
 
-        return found
+        return scanned
     }
 
-    /**
-     * Moves every plant on by that many ticks, for a greenhouse nobody is standing in. Always an
-     * estimate: a plant in water debt may not have advanced at all. Water model: notes/water-formula.md.
-     */
-    fun predictGrowth(ticks: Int, tickMs: Long) {
-        if (ticks <= 0) return
-
-        // the plants themselves, not the runtime wrappers: a wrapper only exists while the plot is
-        // loaded, which is never true of the greenhouse this is for
-        advance(layout.elementInstances, layout, ticks, tickMs)
+    fun simulateGreenhouse(ticks: Int, tickMs: Long) {
+        simulateLayout(layout, ticks, tickMs)
     }
 
-    /**
-     * The plot as it would stand after that many more ticks, built on plants of its own so nothing
-     * real is moved on.
-     */
+    /** a copy of the layout after that many ticks */
     fun predictedLayout(ticks: Int, tickMs: Long): GreenhouseLayout {
-        val preview = layout.copy()
+        val layoutCopy = layout.deepCopy()
 
-        advance(preview.elementInstances, preview, ticks, tickMs)
+        simulateLayout(layoutCopy, ticks, tickMs)
 
-        return preview
+        return layoutCopy
     }
 
-    /**
-     * Ticks until the soggybud on [slot] of [from] reaches its last stage with the greenhouse left
-     * as it stands, its donors drying out as they will, or null when it has not within [horizon]
-     * ticks. Walked on a copy, so nothing on [from] moves; [from] may itself be a prediction.
-     */
-    fun ticksUntilGrown(from: GreenhouseLayout, slot: LayoutSlot, tickMs: Long, horizon: Int): Int? {
-        val preview = from.copy()
-        val bud = preview.elementInstances.find { it.slot.x == slot.x && it.slot.y == slot.y } ?: return null
+    /** null when the soggybud decays or passes the limit before it is grown */
+    fun ticksUntilGrown(from: GreenhouseLayout, slot: LayoutSlot, tickMs: Long): Int? {
+        val layoutCopy = from.deepCopy()
+        val soggybud = layoutCopy.plants.find { it.slot.x == slot.x && it.slot.y == slot.y } ?: return null
+        val limitTicks = soggybud.decayRemainingMs?.let { (it / tickMs).toInt() } ?: SOGGYBUD_GROWTH_LIMIT_TICKS
 
         var ticks = 0
-        while (!bud.isFullyGrown) {
-            if (ticks >= horizon) return null
-            advance(preview.elementInstances, preview, 1, tickMs)
+        while (!soggybud.isFullyGrown) {
+            if (ticks >= limitTicks) return null
+            simulateLayout(layoutCopy, 1, tickMs)
             ticks++
         }
         return ticks
     }
 
-    private fun advance(
-        instances: List<GreenhouseElementInstance>,
-        layout: GreenhouseLayout,
-        ticks: Int,
-        tickMs: Long
-    ) {
-        if (ticks <= 0) return
-
-        val draining = instances.filter { it.cropDef.drainsNeighbours }
-        if (draining.isEmpty()) {
-            advanceBy(instances, layout, ticks, tickMs)
-            return
-        }
-
-        // a drain is taken from whatever the donor still holds that tick, so the ticks are walked one
-        // at a time rather than closed over. A bud that has grown out stops draining from then on,
-        // as observed; a grown donor is still drained, also observed (a grown melon at 100 read 97.5)
-        repeat(ticks) {
-            drain(draining.filter { !it.isFullyGrown }, layout)
-            advanceBy(instances, layout, 1, tickMs)
-        }
-    }
-
-    /**
-     * Each draining plant takes its share from every plant around it that holds any water, corners
-     * included, and banks part of it. Taken before the tick's own loss, so a donor gives from what
-     * it had at the start of the tick and no more. A grown plant has stopped drinking but still
-     * holds water, so it still gives; one at or below zero gives nothing, grown or not.
-     */
-    private fun drain(draining: List<GreenhouseElementInstance>, layout: GreenhouseLayout) {
-        draining.forEach { bud ->
-            var taken = 0.0
-
-            layout.plantsAround(bud).forEach { donor ->
-                // a soggybud gives nothing to another: two side by side with nothing else near them
-                // held their totals through a tick
-                if (donor.cropDef.drainsNeighbours || !donor.cropDef.needsWater) return@forEach
-
-                val have = donor.waterLevel ?: return@forEach
-                if (have <= 0.0) return@forEach
-
-                val give = minOf(WaterModel.DRAIN_PER_DONOR, have)
-                donor.waterLevel = have - give
-                // a drain is taken whether or not the donor's own tick is skipped, so both cases pay it
-                donor.waterBestCase = donor.waterBestCase?.minus(give)
-                taken += give
-            }
-
-            bud.waterLevel = (bud.waterLevel ?: 0.0) + taken * WaterModel.DRAIN_KEPT
-        }
-    }
-
-    private fun advanceBy(
-        instances: List<GreenhouseElementInstance>,
-        layout: GreenhouseLayout,
-        ticks: Int,
-        tickMs: Long
-    ) {
-        val gardenTime = timeOfDayNow()
-
-        instances.forEach { instance ->
-            val maxStage = instance.cropDef.maxStage
-
-            // a hunger bar loses a fixed share every tick, grown or not, and the plant grows only on
-            // the ticks it starts with something left in it
-            val hunger = instance.hunger
-            val fedTicks = if (hunger == null) ticks else ticks.coerceAtMost(ticksFedFrom(hunger))
-            if (hunger != null) instance.readings[CropStandReader.HUNGER] = (hunger - ticks * HUNGER_LOSS_PER_TICK).coerceAtLeast(0)
-
-            // a finished plant stops drinking, so no water is taken off one. Judged by the lowest
-            // stage it might be at, so a plant only probably grown keeps drying
-            val lowestStage = instance.lowestStage
-
-            if (lowestStage != null && lowestStage >= maxStage) {
-                instance.age = instance.age?.plus(ticks * tickMs)
-                return@forEach
-            }
-
-            // a sleeping snoozling, a noctilume craving the other time of day and a starved fleshtrap
-            // are all stuck, and all still dry out: being stuck is not being spared
-            val cravingUnfulfilled = instance.cravesOtherTime(gardenTime)
-
-            // a plant in debt may be passed over entirely and nothing here can know, so the loss is
-            // counted anyway and the plant remembers that it is a worst case
-            val inDebt = (instance.waterLevel ?: 0.0) < 0
-            if (inDebt) instance.waterPredictedInDebt = true
-
-            // a draining plant drinks nothing of its own; what it holds only ever comes in. In debt
-            // the tick may have been skipped, which costs no water, so the best case stays where it
-            // was while the worst case is charged
-            fun dry(byTicks: Int) {
-                if (!instance.consumesWater || instance.cropDef.drainsNeighbours) return
-
-                val before = instance.waterLevel
-                instance.waterLevel = before?.let {
-                    WaterModel.after(it, byTicks, waterEffectAt(layout, instance.slot))
-                }
-                instance.waterBestCase = if (inDebt) instance.waterBestCase ?: before else instance.waterLevel
-            }
-
-            if (instance.isAsleep || cravingUnfulfilled || fedTicks == 0) {
-                dry(ticks)
-                return@forEach
-            }
-
-            instance.age = instance.age?.plus(fedTicks * tickMs)
-
-            // a plant stops drinking once it has grown out, so only the ticks it spends growing take
-            // water off it. Outside debt every tick is taken and the low end has the most left to
-            // take; in debt only a taken tick costs water, and the high end is the one that took
-            // them, so once it has grown out nothing more can be charged. A plant that starves
-            // before growing out dries through every tick, fed or not
-            val stageToGrow = if (inDebt) instance.highestStage else lowestStage
-            val stagesLeft = stageToGrow?.let { (maxStage - it).coerceAtLeast(0) }
-            val drinkingTicks = if (stagesLeft == null || fedTicks < stagesLeft) ticks else stagesLeft
-
-            dry(drinkingTicks)
-
-            val range = when (val stage = instance.growthStage) {
-                is GrowthStageInfo.Known -> stage.stage..stage.stage
-                is GrowthStageInfo.Estimated -> stage.range
-                null -> return@forEach
-            }
-
-            // a draining plant leaves a stage only once it has banked enough for that stage, and the
-            // tick's drain has already landed, so what it holds now is what is judged
-            if (instance.cropDef.drainsNeighbours) {
-                val banked = instance.waterLevel ?: 0.0
-
-                fun climbed(from: Int): Int {
-                    var stage = from
-                    repeat(fedTicks) {
-                        if (stage < maxStage && banked >= WaterModel.DRAIN_PER_STAGE * stage) stage++
-                    }
-                    return stage
-                }
-
-                val first = climbed(range.first)
-                val last = climbed(range.last)
-                instance.growthStage =
-                    if (first == last) GrowthStageInfo.Known(first) else GrowthStageInfo.Estimated(first..last)
-                return@forEach
-            }
-
-            // a snoozling drops asleep on arriving at a sleep stage, so the ticks after it were never
-            // served and it must not be walked past
-            val sleepStages = instance.cropDef.sleepStages
-
-            fun ceiling(from: Int): Int =
-                sleepStages.filter { it > from }.minOrNull()?.coerceAtMost(maxStage) ?: maxStage
-
-            // in debt every tick may have been skipped, so the low end stays where it was while the
-            // high end takes every tick: a 3 becomes 3 to 4
-            val first = if (inDebt) range.first else (range.first + fedTicks).coerceAtMost(ceiling(range.first))
-            val last = (range.last + fedTicks).coerceAtMost(ceiling(range.last))
-
-            // both ends landing on the same stage leaves nothing to estimate
-            instance.growthStage =
-                if (first == last) GrowthStageInfo.Known(first) else GrowthStageInfo.Estimated(first..last)
-
-            // judged by the lowest it might be at, so a plant only probably asleep is still called
-            // awake: the warning for one that has stopped growing is worth being sure about
-            if (first in sleepStages && first > range.first) instance.readings[CropStandReader.ASLEEP] = 1
-        }
-    }
-
     companion object {
 
-        var callbacks: GridCallbacks = GridCallbacks.None
+        private const val SOGGYBUD_GROWTH_LIMIT_TICKS: Int = 200
 
-        /** how many ticks before a never decaying plant is considered stalled. */
-        const val GROWTH_HORIZON_TICKS: Int = 200
+        fun simulateLayout(layout: GreenhouseLayout, ticks: Int, tickMs: Long) {
+            if (ticks <= 0) return
+
+            val soggybuds = layout.plants.filter { it.cropDef.drainsNeighbours }
+            if (soggybuds.isEmpty()) {
+                growPlants(layout, ticks, tickMs)
+                return
+            }
+
+            // a grown soggybud stops draining; a grown plant is still drained
+            repeat(ticks) {
+                soggybudsDrainNeighbours(soggybuds.filter { !it.isFullyGrown }, layout)
+                growPlants(layout, 1, tickMs)
+            }
+        }
+
+        /** taken before the tick's own loss, from every plant around it holding water, corners included */
+        private fun soggybudsDrainNeighbours(soggybuds: List<Plant>, layout: GreenhouseLayout) {
+            soggybuds.forEach { soggybud ->
+                var waterTaken = 0.0
+
+                layout.plantsAround(soggybud).forEach { donor ->
+                    // soggybuds do not drain each other
+                    if (donor.cropDef.drainsNeighbours || !donor.cropDef.needsWater) return@forEach
+
+                    val plantWater = donor.waterLevel ?: return@forEach
+                    if (plantWater <= 0.0) return@forEach
+
+                    val waterGiven = minOf(WaterModel.DRAIN_PER_DONOR, plantWater)
+                    donor.waterLevel = plantWater - waterGiven
+                    // a drain is paid whether or not the donor's tick is skipped
+                    donor.waterBestCase = donor.waterBestCase?.minus(waterGiven)
+                    waterTaken += waterGiven
+                }
+
+                soggybud.waterLevel = (soggybud.waterLevel ?: 0.0) + waterTaken * WaterModel.DRAIN_KEPT
+            }
+        }
+
+        private fun growPlants(layout: GreenhouseLayout, ticks: Int, tickMs: Long) {
+            val gardenTime = dayOrNightNow()
+
+            layout.plants.forEach { plant ->
+                val maxStage = plant.cropDef.maxStage
+
+                // hunger drops every tick, and a plant grows only on ticks it starts fed
+                val hunger = plant.hunger
+                val ticksFed = if (hunger == null) ticks else ticks.coerceAtMost(ticksUntilHungry(hunger))
+                if (hunger != null) plant.readings[CropStandReader.HUNGER] = (hunger - ticks * HUNGER_LOSS_PER_TICK).coerceAtLeast(0)
+
+                // a grown plant stops drinking, judged by its lowest possible stage
+                val lowestStage = plant.lowestStage
+
+                if (lowestStage != null && lowestStage >= maxStage) {
+                    plant.age = plant.age?.plus(ticks * tickMs)
+                    return@forEach
+                }
+
+                // a stuck plant still dries out
+                val stalledByTimeOfDay = plant.needsOtherTimeOfDay(gardenTime)
+
+                // a plant in debt may skip the tick
+                val inDebt = (plant.waterLevel ?: 0.0) < 0
+                if (inDebt) plant.waterPredictedInDebt = true
+
+                // in debt the best case keeps its water, since a skipped tick costs none
+                fun useWaterFor(ticks: Int) {
+                    if (!plant.consumesWater || plant.cropDef.drainsNeighbours) return
+
+                    val waterBefore = plant.waterLevel
+                    plant.waterLevel = waterBefore?.let {
+                        WaterModel.waterLevelAfter(it, ticks, waterEffectAt(layout, plant.slot))
+                    }
+                    plant.waterBestCase = if (inDebt) plant.waterBestCase ?: waterBefore else plant.waterLevel
+                }
+
+                if (plant.isAsleep || stalledByTimeOfDay || ticksFed == 0) {
+                    useWaterFor(ticks)
+                    return@forEach
+                }
+
+                plant.age = plant.age?.plus(ticksFed * tickMs)
+
+                // only ticks spent growing cost water; a plant that starves first dries through every tick
+                val stageToGrow = if (inDebt) plant.highestStage else lowestStage
+                val stagesLeft = stageToGrow?.let { (maxStage - it).coerceAtLeast(0) }
+                val drinkingTicks = if (stagesLeft == null || ticksFed < stagesLeft) ticks else stagesLeft
+
+                useWaterFor(drinkingTicks)
+
+                val stageRange = when (val stage = plant.growthStage) {
+                    is GrowthStageInfo.Known -> stage.stage..stage.stage
+                    is GrowthStageInfo.Estimated -> stage.range
+                    null -> return@forEach
+                }
+
+                // a soggybud leaves a stage once it has stored enough, after this tick's drain
+                if (plant.cropDef.drainsNeighbours) {
+                    val storedWater = plant.waterLevel ?: 0.0
+
+                    fun soggybudStageAfter(fromStage: Int): Int {
+                        var stage = fromStage
+                        repeat(ticksFed) {
+                            if (stage < maxStage && storedWater >= WaterModel.DRAIN_PER_STAGE * stage) stage++
+                        }
+                        return stage
+                    }
+
+                    val lowestStageAfter = soggybudStageAfter(stageRange.first)
+                    val highestStageAfter = soggybudStageAfter(stageRange.last)
+                    plant.growthStage =
+                        if (lowestStageAfter == highestStageAfter) GrowthStageInfo.Known(lowestStageAfter)
+                        else GrowthStageInfo.Estimated(lowestStageAfter..highestStageAfter)
+                    return@forEach
+                }
+
+                // a snoozling stops at a sleep stage
+                val sleepStages = plant.cropDef.sleepStages
+
+                fun nextSleepStage(fromStage: Int): Int =
+                    sleepStages.filter { it > fromStage }.minOrNull()?.coerceAtMost(maxStage) ?: maxStage
+
+                // in debt the low end stays and the high end grows
+                val lowestStageAfter =
+                    if (inDebt) stageRange.first else (stageRange.first + ticksFed).coerceAtMost(nextSleepStage(stageRange.first))
+                val highestStageAfter = (stageRange.last + ticksFed).coerceAtMost(nextSleepStage(stageRange.last))
+
+                plant.growthStage =
+                    if (lowestStageAfter == highestStageAfter) GrowthStageInfo.Known(lowestStageAfter)
+                    else GrowthStageInfo.Estimated(lowestStageAfter..highestStageAfter)
+
+                // asleep only once it grows into a sleep stage
+                if (lowestStageAfter in sleepStages && lowestStageAfter > stageRange.first) plant.readings[CropStandReader.ASLEEP] = 1
+            }
+        }
+
+
+        var callbacks: GridCallbacks = GridCallbacks.None
 
         fun waterEffectAt(layout: GreenhouseLayout, slot: LayoutSlot): Int =
             if (callbacks.assumeFlatWater()) 0 else layout.waterEffectAt(slot)
 
-        /** returns which noctilume need is met based on the time of day of the world */
-        fun timeOfDayNow(): Int {
+        fun dayOrNightNow(): Int {
             val time = (Minecraft.getInstance().level?.overworldClockTime ?: 0L) % 24000L
 
             return if (time in 13000L..22999L) {
@@ -648,146 +546,121 @@ class GreenhouseGrid(
             }
         }
 
-        /**
-         * The plant standing at a position, or null when nothing described matches. The soil is
-         * taken as given, since the scan and the exporter know it different ways.
-         */
-        fun findElementAt(
+        fun matchPlantAt(
             origin: BlockPos,
             soil: Block,
             remainingStands: MutableList<ArmorStand>,
             slot: LayoutSlot,
-            readings: CropStage.StandReadings = CropStage.StandReadings()
-        ): ElementRuntimeState? {
-            val candidates = CropRegistry.elementsBySoil[soil] ?: return null
+            standCache: CropStage.StandCache = CropStage.StandCache()
+        ): ScannedPlant? {
+            val cropCandidates = CropRegistry.elementsBySoil[soil] ?: return null
 
-            var bestDef: CropDefinition? = null
-            var bestGrowth: GrowthStageInfo? = null
+            var bestCrop: CropDefinition? = null
+            var bestGrowthStage: GrowthStageInfo? = null
             var bestStage: CropStage? = null
             var bestScore = -1
-            var bestPoseAgreement = -1
+            var bestMatchingHeadPoses = -1
             var bestUsedStands: List<Entity>? = null
             var bestBlocks: Map<BlockPos, BlockState>? = null
-            var bestLegacy = false
 
-            for (candidate in candidates) {
-                for (stage in candidate.stages) {
-                    val result = stage.matchesStage(origin, remainingStands, candidate.footprint, candidate.rotatesWithPlot, readings = readings)
+            for (cropCandidate in cropCandidates) {
+                for (stageCandidate in cropCandidate.stages) {
+                    val stageResult = stageCandidate.matchesStage(
+                        origin, remainingStands, cropCandidate.footprint, cropCandidate.rotatesWithPlot, standCache = standCache
+                    ) ?: continue
 
-                    if (!result.matched) continue
-                    // two stages that stand the same are told apart by the head poses their stands wear
-                    if (result.score < bestScore) continue
-                    if (result.score == bestScore && result.poseAgreement <= bestPoseAgreement) continue
+                    if (stageResult.score < bestScore) continue
+                    if (stageResult.score == bestScore && stageResult.matchingHeadPoses <= bestMatchingHeadPoses) continue
 
-                    bestScore = result.score
-                    bestPoseAgreement = result.poseAgreement
-                    bestDef = candidate
-                    bestStage = stage
-                    bestUsedStands = result.usedStands
-                    bestBlocks = result.matchedBlocks
-                    bestLegacy = result.rotationLegacy
+                    bestScore = stageResult.score
+                    bestMatchingHeadPoses = stageResult.matchingHeadPoses
+                    bestCrop = cropCandidate
+                    bestStage = stageCandidate
+                    bestUsedStands = stageResult.usedStands
+                    bestBlocks = stageResult.matchedBlocks
 
-                    val range = stage.stageRange
-                    bestGrowth = if (range.first == range.last) {
-                        GrowthStageInfo.Known(range.first)
+                    val stageRange = stageCandidate.stageRange
+                    bestGrowthStage = if (stageRange.first == stageRange.last) {
+                        GrowthStageInfo.Known(stageRange.first)
                     } else {
-                        GrowthStageInfo.Estimated(range)
+                        GrowthStageInfo.Estimated(stageRange)
                     }
                 }
             }
 
-            val definition = bestDef ?: return placedWithoutLook(origin, soil, remainingStands, slot)
+            val matchedCrop = bestCrop ?: return placedThisSession(origin, soil, remainingStands, slot)
 
-            // the dex cannot see from the data which stages predate normalized exports, so it
-            // learns from every match that only got there through the rotation fallback
-            if (bestLegacy) bestStage?.let { PlantDex.noteLegacy(definition.name, it.stageRange) }
-
-            val instance = GreenhouseElementInstance(
-                definition.elementId,
+            val plant = Plant(
+                matchedCrop.elementId,
                 slot = slot,
-                growthStage = bestGrowth,
-                cropDef = definition
+                growthStage = bestGrowthStage,
+                cropDef = matchedCrop
             )
 
-            // where this plant enters our records, overwritten in the reconcile by whatever the
-            // plant already standing here carried
-            instance.firstSeenStage = instance.lowestStage
+            plant.firstSeenStage = plant.lowestStage
 
-            // a recorded look matched, so the memory of putting a plant down here has served its purpose
             callbacks.forgetPlayerPlacementAt(origin)
 
-            // what winning this stage implies, filed before the stand readings: a noctilume's craving
-            // is carried by which skull matched
-            bestStage?.traits?.let { instance.readings.putAll(it) }
+            // a noctilume's craving comes from which skull matched
+            bestStage?.traits?.let { plant.readings.putAll(it) }
 
-            // read after matching and from every stand around the plant: a hunger bar belongs to the
-            // plant without being part of what makes it that plant. While cans are out the game hangs
-            // water bars in place of the plants' own, and a water bar in debt is red like a low one
+            // while watering cans are out, the game's water bars replace the plants' own
             val waterBarsExpected = callbacks.waterBarsExpected()
-            val standsToRead = standsAround(origin, definition.footprint).filterNot { stand ->
+            val standsToRead = currentStandsInFootprint(origin, matchedCrop.footprint).filterNot { stand ->
                 waterBarsExpected && stand.customName?.let { CropStandReader.looksLikeWaterBar(it) } == true
             }
-            bestStage?.read(standsToRead)?.let { instance.readings.putAll(it) }
+            bestStage?.readValues(standsToRead)?.let { plant.readings.putAll(it) }
 
-            return ElementRuntimeState(
-                instance = instance,
-                standEntities = bestUsedStands,
-                blocksMap = bestBlocks,
-                rotationLegacy = bestLegacy
+            return ScannedPlant(
+                plant = plant,
+                stands = bestUsedStands,
+                blocks = bestBlocks
             )
         }
 
-        /**
-         * The crop the player put down here this session, when nothing recorded matches what stands
-         * on the soil: a mutation is placed already grown and wears a look no grown stage has, so
-         * it is taken as that crop at its placed stage, flagged placed, with whatever stands and
-         * blocks sit in its footprint. From then on the flag is what remembers it.
-         */
-        private fun placedWithoutLook(
+        /** a mutation is placed with a look no grown stage has */
+        private fun placedThisSession(
             origin: BlockPos,
             soil: Block,
             remainingStands: MutableList<ArmorStand>,
             slot: LayoutSlot
-        ): ElementRuntimeState? {
-            val definition = callbacks.placedDefinitionAt(origin) ?: return null
-            if (soil !in definition.requiredSoil) return null
+        ): ScannedPlant? {
+            val placedCrop = callbacks.placedCropAt(origin) ?: return null
+            if (soil !in placedCrop.requiredSoil) return null
 
-            val (stands, blocks) = partsInFootprint(origin, definition.footprint, remainingStands)
+            val (stands, blocks) = whatRemainsInFootprint(origin, placedCrop.footprint, remainingStands)
             if (stands.isEmpty() && blocks.isEmpty()) {
                 callbacks.forgetPlayerPlacementAt(origin)
                 return null
             }
 
-            val instance = GreenhouseElementInstance(
-                definition.elementId,
+            val plant = Plant(
+                placedCrop.elementId,
                 slot = slot,
-                growthStage = GrowthStageInfo.Known(definition.stagePlacedAt),
-                cropDef = definition
+                growthStage = GrowthStageInfo.Known(placedCrop.stagePlacedAt),
+                cropDef = placedCrop
             )
-            instance.placed = true
-            instance.firstSeenStage = definition.stagePlacedAt
+            plant.placed = true
+            plant.firstSeenStage = placedCrop.stagePlacedAt
 
-            return ElementRuntimeState(instance = instance, standEntities = stands, blocksMap = blocks)
+            return ScannedPlant(plant = plant, stands = stands, blocks = blocks)
         }
 
-        /**
-         * Every stand sharing the space a crop of [footprint] occupies from [origin], markers
-         * included: a bar hung over a plant is a marker stand carrying only a name.
-         */
-        private fun standsAround(origin: BlockPos, footprint: Footprint): List<ArmorStand> {
+        /** markers included: bars over a plant are marker stands */
+        private fun currentStandsInFootprint(origin: BlockPos, footprint: Footprint): List<ArmorStand> {
             val level = Minecraft.getInstance().level ?: return emptyList()
 
             return level.getEntitiesOfClass(ArmorStand::class.java, footprint.spaceAbove(origin, CROP_HEIGHT))
         }
 
         /** The unclaimed stands and the blocks above the soil across [footprint] from [origin]. */
-        private fun partsInFootprint(
+        private fun whatRemainsInFootprint(
             origin: BlockPos,
             footprint: Footprint,
             remainingStands: List<ArmorStand>
         ): Pair<List<ArmorStand>, Map<BlockPos, BlockState>> {
             val level = Minecraft.getInstance().level ?: return emptyList<ArmorStand>() to emptyMap()
-            val stands = standsAround(origin, footprint).filter { it in remainingStands }
+            val stands = currentStandsInFootprint(origin, footprint).filter { it in remainingStands }
             val blocks = mutableMapOf<BlockPos, BlockState>()
             for (dx in 0 until footprint.width) {
                 for (dz in 0 until footprint.height) {
@@ -802,30 +675,28 @@ class GreenhouseGrid(
         }
     }
 
-    /** The plant standing on [slot], through the one matcher. */
-    fun findElementAtSlot(
+    fun readPlantOn(
         slot: LayoutSlot,
         remainingStands: MutableList<ArmorStand>,
-        readings: CropStage.StandReadings = CropStage.StandReadings()
-    ): ElementRuntimeState? {
-        val soil = slot.placedBlock?.block ?: return null
+        standCache: CropStage.StandCache = CropStage.StandCache()
+    ): ScannedPlant? {
+        val soil = slot.soil?.block ?: return null
         val origin = getPosForSlot(slot) ?: return null
 
-        return findElementAt(origin, soil, remainingStands, slot, readings)
+        return matchPlantAt(origin, soil, remainingStands, slot, standCache)
     }
 
     data class GridState(
-        var lastUpdateTimestamp: Instant? = null,
-        var needsUpdate: Boolean = false,
+        var lastScanTime: Instant? = null,
+        var needsRescan: Boolean = false,
         var assignedLayout: GreenhouseLayout? = null,
-        var hasRuntimeReferences: Boolean = false,
-        var pendingGrowthTicks: Int = 0,
-        /** Whether this greenhouse has already said its plan was built. */
+        var scannedThisVisit: Boolean = false,
+        var ticksSinceLastScan: Int = 0,
         var buildAnnounced: Boolean = false,
         /** quarter turns the assigned layout is laid with */
         var planTurns: Int = 0
     ) {
-        /** The assigned layout's id as read from disk, resolved to the layout once the presets are loaded too. */
+        /** read from disk, resolved once the presets load */
         var assignedLayoutId: String? = null
     }
 

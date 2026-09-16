@@ -1,5 +1,6 @@
 package org.magic.magicaddons.data.greenhouse.elements.mutation.common
 
+import org.magic.magicaddons.data.greenhouse.SpawnRule
 import org.magic.magicaddons.data.greenhouse.StandPose
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Rotations
@@ -17,6 +18,7 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Ashwreath : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Ashwreath",
+        dropMultiplier = 0.15,
         effects = setOf(
             CropEffect.ImprovedHarvestBoost,
             CropEffect.XpLoss
@@ -46,7 +48,8 @@ object Ashwreath : CropDefinitionProvider {
         ),
         requiredSoil = setOf(Blocks.SOUL_SAND),
         needsWater = false,
-        isMutation = true
+        isMutation = true,
+        spawnRule = SpawnRule(weight = 30, requiredNeighbourCells = mapOf("Nether Wart" to 2, "Fire" to 2))
     )
 
 }

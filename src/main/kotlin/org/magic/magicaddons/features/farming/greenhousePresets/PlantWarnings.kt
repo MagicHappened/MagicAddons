@@ -7,7 +7,7 @@ import net.minecraft.network.chat.Component
 import net.minecraft.network.chat.HoverEvent
 import net.minecraft.network.chat.Style
 import org.magic.magicaddons.data.greenhouse.CropStandReader
-import org.magic.magicaddons.data.greenhouse.GreenhouseElementInstance
+import org.magic.magicaddons.data.greenhouse.Plant
 import org.magic.magicaddons.data.greenhouse.GreenhouseGrid
 import org.magic.magicaddons.data.greenhouse.LayoutSlot
 import org.magic.magicaddons.events.EventHandler
@@ -74,13 +74,13 @@ object PlantWarnings {
     }
 
     /** Whether [instance] covers a target slot of the plan running on [grid] that accepts its crop. */
-    private fun onWantedTarget(grid: GreenhouseGrid, instance: GreenhouseElementInstance): Boolean {
+    private fun onWantedTarget(grid: GreenhouseGrid, instance: Plant): Boolean {
         val plan = grid.state.assignedLayout?.turned(grid.state.planTurns) ?: return false
         val footprint = instance.cropDef.footprint
 
-        return plan.elementInstances.any { target ->
-            target.slot.slotMark == LayoutSlot.Marking.Target &&
-                    target.defInSlot(instance.cropDef) &&
+        return plan.plants.any { target ->
+            target.slot.mark == LayoutSlot.Marking.Target &&
+                    target.acceptsCrop(instance.cropDef) &&
                     target.slot.x in instance.slot.x until instance.slot.x + footprint.width &&
                     target.slot.y in instance.slot.y until instance.slot.y + footprint.height
         }
@@ -96,15 +96,15 @@ object PlantWarnings {
 
         if (!snoozling && !noctilume) return emptyList()
 
-        val gardenTime = GreenhouseGrid.timeOfDayNow()
+        val gardenTime = GreenhouseGrid.dayOrNightNow()
 
         return notes { _, instance ->
             if (snoozling && instance.isAsleep) return@notes instance.cropDef.name to "asleep"
 
             if (!noctilume) return@notes null
-            if (!instance.cravesOtherTime(gardenTime)) return@notes null
+            if (!instance.needsOtherTimeOfDay(gardenTime)) return@notes null
 
-            val craving = instance.needsTime ?: return@notes null
+            val craving = instance.timeOfDayNeeded ?: return@notes null
 
             instance.cropDef.name to
                     "garden on ${timeName(gardenTime)}, craves ${timeName(craving)}"
@@ -127,7 +127,7 @@ object PlantWarnings {
     /** Everything with a decay clock running, mutation or not, soonest first. */
     private fun decayingPlants(): List<DecayingPlant> =
         houses().flatMap { (grid, house) ->
-            grid.layout.elementInstances.mapNotNull { instance ->
+            grid.layout.plants.mapNotNull { instance ->
                 val remaining = instance.decayRemainingMs ?: return@mapNotNull null
 
                 DecayingPlant(house, instance.cropDef.name, remaining)
@@ -220,9 +220,9 @@ object PlantWarnings {
 
     /** Groups the plants each greenhouse should report, counting repeats instead of listing them. */
     private fun notes(
-        label: (GreenhouseGrid, GreenhouseElementInstance) -> Pair<String, String?>?
+        label: (GreenhouseGrid, Plant) -> Pair<String, String?>?
     ): List<HouseNote> = houses().mapNotNull { (grid, house) ->
-        val counted = grid.layout.elementInstances
+        val counted = grid.layout.plants
             .mapNotNull { label(grid, it) }
             .groupingBy { it }
             .eachCount()

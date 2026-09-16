@@ -15,6 +15,7 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Jerryflower : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Jerryflower",
+        dropMultiplier = 2.0,
         skyblockId = SkyBlockItemId.item("JERRYFLOWER"),
         stageDefs = listOf(
             CropStage(

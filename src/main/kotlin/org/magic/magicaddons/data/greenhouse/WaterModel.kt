@@ -3,22 +3,16 @@ package org.magic.magicaddons.data.greenhouse
 import kotlin.math.ceil
 import kotlin.math.floor
 
-/**
- * How a greenhouse plant loses water: BASE_LOSS a tick, halved per full retain effect beside it and
- * raised by draining ones. Measured in game, not off the wiki. Working: notes/water-formula.md.
- */
+/** how a greenhouse plant loses water, measured in game rather than taken from the wiki */
 object WaterModel {
 
-    /** What a plant loses each growth tick with nothing beside it. */
-    const val BASE_LOSS: Int = 20
+    const val LOSS_PER_TICK: Int = 20
 
-    /** The level a plant dies at. */
-    const val DEATH: Int = -100
+    const val DEATH_LEVEL: Int = -100
 
-    /** The level a freshly watered plant holds. */
-    const val FULL: Int = 100
+    const val FULL_LEVEL: Int = 100
 
-    /** What a draining plant takes from each neighbour holding any water, corners included. */
+    /** taken from each neighbour holding any water, corners included */
     const val DRAIN_PER_DONOR: Double = 2.5
 
     /**
@@ -34,49 +28,37 @@ object WaterModel {
      */
     const val DRAIN_PER_STAGE: Double = 5.5
 
-    /**
-     * Loss per tick for a total signed effect: 50 for one retaining neighbour, -30 for a draining one.
-     * Clamped, so no amount of retain lets a plant gain water by standing still.
-     */
+    /** clamped, so no amount of retain lets a plant gain water by standing still */
     fun lossPerTick(waterEffectPercent: Int): Double =
-        (BASE_LOSS * (1.0 - waterEffectPercent / 200.0)).coerceAtLeast(0.0)
+        (LOSS_PER_TICK * (1.0 - waterEffectPercent / 200.0)).coerceAtLeast(0.0)
 
-    /** Water level after that many ticks. Allowed below the death level: the gap says how many
-     * ticks the plant has been dead for in the estimate. */
-    fun after(water: Double, ticks: Int, waterEffectPercent: Int): Double =
+    /** below the death level the gap says how many ticks the plant has been dead for in the estimate */
+    fun waterLevelAfter(water: Double, ticks: Int, waterEffectPercent: Int): Double =
         water - lossPerTick(waterEffectPercent) * ticks
 
-    /**
-     * The worst level a plant predicted dead can be at while still standing: one tick from dying.
-     */
-    fun aliveFloor(predicted: Double, waterEffectPercent: Int): Double {
+    /** where a plant predicted dead but still standing has to be: one tick from dying */
+    fun lowestWaterLevelStillAlive(predicted: Double, waterEffectPercent: Int): Double {
         val loss = lossPerTick(waterEffectPercent)
-        if (loss <= 0.0 || predicted > DEATH) return predicted
+        if (loss <= 0.0 || predicted > DEATH_LEVEL) return predicted
 
-        val skips = floor((DEATH - predicted) / loss) + 1
+        val ticksSkipped = floor((DEATH_LEVEL - predicted) / loss) + 1
 
-        return predicted + skips * loss
+        return predicted + ticksSkipped * loss
     }
 
-    /**
-     * Ticks before the plant dies, null when it loses nothing. The last tick counts even when it
-     * only takes the plant part of the way, as the game's own figure does.
-     */
+    /** the last tick counts even when it only takes the plant part of the way, as the game's own figure does */
     fun ticksUntilDeath(water: Double, waterEffectPercent: Int): Int? {
         val loss = lossPerTick(waterEffectPercent)
         if (loss <= 0.0) return null
 
-        return ceil((water - DEATH) / loss).toInt()
+        return ceil((water - DEATH_LEVEL) / loss).toInt()
     }
 
-    /** The level as the game writes it: whole when it is whole, otherwise to one place. */
-    fun shown(water: Double): String =
+    /** whole when it is whole, otherwise to one place, the way the game writes it */
+    fun formatWaterLevel(water: Double): String =
         if (water == floor(water)) water.toInt().toString() else "%.1f".format(water)
 
-    /**
-     * Time left, stated as the game states it: what remains of the current tick plus whole ticks
-     * after it. The killing tick is not waited out.
-     */
+    /** what remains of the current tick plus whole ticks after it; the killing tick is not waited out */
     fun timeUntilDeath(water: Double, waterEffectPercent: Int, remainingMs: Long, tickMs: Long): Long? {
         val ticks = ticksUntilDeath(water, waterEffectPercent) ?: return null
 

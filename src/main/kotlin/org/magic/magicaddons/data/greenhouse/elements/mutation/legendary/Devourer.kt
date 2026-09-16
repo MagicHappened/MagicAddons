@@ -1,5 +1,6 @@
 package org.magic.magicaddons.data.greenhouse.elements.mutation.legendary
 
+import org.magic.magicaddons.data.greenhouse.SpawnRule
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Rotations
 import net.minecraft.world.phys.Vec3
@@ -18,6 +19,7 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Devourer : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Devourer",
+        dropMultiplier = 19.0,
         effects = setOf(
             CropEffect.BonusDrops,
             CropEffect.ImprovedHarvestBoost,
@@ -105,7 +107,8 @@ object Devourer : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, -0.0625, 0.0),
-                        hashString = "ed83f2f247c8a9374ac9e14eb67b55dbb1f17b7db3a5052342968af71cc2c2a0"
+                        hashString = "ed83f2f247c8a9374ac9e14eb67b55dbb1f17b7db3a5052342968af71cc2c2a0",
+                        isSmall = true
                     )
                 ),
                 10..10
@@ -120,7 +123,8 @@ object Devourer : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, 0.03125, 0.0),
-                        hashString = "ed83f2f247c8a9374ac9e14eb67b55dbb1f17b7db3a5052342968af71cc2c2a0"
+                        hashString = "ed83f2f247c8a9374ac9e14eb67b55dbb1f17b7db3a5052342968af71cc2c2a0",
+                        isSmall = true
                     )
                 ),
                 11..11
@@ -135,7 +139,8 @@ object Devourer : CropDefinitionProvider {
                 armorStands = listOf(
                     CropArmorStand(
                         offset = Vec3(0.0, 0.03125, 0.0),
-                        hashString = "4100d3b81c8dd0af22af3b42c97045bd844438d2f0297b0f267a46bd35ffb33f"
+                        hashString = "4100d3b81c8dd0af22af3b42c97045bd844438d2f0297b0f267a46bd35ffb33f",
+                        isSmall = true
                     )
                 ),
                 12..12
@@ -144,6 +149,7 @@ object Devourer : CropDefinitionProvider {
         ),
         decayTimeMs = FIVE_DAY_DECAY_TIME_MS,
         maxStage = 16,
-        isMutation = true
+        isMutation = true,
+        spawnRule = SpawnRule(weight = 20, requiredNeighbourCells = mapOf("Puffercloud" to 4, "Zombud" to 4))
     )
 }

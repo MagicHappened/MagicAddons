@@ -1,5 +1,6 @@
 package org.magic.magicaddons.data.greenhouse.elements.mutation.rare
 
+import org.magic.magicaddons.data.greenhouse.SpawnRule
 import org.magic.magicaddons.data.greenhouse.CropStates.stateOf
 import net.minecraft.core.BlockPos
 import net.minecraft.world.level.block.Blocks
@@ -17,6 +18,7 @@ import net.minecraft.core.Rotations
 object Blastberry : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Blastberry",
+        dropMultiplier = 2.0,
         effects = setOf(
             CropEffect.Immunity,
             CropEffect.ImprovedHarvestBoost,
@@ -114,6 +116,7 @@ object Blastberry : CropDefinitionProvider {
         ),
         maxStage = 6,
         requiredSoil = setOf(Blocks.SAND, Blocks.RED_SAND),
-        isMutation = true
+        isMutation = true,
+        spawnRule = SpawnRule(weight = 25, requiredNeighbourCells = mapOf("Chocoberry" to 5, "Ashwreath" to 3))
     )
 }

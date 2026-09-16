@@ -1,5 +1,6 @@
 package org.magic.magicaddons.data.greenhouse.elements.mutation.legendary
 
+import org.magic.magicaddons.data.greenhouse.SpawnRule
 import net.minecraft.world.level.block.state.properties.DoubleBlockHalf
 import org.magic.magicaddons.data.greenhouse.CropStates.sunflowerState
 import org.magic.magicaddons.data.greenhouse.CropStage
@@ -19,6 +20,7 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Glasscorn : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Glasscorn",
+        dropMultiplier = 16.0,
         effects = setOf(
             CropEffect.Immunity,
             CropEffect.ImprovedWaterRetain,
@@ -34,7 +36,7 @@ object Glasscorn : CropDefinitionProvider {
         ),
         stageDefs = listOf(
             CropStage(
-                blocks = CropBlockState.blockStatePattern(
+                blocks = CropBlockState.atPositions(
                     positions = listOf(
                         BlockPos(0, 1, 0),
                         BlockPos(0, 1, 1),
@@ -42,7 +44,7 @@ object Glasscorn : CropDefinitionProvider {
                         BlockPos(1, 1, 1)
                     ),
                     blockState = sunflowerState()
-                ) + CropBlockState.blockStatePattern(
+                ) + CropBlockState.atPositions(
                     positions = listOf(
                         BlockPos(0, 2, 0),
                         BlockPos(0, 2, 1),
@@ -51,7 +53,7 @@ object Glasscorn : CropDefinitionProvider {
                     ),
                     blockState = sunflowerState(DoubleBlockHalf.UPPER)
                 ),
-                armorStands = CropArmorStand.matcherPattern(
+                armorStands = CropArmorStand.atOffsets(
                     offsets = listOf(
                         Vec3(-0.5, 0.9375, -0.5),
                         Vec3(0.5, 0.9375, -0.5),
@@ -60,7 +62,7 @@ object Glasscorn : CropDefinitionProvider {
                     ),
                     hashString = "a9f8488c7566989ff5b52a23b47058d4f75b3c178e8a3651bbf70b546ad2e64",
                     isSmall = false
-                ) + CropArmorStand.matcherPattern(
+                ) + CropArmorStand.atOffsets(
                     offsets = listOf(
                         Vec3(0.5, 0.375, -0.5),
                         Vec3(-0.5, 0.375, -0.5),
@@ -74,7 +76,7 @@ object Glasscorn : CropDefinitionProvider {
             ),
             // the glass on top changes with the stage, so it is neither matched nor drawn
             CropStage(
-                blocks = CropBlockState.blockStatePattern(
+                blocks = CropBlockState.atPositions(
                     listOf(
                         BlockPos(0, 1, 0),
                         BlockPos(0, 1, 1),
@@ -83,7 +85,7 @@ object Glasscorn : CropDefinitionProvider {
                     ),
                     blockState = sunflowerState(DoubleBlockHalf.LOWER)
                 ),
-                armorStands = CropArmorStand.matcherPattern(
+                armorStands = CropArmorStand.atOffsets(
                     offsets = listOf(
                         Vec3(-0.5, 0.9375, 0.5),
                         Vec3(-0.5, 0.9375, -0.5),
@@ -93,7 +95,7 @@ object Glasscorn : CropDefinitionProvider {
                     hashString = "a9f8488c7566989ff5b52a23b47058d4f75b3c178e8a3651bbf70b546ad2e64",
                     isSmall = false
                 ) +
-                CropArmorStand.matcherPattern(
+                CropArmorStand.atOffsets(
                     offsets = listOf(
                         Vec3(-0.5, 0.375, 0.5),
                         Vec3(0.5, 0.375, 0.5),
@@ -109,6 +111,7 @@ object Glasscorn : CropDefinitionProvider {
         maxStage = 9,
         footprint = Footprint(2, 2),
         requiredSoil = setOf(Blocks.SAND, Blocks.RED_SAND),
-        isMutation = true
+        isMutation = true,
+        spawnRule = SpawnRule(weight = 20, requiredNeighbourCells = mapOf("Startlevine" to 6, "Chloronite" to 6))
     )
 }

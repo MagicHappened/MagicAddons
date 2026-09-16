@@ -109,7 +109,7 @@ object GreenhouseData : GridCallbacks {
 
     private class CropPlacement(val def: CropDefinition, val at: Long)
 
-    override fun placedDefinitionAt(soil: BlockPos): CropDefinition? = cropPlacements[BlockPos(soil.x, GREENHOUSE_SOIL_Y, soil.z)]?.def
+    override fun placedCropAt(soil: BlockPos): CropDefinition? = cropPlacements[BlockPos(soil.x, GREENHOUSE_SOIL_Y, soil.z)]?.def
 
     override fun assumeFlatWater(): Boolean = GreenhousePresets.assumeFlatWater()
 
@@ -145,7 +145,7 @@ object GreenhouseData : GridCallbacks {
 
     /** Whether a diagnosis read off the tool may change what the mod holds. */
     var toolUpdatesState: Boolean = true
-    private var plantDiagnosticListeningElement: ElementRuntimeState? = null
+    private var plantDiagnosticListeningElement: ScannedPlant? = null
 
     private fun initKnownIds() {
         if (checkGreenhouses) return
@@ -159,10 +159,10 @@ object GreenhouseData : GridCallbacks {
             existingGrid ?: run {
                 val gridLayout = GreenhouseLayout(id = plotId)
                 val gridState = GreenhouseGrid.GridState(
-                    lastUpdateTimestamp = null,
-                    needsUpdate = true,
+                    lastScanTime = null,
+                    needsRescan = true,
                     assignedLayout = null,
-                    hasRuntimeReferences = false
+                    scannedThisVisit = false
                 )
 
                 val grid = GreenhouseGrid(gridState, gridLayout)
@@ -224,7 +224,7 @@ object GreenhouseData : GridCallbacks {
         val plot = PlotAPI.getCurrentPlot() ?: return
 
         val grid = getCurrentGrid() ?: return
-        if (grid.state.hasRuntimeReferences && !grid.state.needsUpdate) return
+        if (grid.state.scannedThisVisit && !grid.state.needsRescan) return
 
         // read again on a later tick, once the rest of the plot has been sent
         if (!plotReady(plot)) {
@@ -234,11 +234,11 @@ object GreenhouseData : GridCallbacks {
 
         grid.plot = plot
 
-        grid.createSlotDataForGrid()
+        grid.readSoilBlocks()
 
         // a merge, so whatever the plot cannot say for a plant that is still there is carried over,
         // and any stage predicted while away is corrected by what is actually standing
-        if (!grid.setPlantData()) return
+        if (!grid.rescanPlants()) return
 
         // the plan is laid the way the plot agrees with, judged afresh on arriving: what stands now
         // says which way it was built, and a turn picked on assign may be stale by then
@@ -253,15 +253,16 @@ object GreenhouseData : GridCallbacks {
         }
 
         claimPlantedCrop(grid)
+        SpawnLog.noteScan(grid)
 
         // the plan on screen is read off the plot, so it is only right until the plot changes
         LayoutRenderState.refresh()
 
         // after grid update
-        grid.state.hasRuntimeReferences = true
-        grid.state.needsUpdate = false
-        grid.state.lastUpdateTimestamp = Instant.now()
-        grid.state.pendingGrowthTicks = 0
+        grid.state.scannedThisVisit = true
+        grid.state.needsRescan = false
+        grid.state.lastScanTime = Instant.now()
+        grid.state.ticksSinceLastScan = 0
         arrivalScanPending = false
     }
 
@@ -304,11 +305,11 @@ object GreenhouseData : GridCallbacks {
      * the player stands in it, otherwise on their next visit.
      */
     fun rescanFromScratch(grid: GreenhouseGrid) {
-        grid.elements.clear()
-        grid.layout.elementInstances.clear()
-        grid.state.hasRuntimeReferences = false
-        grid.state.lastUpdateTimestamp = null
-        grid.state.needsUpdate = true
+        grid.scannedPlants.clear()
+        grid.layout.plants.clear()
+        grid.state.scannedThisVisit = false
+        grid.state.lastScanTime = null
+        grid.state.needsRescan = true
 
         if (getCurrentGrid() === grid) {
             arrivalScanPending = true
@@ -336,21 +337,21 @@ object GreenhouseData : GridCallbacks {
 
         fullScanWanted = false
         lastChangeAt = null
-        getCurrentGrid()?.state?.needsUpdate = true
+        getCurrentGrid()?.state?.needsRescan = true
         scanGridData()
     }
 
     /** Reads only the slots a change at [positions] can have reached; a plot never read gets the full scan. */
     private fun rescanAround(positions: List<BlockPos>) {
         val grid = getCurrentGrid() ?: return
-        rescanSlots(grid, grid.regionAround(positions))
+        rescanSlots(grid, grid.scanSlotsReachedFrom(positions))
     }
 
     /** Reads only [region] of [grid] again, as slot coordinates; every plant outside it is kept as it is. */
     private fun rescanSlots(grid: GreenhouseGrid, region: Set<Pair<Int, Int>>) {
         if (!inOwnGarden()) return
         if (getCurrentGrid() !== grid) return
-        if (!grid.state.hasRuntimeReferences) {
+        if (!grid.state.scannedThisVisit) {
             fullScanWanted = true
             return
         }
@@ -361,8 +362,8 @@ object GreenhouseData : GridCallbacks {
         }
         grid.plot = plot
 
-        grid.createSlotDataForGrid()
-        if (!grid.setPlantData(region)) return
+        grid.readSoilBlocks()
+        if (!grid.rescanPlants(region)) return
         claimPlantedCrop(grid)
         LayoutRenderState.refresh()
     }
@@ -426,8 +427,8 @@ object GreenhouseData : GridCallbacks {
         val ticks = absenceTicks() ?: return
 
         val crowded = greenhouseGrids.mapNotNull { grid ->
-            ChorusCollision.analyse(grid, ticks)
-                ?.takeIf { it.warns }
+            ChorusCollision.reportFor(grid, ticks, BioanalysisAccessory.mutationWeightMultiplier())
+                ?.takeIf { it.needsWarning }
                 ?.let { grid.layout to it }
         }
 
@@ -449,11 +450,11 @@ object GreenhouseData : GridCallbacks {
             }
 
             message.append(
-                Component.literal("break ${report.cull} youngest chorus")
+                Component.literal("break ${report.chorusToBreak} youngest chorus")
                     .withStyle(ChatFormatting.YELLOW)
             )
             message.append(
-                Component.literal(" (or harvest ${report.cull * 2} ripe)")
+                Component.literal(" (or harvest ${report.chorusToBreak * 2} ripe)")
                     .withStyle(ChatFormatting.GRAY)
             )
             message.append(Component.literal(" in ").withStyle(ChatFormatting.GRAY))
@@ -461,12 +462,12 @@ object GreenhouseData : GridCallbacks {
             // the numbers behind the verdict hang off the greenhouse's own name, so several
             // greenhouses in one warning each keep their own working
             val detail = Component.literal(
-                "${report.movers} moving chorus, ${report.free} free tiles, " +
-                        "${report.spawnOpen} open spawners over ${report.ticks} ticks away.\n" +
-                        "Margin ${report.margin} plus ${report.ripening} ripening is under the " +
-                        "${report.need} the window asks for." +
-                        if (report.jelliesAtRisk > 0) {
-                            "\n${report.jelliesAtRisk} growing jellybeans stand in the blast radius."
+                "${report.movingChorus} moving chorus, ${report.freeTiles} free tiles, " +
+                        "${report.openSpawners} open spawners over ${report.ticksAway} ticks away.\n" +
+                        "Margin ${report.tilesSpare} plus ${report.ripeningChorus} ripening is under the " +
+                        "${report.tilesNeeded} the window asks for." +
+                        if (report.growingJellybeansAtRisk > 0) {
+                            "\n${report.growingJellybeansAtRisk} growing jellybeans stand in the blast radius."
                         } else {
                             ""
                         }
@@ -499,11 +500,11 @@ object GreenhouseData : GridCallbacks {
         val dying = mutableListOf<DyingPlant>()
 
         greenhouseGrids.forEach { grid ->
-            grid.layout.elementInstances.forEach { instance ->
+            grid.layout.plants.forEach { instance ->
                 if (!instance.consumesWater) return@forEach
 
                 val water = instance.waterLevel ?: return@forEach
-                if (water <= WaterModel.DEATH) return@forEach
+                if (water <= WaterModel.DEATH_LEVEL) return@forEach
 
                 // a plant that has finished growing stopped drinking, so nothing kills it
                 val lowestStage = instance.lowestStage
@@ -700,13 +701,14 @@ object GreenhouseData : GridCallbacks {
         miscInfo.nextTickTime = current.plusMillis(nextTickAdvance)
 
         greenhouseGrids.forEach { grid ->
-            if (onlineTickTracking && !grid.hasRuntime()) return@forEach
+            if (onlineTickTracking && !grid.isScannedThisVisit()) return@forEach
 
-            grid.state.pendingGrowthTicks += elapsedTicks
-            grid.state.needsUpdate = true
+            SpawnLog.noteGrowthTicks(grid, elapsedTicks, leftGarden = !onlineTickTracking)
+            grid.state.ticksSinceLastScan += elapsedTicks
+            grid.state.needsRescan = true
 
             // nobody is looking at this greenhouse, so the clock is all we have to go on
-            grid.predictGrowth(elapsedTicks, growthTickMs)
+            grid.simulateGreenhouse(elapsedTicks, growthTickMs)
         }
 
         // posted after every plant has been moved on, so a listener reads the garden as it now
@@ -809,7 +811,7 @@ object GreenhouseData : GridCallbacks {
         if (event.new != SkyBlockIsland.GARDEN) {
             DataHandler.saveGardenData()
             greenhouseGrids.forEach {
-                it.state.hasRuntimeReferences = false
+                it.state.scannedThisVisit = false
             }
             EventBus.post(PlotChangedEvent(lastPlot,null))
             lastPlot = null
@@ -819,6 +821,7 @@ object GreenhouseData : GridCallbacks {
 
     @Subscription
     fun onGameShutdown(event: ServerDisconnectEvent) {
+        SpawnLog.onGameClosing()
         DataHandler.saveGardenData()
     }
 
@@ -909,7 +912,7 @@ object GreenhouseData : GridCallbacks {
         regenRender()
 
         val grid = getCurrentGrid() ?: return
-        if (!grid.hasRuntime()) return
+        if (!grid.isScannedThisVisit()) return
 
 
         val pos = event.pos
@@ -919,9 +922,9 @@ object GreenhouseData : GridCallbacks {
 
         val slot = grid.getSlotAt(pos, false) ?: return
         if (event.pos.y == GREENHOUSE_SOIL_Y) {
-            slot.placedBlock = Blocks.AIR.defaultBlockState()
+            slot.soil = Blocks.AIR.defaultBlockState()
         } else {
-            grid.removeMatchingBlock(pos)
+            grid.removePlantWithBlockAt(pos)
         }
 
         requestReconcile(pos)
@@ -932,7 +935,7 @@ object GreenhouseData : GridCallbacks {
         regenRender()
 
         val grid = getCurrentGrid() ?: return
-        if (!grid.hasRuntime()) return
+        if (!grid.isScannedThisVisit()) return
 
         val blockVec3 = Vec3.atCenterOf(event.pos)
         if (grid.plot?.aabb?.contains(blockVec3) != true) return
@@ -953,7 +956,7 @@ object GreenhouseData : GridCallbacks {
         lastEntityArrivalAt = System.currentTimeMillis()
 
         val grid = getCurrentGrid() ?: return
-        if (!grid.hasRuntime()) return
+        if (!grid.isScannedThisVisit()) return
 
         requestReconcile(arrived.map { BlockPos.containing(it) })
     }
@@ -961,28 +964,28 @@ object GreenhouseData : GridCallbacks {
     @EventHandler
     fun onBlockUpdated(event: BlockChangedEvent) {
         val grid = getCurrentGrid() ?: return
-        if (!grid.hasRuntime()) return
+        if (!grid.isScannedThisVisit()) return
 
         val gridArea = grid.plot?.getBuildableArea() ?: return
         if (!gridArea.contains(event.packet.pos.center())) return
         val slot = grid.getSlotAt(event.packet.pos, false) ?: return
 
         if (event.packet.pos.y == GREENHOUSE_SOIL_Y + 1 && event.packet.blockState.block == Blocks.FIRE) {
-            val alreadyHasFire = grid.elements.any {
-                it.instance.slot == slot && it.instance.cropDef.name == "Fire"
+            val alreadyHasFire = grid.scannedPlants.any {
+                it.plant.slot == slot && it.plant.cropDef.name == "Fire"
             }
             if (!alreadyHasFire) {
                 val fireRuntime = FireElement.getFireAtSlot(
                     slot,
                     mapOf(event.packet.pos to event.packet.blockState)
                 )
-                grid.elements.add(fireRuntime)
+                grid.scannedPlants.add(fireRuntime)
             }
             return
         }
 
         if (event.packet.pos.y != GREENHOUSE_SOIL_Y) return
-        slot.placedBlock = event.packet.blockState
+        slot.soil = event.packet.blockState
 
         requestReconcile(event.packet.pos)
     }
@@ -995,7 +998,7 @@ object GreenhouseData : GridCallbacks {
     @EventHandler
     fun onEntityRemoved(event: EntityRemovedEvent) {
         val grid = getCurrentGrid() ?: return
-        if (!grid.hasRuntime()) return
+        if (!grid.isScannedThisVisit()) return
 
         val area = grid.plot?.getBuildableArea() ?: return
         requestReconcile(event.removedEntityList.map { it.entity.position() }.filter { area.contains(it) }.map { BlockPos.containing(it) })
@@ -1017,7 +1020,7 @@ object GreenhouseData : GridCallbacks {
     @EventHandler
     fun onAttackEntity(event: AttackEntityEvent) {
         val grid = getCurrentGrid() ?: return
-        if (!grid.hasRuntime()) return
+        if (!grid.isScannedThisVisit()) return
 
         val area = grid.plot?.getBuildableArea() ?: return
         if (!area.contains(event.target.position())) return
@@ -1030,7 +1033,7 @@ object GreenhouseData : GridCallbacks {
         val entityBlockPos = BlockPos.containing(event.target.position())
         plantDiagnosticHitBaseBlock = BlockPos(entityBlockPos.x, GREENHOUSE_SOIL_Y, entityBlockPos.z)
         val grid = getCurrentGrid() ?: return
-        if (!grid.hasRuntime()) return
+        if (!grid.isScannedThisVisit()) return
         val mainHandId = event.player.mainHandItem.getSkyBlockId() ?: return
         val standTarget = event.target as? ArmorStand ?: return
         if (mainHandId.id == DIAGNOSTICS_TOOL_ID) listenAtStand(standTarget, grid)
@@ -1042,7 +1045,7 @@ object GreenhouseData : GridCallbacks {
     @EventHandler
     fun onItemUse(event: UseEvent) {
         val grid = getCurrentGrid() ?: return
-        if (!grid.hasRuntime()) return
+        if (!grid.isScannedThisVisit()) return
         val mainHandId = event.player.mainHandItem.getSkyBlockId() ?: return
 
         GreenhouseWatering.startWateringWindow(mainHandId)
@@ -1052,7 +1055,7 @@ object GreenhouseData : GridCallbacks {
     fun onBlockUse(event: BlockUseEvent) {
         plantDiagnosticHitBaseBlock = BlockPos(event.hit.blockPos.x, GREENHOUSE_SOIL_Y, event.hit.blockPos.z)
         val grid = getCurrentGrid() ?: return
-        if (!grid.hasRuntime()) return
+        if (!grid.isScannedThisVisit()) return
         val mainHandId = event.player.mainHandItem.getSkyBlockId() ?: return
 
         val foundCrop = CropRegistry.get(mainHandId.id)
@@ -1131,9 +1134,9 @@ object GreenhouseData : GridCallbacks {
 
         placements.toList().forEach { placement ->
             val slot = grid.getSlotAt(placement.pos, false) ?: return@forEach
-            val element = grid.elementCovering(slot) ?: return@forEach
+            val element = grid.elementCoveringSlot(slot) ?: return@forEach
 
-            if (placementConfirmed(element.instance.cropDef, slot, grid)) markAsPlacedPlant(element.instance)
+            if (placementConfirmed(element.plant.cropDef, slot, grid)) markAsPlaced(element.plant)
         }
     }
 
@@ -1149,7 +1152,7 @@ object GreenhouseData : GridCallbacks {
         return true
     }
 
-    override fun markAsPlacedPlant(instance: GreenhouseElementInstance) {
+    override fun markAsPlaced(instance: Plant) {
         instance.placed = true
         instance.age = 0L
 
@@ -1170,7 +1173,7 @@ object GreenhouseData : GridCallbacks {
     }
 
 
-    override fun claimSpawnedMutation(instance: GreenhouseElementInstance, layout: GreenhouseLayout) {
+    override fun claimSpawnedMutation(instance: Plant, layout: GreenhouseLayout) {
         val grown = ((instance.lowestStage ?: 1) - 1).coerceAtLeast(0)
         val now = Instant.now()
 
@@ -1179,13 +1182,17 @@ object GreenhouseData : GridCallbacks {
             instance.waterLevel = WaterModel.DRAIN_PER_STAGE * grown
             instance.waterExact = false
         } else if (instance.cropDef.needsWater) {
-            instance.waterLevel = WaterModel.after(0.0, grown, GreenhouseGrid.waterEffectAt(layout, instance.slot))
-            instance.waterExact = true
+            val waterEffect = GreenhouseGrid.waterEffectAt(layout, instance.slot)
+            val predictedWater = WaterModel.waterLevelAfter(0.0, grown, waterEffect)
+            // a spawn still standing is alive
+            instance.waterLevel = WaterModel.lowestWaterLevelStillAlive(predictedWater, waterEffect)
+            instance.waterExact = predictedWater > WaterModel.DEATH_LEVEL
         }
 
         instance.waterBestCase = null
         instance.age = Duration.between(gardenArrivedAt ?: now, now).toMillis().coerceAtLeast(0L)
         instance.firstSeenStage = 1
+        SpawnLog.recordSpawn(instance, layout)
     }
 
     private val PLACE_REFUSALS: List<Regex> = listOf(
@@ -1203,20 +1210,20 @@ object GreenhouseData : GridCallbacks {
     }
 
     private fun listenAtBlock(pos: BlockPos, grid: GreenhouseGrid) {
-        plantDiagnosticListeningElement = grid.elements.find { it.blocksMap?.keys?.contains(pos) == true }
+        plantDiagnosticListeningElement = grid.scannedPlants.find { it.blocks?.keys?.contains(pos) == true }
             ?: elementAround(pos, grid)
     }
 
     private fun listenAtStand(stand: ArmorStand, grid: GreenhouseGrid) {
-        plantDiagnosticListeningElement = grid.elements.find { it.standEntities?.contains(stand) == true }
+        plantDiagnosticListeningElement = grid.scannedPlants.find { it.stands?.contains(stand) == true }
             ?: elementAround(stand.blockPosition(), grid)
     }
 
 
-    private fun elementAround(pos: BlockPos, grid: GreenhouseGrid): ElementRuntimeState? =
-        grid.getSlotAt(BlockPos(pos.x, GREENHOUSE_SOIL_Y, pos.z), false)?.let { grid.elementCovering(it) }
+    private fun elementAround(pos: BlockPos, grid: GreenhouseGrid): ScannedPlant? =
+        grid.getSlotAt(BlockPos(pos.x, GREENHOUSE_SOIL_Y, pos.z), false)?.let { grid.elementCoveringSlot(it) }
 
-    private fun getDiagnosesData(realItems: List<ItemStack>, listening: ElementRuntimeState?, hit: BlockPos?) {
+    private fun getDiagnosesData(realItems: List<ItemStack>, listening: ScannedPlant?, hit: BlockPos?) {
         if (!baseSetting.value) return
         val identifyStack = realItems.firstOrNull() ?: return
 
@@ -1310,10 +1317,10 @@ object GreenhouseData : GridCallbacks {
         val target = listening?.takeIf { inOwnGarden() }?.let { disputeRecordWith(it, def, status) }
 
         target?.let { element ->
-            age?.parseDurationToMs()?.let { element.instance.age = it }
-            stageRaw?.let { element.instance.growthStage = GrowthStageInfo.Known(it) }
+            age?.parseDurationToMs()?.let { element.plant.age = it }
+            stageRaw?.let { element.plant.growthStage = GrowthStageInfo.Known(it) }
 
-            val plant = element.instance
+            val plant = element.plant
             if (plant.cropDef.isMutation) {
                 val stage = stageRaw ?: plant.highestStage
                 val grown = stage != null && stage >= plant.cropDef.maxStage
@@ -1325,10 +1332,10 @@ object GreenhouseData : GridCallbacks {
             }
 
             waterLevel?.let {
-                element.instance.waterLevel = it
-                element.instance.waterBestCase = null
-                element.instance.waterPredictedInDebt = false
-                element.instance.waterExact = true
+                element.plant.waterLevel = it
+                element.plant.waterBestCase = null
+                element.plant.waterPredictedInDebt = false
+                element.plant.waterExact = true
             }
         }
 
@@ -1370,12 +1377,12 @@ object GreenhouseData : GridCallbacks {
     }
 
     
-    private fun disputeRecordWith(element: ElementRuntimeState, toolCrop: CropDefinition?, status: String?): ElementRuntimeState? {
-        val plant = element.instance
+    private fun disputeRecordWith(element: ScannedPlant, toolCrop: CropDefinition?, status: String?): ScannedPlant? {
+        val plant = element.plant
         val otherCrop = toolCrop != null && toolCrop != plant.cropDef
         val toolSaysGrowing = status?.contains("Growing", ignoreCase = true) == true
 
-        if (plant.fullyGrownByPlacing && (otherCrop || toolSaysGrowing)) plant.placed = false
+        if (plant.isPlacedMutation && (otherCrop || toolSaysGrowing)) plant.placed = false
         if (!otherCrop) return element
 
         val grid = getCurrentGrid() ?: return null
@@ -1389,8 +1396,8 @@ object GreenhouseData : GridCallbacks {
         }
         rescanSlots(grid, slots)
 
-        val found = grid.layout.getSlot(plant.slot.x, plant.slot.y)?.let { grid.elementCovering(it) }
-        return found?.takeIf { it.instance.cropDef == toolCrop }
+        val found = grid.layout.getSlot(plant.slot.x, plant.slot.y)?.let { grid.elementCoveringSlot(it) }
+        return found?.takeIf { it.plant.cropDef == toolCrop }
     }
 
     /**
@@ -1486,7 +1493,7 @@ object GreenhouseData : GridCallbacks {
         val foundUniques = mutableSetOf<UniqueCropKey>()
 
         greenhouseGrids.forEach { grid ->
-            grid.layout.elementInstances.forEach { instance ->
+            grid.layout.plants.forEach { instance ->
                 if (!instance.cropDef.isBaseCrop) return@forEach
                 foundUniques.add(UniqueCropKey.from(instance.cropDef))
             }

@@ -168,8 +168,7 @@ class CropPreviewScreen(
         cropMaxY = 1.0
         val level = Minecraft.getInstance().level ?: return
 
-        def.stageDefs
-            .flatMap { if (it is CropStagePattern) it.expand() else listOf(it) }
+        def.stages
             .mapNotNull { it.toRenderData(level, ORIGIN, def.footprint, def.standPoses, def.rotatesWithPlot) }
             .forEach { data ->
                 data.blockMap.keys.forEach {
@@ -211,8 +210,7 @@ class CropPreviewScreen(
         val def = selectedDef ?: return
         val level = Minecraft.getInstance().level ?: return
 
-        val stageDef = def.stageDefs
-            .flatMap { if (it is CropStagePattern) it.expand() else listOf(it) }
+        val stageDef = def.stages
             .firstOrNull { stage in it.stageRange && it.wears(variant, def, stage) }
             ?: return
 

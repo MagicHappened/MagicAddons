@@ -1,5 +1,6 @@
 package org.magic.magicaddons.data.greenhouse.elements.mutation.epic
 
+import org.magic.magicaddons.data.greenhouse.SpawnRule
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Rotations
 import net.minecraft.world.phys.Vec3
@@ -17,6 +18,7 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Puffercloud : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Puffercloud",
+        dropMultiplier = 6.0,
         effects = setOf(
             CropEffect.ImprovedHarvestBoost,
             CropEffect.WaterDrain
@@ -248,6 +250,7 @@ object Puffercloud : CropDefinitionProvider {
         ),
         decayTimeMs = FIVE_DAY_DECAY_TIME_MS,
         maxStage = 14,
-        isMutation = true
+        isMutation = true,
+        spawnRule = SpawnRule(weight = 25, requiredNeighbourCells = mapOf("Snoozling" to 2, "Do-not-eat-shroom" to 6))
     )
 }

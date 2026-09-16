@@ -1,5 +1,6 @@
 package org.magic.magicaddons.data.greenhouse.elements.mutation.epic
 
+import org.magic.magicaddons.data.greenhouse.SpawnRule
 import net.minecraft.core.Rotations
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.CropArmorStand
@@ -12,6 +13,7 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Turtlellini : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Turtlellini",
+        dropMultiplier = 0.5,
         effects = setOf(
             CropEffect.WaterRetain,
             CropEffect.Immunity
@@ -32,6 +34,7 @@ object Turtlellini : CropDefinitionProvider {
             )
         ),
         needsWater = false,
-        isMutation = true
+        isMutation = true,
+        spawnRule = SpawnRule(weight = 25, requiredNeighbourCells = mapOf("Soggybud" to 4, "Choconut" to 4))
     )
 }

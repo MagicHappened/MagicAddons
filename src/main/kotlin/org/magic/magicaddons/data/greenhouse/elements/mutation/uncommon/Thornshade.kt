@@ -1,5 +1,6 @@
 package org.magic.magicaddons.data.greenhouse.elements.mutation.uncommon
 
+import org.magic.magicaddons.data.greenhouse.SpawnRule
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Rotations
 import net.minecraft.world.phys.Vec3
@@ -16,6 +17,7 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Thornshade : CropDefinitionProvider {
     override val definition = CropDefinition(
         name = "Thornshade",
+        dropMultiplier = 2.0,
         effects = setOf(
             CropEffect.EffectSpread
         ),
@@ -154,6 +156,7 @@ object Thornshade : CropDefinitionProvider {
             )
         ),
         maxStage = 8,
-        isMutation = true
+        isMutation = true,
+        spawnRule = SpawnRule(weight = 25, requiredNeighbourCells = mapOf("Wild Rose" to 4, "Veilshroom" to 4))
     )
 }

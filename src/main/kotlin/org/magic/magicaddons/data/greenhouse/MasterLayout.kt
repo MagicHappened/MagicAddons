@@ -46,7 +46,7 @@ data class MasterLayout(
                 name = plot.name,
                 size = plot.size,
                 slots = plot.slots,
-                elementInstances = plot.elementInstances
+                plants = plot.plants
             )
             repaired = true
         }
@@ -54,7 +54,7 @@ data class MasterLayout(
         return repaired
     }
 
-    fun isEmpty(): Boolean = plots.all { it.elementInstances.isEmpty() }
+    fun isEmpty(): Boolean = plots.all { it.plants.isEmpty() }
 
     companion object {
         const val MAX_PLOTS: Int = 3
