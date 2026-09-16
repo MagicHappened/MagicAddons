@@ -47,12 +47,23 @@ object PickaxeAbilityCooldown : Feature() {
         "Sheer Force" to 120
     )
 
+    private val BLUE_CHEESE_COOLDOWN_SECONDS: Map<String, Int> = mapOf(
+        "Mining Speed Boost" to 120,
+        "Pickobulus" to 40,
+        "Maniac Miner" to 120,
+        "Tunnel Vision" to 100,
+        "Gemstone Infusion" to 120,
+        "Sheer Force" to 120
+    )
+
     private val FUEL_TANK_REDUCTION: List<Pair<String, Double>> = listOf(
         "perfectly" to 0.10,
         "gemstone" to 0.06,
         "titanium" to 0.04,
         "mithril" to 0.02
     )
+
+    private const val BLUE_CHEESE_MODULE: String = "goblin_omelette_blue_cheese"
 
     private const val COOLDOWN_ATTRIBUTE_ID: String = "attribute:e8"
 
@@ -80,17 +91,16 @@ object PickaxeAbilityCooldown : Feature() {
     private const val READY_TITLE_FADE: Int = 3
     private const val READY_TITLE_STAY: Int = 20
 
-    /** A moment on both clocks, so a cooldown can be counted on either whatever the setting was then. */
-    private class Stamp(val realMs: Long, val serverMs: Long) {
-        fun elapsedMs(onServerTime: Boolean): Long =
+    private class UseMoment(val realMs: Long, val serverMs: Long) {
+        fun msSince(onServerTime: Boolean): Long =
             if (onServerTime) ServerClock.nowMs() - serverMs else System.currentTimeMillis() - realMs
     }
 
-    private fun stampNow(): Stamp = Stamp(System.currentTimeMillis(), ServerClock.nowMs())
+    private fun useMomentNow(): UseMoment = UseMoment(System.currentTimeMillis(), ServerClock.nowMs())
 
     /** A click with a pickaxe, and what its cooldown will be cut by once the chat names the ability. */
-    private class PendingUse(val at: Stamp, val itemFactor: Double) {
-        fun awaitingChat(): Boolean = at.elapsedMs(onServerTime = false) <= CHAT_WINDOW_MS
+    private class PendingUse(val clickedAt: UseMoment, val itemFactor: Double, val hasBlueCheese: Boolean) {
+        fun stillAwaitingChatLine(): Boolean = clickedAt.msSince(onServerTime = false) <= CHAT_WINDOW_MS
     }
 
     private var pendingUse: PendingUse? = null
@@ -105,8 +115,8 @@ object PickaxeAbilityCooldown : Feature() {
     private var mayhemCooldown: Boolean = false
 
     private var abilityName: String? = null
-    private var usedAt: Stamp? = null
-    private var cooldownMs: Long? = null
+    private var abilityUsedAt: UseMoment? = null
+    private var abilityCooldownMs: Long? = null
     private var warnedReady: Boolean = true
 
     @EventHandler
@@ -118,12 +128,18 @@ object PickaxeAbilityCooldown : Feature() {
     private fun noteClick(item: ItemStack) {
         if (!baseSetting.value || !isPickaxe(item)) return
 
-        pendingUse = PendingUse(stampNow(), 1.0 - fuelTankReduction(item))
+        pendingUse = PendingUse(useMomentNow(), 1.0 - fuelTankReduction(item), hasBlueCheese(item))
     }
 
     private fun isPickaxe(item: ItemStack): Boolean =
         item.getData(DataTypes.CATEGORY) in PICKAXE_CATEGORIES ||
                 item.getLore().any { it.string.contains("Breaking Power") }
+
+    private fun hasBlueCheese(item: ItemStack): Boolean =
+        item.getData(DataTypes.UPGRADE_MODULE) == BLUE_CHEESE_MODULE
+
+    private fun baseCooldownSeconds(hasBlueCheese: Boolean): Map<String, Int> =
+        if (hasBlueCheese) BLUE_CHEESE_COOLDOWN_SECONDS else BASE_COOLDOWN_SECONDS
 
     private fun fuelTankReduction(item: ItemStack): Double {
         val tank = item.getData(DataTypes.FUEL_TANK)?.lowercase() ?: return 0.0
@@ -137,14 +153,14 @@ object PickaxeAbilityCooldown : Feature() {
         if (!baseSetting.value) return
 
         val name = ABILITY_USED.find(event.text)?.groupValues?.get(1) ?: return
-        val use = pendingUse?.takeIf { it.awaitingChat() } ?: return
+        val confirmedUse = pendingUse?.takeIf { it.stillAwaitingChatLine() } ?: return
         pendingUse = null
 
-        val base = BASE_COOLDOWN_SECONDS[name] ?: return
+        val base = baseCooldownSeconds(confirmedUse.hasBlueCheese)[name] ?: return
 
         abilityName = name
-        usedAt = use.at
-        cooldownMs = (base * 1000 * use.itemFactor * playerFactor()).toLong()
+        abilityUsedAt = confirmedUse.clickedAt
+        abilityCooldownMs = (base * 1000 * confirmedUse.itemFactor * playerFactor()).toLong()
         warnedReady = false
     }
 
@@ -202,6 +218,7 @@ object PickaxeAbilityCooldown : Feature() {
             add("Held: ${held.hoverName.string}")
             add("  category: ${held.getData(DataTypes.CATEGORY)?.name ?: "none"}, breaking power line: ${held.getLore().any { it.string.contains("Breaking Power") }}, counts as pickaxe: ${isPickaxe(held)}")
             add("  fuel tank: ${tank ?: "none"} -> -${percent(itemFactor)}")
+            add("  upgrade module: ${held.getData(DataTypes.UPGRADE_MODULE) ?: "none"}, blue cheese: ${hasBlueCheese(held)}")
             add("E8 attribute: level ${attributeLevel()?.toString() ?: "unknown"} -> -${percent(attributeFactor())}")
             add(
                 "Sky Mall: cooldown buff " + (skyMallCooldownSince?.let { "seen ${seconds(now - it)} ago" } ?: "not seen") +
@@ -209,15 +226,15 @@ object PickaxeAbilityCooldown : Feature() {
             )
             add("Mineshaft Mayhem: cooldown picked: $mayhemCooldown -> -${percent(mayhemFactor())}")
             add("Player factor ${"%.4f".format(playerFactor())}, with held item ${"%.4f".format(total)}")
-            BASE_COOLDOWN_SECONDS.forEach { (name, base) -> add("  $name: ${base}s -> ${seconds((base * 1000 * total).toLong())}") }
-            add("Pending click: " + (pendingUse?.let { "${seconds(now - it.at.realMs)} ago, item factor ${"%.4f".format(it.itemFactor)}" } ?: "none"))
+            baseCooldownSeconds(hasBlueCheese(held)).forEach { (name, base) -> add("  $name: ${base}s -> ${seconds((base * 1000 * total).toLong())}") }
+            add("Pending click: " + (pendingUse?.let { "${seconds(now - it.clickedAt.realMs)} ago, item factor ${"%.4f".format(it.itemFactor)}, blue cheese ${it.hasBlueCheese}" } ?: "none"))
             add(
-                "Timer: " + (abilityName?.let { name -> "$name, " + (msLeft()?.let { if (it > 0) "${seconds(it)} left" else "ready" } ?: "not started") } ?: "none") +
+                "Timer: " + (abilityName?.let { name -> "$name, " + (cooldownMsLeft()?.let { if (it > 0) "${seconds(it)} left" else "ready" } ?: "not started") } ?: "none") +
                         ", ready warned: $warnedReady"
             )
             add(
-                "Clock: ${if (useServerTime.value) "server" else "real"} time" + (usedAt?.let {
-                    ", since use ${seconds(it.elapsedMs(onServerTime = false))} real, ${seconds(it.elapsedMs(onServerTime = true))} server"
+                "Clock: ${if (useServerTime.value) "server" else "real"} time" + (abilityUsedAt?.let {
+                    ", since use ${seconds(it.msSince(onServerTime = false))} real, ${seconds(it.msSince(onServerTime = true))} server"
                 } ?: "")
             )
         }
@@ -225,8 +242,8 @@ object PickaxeAbilityCooldown : Feature() {
 
     @EventHandler
     fun onWorldTick(event: WorldTickEvent) {
-        val left = msLeft() ?: return
-        if (warnedReady || left > 0) return
+        val msLeft = cooldownMsLeft() ?: return
+        if (warnedReady || msLeft > 0) return
         warnedReady = true
 
         if (!readyWarning.value || Minecraft.getInstance().player == null) return
@@ -236,14 +253,13 @@ object PickaxeAbilityCooldown : Feature() {
         )
     }
 
-    /** What is left of the cooldown on the chosen clock, below zero once it has run out; null before any use. */
-    private fun msLeft(): Long? {
-        val cooldown = cooldownMs ?: return null
-        val used = usedAt ?: return null
-        return cooldown - used.elapsedMs(useServerTime.value)
+    private fun cooldownMsLeft(): Long? {
+        val cooldownMs = abilityCooldownMs ?: return null
+        val usedAt = abilityUsedAt ?: return null
+        return cooldownMs - usedAt.msSince(useServerTime.value)
     }
 
-    private fun secondsLeft(): Int? = msLeft()?.takeIf { it > 0 }?.let { ceil(it / 1000.0).toInt() }
+    private fun cooldownSecondsLeft(): Int? = cooldownMsLeft()?.takeIf { it > 0 }?.let { ceil(it / 1000.0).toInt() }
 
     val hud: HudElement = object : HudElement("pickaxe_ability", "Pickaxe Ability") {
         override val defaultX: Int = 20
@@ -257,8 +273,8 @@ object PickaxeAbilityCooldown : Feature() {
             if (!baseSetting.value) return null
             if (miningIslandsOnly.value && LocationAPI.island !in MINING_ISLANDS) return null
 
-            val secondsLeft = secondsLeft()
-            val waitingOnChat = secondsLeft == null && pendingUse?.awaitingChat() == true
+            val secondsLeft = cooldownSecondsLeft()
+            val waitingOnChat = secondsLeft == null && pendingUse?.stillAwaitingChatLine() == true
             val label = abilityName ?: if (waitingOnChat) DEFAULT_LABEL else return null
             val value = when {
                 waitingOnChat -> Component.literal("-").withStyle(ChatFormatting.GRAY)
