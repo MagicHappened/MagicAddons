@@ -252,8 +252,8 @@ class CropPreviewScreen(
 
         val missing = mutableListOf<String>()
 
-        if (PlantDex.needsRotation(def, stage)) missing += "rotation data"
-        PlantDex.neededSize(def, stage)?.let { missing += "isSmall = $it" }
+        if (PlantDex.isMissingRotation(def, stage)) missing += "rotation data"
+        PlantDex.neededIsSmall(def, stage)?.let { missing += "isSmall = $it" }
 
         return missing
     }

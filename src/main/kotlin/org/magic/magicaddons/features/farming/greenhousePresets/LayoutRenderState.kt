@@ -67,7 +67,7 @@ object LayoutRenderState {
 
     /** The crop the item in the player's hand puts down, null for anything else. */
     private fun heldCrop(): String? =
-        Minecraft.getInstance().player?.mainHandItem?.getSkyBlockId()?.id?.let { CropRegistry.get(it)?.elementId }
+        Minecraft.getInstance().player?.mainHandItem?.getSkyBlockId()?.id?.let { CropRegistry.findByIdOrName(it)?.elementId }
 
     /** State a plan does not care about, because nothing the player does decides it. */
     private val IGNORED_PROPERTIES: List<IntegerProperty> = listOf(FarmlandBlock.MOISTURE)

@@ -284,11 +284,11 @@ object Timestalk : CropDefinitionProvider {
                 blocks = listOf(
                     CropBlockState(
                         offset = BlockPos(0, 1, 0),
-                        blockState = melonStemState(5)
+                        blockState = melonStemState(6)
                     ),
                     CropBlockState(
                         offset = BlockPos(0, 2, 0),
-                        blockState = melonStemState(7)
+                        blockState = melonStemState(5)
                     )
                 ),
                 armorStands = listOf(

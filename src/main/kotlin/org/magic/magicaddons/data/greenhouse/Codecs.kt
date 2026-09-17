@@ -134,8 +134,8 @@ object Codecs {
                     growthStage = growthOpt.orElse(null),
                     age = ageOpt.orElse(null),
                     readings = readingsOpt.orElse(emptyMap()).toMutableMap(),
-                    cropDef = CropRegistry.get(id) ?: throw IllegalStateException("Unable to find crop for id $id"),
-                    alternatives = alternativeIds.mapNotNull { CropRegistry.get(it) }.toMutableList()
+                    cropDef = CropRegistry.findByIdOrName(id) ?: throw IllegalStateException("Unable to find crop for id $id"),
+                    alternatives = alternativeIds.mapNotNull { CropRegistry.findByIdOrName(it) }.toMutableList()
                 ).also { plant ->
                     plant.firstSeenStage = firstSeenOpt.orElse(null)
                     plant.placed = placed

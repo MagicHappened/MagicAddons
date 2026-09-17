@@ -68,7 +68,7 @@ object MagicAddonsFormat {
             val plant = runCatching { element.asJsonObject }.getOrNull() ?: return@forEach
 
             val cropName = plant.get(CROP)?.asString ?: return@forEach
-            val definition = CropRegistry.findByName(cropName)
+            val definition = CropRegistry.findByIdOrNameIgnoringCase(cropName)
 
             if (definition == null) {
                 notes.add("Unknown crop: $cropName")

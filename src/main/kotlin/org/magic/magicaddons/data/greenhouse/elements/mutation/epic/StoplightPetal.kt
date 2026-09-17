@@ -25,7 +25,6 @@ object StoplightPetal : CropDefinitionProvider {
             CropEffect.HarvestLoss
         ),
         skyblockId = SkyBlockItemId.item("STOPLIGHT_PETAL"),
-        /** Each skull's pose, found constant across every stage it appears in. */
         standPoses = mapOf(
             "57f6c922e742b5c571b1cf091d6d4bc06360f4f03443d79c5174097b0b373d7e" to StandPose.Fixed(Rotations(90.0f, 0.0f, 0.0f)),
             "4c2b797e7172a05169e313739908515864d6b372f9a5ecc772f81d9c4e402a54" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f)),
@@ -71,7 +70,7 @@ object StoplightPetal : CropDefinitionProvider {
                 blocks = listOf(
                     CropBlockState(
                         offset = BlockPos(0, 1, 0),
-                        blockState = melonStemState(5)
+                        blockState = melonStemState(7)
                     )
                 ),
                 armorStands = listOf(

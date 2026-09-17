@@ -13,73 +13,69 @@ import org.magic.magicaddons.data.greenhouse.elements.mutation.legendary.*
 import org.magic.magicaddons.data.greenhouse.elements.rarecrop.*
 
 object CropRegistry {
-    private val definitions = mutableListOf<CropDefinition>()
-    private val tiers = mutableMapOf<CropDefinition, Int>()
+    private val crops = mutableListOf<CropDefinition>()
+    private val tierByCrop = mutableMapOf<CropDefinition, CropTier>()
 
-    val all: List<CropDefinition> get() = definitions
+    val all: List<CropDefinition> get() = crops
 
-    /** Where each crop sits in the dex ordering, taken from the package its provider lives in. */
-    val tierOf: Map<CropDefinition, Int> get() = tiers
+    fun tierOf(crop: CropDefinition): CropTier = tierByCrop[crop] ?: CropTier.Other
 
     private fun register(provider: CropDefinitionProvider) {
-        definitions.add(provider.definition)
-        tiers[provider.definition] = tierFromPackage(provider.javaClass.name)
+        crops.add(provider.definition)
+        tierByCrop[provider.definition] = tierFromPackage(provider.javaClass.name)
     }
 
-    private fun tierFromPackage(name: String): Int = when {
-        ".basecrop." in name -> 0
-        ".mutation.common." in name -> 1
-        ".mutation.uncommon." in name -> 2
-        ".mutation.rare." in name -> 3
-        ".mutation.epic." in name -> 4
-        ".mutation.legendary." in name -> 5
-        ".rarecrop." in name -> 6
-        else -> 7
+    private fun tierFromPackage(className: String): CropTier = when {
+        ".basecrop." in className -> CropTier.BaseCrop
+        ".mutation.common." in className -> CropTier.Common
+        ".mutation.uncommon." in className -> CropTier.Uncommon
+        ".mutation.rare." in className -> CropTier.Rare
+        ".mutation.epic." in className -> CropTier.Epic
+        ".mutation.legendary." in className -> CropTier.Legendary
+        ".rarecrop." in className -> CropTier.RareCrop
+        else -> CropTier.Other
     }
 
-    /** Every name a definition answers to, built once: lookups happen on every block update. */
-    private val byKey: Map<String, CropDefinition> by lazy {
+    // built once, since lookups happen on every block update
+    private val cropsByIdOrName: Map<String, CropDefinition> by lazy {
         buildMap {
-            all.forEach { definition ->
-                definition.skyblockId?.id?.let { putIfAbsent(it, definition) }
-                definition.aliases?.forEach { putIfAbsent(it.id, definition) }
-                putIfAbsent(definition.name, definition)
+            all.forEach { crop ->
+                crop.skyblockId?.id?.let { putIfAbsent(it, crop) }
+                crop.aliases?.forEach { putIfAbsent(it.id, crop) }
+                putIfAbsent(crop.name, crop)
             }
         }
     }
 
-    fun get(idOrName: String): CropDefinition? = byKey[idOrName]
+    fun findByIdOrName(idOrName: String): CropDefinition? = cropsByIdOrName[idOrName]
 
-    /** A crop by id or name, falling back to its name in any casing. */
-    fun findByName(name: String): CropDefinition? =
-        get(name) ?: all.find { it.name.equals(name, ignoreCase = true) }
+    fun findByIdOrNameIgnoringCase(name: String): CropDefinition? =
+        findByIdOrName(name) ?: all.find { it.name.equals(name, ignoreCase = true) }
 
-    /** [text] with only its letters and digits, lower case, so "do_not_eat_shroom" and "Do-not-eat-shroom" compare equal. */
-    private fun looseKey(text: String): String = text.lowercase().filter { it.isLetterOrDigit() }
+    /** "do_not_eat_shroom" and "Do-not-eat-shroom" give the same key */
+    private fun looseNameKey(text: String): String = text.lowercase().filter { it.isLetterOrDigit() }
 
-    private val byLooseKey: Map<String, CropDefinition> by lazy {
+    private val cropsByLooseName: Map<String, CropDefinition> by lazy {
         buildMap {
-            all.forEach { definition ->
-                putIfAbsent(looseKey(definition.name), definition)
-                definition.skyblockId?.id?.substringAfter(':')?.let { putIfAbsent(looseKey(it), definition) }
+            all.forEach { crop ->
+                putIfAbsent(looseNameKey(crop.name), crop)
+                crop.skyblockId?.id?.substringAfter(':')?.let { putIfAbsent(looseNameKey(it), crop) }
             }
         }
     }
 
-    /** A crop by its name or bare skyblock id, ignoring case, spaces and punctuation. */
-    fun findLoose(text: String): CropDefinition? = byLooseKey[looseKey(text)]
+    fun findByLooseName(text: String): CropDefinition? = cropsByLooseName[looseNameKey(text)]
 
-    /** The crops that can stand on each soil block. */
-    val elementsBySoil: Map<Block, List<CropDefinition>> by lazy {
-        all.flatMap { definition -> definition.requiredSoil.map { soil -> soil to definition } }
+    val cropsBySoil: Map<Block, List<CropDefinition>> by lazy {
+        all.flatMap { crop -> crop.requiredSoil.map { soil -> soil to crop } }
             .groupBy(keySelector = { it.first }, valueTransform = { it.second })
     }
 
     init {
-        loadCrops()
+        registerEveryCrop()
     }
 
-    private fun loadCrops(){
+    private fun registerEveryCrop() {
         register(FireElement)
         register(DeadPlant)
         register(DevourerRoots)

@@ -274,12 +274,12 @@ object FarmingDebug : AbstractCommand() {
             val hover = Component.empty()
             crops.forEachIndexed { index, gap ->
                 if (index > 0) hover.append(Component.literal("\n"))
-                hover.append(Component.literal(gap.def.name).withStyle(ChatFormatting.WHITE))
-                    .append(Component.literal(" -> ${gap.parts.joinToString("; ")}").withStyle(ChatFormatting.GRAY))
+                hover.append(Component.literal(gap.crop.name).withStyle(ChatFormatting.WHITE))
+                    .append(Component.literal(" -> ${gap.missingParts.joinToString("; ")}").withStyle(ChatFormatting.GRAY))
             }
 
             ChatUtils.send(
-                Component.literal("  ${PlantDex.TIER_TITLES[tier]} (${crops.size})")
+                Component.literal("  ${tier.heading} (${crops.size})")
                     .withStyle(ChatFormatting.YELLOW)
                     .withStyle { it.withHoverEvent(HoverEvent.ShowText(hover)) }
             )
@@ -288,7 +288,7 @@ object FarmingDebug : AbstractCommand() {
 
     /** What one crop is still missing, said in chat rather than copied. */
     private fun dumpPlantDexFor(def: CropDefinition) {
-        val missing = PlantDex.reportFor(def)
+        val missing = PlantDex.missingSummary(def)
 
         if (missing == null) {
             ChatUtils.sendWithPrefix(
@@ -299,7 +299,7 @@ object FarmingDebug : AbstractCommand() {
         }
 
         ChatUtils.sendWithPrefix(
-            Component.literal("${def.name}: ${PlantDex.percentFor(def)}% of ${def.maxStage} stages")
+            Component.literal("${def.name}: ${PlantDex.recordedPercent(def)}% of ${def.maxStage} stages")
                 .withStyle(ChatFormatting.GOLD)
         )
         ChatUtils.send(
@@ -312,22 +312,22 @@ object FarmingDebug : AbstractCommand() {
      * the clipboard, sorted so a collection trip can be planned off it.
      */
     private fun dumpPlantDex() {
-        val report = PlantDex.report()
+        val report = PlantDex.cropDataReport()
 
         ChatUtils.sendWithPrefix(
             Component.literal(
-                "Plant dex: ${report.percent}% recorded (${report.recorded} of ${report.total} stages)"
+                "Plant dex: ${report.percent}% recorded (${report.recordedStages} of ${report.totalStages} stages)"
             ).withStyle(ChatFormatting.GOLD)
         )
 
-        if (report.missingList.isEmpty()) {
+        if (report.listing.isEmpty()) {
             ChatUtils.sendWithPrefix("Nothing missing. The dex is complete.")
             return
         }
 
-        Minecraft.getInstance().keyboardHandler.clipboard = report.missingList
+        Minecraft.getInstance().keyboardHandler.clipboard = report.listing
 
-        ChatUtils.send(clipboard(report.missingList, "${report.incompleteCrops} crops incomplete"))
+        ChatUtils.send(clipboard(report.listing, "${report.incompleteCrops} crops incomplete"))
     }
 
     /** Every stand and display near the player, nearest first. Our own plan stands only on request. */

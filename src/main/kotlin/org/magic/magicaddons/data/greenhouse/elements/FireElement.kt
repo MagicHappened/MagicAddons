@@ -41,7 +41,7 @@ object FireElement : CropDefinitionProvider {
             slot = slot,
             waterLevel = null,
             growthStage = null,
-            cropDef = CropRegistry.get("Fire") ?: throw IllegalStateException("Can't find \"Fire\" Crop Definition")
+            cropDef = CropRegistry.findByIdOrName("Fire") ?: throw IllegalStateException("Can't find \"Fire\" Crop Definition")
         )
 
         return ScannedPlant(

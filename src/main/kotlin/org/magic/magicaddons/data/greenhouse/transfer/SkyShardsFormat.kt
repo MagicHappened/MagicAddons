@@ -46,11 +46,11 @@ object SkyShardsFormat : LayoutFormat {
 
     private val idOf: Map<CropDefinition, String> by lazy {
         buildMap {
-            (BASE + MUTATIONS).forEach { id -> CropRegistry.findLoose(id)?.let { putIfAbsent(it, id) } }
+            (BASE + MUTATIONS).forEach { id -> CropRegistry.findByLooseName(id)?.let { putIfAbsent(it, id) } }
         }
     }
 
-    private fun definitionFor(id: String): CropDefinition? = CropRegistry.findLoose(id)
+    private fun definitionFor(id: String): CropDefinition? = CropRegistry.findByLooseName(id)
 
     private fun cropAt(index: Int): String? = when {
         index < 0 -> null

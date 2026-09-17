@@ -74,7 +74,7 @@ object SkyMutationsFormat : LayoutFormat {
                 return@forEach
             }
 
-            val definition = CropRegistry.findByName(cropName)
+            val definition = CropRegistry.findByIdOrNameIgnoringCase(cropName)
             if (definition == null) {
                 notes.add("Unknown crop: $cropName")
                 return@forEach
