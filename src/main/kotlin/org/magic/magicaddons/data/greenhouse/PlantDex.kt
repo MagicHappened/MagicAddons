@@ -1,165 +1,124 @@
 package org.magic.magicaddons.data.greenhouse
 
-/**
- * What the definitions know and what they are missing, crop by crop. Coverage is read off the stage
- * ranges.
- */
+/** what the definitions still miss, crop by crop */
 object PlantDex {
 
-    /** Per crop, the stages whose stands stood at the other size, with the isSmall the definition needs. */
-    private val sizeSeen: MutableMap<String, MutableMap<Int, Boolean>> = mutableMapOf()
+    /** per crop, the stages whose stands stood at the other size, with the isSmall the definition needs */
+    private val sizeCorrections: MutableMap<String, MutableMap<Int, Boolean>> = mutableMapOf()
 
-    fun noteSize(cropName: String, stage: Int, needsSmall: Boolean) {
-        sizeSeen.getOrPut(cropName) { mutableMapOf() }[stage] = needsSmall
+    fun noteSizeCorrection(cropName: String, stage: Int, needsSmall: Boolean) {
+        sizeCorrections.getOrPut(cropName) { mutableMapOf() }[stage] = needsSmall
     }
 
-    /** The isSmall a run this session found the stage [stage] of [def] needs, or null when none did. */
-    fun neededSize(def: CropDefinition, stage: Int): Boolean? = sizeSeen[def.name]?.get(stage)
+    /** null when no run this session found a size to correct */
+    fun neededIsSmall(crop: CropDefinition, stage: Int): Boolean? = sizeCorrections[crop.name]?.get(stage)
 
-    /** Reading order of the dex: base crops first, then mutations by rarity, then the rest. */
-    private val TIER_NAMES = listOf(
-        "base crops", "common mutations", "uncommon mutations", "rare mutations",
-        "epic mutations", "legendary mutations", "rare crops", "other"
-    )
+    class CropGap(val crop: CropDefinition, val missingParts: List<String>)
 
-    /** The same tiers as chat headings. */
-    val TIER_TITLES: List<String> = listOf(
-        "Base Crops", "Common", "Uncommon", "Rare", "Epic", "Legendary", "Rare Crops", "Misc"
-    )
-
-    /** One crop with something still missing, in the listing's words. */
-    class Gap(val def: CropDefinition, val parts: List<String>)
-
-    /** Every crop with a gap, grouped by tier in reading order. */
-    fun gapsByTier(): Map<Int, List<Gap>> = CropRegistry.all
-        .sortedWith(compareBy({ CropRegistry.tierOf[it] ?: 7 }, { it.name }))
-        .mapNotNull { def -> partsFor(def).takeIf { it.isNotEmpty() }?.let { Gap(def, it) } }
-        .groupBy { CropRegistry.tierOf[it.def] ?: 7 }
+    fun gapsByTier(): Map<CropTier, List<CropGap>> = CropRegistry.all
+        .sortedWith(compareBy({ CropRegistry.tierOf(it) }, { it.name }))
+        .mapNotNull { crop -> missingParts(crop).takeIf { it.isNotEmpty() }?.let { CropGap(crop, it) } }
+        .groupBy { CropRegistry.tierOf(it.crop) }
         .toSortedMap()
 
-    class Report(val recorded: Int, val total: Int, val incompleteCrops: Int, val missingList: String) {
-        val percent: Int get() = if (total == 0) 100 else recorded * 100 / total
+    class CropDataReport(val recordedStages: Int, val totalStages: Int, val incompleteCrops: Int, val listing: String) {
+        val percent: Int get() = if (totalStages == 0) 100 else recordedStages * 100 / totalStages
     }
 
-    fun report(): Report {
-        var total = 0
-        var recorded = 0
-        var incomplete = 0
-        val sections = LinkedHashMap<Int, MutableList<String>>()
+    fun cropDataReport(): CropDataReport {
+        val recordedStages = CropRegistry.all.sumOf { it.maxStage - unrecordedStages(it).size }
+        val totalStages = CropRegistry.all.sumOf { it.maxStage }
+        val gapsByTier = gapsByTier()
 
-        CropRegistry.all
-            .sortedWith(compareBy({ CropRegistry.tierOf[it] ?: 7 }, { it.name }))
-            .forEach { def ->
-                total += def.maxStage
-                recorded += def.maxStage - unrecorded(def).size
-
-                // a crop wanting for nothing, rotations included, is left out of the listing
-                val parts = partsFor(def)
-                if (parts.isEmpty()) return@forEach
-                incomplete++
-
-                sections.getOrPut(CropRegistry.tierOf[def] ?: 7) { mutableListOf() }
-                    .add("${def.name} -> ${parts.joinToString("; ")}")
-            }
-
-        val text = buildString {
-            sections.forEach { (tier, lines) ->
-                appendLine("== ${TIER_NAMES[tier]} ==")
-                lines.forEach { appendLine(it) }
+        val listing = buildString {
+            gapsByTier.forEach { (tier, gaps) ->
+                appendLine("== ${tier.listingName} ==")
+                gaps.forEach { appendLine("${it.crop.name} -> ${it.missingParts.joinToString("; ")}") }
                 appendLine()
             }
         }.trimEnd()
 
-        return Report(recorded, total, incomplete, text)
+        return CropDataReport(recordedStages, totalStages, gapsByTier.values.sumOf { it.size }, listing)
     }
 
-    /**
-     * A plant that changes its look without changing stage has two looks to record at such a
-     * stage: asleep and awake at a snoozling's sleeping stages, day and night for anything that
-     * craves a time of day. Whichever is missing is listed, without counting against the dex.
-     */
-    private fun variantGaps(def: CropDefinition): List<String> {
+    /** asleep and awake looks at a snoozling's sleep stages, day and night looks for a crop that needs a time of day */
+    private fun missingVariants(crop: CropDefinition): List<String> {
         val parts = mutableListOf<String>()
-        val looks = def.stages
+        val looks = crop.stages
 
-        if (def.sleepStages.isNotEmpty()) {
-            val sleeping = def.sleepStages.filter { it <= def.maxStage }.sorted()
+        if (crop.sleepStages.isNotEmpty()) {
+            val sleeping = crop.sleepStages.filter { it <= crop.maxStage }.sorted()
             val asleepMissing = sleeping.filter { stage -> looks.none { stage in it.stageRange && it.readers.any { r -> r.key == CropStandReader.ASLEEP } } }
             val awakeMissing = sleeping.filter { stage -> looks.none { stage in it.stageRange && it.readers.none { r -> r.key == CropStandReader.ASLEEP } } }
-            if (asleepMissing.isNotEmpty()) parts += "asleep look unrecorded at stages ${ranges(asleepMissing)}"
-            if (awakeMissing.isNotEmpty()) parts += "awake look unrecorded at stages ${ranges(awakeMissing)}"
+            if (asleepMissing.isNotEmpty()) parts += "asleep look unrecorded at stages ${asRanges(asleepMissing)}"
+            if (awakeMissing.isNotEmpty()) parts += "awake look unrecorded at stages ${asRanges(awakeMissing)}"
         }
 
         if (looks.any { CropStandReader.NEEDS_TIME in it.traits }) {
-            val stages = (1..def.maxStage).toList()
+            val stages = (1..crop.maxStage).toList()
             val dayMissing = stages.filter { stage -> looks.none { stage in it.stageRange && it.traits[CropStandReader.NEEDS_TIME] == CropStandReader.NEEDS_DAY } }
             val nightMissing = stages.filter { stage -> looks.none { stage in it.stageRange && it.traits[CropStandReader.NEEDS_TIME] == CropStandReader.NEEDS_NIGHT } }
-            if (dayMissing.isNotEmpty()) parts += "day look unrecorded at stages ${ranges(dayMissing)}"
-            if (nightMissing.isNotEmpty()) parts += "night look unrecorded at stages ${ranges(nightMissing)}"
+            if (dayMissing.isNotEmpty()) parts += "day look unrecorded at stages ${asRanges(dayMissing)}"
+            if (nightMissing.isNotEmpty()) parts += "night look unrecorded at stages ${asRanges(nightMissing)}"
         }
 
         return parts
     }
 
-    /** The stages of [def] no recording covers. */
-    private fun unrecorded(def: CropDefinition): List<Int> {
-        val covered = def.stageDefs.flatMap { it.stageRange }.toSet()
-        return (1..def.maxStage).filterNot { it in covered }
+    private fun unrecordedStages(crop: CropDefinition): List<Int> {
+        val covered = crop.stageDefs.flatMap { it.stageRange }.toSet()
+        return (1..crop.maxStage).filterNot { it in covered }
     }
 
-    /** What one crop is missing, one part per kind of gap; empty when it wants for nothing. */
-    private fun partsFor(def: CropDefinition): List<String> {
-        val missing = unrecorded(def)
-        val unturned = rotationGaps(def)
-        val sizes = sizeSeen[def.name].orEmpty()
+    private fun missingParts(crop: CropDefinition): List<String> {
+        val missing = unrecordedStages(crop)
+        val unturned = stagesWithoutRotation(crop)
+        val sizes = sizeCorrections[crop.name].orEmpty()
         val oversized = sizes.filterValues { !it }.keys.sorted()
         val undersized = sizes.filterValues { it }.keys.sorted()
 
         val parts = mutableListOf<String>()
-        if (missing.isNotEmpty()) parts += "stages ${ranges(missing)} unrecorded"
-        parts += variantGaps(def)
-        if (unturned.isNotEmpty()) parts += "stages ${ranges(unturned)} need rotation data"
-        if (oversized.isNotEmpty()) parts += "stages ${ranges(oversized)} need isSmall = false"
-        if (undersized.isNotEmpty()) parts += "stages ${ranges(undersized)} need isSmall = true"
+        if (missing.isNotEmpty()) parts += "stages ${asRanges(missing)} unrecorded"
+        parts += missingVariants(crop)
+        if (unturned.isNotEmpty()) parts += "stages ${asRanges(unturned)} need rotation data"
+        if (oversized.isNotEmpty()) parts += "stages ${asRanges(oversized)} need isSmall = false"
+        if (undersized.isNotEmpty()) parts += "stages ${asRanges(undersized)} need isSmall = true"
         return parts
     }
 
-    /** Stages recorded without the way their stands are turned, by crop name, listed by hand. */
-    private val UNTURNED: Map<String, Set<Int>> = mapOf(
+    /** listed by hand, by crop name */
+    private val STAGES_WITHOUT_ROTATION: Map<String, Set<Int>> = mapOf(
         "Devourer" to (10..12).toSet(),
         "Godseed" to setOf(32, 34, 35, 36, 37, 40),
         "PlantBoy Advance" to setOf(9, 10),
         "Zombud" to setOf(7) + (10..15)
     )
 
-    /** The stages of [def] recorded without the way their stands are turned. */
-    fun rotationGaps(def: CropDefinition): List<Int> =
-        UNTURNED[def.name].orEmpty().filter { it in 1..def.maxStage }.sorted()
+    fun stagesWithoutRotation(crop: CropDefinition): List<Int> =
+        STAGES_WITHOUT_ROTATION[crop.name].orEmpty().filter { it in 1..crop.maxStage }.sorted()
 
-    /** Whether the stage [stage] of [def] was recorded without its rotations. */
-    fun needsRotation(def: CropDefinition, stage: Int): Boolean =
-        stage in UNTURNED[def.name].orEmpty()
+    fun isMissingRotation(crop: CropDefinition, stage: Int): Boolean =
+        stage in STAGES_WITHOUT_ROTATION[crop.name].orEmpty()
 
-    /** What one crop is missing, in the listing's own words, or null when it wants for nothing. */
-    fun reportFor(def: CropDefinition): String? =
-        partsFor(def).joinToString("; ").takeIf { it.isNotEmpty() }
+    /** null when the crop misses nothing */
+    fun missingSummary(crop: CropDefinition): String? =
+        missingParts(crop).joinToString("; ").takeIf { it.isNotEmpty() }
 
-    /** How much of one crop is described, as a percentage of the stages it has. */
-    fun percentFor(def: CropDefinition): Int {
-        val covered = def.stageDefs.flatMap { it.stageRange }.toSet().count { it in 1..def.maxStage }
+    fun recordedPercent(crop: CropDefinition): Int {
+        val covered = crop.stageDefs.flatMap { it.stageRange }.toSet().count { it in 1..crop.maxStage }
 
-        return if (def.maxStage == 0) 100 else covered * 100 / def.maxStage
+        return if (crop.maxStage == 0) 100 else covered * 100 / crop.maxStage
     }
 
-    /** 1, 2, 3, 7 written as 1-3, 7, so a crop missing forty stages is one line, not forty. */
-    private fun ranges(sorted: List<Int>): String = buildString {
+    /** 1, 2, 3, 7 written as 1-3, 7 */
+    private fun asRanges(sortedStages: List<Int>): String = buildString {
         var i = 0
-        while (i < sorted.size) {
+        while (i < sortedStages.size) {
             var j = i
-            while (j + 1 < sorted.size && sorted[j + 1] == sorted[j] + 1) j++
+            while (j + 1 < sortedStages.size && sortedStages[j + 1] == sortedStages[j] + 1) j++
 
             if (isNotEmpty()) append(", ")
-            append(if (j > i) "${sorted[i]}-${sorted[j]}" else "${sorted[i]}")
+            append(if (j > i) "${sortedStages[i]}-${sortedStages[j]}" else "${sortedStages[i]}")
             i = j + 1
         }
     }

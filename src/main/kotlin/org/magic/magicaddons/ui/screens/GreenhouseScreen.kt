@@ -512,7 +512,7 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
         fun named(vararg names: String) = names.mapNotNull { name -> CropRegistry.all.find { it.name == name } }
         when (key) {
             is GreenhouseData.UniqueCropKey.Def -> {
-                val def = CropRegistry.get(key.id)
+                val def = CropRegistry.findByIdOrName(key.id)
                 UniqueLine(listOfNotNull(def), def?.name ?: key.id)
             }
             GreenhouseData.UniqueCropKey.Flower -> UniqueLine(named("Moonflower", "Sunflower"), "Moonflower/Sunflower")

@@ -553,7 +553,7 @@ class GreenhouseGrid(
             slot: LayoutSlot,
             standCache: CropStage.StandCache = CropStage.StandCache()
         ): ScannedPlant? {
-            val cropCandidates = CropRegistry.elementsBySoil[soil] ?: return null
+            val cropCandidates = CropRegistry.cropsBySoil[soil] ?: return null
 
             var bestCrop: CropDefinition? = null
             var bestGrowthStage: GrowthStageInfo? = null

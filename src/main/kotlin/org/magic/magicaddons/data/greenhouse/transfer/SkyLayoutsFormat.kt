@@ -37,7 +37,7 @@ object SkyLayoutsFormat : LayoutFormat {
     private const val VISIT_INTERVAL: Int = 8
 
     private val kindOf: Map<CropDefinition, Int> by lazy {
-        buildMap { KINDS.forEachIndexed { index, id -> CropRegistry.findLoose(id)?.let { putIfAbsent(it, index) } } }
+        buildMap { KINDS.forEachIndexed { index, id -> CropRegistry.findByLooseName(id)?.let { putIfAbsent(it, index) } } }
     }
 
     private fun letter(index: Int): Char = ALPHABET[index]
@@ -63,7 +63,7 @@ object SkyLayoutsFormat : LayoutFormat {
 
         // the link names the mutation the layout grows; the site shows it at every empty cell
         val head = code.substringBefore('~')
-        val target = KINDS.getOrNull(index(head[1]) - 1)?.let { CropRegistry.findLoose(it) }
+        val target = KINDS.getOrNull(index(head[1]) - 1)?.let { CropRegistry.findByLooseName(it) }
 
         val layouts = boards.take(MasterLayout.MAX_PLOTS).mapIndexed { number, board ->
             readBoard(board, MasterLayout.plotId(layoutId, number), target, notes)
@@ -116,7 +116,7 @@ object SkyLayoutsFormat : LayoutFormat {
                 val kind = cells[y * size + x]
                 if (kind < 0 || kind >= kinds.size || taken[x][y]) continue
 
-                val def = CropRegistry.findLoose(kinds[kind])
+                val def = CropRegistry.findByLooseName(kinds[kind])
                 if (def == null) {
                     unknown.add(kinds[kind])
                     continue

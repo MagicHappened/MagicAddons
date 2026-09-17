@@ -88,7 +88,7 @@ object ShareCodeFormat : LayoutFormat {
         val size = input.readUnsignedByte()
 
         val crops = List(input.readUnsignedByte()) { input.readUTF() }.map { name ->
-            CropRegistry.findByName(name)
+            CropRegistry.findByIdOrNameIgnoringCase(name)
                 .also { if (it == null) notes.add("Unknown crop: $name") }
         }
         val soils = List(input.readUnsignedByte()) { input.readUTF() }.map { id ->

@@ -1058,7 +1058,7 @@ object GreenhouseData : GridCallbacks {
         if (!grid.isScannedThisVisit()) return
         val mainHandId = event.player.mainHandItem.getSkyBlockId() ?: return
 
-        val foundCrop = CropRegistry.get(mainHandId.id)
+        val foundCrop = CropRegistry.findByIdOrName(mainHandId.id)
 
         if (mainHandId.id == DIAGNOSTICS_TOOL_ID) {
             listenAtBlock(event.hit.blockPos, grid)
@@ -1234,10 +1234,10 @@ object GreenhouseData : GridCallbacks {
 
         if (useNameFallback) {
             if (identifyStack.getLore().any { it.string.contains("Base Crop") }) {
-                def = CropRegistry.get(identifyStack.customName?.string ?: identifyStack.itemName.string)
+                def = CropRegistry.findByIdOrName(identifyStack.customName?.string ?: identifyStack.itemName.string)
             }
         } else {
-            def = CropRegistry.get(stackId.id)
+            def = CropRegistry.findByIdOrName(stackId.id)
         }
 
         val beaconLore = realItems.firstOrNull { it.item == Items.BEACON }?.getLore()

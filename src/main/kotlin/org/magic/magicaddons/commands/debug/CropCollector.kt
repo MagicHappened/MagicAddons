@@ -228,7 +228,7 @@ object CropCollector : EntityUtils.HighlightSource {
                 // the same promotion the correction pass makes: matched fine, but recorded
                 // without the way its stands are turned, so worth taking again
                 val status = when {
-                    num != null && PlantDex.needsRotation(def, num) -> Status.Unturned
+                    num != null && PlantDex.isMissingRotation(def, num) -> Status.Unturned
                     else -> Status.Current
                 }.let { if (num != null) sizeMismatch(def, num, stands) ?: it else it }
 
@@ -496,7 +496,7 @@ object CropCollector : EntityUtils.HighlightSource {
             }
         }
 
-        if (status != null) PlantDex.noteSize(def.name, stage, needsSmall = status == Status.Undersized)
+        if (status != null) PlantDex.noteSizeCorrection(def.name, stage, needsSmall = status == Status.Undersized)
         return status
     }
 
@@ -760,7 +760,7 @@ object CropCollector : EntityUtils.HighlightSource {
 
         // a stage matched from a recording that never said how its stands are turned can be
         // matched but not drawn, so a run is the moment to say it is worth taking again
-        val turned = if (status == Status.Current && PlantDex.needsRotation(def, stage)) {
+        val turned = if (status == Status.Current && PlantDex.isMissingRotation(def, stage)) {
             Status.Unturned
         } else {
             status

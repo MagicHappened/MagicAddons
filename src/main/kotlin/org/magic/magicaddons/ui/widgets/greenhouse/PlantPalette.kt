@@ -21,6 +21,7 @@ import net.minecraft.world.item.ItemStack
 import org.magic.magicaddons.Common
 import org.magic.magicaddons.data.greenhouse.CropDefinition
 import org.magic.magicaddons.data.greenhouse.CropRegistry
+import org.magic.magicaddons.data.greenhouse.CropTier
 import org.magic.magicaddons.ui.widgets.TextField
 import org.magic.magicaddons.ui.widgets.config.ClickableButtonWidget
 import org.magic.magicaddons.util.ScreenUtil
@@ -145,7 +146,7 @@ class PlantPalette(
         .sortedWith(compareBy({ sortTier(it) }, { it.name.lowercase() }))
 
     private fun sortTier(def: CropDefinition): Double =
-        if (def.name == DEAD_PLANT) 0.5 else (CropRegistry.tierOf[def] ?: 7).toDouble()
+        if (def.name == DEAD_PLANT) 0.5 else CropRegistry.tierOf(def).ordinal.toDouble()
 
     /** Every soil some crop grows on, after the plants, so a plot's ground can be laid by hand. */
     private val soils: List<Block> = CropRegistry.all
@@ -225,13 +226,13 @@ class PlantPalette(
     }
 
     /** The ground under an icon, in the colour of the plant's rarity, or its own for base and rare crops. */
-    private fun rarityColor(def: CropDefinition): Int = when (CropRegistry.tierOf[def] ?: 7) {
-        1 -> RARITY_COMMON
-        2 -> RARITY_UNCOMMON
-        3 -> RARITY_RARE
-        4 -> RARITY_EPIC
-        5 -> RARITY_LEGENDARY
-        6 -> RARE_CROP
+    private fun rarityColor(def: CropDefinition): Int = when (CropRegistry.tierOf(def)) {
+        CropTier.Common -> RARITY_COMMON
+        CropTier.Uncommon -> RARITY_UNCOMMON
+        CropTier.Rare -> RARITY_RARE
+        CropTier.Epic -> RARITY_EPIC
+        CropTier.Legendary -> RARITY_LEGENDARY
+        CropTier.RareCrop -> RARE_CROP
         // the base crops, and the dead plant that players know from among them
         else -> BASE_CROP
     }
