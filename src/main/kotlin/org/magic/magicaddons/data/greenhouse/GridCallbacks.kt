@@ -1,6 +1,7 @@
 package org.magic.magicaddons.data.greenhouse
 
 import net.minecraft.core.BlockPos
+import net.minecraft.world.entity.decoration.ArmorStand
 
 data class DyingPlant(
     val plant: String,
@@ -30,6 +31,9 @@ interface GridCallbacks {
 
     /** a plant predicted dead was found standing */
     fun warnSurvivor(plant: DyingPlant)
+
+    /** a scan no longer matches a plant the records had */
+    fun plantLostInScan(previous: Plant, origin: BlockPos, remainingStands: List<ArmorStand>) = Unit
 
     /** used until a feature installs itself */
     object None : GridCallbacks {

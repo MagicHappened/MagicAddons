@@ -9,7 +9,7 @@ import com.mojang.blaze3d.vertex.PoseStack
 import net.minecraft.client.renderer.SubmitNodeCollector
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
-import org.magic.magicaddons.features.farming.greenhousePresets.SpawnLog
+import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseSpawnLog
 import org.magic.magicaddons.render.WorldRenderer
 import java.time.Duration
 import java.time.Instant
@@ -21,6 +21,7 @@ import net.minecraft.network.chat.Component
 import net.minecraft.network.chat.HoverEvent
 import net.minecraft.network.chat.Style
 import net.minecraft.world.entity.Display
+import org.magic.mixins.TextDisplayAccessor
 import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.Interaction
 import net.minecraft.world.entity.EquipmentSlot
@@ -142,6 +143,13 @@ object FarmingDebug : AbstractCommand() {
                         return@executes 1
                     }
                     .then(
+                        LiteralArgumentBuilder.literal<FabricClientCommandSource>("guide")
+                            .executes {
+                                CropCollector.sendGuide()
+                                return@executes 1
+                            }
+                    )
+                    .then(
                         LiteralArgumentBuilder.literal<FabricClientCommandSource>("finish")
                             .executes {
                                 CropCollector.finish()
@@ -175,7 +183,16 @@ object FarmingDebug : AbstractCommand() {
             .then(
                 LiteralArgumentBuilder.literal<FabricClientCommandSource>("spawnLog")
                     .executes {
-                        SpawnLog.toggle()
+                        GreenhouseSpawnLog.toggle()
+                        return@executes 1
+                    }
+            )
+            .then(
+                LiteralArgumentBuilder.literal<FabricClientCommandSource>("lostPlants")
+                    .executes {
+                        ChatUtils.sendWithPrefix(
+                            "A plant a scan stops matching ${allowed(GreenhouseSpawnLog.toggleLostPlantsMessages())} says why."
+                        )
                         return@executes 1
                     }
             )
@@ -442,6 +459,10 @@ object FarmingDebug : AbstractCommand() {
 
                 if (entity is Display.BlockDisplay) {
                     appendLine("  block=${entity.blockState}")
+                }
+
+                if (entity is Display.TextDisplay) {
+                    appendLine("  text=${(entity as TextDisplayAccessor).`magicaddons$getText`().string}")
                 }
             }
         }

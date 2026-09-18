@@ -222,6 +222,9 @@ object Timestalk : CropDefinitionProvider {
                 ),
                 8..8
             ),
+            // a stage 8 collected on the 18th read melonStemState(7) below and melonStemState(5)
+            // above, the same stands; kept in notes/timestalk_stem_stages until it is clear which
+            // stages differ only by their stem ages
             CropStage(
                 blocks = CropBlockState.atPositions(
                     listOf(

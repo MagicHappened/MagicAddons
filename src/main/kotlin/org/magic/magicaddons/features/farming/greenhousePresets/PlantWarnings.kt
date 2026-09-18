@@ -18,18 +18,13 @@ import tech.thatgravyboat.skyblockapi.api.location.SkyBlockIsland
 import java.time.Duration
 import java.time.Instant
 
-/**
- * Warnings tied to the growth tick: mutations that finished growing, plants about to decay, and
- * plants that stopped growing until the player acts. Each is sent when a tick lands and again at
- * ten, five and one minute before the next. Decay instead warns at 6h, 1h, 20m, 5m and 1m.
- */
+
 object PlantWarnings {
 
     private const val HARVEST: String = "harvest-ready"
     private const val DECAY: String = "plant-decay"
     private const val ATTENTION: String = "plant-attention"
 
-    /** The setting keys of each warning kind, under the warning types heading. */
     const val HARVEST_KEY: String = "ReadyToHarvestWarning"
     const val DECAY_KEY: String = "DecayWarning"
     const val SNOOZLING_KEY: String = "SnoozlingAsleepWarning"
@@ -58,14 +53,9 @@ object PlantWarnings {
         val remainingMs: Long
     )
 
-    private fun enabled(key: String): Boolean = GreenhousePresets.warningType(key)
+    private fun enabled(key: String): Boolean = GreenhousePresets.warningTypeEnabled(key)
 
-    // ------------------------------------------------------------ what each warning is about
 
-    /**
-     * Everything the harvest highlight would show: a plant with nothing left to grow, and with the
-     * highlight set to the preset's targets, only one standing on a target slot that wants it.
-     */
     private fun harvestNotes(): List<HouseNote> = notes { grid, instance ->
         if (!instance.readyToHarvest) return@notes null
         if (GreenhousePresets.harvestHighlightOnlyTargets() && !onWantedTarget(grid, instance)) return@notes null
@@ -139,7 +129,7 @@ object PlantWarnings {
     /** Sends the harvest and attention warnings straight after a tick. Decay is on its own schedule. */
     @EventHandler
     fun onGrowthTick(event: GrowthTickEvent) {
-        if (!GreenhousePresets.reminder(GreenhousePresets.AT_TICK_KEY)) return
+        if (!GreenhousePresets.reminderTimeEnabled(GreenhousePresets.AT_TICK_KEY)) return
 
         if (enabled(HARVEST_KEY)) {
             harvestNotes().takeIf { it.isNotEmpty() }?.let {

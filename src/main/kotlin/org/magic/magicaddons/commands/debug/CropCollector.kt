@@ -33,6 +33,7 @@ import org.magic.magicaddons.data.greenhouse.GreenhouseGrid
 import org.magic.magicaddons.data.greenhouse.GrowthStageInfo
 import org.magic.magicaddons.data.greenhouse.LayoutSlot
 import org.magic.magicaddons.data.greenhouse.PlantDex
+import org.magic.magicaddons.data.greenhouse.WaterModel
 import org.magic.magicaddons.data.greenhouse.WorldRotation
 import org.magic.magicaddons.render.WorldRenderer
 import org.magic.magicaddons.util.ChatUtils
@@ -90,6 +91,9 @@ object CropCollector : EntityUtils.HighlightSource {
 
         /** Matched, but a stand stood small where its definition says full sized. */
         Undersized("needs isSmall = true"),
+
+        /** Matched only once the stems' age was ignored. */
+        StemAge("stem ages differ"),
 
         /** Named for a crop we know, standing at a stage nobody has recorded. */
         Unrecorded("unrecorded"),
@@ -229,6 +233,7 @@ object CropCollector : EntityUtils.HighlightSource {
                 // without the way its stands are turned, so worth taking again
                 val status = when {
                     num != null && PlantDex.isMissingRotation(def, num) -> Status.Unturned
+                    num != null && def.stemAgeVaries && !stemAgesMatch(def, num, slotPos, stands) -> Status.StemAge
                     else -> Status.Current
                 }.let { if (num != null) sizeMismatch(def, num, stands) ?: it else it }
 
@@ -308,10 +313,13 @@ object CropCollector : EntityUtils.HighlightSource {
         sendInstructions(s.entries.size)
     }
 
-    /** What a run asks of the player, said once, since the screen carries the plants themselves. */
+    /** What a run asks of the player, behind one click, since the screen carries the plants themselves. */
     private fun sendInstructions(found: Int) {
         ChatUtils.sendWithPrefix("$found plants found.")
+        ChatUtils.sendWithCommand("Press here to view a guide on how to use this", GUIDE_COMMAND)
+    }
 
+    fun sendGuide() {
         ChatUtils.send(hint("Open the collection screen with G keybind (only while this is active)"))
 
         ChatUtils.send(
@@ -353,11 +361,24 @@ object CropCollector : EntityUtils.HighlightSource {
         ChatUtils.send(Component.literal("  ").append(Component.literal(body).withStyle(style)))
     }
 
+    private const val GUIDE_COMMAND: String = "/ma debug farming collect guide"
+
     private fun hint(text: String): MutableComponent =
         Component.literal(text).withStyle(ChatFormatting.GRAY)
 
     /** The listing of what the dex still wants, which is what a wrong looking plant is checked against. */
     private const val PLANT_DEX_COMMAND: String = "/ma debug farming plantDex missing"
+
+    private fun stemAgesMatch(def: CropDefinition, stage: Int, origin: BlockPos, stands: List<ArmorStand>): Boolean =
+        def.stages.filter { stage in it.stageRange }.any { it.matchesStage(origin, stands, def.footprint, def.rotatesWithPlot) != null }
+
+    /** the tracked water of the plant on [origin] in the player's own greenhouse, for telling stem ages apart */
+    private fun waterNote(origin: BlockPos): String {
+        val grid = GreenhouseData.getCurrentGrid() ?: return "water=?"
+        val plant = grid.getSlotAt(origin, matchY = false)?.let { grid.layout.plantCovering(it) } ?: return "water=?"
+        val water = plant.waterLevel ?: return "water=none"
+        return "water=${WaterModel.formatWaterLevel(water)}" + if (plant.waterExact) "" else "(estimated)"
+    }
 
     private fun addEntry(
         def: CropDefinition?,
@@ -752,8 +773,12 @@ object CropCollector : EntityUtils.HighlightSource {
         val recorded = def.stages
             .filter { stage in it.stageRange }
             .firstNotNullOfOrNull { it.matchesStage(standingOn, stands, def.footprint, def.rotatesWithPlot) }
+        val recordedIgnoringStemAge = recorded ?: def.stages
+            .filter { stage in it.stageRange }
+            .firstNotNullOfOrNull { it.matchesStage(standingOn, stands, def.footprint, def.rotatesWithPlot, ignoreStemAge = true) }
 
         val status = when {
+            recorded == null && recordedIgnoringStemAge != null -> Status.StemAge
             recorded == null -> Status.Unrecorded
             else -> sizeMismatch(def, stage, stands) ?: Status.Current
         }
@@ -822,7 +847,7 @@ object CropCollector : EntityUtils.HighlightSource {
                 appendLine(
                     "// status=${entry.status.label} stage=${entry.stageText ?: "unread"}" +
                             " worldStep=${WorldRotation.quarterTurnsAt(entry.origin.x, entry.origin.z)}" +
-                            " stands=${entry.stands.size} names=${entry.names}"
+                            " stands=${entry.stands.size} names=${entry.names} ${waterNote(entry.origin)}"
                 )
 
                 val code = CropStageExporter.buildCropStageData(

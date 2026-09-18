@@ -124,9 +124,15 @@ object Codecs {
                 Codec.BOOL.optionalFieldOf("water_exact", false)
                     .forGetter { it.waterExact },
 
+                Codec.INT.optionalFieldOf("charge", 0)
+                    .forGetter { it.charge },
+
+                Codec.BOOL.optionalFieldOf("charge_known", false)
+                    .forGetter { it.chargeKnown },
+
                 Codec.STRING.listOf().optionalFieldOf("alternatives", emptyList())
                     .forGetter { plant -> plant.alternatives.map { it.elementId } }
-            ).apply(instance) { id, slot, waterOpt, growthOpt, ageOpt, readingsOpt, firstSeenOpt, placed, waterExact, alternativeIds ->
+            ).apply(instance) { id, slot, waterOpt, growthOpt, ageOpt, readingsOpt, firstSeenOpt, placed, waterExact, charge, chargeKnown, alternativeIds ->
                 Plant(
                     elementId = id,
                     slot = slot.orElse(null),
@@ -140,6 +146,8 @@ object Codecs {
                     plant.firstSeenStage = firstSeenOpt.orElse(null)
                     plant.placed = placed
                     plant.waterExact = waterExact
+                    plant.charge = charge
+                    plant.chargeKnown = chargeKnown
                 }
             }
         }

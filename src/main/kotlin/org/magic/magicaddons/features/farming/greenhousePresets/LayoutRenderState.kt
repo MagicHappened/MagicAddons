@@ -401,6 +401,8 @@ object LayoutRenderState {
 
         grid.scannedPlants
             .filter { harvestable(it.plant) }
+            // an ingredient that is not to be broken is not one to point at either
+            .filterNot { GreenhousePresets.preventBreakingIngredients() && GreenhouseData.isPlannedIngredient(it) }
             .forEach { growing -> markReady(grid, growing, marks) }
     }
 

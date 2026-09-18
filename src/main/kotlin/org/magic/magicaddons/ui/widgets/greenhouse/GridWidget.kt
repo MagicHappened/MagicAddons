@@ -22,6 +22,9 @@ import org.magic.magicaddons.data.greenhouse.GreenhouseLayout
 import org.magic.magicaddons.ui.HoverableContainer
 import org.magic.magicaddons.util.ScreenUtil.inRect
 import org.magic.magicaddons.util.ScreenUtil.stackFor
+import org.magic.magicaddons.util.ScreenUtil.drawCountedCrop
+import org.magic.magicaddons.util.ScreenUtil.drawBorder
+import kotlin.math.abs
 
 class GridWidget(
     val layout: GreenhouseLayout,
@@ -139,6 +142,98 @@ class GridWidget(
 
     fun footprintRect(sx: Int, sy: Int, footprint: Footprint): IntArray = cellRect(sx, sy, footprint.width, footprint.height)
 
+    /** Targets of one crop whose footprints run into each other, drawn as one region between them. */
+    private fun overlappingTargetRuns(): List<List<Plant>> =
+        layout.plants
+            .filter { it.slot.mark == LayoutSlot.Marking.Target && it.growthStage == null }
+            .groupBy { it.cropDef }
+            .flatMap { (crop, targets) ->
+                overlappingRuns(targets.map { it.slot.x to it.slot.y }, crop.footprint)
+                    .filter { it.size > 1 }
+                    .map { run -> run.mapNotNull { corner -> targets.find { (it.slot.x to it.slot.y) == corner } } }
+            }
+
+    /**
+     * Corners of one crop grouped so that everything in a run takes a cell another one wants. Only
+     * targets that really fight for room are drawn as one region; a plan of separate targets stays
+     * as separate targets however close together they stand.
+     */
+    private fun overlappingRuns(corners: List<Pair<Int, Int>>, footprint: Footprint): List<List<Pair<Int, Int>>> =
+        runsOf(corners) { one, other ->
+            one.first < other.first + footprint.width && other.first < one.first + footprint.width &&
+                    one.second < other.second + footprint.height && other.second < one.second + footprint.height
+        }
+
+    /**
+     * Corners of one crop grouped so that everything in a run claims a cell touching the rest of it.
+     * Crops a single cell wide never overlap each other, so touching rather than overlapping is what
+     * gathers a scatter of them into one region.
+     */
+    private fun touchingRuns(corners: List<Pair<Int, Int>>, footprint: Footprint): List<List<Pair<Int, Int>>> =
+        runsOf(corners) { one, other ->
+            cellsTouch(claimedCells(listOf(one), footprint), claimedCells(listOf(other), footprint))
+        }
+
+    private fun runsOf(
+        corners: List<Pair<Int, Int>>,
+        belongTogether: (Pair<Int, Int>, Pair<Int, Int>) -> Boolean
+    ): List<List<Pair<Int, Int>>> {
+        val runs = mutableListOf<MutableList<Pair<Int, Int>>>()
+
+        corners.forEach { corner ->
+            val joined = runs.filter { run -> run.any { belongTogether(it, corner) } }
+            val run = joined.firstOrNull() ?: mutableListOf<Pair<Int, Int>>().also { runs += it }
+
+            joined.drop(1).forEach { absorbed ->
+                run += absorbed
+                runs.removeAll { it === absorbed }
+            }
+            run += corner
+        }
+
+        return runs
+    }
+
+    private fun cellsTouch(one: Set<Pair<Int, Int>>, other: Set<Pair<Int, Int>>): Boolean =
+        one.any { (cellX, cellY) ->
+            (cellX to cellY) in other || (cellX + 1 to cellY) in other || (cellX - 1 to cellY) in other ||
+                    (cellX to cellY + 1) in other || (cellX to cellY - 1) in other
+        }
+
+    /** Every cell a crop standing at any of [corners] would take. */
+    private fun claimedCells(corners: List<Pair<Int, Int>>, footprint: Footprint): Set<Pair<Int, Int>> =
+        corners.flatMapTo(mutableSetOf()) { (cornerX, cornerY) ->
+            (0 until footprint.width).flatMap { across ->
+                (0 until footprint.height).map { down -> (cornerX + across) to (cornerY + down) }
+            }
+        }
+
+    private fun cellRects(cells: Set<Pair<Int, Int>>): List<IntArray> =
+        cells.map { (cellX, cellY) -> cellRect(cellX, cellY, 1, 1) }
+
+
+    /** Only the outside edges of [cells], so no line is drawn through the middle of a region. */
+    private fun outlineOf(cells: Set<Pair<Int, Int>>): List<IntArray> {
+        val drawn = cells.mapTo(mutableSetOf()) { (cellX, cellY) -> turned(cellX, cellY) }
+        val border = Common.UI.BORDER_SIZE
+
+        return drawn.flatMap { (cx, cy) ->
+            val left = x + offsetOf(cx)
+            val top = y + offsetOf(cy)
+
+            // an edge carries on over the line to the next cell of the region, so it reads as one
+            val right = left + slotSize + if ((cx + 1 to cy) in drawn) LINE_WIDTH else 0
+            val bottom = top + slotSize + if ((cx to cy + 1) in drawn) LINE_WIDTH else 0
+
+            buildList {
+                if ((cx to cy - 1) !in drawn) add(intArrayOf(left, top, right, top + border))
+                if ((cx to cy + 1) !in drawn) add(intArrayOf(left, bottom - border, right, bottom))
+                if ((cx - 1 to cy) !in drawn) add(intArrayOf(left, top, left + border, bottom))
+                if ((cx + 1 to cy) !in drawn) add(intArrayOf(right - border, top, right, bottom))
+            }
+        }
+    }
+
     fun init() {
         slotWidgets.clear()
         elementWidgets.clear()
@@ -162,19 +257,48 @@ class GridWidget(
             }
         }
 
+        val targetRuns = overlappingTargetRuns()
+        val drawnByTheirRun = targetRuns.flatMap { it.drop(1) }
+        val cellsHoldingAnIcon = mutableSetOf<Pair<Int, Int>>()
+
         layout.plants.forEach { instance ->
+            if (drawnByTheirRun.any { it === instance }) return@forEach
+
             val widget = ElementWidget(instance)
+            val run = targetRuns.firstOrNull { it.first() === instance }
 
             if (instance.slot.mark == LayoutSlot.Marking.Target && instance.cropDef.spawnRule != null) {
-                widget.missingSpawnConditions = SpawnOdds.missingConditionsForTarget(layout, instance)
+                // a run of overlapping targets is clear for as long as one of its corners is
+                widget.missingSpawnConditions = (run ?: listOf(instance))
+                    .map { SpawnOdds.missingConditionsForTarget(layout, it) }
+                    .minBy { it.size }
             }
 
             widget.padding = slotSize / 10
 
+            run?.let {
+                val corners = it.map { target -> target.slot.x to target.slot.y }
+                val cells = claimedCells(corners, instance.cropDef.footprint)
+                val iconCell = freeCellIn(cells, cellsHoldingAnIcon)
+                cellsHoldingAnIcon += iconCell
+
+                widget.mergedTargets = ElementWidget.MergedTargets(
+                    corners = corners.sortedWith(compareBy({ corner -> corner.second }, { corner -> corner.first })),
+                    cells = cellRects(cells),
+                    outline = outlineOf(cells),
+                    iconCell = cellRect(iconCell.first, iconCell.second, 1, 1)
+                )
+            }
+
             // each axis swallows the lines between the slots it covers, and a crop is not always
             // square, so the axes cannot share one border count; turned, a wide crop may stand tall
             val footprint = instance.cropDef.footprint
-            val rect = cellRect(instance.slot.x, instance.slot.y, footprint.width, footprint.height)
+            val rect = widget.mergedTargets?.let { merged ->
+                intArrayOf(
+                    merged.cells.minOf { cell -> cell[0] }, merged.cells.minOf { cell -> cell[1] },
+                    merged.cells.maxOf { cell -> cell[2] }, merged.cells.maxOf { cell -> cell[3] }
+                )
+            } ?: cellRect(instance.slot.x, instance.slot.y, footprint.width, footprint.height)
 
             widget.x = rect[0]
             widget.y = rect[1]
@@ -237,6 +361,7 @@ class GridWidget(
         }
 
         elementWidgets.forEach {
+            it.planMuted = showUnplannedMutations
             it.extractRenderState(graphics, mouseX, mouseY, delta)
         }
         renderVanishing(graphics)
@@ -252,17 +377,100 @@ class GridWidget(
 
     private fun renderUnplannedMutations(graphics: GuiGraphicsExtractor) {
         val font = Minecraft.getInstance().font
-        val cycleStep = System.currentTimeMillis() / UNPLANNED_CYCLE_MS
+        val spots = unplannedMutationSpots()
 
-        unplannedMutationSpots().forEach { (spot, crops) ->
-            val rect = cellRect(spot.first, spot.second, 1, 1)
-            val shownCrop = crops[(cycleStep % crops.size).toInt()]
-            val iconX = rect[0] + (slotSize - UNPLANNED_ICON_SIZE) / 2
-            val iconY = rect[1] + (slotSize - UNPLANNED_ICON_SIZE) / 2
+        // a run that fills its own footprint has no say in where it is drawn, so it is placed first,
+        // and the rest take the free cell nearest their middle, widest run first
+        val runs = unplannedRuns(spots)
+            .sortedWith(compareBy({ (_, run) -> if (run.size == 1) 0 else 1 }, { (_, run) -> -run.size }))
+        val cellsByRun = runs.map { (crop, run) -> claimedCells(run, crop.footprint) }
+        val colorByCrop = colorsFor(runs.map { it.first }.distinct().sortedBy { it.name })
 
-            graphics.renderFakeItem(stackFor(shownCrop), iconX, iconY, UNPLANNED_ICON_SIZE, UNPLANNED_ICON_SIZE)
-            graphics.fill(iconX, iconY, iconX + UNPLANNED_ICON_SIZE, iconY + UNPLANNED_ICON_SIZE, UNPLANNED_VEIL_COLOR)
-            graphics.text(font, Component.literal("!"), rect[2] - font.width("!") - 2, rect[1] + 2, UNPLANNED_MARK_COLOR, true)
+        // one veil over everything, so a cell two crops could both take is not darkened twice
+        cellRects(cellsByRun.flatten().toSet()).forEach { graphics.fill(it[0], it[1], it[2], it[3], UNPLANNED_VEIL_COLOR) }
+
+        val taken = mutableSetOf<Pair<Int, Int>>()
+        runs.forEachIndexed { index, (crop, run) ->
+            val cells = cellsByRun[index]
+
+            val color = colorByCrop.getValue(crop)
+            val padding = slotSize / 10
+
+            if (run.size == 1) {
+                val rect = footprintRect(run[0].first, run[0].second, crop.footprint)
+                graphics.renderFakeItem(
+                    stackFor(crop), rect[0] + padding, rect[1] + padding,
+                    rect[2] - rect[0] - padding * 2, rect[3] - rect[1] - padding * 2
+                )
+                graphics.drawBorder(rect[0] + padding, rect[1] + padding, rect[2] - padding, rect[3] - padding, CROP_BORDER_SIZE, color)
+                taken += cells
+            } else {
+                val cell = freeCellIn(cells, taken)
+                val rect = cellRect(cell.first, cell.second, 1, 1)
+
+                graphics.drawCountedCrop(font, stackFor(crop), rect, run.size, color)
+                graphics.drawBorder(rect[0] + padding, rect[1] + padding, rect[2] - padding, rect[3] - padding, CROP_BORDER_SIZE, color)
+                taken += cell
+            }
+        }
+
+        cellsByRun.forEachIndexed { index, cells ->
+            val color = colorByCrop.getValue(runs[index].first)
+            outlineOf(cells).forEach { graphics.fill(it[0], it[1], it[2], it[3], color) }
+        }
+
+        // the mark sits on the corner the crop would grow from, so the spots stay countable
+        spots.keys.forEach { (cornerX, cornerY) ->
+            val cell = cellRect(cornerX, cornerY, 1, 1)
+            graphics.text(font, Component.literal("!"), cell[2] - font.width("!") - 2, cell[1] + 2, UNPLANNED_MARK_COLOR, true)
+        }
+    }
+
+    /** A colour each, so two crops claiming the same cells can still be told apart. */
+    private fun colorsFor(crops: List<CropDefinition>): Map<CropDefinition, Int> =
+        crops.withIndex().associate { (index, crop) -> crop to UNPLANNED_CROP_COLORS[index % UNPLANNED_CROP_COLORS.size] }
+
+    /** Each crop that can grow where it was not planned, and the runs of corners it could grow from. */
+    private fun unplannedRuns(
+        spots: Map<Pair<Int, Int>, List<CropDefinition>>
+    ): List<Pair<CropDefinition, List<Pair<Int, Int>>>> =
+        spots.entries
+            .flatMap { (corner, crops) -> crops.map { it to corner } }
+            .groupBy({ it.first }, { it.second })
+            .flatMap { (crop, corners) -> touchingRuns(corners, crop.footprint).map { crop to it } }
+
+    /**
+     * The cell of [cells] nearest their middle that no icon has taken. An icon covers exactly one
+     * cell, so a free cell is one no other icon sits on; with every cell taken, the one standing
+     * furthest from the nearest icon is used.
+     */
+    private fun freeCellIn(cells: Set<Pair<Int, Int>>, taken: Set<Pair<Int, Int>>): Pair<Int, Int> {
+        val midX = cells.sumOf { it.first }.toDouble() / cells.size
+        val midY = cells.sumOf { it.second }.toDouble() / cells.size
+        val byDistanceFromMiddle = cells.sortedBy { abs(it.first - midX) + abs(it.second - midY) }
+
+        byDistanceFromMiddle.firstOrNull { it !in taken }?.let { return it }
+
+        return byDistanceFromMiddle.maxBy { cell ->
+            taken.minOf { abs(cell.first - it.first) + abs(cell.second - it.second) }
+        }
+    }
+
+    /** What can grow unplanned on the cell under the cursor, with how many corners each run has. */
+    fun unplannedTooltipAt(mouseX: Double, mouseY: Double): List<Component>? {
+        if (!showUnplannedMutations) return null
+        val cell = slotAt(mouseX, mouseY) ?: return null
+
+        val here = unplannedRuns(unplannedMutationSpots())
+            .filter { (crop, run) -> cell in claimedCells(run, crop.footprint) }
+        if (here.isEmpty()) return null
+
+        return buildList {
+            add(Component.literal("Can grow unplanned").withColor(UNPLANNED_MARK_COLOR and 0xFFFFFF))
+            here.forEach { (crop, run) ->
+                val places = if (run.size == 1) "1 place" else "${run.size} places"
+                add(Component.literal(" - ${crop.name} ($places)"))
+            }
         }
     }
 
@@ -277,17 +485,25 @@ class GridWidget(
         inRect(mouseX, mouseY, x, y, gridSpan, gridSpan)
 
     fun mouseMoved(mouseX: Double, mouseY: Double) {
+        // while the unplanned overlay is up the plan has stepped back, its hover included
         hoveredElement = elementWidgets.firstOrNull { it.isMouseOver(mouseX, mouseY) }
+            ?.takeUnless { showUnplannedMutations && it.instance.slot.mark != null }
     }
 
     companion object {
         /** The line drawn between one slot and the next, and around the outside. */
         const val LINE_WIDTH: Int = 1
 
-        private const val UNPLANNED_ICON_SIZE: Int = 16
-        private const val UNPLANNED_CYCLE_MS: Long = 900
         private const val UNPLANNED_VEIL_COLOR: Int = 0x88202020.toInt()
         const val UNPLANNED_MARK_COLOR: Int = 0xFFFFAA33.toInt()
+
+        /** Kept clear of the blue and green the marks use, and of the orange of the unplanned text. */
+        private val UNPLANNED_CROP_COLORS: List<Int> = listOf(
+            0xFFFF5FD2.toInt(), 0xFFA96BFF.toInt(), 0xFF2FE0C0.toInt(),
+            0xFFFF8FA3.toInt(), 0xFFF0F0F0.toInt(), 0xFFB98A5A.toInt()
+        )
+
+        private const val CROP_BORDER_SIZE: Int = 1
 
         /** How long a plant taken off keeps shrinking where it stood. */
         private const val VANISH_MS: Long = 150

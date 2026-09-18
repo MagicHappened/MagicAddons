@@ -18,6 +18,7 @@ class CropStandReader(
         const val ASLEEP: String = "asleep"
         const val HUNGER: String = "hunger"
         const val BONUS: String = "bonus"
+        const val CHARGE: String = "charge"
 
         const val NEEDS_TIME: String = "time"
         const val NEEDS_DAY: Int = 0
@@ -32,7 +33,12 @@ class CropStandReader(
 
         private val FILLED = McCompat.chatColor(ChatFormatting.BLUE)
         private val DEBT = McCompat.chatColor(ChatFormatting.RED)
-        private val EMPTY = McCompat.chatColor(ChatFormatting.WHITE)
+        private val EMPTY = setOf(
+            McCompat.chatColor(ChatFormatting.WHITE), McCompat.chatColor(ChatFormatting.GRAY), McCompat.chatColor(ChatFormatting.DARK_GRAY)
+        )
+
+        /** a shorter run of one glyph is a symbol, not a bar */
+        private const val SHORTEST_GLYPH_BAR: Int = 3
 
         class BarNotches(val filled: Int, val debt: Int, val otherColoured: Int, val total: Int)
 
@@ -43,13 +49,13 @@ class CropStandReader(
             var total = 0
 
             name.visit({ style, text ->
-                val notches = text.count { it == BAR_CHAR }
+                val notches = notchesIn(text)
 
                 if (notches > 0) {
                     when (style.color?.value) {
                         FILLED -> filled += notches
                         DEBT -> debt += notches
-                        EMPTY -> Unit
+                        in EMPTY -> Unit
                         else -> otherColoured += notches
                     }
 
@@ -62,6 +68,14 @@ class CropStandReader(
             if (total == 0) return null
 
             return BarNotches(filled, debt, otherColoured, total)
+        }
+
+        /** the bar character, or any one glyph repeated the way a bar of another style is drawn */
+        private fun notchesIn(text: String): Int {
+            val run = text.trim()
+            val glyph = run.firstOrNull() ?: return 0
+            if (run.length >= SHORTEST_GLYPH_BAR && !glyph.isLetterOrDigit() && run.all { it == glyph }) return run.length
+            return text.count { it == BAR_CHAR }
         }
 
         fun barPercent(name: Component): Int? = barNotches(name)?.let {

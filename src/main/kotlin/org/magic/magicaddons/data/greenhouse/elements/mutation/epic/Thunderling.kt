@@ -1,5 +1,6 @@
 package org.magic.magicaddons.data.greenhouse.elements.mutation.epic
 
+import org.magic.magicaddons.data.greenhouse.ChargeRule
 import org.magic.magicaddons.data.greenhouse.SpawnRule
 import org.magic.magicaddons.data.greenhouse.StandPose
 import org.magic.magicaddons.data.greenhouse.FIVE_DAY_DECAY_TIME_MS
@@ -10,6 +11,7 @@ import org.magic.magicaddons.data.greenhouse.CropArmorStand
 import org.magic.magicaddons.data.greenhouse.CropDefinition
 import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
 import org.magic.magicaddons.data.greenhouse.CropStage
+import org.magic.magicaddons.data.greenhouse.CropStandReader
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
 object Thunderling : CropDefinitionProvider {
@@ -22,9 +24,24 @@ object Thunderling : CropDefinitionProvider {
         skyblockId = SkyBlockItemId.item("THUNDERLING"),
         /** Each skull's pose, found constant across every stage it appears in. */
         standPoses = mapOf(
+            "63650fc953438755b13b6d0b72e77e43d183cf8d911f8fe12ca4d66168308d46" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f)),
             "b35914deb539a1fde1b1c473f8e05cacca257b959e7270d444c1dc5ad2bf7cc8" to StandPose.Fixed(Rotations(22.5f, 22.5f, 0.0f))
         ),
         stageDefs = listOf(
+            CropStage(
+                blocks = listOf(
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, 0.09375, 0.0),
+                        isSmall = true,
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
+                        hashString = "63650fc953438755b13b6d0b72e77e43d183cf8d911f8fe12ca4d66168308d46"
+                    )
+                ),
+                readers = listOf(CropStandReader.nonWaterBar(CropStandReader.CHARGE)),
+                stageRange = 1..1
+            ),
             CropStage(
                 blocks = listOf(
                 ),
@@ -35,7 +52,8 @@ object Thunderling : CropDefinitionProvider {
                         isSmall = true
                     )
                 ),
-                2..2
+                readers = listOf(CropStandReader.nonWaterBar(CropStandReader.CHARGE)),
+                stageRange = 2..2
             ),
             CropStage(
                 blocks = listOf(),
@@ -46,7 +64,34 @@ object Thunderling : CropDefinitionProvider {
                     isSmall = true
                     )
                 ),
-                3..3
+                readers = listOf(CropStandReader.nonWaterBar(CropStandReader.CHARGE)),
+                stageRange = 3..3
+            ),
+            CropStage(
+                blocks = listOf(),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0625, 0.0625, -0.25),
+                        headRotation = Rotations(-22.5f, 0.0f, 22.5f),
+                        hashString = "b35914deb539a1fde1b1c473f8e05cacca257b959e7270d444c1dc5ad2bf7cc8",
+                        isSmall = true
+                    )
+                ),
+                readers = listOf(CropStandReader.nonWaterBar(CropStandReader.CHARGE)),
+                stageRange = 4..4
+            ),
+            CropStage(
+                blocks = listOf(),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0625, 0.15625, -0.25),
+                        headRotation = Rotations(-22.5f, 0.0f, 22.5f),
+                        hashString = "b68fb1ff4ecbf2e1c6e9f11c71f8f915f2d05e58a4ced08998f8b040bd671a08",
+                        isSmall = true
+                    )
+                ),
+                readers = listOf(CropStandReader.nonWaterBar(CropStandReader.CHARGE)),
+                stageRange = 5..5
             ),
             CropStage(
                 blocks = listOf(),
@@ -58,7 +103,8 @@ object Thunderling : CropDefinitionProvider {
                         isSmall = false
                     )
                 ),
-                6..6
+                readers = listOf(CropStandReader.nonWaterBar(CropStandReader.CHARGE)),
+                stageRange = 6..6
             ),
             CropStage(
                 blocks = listOf(),
@@ -75,7 +121,8 @@ object Thunderling : CropDefinitionProvider {
                         isSmall = false
                     )
                 ),
-                7..7
+                readers = listOf(CropStandReader.nonWaterBar(CropStandReader.CHARGE)),
+                stageRange = 7..7
             ),
             CropStage(
                 blocks = listOf(),
@@ -92,7 +139,8 @@ object Thunderling : CropDefinitionProvider {
                         isSmall = true
                     )
                 ),
-                8..8
+                readers = listOf(CropStandReader.nonWaterBar(CropStandReader.CHARGE)),
+                stageRange = 8..8
             ),
             CropStage(
                 blocks = listOf(),
@@ -108,7 +156,8 @@ object Thunderling : CropDefinitionProvider {
                     hashString = "b68fb1ff4ecbf2e1c6e9f11c71f8f915f2d05e58a4ced08998f8b040bd671a08",
                     isSmall = false
                 ),
-                9..9
+                readers = listOf(CropStandReader.nonWaterBar(CropStandReader.CHARGE)),
+                stageRange = 9..9
             ),
             CropStage(
                 blocks = listOf(),
@@ -126,13 +175,15 @@ object Thunderling : CropDefinitionProvider {
                     hashString = "3724327576a20876fc95f41bb37fd0e2f2c79014455f19262f185ce88b155385",
                     isSmall = false
                 ),
-                16..16
+                readers = listOf(CropStandReader.nonWaterBar(CropStandReader.CHARGE)),
+                stageRange = 16..16
             )
         ),
         decayTimeMs = FIVE_DAY_DECAY_TIME_MS,
         maxStage = 16,
         needsWater = false,
         isMutation = true,
-        spawnRule = SpawnRule(weight = 25, requiredNeighbourCells = mapOf("Soggybud" to 5, "Noctilume" to 3))
+        spawnRule = SpawnRule(weight = 25, requiredNeighbourCells = mapOf("Soggybud" to 5, "Noctilume" to 3)),
+        chargeRule = ChargeRule(perStage = 2000, limit = 16000)
     )
 }

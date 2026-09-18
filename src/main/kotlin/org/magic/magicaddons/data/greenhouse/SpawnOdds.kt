@@ -45,8 +45,11 @@ object SpawnOdds {
         val height = crop.footprint.height
         if (x < 0 || y < 0 || x + width > layout.size || y + height > layout.size) return listOf("does not fit here")
 
+        // a marked target that has not spawned yet is a wish: it takes up no room and is no neighbour
         fun plantOn(cellX: Int, cellY: Int): Plant? =
-            layout.getSlot(cellX, cellY)?.let { layout.plantCovering(it) }?.takeUnless { it === ignoredPlant }
+            layout.getSlot(cellX, cellY)?.let { layout.plantCovering(it) }?.takeUnless {
+                it === ignoredPlant || (it.slot.mark == LayoutSlot.Marking.Target && it.growthStage == null)
+            }
 
         val footprintCells = (x until x + width).flatMap { cellX -> (y until y + height).map { cellY -> cellX to cellY } }
         val missing = mutableListOf<String>()
@@ -95,12 +98,17 @@ object SpawnOdds {
                 val slot = layout.getSlot(x, y) ?: continue
                 val plantOnSlot = layout.plantCovering(slot)
 
-                val waitingTarget = plantOnSlot?.takeIf { it.slot.mark == LayoutSlot.Marking.Target && it.slot === slot }
-                if (plantOnSlot != null && waitingTarget == null) continue
+                // a target waiting to spawn leaves every cell it covers free, and a cell it only
+                // covers can still be the corner a mutation of its own grows from
+                val coveringTarget = plantOnSlot?.takeIf {
+                    it.slot.mark == LayoutSlot.Marking.Target && it.growthStage == null
+                }
+                if (plantOnSlot != null && coveringTarget == null) continue
 
-                val plannedCrops = plannedCropsBySlot[x to y].orEmpty() + waitingTarget?.acceptedCrops.orEmpty()
+                val targetStartingHere = coveringTarget?.takeIf { it.slot === slot }
+                val plannedCrops = plannedCropsBySlot[x to y].orEmpty() + targetStartingHere?.acceptedCrops.orEmpty()
                 val spawnableMutations = mutations.filter { crop ->
-                    crop !in plannedCrops && missingSpawnConditions(layout, crop, x, y, ignoredPlant = waitingTarget).isEmpty()
+                    crop !in plannedCrops && missingSpawnConditions(layout, crop, x, y, ignoredPlant = coveringTarget).isEmpty()
                 }
                 if (spawnableMutations.isNotEmpty()) spots[x to y] = spawnableMutations
             }

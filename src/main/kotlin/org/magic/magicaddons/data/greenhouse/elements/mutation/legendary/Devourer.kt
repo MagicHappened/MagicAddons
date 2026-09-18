@@ -144,6 +144,24 @@ object Devourer : CropDefinitionProvider {
                     )
                 ),
                 12..12
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = melonStemState(6)
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, 0.15625, 0.0),
+                        headRotation = Rotations(0.0f, 67.5f, 0.0f),
+                        yRotation = 90.0f,
+                        hashString = "4100d3b81c8dd0af22af3b42c97045bd844438d2f0297b0f267a46bd35ffb33f",
+                        isSmall = false
+                    )
+                ),
+                14..14
             )
 
         ),

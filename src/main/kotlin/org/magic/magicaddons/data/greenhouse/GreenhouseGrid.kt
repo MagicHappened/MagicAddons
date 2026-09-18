@@ -89,6 +89,17 @@ class GreenhouseGrid(
         return null
     }
 
+    /** The plan this plot is running, turned the way the plot itself stands. */
+    fun assignedPlan(): GreenhouseLayout? = state.assignedLayout?.turned(state.planTurns)
+
+    /** The plant the running plan wants covering ([x], [y]), null where it asks for nothing. */
+    fun plannedPlantAt(x: Int, y: Int): Plant? {
+        val plan = assignedPlan() ?: return null
+        return plan.getSlot(x, y)?.let { plan.plantCovering(it) }
+    }
+
+    fun plannedMarkAt(x: Int, y: Int): LayoutSlot.Marking? = plannedPlantAt(x, y)?.slot?.mark
+
     fun getSlotAt(blockPos: BlockPos, matchY: Boolean = true): LayoutSlot? {
         val buildArea = plot?.getBuildableArea() ?: return null
 
@@ -238,7 +249,11 @@ class GreenhouseGrid(
                 val runtime = if (previous != null && previous.isPlacedMutation && !shouldReplacePlacedPlant(previous, scanned)) {
                     stillPlaced(previous, remainingStands) ?: continue
                 } else {
-                    val scannedPlant = scanned ?: continue
+                    if (scanned == null) {
+                        previous?.let { callbacks.plantLostInScan(it, getPosForSlot(slot) ?: continue, remainingStands) }
+                        continue
+                    }
+                    val scannedPlant = scanned
                     val def = scannedPlant.plant.cropDef
 
                     if (previous != null && previous.elementId == scannedPlant.plant.elementId) {
@@ -324,13 +339,18 @@ class GreenhouseGrid(
         val scannedPlant = scanned.plant
         scannedPlant.age = previous.age
 
+        scannedPlant.charge = previous.charge
+        scannedPlant.chargeKnown = previous.chargeKnown
+
         scannedPlant.firstSeenStage = previous.firstSeenStage ?: scannedPlant.lowestStage
         scannedPlant.placed = previous.placed
 
-        val readerKeys = scannedPlant.cropDef.stages.flatMapTo(mutableSetOf()) { stage -> stage.readers.map { it.key } }
+        // the charge is not carried: it is read afresh each scan or worked out, never assumed still shown
+        val readerKeys = scannedPlant.cropDef.stages.flatMapTo(mutableSetOf()) { stage -> stage.readers.map { it.key } } - CropStandReader.CHARGE
         previous.readings.forEach { (key, value) ->
             if (key in readerKeys) scannedPlant.readings.putIfAbsent(key, value)
         }
+        settleCharge(scannedPlant)
 
         val previousWater = previous.waterLevel
 
@@ -435,6 +455,7 @@ class GreenhouseGrid(
 
         private fun growPlants(layout: GreenhouseLayout, ticks: Int, tickMs: Long) {
             val gardenTime = dayOrNightNow()
+            val overloaded = mutableListOf<Plant>()
 
             layout.plants.forEach { plant ->
                 val maxStage = plant.cropDef.maxStage
@@ -527,7 +548,15 @@ class GreenhouseGrid(
 
                 // asleep only once it grows into a sleep stage
                 if (lowestStageAfter in sleepStages && lowestStageAfter > stageRange.first) plant.readings[CropStandReader.ASLEEP] = 1
+
+                plant.cropDef.chargeRule?.let { chargeRule ->
+                    plant.charge += chargeRule.perStage * (lowestStageAfter - stageRange.first)
+                    if (plant.charge >= chargeRule.limit) overloaded += plant
+                }
             }
+
+            // a charged plant destroys itself on reaching its limit
+            layout.plants.removeAll(overloaded)
         }
 
 
@@ -566,7 +595,8 @@ class GreenhouseGrid(
             for (cropCandidate in cropCandidates) {
                 for (stageCandidate in cropCandidate.stages) {
                     val stageResult = stageCandidate.matchesStage(
-                        origin, remainingStands, cropCandidate.footprint, cropCandidate.rotatesWithPlot, standCache = standCache
+                        origin, remainingStands, cropCandidate.footprint, cropCandidate.rotatesWithPlot,
+                        ignoreStemAge = cropCandidate.stemAgeVaries, standCache = standCache
                     ) ?: continue
 
                     if (stageResult.score < bestScore) continue
@@ -610,6 +640,8 @@ class GreenhouseGrid(
                 waterBarsExpected && stand.customName?.let { CropStandReader.looksLikeWaterBar(it) } == true
             }
             bestStage?.readValues(standsToRead)?.let { plant.readings.putAll(it) }
+            settleCharge(plant)
+
 
             return ScannedPlant(
                 plant = plant,
@@ -644,6 +676,30 @@ class GreenhouseGrid(
             plant.firstSeenStage = placedCrop.stagePlacedAt
 
             return ScannedPlant(plant = plant, stands = stands, blocks = blocks)
+        }
+
+        /**
+         * A bar read this scan is the charge. Without one, a charge never read or told is at least what
+         * the stage implies, since the plant spawned at stage 1 with none and gained a stage's worth each
+         * stage since.
+         */
+        private fun settleCharge(plant: Plant) {
+            val rule = plant.cropDef.chargeRule ?: return
+            val shown = plant.readings[CropStandReader.CHARGE]
+
+            if (shown != null) {
+                plant.charge = rule.chargeShownBy(shown)
+                plant.chargeKnown = true
+                return
+            }
+
+            if (plant.chargeKnown) return
+
+            val stage = plant.highestStage ?: 1
+            plant.charge = maxOf(plant.charge, rule.chargeImpliedBy(stage))
+
+            // a plant that has not grown a stage yet holds nothing, so stage 1 is read off, not guessed
+            plant.chargeKnown = stage <= 1
         }
 
         /** markers included: bars over a plant are marker stands */

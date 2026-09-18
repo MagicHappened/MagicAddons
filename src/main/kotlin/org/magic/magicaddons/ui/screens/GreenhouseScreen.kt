@@ -6,7 +6,6 @@ import java.time.ZonedDateTime
 import java.time.Duration
 import org.magic.magicaddons.util.ScreenUtil.modText
 import org.magic.magicaddons.util.toShortDuration
-import org.magic.magicaddons.commands.internal.MainInternal
 import org.magic.magicaddons.data.greenhouse.Footprint
 import org.magic.magicaddons.ui.widgets.greenhouse.PaletteItem
 import org.magic.magicaddons.data.greenhouse.CropRegistry
@@ -834,7 +833,7 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
     /** Asks before emptying the plot on show of every plant, soil and mark; one arrow step brings it back. */
     private fun askClearPlot(event: MouseButtonEvent) {
         val grid = displayedGridWidget ?: return
-        val question = "Clear ${GreenhouseData.describe(grid.layout)}?"
+        val question = "Clear ${GreenhouseData.fullPlotName(grid.layout)}?"
         val (menuX, menuY) = OverlayRenderable.placeOnScreen(event.x.toInt(), event.y.toInt(), ConfirmContext.widthFor(question), ConfirmContext.HEIGHT)
         addContext(ConfirmContext(menuX, menuY, question, this) {
             remember(grid.layout)
@@ -1118,6 +1117,11 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
             }
         }
 
+        displayedGridWidget?.unplannedTooltipAt(mouseX.toDouble(), mouseY.toDouble())?.let { lines ->
+            graphics.drawTooltipLinesAtCursor(lines.map { it.visualOrderText }, mouseX, mouseY)
+            return
+        }
+
         val hovered = hoveredElement as? ElementWidget ?: return
 
         // hovering the star beside a water time shows the star's own tooltip instead of the plant's
@@ -1127,6 +1131,11 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
         }
 
         hovered.debtTooltipAt(mouseX, mouseY)?.let {
+            graphics.drawTooltipAtCursor(it, mouseX, mouseY)
+            return
+        }
+
+        hovered.chargeTooltipAt(mouseX, mouseY)?.let {
             graphics.drawTooltipAtCursor(it, mouseX, mouseY)
             return
         }
@@ -1747,7 +1756,7 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
             val fit = SoftImport.bestFit(shown, incoming.first(), facing)
             shown.copyContentsFrom(fit.layout)
             initPresetLayout()
-            ChatUtils.sendWithPrefix("Imported into ${GreenhouseData.describe(shown)}")
+            ChatUtils.sendWithPrefix("Imported into ${GreenhouseData.fullPlotName(shown)}")
             ChatUtils.sendWithPrefix(
                 "Soft imported at ${fit.turns * 90}°, ${counted(fit.plantsRemoved, "plant")} and ${counted(fit.soilsReplaced, "soil")} replaced"
             )
@@ -1767,14 +1776,14 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
                 }
                 shownPlot = targets.first()
                 initPresetLayout()
-                val into = if (targets.size == 1) GreenhouseData.describe(targets.first()) else master.displayName()
+                val into = if (targets.size == 1) GreenhouseData.fullPlotName(targets.first()) else master.displayName()
                 ChatUtils.sendWithPrefix("Imported into $into")
             }
             incoming.size == 1 -> {
                 remember(shown)
                 shown.copyContentsFrom(incoming.first().turned(facing))
                 initPresetLayout()
-                ChatUtils.sendWithPrefix("Imported into ${GreenhouseData.describe(shown)}")
+                ChatUtils.sendWithPrefix("Imported into ${GreenhouseData.fullPlotName(shown)}")
             }
             else -> importAsNewPreset(result, facing)
         }
@@ -2016,7 +2025,7 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
         GreenhouseData.regenRender()
 
         ChatUtils.sendWithPrefix(
-            "Planner active on ${grid.layout.displayName()} for ${GreenhouseData.describe(layout)}"
+            "Planner active on ${grid.layout.displayName()} for ${GreenhouseData.fullPlotName(layout)}"
         )
     }
 
