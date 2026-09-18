@@ -22,12 +22,7 @@ import kotlin.io.path.readText
 import kotlin.io.path.writeText
 import kotlin.math.pow
 
-/**
- * What every greenhouse held before and after each batch of growth ticks, written for checking the
- * spawn and growth models against the game. A record stays open until the next batch of ticks or
- * the game closes, which is the last moment a stage a scan left as a range can still be pinned down.
- */
-object SpawnLog {
+object GreenhouseSpawnLog {
 
     private class RecordedPlant(val x: Int, val y: Int, val cropName: String, var stages: String, var water: Double?) {
         override fun toString(): String = "$x,$y:$cropName@$stages" + (water?.let { "/${"%.1f".format(it)}" } ?: "")
@@ -65,10 +60,19 @@ object SpawnLog {
     private const val EXPECTED_TARGET_COLUMN: Int = 6
     private const val TARGET_SPAWNS_COLUMN: Int = 7
 
+    var lostPlantsMessages: Boolean = readLostPlantsMessages()
+        private set
+
     private var activeFileName: String? = readActiveFileName()
     private val openRecordByGrid = mutableMapOf<GreenhouseGrid, Record>()
 
     private val isEnabled: Boolean get() = activeFileName != null
+
+    fun toggleLostPlantsMessages(): Boolean {
+        lostPlantsMessages = !lostPlantsMessages
+        writeSettings()
+        return lostPlantsMessages
+    }
 
     fun toggle() {
         if (activeFileName == null) {
@@ -79,7 +83,7 @@ object SpawnLog {
         val fileName = activeFileName
         submitEveryRecord()
         activeFileName = null
-        Files.deleteIfExists(SETTINGS_FILE)
+        writeSettings()
 
         val rows = fileName?.let { LOG_DIR.resolve(it) }?.takeIf { it.exists() }?.readLines().orEmpty().drop(1).filter { it.isNotBlank() }
         val columnsByRow = rows.map { splitCsvRow(it) }
@@ -91,7 +95,6 @@ object SpawnLog {
         )
     }
 
-    /** called on every growth tick, before the plants are moved on */
     fun noteGrowthTicks(grid: GreenhouseGrid, ticks: Int, leftGarden: Boolean) {
         if (!isEnabled) return
 
@@ -113,7 +116,6 @@ object SpawnLog {
         openRecordByGrid.entries.firstOrNull { it.key.layout === layout }?.value?.spawns?.add(recordedPlant(spawn))
     }
 
-    /** called by every full scan; only the first one after the ticks says what they left behind */
     fun noteScan(grid: GreenhouseGrid) {
         if (!isEnabled) return
         val record = openRecordByGrid[grid] ?: return
@@ -160,10 +162,6 @@ object SpawnLog {
         Files.write(LOG_DIR.resolve(fileName), listOf(row.joinToString(",")), StandardOpenOption.CREATE, StandardOpenOption.APPEND)
     }
 
-    /**
-     * Replaces a recorded range with the narrower stage a later look found, and nothing else: what
-     * the player does to the greenhouse after the ticks does not belong in the row.
-     */
     private fun narrowStageRanges(grid: GreenhouseGrid, record: Record) {
         val plantsBySlot = grid.layout.plants.associateBy { it.slot.x to it.slot.y }
 
@@ -219,12 +217,11 @@ object SpawnLog {
         val newFileName = "spawn-log-${LocalDateTime.now().format(FILE_NAME_TIME)}.csv"
         Files.createDirectories(LOG_DIR)
         LOG_DIR.resolve(newFileName).writeText(HEADER + "\n")
-        SETTINGS_FILE.writeText(JsonObject().apply { addProperty("activeFile", newFileName) }.toString())
         activeFileName = newFileName
+        writeSettings()
         ChatUtils.sendWithPrefix("Spawn log on, writing to collected/$newFileName")
     }
 
-    /** a file written by an older build has other columns, so logging carries on in a new one */
     private fun readActiveFileName(): String? = runCatching {
         if (!SETTINGS_FILE.exists()) return null
         val fileName = JsonParser.parseString(SETTINGS_FILE.readText()).asJsonObject.get("activeFile")?.asString ?: return null
@@ -238,9 +235,23 @@ object SpawnLog {
 
         val replacementFileName = "spawn-log-${LocalDateTime.now().format(FILE_NAME_TIME)}.csv"
         LOG_DIR.resolve(replacementFileName).writeText(HEADER + "\n")
-        SETTINGS_FILE.writeText(JsonObject().apply { addProperty("activeFile", replacementFileName) }.toString())
+        writeSettings(replacementFileName)
         replacementFileName
     }.getOrNull()
+
+    private fun readLostPlantsMessages(): Boolean = runCatching {
+        SETTINGS_FILE.exists() &&
+                JsonParser.parseString(SETTINGS_FILE.readText()).asJsonObject.get("lostPlantsMessages")?.asBoolean == true
+    }.getOrDefault(false)
+
+    private fun writeSettings(fileName: String? = activeFileName) {
+        SETTINGS_FILE.writeText(
+            JsonObject().apply {
+                fileName?.let { addProperty("activeFile", it) }
+                addProperty("lostPlantsMessages", lostPlantsMessages)
+            }.toString()
+        )
+    }
 
     private fun csvField(text: String): String =
         if (text.any { it == ',' || it == '"' }) "\"" + text.replace("\"", "\"\"") + "\"" else text

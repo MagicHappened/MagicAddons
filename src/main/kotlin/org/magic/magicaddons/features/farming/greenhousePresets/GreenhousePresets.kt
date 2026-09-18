@@ -15,10 +15,15 @@ object GreenhousePresets : Feature() {
 
     private const val KEY_ANYWHERE = "GreenhouseKeyAnywhere"
     private const val TURN_GRID_KEY = "TurnGridWithPlayer"
+    private const val SCREEN_KEY = "Screen"
     private const val PLANNER_OPTIONS_KEY = "PlannerOptions"
+    private const val BREAK_PROTECTION_KEY = "BreakProtection"
+    private const val PREDICTION_KEY = "Prediction"
     private const val PLANT_TRANSPARENCY_KEY = "PlantTransparency"
     private const val PLANT_HIGHLIGHTS_KEY = "PlantHighlights"
     private const val HARVEST_HIGHLIGHT_KEY = "HarvestHighlight"
+    private const val PREVENT_BREAKING_INGREDIENTS_KEY = "PreventBreakingIngredients"
+    private const val PREVENT_BREAKING_GROWING_KEY = "PreventBreakingGrowingMutations"
     private const val HARVEST_ONLY_TARGETS_KEY = "OnlyPresetTargets"
     private const val PLANNER_COLORS_KEY = "PlannerColors"
     private const val WATER_INDICATOR_KEY = "WaterIndicator"
@@ -41,12 +46,14 @@ object GreenhousePresets : Feature() {
         registerListeners()
     }
 
-    /** Registers every object of this feature on the bus, so none is left waiting to be referenced before it listens. */
     @Suppress("UNUSED_EXPRESSION")
     private fun registerListeners() {
         EventBus.register(GreenhouseData)
         SkyBlockAPI.eventBus.register(GreenhouseData)
         EventBus.register(GreenhouseWatering)
+        EventBus.register(GreenhousePlantDischarge)
+        EventBus.register(GreenhouseChargeBars)
+        EventBus.register(BreakProtection)
         EventBus.register(HungerBars)
         EventBus.register(PlantWarnings)
         EventBus.register(GreenhouseKey)
@@ -57,15 +64,28 @@ object GreenhousePresets : Feature() {
         EventBus.register(GreenhouseWarnings)
         EventBus.register(PlannerNeeds)
         CropRegistry
-
-        // the attribute api only registers its listeners once something references it, so it is
-        // referenced here rather than the first time a value is asked of it
         AttributeAPI
     }
 
-    fun keyWorksAnywhere(): Boolean = baseSetting.getChild<BooleanSetting>(KEY_ANYWHERE)?.value == true
+    private val screenAnywhereSetting = BooleanSetting(
+        key = KEY_ANYWHERE,
+        displayName = "Open Anywhere",
+        description = "Lets the greenhouse screen key (G unless rebound) open the screen " +
+                "outside the garden too. Off, it only works while on the garden",
+        value = false
+    )
 
-    fun turnsGridWithPlayer(): Boolean = baseSetting.getChild<BooleanSetting>(TURN_GRID_KEY)?.value == true
+    private val turnGridSetting = BooleanSetting(
+        key = TURN_GRID_KEY,
+        displayName = "Turn Grid With Player",
+        description = "Turns the greenhouse screen's grid so the way you are facing is up. " +
+                "Only the picture turns: plans still go on the same tiles",
+        value = false
+    )
+
+    fun keyWorksAnywhere(): Boolean = screenAnywhereSetting.value
+
+    fun turnsGridWithPlayer(): Boolean = turnGridSetting.value
 
     private val plantTransparencySetting = IntSetting(
         key = PLANT_TRANSPARENCY_KEY,
@@ -77,7 +97,6 @@ object GreenhousePresets : Feature() {
         scrollable = false
     )
 
-    /** how solid a planned plant is drawn, 0 to 255 */
     @JvmStatic
     fun plantAlpha(): Int = 255 * (100 - plantTransparencySetting.value) / 100
 
@@ -88,6 +107,25 @@ object GreenhousePresets : Feature() {
                 "mutation ready to harvest, and red on anything else growing in its slot",
         value = false
     )
+
+    private val preventBreakingIngredientsSetting = BooleanSetting(
+        key = PREVENT_BREAKING_INGREDIENTS_KEY,
+        displayName = "Prevent Breaking Ingredients",
+        description = "Prevents breaking crops marked as ingredients in the assigned layout for that greenhouse.\n\n" +
+                "§7Enabling this option will also prevent ingredient crops showing up in harvest highlight.",
+        value = false
+    )
+
+    fun preventBreakingIngredients(): Boolean = baseSetting.value && preventBreakingIngredientsSetting.value
+
+    private val preventBreakingGrowingSetting = BooleanSetting(
+        key = PREVENT_BREAKING_GROWING_KEY,
+        displayName = "Prevent Breaking Growing Mutations",
+        description = "Prevents breaking a mutation that has not finished growing.",
+        value = false
+    )
+
+    fun preventBreakingGrowingMutations(): Boolean = baseSetting.value && preventBreakingGrowingSetting.value
 
     private val harvestHighlightSetting = BooleanSetting(
         key = HARVEST_HIGHLIGHT_KEY,
@@ -101,7 +139,6 @@ object GreenhousePresets : Feature() {
 
     fun harvestHighlightOnlyTargets(): Boolean = harvestOnlyTargetsSetting.value
 
-    /** One colour of the planner, written as hex. Blank or unreadable leaves the mark its own colour. */
     private val plannerColorSettings: Map<PlannerMark, TextSetting> = PlannerMark.entries.associateWith { mark ->
         TextSetting(
             key = "Color${mark.name}",
@@ -119,7 +156,6 @@ object GreenhousePresets : Feature() {
         children = plannerColorSettings.values.toList()
     )
 
-    /** The colour [mark] is drawn in, which is the player's when they typed a readable one. */
     fun plannerColor(mark: PlannerMark): Int {
         val typed = plannerColorSettings[mark]?.value?.trim()?.removePrefix("#")?.removePrefix("0x")
         val rgb = typed?.takeIf { it.length == 6 }?.toIntOrNull(16) ?: return mark.defaultColor
@@ -160,18 +196,10 @@ object GreenhousePresets : Feature() {
     private val assumeFlatWaterSetting = BooleanSetting(
         key = FLAT_WATER_KEY,
         displayName = "Assume No Water Retain Or Drain",
-        description = "Assumes water retain and drain are bugged for prediction.\n\n" +
-                "§7§oSkyBlock is a great, consistent game, where water retain has been observed to " +
-                "work on multiple occasions, showing the base water drain of -20 rectified to -15 and " +
-                "-10 with 50% and 100% water retain respectively; and even with water drain, it " +
-                "consumes 23, which is perfect. But in another case, no matter the water retain or " +
-                "drain, it is a flat -20 with absolutely no consistency. If you have further findings " +
-                "about this, please let me know. This is exactly the kind of consistency tied to " +
-                "SkyBlock: no consistency.",
+        description = "Assumes water retain and drain are bugged for prediction logic",
         value = false
     )
 
-    /** Whether every prediction takes the plain loss, retain and drain set aside until they are trusted. */
     fun assumeFlatWater(): Boolean = baseSetting.value && assumeFlatWaterSetting.value
 
     private val hudAnywhereSetting = BooleanSetting(
@@ -191,20 +219,18 @@ object GreenhousePresets : Feature() {
     private fun types(): BooleanSetting? = warnings()?.let { typesSetting() }?.takeIf { it.value }
     private fun reminders(): BooleanSetting? = warnings()?.getChild<BooleanSetting>(REMINDERS_KEY)?.takeIf { it.value }
 
-    /** Whether one kind of warning is on, with the headings above it on too. */
-    fun warningType(key: String): Boolean = types()?.getChild<BooleanSetting>(key)?.value == true
 
-    /** Whether one of the reminder moments is on, with the headings above it on too. */
-    fun reminder(key: String): Boolean = reminders()?.getChild<BooleanSetting>(key)?.value == true
+    fun warningTypeEnabled(key: String): Boolean = types()?.getChild<BooleanSetting>(key)?.value == true
 
-    /** How far ahead of the next tick the warnings are sent, from the reminders that are on. */
+
+    fun reminderTimeEnabled(key: String): Boolean = reminders()?.getChild<BooleanSetting>(key)?.value == true
+
     fun reminderThresholds(): List<Duration> = listOfNotNull(
-        Duration.ofMinutes(10).takeIf { reminder(TEN_MINUTES_KEY) },
-        Duration.ofMinutes(5).takeIf { reminder(FIVE_MINUTES_KEY) },
-        Duration.ofMinutes(1).takeIf { reminder(ONE_MINUTE_KEY) }
+        Duration.ofMinutes(10).takeIf { reminderTimeEnabled(TEN_MINUTES_KEY) },
+        Duration.ofMinutes(5).takeIf { reminderTimeEnabled(FIVE_MINUTES_KEY) },
+        Duration.ofMinutes(1).takeIf { reminderTimeEnabled(ONE_MINUTE_KEY) }
     )
 
-    /** How many growth ticks the player says they will be away for, whether or not the warning is on. */
     fun chorusAbsenceTicks(): Int? = typesSetting()
         ?.getChild<BooleanSetting>(CHORUS_KEY)
         ?.getChild<IntSetting>(CHORUS_TICKS_KEY)
@@ -220,16 +246,28 @@ object GreenhousePresets : Feature() {
         value = false,
         children = listOf(
             ParentSetting(
+                key = SCREEN_KEY,
+                displayName = "Screen",
+                description = "The greenhouse screen itself",
+                children = listOf(screenAnywhereSetting, turnGridSetting)
+            ),
+            ParentSetting(
                 key = PLANNER_OPTIONS_KEY,
-                displayName = "Planner Options",
+                displayName = "Planner",
                 description = "How a plan running on a greenhouse is shown",
                 children = listOf(plantTransparencySetting, plannerColorsGroup)
             ),
             ParentSetting(
                 key = PLANT_HIGHLIGHTS_KEY,
-                displayName = "Plant Highlights",
+                displayName = "Highlights",
                 description = "What is marked on the plants of the greenhouse you stand in",
                 children = listOf(harvestHighlightSetting, waterIndicatorSetting)
+            ),
+            ParentSetting(
+                key = BREAK_PROTECTION_KEY,
+                displayName = "Break Protection",
+                description = "Swings and hits refused so a plant worth keeping is not broken by mistake",
+                children = listOf(preventBreakingIngredientsSetting, preventBreakingGrowingSetting)
             ),
             BooleanSetting(
                 key = WARNINGS_KEY,
@@ -347,20 +385,11 @@ object GreenhousePresets : Feature() {
                 value = false,
                 children = listOf(hudAnywhereSetting)
             ),
-            assumeFlatWaterSetting,
-            BooleanSetting(
-                key = KEY_ANYWHERE,
-                displayName = "Greenhouse Screen Anywhere",
-                description = "Lets the greenhouse screen key (G unless rebound) open the screen " +
-                        "outside the garden too. Off, it only works while on the garden",
-                value = false
-            ),
-            BooleanSetting(
-                key = TURN_GRID_KEY,
-                displayName = "Turn Grid With Player",
-                description = "Turns the greenhouse screen's grid so the way you are facing is up. " +
-                        "Only the picture turns: plans still go on the same tiles",
-                value = false
+            ParentSetting(
+                key = PREDICTION_KEY,
+                displayName = "Prediction",
+                description = "What the growth and water model is told to assume",
+                children = listOf(assumeFlatWaterSetting)
             )
         )
     )

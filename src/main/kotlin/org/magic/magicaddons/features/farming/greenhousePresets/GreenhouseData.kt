@@ -1,5 +1,6 @@
 package org.magic.magicaddons.features.farming.greenhousePresets
 
+import org.magic.magicaddons.commands.debug.LostPlantReport
 import org.magic.magicaddons.commands.internal.MainInternal
 import org.magic.magicaddons.commands.debug.CropCollector
 import org.magic.magicaddons.commands.internal.farming.SetTimestalkAttribute
@@ -65,7 +66,6 @@ object GreenhouseData : GridCallbacks {
 
     var lastPlot: Plot? = null
 
-    /** When the garden last loaded around the player, the earliest a spawned mutation can be from. */
     private var gardenArrivedAt: Instant? = null
 
     var checkGreenhouses = false
@@ -73,17 +73,16 @@ object GreenhouseData : GridCallbacks {
     var greenhouseGrids = mutableListOf<GreenhouseGrid>()
     var presetGrids = mutableListOf<MasterLayout>()
 
-    /** Every plot of every preset, the things a greenhouse can be assigned. */
     fun allPlots(): List<GreenhouseLayout> = presetGrids.flatMap { it.plots }
 
     fun masterOf(plot: GreenhouseLayout): MasterLayout? = presetGrids.find { plot in it.plots }
 
-    /** A plot as the player knows it: the preset's name, and which plot when the preset has several. */
-    fun describe(plot: GreenhouseLayout): String {
+    fun fullPlotName(plot: GreenhouseLayout): String {
         val master = masterOf(plot) ?: return plot.displayName()
         return if (master.plots.size > 1) "${master.plotTitle(plot)} of ${master.displayName()}" else master.displayName()
     }
-    /** A plot named in full, the preset and the plot each by its name or its number. */
+
+
     fun nameInFull(plot: GreenhouseLayout): String {
         val master = masterOf(plot) ?: return plot.displayName()
 
@@ -98,40 +97,30 @@ object GreenhouseData : GridCallbacks {
     var lastCheckTime: Instant? = null
     var lastServerTick: Long? = null
 
-    /** One crop the player put down, until the plot confirms it or the window runs out. */
-    private class Placement(val def: CropDefinition, val pos: BlockPos, val at: Instant)
+    private class PlayerPlacement(val def: CropDefinition, val pos: BlockPos, val at: Instant)
 
-    /** Every placement still waiting on the plot: several go down in a row faster than a scan. */
-    private val placements = mutableListOf<Placement>()
+    private val playerPlacements = mutableListOf<PlayerPlacement>()
 
-    /** every crop the player placed. */
     private val cropPlacements = mutableMapOf<BlockPos, CropPlacement>()
 
     private class CropPlacement(val def: CropDefinition, val at: Long)
 
-    override fun placedCropAt(soil: BlockPos): CropDefinition? = cropPlacements[BlockPos(soil.x, GREENHOUSE_SOIL_Y, soil.z)]?.def
+    override fun placedCropAt(soilPos: BlockPos): CropDefinition? = cropPlacements[BlockPos(soilPos.x, GREENHOUSE_SOIL_Y, soilPos.z)]?.def
 
     override fun assumeFlatWater(): Boolean = GreenhousePresets.assumeFlatWater()
 
     override fun waterBarsExpected(): Boolean = GreenhouseWatering.wateringWindowOpen()
 
-    /**
-     * The soil at [soil] no longer holds what was put down there: a recorded look has matched it,
-     * or nothing stands there any more. Kept, the entry built phantoms out of the next plant's parts.
-     * A placement younger than [PLACE_SETTLE_MS] is kept: the scan on the tick of the click runs
-     * before the server has put the plant's stands down.
-     */
-    override fun forgetPlayerPlacementAt(soil: BlockPos) {
-        val key = BlockPos(soil.x, GREENHOUSE_SOIL_Y, soil.z)
+
+    override fun forgetPlayerPlacementAt(soilPos: BlockPos) {
+        val key = BlockPos(soilPos.x, GREENHOUSE_SOIL_Y, soilPos.z)
         val placed = cropPlacements[key] ?: return
         if (System.currentTimeMillis() - placed.at < PLACE_SETTLE_MS) return
         cropPlacements.remove(key)
     }
 
-    /** How long after the click a placement's stands may still be on their way. */
     private const val PLACE_SETTLE_MS: Long = 2_000
 
-    /** Whether two plants' footprints share a slot, both given by their north-west soil block. */
     private fun overlaps(aOrigin: BlockPos, a: CropDefinition, bOrigin: BlockPos, b: CropDefinition): Boolean =
         aOrigin.x < bOrigin.x + b.footprint.width && bOrigin.x < aOrigin.x + a.footprint.width &&
                 aOrigin.z < bOrigin.z + b.footprint.height && bOrigin.z < aOrigin.z + a.footprint.height
@@ -140,11 +129,10 @@ object GreenhouseData : GridCallbacks {
 
     private var plantDiagnosticHitBaseBlock: BlockPos? = null
 
-    /** Whether a greenhouse scan may change what the mod holds. Turned off from the farming debug command. */
     var scanUpdatesState: Boolean = true
 
-    /** Whether a diagnosis read off the tool may change what the mod holds. */
     var toolUpdatesState: Boolean = true
+
     private var plantDiagnosticListeningElement: ScannedPlant? = null
 
     private fun initKnownIds() {
@@ -206,8 +194,11 @@ object GreenhouseData : GridCallbacks {
     /** When the arrival scan was asked for, so a plot whose stands never come still gets read. */
     private var arrivalPendingSince: Long = 0L
 
-    /** How long the plot has to go without a new entity before it is taken as fully sent. */
-    private const val ENTITY_QUIET_MS: Long = 1_000
+    /**
+     * How long the plot has to go without a new entity before it is taken as fully sent. A stand's
+     * height can still move for a moment after it arrives, which a scan reads as the wrong stage.
+     */
+    private const val ENTITY_QUIET_MS: Long = 2_000
 
     /** When an entity last turned up inside the plot being stood in. */
     private var lastEntityArrivalAt: Long? = null
@@ -253,7 +244,7 @@ object GreenhouseData : GridCallbacks {
         }
 
         claimPlantedCrop(grid)
-        SpawnLog.noteScan(grid)
+        GreenhouseSpawnLog.noteScan(grid)
 
         // the plan on screen is read off the plot, so it is only right until the plot changes
         LayoutRenderState.refresh()
@@ -417,7 +408,7 @@ object GreenhouseData : GridCallbacks {
 
     /** Which greenhouses run out of room for their chorus before the player is next back. */
     private fun warnOfChorusCollision() {
-        if (!GreenhousePresets.warningType(GreenhousePresets.CHORUS_KEY)) return
+        if (!GreenhousePresets.warningTypeEnabled(GreenhousePresets.CHORUS_KEY)) return
 
         val nextTick = miscInfo.nextTickTime ?: return
         val remainingMs = Duration.between(Instant.now(), nextTick).toMillis()
@@ -490,7 +481,7 @@ object GreenhouseData : GridCallbacks {
      * past death is left alone, since the dead bush says it better.
      */
     private fun warnOfDyingPlants() {
-        if (!GreenhousePresets.warningType(THIRST_KEY)) return
+        if (!GreenhousePresets.warningTypeEnabled(THIRST_KEY)) return
 
         val nextTick = miscInfo.nextTickTime ?: return
         val remainingMs = Duration.between(Instant.now(), nextTick).toMillis()
@@ -530,8 +521,12 @@ object GreenhouseData : GridCallbacks {
     }
 
     /** A plant found alive past its predicted death: said now, at whatever the countdown reads. */
+    override fun plantLostInScan(previous: Plant, origin: BlockPos, remainingStands: List<ArmorStand>) {
+        if (GreenhouseSpawnLog.lostPlantsMessages) LostPlantReport.sendReport(previous, origin, remainingStands)
+    }
+
     override fun warnSurvivor(plant: DyingPlant) {
-        if (!GreenhousePresets.warningType(THIRST_KEY)) return
+        if (!GreenhousePresets.warningTypeEnabled(THIRST_KEY)) return
 
         val remaining = miscInfo.nextTickTime
             ?.let { Duration.between(Instant.now(), it).toMillis().coerceAtLeast(0) }
@@ -703,7 +698,7 @@ object GreenhouseData : GridCallbacks {
         greenhouseGrids.forEach { grid ->
             if (onlineTickTracking && !grid.isScannedThisVisit()) return@forEach
 
-            SpawnLog.noteGrowthTicks(grid, elapsedTicks, leftGarden = !onlineTickTracking)
+            GreenhouseSpawnLog.noteGrowthTicks(grid, elapsedTicks, leftGarden = !onlineTickTracking)
             grid.state.ticksSinceLastScan += elapsedTicks
             grid.state.needsRescan = true
 
@@ -821,7 +816,7 @@ object GreenhouseData : GridCallbacks {
 
     @Subscription
     fun onGameShutdown(event: ServerDisconnectEvent) {
-        SpawnLog.onGameClosing()
+        GreenhouseSpawnLog.onGameClosing()
         DataHandler.saveGardenData()
     }
 
@@ -1034,8 +1029,12 @@ object GreenhouseData : GridCallbacks {
         plantDiagnosticHitBaseBlock = BlockPos(entityBlockPos.x, GREENHOUSE_SOIL_Y, entityBlockPos.z)
         val grid = getCurrentGrid() ?: return
         if (!grid.isScannedThisVisit()) return
-        val mainHandId = event.player.mainHandItem.getSkyBlockId() ?: return
         val standTarget = event.target as? ArmorStand ?: return
+
+        // read before the held item is looked at: a charge is taken by an empty hand too
+        GreenhousePlantDischarge.setPlantClicked(plantAtStand(standTarget, grid)?.plant)
+
+        val mainHandId = event.player.mainHandItem.getSkyBlockId() ?: return
         if (mainHandId.id == DIAGNOSTICS_TOOL_ID) listenAtStand(standTarget, grid)
     }
 
@@ -1056,6 +1055,9 @@ object GreenhouseData : GridCallbacks {
         plantDiagnosticHitBaseBlock = BlockPos(event.hit.blockPos.x, GREENHOUSE_SOIL_Y, event.hit.blockPos.z)
         val grid = getCurrentGrid() ?: return
         if (!grid.isScannedThisVisit()) return
+
+        GreenhousePlantDischarge.setPlantClicked(plantAtBlock(event.hit.blockPos, grid)?.plant)
+
         val mainHandId = event.player.mainHandItem.getSkyBlockId() ?: return
 
         val foundCrop = CropRegistry.findByIdOrName(mainHandId.id)
@@ -1075,7 +1077,7 @@ object GreenhouseData : GridCallbacks {
             val footprint = foundCrop.footprint
             val pos = aimed.offset(-((footprint.width - 1) / 2), 0, -((footprint.height - 1) / 2))
 
-            placements.add(Placement(foundCrop, pos, Instant.now()))
+            playerPlacements.add(PlayerPlacement(foundCrop, pos, Instant.now()))
 
             // nothing can be placed over a plant, so whatever was remembered in the way is gone
             val soil = BlockPos(pos.x, GREENHOUSE_SOIL_Y, pos.z)
@@ -1130,9 +1132,9 @@ object GreenhouseData : GridCallbacks {
      */
     private fun claimPlantedCrop(grid: GreenhouseGrid) {
         val now = Instant.now()
-        placements.removeAll { now.isAfter(it.at.plus(SERVER_PLACE_WINDOW)) }
+        playerPlacements.removeAll { now.isAfter(it.at.plus(SERVER_PLACE_WINDOW)) }
 
-        placements.toList().forEach { placement ->
+        playerPlacements.toList().forEach { placement ->
             val slot = grid.getSlotAt(placement.pos, false) ?: return@forEach
             val element = grid.elementCoveringSlot(slot) ?: return@forEach
 
@@ -1140,59 +1142,59 @@ object GreenhouseData : GridCallbacks {
         }
     }
 
-    override fun placementConfirmed(def: CropDefinition, slot: LayoutSlot, grid: GreenhouseGrid): Boolean {
+    override fun placementConfirmed(crop: CropDefinition, slot: LayoutSlot, grid: GreenhouseGrid): Boolean {
         val now = Instant.now()
-        val index = placements.indexOfFirst { placement ->
-            placement.def == def &&
+        val index = playerPlacements.indexOfFirst { placement ->
+            placement.def == crop &&
                     !now.isAfter(placement.at.plus(SERVER_PLACE_WINDOW)) &&
                     grid.getSlotAt(placement.pos, false)?.let { it.x == slot.x && it.y == slot.y } == true
         }
         if (index < 0) return false
-        placements.removeAt(index)
+        playerPlacements.removeAt(index)
         return true
     }
 
-    override fun markAsPlaced(instance: Plant) {
-        instance.placed = true
-        instance.age = 0L
+    override fun markAsPlaced(plant: Plant) {
+        plant.placed = true
+        plant.age = 0L
 
-        val stage = instance.growthStage
-        if (stage is GrowthStageInfo.Estimated && instance.cropDef.stagePlacedAt in stage.range) {
-            instance.growthStage = GrowthStageInfo.Known(instance.cropDef.stagePlacedAt)
+        val stage = plant.growthStage
+        if (stage is GrowthStageInfo.Estimated && plant.cropDef.stagePlacedAt in stage.range) {
+            plant.growthStage = GrowthStageInfo.Known(plant.cropDef.stagePlacedAt)
         }
 
-        if (instance.consumesWater) {
-            instance.waterLevel = 0.0
-            instance.waterExact = true
+        if (plant.consumesWater) {
+            plant.waterLevel = 0.0
+            plant.waterExact = true
         } else {
-            instance.waterLevel = null
-            instance.waterExact = false
+            plant.waterLevel = null
+            plant.waterExact = false
         }
-        instance.waterBestCase = null
-        instance.firstSeenStage = instance.lowestStage
+        plant.waterBestCase = null
+        plant.firstSeenStage = plant.lowestStage
     }
 
 
-    override fun claimSpawnedMutation(instance: Plant, layout: GreenhouseLayout) {
-        val grown = ((instance.lowestStage ?: 1) - 1).coerceAtLeast(0)
+    override fun claimSpawnedMutation(plant: Plant, layout: GreenhouseLayout) {
+        val grown = ((plant.lowestStage ?: 1) - 1).coerceAtLeast(0)
         val now = Instant.now()
 
 
-        if (instance.cropDef.drainsNeighbours) {
-            instance.waterLevel = WaterModel.DRAIN_PER_STAGE * grown
-            instance.waterExact = false
-        } else if (instance.cropDef.needsWater) {
-            val waterEffect = GreenhouseGrid.waterEffectAt(layout, instance.slot)
+        if (plant.cropDef.drainsNeighbours) {
+            plant.waterLevel = WaterModel.DRAIN_PER_STAGE * grown
+            plant.waterExact = false
+        } else if (plant.cropDef.needsWater) {
+            val waterEffect = GreenhouseGrid.waterEffectAt(layout, plant.slot)
             val predictedWater = WaterModel.waterLevelAfter(0.0, grown, waterEffect)
             // a spawn still standing is alive
-            instance.waterLevel = WaterModel.lowestWaterLevelStillAlive(predictedWater, waterEffect)
-            instance.waterExact = predictedWater > WaterModel.DEATH_LEVEL
+            plant.waterLevel = WaterModel.lowestWaterLevelStillAlive(predictedWater, waterEffect)
+            plant.waterExact = predictedWater > WaterModel.DEATH_LEVEL
         }
 
-        instance.waterBestCase = null
-        instance.age = Duration.between(gardenArrivedAt ?: now, now).toMillis().coerceAtLeast(0L)
-        instance.firstSeenStage = 1
-        SpawnLog.recordSpawn(instance, layout)
+        plant.waterBestCase = null
+        plant.age = Duration.between(gardenArrivedAt ?: now, now).toMillis().coerceAtLeast(0L)
+        plant.firstSeenStage = 1
+        GreenhouseSpawnLog.recordSpawn(plant, layout)
     }
 
     private val PLACE_REFUSALS: List<Regex> = listOf(
@@ -1203,20 +1205,41 @@ object GreenhouseData : GridCallbacks {
 
     @EventHandler
     fun onPlacementRefused(event: SystemChatEvent) {
-        if (placements.isEmpty()) return
+        if (playerPlacements.isEmpty()) return
         if (PLACE_REFUSALS.none { it.containsMatchIn(event.text) }) return
 
-        placements.removeAt(placements.lastIndex)
+        playerPlacements.removeAt(playerPlacements.lastIndex)
     }
 
+    /** The scanned plant a block in the greenhouse being stood in belongs to. */
+    fun scannedPlantAtBlock(pos: BlockPos): ScannedPlant? =
+        scannedGrid()?.let { grid -> plantAtBlock(pos, grid) }
+
+    fun scannedPlantAtStand(stand: ArmorStand): ScannedPlant? =
+        scannedGrid()?.let { grid -> plantAtStand(stand, grid) }
+
+    /** Whether the running plan wants this very crop kept as an ingredient where it stands. */
+    fun isPlannedIngredient(scanned: ScannedPlant): Boolean {
+        val slot = scanned.plant.slot
+        val planned = scannedGrid()?.plannedPlantAt(slot.x, slot.y) ?: return false
+
+        return planned.slot.mark == LayoutSlot.Marking.Ingredient && planned.acceptsCrop(scanned.plant.cropDef)
+    }
+
+    private fun scannedGrid(): GreenhouseGrid? = getCurrentGrid()?.takeIf { it.isScannedThisVisit() }
+
+    private fun plantAtBlock(pos: BlockPos, grid: GreenhouseGrid): ScannedPlant? =
+        grid.scannedPlants.find { it.blocks?.keys?.contains(pos) == true } ?: elementAround(pos, grid)
+
+    private fun plantAtStand(stand: ArmorStand, grid: GreenhouseGrid): ScannedPlant? =
+        grid.scannedPlants.find { it.stands?.contains(stand) == true } ?: elementAround(stand.blockPosition(), grid)
+
     private fun listenAtBlock(pos: BlockPos, grid: GreenhouseGrid) {
-        plantDiagnosticListeningElement = grid.scannedPlants.find { it.blocks?.keys?.contains(pos) == true }
-            ?: elementAround(pos, grid)
+        plantDiagnosticListeningElement = plantAtBlock(pos, grid)
     }
 
     private fun listenAtStand(stand: ArmorStand, grid: GreenhouseGrid) {
-        plantDiagnosticListeningElement = grid.scannedPlants.find { it.stands?.contains(stand) == true }
-            ?: elementAround(stand.blockPosition(), grid)
+        plantDiagnosticListeningElement = plantAtStand(stand, grid)
     }
 
 
@@ -1264,6 +1287,9 @@ object GreenhouseData : GridCallbacks {
             beaconLore[0].siblings[1].string
         }.getOrNull()
 
+        // "Uncollectable" and its like sit on their own lines as often as on the status line
+        val statusPage = beaconLore.joinToString(" ") { it.string }
+
         // these two are read out of a fixed position in the lore rather than by label, so an empty
         // result prints the page it came from
         if (waterLevel == null && CropCollector.isActive()) {
@@ -1310,11 +1336,11 @@ object GreenhouseData : GridCallbacks {
                     Common.LOGGER.info("[tick] resynced from the game: countdown moved ${movedS}s")
                 }
 
-                realignWithGame()
+                realignWithGameTime()
             }
         }
 
-        val target = listening?.takeIf { inOwnGarden() }?.let { disputeRecordWith(it, def, status) }
+        val target = listening?.takeIf { inOwnGarden() }?.let { disputeRecordWith(it, def, statusPage) }
 
         target?.let { element ->
             age?.parseDurationToMs()?.let { element.plant.age = it }
@@ -1325,8 +1351,8 @@ object GreenhouseData : GridCallbacks {
                 val stage = stageRaw ?: plant.highestStage
                 val grown = stage != null && stage >= plant.cropDef.maxStage
                 when {
-                    grown && status?.contains("Uncollectable", ignoreCase = true) == true -> plant.placed = true
-                    status?.contains("Harvestable", ignoreCase = true) == true -> Unit
+                    grown && statusPage.contains("Uncollectable", ignoreCase = true) -> plant.placed = true
+                    statusPage.contains("Harvestable", ignoreCase = true) -> Unit
                     stage != null && !grown && plant.placed -> plant.placed = false
                 }
             }
@@ -1377,10 +1403,10 @@ object GreenhouseData : GridCallbacks {
     }
 
     
-    private fun disputeRecordWith(element: ScannedPlant, toolCrop: CropDefinition?, status: String?): ScannedPlant? {
+    private fun disputeRecordWith(element: ScannedPlant, toolCrop: CropDefinition?, statusPage: String): ScannedPlant? {
         val plant = element.plant
         val otherCrop = toolCrop != null && toolCrop != plant.cropDef
-        val toolSaysGrowing = status?.contains("Growing", ignoreCase = true) == true
+        val toolSaysGrowing = statusPage.contains("Growing", ignoreCase = true)
 
         if (plant.isPlacedMutation && (otherCrop || toolSaysGrowing)) plant.placed = false
         if (!otherCrop) return element
@@ -1400,10 +1426,6 @@ object GreenhouseData : GridCallbacks {
         return found?.takeIf { it.plant.cropDef == toolCrop }
     }
 
-    /**
-     * The value beside a label on a diagnosis page, read off the whole line: the server splits a
-     * line wherever its colouring changes, so "Stage: 1/15" arrives as three pieces.
-     */
     private fun List<Component>.valueFor(label: String): String? =
         firstOrNull { it.string.trimStart().startsWith("$label:", ignoreCase = true) }
             ?.string
@@ -1411,7 +1433,6 @@ object GreenhouseData : GridCallbacks {
             ?.trim()
             ?.takeIf { it.isNotEmpty() }
 
-    /** Every lore line as it reads and as the pieces behind it, for when the parsing stops working. */
     private fun dumpLore(lore: List<Component>) {
         lore.forEachIndexed { index, line ->
             val pieces = line.siblings
@@ -1512,10 +1533,6 @@ object GreenhouseData : GridCallbacks {
     }
 
 
-    /**
-     * The greenhouse speed attribute, a tenth of a percent a level. Taken from what the player typed first,
-     * since the shard api does not report this one at all.
-     */
     fun greenhouseSpeedAttribute(): Int? =
         miscInfo.greenhouseSpeedAttribute
             ?: AttributeAPI.attributeMap.entries
@@ -1524,7 +1541,6 @@ object GreenhouseData : GridCallbacks {
                 ?.level
                 ?.takeIf { it > 0 }
 
-    /** How long one growth tick takes now, null while the formula is missing something. */
     fun currentGrowthTickMs(): Long? {
         val cropGrowth = miscInfo.cropGrowthValue ?: return null
         val upgrade = miscInfo.cropSpeedUpgradeValue ?: return null
@@ -1537,18 +1553,13 @@ object GreenhouseData : GridCallbacks {
         )
     }
 
-    /** What is left of the current tick. Never negative: an overdue tick has nothing left, not a debt. */
     fun remainingTickMs(): Long? {
         val next = miscInfo.nextTickTime ?: return null
 
         return (next.toEpochMilli() - Instant.now().toEpochMilli()).coerceAtLeast(0L)
     }
 
-    /**
-     * Re-anchors the server tick to the countdown the game just gave us, so the next comparison is
-     * not measuring across the resync.
-     */
-    private fun realignWithGame() {
+    private fun realignWithGameTime() {
         lastServerTick = ServerUtils.totalServerTicks
     }
 

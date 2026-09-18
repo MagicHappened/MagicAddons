@@ -19,7 +19,9 @@ import net.minecraft.network.chat.Component
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
 import net.minecraft.world.level.block.Blocks
+import org.magic.magicaddons.data.greenhouse.LayoutSlot
 import org.magic.magicaddons.data.greenhouse.Plant
+import org.magic.magicaddons.data.greenhouse.ChargeRule
 import org.magic.magicaddons.data.greenhouse.WaterModel
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData
 import org.magic.magicaddons.data.greenhouse.GrowthStageInfo
@@ -28,6 +30,7 @@ import org.magic.magicaddons.util.ScreenUtil.drawBorder
 import org.magic.magicaddons.util.ScreenUtil.fillCornerTriangle
 import org.magic.magicaddons.util.ScreenUtil.fillRounded
 import org.magic.magicaddons.util.ScreenUtil.inRect
+import org.magic.magicaddons.util.ScreenUtil.drawCountedCrop
 import org.magic.magicaddons.util.ScreenUtil.renderFakeItem
 
 class ElementWidget(val instance: Plant) : Renderable, GuiEventListener {
@@ -45,13 +48,30 @@ class ElementWidget(val instance: Plant) : Renderable, GuiEventListener {
     var inPreset: Boolean = false
 
     var missingSpawnConditions: List<String> = emptyList()
+
+    /**
+     * Several targets of one crop whose footprints overlap, drawn as one region: the corners it
+     * could grow from, the cells those corners claim, the outside edges of them, and the cell in
+     * the middle where the crop is drawn.
+     */
+    class MergedTargets(
+        val corners: List<Pair<Int, Int>>,
+        val cells: List<IntArray>,
+        val outline: List<IntArray>,
+        val iconCell: IntArray
+    )
+
+    var mergedTargets: MergedTargets? = null
     var width = 0
     var height = 0
 
     var renderedStack: ItemStack = ItemStack.EMPTY
 
+    /** While the unplanned overlay is up the plan steps back, so only one set of lines is drawn. */
+    var planMuted: Boolean = false
+
     /** The colour of the mark on this plant's slot, null for an unmarked one. */
-    private val markingColor: Int? get() = instance.slot.mark?.color
+    private val markingColor: Int? get() = instance.slot.mark?.takeUnless { planMuted }?.color
 
     /** The water effects reaching this plant, set by whoever knows what stands beside it. */
     var waterEffect: Int = 0
@@ -67,6 +87,8 @@ class ElementWidget(val instance: Plant) : Renderable, GuiEventListener {
 
     /** Where the debt figure sits on screen, so hovering it can explain itself. Null when none was drawn. */
     private var debtMarkBox: IntArray? = null
+
+    private var chargeMarkBox: IntArray? = null
 
     /** What hovering the debt figure says: which of the two cases the plant is in. */
     private var debtExplanation: String? = null
@@ -110,7 +132,19 @@ class ElementWidget(val instance: Plant) : Renderable, GuiEventListener {
     }
 
     override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, deltaTick: Float) {
+        // a target that has not spawned stands for nothing on the grid, so it leaves the unplanned
+        // overlay the whole plot rather than sitting over it
+        if (planMuted && instance.slot.mark == LayoutSlot.Marking.Target && instance.growthStage == null) return
+
         markingColor?.let { color ->
+            val merged = mergedTargets
+
+            // a region is outlined around the cells it really claims, so it takes in nothing else
+            if (merged != null) {
+                merged.outline.forEach { graphics.fill(it[0], it[1], it[2], it[3], color) }
+                return@let
+            }
+
             // right up against the grid lines, with no soil showing between
             graphics.drawBorder(x, y, x + width, y + height, Common.UI.BORDER_SIZE, color)
 
@@ -163,6 +197,13 @@ class ElementWidget(val instance: Plant) : Renderable, GuiEventListener {
 
     /** The crop, or for a merged slot two split across a diagonal, more taking turns. */
     private fun renderCrops(graphics: GuiGraphicsExtractor) {
+        mergedTargets?.let { merged ->
+            graphics.drawCountedCrop(
+                Minecraft.getInstance().font, renderedStack, merged.iconCell, merged.corners.size, Common.UI.TEXT_COLOR
+            )
+            return
+        }
+
         val others = alternativeStacks
         val inner = width - padding * 2
 
@@ -207,6 +248,12 @@ class ElementWidget(val instance: Plant) : Renderable, GuiEventListener {
         // left alone rather than shown an empty meter; a grown one keeps its meter while a soggybud
         // beside it is drinking from it
         if (info == HoverInfo.WaterLevel) {
+            // a charged plant has no water, so its charge takes the meter's place
+            instance.cropDef.chargeRule?.let {
+                renderChargeBar(graphics, it)
+                return
+            }
+
             // a soggybud's water is what it banked, which the player cannot do anything about, so
             // it gets its growth time and no meter
             if (instance.cropDef.drainsNeighbours) {
@@ -317,6 +364,51 @@ class ElementWidget(val instance: Plant) : Renderable, GuiEventListener {
         }
     }
 
+    /** the charge meter, in the water meter's place, with the time until it overloads above it */
+    private fun renderChargeBar(graphics: GuiGraphicsExtractor, chargeRule: ChargeRule) {
+        val barWidth = width - WATER_BAR_INSET * 2
+        if (barWidth < WATER_BAR_MIN_WIDTH) return
+
+        val left = x + WATER_BAR_INSET
+        val right = left + barWidth
+        val bottom = y + height - WATER_BAR_INSET
+        val top = bottom - WATER_BAR_HEIGHT
+
+        renderOverloadTime(graphics, chargeRule, top)
+
+        graphics.fillRounded(left, top, right, bottom, WATER_BAR_RADIUS, Common.UI.WATER_TRACK_COLOR)
+
+        val filled = barWidth * instance.charge.coerceIn(0, chargeRule.limit) / chargeRule.limit
+        if (filled > 0) graphics.fillRounded(left, top, left + filled, bottom, WATER_BAR_RADIUS, Common.UI.CHARGE_FULL_COLOR)
+    }
+
+    /** a grown plant gains no more charge, so it has no overload to count down to */
+    private fun renderOverloadTime(graphics: GuiGraphicsExtractor, chargeRule: ChargeRule, barTop: Int) {
+        if (instance.isFullyGrown) return
+
+        val remainingMs = GreenhouseData.remainingTickMs()
+        val tickMs = GreenhouseData.currentGrowthTickMs()
+        val stagesLeft = chargeRule.stagesUntilOverload(instance.charge)
+
+        val text = if (remainingMs == null || tickMs == null || stagesLeft <= 0) {
+            "?"
+        } else {
+            readableDuration(remainingMs + (stagesLeft - 1) * tickMs)
+        }
+
+        val font = Minecraft.getInstance().font
+        val textHeight = font.lineHeight * INFO_TEXT_SCALE
+        val box = drawScaledLabel(graphics, text + if (instance.chargeKnown) "" else DEBT_MARK, barTop - textHeight - 1f, Common.UI.DANGER_COLOR)
+        chargeMarkBox = if (instance.chargeKnown) null else box
+    }
+
+    /** The estimate's own tooltip, when the mouse is on the overload time rather than the plant. */
+    fun chargeTooltipAt(mouseX: Int, mouseY: Int): String? {
+        val box = chargeMarkBox ?: return null
+
+        return CHARGE_ESTIMATED.takeIf { mouseX in box[0]..box[2] && mouseY in box[1]..box[3] }
+    }
+
     /**
      * The time above the meter. Red when the plant can run dry before it has grown out: the time
      * until it does. Green otherwise: the time until it has grown out, which is exact while its water
@@ -391,7 +483,9 @@ class ElementWidget(val instance: Plant) : Renderable, GuiEventListener {
         if (debtExplanation != null) debtMarkBox = box
     }
 
-    override fun isMouseOver(mouseX: Double, mouseY: Double): Boolean = inRect(mouseX, mouseY, x, y, width, height)
+    override fun isMouseOver(mouseX: Double, mouseY: Double): Boolean =
+        mergedTargets?.cells?.any { inRect(mouseX, mouseY, it[0], it[1], it[2] - it[0], it[3] - it[1]) }
+            ?: inRect(mouseX, mouseY, x, y, width, height)
 
     /** A plant is hovered, never focused; the listener interface still asks. */
     override fun isFocused(): Boolean = false
@@ -426,6 +520,13 @@ class ElementWidget(val instance: Plant) : Renderable, GuiEventListener {
                 add(labelled("Role", marking.name))
             }
 
+            mergedTargets?.let { merged ->
+                add(Component.literal("${merged.corners.size} corners it could grow from:").withStyle(ChatFormatting.GRAY))
+                merged.corners.forEach { (cornerX, cornerY) ->
+                    add(Component.literal(" - $cornerX, $cornerY").withStyle(ChatFormatting.WHITE))
+                }
+            }
+
             if (missingSpawnConditions.isNotEmpty()) {
                 add(Component.literal("$BLOCKED_LABEL, cannot appear here:").withStyle(ChatFormatting.RED))
                 missingSpawnConditions.forEach { add(Component.literal(" - $it").withStyle(ChatFormatting.RED)) }
@@ -457,6 +558,11 @@ class ElementWidget(val instance: Plant) : Renderable, GuiEventListener {
                 // keeps its line, since what it holds is what a soggybud beside it drinks
                 if (instance.cropDef.needsWater && !instance.isPlacedMutation) {
                     add(labelled("Water", waterText(instance) ?: "Unknown"))
+                }
+
+                instance.cropDef.chargeRule?.let { rule ->
+                    add(labelled("Charge", "${instance.charge}/${rule.limit}" + if (instance.chargeKnown) "" else DEBT_MARK))
+                    if (!instance.chargeKnown) add(Component.literal(CHARGE_ESTIMATED).withStyle(ChatFormatting.GRAY))
                 }
 
                 instance.decayRemainingMs?.let { add(labelled("Decays in", readableDuration(it))) }
@@ -525,6 +631,9 @@ class ElementWidget(val instance: Plant) : Renderable, GuiEventListener {
 
         /** share of the cell each of two merged crops takes */
         private const val SPLIT_SHARE: Float = 0.62f
+
+        private const val CHARGE_ESTIMATED: String =
+            "This thunderling charge is estimated based on the stage of the crop, go near it to update"
 
         private const val DIAGONAL_WIDTH: Int = 2
 

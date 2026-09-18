@@ -64,7 +64,36 @@ object Godseed : CropDefinitionProvider {
                         isSmall = true
                     )
                 ),
-                1..1
+                1..4
+            ),
+            CropStage(
+                blocks = CropBlockState.atPositions(
+                    positions = surroundWheatPositions,
+                    blockState = wheatState(2)
+                ) + listOf(
+                    CropBlockState(
+                        offset = BlockPos(1, 1, 1),
+                        blockState = melonStemState(4)
+                    )
+                ),
+                armorStands = CropArmorStand.atOffsets(
+                    offsets = listOf(
+                        Vec3(-1.0, 0.5625, 1.0),
+                        Vec3(-1.0, 0.5625, -1.0),
+                        Vec3(1.0, 0.5625, 1.0),
+                        Vec3(1.0, 0.5625, -1.0)
+                    ),
+                    rotations = List(4) { Rotations(180.0f, 0.0f, 0.0f) },
+                    hashString = "a0cc95bd6b1e5c007cf0d2b8c613a33a7ad3500b27638947c0b6b1db8fcb4887",
+                    isSmall = true
+                ) + listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, -0.25, 0.0),
+                        hashString = "ab849bae7ab0927a52836da1a45768527d1c7be5853a9290a283ae9aca0c908b",
+                        isSmall = false
+                    )
+                ),
+                7..7
             ),
             CropStage(
                 blocks = CropBlockState.atPositions(
@@ -132,7 +161,7 @@ object Godseed : CropDefinitionProvider {
                         isSmall = false
                     )
                 ),
-                9..9
+                9..11
             ),
             CropStage(
                 blocks = CropBlockState.atPositions(
@@ -148,23 +177,20 @@ object Godseed : CropDefinitionProvider {
                     offsets = listOf(
                         Vec3(-1.0, 0.15625, 1.0),
                         Vec3(-1.0, 0.15625, -1.0),
+                        Vec3(1.0, 0.15625, 1.0),
+                        Vec3(1.0, 0.15625, -1.0)
+                    ),
+                    rotations = List(4) { Rotations(180.0f, 0.0f, 0.0f) },
+                    hashString = "a0cc95bd6b1e5c007cf0d2b8c613a33a7ad3500b27638947c0b6b1db8fcb4887",
+                    isSmall = false
+                ) + CropArmorStand.atOffsets(
+                    offsets = listOf(
                         Vec3(0.0, 0.4375, 1.0),
                         Vec3(-1.0, 0.4375, 0.0),
                         Vec3(0.0, 0.4375, -1.0),
-                        Vec3(1.0, 0.15625, 1.0),
-                        Vec3(1.0, 0.15625, -1.0),
                         Vec3(1.0, 0.4375, 0.0)
                     ),
-                    rotations = listOf(
-                        Rotations(180.0f, 0.0f, 0.0f),
-                        Rotations(180.0f, 0.0f, 0.0f),
-                        Rotations(180.0f, 0.0f, 0.0f),
-                        Rotations(180.0f, 0.0f, 0.0f),
-                        Rotations(180.0f, 0.0f, 0.0f),
-                        Rotations(180.0f, 0.0f, 0.0f),
-                        Rotations(180.0f, 0.0f, 0.0f),
-                        Rotations(180.0f, 0.0f, 0.0f)
-                    ),
+                    rotations = List(4) { Rotations(180.0f, 0.0f, 0.0f) },
                     hashString = "a0cc95bd6b1e5c007cf0d2b8c613a33a7ad3500b27638947c0b6b1db8fcb4887",
                     isSmall = true
                 ) + listOf(
@@ -174,7 +200,60 @@ object Godseed : CropDefinitionProvider {
                         hashString = "ab849bae7ab0927a52836da1a45768527d1c7be5853a9290a283ae9aca0c908b"
                     )
                 ),
-                13..13
+                13..15
+            ),
+            CropStage(
+                blocks = CropBlockState.atPositions(
+                    positions = surroundWheatPositions,
+                    blockState = wheatState(4)
+                ) + listOf(
+                    CropBlockState(
+                        offset = BlockPos(1, 1, 1),
+                        blockState = melonStemState(7)
+                    )
+                ),
+                armorStands = CropArmorStand.atOffsets(
+                    offsets = listOf(
+                        Vec3(-1.0, -0.75, -1.0),
+                        Vec3(-1.0, 0.4375, -1.0),
+                        Vec3(-1.0, -0.75, 1.0),
+                        Vec3(-1.0, 0.4375, 1.0),
+                        Vec3(1.0, -0.75, -1.0),
+                        Vec3(1.0, 0.4375, -1.0),
+                        Vec3(1.0, -0.75, 1.0),
+                        Vec3(1.0, 0.4375, 1.0)
+                    ),
+                    rotations = listOf(
+                        Rotations(0.0f, 0.0f, 0.0f),
+                        Rotations(180.0f, 90.0f, 0.0f),
+                        Rotations(0.0f, 0.0f, 0.0f),
+                        Rotations(180.0f, 90.0f, 0.0f),
+                        Rotations(0.0f, 0.0f, 0.0f),
+                        Rotations(180.0f, 90.0f, 0.0f),
+                        Rotations(0.0f, 0.0f, 0.0f),
+                        Rotations(180.0f, 90.0f, 0.0f)
+                    ),
+                    hashString = "a0cc95bd6b1e5c007cf0d2b8c613a33a7ad3500b27638947c0b6b1db8fcb4887",
+                    isSmall = false
+                ) + CropArmorStand.atOffsets(
+                    offsets = listOf(
+                        Vec3(0.0, 0.4375, -1.0),
+                        Vec3(0.0, 0.4375, 1.0),
+                        Vec3(-1.0, 0.4375, 0.0),
+                        Vec3(1.0, 0.4375, 0.0)
+                    ),
+                    rotations = List(4) { Rotations(180.0f, 0.0f, 0.0f) },
+                    hashString = "a0cc95bd6b1e5c007cf0d2b8c613a33a7ad3500b27638947c0b6b1db8fcb4887",
+                    isSmall = true
+                ) + listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, 0.0625, 0.0),
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
+                        hashString = "a9d3e8e4001232e1c6ba43b5f39c6cb0a1ff2f4dfd5aceb14e4b287b91ba7c9a",
+                        isSmall = false
+                    )
+                ),
+                18..18
             ),
             CropStage(
                 blocks = CropBlockState.atPositions(

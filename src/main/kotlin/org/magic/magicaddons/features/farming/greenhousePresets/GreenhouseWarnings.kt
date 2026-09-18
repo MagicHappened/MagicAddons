@@ -7,7 +7,6 @@ import net.minecraft.network.chat.HoverEvent
 import net.minecraft.network.chat.Style
 import java.time.Duration
 
-/** The clickable [GARDEN] word that runs /warp garden, for a warning sent while away. */
 fun gardenWarpLink(): Component = Component.literal("[GARDEN]").withStyle(
     Style.EMPTY
         .withColor(ChatFormatting.GREEN)
@@ -15,13 +14,8 @@ fun gardenWarpLink(): Component = Component.literal("[GARDEN]").withStyle(
         .withHoverEvent(HoverEvent.ShowText(Component.literal("Click here to warp to garden!")))
 )
 
-/**
- * Decides when a greenhouse warning may be sent: ten minutes before its deadline, five, and one,
- * once each. Keyed by the time remaining, so a deadline restated every minute is still one deadline.
- */
 object GreenhouseWarnings {
 
-    /** The ladder almost everything here climbs: ten minutes out, five, and one. */
     val THRESHOLDS: List<Duration> = listOf(
         Duration.ofMinutes(10),
         Duration.ofMinutes(5),
@@ -38,7 +32,6 @@ object GreenhouseWarnings {
 
     private val cycles = mutableMapOf<String, Cycle>()
 
-    /** Updates one warning kind with its current countdown, so a new deadline resets its thresholds. */
     fun tick(kind: String, remainingMs: Long) {
         val cycle = cycles.getOrPut(kind) { Cycle() }
 

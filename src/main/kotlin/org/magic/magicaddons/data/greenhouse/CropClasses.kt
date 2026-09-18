@@ -11,6 +11,7 @@ import net.minecraft.world.level.Level
 import net.minecraft.world.item.Item
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.Blocks
+import net.minecraft.world.level.block.StemBlock
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
@@ -141,6 +142,7 @@ open class CropStage(
         remainingStands: List<ArmorStand>,
         footprint: Footprint,
         rotatesWithPlot: Boolean = true,
+        ignoreStemAge: Boolean = false,
         standCache: StandCache = StandCache()
     ): StageMatchResult? {
         val level = Minecraft.getInstance().level ?: return null
@@ -154,7 +156,7 @@ open class CropStage(
             val blockPos = origin.offset(recordedBlock.offset)
             val worldBlockState = level.getBlockState(blockPos)
 
-            if (worldBlockState != recordedBlock.blockState) return null
+            if (!blocksMatch(worldBlockState, recordedBlock.blockState, ignoreStemAge)) return null
 
             matchedBlocks[blockPos] = worldBlockState
             score += 1
@@ -196,6 +198,10 @@ open class CropStage(
             matchingHeadPoses = matchingHeadPoses
         )
     }
+
+    /** with [ignoreStemAge] a stem matches at any age */
+    private fun blocksMatch(world: BlockState, recorded: BlockState, ignoreStemAge: Boolean): Boolean =
+        world == recorded || (ignoreStemAge && recorded.block is StemBlock && world.block == recorded.block)
 
     private fun headPosesMatch(worldPose: Rotations, recordedPose: Rotations): Boolean =
         abs(Mth.wrapDegrees(worldPose.x() - recordedPose.x())) < HEAD_POSE_TOLERANCE_DEGREES &&
@@ -387,7 +393,10 @@ data class CropDefinition(
     val sleepStages: Set<Int> = emptySet(),
     val rotatesWithPlot: Boolean = true,
     val spawnRule: SpawnRule? = null,
-    val dropMultiplier: Double? = null
+    val chargeRule: ChargeRule? = null,
+    val dropMultiplier: Double? = null,
+    /** the stems' age changes with something other than the stage */
+    val stemAgeVaries: Boolean = false
 ){
     val stagePlacedAt: Int get() = if (isMutation) maxStage else 1
     val elementId: String get() = skyblockId?.id ?: name
@@ -445,6 +454,12 @@ data class Plant(
     var firstSeenStage: Int? = null
 
     var placed: Boolean = false
+
+    /** electricity gained since the last look, for a crop with a [CropDefinition.chargeRule] */
+    var charge: Int = 0
+
+    /** read off its bar or set by a discharge; until then the charge is what the stage implies */
+    var chargeKnown: Boolean = false
 
     var waterBestCase: Double? = null
 

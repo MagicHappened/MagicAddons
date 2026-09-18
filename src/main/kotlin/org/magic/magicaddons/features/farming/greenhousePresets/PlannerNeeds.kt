@@ -92,7 +92,6 @@ object PlannerNeeds {
         messageMap.keys.removeAll { it.startsWith("${grid.layout.id}|") }
     }
 
-    /** Walking back into a greenhouse lets it name what it needs again, 30 seconds after it last did. */
     fun arriveAt(grid: GreenhouseGrid?) {
         val id = grid?.layout?.id
         if (standingInGreenhouse == id) return

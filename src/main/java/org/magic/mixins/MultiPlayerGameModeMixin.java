@@ -2,6 +2,8 @@ package org.magic.mixins;
 
 import net.minecraft.client.multiplayer.MultiPlayerGameMode;
 import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Entity;
@@ -25,6 +27,24 @@ public abstract class MultiPlayerGameModeMixin {
         EventBus.post(event);
         if (event.getCanceled()){
             ci.cancel();
+        }
+    }
+
+    @Inject(method = "startDestroyBlock", at = @At("HEAD"), cancellable = true)
+    private void onStartDestroyBlock(BlockPos pos, Direction face, CallbackInfoReturnable<Boolean> cir) {
+        BlockBreakEvent event = new BlockBreakEvent(pos, false);
+        EventBus.post(event);
+        if (event.getCanceled()) {
+            cir.setReturnValue(false);
+        }
+    }
+
+    @Inject(method = "continueDestroyBlock", at = @At("HEAD"), cancellable = true)
+    private void onContinueDestroyBlock(BlockPos pos, Direction face, CallbackInfoReturnable<Boolean> cir) {
+        BlockBreakEvent event = new BlockBreakEvent(pos, false);
+        EventBus.post(event);
+        if (event.getCanceled()) {
+            cir.setReturnValue(false);
         }
     }
 

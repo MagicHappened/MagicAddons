@@ -199,6 +199,21 @@ object ScreenUtil {
 
     private fun x1f(n: Int): Float = n.toFloat()
 
+    private const val COUNT_INSET: Int = 1
+
+    /**
+     * A crop filling [cell], with how many places it stands for in the corner the way a stack count
+     * is drawn. It covers the cell and no more, so it never reaches past the region it belongs to.
+     */
+    fun GuiGraphicsExtractor.drawCountedCrop(font: Font, stack: ItemStack, cell: IntArray, count: Int, color: Int) {
+        val size = cell[2] - cell[0]
+        val inset = (size / 10).coerceAtLeast(1)
+        renderFakeItem(stack, cell[0] + inset, cell[1] + inset, size - inset * 2, size - inset * 2)
+
+        val label = Component.literal("x$count")
+        modText(font, label, cell[2] - font.width(label) - COUNT_INSET, cell[3] - font.lineHeight - COUNT_INSET, color)
+    }
+
     fun GuiGraphicsExtractor.drawCheckerboard(x1: Int, y1: Int, x2: Int, y2: Int) {
         if (x2 <= x1 || y2 <= y1) return
         fill(x1, y1, x2, y2, CHECKER_DARK)
