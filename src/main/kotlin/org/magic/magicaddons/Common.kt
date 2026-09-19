@@ -1,5 +1,7 @@
 package org.magic.magicaddons
 
+import net.minecraft.client.KeyMapping
+import net.minecraft.resources.Identifier
 import org.magic.magicaddons.features.customization.Customization
 import org.slf4j.LoggerFactory
 
@@ -7,6 +9,10 @@ object Common {
     const val MOD_ID = "magicaddons"
     const val MOD_NAME = "MagicAddons"
     val LOGGER = LoggerFactory.getLogger(MagicAddons::class.java)
+
+    val KEY_CATEGORY: KeyMapping.Category by lazy {
+        KeyMapping.Category.register(Identifier.fromNamespaceAndPath(MOD_ID, MOD_ID))
+    }
 
     object UI {
         // the colours a palette decides are read from the one picked in the Customization category;

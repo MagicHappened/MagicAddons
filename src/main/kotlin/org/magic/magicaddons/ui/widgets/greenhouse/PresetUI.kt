@@ -12,7 +12,7 @@ import org.magic.magicaddons.data.greenhouse.transfer.LayoutTransferResult
 import org.magic.magicaddons.data.greenhouse.transfer.SkyMutationsFormat
 import org.magic.magicaddons.data.greenhouse.transfer.SkyShardsFormat
 import org.magic.magicaddons.data.greenhouse.GreenhouseLayout
-import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData
+import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseData
 import org.magic.magicaddons.ui.OverlayContext
 import org.magic.magicaddons.ui.OverlayRenderable
 import org.magic.magicaddons.ui.widgets.ConfirmContext

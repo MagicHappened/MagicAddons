@@ -99,9 +99,19 @@ class EnumWidget<T>(
      * Sets the width from the longest value it might show. Measured rather than guessed, so a name
      * is only ellipsised when it is too long for the screen.
      */
+    /** Measuring every value is far too much to do a frame, so it is kept until the values change. */
+    private var longestValueWidth: Int = 0
+
+    private var measuredValues: Int? = null
+
     fun fitToValues(maxWidth: Int) {
-        val everyName = values.map { it.toString() } + listOfNotNull(currentValue?.toString()) + PLACEHOLDER
-        val longestNameWidth = everyName.maxOfOrNull { font.width(it) } ?: 0
+        val valuesFingerprint = 31 * values.hashCode() + currentValue.hashCode()
+        if (measuredValues != valuesFingerprint) {
+            val everyName = values.map { it.toString() } + listOfNotNull(currentValue?.toString()) + PLACEHOLDER
+            longestValueWidth = everyName.maxOfOrNull { font.width(it) } ?: 0
+            measuredValues = valuesFingerprint
+        }
+        val longestNameWidth = longestValueWidth
 
         width = (longestNameWidth + textPad * 2 + font.width(ARROW) + Common.UI.SPACING)
             .coerceIn(minWidth, maxWidth.coerceAtLeast(minWidth))
@@ -230,6 +240,8 @@ class EnumWidget<T>(
 
         /** The rows for the stretch of the list the scroll is looking at. */
         private fun buildWindow() {
+            longestRowWidth = null
+
             valueWidgets.clear()
 
             matching.drop(scroll).take(visibleRows).forEach { value ->
@@ -270,9 +282,14 @@ class EnumWidget<T>(
          * As wide as the longest name needs, but never past the room left between the selector and
          * the edge it opens against. Names that still do not fit are cut short by the rows instead.
          */
+        /** Only the rows on screen are measured, and only when the rows change. */
+        private var longestRowWidth: Int? = null
+
         override val overlayWidth: Int
             get() {
-                val longestNameWidth = matching.maxOfOrNull { font.width(it.toString()) } ?: 0
+                val longestNameWidth = longestRowWidth ?: (
+                    matching.drop(scroll).take(visibleRows).maxOfOrNull { font.width(it.toString()) } ?: 0
+                ).also { longestRowWidth = it }
                 val wantedWidth = longestNameWidth + textPad * 2
                 val roomToEdge = viewRight() - overlayX
 
@@ -283,11 +300,12 @@ class EnumWidget<T>(
 
         fun layoutOverlay() {
             var currentY = overlayY
+            val rowWidth = overlayWidth
 
             valueWidgets.forEach {
                 it.x = overlayX
                 it.y = currentY
-                it.width = overlayWidth
+                it.width = rowWidth
                 it.height = overlayRowHeight
                 currentY += overlayRowHeight
             }

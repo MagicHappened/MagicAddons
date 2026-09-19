@@ -11,8 +11,9 @@ import net.minecraft.network.chat.Component
 import org.magic.magicaddons.commands.AbstractCommand
 import org.magic.magicaddons.commands.internal.MainInternal
 import org.magic.magicaddons.commands.toExactDuration
-import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData
+import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseData
 import org.magic.magicaddons.util.ChatUtils
+import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GrowthClock
 
 /**
  * set the Timestalk attribute level manually, until sb-api fixes its shard api
@@ -45,7 +46,7 @@ object SetTimestalkAttribute : AbstractCommand() {
                             .withStyle(ChatFormatting.GREEN)
                     )
 
-                    GreenhouseData.currentGrowthTickMs()?.let { tick ->
+                    GrowthClock.tickLengthMs()?.let { tick ->
                         ChatUtils.sendWithPrefix("A growth tick is now ${tick.toExactDuration()}")
                     }
 

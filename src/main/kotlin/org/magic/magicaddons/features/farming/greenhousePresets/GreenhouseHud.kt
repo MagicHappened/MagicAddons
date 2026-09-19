@@ -14,6 +14,8 @@ import org.magic.magicaddons.util.toReadableDuration
 import org.magic.magicaddons.util.toShortDuration
 import tech.thatgravyboat.skyblockapi.api.location.LocationAPI
 import java.time.Duration
+import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseData
+import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GrowthClock
 
 /** A small panel on screen in the player's own garden: the next tick, and in a greenhouse what the plants need. */
 object GreenhouseHud : HudElement("greenhouse", "Greenhouse") {
@@ -82,8 +84,8 @@ object GreenhouseHud : HudElement("greenhouse", "Greenhouse") {
         val gardenTime = GreenhouseGrid.dayOrNightNow()
         val ready = plants.count { it.readyToHarvest }
         // the soonest a plant here dies of thirst, by the same clock the warnings use
-        val tickMs = GreenhouseData.currentGrowthTickMs()
-        val remainingMs = GreenhouseData.remainingTickMs()
+        val tickMs = GrowthClock.tickLengthMs()
+        val remainingMs = GrowthClock.remainingTickMs()
         val thirst = if (tickMs == null || remainingMs == null) null else plants
             .filter { it.consumesWater }
             .mapNotNull { plant ->

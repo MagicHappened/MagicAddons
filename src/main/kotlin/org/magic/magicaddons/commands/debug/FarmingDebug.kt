@@ -32,9 +32,9 @@ import org.magic.magicaddons.commands.fmt
 import org.magic.magicaddons.data.greenhouse.CropDefinition
 import org.magic.magicaddons.data.greenhouse.PlantDex
 import org.magic.magicaddons.ui.screens.CropPreviewScreen
-import org.magic.magicaddons.features.farming.greenhousePresets.LayoutRenderState
+import org.magic.magicaddons.features.farming.greenhousePresets.render.LayoutRenderState
 import org.magic.magicaddons.util.ChatUtils
-import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData
+import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseData
 import org.magic.magicaddons.util.EntityUtils.typePath
 import org.magic.magicaddons.util.PlayerUtils
 import org.magic.magicaddons.util.ScreenUtil

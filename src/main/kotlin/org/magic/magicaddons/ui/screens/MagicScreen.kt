@@ -6,6 +6,7 @@ import net.minecraft.client.input.CharacterEvent
 import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.network.chat.Component
+import org.magic.magicaddons.ui.fonts.ModFont
 import org.magic.magicaddons.Common
 import org.magic.magicaddons.features.customization.Customization
 import org.magic.magicaddons.ui.background.ConfigBackground
@@ -19,7 +20,7 @@ abstract class MagicScreen(title: Component, private val where: String) : Screen
 
     private inline fun <T> caught(fallback: T, block: () -> T): T =
         try {
-            block()
+            ModFont.applied(block)
         } catch (error: Throwable) {
             ErrorReporter.report(where, error)
             fallback

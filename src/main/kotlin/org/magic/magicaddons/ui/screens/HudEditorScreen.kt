@@ -767,8 +767,13 @@ class HudEditorScreen : MagicScreen(Component.literal("HUD Editor"), "the hud ed
             selectedId != null -> "Arrows nudge ${nameOf(selectedId!!)} · shift arrows resize from the bottom right, with ctrl from the top left · wheel fades · shift wheel scales · middle click absolute or relative · shift middle click dynamic or fixed size · R resets"
             else -> "Click to select · drag to move · corners resize · drop on another to merge · wheel fades · shift wheel scales · right click for more · R resets"
         }
-        val hintWidth = font.width(hint)
-        graphics.text(font, Component.literal(hint), (width - hintWidth) / 2, height - font.lineHeight - Common.UI.SPACING_LARGE, if (picking != null) Common.UI.SELECTED_FRAME_COLOR else Common.UI.TEXT_DIM_COLOR, true)
+        val color = if (picking != null) Common.UI.SELECTED_FRAME_COLOR else Common.UI.TEXT_DIM_COLOR
+        val hintLines = font.split(Component.literal(hint), width - Common.UI.SPACING_LARGE * 2)
+        val bottom = height - Common.UI.SPACING_LARGE
+        hintLines.forEachIndexed { index, line ->
+            val lineY = bottom - (hintLines.size - index) * font.lineHeight
+            graphics.text(font, line, (width - font.width(line)) / 2, lineY, color, true)
+        }
     }
 
     // ------------------------------------------------------------------ input

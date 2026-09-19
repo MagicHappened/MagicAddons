@@ -4,7 +4,7 @@ package org.magic.magicaddons
 import net.fabricmc.api.ClientModInitializer
 import net.fabricmc.fabric.api.client.rendering.v1.PictureInPictureRendererRegistry
 import org.magic.magicaddons.commands.MainCommand
-import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseKey
+import org.magic.magicaddons.features.farming.greenhousePresets.playerActions.GreenhouseKey
 import org.magic.magicaddons.ui.hud.HudEditorKey
 import org.magic.magicaddons.ui.hud.HudRenderer
 import org.magic.magicaddons.config.ConfigNotices

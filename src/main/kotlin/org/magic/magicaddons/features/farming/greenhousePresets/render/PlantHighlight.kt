@@ -1,4 +1,4 @@
-package org.magic.magicaddons.features.farming.greenhousePresets
+package org.magic.magicaddons.features.farming.greenhousePresets.render
 
 import com.mojang.blaze3d.vertex.PoseStack
 import net.minecraft.client.Minecraft
@@ -20,26 +20,25 @@ object PlantHighlight : EntityUtils.HighlightSource {
 
     private const val RED: Int = 0xFFFF0000.toInt()
 
-    /** Above the mob highlights, below the crop collector's own listing. */
     override val highlightPriority: Int = 50
 
     override fun highlightColor(entity: Entity): Int = RED
 
     private var highlightedPlant: Plant? = null
 
-    private var blocks: List<BlockPos> = emptyList()
+    private var outlinedBlocks: List<BlockPos> = emptyList()
 
     private var highlightUntil: Instant? = null
 
-    fun showPlant(runtime: ScannedPlant): Boolean {
-        val samePlant = highlightedPlant === runtime.plant
+    fun showPlant(scanned: ScannedPlant): Boolean {
+        val samePlant = highlightedPlant === scanned.plant
 
         clear()
         if (samePlant) return false
 
-        highlightedPlant = runtime.plant
-        blocks = runtime.blocks?.keys?.toList().orEmpty()
-        runtime.stands?.forEach { EntityUtils.add(it, this) }
+        highlightedPlant = scanned.plant
+        outlinedBlocks = scanned.blocks?.keys?.toList().orEmpty()
+        scanned.stands?.forEach { EntityUtils.add(it, this) }
         highlightUntil = Instant.now().plus(HIGHLIGHT_DURATION)
         return true
     }
@@ -47,22 +46,22 @@ object PlantHighlight : EntityUtils.HighlightSource {
     fun clear() {
         EntityUtils.removeAllForSource(this)
         highlightedPlant = null
-        blocks = emptyList()
+        outlinedBlocks = emptyList()
         highlightUntil = null
     }
 
     fun submitPlantHighlight(poseStack: PoseStack, collector: SubmitNodeCollector, cameraPos: Vec3) {
-        val ends = highlightUntil ?: return
-        if (Instant.now().isAfter(ends)) {
+        val highlightEnds = highlightUntil ?: return
+        if (Instant.now().isAfter(highlightEnds)) {
             clear()
             return
         }
 
-        if (blocks.isEmpty()) return
+        if (outlinedBlocks.isEmpty()) return
         val level = Minecraft.getInstance().level ?: return
 
         val blockBatch = WorldRenderer.BlockRenderBatch(cameraPos)
-        blocks.forEach { blockBatch.outline(it, level.getBlockState(it).getShape(level, it), RED) }
+        outlinedBlocks.forEach { blockBatch.outline(it, level.getBlockState(it).getShape(level, it), RED) }
         blockBatch.submitBatch(poseStack, collector)
     }
 }

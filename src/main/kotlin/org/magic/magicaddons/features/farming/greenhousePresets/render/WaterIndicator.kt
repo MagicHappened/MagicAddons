@@ -1,4 +1,4 @@
-package org.magic.magicaddons.features.farming.greenhousePresets
+package org.magic.magicaddons.features.farming.greenhousePresets.render
 
 import com.mojang.blaze3d.vertex.PoseStack
 import net.minecraft.client.renderer.SubmitNodeCollector
@@ -10,47 +10,48 @@ import org.magic.magicaddons.data.greenhouse.GreenhouseGrid
 import org.magic.magicaddons.data.greenhouse.GrowthStageInfo
 import org.magic.magicaddons.data.greenhouse.WaterModel
 import org.magic.magicaddons.render.WorldRenderer
+import org.magic.magicaddons.features.farming.greenhousePresets.GreenhousePresets
+import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseData
 
 /** Marks the soil of every plant below full water in the greenhouse the player stands in. */
 object WaterIndicator {
 
     private const val CYAN: Int = 0xFF33E6FF.toInt()
 
-    /** the fill pulses between these */
     private const val FILL_ALPHA_LOW: Int = 0x28
     private const val FILL_ALPHA_HIGH: Int = 0x70
 
-    fun submit(poseStack: PoseStack, collector: SubmitNodeCollector, cameraPos: Vec3) {
+    fun submitDryPlants(poseStack: PoseStack, collector: SubmitNodeCollector, cameraPos: Vec3) {
         if (!GreenhousePresets.waterIndicatorOn()) return
         if (GreenhousePresets.waterIndicatorOnlyWithoutPlanner() && LayoutRenderState.hasSomethingToShow) return
 
         val grid = GreenhouseData.getCurrentGrid() ?: return
-        // the grid is found by plot number, which a visited garden has too, so the plot standing
-        // where the player's own greenhouse would be is not theirs to mark
         if (!GreenhouseData.inOwnGarden() || !GreenhouseData.inGreenhouse()) return
 
         val ignoreGrown = GreenhousePresets.waterIndicatorIgnoresGrown()
 
-        val thirsty = grid.scannedPlants.filter { element ->
-            val plant = element.plant
+        val dryPlants = grid.scannedPlants.filter { scannedPlant ->
+            val plant = scannedPlant.plant
             val water = plant.waterLevel
 
-            // a grown plant has stopped drinking, but one a soggybud drinks from is still worth water
+            // fully grown plant doesnt need water, but if a soggybud is next to it keep the water highlight
             val feedsDrainer = plant.cropDef.needsWater && grid.layout.plantsAround(plant).any { it.cropDef.drainsNeighbours && !it.isFullyGrown }
 
-            (plant.consumesWater || feedsDrainer) && !plant.cropDef.drainsNeighbours && water != null && water < WaterModel.FULL_LEVEL &&
-                    !(ignoreGrown && !feedsDrainer && reachesFullGrowth(grid, element))
+            // a water level nobody has read yet is marked as well, rather than passed over
+            (plant.consumesWater || feedsDrainer) && !plant.cropDef.drainsNeighbours &&
+                    (water == null || water < WaterModel.FULL_LEVEL) &&
+                    !(ignoreGrown && !feedsDrainer && fullGrowthNoNegativeWater(grid, scannedPlant))
         }
-        if (thirsty.isEmpty()) return
+        if (dryPlants.isEmpty()) return
 
         val alpha = WorldRenderer.pulsedAlpha(FILL_ALPHA_LOW, FILL_ALPHA_HIGH)
 
         val presetBatch = WorldRenderer.BlockRenderBatch(cameraPos)
-        thirsty.forEach { element ->
-            val soil = grid.getPosForSlot(element.plant.slot) ?: return@forEach
-            val footprint = element.plant.cropDef.footprint
-            val box = Shapes.create(AABB(0.0, 0.0, 0.0, footprint.width.toDouble(), 1.0, footprint.height.toDouble()))
-            presetBatch.fillWithOutline(soil, box, CYAN, alpha)
+        dryPlants.forEach { scannedPlant ->
+            val soil = grid.getPosForSlot(scannedPlant.plant.slot) ?: return@forEach
+            val footprint = scannedPlant.plant.cropDef.footprint
+            val footprintBox = Shapes.create(AABB(0.0, 0.0, 0.0, footprint.width.toDouble(), 1.0, footprint.height.toDouble()))
+            presetBatch.fillWithOutline(soil, footprintBox, CYAN, alpha)
         }
         presetBatch.submitBatch(poseStack, collector)
     }
@@ -60,8 +61,8 @@ object WaterIndicator {
      * is the plant that never skips a tick for want of water and so is worth leaving alone. A stage
      * only estimated is taken at its lowest, since that is the most growing it may still have to do.
      */
-    private fun reachesFullGrowth(grid: GreenhouseGrid, element: ScannedPlant): Boolean {
-        val plant = element.plant
+    private fun fullGrowthNoNegativeWater(grid: GreenhouseGrid, scannedPlant: ScannedPlant): Boolean {
+        val plant = scannedPlant.plant
         val water = plant.waterLevel ?: return false
 
         val stage = when (val growth = plant.growthStage) {
