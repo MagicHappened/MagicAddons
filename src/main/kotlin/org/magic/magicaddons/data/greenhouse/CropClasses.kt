@@ -479,6 +479,8 @@ data class Plant(
             it.firstSeenStage = firstSeenStage
             it.placed = placed
             it.waterBestCase = waterBestCase
+            it.charge = charge
+            it.chargeKnown = chargeKnown
         }
 
     /** null when the stage is unknown or the crop has one stage */

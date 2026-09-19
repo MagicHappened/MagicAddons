@@ -1,4 +1,4 @@
-package org.magic.magicaddons.features.farming.greenhousePresets
+package org.magic.magicaddons.features.farming.greenhousePresets.lookups
 
 import net.minecraft.client.Minecraft
 import net.minecraft.world.item.ItemStack
@@ -17,8 +17,8 @@ object BioanalysisAccessory {
         }.orEmpty()
         val accessoryBagItems = AccessoryBagAPI.getItems().map { it.item }
 
-        val bestPercent = (accessoryBagItems + inventoryItems).maxOfOrNull { mutationChanceOf(it) } ?: 0.0
-        return 1.0 + bestPercent / 100.0
+        val bestMutationPercent = (accessoryBagItems + inventoryItems).maxOfOrNull { mutationChanceOf(it) } ?: 0.0
+        return 1.0 + bestMutationPercent / 100.0
     }
 
     private fun mutationChanceOf(item: ItemStack): Double {

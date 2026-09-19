@@ -23,7 +23,7 @@ import org.magic.magicaddons.data.greenhouse.LayoutSlot
 import org.magic.magicaddons.data.greenhouse.Plant
 import org.magic.magicaddons.data.greenhouse.ChargeRule
 import org.magic.magicaddons.data.greenhouse.WaterModel
-import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData
+import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseData
 import org.magic.magicaddons.data.greenhouse.GrowthStageInfo
 import org.magic.magicaddons.util.ScreenUtil
 import org.magic.magicaddons.util.ScreenUtil.drawBorder
@@ -32,6 +32,8 @@ import org.magic.magicaddons.util.ScreenUtil.fillRounded
 import org.magic.magicaddons.util.ScreenUtil.inRect
 import org.magic.magicaddons.util.ScreenUtil.drawCountedCrop
 import org.magic.magicaddons.util.ScreenUtil.renderFakeItem
+import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GrowthClock
+import org.magic.magicaddons.util.ScreenUtil.splitMod
 
 class ElementWidget(val instance: Plant) : Renderable, GuiEventListener {
     var x: Int = 0
@@ -386,19 +388,25 @@ class ElementWidget(val instance: Plant) : Renderable, GuiEventListener {
     private fun renderOverloadTime(graphics: GuiGraphicsExtractor, chargeRule: ChargeRule, barTop: Int) {
         if (instance.isFullyGrown) return
 
-        val remainingMs = GreenhouseData.remainingTickMs()
-        val tickMs = GreenhouseData.currentGrowthTickMs()
-        val stagesLeft = chargeRule.stagesUntilOverload(instance.charge)
+        val remainingMs = GrowthClock.remainingTickMs()
+        val tickMs = GrowthClock.tickLengthMs()
+        // a plant stops gaining charge once grown, so one that finishes below the limit never overloads
+        val stagesToGrow = (instance.cropDef.maxStage - (instance.lowestStage ?: 1)).coerceAtLeast(0)
+        val overloads = instance.charge + chargeRule.perStage * stagesToGrow >= chargeRule.limit
 
-        val text = if (remainingMs == null || tickMs == null || stagesLeft <= 0) {
+        // red counts down to the overload, green to the last stage it grows safely through
+        val stagesCounted = if (overloads) chargeRule.stagesUntilOverload(instance.charge) else stagesToGrow
+        val color = if (overloads) Common.UI.DANGER_COLOR else Common.UI.SUCCESS_COLOR
+
+        val text = if (remainingMs == null || tickMs == null || stagesCounted <= 0) {
             "?"
         } else {
-            readableDuration(remainingMs + (stagesLeft - 1) * tickMs)
+            readableDuration(remainingMs + (stagesCounted - 1) * tickMs)
         }
 
         val font = Minecraft.getInstance().font
         val textHeight = font.lineHeight * INFO_TEXT_SCALE
-        val box = drawScaledLabel(graphics, text + if (instance.chargeKnown) "" else DEBT_MARK, barTop - textHeight - 1f, Common.UI.DANGER_COLOR)
+        val box = drawScaledLabel(graphics, text + if (instance.chargeKnown) "" else DEBT_MARK, barTop - textHeight - 1f, color)
         chargeMarkBox = if (instance.chargeKnown) null else box
     }
 
@@ -421,8 +429,8 @@ class ElementWidget(val instance: Plant) : Renderable, GuiEventListener {
         // past death in the estimate there is no time left to state; the dead bush says it instead
         if (waterLevel <= WaterModel.DEATH_LEVEL) return
 
-        val remainingMs = GreenhouseData.remainingTickMs()
-        val tickMs = GreenhouseData.currentGrowthTickMs()
+        val remainingMs = GrowthClock.remainingTickMs()
+        val tickMs = GrowthClock.tickLengthMs()
         val inDebt = instance.waterPredictedInDebt
 
         // the ticks the plant can still take, which are all that can cost it water: from the low
@@ -576,7 +584,8 @@ class ElementWidget(val instance: Plant) : Renderable, GuiEventListener {
             if (inPreset) add(Component.literal("Right click to mark").withStyle(ChatFormatting.GRAY))
         }
 
-        graphics.drawTooltipLines(lines.map { it.visualOrderText }, mouseX, mouseY)
+        val font = Minecraft.getInstance().font
+        graphics.drawTooltipLines(lines.flatMap { font.splitMod(it, TOOLTIP_WRAP_WIDTH) }, mouseX, mouseY)
     }
 
     companion object {
@@ -597,6 +606,9 @@ class ElementWidget(val instance: Plant) : Renderable, GuiEventListener {
 
         /** Appended to a water time that assumes no skipped ticks. */
         private const val DEBT_MARK: String = "*"
+
+        /** what a plant tooltip wraps at, so one long line cannot push the panel off screen */
+        private const val TOOLTIP_WRAP_WIDTH: Int = 170
 
         /** Hover of a soggybud that the greenhouse, left as it stands, never feeds to its last stage. */
         private const val SOGGYBUD_STALL: String =

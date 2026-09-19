@@ -1,4 +1,4 @@
-package org.magic.magicaddons.features.farming.greenhousePresets
+package org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState
 
 import org.magic.magicaddons.data.greenhouse.Codecs.GREENHOUSE_GRID_CODEC
 import org.magic.magicaddons.data.greenhouse.Codecs.MISC_GREENHOUSE_INFO_CODEC
@@ -47,7 +47,7 @@ object OtherProfiles {
                 .filter { it.cropDef.isBaseCrop }
                 .map { GreenhouseData.UniqueCropKey.from(it.cropDef) }
                 .toSet()
-            val tickMs = GreenhouseData.computeGrowthStageTimeMs(uniques.size, cropGrowth, upgrade, misc.greenhouseSpeedAttribute ?: 0)
+            val tickMs = GrowthClock.stageTimeMs(uniques.size, cropGrowth, upgrade, misc.greenhouseSpeedAttribute ?: 0)
 
             val overdueMs = now.toEpochMilli() - nextTick.toEpochMilli()
             val elapsedTicks = (overdueMs / tickMs).toInt() + 1

@@ -1,4 +1,4 @@
-package org.magic.magicaddons.features.farming.greenhousePresets
+package org.magic.magicaddons.features.farming.greenhousePresets.warnings
 
 import org.magic.magicaddons.data.greenhouse.GREENHOUSE_SIZE
 import org.magic.magicaddons.data.greenhouse.GreenhouseGrid

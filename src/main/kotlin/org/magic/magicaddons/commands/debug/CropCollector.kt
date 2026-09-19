@@ -1,6 +1,6 @@
 package org.magic.magicaddons.commands.debug
 
-import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData
+import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseData
 import net.minecraft.world.entity.EquipmentSlot
 import com.mojang.blaze3d.vertex.PoseStack
 import net.minecraft.ChatFormatting

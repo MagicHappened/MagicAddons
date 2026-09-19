@@ -163,6 +163,140 @@ object Thunderling : CropDefinitionProvider {
                 blocks = listOf(),
                 armorStands = CropArmorStand.atOffsets(
                     offsets = listOf(
+                        Vec3(0.0625, -0.71875, -0.25),
+                        Vec3(-0.21875, -0.625, 0.03125)
+                    ),
+                    rotations = listOf(
+                        Rotations(-22.5f, 0.0f, 22.5f),
+                        Rotations(22.5f, 22.5f, 0.0f)
+                    ),
+                    hashString = "b68fb1ff4ecbf2e1c6e9f11c71f8f915f2d05e58a4ced08998f8b040bd671a08",
+                    isSmall = false
+                ) + listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.15625, 0.09375, 0.21875),
+                        headRotation = Rotations(22.5f, 22.5f, 22.5f),
+                        hashString = "b35914deb539a1fde1b1c473f8e05cacca257b959e7270d444c1dc5ad2bf7cc8",
+                        isSmall = true
+                    )
+                ),
+                readers = listOf(CropStandReader.nonWaterBar(CropStandReader.CHARGE)),
+                stageRange = 10..10
+            ),
+            CropStage(
+                blocks = listOf(),
+                armorStands = CropArmorStand.atOffsets(
+                    offsets = listOf(
+                        Vec3(-0.21875, -0.625, 0.03125),
+                        Vec3(0.0625, -0.71875, -0.25)
+                    ),
+                    rotations = listOf(
+                        Rotations(22.5f, 22.5f, 0.0f),
+                        Rotations(-22.5f, 0.0f, 22.5f)
+                    ),
+                    hashString = "b68fb1ff4ecbf2e1c6e9f11c71f8f915f2d05e58a4ced08998f8b040bd671a08",
+                    isSmall = false
+                ) + listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.15625, 0.25, 0.21875),
+                        headRotation = Rotations(22.5f, 22.5f, 22.5f),
+                        hashString = "b35914deb539a1fde1b1c473f8e05cacca257b959e7270d444c1dc5ad2bf7cc8",
+                        isSmall = true
+                    )
+                ),
+                readers = listOf(CropStandReader.nonWaterBar(CropStandReader.CHARGE)),
+                stageRange = 11..11
+            ),
+            CropStage(
+                blocks = listOf(),
+                armorStands = CropArmorStand.atOffsets(
+                    offsets = listOf(
+                        Vec3(-0.21875, -0.625, 0.03125),
+                        Vec3(0.0625, -0.71875, -0.25),
+                        Vec3(0.15625, -0.625, 0.21875)
+                    ),
+                    rotations = listOf(
+                        Rotations(22.5f, 22.5f, 0.0f),
+                        Rotations(-22.5f, 0.0f, 22.5f),
+                        Rotations(22.5f, 22.5f, 22.5f)
+                    ),
+                    hashString = "b68fb1ff4ecbf2e1c6e9f11c71f8f915f2d05e58a4ced08998f8b040bd671a08",
+                    isSmall = false
+                ),
+                readers = listOf(CropStandReader.nonWaterBar(CropStandReader.CHARGE)),
+                stageRange = 12..12
+            ),
+            CropStage(
+                blocks = listOf(),
+                armorStands = CropArmorStand.atOffsets(
+                    offsets = listOf(
+                        Vec3(0.15625, -0.625, 0.21875),
+                        Vec3(0.0625, -0.625, -0.25)
+                    ),
+                    rotations = listOf(
+                        Rotations(22.5f, 22.5f, 22.5f),
+                        Rotations(-22.5f, 0.0f, 22.5f)
+                    ),
+                    hashString = "b68fb1ff4ecbf2e1c6e9f11c71f8f915f2d05e58a4ced08998f8b040bd671a08",
+                    isSmall = false
+                ) + listOf(
+                    CropArmorStand(
+                        offset = Vec3(-0.21875, -0.625, 0.03125),
+                        headRotation = Rotations(22.5f, 22.5f, 0.0f),
+                        hashString = "ec3d7c0e165b00491d3ef787ee14cb0c7d8dd6a29f535002ef6f15d67182bfce",
+                        isSmall = false
+                    )
+                ),
+                readers = listOf(CropStandReader.nonWaterBar(CropStandReader.CHARGE)),
+                stageRange = 13..13
+            ),
+            CropStage(
+                blocks = listOf(),
+                armorStands = CropArmorStand.atOffsets(
+                    offsets = listOf(
+                        Vec3(-0.21875, -0.5, 0.03125),
+                        Vec3(0.0625, -0.625, -0.25)
+                    ),
+                    rotations = listOf(
+                        Rotations(22.5f, 22.5f, 0.0f),
+                        Rotations(-22.5f, 0.0f, 22.5f)
+                    ),
+                    hashString = "ec3d7c0e165b00491d3ef787ee14cb0c7d8dd6a29f535002ef6f15d67182bfce",
+                    isSmall = false
+                ) + listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.15625, -0.625, 0.21875),
+                        headRotation = Rotations(22.5f, 22.5f, 22.5f),
+                        hashString = "b68fb1ff4ecbf2e1c6e9f11c71f8f915f2d05e58a4ced08998f8b040bd671a08",
+                        isSmall = false
+                    )
+                ),
+                readers = listOf(CropStandReader.nonWaterBar(CropStandReader.CHARGE)),
+                stageRange = 14..14
+            ),
+            CropStage(
+                blocks = listOf(),
+                armorStands = CropArmorStand.atOffsets(
+                    offsets = listOf(
+                        Vec3(0.0625, -0.625, -0.25),
+                        Vec3(-0.21875, -0.5, 0.03125),
+                        Vec3(0.15625, -0.5, 0.21875)
+                    ),
+                    rotations = listOf(
+                        Rotations(-22.5f, 0.0f, 22.5f),
+                        Rotations(22.5f, 22.5f, 0.0f),
+                        Rotations(22.5f, 22.5f, 22.5f)
+                    ),
+                    hashString = "ec3d7c0e165b00491d3ef787ee14cb0c7d8dd6a29f535002ef6f15d67182bfce",
+                    isSmall = false
+                ),
+                readers = listOf(CropStandReader.nonWaterBar(CropStandReader.CHARGE)),
+                stageRange = 15..15
+            ),
+            CropStage(
+                blocks = listOf(),
+                armorStands = CropArmorStand.atOffsets(
+                    offsets = listOf(
                         Vec3(0.15625, -0.5, 0.21875),
                         Vec3(0.0625, -0.625, -0.25),
                         Vec3(-0.21875, -0.5, 0.03125)

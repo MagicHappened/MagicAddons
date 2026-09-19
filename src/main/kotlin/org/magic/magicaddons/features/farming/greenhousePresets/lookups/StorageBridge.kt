@@ -1,4 +1,4 @@
-package org.magic.magicaddons.features.farming.greenhousePresets
+package org.magic.magicaddons.features.farming.greenhousePresets.lookups
 
 import com.github.kdgaming0.enhancedstorage.storage.StorageCache
 import com.github.kdgaming0.enhancedstorage.storage.StorageKey
@@ -6,7 +6,6 @@ import net.fabricmc.loader.api.FabricLoader
 import net.fabricmc.loader.api.metadata.version.VersionPredicate
 import net.minecraft.world.item.ItemStack
 
-/** gets ender chest and backpack contents from Enhanced Storage 1.2+ (if installed) */
 object StorageBridge {
 
     private const val MOD_ID: String = "enhanced_storage"
@@ -15,7 +14,7 @@ object StorageBridge {
 
     fun openStorageCommand(query: String): String = "/ecs $query"
 
-    val available: Boolean by lazy {
+    val isAvailable: Boolean by lazy {
         FabricLoader.getInstance().getModContainer(MOD_ID)
             .map { SUPPORTED_VERSIONS.test(it.metadata.version) }
             .orElse(false)
@@ -25,7 +24,7 @@ object StorageBridge {
 
     /** every page holding items that [matches], most first; empty without the mod */
     fun pagesHolding(matches: (ItemStack) -> Boolean): List<Holding> {
-        if (!available) return emptyList()
+        if (!isAvailable) return emptyList()
 
         return EnhancedStorageCache.pagesHolding(matches)
     }

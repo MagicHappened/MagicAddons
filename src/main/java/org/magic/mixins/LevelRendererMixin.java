@@ -31,10 +31,10 @@ import org.joml.Vector4f;
 import org.jspecify.annotations.Nullable;
 import org.magic.magicaddons.commands.debug.FarmingDebug;
 import org.magic.magicaddons.commands.debug.CropCollector;
-import org.magic.magicaddons.features.farming.greenhousePresets.LayoutRenderState;
+import org.magic.magicaddons.features.farming.greenhousePresets.render.LayoutRenderState;
 import org.magic.magicaddons.features.misc.HighlightMarkers;
-import org.magic.magicaddons.features.farming.greenhousePresets.PlantHighlight;
-import org.magic.magicaddons.features.farming.greenhousePresets.WaterIndicator;
+import org.magic.magicaddons.features.farming.greenhousePresets.render.PlantHighlight;
+import org.magic.magicaddons.features.farming.greenhousePresets.render.WaterIndicator;
 import org.magic.magicaddons.util.EntityUtils;
 import org.magic.misc.EntityRenderModifier;
 import org.magic.misc.WrappedEntityRenderState;
@@ -139,7 +139,7 @@ public abstract class LevelRendererMixin {
             );
 
             // soil of plants short of water
-            WaterIndicator.INSTANCE.submit(
+            WaterIndicator.INSTANCE.submitDryPlants(
                     poseStack,
                     submitNodeCollector,
                     levelRenderState.cameraRenderState.pos

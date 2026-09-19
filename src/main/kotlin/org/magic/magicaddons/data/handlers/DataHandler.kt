@@ -8,8 +8,8 @@ import org.magic.magicaddons.data.greenhouse.Codecs.GREENHOUSE_GRID_CODEC
 import org.magic.magicaddons.data.greenhouse.Codecs.MASTER_LAYOUT_CODEC
 import org.magic.magicaddons.data.greenhouse.Codecs.MISC_GREENHOUSE_INFO_CODEC
 import org.magic.magicaddons.data.greenhouse.MiscGreenhouseInfo
-import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData
-import org.magic.magicaddons.features.farming.greenhousePresets.OtherProfiles
+import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseData
+import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.OtherProfiles
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.UUID

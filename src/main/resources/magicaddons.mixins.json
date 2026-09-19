@@ -19,7 +19,8 @@
     "GuiMixin",
     "KeyboardHandlerMixin",
     "ChatComponentAccessor",
-    "TextDisplayAccessor"
+    "TextDisplayAccessor",
+    "FontMixin"
   ],
   "injectors": {
     "defaultRequire": 1

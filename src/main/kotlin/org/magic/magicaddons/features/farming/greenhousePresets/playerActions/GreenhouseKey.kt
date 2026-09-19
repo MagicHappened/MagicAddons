@@ -1,4 +1,4 @@
-package org.magic.magicaddons.features.farming.greenhousePresets
+package org.magic.magicaddons.features.farming.greenhousePresets.playerActions
 
 import org.magic.magicaddons.events.world.WorldTickEvent
 import org.magic.magicaddons.events.EventHandler
@@ -12,24 +12,21 @@ import org.magic.magicaddons.Common
 import org.magic.magicaddons.ui.screens.GreenhouseScreen
 import org.magic.magicaddons.util.compat.McCompat
 import org.magic.magicaddons.util.ScreenUtil
+import org.magic.magicaddons.features.farming.greenhousePresets.GreenhousePresets
+import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseData
 
-/** The key that opens the greenhouse screen, G unless rebound in the controls menu. */
 object GreenhouseKey {
 
-    /** The controls menu section every key of this mod sits in. */
-    val category: KeyMapping.Category = KeyMapping.Category.register(Identifier.fromNamespaceAndPath(Common.MOD_ID, Common.MOD_ID))
-
-    private val key = KeyMappingHelper.registerKeyMapping(
-        KeyMapping("key.magicaddons.greenhouse", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_G, category)
+    private val greenhouseScreenKey = KeyMappingHelper.registerKeyMapping(
+        KeyMapping("key.magicaddons.greenhouse", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_G, Common.KEY_CATEGORY)
     )
 
     @EventHandler
     fun onTick(event: WorldTickEvent) {
-        val mc = Minecraft.getInstance()
-        while (key.consumeClick()) open(mc)
+        while (greenhouseScreenKey.consumeClick()) openScreen()
     }
 
-    private fun open(mc: Minecraft) {
+    private fun openScreen() {
         if (McCompat.currentScreen() != null) return
         if (!GreenhousePresets.baseSetting.value) return
         if (!GreenhousePresets.keyWorksAnywhere() && !GreenhouseData.inGreenhouse()) return

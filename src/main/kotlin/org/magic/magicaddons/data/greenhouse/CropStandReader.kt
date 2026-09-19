@@ -37,7 +37,6 @@ class CropStandReader(
             McCompat.chatColor(ChatFormatting.WHITE), McCompat.chatColor(ChatFormatting.GRAY), McCompat.chatColor(ChatFormatting.DARK_GRAY)
         )
 
-        /** a shorter run of one glyph is a symbol, not a bar */
         private const val SHORTEST_GLYPH_BAR: Int = 3
 
         class BarNotches(val filled: Int, val debt: Int, val otherColoured: Int, val total: Int)
@@ -70,7 +69,6 @@ class CropStandReader(
             return BarNotches(filled, debt, otherColoured, total)
         }
 
-        /** the bar character, or any one glyph repeated the way a bar of another style is drawn */
         private fun notchesIn(text: String): Int {
             val run = text.trim()
             val glyph = run.firstOrNull() ?: return 0
@@ -93,7 +91,10 @@ class CropStandReader(
             ?.takeIf { it.filled == 0 && it.debt + it.otherColoured > 0 }
             ?.let { (it.debt + it.otherColoured) * 100 / it.total }
 
-        /** drawn only in the water bar's colours: blue, red and white */
+        fun chargeBarPercent(name: Component): Int? = barNotches(name)
+            ?.takeIf { it.filled == 0 }
+            ?.let { (it.debt + it.otherColoured) * 100 / it.total }
+
         fun looksLikeWaterBar(name: Component): Boolean = barNotches(name)?.let { it.otherColoured == 0 } == true
 
         fun percentLabel(key: String, contains: String): CropStandReader = CropStandReader(

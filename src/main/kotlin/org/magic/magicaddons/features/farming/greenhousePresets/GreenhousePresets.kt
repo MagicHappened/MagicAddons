@@ -10,6 +10,19 @@ import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.features.Feature
 import tech.thatgravyboat.skyblockapi.api.profile.hunting.AttributeAPI
 import tech.thatgravyboat.skyblockapi.api.SkyBlockAPI
+import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseData
+import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.OtherProfiles
+import org.magic.magicaddons.features.farming.greenhousePresets.lookups.PlantBars
+import org.magic.magicaddons.features.farming.greenhousePresets.lookups.StatsWidget
+import org.magic.magicaddons.features.farming.greenhousePresets.playerActions.BreakProtection
+import org.magic.magicaddons.features.farming.greenhousePresets.playerActions.GreenhouseKey
+import org.magic.magicaddons.features.farming.greenhousePresets.playerActions.GreenhousePlantDischarge
+import org.magic.magicaddons.features.farming.greenhousePresets.playerActions.GreenhouseWatering
+import org.magic.magicaddons.features.farming.greenhousePresets.render.LayoutRenderState
+import org.magic.magicaddons.features.farming.greenhousePresets.render.PlannerMark
+import org.magic.magicaddons.features.farming.greenhousePresets.render.WaterIndicator
+import org.magic.magicaddons.features.farming.greenhousePresets.warnings.ChorusCollision
+import org.magic.magicaddons.features.farming.greenhousePresets.warnings.PlantWarnings
 
 object GreenhousePresets : Feature() {
 
@@ -52,16 +65,16 @@ object GreenhousePresets : Feature() {
         SkyBlockAPI.eventBus.register(GreenhouseData)
         EventBus.register(GreenhouseWatering)
         EventBus.register(GreenhousePlantDischarge)
-        EventBus.register(GreenhouseChargeBars)
         EventBus.register(BreakProtection)
-        EventBus.register(HungerBars)
+        SkyBlockAPI.eventBus.register(BreakProtection)
+        SkyBlockAPI.eventBus.register(StatsWidget)
+        EventBus.register(PlantBars)
         EventBus.register(PlantWarnings)
         EventBus.register(GreenhouseKey)
         EventBus.register(GreenhouseHud)
         EventBus.register(LayoutRenderState)
         EventBus.register(OtherProfiles)
         EventBus.register(ChorusCollision)
-        EventBus.register(GreenhouseWarnings)
         EventBus.register(PlannerNeeds)
         CropRegistry
         AttributeAPI
@@ -118,14 +131,95 @@ object GreenhousePresets : Feature() {
 
     fun preventBreakingIngredients(): Boolean = baseSetting.value && preventBreakingIngredientsSetting.value
 
+    private val jellybeanHarvestStageSetting = IntSetting(
+        key = "MagicJellybeanHarvestStage",
+        displayName = "Magic Jellybean Harvest Stage",
+        description = "Allows breaking a Magic Jellybean once it reaches this stage",
+        value = 12,
+        range = 12..120,
+        step = 12,
+        scrollable = false
+    )
+
+    private val aloeHarvestStageSetting = IntSetting(
+        key = "AllInAloeHarvestStage",
+        displayName = "All-in Aloe Harvest Stage",
+        description = "Allows breaking an All-in Aloe once it reaches this stage",
+        value = 12,
+        range = 1..27,
+        scrollable = false
+    )
+
     private val preventBreakingGrowingSetting = BooleanSetting(
         key = PREVENT_BREAKING_GROWING_KEY,
         displayName = "Prevent Breaking Growing Mutations",
         description = "Prevents breaking a mutation that has not finished growing.",
-        value = false
+        value = false,
+        children = listOf(jellybeanHarvestStageSetting, aloeHarvestStageSetting)
     )
 
     fun preventBreakingGrowingMutations(): Boolean = baseSetting.value && preventBreakingGrowingSetting.value
+
+    fun harvestStageFor(cropName: String): Int? = when (cropName) {
+        "Magic Jellybean" -> jellybeanHarvestStageSetting.value
+        "All-in Aloe" -> aloeHarvestStageSetting.value
+        else -> null
+    }
+
+    private val farmingFortuneThresholdSetting = IntSetting(
+        key = "FarmingFortuneThreshold",
+        displayName = "Farming Fortune Threshold",
+        description = "The farming fortune under which a mutation is prevented from being broken",
+        value = 1000,
+        range = 0..5000,
+        step = 50,
+        scrollable = false
+    )
+
+    private val preventBreakingUnderFarmingFortuneSetting = BooleanSetting(
+        key = "PreventBreakingUnderFarmingFortune",
+        displayName = "Prevent Breaking Under Farming Fortune",
+        description = "Prevents breaking any mutation while your farming fortune is under the threshold.\n\n" +
+                "§7Your farming fortune is read off the tab list's Stats widget, which has to be on and have Farming Fortune enabled.",
+        value = false,
+        children = listOf(farmingFortuneThresholdSetting)
+    )
+
+    fun preventBreakingUnderFarmingFortune(): Boolean = baseSetting.value && preventBreakingUnderFarmingFortuneSetting.value
+    val farmingFortuneThreshold: Int get() = farmingFortuneThresholdSetting.value
+    val farmingFortuneSettingName: String get() = preventBreakingUnderFarmingFortuneSetting.displayName
+
+    private val miningFortuneThresholdSetting = IntSetting(
+        key = "MiningFortuneThreshold",
+        displayName = "Mining Fortune Threshold",
+        description = "The mining fortune under which a Chloronite is prevented from being broken",
+        value = 1000,
+        range = 0..5000,
+        step = 50,
+        scrollable = false
+    )
+
+    private val preventBreakingChloroniteSetting = BooleanSetting(
+        key = "PreventBreakingChloroniteUnderMiningFortune",
+        displayName = "Prevent Breaking Chloronite Under Mining Fortune",
+        description = "Prevents breaking a Chloronite while your mining fortune is under the threshold.\n\n" +
+                "§7Your mining fortune is read off the tab list's Stats widget, which has to be on and have Mining Fortune enabled.",
+        value = false,
+        children = listOf(miningFortuneThresholdSetting)
+    )
+
+    fun preventBreakingChloroniteUnderMiningFortune(): Boolean = baseSetting.value && preventBreakingChloroniteSetting.value
+    val miningFortuneThreshold: Int get() = miningFortuneThresholdSetting.value
+    val miningFortuneSettingName: String get() = preventBreakingChloroniteSetting.displayName
+
+    private val preventBreakingDuringPestDebuffSetting = BooleanSetting(
+        key = "PreventBreakingDuringPestDebuff",
+        displayName = "Prevent Breaking While Pest Debuff Is Active",
+        description = "Prevents breaking any mutation but Chloronite while pests are lowering your farming fortune.",
+        value = false
+    )
+
+    fun preventBreakingDuringPestDebuff(): Boolean = baseSetting.value && preventBreakingDuringPestDebuffSetting.value
 
     private val harvestHighlightSetting = BooleanSetting(
         key = HARVEST_HIGHLIGHT_KEY,
@@ -266,8 +360,14 @@ object GreenhousePresets : Feature() {
             ParentSetting(
                 key = BREAK_PROTECTION_KEY,
                 displayName = "Break Protection",
-                description = "Swings and hits refused so a plant worth keeping is not broken by mistake",
-                children = listOf(preventBreakingIngredientsSetting, preventBreakingGrowingSetting)
+                description = "Prevents breaking plants under several conditions, configure below.",
+                children = listOf(
+                    preventBreakingIngredientsSetting,
+                    preventBreakingGrowingSetting,
+                    preventBreakingUnderFarmingFortuneSetting,
+                    preventBreakingChloroniteSetting,
+                    preventBreakingDuringPestDebuffSetting
+                )
             ),
             BooleanSetting(
                 key = WARNINGS_KEY,
@@ -288,7 +388,7 @@ object GreenhousePresets : Feature() {
                                 value = false
                             ),
                             BooleanSetting(
-                                key = GreenhouseData.THIRST_KEY,
+                                key = PlantWarnings.THIRST_KEY,
                                 displayName = "Dying Of Thirst",
                                 description = "Warns before a growth tick kills a plant that has run out of water",
                                 value = false

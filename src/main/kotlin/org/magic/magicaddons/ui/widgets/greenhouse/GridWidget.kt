@@ -17,7 +17,7 @@ import org.magic.magicaddons.data.greenhouse.Footprint
 import org.magic.magicaddons.data.greenhouse.Plant
 import org.magic.magicaddons.Common
 import org.magic.magicaddons.data.greenhouse.GreenhouseGrid
-import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseData
+import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseData
 import org.magic.magicaddons.data.greenhouse.GreenhouseLayout
 import org.magic.magicaddons.ui.HoverableContainer
 import org.magic.magicaddons.util.ScreenUtil.inRect
@@ -25,6 +25,7 @@ import org.magic.magicaddons.util.ScreenUtil.stackFor
 import org.magic.magicaddons.util.ScreenUtil.drawCountedCrop
 import org.magic.magicaddons.util.ScreenUtil.drawBorder
 import kotlin.math.abs
+import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GrowthClock
 
 class GridWidget(
     val layout: GreenhouseLayout,
@@ -313,7 +314,7 @@ class GridWidget(
             // will, once per build rather than every frame
             if (instance.cropDef.drainsNeighbours && layout.kind != GreenhouseLayout.Kind.PRESET) {
                 val grid = GreenhouseData.greenhouseGrids.find { it.layout.id == layout.id }
-                val tickMs = GreenhouseData.currentGrowthTickMs()
+                val tickMs = GrowthClock.tickLengthMs()
                 if (grid != null && tickMs != null) {
                     widget.soggybudTicksToGrow = grid.ticksUntilGrown(layout, instance.slot, tickMs)
                     widget.soggybudSimulated = true

@@ -1,6 +1,7 @@
 package org.magic.magicaddons.ui.hud
 
 import net.minecraft.client.Minecraft
+import org.magic.magicaddons.ui.fonts.ModFont
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import org.magic.magicaddons.Common
 import org.magic.magicaddons.events.EventBus
@@ -268,6 +269,8 @@ object HudRenderer {
     fun onHudRender(event: HudRenderEvent) {
         if (McCompat.hudHidden() || McCompat.currentScreen() != null) return
         val window = Minecraft.getInstance().window
-        HudScene.buildLayout(HudLayoutStore.layout, window.guiScaledWidth, window.guiScaledHeight, sample = false).drawBoxes(event.graphics)
+        ModFont.applied {
+            HudScene.buildLayout(HudLayoutStore.layout, window.guiScaledWidth, window.guiScaledHeight, sample = false).drawBoxes(event.graphics)
+        }
     }
 }

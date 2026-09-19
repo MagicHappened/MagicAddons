@@ -1,8 +1,7 @@
-package org.magic.magicaddons.features.farming.greenhousePresets
+package org.magic.magicaddons.features.farming.greenhousePresets.render
 
-/**
- * each planner mark and its color
- */
+import org.magic.magicaddons.features.farming.greenhousePresets.GreenhousePresets
+
 enum class PlannerMark(val displayName: String, val defaultColor: Int) {
     Wrong("Wrong Block", 0xFFFF3333.toInt()),
     Adjust("Needs Adjusting", 0xFFFF9922.toInt()),
