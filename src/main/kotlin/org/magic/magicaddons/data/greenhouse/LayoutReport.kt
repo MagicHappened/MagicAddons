@@ -1,6 +1,7 @@
 package org.magic.magicaddons.data.greenhouse
 
 import kotlin.random.Random
+import java.util.IdentityHashMap
 
 object LayoutReport {
 
@@ -68,7 +69,9 @@ object LayoutReport {
     ): Int {
         val layout = builtLayout.deepCopy()
         val occupiedSpots = mutableMapOf<TargetSpot, Plant?>()
-        val graceTicksLeftBySpawn = mutableMapOf<Plant, Int>()
+        // a Plant hashes on its water and stage, which the simulation moves under it, so the spawn
+        // is tracked by identity rather than by value
+        val graceTicksLeftBySpawn: MutableMap<Plant, Int> = IdentityHashMap()
         var harvested = 0
 
         for (tick in 1..warmUpTicks + measuredTicks) {

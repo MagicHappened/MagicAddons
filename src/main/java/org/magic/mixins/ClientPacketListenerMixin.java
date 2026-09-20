@@ -7,7 +7,9 @@ import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.protocol.game.ClientboundBlockUpdatePacket;
 import net.minecraft.network.protocol.game.ClientboundLevelParticlesPacket;
+import net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket;
 import net.minecraft.network.protocol.game.ClientboundSetTimePacket;
+import net.minecraft.network.protocol.game.ClientboundUpdateAttributesPacket;
 import net.minecraft.network.protocol.game.ClientboundSystemChatPacket;
 import net.minecraft.world.level.block.state.BlockState;
 import org.magic.magicaddons.events.EventBus;
@@ -17,6 +19,7 @@ import org.magic.magicaddons.events.interact.BlockPlacedEvent;
 import org.magic.magicaddons.events.interact.BlockChangedEvent;
 import org.magic.magicaddons.events.world.AddParticleEvent;
 import org.magic.magicaddons.events.world.SetTimePacketEvent;
+import org.magic.magicaddons.util.EntityUtils;
 import org.magic.misc.BlockEventBufferAccess;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -99,6 +102,16 @@ public class ClientPacketListenerMixin {
         BlockState currentState = level.getBlockState(pos);
         if (currentState.equals(packet.getBlockState())) return;
         EventBus.post(new BlockChangedEvent(packet));
+    }
+
+    @Inject(method = "handleSetEntityData", at = @At("TAIL"))
+    private void onSetEntityData(ClientboundSetEntityDataPacket packet, CallbackInfo ci) {
+        EntityUtils.INSTANCE.noteDataChanged(packet.id());
+    }
+
+    @Inject(method = "handleUpdateAttributes", at = @At("TAIL"))
+    private void onUpdateAttributes(ClientboundUpdateAttributesPacket packet, CallbackInfo ci) {
+        EntityUtils.INSTANCE.noteDataChanged(packet.getEntityId());
     }
 
     @Inject(

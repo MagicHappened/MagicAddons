@@ -2,6 +2,12 @@ package org.magic.magicaddons.features.combat
 
 import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.LivingEntity
+import net.minecraft.resources.ResourceKey
+import net.minecraft.world.entity.animal.frog.Frog
+import net.minecraft.world.entity.animal.frog.FrogVariants
+import net.minecraft.world.entity.animal.frog.FrogVariant as McFrogVariant
+import net.minecraft.world.entity.animal.fish.TropicalFish as McTropicalFish
+import net.minecraft.world.entity.animal.axolotl.Axolotl
 import net.minecraft.world.entity.animal.parrot.Parrot
 import net.minecraft.world.entity.monster.Shulker
 import net.minecraft.world.entity.player.Player
@@ -14,42 +20,53 @@ import org.magic.magicaddons.util.PlayerUtils
 import tech.thatgravyboat.skyblockapi.api.location.LocationAPI
 import tech.thatgravyboat.skyblockapi.api.location.SkyBlockIsland
 
-/**
- * The mobs a player can pick by name instead of by hash. Each carries the rule that finds it, in
- * the same terms the advanced filters use, so adding one is one line here.
- */
 object SingleMobs {
 
-    /**
-     * How a mob is recognised: by the skull it or something beside it wears, its skin, its name, its
-     * type, or the dye a shulker is painted in.
-     */
+
     sealed interface Rule {
         data class Skull(val hash: String) : Rule
         data class Skin(val hash: String) : Rule
         data class Name(val contains: String) : Rule
-        /** [minScale] separates a mob the server blew up from the ordinary one of its type. */
         data class Type(val path: String, val minScale: Float = 0f) : Rule
         data class ParrotVariant(val variant: Parrot.Variant) : Rule
+        data class AxolotlVariant(val variant: Axolotl.Variant) : Rule
+        data class FrogVariant(val variant: ResourceKey<McFrogVariant>) : Rule
+        data class TropicalFishVariant(
+            val baseColor: DyeColor,
+            val patternColor: DyeColor,
+            val pattern: McTropicalFish.Pattern? = null
+        ) : Rule
         data class ShulkerColor(val colors: Set<DyeColor>) : Rule {
             constructor(vararg colors: DyeColor) : this(colors.toSet())
         }
     }
 
-    /** [island] is the only island the mob lives on, or null when it can turn up anywhere. */
+
     data class Mob(val name: String, val rule: Rule, val island: SkyBlockIsland? = null) {
         override fun toString(): String = name
     }
 
     val all: List<Mob> = listOf(
+        Mob("Vanquisher", Rule.Type("wither"), SkyBlockIsland.CRIMSON_ISLE),
+        Mob("Matcho", Rule.Skin("ef2daabb78a1f7aa12d145d88c0ca46b9e856f5534e9286e555faf0c291f4fd5"), SkyBlockIsland.CRIMSON_ISLE),
         Mob("Rat", Rule.Skull("a8abb471db0ab78703011979dc8b40798a941f3a4dec3ec61cbeec2af8cffe8")),
+        Mob("Lotum", Rule.FrogVariant(FrogVariants.TEMPERATE), SkyBlockIsland.LOTUS_ATOLL),
+        Mob("Tewtil", Rule.Type("turtle"), SkyBlockIsland.LOTUS_ATOLL),
+        Mob("Shellwise", Rule.Type("turtle"), SkyBlockIsland.GALATEA),
+        Mob("Mossybit", Rule.FrogVariant(FrogVariants.COLD), SkyBlockIsland.GALATEA),
+        Mob("Joydive", Rule.Type("dolphin"), SkyBlockIsland.GALATEA),
         Mob("Littlefoot", Rule.Skin("f2b33640bfb71557e0e1d852287263ceafc9bec205301acf046b7c29fe8cb37b")),
         Mob("Hideonleaf", Rule.ShulkerColor(DyeColor.GREEN), SkyBlockIsland.GALATEA),
-        Mob("Hideonsun", Rule.ShulkerColor(DyeColor.BROWN, DyeColor.YELLOW), SkyBlockIsland.TORRHUS_CANYON),
+        Mob("Coralot", Rule.AxolotlVariant(Axolotl.Variant.LUCY), SkyBlockIsland.GALATEA),
+        Mob("Hideonsun", Rule.ShulkerColor(DyeColor.BROWN, DyeColor.YELLOW, DyeColor.ORANGE), SkyBlockIsland.TORRHUS_CANYON),
         Mob("Beeheemoth", Rule.Type("bee", minScale = 4f), SkyBlockIsland.TORRHUS_CANYON),
         Mob("Mountain Goat", Rule.Type("goat"), SkyBlockIsland.TORRHUS_CANYON),
         Mob("Blue Jay", Rule.ParrotVariant(Parrot.Variant.BLUE), SkyBlockIsland.TORRHUS_CANYON),
         Mob("Pangolin", Rule.Type("armadillo"), SkyBlockIsland.TORRHUS_CANYON),
+        Mob("Dustybit", Rule.FrogVariant(FrogVariants.TEMPERATE), SkyBlockIsland.TORRHUS_CANYON),
+        Mob("Grizzly Bear", Rule.Skin("5406108aa6bdda73df122454aa4250ec0cd457fd318a893d9d7c54d9c0761168"), SkyBlockIsland.TORRHUS_CANYON),
+        Mob("Puck", Rule.Type("vex"), SkyBlockIsland.TORRHUS_CANYON),
+        Mob("Timil", Rule.TropicalFishVariant(DyeColor.PINK, DyeColor.WHITE), SkyBlockIsland.TORRHUS_CANYON),
         Mob("Trinity", Rule.Skin("5841a16a5bd4a646cedb4b5437723226c7cf9f8669e558773fae0a9452c94d90"), SkyBlockIsland.THE_CATACOMBS),
     )
 
@@ -74,6 +91,17 @@ object SingleMobs {
 
         return when (val rule = mob.rule) {
             is Rule.ParrotVariant -> entity.takeIf { it is Parrot && it.variant == rule.variant }
+
+            is Rule.AxolotlVariant -> entity.takeIf { it is Axolotl && it.variant == rule.variant }
+
+            is Rule.FrogVariant -> entity.takeIf { it is Frog && it.variant.`is`(rule.variant) }
+
+            is Rule.TropicalFishVariant -> entity.takeIf {
+                it is McTropicalFish &&
+                        it.baseColor == rule.baseColor &&
+                        it.patternColor == rule.patternColor &&
+                        (rule.pattern == null || it.pattern == rule.pattern)
+            }
 
             is Rule.ShulkerColor -> entity.takeIf { it is Shulker && it.color in rule.colors }
 
