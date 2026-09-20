@@ -2,6 +2,15 @@ package org.magic.magicaddons.features.combat
 
 import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.LivingEntity
+import net.minecraft.world.entity.animal.armadillo.Armadillo
+import net.minecraft.world.entity.animal.bee.Bee
+import net.minecraft.world.entity.animal.dolphin.Dolphin
+import net.minecraft.world.entity.animal.goat.Goat
+import net.minecraft.world.entity.animal.golem.IronGolem
+import net.minecraft.world.entity.animal.turtle.Turtle
+import net.minecraft.world.entity.boss.wither.WitherBoss
+import net.minecraft.world.entity.monster.Vex
+import net.minecraft.world.entity.monster.creaking.Creaking
 import net.minecraft.resources.ResourceKey
 import net.minecraft.world.entity.animal.frog.Frog
 import net.minecraft.world.entity.animal.frog.FrogVariants
@@ -15,19 +24,25 @@ import net.minecraft.world.item.DyeColor
 import net.minecraft.world.item.ItemStack
 import org.magic.magicaddons.data.EntityInfo
 import org.magic.magicaddons.util.EntityUtils
-import org.magic.magicaddons.util.EntityUtils.typeId
 import org.magic.magicaddons.util.PlayerUtils
 import tech.thatgravyboat.skyblockapi.api.location.LocationAPI
 import tech.thatgravyboat.skyblockapi.api.location.SkyBlockIsland
+import kotlin.math.abs
+import kotlin.reflect.KClass
 
 object SingleMobs {
 
+    sealed interface ScaleMatch {
+        data class Above(val scale: Float) : ScaleMatch
+        data class Below(val scale: Float) : ScaleMatch
+        data class Exactly(val scale: Float) : ScaleMatch
+    }
 
     sealed interface Rule {
         data class Skull(val hash: String) : Rule
         data class Skin(val hash: String) : Rule
         data class Name(val contains: String) : Rule
-        data class Type(val path: String, val minScale: Float = 0f) : Rule
+        data class Type(val entityClass: KClass<out Entity>, val scaleMatch: ScaleMatch? = null) : Rule
         data class ParrotVariant(val variant: Parrot.Variant) : Rule
         data class AxolotlVariant(val variant: Axolotl.Variant) : Rule
         data class FrogVariant(val variant: ResourceKey<McFrogVariant>) : Rule
@@ -47,43 +62,38 @@ object SingleMobs {
     }
 
     val all: List<Mob> = listOf(
-        Mob("Vanquisher", Rule.Type("wither"), SkyBlockIsland.CRIMSON_ISLE),
+        Mob("Vanquisher", Rule.Type(WitherBoss::class), SkyBlockIsland.CRIMSON_ISLE),
         Mob("Matcho", Rule.Skin("ef2daabb78a1f7aa12d145d88c0ca46b9e856f5534e9286e555faf0c291f4fd5"), SkyBlockIsland.CRIMSON_ISLE),
+        Mob("Ragnarok", Rule.Skin("a8e1fe214b71f6ea69c541a861c64bafda7bf9b85de5dd17ab2b6ccd1d32b039"), SkyBlockIsland.CRIMSON_ISLE),
+        Mob("Lord Jawbus", Rule.Type(IronGolem::class), SkyBlockIsland.CRIMSON_ISLE),
         Mob("Rat", Rule.Skull("a8abb471db0ab78703011979dc8b40798a941f3a4dec3ec61cbeec2af8cffe8")),
         Mob("Lotum", Rule.FrogVariant(FrogVariants.TEMPERATE), SkyBlockIsland.LOTUS_ATOLL),
-        Mob("Tewtil", Rule.Type("turtle"), SkyBlockIsland.LOTUS_ATOLL),
-        Mob("Shellwise", Rule.Type("turtle"), SkyBlockIsland.GALATEA),
+        Mob("Tewtil", Rule.Type(Turtle::class), SkyBlockIsland.LOTUS_ATOLL),
+        Mob("Shellwise", Rule.Type(Turtle::class), SkyBlockIsland.GALATEA),
         Mob("Mossybit", Rule.FrogVariant(FrogVariants.COLD), SkyBlockIsland.GALATEA),
-        Mob("Joydive", Rule.Type("dolphin"), SkyBlockIsland.GALATEA),
+        Mob("Joydive", Rule.Type(Dolphin::class), SkyBlockIsland.GALATEA),
         Mob("Littlefoot", Rule.Skin("f2b33640bfb71557e0e1d852287263ceafc9bec205301acf046b7c29fe8cb37b")),
         Mob("Hideonleaf", Rule.ShulkerColor(DyeColor.GREEN), SkyBlockIsland.GALATEA),
         Mob("Coralot", Rule.AxolotlVariant(Axolotl.Variant.LUCY), SkyBlockIsland.GALATEA),
+        Mob("Drybark", Rule.Type(Creaking::class), SkyBlockIsland.TORRHUS_CANYON),
         Mob("Hideonsun", Rule.ShulkerColor(DyeColor.BROWN, DyeColor.YELLOW, DyeColor.ORANGE), SkyBlockIsland.TORRHUS_CANYON),
-        Mob("Beeheemoth", Rule.Type("bee", minScale = 4f), SkyBlockIsland.TORRHUS_CANYON),
-        Mob("Mountain Goat", Rule.Type("goat"), SkyBlockIsland.TORRHUS_CANYON),
+        Mob("Beeheemoth", Rule.Type(Bee::class, ScaleMatch.Exactly(4f)), SkyBlockIsland.TORRHUS_CANYON),
+        Mob("Mountain Goat", Rule.Type(Goat::class), SkyBlockIsland.TORRHUS_CANYON),
         Mob("Blue Jay", Rule.ParrotVariant(Parrot.Variant.BLUE), SkyBlockIsland.TORRHUS_CANYON),
-        Mob("Pangolin", Rule.Type("armadillo"), SkyBlockIsland.TORRHUS_CANYON),
+        Mob("Pangolin", Rule.Type(Armadillo::class), SkyBlockIsland.TORRHUS_CANYON),
         Mob("Dustybit", Rule.FrogVariant(FrogVariants.TEMPERATE), SkyBlockIsland.TORRHUS_CANYON),
         Mob("Grizzly Bear", Rule.Skin("5406108aa6bdda73df122454aa4250ec0cd457fd318a893d9d7c54d9c0761168"), SkyBlockIsland.TORRHUS_CANYON),
-        Mob("Puck", Rule.Type("vex"), SkyBlockIsland.TORRHUS_CANYON),
+        Mob("Puck", Rule.Type(Vex::class), SkyBlockIsland.TORRHUS_CANYON),
         Mob("Timil", Rule.TropicalFishVariant(DyeColor.PINK, DyeColor.WHITE), SkyBlockIsland.TORRHUS_CANYON),
         Mob("Trinity", Rule.Skin("5841a16a5bd4a646cedb4b5437723226c7cf9f8669e558773fae0a9452c94d90"), SkyBlockIsland.THE_CATACOMBS),
     )
 
     val names: List<String> = all.map { it.name }
-
-    /**
-     * The item a marker draws for this mob, or null to draw the mob itself. Only a skull mob has
-     * one: the skull is the part the player sees, while the entity wearing it is invisible.
-     */
+    
     fun iconFor(mob: Mob): ItemStack? = (mob.rule as? Rule.Skull)?.let { PlayerUtils.getItemFromHash(it.hash) }
 
     fun byName(name: String): Mob? = all.firstOrNull { it.name == name }
 
-    /**
-     * The entity to outline if this mob is what the info describes, or null. A skull found on
-     * something standing in the mob is the visible part, so that is what comes back.
-     */
     fun target(mob: Mob, info: EntityInfo): Entity? {
         if (mob.island != null && LocationAPI.island != mob.island) return null
 
@@ -115,10 +125,24 @@ object SingleMobs {
             }
 
             is Rule.Type -> entity.takeIf {
-                it.typeId().contains(rule.path) && ((it as? LivingEntity)?.scale ?: 1f) >= rule.minScale
+                rule.entityClass.isInstance(it) && matchesScale(it, rule.scaleMatch)
             }
 
             is Rule.Skull -> EntityUtils.skullCarrier(info, rule.hash)
+        }
+    }
+
+    /** the attribute arrives as a float, so an exact scale is read within this much of it */
+    private const val SCALE_TOLERANCE: Float = 0.01f
+
+    private fun matchesScale(entity: Entity, scaleMatch: ScaleMatch?): Boolean {
+        if (scaleMatch == null) return true
+        val scale = (entity as? LivingEntity)?.scale ?: return false
+
+        return when (scaleMatch) {
+            is ScaleMatch.Above -> scale > scaleMatch.scale
+            is ScaleMatch.Below -> scale < scaleMatch.scale
+            is ScaleMatch.Exactly -> abs(scale - scaleMatch.scale) < SCALE_TOLERANCE
         }
     }
 }

@@ -93,7 +93,7 @@ object Godseed : CropDefinitionProvider {
                         isSmall = false
                     )
                 ),
-                7..7
+                5..7
             ),
             CropStage(
                 blocks = CropBlockState.atPositions(
@@ -307,6 +307,98 @@ object Godseed : CropDefinitionProvider {
                     )
                 ),
                 22..24
+            ),
+            CropStage(
+                blocks = CropBlockState.atPositions(
+                    positions = surroundWheatPositions,
+                    blockState = wheatState(5)
+                ) + listOf(
+                    CropBlockState(
+                        offset = BlockPos(1, 1, 1),
+                        blockState = melonStemState(7)
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, 0.25, 0.0),
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
+                        hashString = "a9d3e8e4001232e1c6ba43b5f39c6cb0a1ff2f4dfd5aceb14e4b287b91ba7c9a",
+                        isSmall = false
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(-1.0, -0.65625, 1.0),
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
+                        hashString = "a0cc95bd6b1e5c007cf0d2b8c613a33a7ad3500b27638947c0b6b1db8fcb4887",
+                        isSmall = false
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(0.0, 0.5625, 1.0),
+                        headRotation = Rotations(180.0f, 0.0f, 0.0f),
+                        hashString = "a0cc95bd6b1e5c007cf0d2b8c613a33a7ad3500b27638947c0b6b1db8fcb4887",
+                        isSmall = true
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(-1.0, 0.5625, 0.0),
+                        headRotation = Rotations(180.0f, 0.0f, 0.0f),
+                        hashString = "a0cc95bd6b1e5c007cf0d2b8c613a33a7ad3500b27638947c0b6b1db8fcb4887",
+                        isSmall = true
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(-1.0, 0.4375, 1.0),
+                        headRotation = Rotations(180.0f, 90.0f, 0.0f),
+                        hashString = "a0cc95bd6b1e5c007cf0d2b8c613a33a7ad3500b27638947c0b6b1db8fcb4887",
+                        isSmall = false
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(0.0, 0.5625, -1.0),
+                        headRotation = Rotations(180.0f, 0.0f, 0.0f),
+                        hashString = "a0cc95bd6b1e5c007cf0d2b8c613a33a7ad3500b27638947c0b6b1db8fcb4887",
+                        isSmall = true
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(-1.0, 0.4375, -1.0),
+                        headRotation = Rotations(180.0f, 90.0f, 0.0f),
+                        hashString = "a0cc95bd6b1e5c007cf0d2b8c613a33a7ad3500b27638947c0b6b1db8fcb4887",
+                        isSmall = false
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(-1.0, -0.65625, -1.0),
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
+                        hashString = "a0cc95bd6b1e5c007cf0d2b8c613a33a7ad3500b27638947c0b6b1db8fcb4887",
+                        isSmall = false
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(1.0, -0.65625, -1.0),
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
+                        hashString = "a0cc95bd6b1e5c007cf0d2b8c613a33a7ad3500b27638947c0b6b1db8fcb4887",
+                        isSmall = false
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(1.0, 0.5625, 0.0),
+                        headRotation = Rotations(180.0f, 0.0f, 0.0f),
+                        hashString = "a0cc95bd6b1e5c007cf0d2b8c613a33a7ad3500b27638947c0b6b1db8fcb4887",
+                        isSmall = true
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(1.0, 0.4375, -1.0),
+                        headRotation = Rotations(180.0f, 90.0f, 0.0f),
+                        hashString = "a0cc95bd6b1e5c007cf0d2b8c613a33a7ad3500b27638947c0b6b1db8fcb4887",
+                        isSmall = false
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(1.0, 0.4375, 1.0),
+                        headRotation = Rotations(180.0f, 90.0f, 0.0f),
+                        hashString = "a0cc95bd6b1e5c007cf0d2b8c613a33a7ad3500b27638947c0b6b1db8fcb4887",
+                        isSmall = false
+                    ),
+                    CropArmorStand(
+                        offset = Vec3(1.0, -0.65625, 1.0),
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
+                        hashString = "a0cc95bd6b1e5c007cf0d2b8c613a33a7ad3500b27638947c0b6b1db8fcb4887",
+                        isSmall = false
+                    )
+                ),
+                28..28
             ),
             CropStage(
                 blocks = CropBlockState.atPositions(

@@ -104,11 +104,8 @@ object Jerryflower : CropDefinitionProvider {
                     )
                 ),
                 5..5,
-                // stalled at stage 5 until it is given its ten spawn jerries; the skull is the whole
-                // of the difference, so the skull is what says which look this is
                 readers = listOf(CropStandReader.skullPresence(CropStandReader.ASLEEP, "54b6a4659873ebda6ecfe4a0a230f98a6f317f1e72cf6a9a1419e3d0f83f3f60"))
             ),
-            // fed at stage 5: the same pose with the next skull, growing again
             CropStage(
                 blocks = listOf(
                     CropBlockState(
@@ -124,12 +121,113 @@ object Jerryflower : CropDefinitionProvider {
                         isSmall = false
                     )
                 ),
-                5..5,
-                readers = listOf(CropStandReader.skullPresence(CropStandReader.ASLEEP, "aab9167d41116447940cd492fafcf4680f967dcc6e894089d83b4e5b82bb909b", value = 0))
+                5..5
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = melonStemState(6)
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, -0.5625, 0.09375),
+                        headRotation = Rotations(-22.5f, 0.0f, 0.0f),
+                        hashString = "aab9167d41116447940cd492fafcf4680f967dcc6e894089d83b4e5b82bb909b",
+                        isSmall = false
+                    )
+                ),
+                6..6
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = wheatState(3)
+                    ),
+                    CropBlockState(
+                        offset = BlockPos(0, 2, 0),
+                        blockState = melonStemState(3)
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, 0.0625, -0.03125),
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
+                        hashString = "aab9167d41116447940cd492fafcf4680f967dcc6e894089d83b4e5b82bb909b",
+                        isSmall = false
+                    )
+                ),
+                7..7
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = wheatState(4)
+                    ),
+                    CropBlockState(
+                        offset = BlockPos(0, 2, 0),
+                        blockState = melonStemState(5)
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, 0.15625, -0.03125),
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
+                        hashString = "aab9167d41116447940cd492fafcf4680f967dcc6e894089d83b4e5b82bb909b",
+                        isSmall = false
+                    )
+                ),
+                8..8
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = wheatState(5)
+                    ),
+                    CropBlockState(
+                        offset = BlockPos(0, 2, 0),
+                        blockState = melonStemState(6)
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, 0.25, 0.0),
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
+                        hashString = "aab9167d41116447940cd492fafcf4680f967dcc6e894089d83b4e5b82bb909b",
+                        isSmall = false
+                    )
+                ),
+                9..9
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = wheatState(6)
+                    ),
+                    CropBlockState(
+                        offset = BlockPos(0, 2, 0),
+                        blockState = melonStemState(7)
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        offset = Vec3(0.0, 0.34375, 0.0),
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
+                        hashString = "185f06d98a3f44adb8968ca490b5a7190a7d7472b00a3016a840b944ba917b72",
+                        isSmall = false
+                    )
+                ),
+                10..10
             )
         ),
-        // it stops at stage 5 and grows no further until fed
+        // stops growing at stage 5, stall explanation explains.
         sleepStages = setOf(5),
+        stallExplanation = "This plant needs 10 Move Jerries in order to continue growing.",
         maxStage = 10,
         isMutation = true,
         needsWater = false,

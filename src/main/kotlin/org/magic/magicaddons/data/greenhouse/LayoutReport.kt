@@ -176,7 +176,7 @@ object LayoutReport {
             } else {
                 0.0
             }
-            val drainedPerTick = if (isTarget) 0.0 else drainingTargets.count { it in plan.plantsAround(plant) } * WaterModel.DRAIN_PER_DONOR
+            val drainedPerTick = if (isTarget) 0.0 else drainingTargets.count { it in plan.plantsSurrounding(plant) } * WaterModel.DRAIN_PER_DONOR
             val lossPerTick = ownLossPerTick + drainedPerTick
             if (lossPerTick <= 0.0) null else (WaterModel.FULL_LEVEL / lossPerTick).toInt()
         }.minOrNull()

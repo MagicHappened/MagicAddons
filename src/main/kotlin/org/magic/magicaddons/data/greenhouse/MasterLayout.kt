@@ -8,7 +8,7 @@ data class MasterLayout(
 ) {
     /** The given name, or the preset number when it was never named. */
     fun displayName(): String = name
-        ?: id.removePrefix(GreenhouseLayout.PRESET_PREFIX).takeIf { it != id }?.let { "Preset $it" }
+        ?: id.removePrefix(GreenhouseLayout.MASTER_PRESET_PREFIX).takeIf { it != id }?.let { "Preset $it" }
         ?: id
 
     override fun toString(): String = displayName()
@@ -30,9 +30,8 @@ data class MasterLayout(
         generateSequence(0) { it + 1 }.map { plotId(it) }.first { id -> plots.none { it.id == id } }
 
     /**
-     * Gives every plot sharing an id with an earlier one a free id of its own. A file written while
-     * a new plot could take the id of the plot last in the list holds such pairs, and a greenhouse
-     * assigned one of them was resolving to whichever came first.
+     * Gives every plot sharing an id with an earlier one a free id of its own, so a greenhouse
+     * assigned that id resolves to one plot rather than to whichever comes first.
      */
     fun repairPlotIds(): Boolean {
         var repaired = false

@@ -11,7 +11,6 @@ import org.magic.magicaddons.data.greenhouse.CropArmorStand
 import org.magic.magicaddons.data.greenhouse.CropBlockState
 import org.magic.magicaddons.data.greenhouse.CropDefinition
 import org.magic.magicaddons.data.greenhouse.CropStage
-import org.magic.magicaddons.data.greenhouse.CropStagePattern
 import org.magic.magicaddons.data.greenhouse.CropStates.brownMushroomState
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
@@ -30,7 +29,7 @@ object Brownmushroom : CropDefinitionProvider {
             "7019992b5d440f85d2b05148aa9b85f450985d5f16ae960d1cdb32e06e3c896f" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f))
         ),
         stageDefs = listOf(
-            CropStagePattern(
+            CropStage(
                 blocks = listOf(
                     CropBlockState(
                         offset = BlockPos(0, 1, 0),
@@ -44,8 +43,55 @@ object Brownmushroom : CropDefinitionProvider {
                         hashString = "7019992b5d440f85d2b05148aa9b85f450985d5f16ae960d1cdb32e06e3c896f"
                     )
                 ),
-                stageRange = 1..5,
-                baseStandOffset = Vec3(0.0, 0.0625, 0.0)
+                1..1
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = brownMushroomState()
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        isSmall = false,
+                        offset = Vec3(0.0, -0.69, 0.0),
+                        hashString = "7019992b5d440f85d2b05148aa9b85f450985d5f16ae960d1cdb32e06e3c896f"
+                    )
+                ),
+                2..2
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = brownMushroomState()
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        isSmall = false,
+                        offset = Vec3(0.0, -0.57, 0.0),
+                        hashString = "7019992b5d440f85d2b05148aa9b85f450985d5f16ae960d1cdb32e06e3c896f"
+                    )
+                ),
+                4..4
+            ),
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = brownMushroomState()
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        isSmall = false,
+                        offset = Vec3(0.0, -0.51, 0.0),
+                        hashString = "7019992b5d440f85d2b05148aa9b85f450985d5f16ae960d1cdb32e06e3c896f"
+                    )
+                ),
+                5..5
             ),
             CropStage(
                 blocks = listOf(

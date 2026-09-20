@@ -16,12 +16,11 @@ import java.time.Instant
 const val GREENHOUSE_SOIL_Y: Int = 73
 const val GREENHOUSE_SIZE: Int = 10
 
-/** blocks above the soil searched for a plant's stands and blocks */
 const val CROP_HEIGHT: Int = 5
 
 const val HUNGER_LOSS_PER_TICK: Int = 20
 
-fun ticksUntilHungry(hunger: Int): Int = (hunger + HUNGER_LOSS_PER_TICK - 1) / HUNGER_LOSS_PER_TICK
+fun ticksUntilStarving(foodLevel: Int): Int = (foodLevel + HUNGER_LOSS_PER_TICK - 1) / HUNGER_LOSS_PER_TICK
 
 class GreenhouseGrid(
     var state: GridState,
@@ -33,8 +32,8 @@ class GreenhouseGrid(
 
     val scannedPlants = mutableListOf<ScannedPlant>()
 
-    fun isScannedThisVisit(): Boolean {
-        return state.scannedThisVisit
+    fun isScanned(): Boolean {
+        return state.scanned
     }
 
     fun getPosForSlot(slot: LayoutSlot): BlockPos? {
@@ -345,8 +344,10 @@ class GreenhouseGrid(
         scannedPlant.firstSeenStage = previous.firstSeenStage ?: scannedPlant.lowestStage
         scannedPlant.placed = previous.placed
 
-        // the charge is not carried: it is read afresh each scan or worked out, never assumed still shown
-        val readerKeys = scannedPlant.cropDef.stages.flatMapTo(mutableSetOf()) { stage -> stage.readers.map { it.key } } - CropStandReader.CHARGE
+        // the charge and sleep are not carried: each is read afresh off the look every scan, since
+        // a plant woken since would otherwise stay asleep in the record for good
+        val readerKeys = scannedPlant.cropDef.stages.flatMapTo(mutableSetOf()) { stage -> stage.readers.map { it.key } } -
+                CropStandReader.CHARGE - CropStandReader.ASLEEP
         previous.readings.forEach { (key, value) ->
             if (key in readerKeys) scannedPlant.readings.putIfAbsent(key, value)
         }
@@ -435,7 +436,7 @@ class GreenhouseGrid(
             soggybuds.forEach { soggybud ->
                 var waterTaken = 0.0
 
-                layout.plantsAround(soggybud).forEach { donor ->
+                layout.plantsSurrounding(soggybud).forEach { donor ->
                     // soggybuds do not drain each other
                     if (donor.cropDef.drainsNeighbours || !donor.cropDef.needsWater) return@forEach
 
@@ -462,7 +463,7 @@ class GreenhouseGrid(
 
                 // hunger drops every tick, and a plant grows only on ticks it starts fed
                 val hunger = plant.hunger
-                val ticksFed = if (hunger == null) ticks else ticks.coerceAtMost(ticksUntilHungry(hunger))
+                val ticksFed = if (hunger == null) ticks else ticks.coerceAtMost(ticksUntilStarving(hunger))
                 if (hunger != null) plant.readings[CropStandReader.HUNGER] = (hunger - ticks * HUNGER_LOSS_PER_TICK).coerceAtLeast(0)
 
                 // a grown plant stops drinking, judged by its lowest possible stage
@@ -596,7 +597,8 @@ class GreenhouseGrid(
                 for (stageCandidate in cropCandidate.stages) {
                     val stageResult = stageCandidate.matchesStage(
                         origin, remainingStands, cropCandidate.footprint, cropCandidate.rotatesWithPlot,
-                        ignoreStemAge = cropCandidate.stemAgeVaries, standCache = standCache
+                        ignoreStemAge = cropCandidate.stemAgeVaries,
+                        standCache = standCache
                     ) ?: continue
 
                     if (stageResult.score < bestScore) continue
@@ -618,6 +620,7 @@ class GreenhouseGrid(
                 }
             }
 
+            // if no crop match
             val matchedCrop = bestCrop ?: return placedThisSession(origin, soil, remainingStands, slot)
 
             val plant = Plant(
@@ -746,7 +749,7 @@ class GreenhouseGrid(
         var lastScanTime: Instant? = null,
         var needsRescan: Boolean = false,
         var assignedLayout: GreenhouseLayout? = null,
-        var scannedThisVisit: Boolean = false,
+        var scanned: Boolean = false,
         var ticksSinceLastScan: Int = 0,
         var buildAnnounced: Boolean = false,
         /** quarter turns the assigned layout is laid with */

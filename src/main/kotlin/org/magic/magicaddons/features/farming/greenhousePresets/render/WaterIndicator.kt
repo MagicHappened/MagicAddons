@@ -35,7 +35,7 @@ object WaterIndicator {
             val water = plant.waterLevel
 
             // fully grown plant doesnt need water, but if a soggybud is next to it keep the water highlight
-            val feedsDrainer = plant.cropDef.needsWater && grid.layout.plantsAround(plant).any { it.cropDef.drainsNeighbours && !it.isFullyGrown }
+            val feedsDrainer = plant.cropDef.needsWater && grid.layout.plantsSurrounding(plant).any { it.cropDef.drainsNeighbours && !it.isFullyGrown }
 
             // a water level nobody has read yet is marked as well, rather than passed over
             (plant.consumesWater || feedsDrainer) && !plant.cropDef.drainsNeighbours &&

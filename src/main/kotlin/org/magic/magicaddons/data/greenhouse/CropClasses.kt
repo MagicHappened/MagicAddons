@@ -299,35 +299,6 @@ open class CropStage(
 }
 
 
-class CropStagePattern(
-    blocks: List<CropBlockState>? = null,
-    armorStands: List<CropArmorStand>? = null,
-    stageRange: IntRange,
-    traits: Map<String, Int> = emptyMap(),
-    val baseStandOffset: Vec3,
-    val baseStandStageMultipliers: Map<Int, Int> = emptyMap()
-) : CropStage(
-    blocks = blocks,
-    armorStands = armorStands,
-    stageRange = stageRange,
-    traits = traits
-){
-    fun expandToStages(): List<CropStage> = stageRange.map { stage ->
-        val offsetMultiplier = baseStandStageMultipliers[stage] ?: (stage - stageRange.first)
-
-        val offsetStands = armorStands?.map { stand ->
-            stand.copy(offset = stand.offset.add(baseStandOffset.scale(offsetMultiplier.toDouble())))
-        }
-
-        CropStage(
-            blocks = blocks,
-            armorStands = offsetStands,
-            stageRange = stage..stage,
-            traits = traits
-        )
-    }
-
-}
 /** how skyblock turns its plants, a quarter turn per `(z - x) mod 4` of the base block */
 object WorldRotation {
 
@@ -391,6 +362,8 @@ data class CropDefinition(
 
     val standPoses: Map<String, StandPose> = emptyMap(),
     val sleepStages: Set<Int> = emptySet(),
+    /** what the player has to do for a plant stopped at one of [sleepStages] to grow on */
+    val stallExplanation: String? = null,
     val rotatesWithPlot: Boolean = true,
     val spawnRule: SpawnRule? = null,
     val chargeRule: ChargeRule? = null,
@@ -400,7 +373,7 @@ data class CropDefinition(
 ){
     val stagePlacedAt: Int get() = if (isMutation) maxStage else 1
     val elementId: String get() = skyblockId?.id ?: name
-    val stages: List<CropStage> = stageDefs.flatMap { if (it is CropStagePattern) it.expandToStages() else listOf(it) }
+    val stages: List<CropStage> = stageDefs
 
     val hasHungerBar: Boolean get() = stages.any { stage -> stage.readers.any { it.key == CropStandReader.HUNGER } }
 
@@ -530,7 +503,6 @@ data class Plant(
         return needed != dayOrNight && (stage == null || stage < cropDef.maxStage)
     }
 
-    /** null when it never decays or its age is unknown */
     val decayRemainingMs: Long?
         get() {
             val decayTime = cropDef.decayTimeMs

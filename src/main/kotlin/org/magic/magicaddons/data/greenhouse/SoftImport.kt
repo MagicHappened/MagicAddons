@@ -1,11 +1,6 @@
 package org.magic.magicaddons.data.greenhouse
 
-/**
- * Lays an imported plot over an existing one instead of replacing it. The import is cut down to
- * the box its set slots cover, and that box is tried at every position it fits in, at each quarter
- * turn. Only the slots the import says something about change. Each plant removed costs
- * [PLANT_COST] and each soil overwritten [SOIL_COST]; the cheapest placement wins.
- */
+
 object SoftImport {
 
     const val PLANT_COST: Int = 2

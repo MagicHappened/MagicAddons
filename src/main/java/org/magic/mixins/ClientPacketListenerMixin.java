@@ -6,6 +6,8 @@ import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.protocol.game.ClientboundBlockUpdatePacket;
+import net.minecraft.network.protocol.game.ClientboundEntityPositionSyncPacket;
+import net.minecraft.network.protocol.game.ClientboundTeleportEntityPacket;
 import net.minecraft.network.protocol.game.ClientboundLevelParticlesPacket;
 import net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket;
 import net.minecraft.network.protocol.game.ClientboundSetTimePacket;
@@ -19,6 +21,7 @@ import org.magic.magicaddons.events.interact.BlockPlacedEvent;
 import org.magic.magicaddons.events.interact.BlockChangedEvent;
 import org.magic.magicaddons.events.world.AddParticleEvent;
 import org.magic.magicaddons.events.world.SetTimePacketEvent;
+import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseData;
 import org.magic.magicaddons.util.EntityUtils;
 import org.magic.misc.BlockEventBufferAccess;
 import org.spongepowered.asm.mixin.Mixin;
@@ -107,11 +110,23 @@ public class ClientPacketListenerMixin {
     @Inject(method = "handleSetEntityData", at = @At("TAIL"))
     private void onSetEntityData(ClientboundSetEntityDataPacket packet, CallbackInfo ci) {
         EntityUtils.INSTANCE.noteDataChanged(packet.id());
+        GreenhouseData.INSTANCE.noteEntityChanged(packet.id(), null);
     }
 
     @Inject(method = "handleUpdateAttributes", at = @At("TAIL"))
     private void onUpdateAttributes(ClientboundUpdateAttributesPacket packet, CallbackInfo ci) {
         EntityUtils.INSTANCE.noteDataChanged(packet.getEntityId());
+    }
+
+    /** stands are moved into place after they spawn, which changes what a plot scan reads */
+    @Inject(method = "handleEntityPositionSync", at = @At("TAIL"))
+    private void onEntityPositionSync(ClientboundEntityPositionSyncPacket packet, CallbackInfo ci) {
+        GreenhouseData.INSTANCE.noteEntityChanged(packet.id(), packet.values().position());
+    }
+
+    @Inject(method = "handleTeleportEntity", at = @At("TAIL"))
+    private void onTeleportEntity(ClientboundTeleportEntityPacket packet, CallbackInfo ci) {
+        GreenhouseData.INSTANCE.noteEntityChanged(packet.id(), null);
     }
 
     @Inject(

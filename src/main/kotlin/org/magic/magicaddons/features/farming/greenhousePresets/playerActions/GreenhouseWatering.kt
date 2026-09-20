@@ -57,7 +57,7 @@ object GreenhouseWatering {
 
         if (!GreenhouseData.inOwnGarden()) return
         val grid = GreenhouseData.getCurrentGrid() ?: return
-        if (!grid.isScannedThisVisit()) return
+        if (!grid.isScanned()) return
 
         val buildableArea = grid.plot?.getBuildableArea() ?: return
         val level = Minecraft.getInstance().level ?: return

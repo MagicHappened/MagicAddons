@@ -250,6 +250,15 @@ class ElementWidget(val instance: Plant) : Renderable, GuiEventListener {
         // left alone rather than shown an empty meter; a grown one keeps its meter while a soggybud
         // beside it is drinking from it
         if (info == HoverInfo.WaterLevel) {
+            debtMarkBox = null
+            debtExplanation = null
+
+            // a plant stopped until the player does something gets that said instead of a meter
+            if (instance.isAsleep) {
+                renderStalled(graphics, y + height)
+                return
+            }
+
             // a charged plant has no water, so its charge takes the meter's place
             instance.cropDef.chargeRule?.let {
                 renderChargeBar(graphics, it)
@@ -276,6 +285,14 @@ class ElementWidget(val instance: Plant) : Renderable, GuiEventListener {
         val textHeight = font.lineHeight * INFO_TEXT_SCALE
 
         drawScaledLabel(graphics, text, y + height - textHeight - 1f, info.colorFor(instance))
+    }
+
+    private fun renderStalled(graphics: GuiGraphicsExtractor, bottom: Int) {
+        val font = Minecraft.getInstance().font
+        val textHeight = font.lineHeight * INFO_TEXT_SCALE
+
+        debtExplanation = instance.cropDef.stallExplanation
+        debtMarkBox = drawScaledLabel(graphics, STALLED_LABEL, bottom - textHeight - 1f, Common.UI.DANGER_COLOR)
     }
 
     /**
@@ -606,6 +623,8 @@ class ElementWidget(val instance: Plant) : Renderable, GuiEventListener {
 
         /** Appended to a water time that assumes no skipped ticks. */
         private const val DEBT_MARK: String = "*"
+
+        private const val STALLED_LABEL: String = "stalled" + DEBT_MARK
 
         /** what a plant tooltip wraps at, so one long line cannot push the panel off screen */
         private const val TOOLTIP_WRAP_WIDTH: Int = 170

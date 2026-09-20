@@ -2,24 +2,17 @@ package org.magic.magicaddons.features.farming.greenhousePresets.greenhousesStat
 
 import org.magic.magicaddons.commands.debug.LostPlantReport
 import org.magic.magicaddons.commands.internal.MainInternal
-import org.magic.magicaddons.commands.debug.CropCollector
 import org.magic.magicaddons.commands.internal.farming.SetTimestalkAttribute
 import org.magic.magicaddons.util.getBuildableArea
-import org.magic.magicaddons.util.parseDurationToMs
 import org.magic.magicaddons.util.center
 import org.magic.magicaddons.util.toShortDuration
-import net.minecraft.network.chat.HoverEvent
-import net.minecraft.network.chat.ClickEvent
-import net.minecraft.ChatFormatting
 import net.minecraft.client.Minecraft
 import net.minecraft.core.BlockPos
 import net.minecraft.network.chat.Component
 import net.minecraft.world.entity.decoration.ArmorStand
-import net.minecraft.world.item.ItemStack
-import net.minecraft.world.item.Items
 import net.minecraft.world.level.block.Blocks
+import net.minecraft.world.level.Level
 import net.minecraft.world.phys.Vec3
-import org.magic.magicaddons.Common
 import org.magic.magicaddons.data.greenhouse.*
 import org.magic.magicaddons.data.greenhouse.elements.FireElement
 import org.magic.magicaddons.data.handlers.DataHandler
@@ -37,7 +30,6 @@ import org.magic.magicaddons.features.farming.greenhousePresets.GreenhousePreset
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.ui.widgets.config.SettingDetail
 import org.magic.magicaddons.util.ServerUtils
-import tech.thatgravyboat.skyblockapi.api.profile.hunting.AttributeAPI
 import tech.thatgravyboat.skyblockapi.api.profile.profile.ProfileAPI
 import tech.thatgravyboat.skyblockapi.api.events.base.Subscription
 import tech.thatgravyboat.skyblockapi.api.events.base.predicates.OnlyIn
@@ -51,19 +43,14 @@ import tech.thatgravyboat.skyblockapi.api.location.SkyBlockIsland
 import tech.thatgravyboat.skyblockapi.api.profile.garden.Plot
 import tech.thatgravyboat.skyblockapi.api.profile.garden.PlotAPI
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockId.Companion.getSkyBlockId
-import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
-import tech.thatgravyboat.skyblockapi.utils.extentions.getLore
 import tech.thatgravyboat.skyblockapi.utils.extentions.isSkyblockFiller
-import net.minecraft.network.chat.Style
 import java.time.Duration
 import java.time.Instant
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhousePresets
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseSpawnLog
-import org.magic.magicaddons.features.farming.greenhousePresets.lookups.BioanalysisAccessory
 import org.magic.magicaddons.features.farming.greenhousePresets.playerActions.GreenhousePlantDischarge
 import org.magic.magicaddons.features.farming.greenhousePresets.playerActions.GreenhouseWatering
 import org.magic.magicaddons.features.farming.greenhousePresets.render.LayoutRenderState
-import org.magic.magicaddons.features.farming.greenhousePresets.warnings.ChorusCollision
 import org.magic.magicaddons.features.farming.greenhousePresets.warnings.PlantWarnings
 
 object GreenhouseData : GridCallbacks {
@@ -158,7 +145,7 @@ object GreenhouseData : GridCallbacks {
                     lastScanTime = null,
                     needsRescan = true,
                     assignedLayout = null,
-                    scannedThisVisit = false
+                    scanned = false
                 )
 
                 val grid = GreenhouseGrid(gridState, gridLayout)
@@ -173,11 +160,10 @@ object GreenhouseData : GridCallbacks {
     }
 
     /**
-     * Whether the plot has fully arrived: every chunk under it has been sent, and no entity has
-     * turned up in it for [ENTITY_QUIET_MS]. Stands come in their own packets after their chunk, so
-     * a scan run on the chunks alone reads a plant with half its stands as another crop, or as
-     * nothing. A scan over a half-sent plot drops what it cannot see and finds it again as new,
-     * so none runs until the plot has gone quiet.
+     * Whether the plot can be read: every chunk under it has been sent, and every stand in it is
+     * standing where the server last put it. Stands come in their own packets after their chunk and
+     * are moved into place after that, so a scan run early reads a plant with half its stands as
+     * another crop or as nothing, and drops what it cannot match.
      */
     private fun plotReady(plot: Plot): Boolean {
         // a plot on its way out is never read again until the player next arrives at it
@@ -187,14 +173,45 @@ object GreenhouseData : GridCallbacks {
         val area = plot.getBuildableArea() ?: return false
 
         if (!level.hasChunksAt(area.minX.toInt(), area.minZ.toInt(), area.maxX.toInt(), area.maxZ.toInt())) return false
-        if (!arrivalScanPending) return true
 
-        // the plot is named as current off the scoreboard, which can come before its first stand
-        // has, so the quiet is counted from the arrival as well as from the last entity
-        val quietSince = maxOf(lastEntityArrivalAt ?: 0L, arrivalPendingSince)
+        val now = System.currentTimeMillis()
 
-        return System.currentTimeMillis() - quietSince >= ENTITY_QUIET_MS
+        if (arrivalScanPending) {
+            // the plot is named as current off the scoreboard, which can come before its first stand
+            // has, so the quiet is counted from the arrival as well as from the last entity
+            val quietSince = maxOf(lastEntityChangeAt ?: 0L, arrivalPendingSince)
+
+            return now - quietSince >= ENTITY_QUIET_MS
+        }
+
+        val standsOnTheirWay = standsStillMoving(level)
+        val movedAt = lastEntityChangeAt ?: return true
+
+        if (standsOnTheirWay == 0 && now - movedAt >= ENTITY_MOVE_QUIET_MS) return true
+
+        // a stand that never arrives would otherwise hold the scan off for good
+        return now - (lastChangeAt ?: now) >= MAX_SCAN_DEFER_MS
     }
+
+    /**
+     * How many stands have not reached where the server last sent them, forgetting those that have.
+     * A stand part way to its place stands at a height that belongs to another stage, so a plant
+     * read then matches the wrong one or none at all.
+     */
+    private fun standsStillMoving(level: Level): Int {
+        standTargets.entries.removeIf { (entityId, target) ->
+            val standing = level.getEntity(entityId)?.position() ?: return@removeIf true
+            standing.distanceToSqr(target) <= ARRIVED_DISTANCE_SQR
+        }
+
+        return standTargets.size
+    }
+
+    /** Where the server last sent each stand in the plot, until it gets there. */
+    private val standTargets: MutableMap<Int, Vec3> = HashMap()
+
+    /** A stand this close to where it was sent has arrived; the lerp lands exactly, so this is slack. */
+    private const val ARRIVED_DISTANCE_SQR: Double = 1.0e-6
 
     /** Whether the level is being torn down around the player, see [onLevelUnloading]. */
     private var plotUnloading: Boolean = false
@@ -208,8 +225,43 @@ object GreenhouseData : GridCallbacks {
      */
     private const val ENTITY_QUIET_MS: Long = 2_000
 
-    /** When an entity last turned up inside the plot being stood in. */
-    private var lastEntityArrivalAt: Long? = null
+    /** How long a stand has to hold still before a scan of an already known plot reads it. */
+    private const val ENTITY_MOVE_QUIET_MS: Long = 500
+
+    /** The longest a moving stand may put a scan off, counted from the plot's last change. */
+    private const val MAX_SCAN_DEFER_MS: Long = 3_000
+
+    /** When an entity last turned up, moved or was re-posed inside the plot being stood in. */
+    private var lastEntityChangeAt: Long? = null
+
+    /**
+     * An entity inside the plot was moved or re-posed. [movingTo] is where the packet sends it,
+     * which is not where it stands yet: the client walks it there over the following ticks.
+     *
+     * Called for every such packet in the world, so it costs a plot lookup and nothing more until
+     * one lands inside the plot.
+     */
+    fun noteEntityChanged(entityId: Int, movingTo: Vec3? = null) {
+        if (!greenhousesInitialized || !inOwnGarden()) return
+
+        val gridArea = PlotAPI.getCurrentPlot()?.getBuildableArea() ?: return
+        val entity = Minecraft.getInstance().level?.getEntity(entityId) ?: return
+        if (!gridArea.contains(entity.position())) return
+
+        lastEntityChangeAt = System.currentTimeMillis()
+        if (movingTo == null) return
+        standTargets[entityId] = movingTo
+
+        val grid = getCurrentGrid() ?: return
+        if (!grid.isScanned()) return
+
+        // a stand moving changes what stands on every cell along its way, so all of them are read
+        // again rather than only the two ends
+        val from = BlockPos.containing(entity.position())
+        val to = BlockPos.containing(movingTo)
+
+        requestReconcile(BlockPos.betweenClosed(from, to).map { it.immutable() })
+    }
 
     /** Whether the first scan since arriving at the plot, or since it was dumped, is still to run. */
     private var arrivalScanPending: Boolean = false
@@ -223,7 +275,7 @@ object GreenhouseData : GridCallbacks {
         val plot = PlotAPI.getCurrentPlot() ?: return
 
         val grid = getCurrentGrid() ?: return
-        if (grid.state.scannedThisVisit && !grid.state.needsRescan) return
+        if (grid.state.scanned && !grid.state.needsRescan) return
 
         // read again on a later tick, once the rest of the plot has been sent
         if (!plotReady(plot)) {
@@ -258,7 +310,7 @@ object GreenhouseData : GridCallbacks {
         LayoutRenderState.refresh()
 
         // after grid update
-        grid.state.scannedThisVisit = true
+        grid.state.scanned = true
         grid.state.needsRescan = false
         grid.state.lastScanTime = Instant.now()
         grid.state.ticksSinceLastScan = 0
@@ -306,7 +358,7 @@ object GreenhouseData : GridCallbacks {
     fun rescanFromScratch(grid: GreenhouseGrid) {
         grid.scannedPlants.clear()
         grid.layout.plants.clear()
-        grid.state.scannedThisVisit = false
+        grid.state.scanned = false
         grid.state.lastScanTime = null
         grid.state.needsRescan = true
 
@@ -346,11 +398,10 @@ object GreenhouseData : GridCallbacks {
         rescanSlots(grid, grid.scanSlotsReachedFrom(positions))
     }
 
-    /** Reads only [region] of [grid] again, as slot coordinates; every plant outside it is kept as it is. */
     internal fun rescanSlots(grid: GreenhouseGrid, region: Set<Pair<Int, Int>>) {
         if (!inOwnGarden()) return
         if (getCurrentGrid() !== grid) return
-        if (!grid.state.scannedThisVisit) {
+        if (!grid.state.scanned) {
             fullScanWanted = true
             return
         }
@@ -392,20 +443,16 @@ object GreenhouseData : GridCallbacks {
         )
     }
 
-    /** The colour of the detail line when a value it needs is missing. */
     private const val MISSING_COLOR: Int = 0xFFFF8855.toInt()
 
     override fun warnSurvivor(plant: DyingPlant) = PlantWarnings.warnSurvivor(plant)
 
-    /** A plant found alive past its predicted death: said now, at whatever the countdown reads. */
     override fun plantLostInScan(previous: Plant, origin: BlockPos, remainingStands: List<ArmorStand>) {
         if (GreenhouseSpawnLog.lostPlantsMessages) LostPlantReport.sendReport(previous, origin, remainingStands)
     }
 
-    /** Whether the player stands in any plot but the barn, their own or one they are visiting. */
     fun inGreenhouse(): Boolean = PlotAPI.getCurrentPlot()?.takeUnless { it.isBarn } != null
 
-    /** whether the player is on their own garden */
     fun inOwnGarden(): Boolean = LocationAPI.island == SkyBlockIsland.GARDEN && !LocationAPI.isGuest
 
     fun getCurrentGrid(): GreenhouseGrid? {
@@ -415,7 +462,7 @@ object GreenhouseData : GridCallbacks {
     fun computeNextAvailableId(): Int {
         val usedIds = presetGrids
             .mapNotNull {
-                it.id.removePrefix(GreenhouseLayout.PRESET_PREFIX).toIntOrNull()
+                it.id.removePrefix(GreenhouseLayout.MASTER_PRESET_PREFIX).toIntOrNull()
             }
             .toSet()
 
@@ -518,14 +565,14 @@ object GreenhouseData : GridCallbacks {
 
         if (passedGrowthTicks <= 0 && !nextTick.isBefore(now)) return
 
-        // the countdown running out is itself a tick, and passedGrowthTicks only counts whole
-        // periods since then. The clock knew this and the plants did not, so one tick went untold
+        // the countdown running out is itself a tick, and passedGrowthTicks counts only the whole
+        // periods after it
         val elapsedTicks = passedGrowthTicks.toInt() + 1
         val nextTickAdvance = (passedGrowthTicks + 1) * growthTickMs
         miscInfo.nextTickTime = current.plusMillis(nextTickAdvance)
 
         greenhouseGrids.forEach { grid ->
-            if (onlineTickTracking && !grid.isScannedThisVisit()) return@forEach
+            if (onlineTickTracking && !grid.isScanned()) return@forEach
 
             GreenhouseSpawnLog.noteGrowthTicks(grid, elapsedTicks, leftGarden = !onlineTickTracking)
             grid.state.ticksSinceLastScan += elapsedTicks
@@ -597,7 +644,7 @@ object GreenhouseData : GridCallbacks {
         if (event.new != SkyBlockIsland.GARDEN) {
             DataHandler.saveGardenData()
             greenhouseGrids.forEach {
-                it.state.scannedThisVisit = false
+                it.state.scanned = false
             }
             EventBus.post(PlotChangedEvent(lastPlot,null))
             lastPlot = null
@@ -628,8 +675,8 @@ object GreenhouseData : GridCallbacks {
         initKnownIds()
 
         // leaving is not a reason to read: on the way out of the garden, and on a disconnect, the
-        // plot is still named as current while its plants are already being unloaded, and a scan
-        // then found a near-empty greenhouse and saved it over the good copy written a moment before
+        // plot is still named as current while its plants are already being unloaded, so a scan
+        // then reads a near-empty greenhouse and saves it over the good copy
         if (event.new == null) return
 
         arrivalScanPending = true
@@ -698,7 +745,7 @@ object GreenhouseData : GridCallbacks {
         regenRender()
 
         val grid = getCurrentGrid() ?: return
-        if (!grid.isScannedThisVisit()) return
+        if (!grid.isScanned()) return
 
 
         val pos = event.pos
@@ -721,7 +768,7 @@ object GreenhouseData : GridCallbacks {
         regenRender()
 
         val grid = getCurrentGrid() ?: return
-        if (!grid.isScannedThisVisit()) return
+        if (!grid.isScanned()) return
 
         val blockVec3 = Vec3.atCenterOf(event.pos)
         if (grid.plot?.aabb?.contains(blockVec3) != true) return
@@ -739,10 +786,10 @@ object GreenhouseData : GridCallbacks {
 
         // noted before anything is read, since the first scan of a plot is the one most likely to
         // run while its stands are still coming in
-        lastEntityArrivalAt = System.currentTimeMillis()
+        lastEntityChangeAt = System.currentTimeMillis()
 
         val grid = getCurrentGrid() ?: return
-        if (!grid.isScannedThisVisit()) return
+        if (!grid.isScanned()) return
 
         requestReconcile(arrived.map { BlockPos.containing(it) })
     }
@@ -750,7 +797,7 @@ object GreenhouseData : GridCallbacks {
     @EventHandler
     fun onBlockUpdated(event: BlockChangedEvent) {
         val grid = getCurrentGrid() ?: return
-        if (!grid.isScannedThisVisit()) return
+        if (!grid.isScanned()) return
 
         val gridArea = grid.plot?.getBuildableArea() ?: return
         if (!gridArea.contains(event.packet.pos.center())) return
@@ -784,7 +831,7 @@ object GreenhouseData : GridCallbacks {
     @EventHandler
     fun onEntityRemoved(event: EntityRemovedEvent) {
         val grid = getCurrentGrid() ?: return
-        if (!grid.isScannedThisVisit()) return
+        if (!grid.isScanned()) return
 
         val area = grid.plot?.getBuildableArea() ?: return
         requestReconcile(event.removedEntityList.map { it.entity.position() }.filter { area.contains(it) }.map { BlockPos.containing(it) })
@@ -806,7 +853,7 @@ object GreenhouseData : GridCallbacks {
     @EventHandler
     fun onAttackEntity(event: AttackEntityEvent) {
         val grid = getCurrentGrid() ?: return
-        if (!grid.isScannedThisVisit()) return
+        if (!grid.isScanned()) return
 
         val area = grid.plot?.getBuildableArea() ?: return
         if (!area.contains(event.target.position())) return
@@ -819,7 +866,7 @@ object GreenhouseData : GridCallbacks {
         val entityBlockPos = BlockPos.containing(event.target.position())
         plantDiagnosticHitBaseBlock = BlockPos(entityBlockPos.x, GREENHOUSE_SOIL_Y, entityBlockPos.z)
         val grid = getCurrentGrid() ?: return
-        if (!grid.isScannedThisVisit()) return
+        if (!grid.isScanned()) return
         val standTarget = event.target as? ArmorStand ?: return
 
         // read before the held item is looked at: a charge is taken by an empty hand too
@@ -835,7 +882,7 @@ object GreenhouseData : GridCallbacks {
     @EventHandler
     fun onItemUse(event: UseEvent) {
         val grid = getCurrentGrid() ?: return
-        if (!grid.isScannedThisVisit()) return
+        if (!grid.isScanned()) return
         val mainHandId = event.player.mainHandItem.getSkyBlockId() ?: return
 
         GreenhouseWatering.startWateringWindow(mainHandId)
@@ -845,7 +892,7 @@ object GreenhouseData : GridCallbacks {
     fun onBlockUse(event: BlockUseEvent) {
         plantDiagnosticHitBaseBlock = BlockPos(event.hit.blockPos.x, GREENHOUSE_SOIL_Y, event.hit.blockPos.z)
         val grid = getCurrentGrid() ?: return
-        if (!grid.isScannedThisVisit()) return
+        if (!grid.isScanned()) return
 
         GreenhousePlantDischarge.setPlantClicked(plantAtBlock(event.hit.blockPos, grid)?.plant)
 
@@ -1017,7 +1064,7 @@ object GreenhouseData : GridCallbacks {
         return planned.slot.mark == LayoutSlot.Marking.Ingredient && planned.acceptsCrop(scanned.plant.cropDef)
     }
 
-    private fun scannedGrid(): GreenhouseGrid? = getCurrentGrid()?.takeIf { it.isScannedThisVisit() }
+    private fun scannedGrid(): GreenhouseGrid? = getCurrentGrid()?.takeIf { it.isScanned() }
 
     private fun plantAtBlock(pos: BlockPos, grid: GreenhouseGrid): ScannedPlant? =
         grid.scannedPlants.find { it.blocks?.keys?.contains(pos) == true } ?: elementAround(pos, grid)

@@ -107,11 +107,16 @@ object SystemFonts {
     /** Read once rather than every time the pack is asked about, since it is a look at the disk. */
     private var packFileExists: Boolean? = null
 
+    /** Read once as well: the repository builds a fresh set of ids on every ask, and a HUD frame asks. */
+    private var packSelected: Boolean? = null
+
     /** Whether the pack for a system font is in place and switched on, so its id resolves. */
     private fun packReady(): Boolean {
         val exists = packFileExists ?: packFolder().resolve("pack.mcmeta").exists().also { packFileExists = it }
+        val selected = packSelected
+            ?: (PACK_ID in Minecraft.getInstance().resourcePackRepository.selectedIds).also { packSelected = it }
 
-        return exists && PACK_ID in Minecraft.getInstance().resourcePackRepository.selectedIds
+        return exists && selected
     }
 
     /** The font id to write in, or null for the game's own default, which needs no style at all. */
@@ -132,6 +137,7 @@ object SystemFonts {
         val minecraft = Minecraft.getInstance()
 
         packFileExists = null
+        packSelected = null
 
         runCatching {
             writePack(file)
