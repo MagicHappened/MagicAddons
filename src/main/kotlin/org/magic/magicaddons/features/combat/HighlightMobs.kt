@@ -1,12 +1,12 @@
 package org.magic.magicaddons.features.combat
 
-import net.minecraft.client.player.LocalPlayer
 import net.minecraft.core.component.DataComponents
 import net.minecraft.world.entity.Display
 import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.EquipmentSlot
 import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.player.Player
+import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
 import org.magic.magicaddons.data.EntityInfo
 import org.magic.magicaddons.data.config.BooleanSetting
@@ -23,7 +23,6 @@ import org.magic.magicaddons.events.world.EntityUpdatedEvent
 import org.magic.magicaddons.features.HighlightFeature
 import org.magic.magicaddons.features.misc.HighlightMarkers
 import org.magic.magicaddons.util.EntityUtils
-import org.magic.magicaddons.util.EntityUtils.typeId
 import org.magic.magicaddons.util.PlayerUtils
 import tech.thatgravyboat.skyblockapi.api.SkyBlockAPI
 import tech.thatgravyboat.skyblockapi.api.events.base.Subscription
@@ -57,20 +56,20 @@ object HighlightMobs : HighlightFeature() {
         value = "f2b33640bfb71557e0e1d852287263ceafc9bec205301acf046b7c29fe8cb37b"
     )
 
-    val entityTypeMobPathValue = TextSetting(
-        key = "EntityTypeMobPathValue",
-        displayName = "Mob Path",
-        description = "§fThe entity type path to look for, such as entity.minecraft.pig.\n" +
-                "§eGet it from the mob hit debug.",
-        value = "entity.minecraft.pig"
-    )
-
-    val singleMobsList = ToggleListSetting(
-        key = "SingleMobs",
+    val hypixelMobsList = ToggleListSetting(
+        key = "HypixelMobs",
         displayName = "Mobs",
         description = "",
         value = mutableListOf(),
         choices = { SingleMobs.names }
+    )
+
+    val vanillaMobsList = ToggleListSetting(
+        key = "VanillaMobs",
+        displayName = "Mobs",
+        description = "",
+        value = mutableListOf(),
+        choices = { VanillaMobs.names }
     )
 
     private val throughWallsSetting = BooleanSetting(
@@ -122,10 +121,25 @@ object HighlightMobs : HighlightFeature() {
             BooleanSetting(
                 key = "SingleMobsEnabled",
                 displayName = "Single Mobs",
-                description = "§fHighlight specific mobs.\n" +
-                        "§bIf a mob you want isn't added here, suggest it to a dev for implementation.",
+                description = "§fHighlight specific mobs.",
                 value = false,
-                children = listOf(singleMobsList)
+                children = listOf(
+                    BooleanSetting(
+                        key = "HypixelMobsEnabled",
+                        displayName = "Hypixel Mobs",
+                        description = "§fMobs specifically for hypixel\n" +
+                                "§bIf a mob you want isn't added here, suggest it to a dev for implementation.",
+                        value = false,
+                        children = listOf(hypixelMobsList)
+                    ),
+                    BooleanSetting(
+                        key = "VanillaMobsEnabled",
+                        displayName = "Vanilla Mobs",
+                        description = "§fEvery kind of living thing in the game itself, players included.",
+                        value = false,
+                        children = listOf(vanillaMobsList)
+                    )
+                )
             ),
             BooleanSetting(
                 key = "MobInfoEnabled",
@@ -148,7 +162,7 @@ object HighlightMobs : HighlightFeature() {
             BooleanSetting(
                 key = "AdvancedHighlightEnabled",
                 displayName = "Advanced Highlight",
-                description = "§fFilters by entity type, skin hash or helmet skull,\n" +
+                description = "§fFilters by skin hash or helmet skull,\n" +
                         "§ffor mobs no preset covers.\n" +
                         "§eValues come from the mob hit debug.",
                 value = false,
@@ -156,7 +170,7 @@ object HighlightMobs : HighlightFeature() {
                     BooleanSetting(
                         key = "EntityTypeEnabled",
                         displayName = "Entity Type",
-                        description = "§fMatch on what the entity is.\n§fA player's skin hash, or a mob's type path.",
+                        description = "§fMatch on what the entity is, by a player's skin hash.",
                         value = false,
                         children = listOf(
                             BooleanSetting(
@@ -165,13 +179,6 @@ object HighlightMobs : HighlightFeature() {
                                 description = "§fMatch players by skin hash.",
                                 value = false,
                                 children = listOf(entityTypePlayerSkinHash)
-                            ),
-                            BooleanSetting(
-                                key = "EntityTypeOtherEnabled",
-                                displayName = "Other Entities",
-                                description = "§fMatch non-player entities by type path.",
-                                value = false,
-                                children = listOf(entityTypeMobPathValue)
                             )
                         )
                     ),
@@ -312,17 +319,37 @@ object HighlightMobs : HighlightFeature() {
     }
 
     /** The entity one of the picked single mobs wants outlined, or null. */
-    private fun singleMobTarget(info: EntityInfo): Entity? = singleMobMatch(info)?.second
+    /** A picked mob that matched: the name it was picked by, and what it wants outlined. */
+    private class PickedMatch(val name: String, val icon: ItemStack?, val target: Entity)
 
-    /** The picked mob that matched and what it wants outlined, or null when none did. */
-    private fun singleMobMatch(info: EntityInfo): Pair<SingleMobs.Mob, Entity>? {
-        if (baseSetting.getChild<BooleanSetting>("SingleMobsEnabled")?.value != true) return null
+    private fun singleMobTarget(info: EntityInfo): Entity? = singleMobMatch(info)?.target
 
-        return singleMobsList.value
+    private fun singleMobMatch(info: EntityInfo): PickedMatch? {
+        val singleMobs = baseSetting.getChild<BooleanSetting>("SingleMobsEnabled") ?: return null
+        if (!singleMobs.value) return null
+
+        return hypixelMobMatch(singleMobs, info) ?: vanillaMobMatch(singleMobs, info)
+    }
+
+    private fun hypixelMobMatch(singleMobs: BooleanSetting, info: EntityInfo): PickedMatch? {
+        if (singleMobs.getChild<BooleanSetting>("HypixelMobsEnabled")?.value != true) return null
+
+        return hypixelMobsList.value
             .asSequence()
             .filter { it.enabled }
             .mapNotNull { SingleMobs.byName(it.value) }
-            .mapNotNull { mob -> SingleMobs.target(mob, info)?.let { mob to it } }
+            .mapNotNull { mob -> SingleMobs.target(mob, info)?.let { PickedMatch(mob.name, SingleMobs.iconFor(mob), it) } }
+            .firstOrNull()
+    }
+
+    private fun vanillaMobMatch(singleMobs: BooleanSetting, info: EntityInfo): PickedMatch? {
+        if (singleMobs.getChild<BooleanSetting>("VanillaMobsEnabled")?.value != true) return null
+
+        return vanillaMobsList.value
+            .asSequence()
+            .filter { it.enabled }
+            .mapNotNull { VanillaMobs.byName(it.value) }
+            .mapNotNull { mob -> VanillaMobs.target(mob, info)?.let { PickedMatch(mob.name, null, it) } }
             .firstOrNull()
     }
 
@@ -357,12 +384,6 @@ object HighlightMobs : HighlightFeature() {
                 val expected = entityTypePlayerSkinHash.value
                 if (expected.isNotBlank() && PlayerUtils.getSkinHash(entity) == expected) return entity
             }
-
-            val otherEnabled = entityType.getChild<BooleanSetting>("EntityTypeOtherEnabled")?.value == true
-            if (otherEnabled && entity !is LocalPlayer) {
-                val path = entityTypeMobPathValue.value
-                if (path.isNotBlank() && entity.typeId().contains(path)) return entity
-            }
         }
 
         val helmet = advanced.getChild<BooleanSetting>("EntityEquipmentDetectionEnabled")
@@ -390,8 +411,8 @@ object HighlightMobs : HighlightFeature() {
      * writing and an item worth drawing. The other filters match whatever they match.
      */
     override fun markOf(info: EntityInfo): EntityUtils.HighlightMark? {
-        val mob = singleMobMatch(info)?.first ?: return null
+        val picked = singleMobMatch(info) ?: return null
 
-        return EntityUtils.HighlightMark(mob.name, SingleMobs.iconFor(mob))
+        return EntityUtils.HighlightMark(picked.name, picked.icon)
     }
 }

@@ -26,6 +26,7 @@ import org.magic.magicaddons.events.world.EntityRemovedEvent
 import org.magic.magicaddons.events.world.EntityUpdatedEvent
 import org.magic.magicaddons.events.world.WorldTickEvent
 import kotlin.math.sqrt
+import java.util.concurrent.ConcurrentHashMap
 
 object EntityUtils {
     init {
@@ -146,6 +147,14 @@ object EntityUtils {
         update()
     }
 
+    /** Entities the server has sent new data for since the last scan, by network id. */
+    private val entitiesWithNewData: MutableSet<Int> = ConcurrentHashMap.newKeySet()
+
+    /** Called from the packet mixins when the server sends an entity's data or attributes. */
+    fun noteDataChanged(entityId: Int) {
+        entitiesWithNewData += entityId
+    }
+
     private fun update() {
         val client = Minecraft.getInstance()
         val player = client.player ?: return
@@ -199,12 +208,21 @@ object EntityUtils {
         newMap.forEach { (uuid, newInfo) ->
             val oldInfo = entityMapCurr[uuid] ?: return@forEach
 
+            // a frog's variant and a mob's scale show in no name tag, so the packet that carries
+            // them is what says the entity changed
+            if (newInfo.entity.id in entitiesWithNewData) {
+                updatedEntities += newInfo
+                return@forEach
+            }
+
             // by name as well as by identity: skyblock reuses a name tag it already hung rather
             // than replacing it, so a tag whose text changed is the same entity in both sets
             if (oldInfo.tagSignature() != newInfo.tagSignature()) {
                 updatedEntities += newInfo
             }
         }
+
+        entitiesWithNewData.clear()
 
 
         if (addedEntities.isNotEmpty()) {

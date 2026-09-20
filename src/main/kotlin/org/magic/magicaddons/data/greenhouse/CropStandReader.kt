@@ -5,6 +5,7 @@ import net.minecraft.network.chat.Component
 import net.minecraft.network.chat.Style
 import net.minecraft.world.entity.decoration.ArmorStand
 import java.util.Optional
+import org.magic.magicaddons.util.PlayerUtils
 import org.magic.magicaddons.util.compat.McCompat
 
 /** extra data for a plant that doesn't contribute to its stage but needs parsing */
@@ -121,6 +122,13 @@ class CropStandReader(
             key = key,
             matches = { it.customName?.string?.contains(contains, ignoreCase = true) == true },
             read = { it.customName?.string?.let { text -> MULTIPLIER_REGEX.find(text)?.groupValues?.get(1) }?.toIntOrNull() }
+        )
+
+        /** a stand wearing [hash] reads as [value]; a look that is only its skull says so this way */
+        fun skullPresence(key: String, hash: String, value: Int = 1): CropStandReader = CropStandReader(
+            key = key,
+            matches = { PlayerUtils.getSkullHash(it) == hash },
+            read = { value }
         )
 
         fun standPresence(key: String, contains: String): CropStandReader = CropStandReader(
