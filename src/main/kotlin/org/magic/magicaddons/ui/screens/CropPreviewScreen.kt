@@ -18,7 +18,6 @@ import org.magic.magicaddons.ui.widgets.SliderWidget
 import org.magic.magicaddons.data.greenhouse.CropDefinition
 import org.magic.magicaddons.data.greenhouse.CropRegistry
 import org.magic.magicaddons.data.greenhouse.CropStage
-import org.magic.magicaddons.data.greenhouse.CropStagePattern
 import org.magic.magicaddons.data.greenhouse.PlantDex
 import org.magic.magicaddons.render.CropPreviewRenderState
 import org.magic.magicaddons.render.StandInScene

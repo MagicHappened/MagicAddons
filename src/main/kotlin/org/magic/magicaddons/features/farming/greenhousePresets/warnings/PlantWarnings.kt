@@ -299,7 +299,7 @@ object PlantWarnings {
         Minecraft.getInstance().player?.sendSystemMessage(message)
     }
 
-    /** The promised ride to the dying plant, sent once the garden is loaded and still current. */
+
     fun offerTeleportIfArrived() {
         val offer = teleportOffer ?: return
         val at = teleportOfferAt ?: return
@@ -311,7 +311,7 @@ object PlantWarnings {
 
         if (LocationAPI.island != SkyBlockIsland.GARDEN || LocationAPI.isGuest) return
 
-        val plotNumber = offer.plotId.removePrefix(GreenhouseLayout.PLOT_PREFIX)
+        val plotNumber = offer.plotId.removePrefix(GreenhouseLayout.PRESET_PREFIX)
 
         val message = ChatUtils.buildWithPrefix(
                 Component.literal(

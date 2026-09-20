@@ -29,7 +29,7 @@ object PlantBars {
         // avoid reading plant bars when the watering window is open
         if (GreenhouseWatering.wateringWindowOpen()) return
         val grid = GreenhouseData.getCurrentGrid() ?: return
-        if (!grid.isScannedThisVisit()) return
+        if (!grid.isScanned()) return
 
         val buildableArea = grid.plot?.getBuildableArea() ?: return
         val level = Minecraft.getInstance().level ?: return

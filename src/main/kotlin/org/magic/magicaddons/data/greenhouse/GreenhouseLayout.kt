@@ -11,7 +11,7 @@ data class GreenhouseLayout(
     val slots: List<LayoutSlot> = List(size * size) { index ->
         val x = index % size
         val y = index / size
-        // no soil said: anything may stand there. Air is asked for by placing it from the shelf
+        // null for no soil, air is an explicit block
         LayoutSlot(x, y, null)
     },
     val plants: MutableList<Plant> = mutableListOf(),
@@ -21,14 +21,13 @@ data class GreenhouseLayout(
 
     fun copyContentsFrom(other: GreenhouseLayout) {
         slots.forEach { slot ->
-            val theirs = other.getSlot(slot.x, slot.y)
-            slot.soil = theirs?.soil
-            slot.mark = theirs?.mark
+            val otherSlot = other.getSlot(slot.x, slot.y)
+            slot.soil = otherSlot?.soil
+            slot.mark = otherSlot?.mark
         }
         plants.clear()
         other.plants.forEach { plant ->
             val slot = getSlot(plant.slot.x, plant.slot.y) ?: return@forEach
-            // a plain copy keeps the constructor's fields and drops the rest, placed among them
             plants.add(plant.copyForPrediction(slot))
         }
     }
@@ -38,7 +37,6 @@ data class GreenhouseLayout(
 
     fun deepCopy(): GreenhouseLayout = GreenhouseLayout(id = id, name = name, size = size).also { it.copyContentsFrom(this) }
 
-    /** a copy turned [turns] quarter turns clockwise */
     fun turned(turns: Int): GreenhouseLayout {
         val copy = GreenhouseLayout(id = id, name = name, size = size)
 
@@ -79,19 +77,19 @@ data class GreenhouseLayout(
 
     override fun toString(): String = displayName()
 
-    enum class Kind { PLOT, PRESET }
+    enum class Kind { PRESET, MASTER_PRESET }
 
-    val kind: Kind get() = if (id.startsWith(PLOT_PREFIX)) Kind.PLOT else Kind.PRESET
+    val kind: Kind get() = if (id.startsWith(PRESET_PREFIX)) Kind.PRESET else Kind.MASTER_PRESET
 
     /** null for a placeholder whose id carries no number */
-    val number: Int? get() = id.removePrefix(PLOT_PREFIX).removePrefix(PRESET_PREFIX).substringBefore("_p").toIntOrNull()
+    val number: Int? get() = id.removePrefix(PRESET_PREFIX).removePrefix(MASTER_PRESET_PREFIX).substringBefore("_p").toIntOrNull()
 
     /** which plot of a multi-plot preset this is, counted from 1; null for the first and for garden plots */
     val part: Int? get() = id.substringAfter("_p", "").toIntOrNull()
 
     fun displayName(): String = name
         ?: part?.let { "Plot $it" }
-        ?: number?.let { if (kind == Kind.PLOT) "Plot $it" else "Preset $it" }
+        ?: number?.let { if (kind == Kind.PRESET) "Plot $it" else "Preset $it" }
         ?: id
 
     /** a crop's effects are what it gives its neighbours; spread passes on everything but itself */
@@ -135,8 +133,7 @@ data class GreenhouseLayout(
         .filter { !it.covers(slot) && it.isOrthogonallyBeside(slot) }
         .flatMapTo(mutableSetOf()) { it.cropDef.effects }
 
-    /** the pieces add up, drains being negative */
-    fun waterEffectAt(slot: LayoutSlot): Int = CropEffect.total(effectsAt(slot), CropEffect.Kind.Water)
+    fun waterEffectAt(slot: LayoutSlot): Int = CropEffect.appliedEffect(effectsAt(slot), CropEffect.EffectKind.Water)
 
     fun plantCovering(slot: LayoutSlot): Plant? =
         plants.firstOrNull { it.covers(slot) }
@@ -144,9 +141,8 @@ data class GreenhouseLayout(
     /** every soil the plant on [slot] can grow in */
     fun soilsAcceptedAt(slot: LayoutSlot): Set<Block> =
         plantCovering(slot)?.acceptedCrops?.flatMapTo(mutableSetOf()) { it.requiredSoil }.orEmpty()
-
-    /** corners included */
-    fun plantsAround(plant: Plant): List<Plant> =
+    
+    fun plantsSurrounding(plant: Plant): List<Plant> =
         plants.filter { other -> other !== plant && other.touchesFootprintOf(plant) }
 
     private fun Plant.touchesFootprintOf(other: Plant): Boolean {
@@ -174,11 +170,11 @@ data class GreenhouseLayout(
     }
 
     companion object {
-        const val PLOT_PREFIX: String = "plot_"
-        const val PRESET_PREFIX: String = "preset_"
+        const val PRESET_PREFIX: String = "plot_"
+        const val MASTER_PRESET_PREFIX: String = "preset_"
 
-        fun plotId(number: Int): String = "$PLOT_PREFIX$number"
-        fun presetId(number: Int): String = "$PRESET_PREFIX$number"
+        fun plotId(number: Int): String = "$PRESET_PREFIX$number"
+        fun presetId(number: Int): String = "$MASTER_PRESET_PREFIX$number"
 
         private const val SLOT_KEY_STRIDE: Int = 1024
     }

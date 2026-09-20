@@ -110,8 +110,8 @@ object PlantDiagnostics {
                 GreenhouseData.miscInfo.nextTickTime = Instant.now().plusMillis(nextStage.parseDurationToMs())
                 GreenhouseData.lastCheckTime = Instant.now()
 
-                // the one line of the old tick logging worth keeping: how far the countdown had
-                // drifted by the moment the game stated it, for reading a session back later
+                // how far the countdown had drifted by the moment the game stated it, for reading
+                // a session back later
                 was?.let {
                     val movedS = Duration.between(it, GreenhouseData.miscInfo.nextTickTime).toSeconds()
 

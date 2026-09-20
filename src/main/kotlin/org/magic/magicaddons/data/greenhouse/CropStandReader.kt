@@ -124,11 +124,10 @@ class CropStandReader(
             read = { it.customName?.string?.let { text -> MULTIPLIER_REGEX.find(text)?.groupValues?.get(1) }?.toIntOrNull() }
         )
 
-        /** a stand wearing [hash] reads as [value]; a look that is only its skull says so this way */
-        fun skullPresence(key: String, hash: String, value: Int = 1): CropStandReader = CropStandReader(
+        fun skullPresence(key: String, hash: String): CropStandReader = CropStandReader(
             key = key,
             matches = { PlayerUtils.getSkullHash(it) == hash },
-            read = { value }
+            read = { 1 }
         )
 
         fun standPresence(key: String, contains: String): CropStandReader = CropStandReader(

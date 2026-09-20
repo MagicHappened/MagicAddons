@@ -11,7 +11,6 @@ import org.magic.magicaddons.data.greenhouse.CropArmorStand
 import org.magic.magicaddons.data.greenhouse.CropBlockState
 import org.magic.magicaddons.data.greenhouse.CropDefinition
 import org.magic.magicaddons.data.greenhouse.CropStage
-import org.magic.magicaddons.data.greenhouse.CropStagePattern
 import org.magic.magicaddons.data.greenhouse.CropStates.redMushroomState
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
@@ -30,7 +29,7 @@ object Redmushroom : CropDefinitionProvider {
             "2278b4061f63755ba5a85c1d2491c261d6bd4a5d0536a17bdad934570f3cbfee" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f))
         ),
         stageDefs = listOf(
-            CropStagePattern(
+            CropStage(
                 blocks = listOf(
                     CropBlockState(
                         offset = BlockPos(0, 1, 0),
@@ -44,10 +43,24 @@ object Redmushroom : CropDefinitionProvider {
                         hashString = "162f0e8d32f3db02ffdf1a16efb21d614a3f0417d49138fdc18bfe52ead705b9"
                     )
                 ),
-                stageRange = 1..5,
-                baseStandOffset = Vec3(0.0, 0.0625, 0.0)
+                1..1
             ),
-
+            CropStage(
+                blocks = listOf(
+                    CropBlockState(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = redMushroomState()
+                    )
+                ),
+                armorStands = listOf(
+                    CropArmorStand(
+                        isSmall = false,
+                        offset = Vec3(0.0, -0.69, 0.0),
+                        hashString = "162f0e8d32f3db02ffdf1a16efb21d614a3f0417d49138fdc18bfe52ead705b9"
+                    )
+                ),
+                2..2
+            ),
             CropStage(
                 blocks = listOf(
                     CropBlockState(

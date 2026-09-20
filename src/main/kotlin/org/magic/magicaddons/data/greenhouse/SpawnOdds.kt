@@ -6,13 +6,13 @@ object SpawnOdds {
 
     class MutationChance(val crop: CropDefinition, val chance: Double)
 
-    private val POSITIVE_EFFECT_NAMES: Map<CropEffect.Kind, String> = mapOf(
-        CropEffect.Kind.Yield to "Harvest Boost",
-        CropEffect.Kind.Xp to "XP Boost",
-        CropEffect.Kind.Water to "Water Retain",
-        CropEffect.Kind.Drops to "Bonus Drops",
-        CropEffect.Kind.Immunity to "Immunity",
-        CropEffect.Kind.Spread to "Effect Spread"
+    private val POSITIVE_EFFECT_NAMES: Map<CropEffect.EffectKind, String> = mapOf(
+        CropEffect.EffectKind.Yield to "Harvest Boost",
+        CropEffect.EffectKind.Xp to "XP Boost",
+        CropEffect.EffectKind.Water to "Water Retain",
+        CropEffect.EffectKind.Drops to "Bonus Drops",
+        CropEffect.EffectKind.Immunity to "Immunity",
+        CropEffect.EffectKind.Spread to "Effect Spread"
     )
 
     /** a blank weight fills every roll up to this */

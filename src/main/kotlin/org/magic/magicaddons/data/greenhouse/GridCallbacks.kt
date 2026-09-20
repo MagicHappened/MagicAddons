@@ -16,7 +16,6 @@ interface GridCallbacks {
     /** whether to ignore water retain */
     fun assumeFlatWater(): Boolean = false
 
-    /** the game hangs its own water bars over the plants while cans are out */
     fun waterBarsExpected(): Boolean = false
 
     fun forgetPlayerPlacementAt(soilPos: BlockPos)
@@ -35,7 +34,6 @@ interface GridCallbacks {
     /** a scan no longer matches a plant the records had */
     fun plantLostInScan(previous: Plant, origin: BlockPos, remainingStands: List<ArmorStand>) = Unit
 
-    /** used until a feature installs itself */
     object None : GridCallbacks {
         override fun placedCropAt(soilPos: BlockPos): CropDefinition? = null
         override fun forgetPlayerPlacementAt(soilPos: BlockPos) = Unit

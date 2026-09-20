@@ -31,7 +31,7 @@ object ServerUtils {
         if (event.new != SkyBlockIsland.GARDEN) {
             DataHandler.saveGardenData()
             greenhouseGrids.forEach {
-                it.state.scannedThisVisit = false
+                it.state.scanned = false
             }
         }
         checkForUpdate()

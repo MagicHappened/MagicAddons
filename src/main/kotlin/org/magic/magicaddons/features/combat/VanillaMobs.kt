@@ -14,7 +14,6 @@ object VanillaMobs {
 
     private val LIVING_MISC_IDS: Set<String> = setOf("player", "villager", "wandering_trader", "iron_golem", "snow_golem")
 
-    // read once the registry is full, which is before any screen can ask
     val all: List<Mob> by lazy {
         BuiltInRegistries.ENTITY_TYPE
             .filter { it.category != MobCategory.MISC || BuiltInRegistries.ENTITY_TYPE.getKey(it)?.path in LIVING_MISC_IDS }

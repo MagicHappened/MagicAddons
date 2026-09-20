@@ -8,6 +8,7 @@ import net.minecraft.client.renderer.entity.state.EntityRenderState
 import net.minecraft.client.renderer.entity.state.LivingEntityRenderState
 import net.minecraft.client.renderer.state.gui.pip.GuiEntityRenderState
 import net.minecraft.world.entity.Entity
+import net.minecraft.world.entity.LivingEntity
 import org.joml.Quaternionf
 import org.joml.Vector3f
 import org.magic.magicaddons.events.EventBus
@@ -56,6 +57,8 @@ object MarkerRenderer {
         if (McCompat.hudHidden() || McCompat.currentScreen() != null) return
 
         val markers = collect().sortedByDescending { it.distance }
+
+        bakedAnIconThisFrame = false
 
         drawTracer(event.graphics)
 
@@ -149,7 +152,7 @@ object MarkerRenderer {
         if (icon != null) {
             graphics.renderFakeItem(icon, left, top, ICON_SIZE, ICON_SIZE)
         } else {
-            drawEntityIcon(graphics, marker.entity, left, top, ICON_SIZE)
+            drawEntityIcon(graphics, marker, left, top, ICON_SIZE)
         }
 
         // a name on the edge of the screen would be written off it, so an arrow carries none
@@ -171,7 +174,9 @@ object MarkerRenderer {
      * The mob itself drawn into the marker, which is the only picture that exists for a mob with no
      * item to stand for it, and the only one that tells two shulkers of different colours apart.
      */
-    private fun drawEntityIcon(graphics: GuiGraphicsExtractor, entity: Entity, left: Int, top: Int, size: Int) {
+    private fun drawEntityIcon(graphics: GuiGraphicsExtractor, marker: Marker, left: Int, top: Int, size: Int) {
+        val entity = marker.entity
+
         @Suppress("UNCHECKED_CAST")
         val typed = Minecraft.getInstance().entityRenderDispatcher.getRenderer(entity)
                 as EntityRenderer<Entity, EntityRenderState>
@@ -188,21 +193,51 @@ object MarkerRenderer {
         val tallest = maxOf(entity.bbWidth, entity.bbHeight).coerceAtLeast(MIN_MODEL_SIZE)
         val bounds = ScreenRectangle(left, top, size, size)
 
-        graphics.guiRenderState.addPicturesInPictureState(
-            GuiEntityRenderState(
-                state,
-                Vector3f(0f, entity.bbHeight / 2f, 0f),
-                Quaternionf().rotateZ(Math.PI.toFloat()),
-                Quaternionf(),
-                left,
-                top,
-                left + size,
-                top + size,
-                size / tallest * MODEL_MARGIN,
-                bounds
-            )
+        val drawn = GuiEntityRenderState(
+            state,
+            Vector3f(0f, entity.bbHeight / 2f, 0f),
+            Quaternionf().rotateZ(Math.PI.toFloat()),
+            Quaternionf(),
+            left,
+            top,
+            left + size,
+            top + size,
+            size / tallest * MODEL_MARGIN,
+            bounds
         )
+
+        val icon = bakedIcons.getOrPut(marker.iconKey) { BakedEntityIcon() }
+
+        // drawing a cold icon is a whole model render, so a frame warms one and hands the gui the rest
+        if (!icon.isBaked && bakedAnIconThisFrame) {
+            graphics.guiRenderState.addPicturesInPictureState(drawn)
+            return
+        }
+
+        bakedAnIconThisFrame = bakedAnIconThisFrame || !icon.isBaked
+        icon.submit(drawn, graphics.guiRenderState)
     }
+
+    /**
+     * Mobs sharing this look alike in a marker, so they share the icon drawn for them. The mark's
+     * name already separates the variants the rules pick out, a brown shulker from a yellow one.
+     */
+    private val Marker.iconKey: String
+        get() = mark.name + if ((entity as? LivingEntity)?.isBaby == true) " baby" else ""
+
+    /** Keyed by [iconKey]; the least recently drawn is dropped, and its texture goes with it. */
+    private val bakedIcons: MutableMap<String, BakedEntityIcon> =
+        object : LinkedHashMap<String, BakedEntityIcon>(16, 0.75f, true) {
+            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, BakedEntityIcon>): Boolean {
+                if (size <= MAX_BAKED_ICONS) return false
+                eldest.value.close()
+                return true
+            }
+        }
+
+    private const val MAX_BAKED_ICONS: Int = 64
+
+    private var bakedAnIconThisFrame: Boolean = false
 
     /** A model this small or smaller is scaled as if it were this big, so nothing divides by nothing. */
     private const val MIN_MODEL_SIZE: Float = 0.1f

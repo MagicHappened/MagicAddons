@@ -7,7 +7,6 @@ import org.magic.magicaddons.data.greenhouse.CropEffect
 import org.magic.magicaddons.data.greenhouse.CropArmorStand
 import org.magic.magicaddons.data.greenhouse.CropDefinition
 import org.magic.magicaddons.data.greenhouse.CropStage
-import org.magic.magicaddons.data.greenhouse.CropStagePattern
 import org.magic.magicaddons.data.greenhouse.CropDefinitionProvider
 import org.magic.magicaddons.data.greenhouse.StandPose
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
@@ -40,7 +39,7 @@ object DoNotEatShroom : CropDefinitionProvider {
                 ),
                 1..1
             ),
-            CropStagePattern(
+            CropStage(
                 blocks = listOf(),
                 armorStands = listOf(
                     CropArmorStand(
@@ -49,14 +48,20 @@ object DoNotEatShroom : CropDefinitionProvider {
                         hashString = "77a99b274b5e21a3537469b2ae717bb4cedcacca76df7525092a99bc08ea8c9"
                     )
                 ),
-                stageRange = 2..3,
-                baseStandOffset = Vec3(0.0, 0.03125, 0.0),
-                baseStandStageMultipliers = mapOf(
-                    2 to 0,
-                    3 to 2
-                )
+                2..2
             ),
-            CropStagePattern(
+            CropStage(
+                blocks = listOf(),
+                armorStands = listOf(
+                    CropArmorStand(
+                        isSmall = false,
+                        offset = Vec3(0.0, -0.625, 0.0),
+                        hashString = "77a99b274b5e21a3537469b2ae717bb4cedcacca76df7525092a99bc08ea8c9"
+                    )
+                ),
+                3..3
+            ),
+            CropStage(
                 blocks = listOf(),
                 armorStands = listOf(
                     CropArmorStand(
@@ -65,16 +70,21 @@ object DoNotEatShroom : CropDefinitionProvider {
                         hashString = "1772fa43e9f41925f681690167db25d5488a7fa4b428ec4e95a4b683f15dbb4"
                     )
                 ),
-                stageRange = 4..5,
-                baseStandOffset = Vec3(0.0, 0.03125, 0.0),
-                baseStandStageMultipliers = mapOf(
-                    4 to 0,
-                    5 to 1
-                )
+                4..4
             ),
-            CropStagePattern(
-                blocks = listOf(
+            CropStage(
+                blocks = listOf(),
+                armorStands = listOf(
+                    CropArmorStand(
+                        isSmall = false,
+                        offset = Vec3(0.0, -0.5625, 0.0),
+                        hashString = "1772fa43e9f41925f681690167db25d5488a7fa4b428ec4e95a4b683f15dbb4"
+                    )
                 ),
+                5..5
+            ),
+            CropStage(
+                blocks = listOf(),
                 armorStands = listOf(
                     CropArmorStand(
                         isSmall = false,
@@ -82,12 +92,18 @@ object DoNotEatShroom : CropDefinitionProvider {
                         hashString = "6a7ae95a8bb1fcdbf71385fe663c5647e0a5c32004db8c0313c2d45c94e3d1ad"
                     )
                 ),
-                stageRange = 6..7,
-                baseStandOffset = Vec3(0.0, 0.03125, 0.0),
-                baseStandStageMultipliers = mapOf(
-                    6 to 0,
-                    7 to 2
-                )
+                6..6
+            ),
+            CropStage(
+                blocks = listOf(),
+                armorStands = listOf(
+                    CropArmorStand(
+                        isSmall = false,
+                        offset = Vec3(0.0, -0.4375, 0.0),
+                        hashString = "6a7ae95a8bb1fcdbf71385fe663c5647e0a5c32004db8c0313c2d45c94e3d1ad"
+                    )
+                ),
+                7..7
             ),
             CropStage(
                 blocks = listOf(

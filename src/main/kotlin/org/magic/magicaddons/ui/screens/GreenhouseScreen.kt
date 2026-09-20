@@ -212,7 +212,7 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
         label = { it },
         onPick = { _, _ ->
             displayedGridWidget?.layout
-                ?.takeIf { it.kind == GreenhouseLayout.Kind.PLOT }
+                ?.takeIf { it.kind == GreenhouseLayout.Kind.PRESET }
                 ?.number
                 ?.let { ChatUtils.sendCommand("tptoplot $it") }
         }
@@ -376,7 +376,7 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
             this.turns = turns
             x = startX
             y = startY
-            targetPlan = if (layout.kind == GreenhouseLayout.Kind.PRESET) {
+            targetPlan = if (layout.kind == GreenhouseLayout.Kind.MASTER_PRESET) {
                 { layout }
             } else {
                 { GreenhouseData.greenhouseGrids.firstOrNull { it.layout === layout }?.let { grid -> grid.state.assignedLayout?.turned(grid.state.planTurns) } }
@@ -412,7 +412,7 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
         GreenhouseData.greenhouseGrids.forEachIndexed { index, grid ->
             if (grid.state.lastScanTime == null) return@forEachIndexed
             greenhouseGridWidgets.add(newGridWidget(grid.layout, gridTurns()))
-            if (grid.layout.kind == GreenhouseLayout.Kind.PLOT && grid.layout.number == currentPlot) {
+            if (grid.layout.kind == GreenhouseLayout.Kind.PRESET && grid.layout.number == currentPlot) {
                 GreenhouseData.currentGridIndex = index
             }
         }
