@@ -1,17 +1,12 @@
 package org.magic.magicaddons.ui.widgets.greenhouse
 
-import org.magic.magicaddons.util.ScreenUtil.withAlpha
-import org.magic.magicaddons.util.ScreenUtil.eased
-import org.magic.magicaddons.util.ScreenUtil.modText
-import net.minecraft.ChatFormatting
-import net.minecraft.client.Minecraft
 import kotlin.math.absoluteValue
 import kotlin.math.ceil
-import org.magic.magicaddons.Common
+import net.minecraft.ChatFormatting
+import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.components.Renderable
 import net.minecraft.client.gui.components.events.GuiEventListener
-import org.magic.magicaddons.util.ScreenUtil.drawTooltipLines
 import net.minecraft.client.renderer.RenderPipelines
 import net.minecraft.client.renderer.texture.TextureAtlasSprite
 import net.minecraft.core.Direction
@@ -19,21 +14,26 @@ import net.minecraft.network.chat.Component
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
 import net.minecraft.world.level.block.Blocks
-import org.magic.magicaddons.data.greenhouse.LayoutSlot
-import org.magic.magicaddons.data.greenhouse.Plant
-import org.magic.magicaddons.data.greenhouse.ChargeRule
-import org.magic.magicaddons.data.greenhouse.WaterModel
+import org.magic.magicaddons.Common
+import org.magic.magicaddons.data.greenhouse.crops.ChargeRule
+import org.magic.magicaddons.data.greenhouse.crops.Plant
+import org.magic.magicaddons.data.greenhouse.crops.PlantStage
+import org.magic.magicaddons.data.greenhouse.plot.LayoutSlot
+import org.magic.magicaddons.data.greenhouse.plot.PlotPrediction
 import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseData
-import org.magic.magicaddons.data.greenhouse.GrowthStageInfo
+import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GrowthClock
 import org.magic.magicaddons.util.ScreenUtil
 import org.magic.magicaddons.util.ScreenUtil.drawBorder
+import org.magic.magicaddons.util.ScreenUtil.drawCountedCrop
+import org.magic.magicaddons.util.ScreenUtil.drawTooltipLines
+import org.magic.magicaddons.util.ScreenUtil.eased
 import org.magic.magicaddons.util.ScreenUtil.fillCornerTriangle
 import org.magic.magicaddons.util.ScreenUtil.fillRounded
 import org.magic.magicaddons.util.ScreenUtil.inRect
-import org.magic.magicaddons.util.ScreenUtil.drawCountedCrop
+import org.magic.magicaddons.util.ScreenUtil.modText
 import org.magic.magicaddons.util.ScreenUtil.renderFakeItem
-import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GrowthClock
 import org.magic.magicaddons.util.ScreenUtil.splitMod
+import org.magic.magicaddons.util.ScreenUtil.withAlpha
 
 class ElementWidget(val instance: Plant) : Renderable, GuiEventListener {
     var x: Int = 0
@@ -113,9 +113,9 @@ class ElementWidget(val instance: Plant) : Renderable, GuiEventListener {
                 instance.isPlacedMutation -> "Placed"
                 instance.cropDef.maxStage <= 1 && !instance.readyToHarvest -> null
                 else -> when (val stage = instance.growthStage) {
-                    is GrowthStageInfo.Known -> "${stage.stage}/${instance.cropDef.maxStage}"
+                    is PlantStage.Known -> "${stage.stage}/${instance.cropDef.maxStage}"
                     // a guessed stage is worth showing, as long as it does not look measured
-                    is GrowthStageInfo.Estimated -> "~${stage.range.first}-${stage.range.last}"
+                    is PlantStage.Estimated -> "~${stage.range.first}-${stage.range.last}"
                     null -> null
                 }
             }
@@ -179,7 +179,7 @@ class ElementWidget(val instance: Plant) : Renderable, GuiEventListener {
 
         // the worst case has this plant dead already, and only a scan can settle it: it either finds
         // a dead bush or finds the plant standing, one tick from death
-        if (instance.consumesWater && (instance.waterLevel ?: 0.0) <= WaterModel.DEATH_LEVEL) {
+        if (instance.consumesWater && (instance.waterLevel ?: 0.0) <= PlotPrediction.WATER_DEATH_LEVEL) {
             // a third of a single slot, half a slot on anything wider
             val footprint = instance.cropDef.footprint
             val size = (if (footprint.width > 1) width / footprint.width / 2 else width / 3).coerceAtLeast(8)
@@ -275,7 +275,7 @@ class ElementWidget(val instance: Plant) : Renderable, GuiEventListener {
             if (!instance.cropDef.needsWater || (!instance.consumesWater && drinkers == 0)) return
 
             instance.waterLevel?.let {
-                renderWaterBar(graphics, it.coerceAtLeast(WaterModel.DEATH_LEVEL.toDouble()))
+                renderWaterBar(graphics, it.coerceAtLeast(PlotPrediction.WATER_DEATH_LEVEL.toDouble()))
             }
             return
         }
@@ -444,7 +444,7 @@ class ElementWidget(val instance: Plant) : Renderable, GuiEventListener {
         debtExplanation = null
 
         // past death in the estimate there is no time left to state; the dead bush says it instead
-        if (waterLevel <= WaterModel.DEATH_LEVEL) return
+        if (waterLevel <= PlotPrediction.WATER_DEATH_LEVEL) return
 
         val remainingMs = GrowthClock.remainingTickMs()
         val tickMs = GrowthClock.tickLengthMs()
@@ -480,8 +480,8 @@ class ElementWidget(val instance: Plant) : Renderable, GuiEventListener {
             val takeable = (instance.cropDef.maxStage - stage).coerceAtLeast(1)
 
             // its own loss, and the share every soggybud beside it takes on top
-            val loss = WaterModel.lossPerTick(waterEffect) + WaterModel.DRAIN_PER_DONOR * drinkers
-            val ticksToDeath = if (loss <= 0.0) null else ceil((waterLevel - WaterModel.DEATH_LEVEL) / loss).toInt()
+            val loss = PlotPrediction.waterLossPerTick(waterEffect) + PlotPrediction.DRAIN_PER_DONOR * drinkers
+            val ticksToDeath = if (loss <= 0.0) null else ceil((waterLevel - PlotPrediction.WATER_DEATH_LEVEL) / loss).toInt()
 
             fun timeOf(ticks: Int): String = readableDuration(remainingMs + (ticks - 1) * tickMs)
 
@@ -563,10 +563,10 @@ class ElementWidget(val instance: Plant) : Renderable, GuiEventListener {
             }
 
             val growthText = when (val stage = instance.growthStage) {
-                is GrowthStageInfo.Known ->
+                is PlantStage.Known ->
                     "${stage.stage}/${cropDefinition.maxStage}"
 
-                is GrowthStageInfo.Estimated ->
+                is PlantStage.Estimated ->
                     "${stage.range.first}-${stage.range.last}/${cropDefinition.maxStage} (estimated)"
 
                 null -> null
@@ -649,8 +649,8 @@ class ElementWidget(val instance: Plant) : Renderable, GuiEventListener {
 
         private fun waterText(instance: Plant): String? = instance.waterLevel?.let { worst ->
             val best = instance.waterBestCase
-            if (best == null || best == worst) "${WaterModel.formatWaterLevel(worst)}%"
-            else "${WaterModel.formatWaterLevel(worst)}% to ${WaterModel.formatWaterLevel(best)}%"
+            if (best == null || best == worst) "${PlotPrediction.formatWaterLevel(worst)}%"
+            else "${PlotPrediction.formatWaterLevel(worst)}% to ${PlotPrediction.formatWaterLevel(best)}%"
         }
 
         private const val DEAD_MARK_BACKGROUND: Int = 0xC0201010.toInt()

@@ -1,17 +1,17 @@
 package org.magic.magicaddons.features.farming.greenhousePresets.render
 
 import com.mojang.blaze3d.vertex.PoseStack
+import java.time.Duration
+import java.time.Instant
 import net.minecraft.client.Minecraft
 import net.minecraft.client.renderer.SubmitNodeCollector
 import net.minecraft.core.BlockPos
 import net.minecraft.world.entity.Entity
 import net.minecraft.world.phys.Vec3
-import org.magic.magicaddons.data.greenhouse.ScannedPlant
-import org.magic.magicaddons.data.greenhouse.Plant
+import org.magic.magicaddons.data.greenhouse.crops.Plant
+import org.magic.magicaddons.data.greenhouse.crops.ScannedPlant
 import org.magic.magicaddons.render.WorldRenderer
 import org.magic.magicaddons.util.EntityUtils
-import java.time.Duration
-import java.time.Instant
 
 /** The plant picked on the greenhouse screen, outlined in the world so it can be found. */
 object PlantHighlight : EntityUtils.HighlightSource {

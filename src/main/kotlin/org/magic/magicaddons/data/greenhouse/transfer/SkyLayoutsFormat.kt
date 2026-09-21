@@ -1,12 +1,13 @@
 package org.magic.magicaddons.data.greenhouse.transfer
 
-import org.magic.magicaddons.data.greenhouse.MasterLayout
-import org.magic.magicaddons.data.greenhouse.CropDefinition
-import org.magic.magicaddons.data.greenhouse.CropRegistry
-import org.magic.magicaddons.data.greenhouse.Plant
-import org.magic.magicaddons.data.greenhouse.GreenhouseLayout
-import org.magic.magicaddons.data.greenhouse.LayoutSlot
 import java.math.BigInteger
+import org.magic.magicaddons.data.greenhouse.crops.*
+import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
+import org.magic.magicaddons.data.greenhouse.crops.CropRegistry
+import org.magic.magicaddons.data.greenhouse.crops.Plant
+import org.magic.magicaddons.data.greenhouse.plot.GreenhouseLayout
+import org.magic.magicaddons.data.greenhouse.plot.LayoutSlot
+import org.magic.magicaddons.data.greenhouse.plot.PlotLayout
 
 /**
  * Layouts as skylayouts.io shares them: `1<mutation><interval>~p<board>~<board>~<board>`, one
@@ -65,11 +66,11 @@ object SkyLayoutsFormat : LayoutFormat {
         val head = code.substringBefore('~')
         val target = KINDS.getOrNull(index(head[1]) - 1)?.let { CropRegistry.findByLooseName(it) }
 
-        val layouts = boards.take(MasterLayout.MAX_PLOTS).mapIndexed { number, board ->
-            readBoard(board, MasterLayout.plotId(layoutId, number), target, notes)
+        val layouts = boards.take(GreenhouseLayout.MAX_PLOTS).mapIndexed { number, board ->
+            readBoard(board, GreenhouseLayout.plotId(layoutId, number), target, notes)
                 ?: return LayoutTransferResult.Failure("Could not read plot ${number + 1} of the SkyLayouts link.")
         }
-        if (boards.size > MasterLayout.MAX_PLOTS) notes.add("Only the first ${MasterLayout.MAX_PLOTS} plots were taken.")
+        if (boards.size > GreenhouseLayout.MAX_PLOTS) notes.add("Only the first ${GreenhouseLayout.MAX_PLOTS} plots were taken.")
 
         if (layouts.size > 1) notes.add("Imported ${layouts.size} plots as one preset.")
 
@@ -80,7 +81,7 @@ object SkyLayoutsFormat : LayoutFormat {
      * One plot's cells into a layout; a plant covering several cells is one plant here. Every
      * empty cell gets the [target] mutation, marked as the target, the way the site shows spawn spots.
      */
-    private fun readBoard(board: String, id: String, target: CropDefinition?, notes: MutableList<String>): GreenhouseLayout? {
+    private fun readBoard(board: String, id: String, target: CropDefinition?, notes: MutableList<String>): PlotLayout? {
         if (board.length < 3 || board[0] != '3') return null
         val size = index(board[1])
         val kindCount = index(board[2])
@@ -107,7 +108,7 @@ object SkyLayoutsFormat : LayoutFormat {
         cells.reverse()
         if (cells.size != size * size) return null
 
-        val layout = GreenhouseLayout(id = id)
+        val layout = PlotLayout(id = id)
         val taken = Array(layout.size) { BooleanArray(layout.size) }
         val unknown = mutableSetOf<String>()
 
@@ -152,11 +153,11 @@ object SkyLayoutsFormat : LayoutFormat {
         return layout
     }
 
-    override fun export(layout: GreenhouseLayout): LayoutTransferResult = exportPlots(listOf(layout))
+    override fun export(layout: PlotLayout): LayoutTransferResult = exportPlots(listOf(layout))
 
-    override fun exportAll(master: MasterLayout): LayoutTransferResult = exportPlots(master.plots)
+    override fun exportAll(master: GreenhouseLayout): LayoutTransferResult = exportPlots(master.plots)
 
-    private fun exportPlots(plots: List<GreenhouseLayout>): LayoutTransferResult {
+    private fun exportPlots(plots: List<PlotLayout>): LayoutTransferResult {
         val notes = mutableListOf<String>()
 
         // the site files a layout under the mutation it grows: the plant marked as the target
@@ -165,13 +166,13 @@ object SkyLayoutsFormat : LayoutFormat {
             ?.let { kindOf[it.cropDef] }
         val head = "1" + letter(target?.plus(1) ?: 0) + letter(VISIT_INTERVAL)
 
-        val boards = plots.take(MasterLayout.MAX_PLOTS).map { writeBoard(it, notes) }
-        if (plots.size > MasterLayout.MAX_PLOTS) notes.add("Only the first ${MasterLayout.MAX_PLOTS} plots were written.")
+        val boards = plots.take(GreenhouseLayout.MAX_PLOTS).map { writeBoard(it, notes) }
+        if (plots.size > GreenhouseLayout.MAX_PLOTS) notes.add("Only the first ${GreenhouseLayout.MAX_PLOTS} plots were written.")
 
         return LayoutTransferResult.Exported(URL + head + "~p" + boards.joinToString("~"), notes)
     }
 
-    private fun writeBoard(layout: GreenhouseLayout, notes: MutableList<String>): String {
+    private fun writeBoard(layout: PlotLayout, notes: MutableList<String>): String {
         val kinds = mutableListOf<Int>()
         val cells = IntArray(layout.size * layout.size) { -1 }
 

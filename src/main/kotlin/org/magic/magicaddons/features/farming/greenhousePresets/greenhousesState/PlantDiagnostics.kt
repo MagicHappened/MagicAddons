@@ -1,26 +1,27 @@
 package org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState
 
-import org.magic.magicaddons.commands.debug.CropCollector
-import net.minecraft.network.chat.HoverEvent
-import net.minecraft.network.chat.ClickEvent
+import java.time.Duration
+import java.time.Instant
 import net.minecraft.ChatFormatting
 import net.minecraft.core.BlockPos
+import net.minecraft.network.chat.ClickEvent
 import net.minecraft.network.chat.Component
+import net.minecraft.network.chat.HoverEvent
+import net.minecraft.network.chat.Style
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
 import org.magic.magicaddons.Common
+import org.magic.magicaddons.commands.debug.CropCollector
+import org.magic.magicaddons.data.greenhouse.crops.*
+import org.magic.magicaddons.data.greenhouse.plot.*
+import org.magic.magicaddons.events.interact.*
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhousePresets.baseSetting
 import org.magic.magicaddons.util.ChatUtils
-import tech.thatgravyboat.skyblockapi.api.location.LocationAPI
-import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
-import net.minecraft.network.chat.Style
-import java.time.Duration
-import java.time.Instant
 import org.magic.magicaddons.util.parseDurationToMs
+import tech.thatgravyboat.skyblockapi.api.location.LocationAPI
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockId.Companion.getSkyBlockId
+import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 import tech.thatgravyboat.skyblockapi.utils.extentions.getLore
-import org.magic.magicaddons.data.greenhouse.*
-import org.magic.magicaddons.events.interact.*
 
 /**
  * What the beacon page and the tool in hand say about one plant, and what to do when they
@@ -126,7 +127,7 @@ object PlantDiagnostics {
 
         target?.let { element ->
             age?.parseDurationToMs()?.let { element.plant.age = it }
-            stageRaw?.let { element.plant.growthStage = GrowthStageInfo.Known(it) }
+            stageRaw?.let { element.plant.growthStage = PlantStage.Known(it) }
 
             val plant = element.plant
             if (plant.cropDef.isMutation) {

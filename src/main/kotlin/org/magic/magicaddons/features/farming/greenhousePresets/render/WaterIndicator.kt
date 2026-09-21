@@ -5,13 +5,13 @@ import net.minecraft.client.renderer.SubmitNodeCollector
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
 import net.minecraft.world.phys.shapes.Shapes
-import org.magic.magicaddons.data.greenhouse.ScannedPlant
-import org.magic.magicaddons.data.greenhouse.GreenhouseGrid
-import org.magic.magicaddons.data.greenhouse.GrowthStageInfo
-import org.magic.magicaddons.data.greenhouse.WaterModel
-import org.magic.magicaddons.render.WorldRenderer
+import org.magic.magicaddons.data.greenhouse.crops.PlantStage
+import org.magic.magicaddons.data.greenhouse.crops.ScannedPlant
+import org.magic.magicaddons.data.greenhouse.plot.GreenhouseGrid
+import org.magic.magicaddons.data.greenhouse.plot.PlotPrediction
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhousePresets
 import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseData
+import org.magic.magicaddons.render.WorldRenderer
 
 /** Marks the soil of every plant below full water in the greenhouse the player stands in. */
 object WaterIndicator {
@@ -39,7 +39,7 @@ object WaterIndicator {
 
             // a water level nobody has read yet is marked as well, rather than passed over
             (plant.consumesWater || feedsDrainer) && !plant.cropDef.drainsNeighbours &&
-                    (water == null || water < WaterModel.FULL_LEVEL) &&
+                    (water == null || water < PlotPrediction.WATER_FULL_LEVEL) &&
                     !(ignoreGrown && !feedsDrainer && fullGrowthNoNegativeWater(grid, scannedPlant))
         }
         if (dryPlants.isEmpty()) return
@@ -66,13 +66,13 @@ object WaterIndicator {
         val water = plant.waterLevel ?: return false
 
         val stage = when (val growth = plant.growthStage) {
-            is GrowthStageInfo.Known -> growth.stage
-            is GrowthStageInfo.Estimated -> growth.range.first
+            is PlantStage.Known -> growth.stage
+            is PlantStage.Estimated -> growth.range.first
             null -> return false
         }
 
         val ticksLeft = (plant.cropDef.maxStage - stage).coerceAtLeast(0)
 
-        return WaterModel.waterLevelAfter(water, ticksLeft, GreenhouseGrid.waterEffectAt(grid.layout, plant.slot)) >= 0
+        return PlotPrediction.waterLevelAfter(water, ticksLeft, GreenhouseGrid.waterEffectAt(grid.layout, plant.slot)) >= 0
     }
 }

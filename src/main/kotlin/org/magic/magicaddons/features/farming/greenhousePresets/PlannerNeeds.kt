@@ -1,5 +1,7 @@
 package org.magic.magicaddons.features.farming.greenhousePresets
 
+import java.time.Duration
+import java.time.Instant
 import net.minecraft.ChatFormatting
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen
@@ -12,19 +14,17 @@ import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.Blocks
 import org.magic.magicaddons.commands.internal.MainInternal
 import org.magic.magicaddons.commands.internal.farming.GetPlannerItemCommand
-import org.magic.magicaddons.data.greenhouse.CropDefinition
-import org.magic.magicaddons.data.greenhouse.GreenhouseGrid
+import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
+import org.magic.magicaddons.data.greenhouse.plot.GreenhouseGrid
 import org.magic.magicaddons.events.EventHandler
 import org.magic.magicaddons.events.chat.SystemChatEvent
 import org.magic.magicaddons.events.world.WorldTickEvent
+import org.magic.magicaddons.features.farming.greenhousePresets.lookups.StorageBridge
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.compat.McCompat
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockId
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockId.Companion.getSkyBlockId
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
-import java.time.Duration
-import java.time.Instant
-import org.magic.magicaddons.features.farming.greenhousePresets.lookups.StorageBridge
 
 /**
  * Names what a planner still needs as clickable items. A click runs the command and moves the line

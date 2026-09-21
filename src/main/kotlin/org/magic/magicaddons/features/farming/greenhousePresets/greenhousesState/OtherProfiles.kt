@@ -1,12 +1,12 @@
 package org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState
 
-import org.magic.magicaddons.data.greenhouse.Codecs.GREENHOUSE_GRID_CODEC
-import org.magic.magicaddons.data.greenhouse.Codecs.MISC_GREENHOUSE_INFO_CODEC
-import org.magic.magicaddons.data.greenhouse.GreenhouseGrid
-import org.magic.magicaddons.data.greenhouse.MiscGreenhouseInfo
+import java.time.Instant
+import org.magic.magicaddons.data.greenhouse.plot.Codecs.GREENHOUSE_GRID_CODEC
+import org.magic.magicaddons.data.greenhouse.plot.Codecs.MISC_GREENHOUSE_INFO_CODEC
+import org.magic.magicaddons.data.greenhouse.plot.GreenhouseGrid
+import org.magic.magicaddons.data.greenhouse.plot.MiscGreenhouseInfo
 import org.magic.magicaddons.data.handlers.CodecStorage
 import org.magic.magicaddons.data.handlers.DataHandler
-import java.time.Instant
 
 /**
  * The greenhouses of the profiles not being played, read from their files and moved on by their

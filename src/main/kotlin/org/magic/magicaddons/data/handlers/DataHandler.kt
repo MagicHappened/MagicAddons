@@ -2,14 +2,6 @@ package org.magic.magicaddons.data.handlers
 
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
-import net.fabricmc.loader.api.FabricLoader
-import org.magic.magicaddons.Common
-import org.magic.magicaddons.data.greenhouse.Codecs.GREENHOUSE_GRID_CODEC
-import org.magic.magicaddons.data.greenhouse.Codecs.MASTER_LAYOUT_CODEC
-import org.magic.magicaddons.data.greenhouse.Codecs.MISC_GREENHOUSE_INFO_CODEC
-import org.magic.magicaddons.data.greenhouse.MiscGreenhouseInfo
-import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseData
-import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.OtherProfiles
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.UUID
@@ -19,6 +11,14 @@ import kotlin.io.path.listDirectoryEntries
 import kotlin.io.path.name
 import kotlin.io.path.readText
 import kotlin.io.path.writeText
+import net.fabricmc.loader.api.FabricLoader
+import org.magic.magicaddons.Common
+import org.magic.magicaddons.data.greenhouse.plot.Codecs.GREENHOUSE_GRID_CODEC
+import org.magic.magicaddons.data.greenhouse.plot.Codecs.MASTER_LAYOUT_CODEC
+import org.magic.magicaddons.data.greenhouse.plot.Codecs.MISC_GREENHOUSE_INFO_CODEC
+import org.magic.magicaddons.data.greenhouse.plot.MiscGreenhouseInfo
+import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseData
+import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.OtherProfiles
 
 /** Greenhouse data on disk: one folder a profile, named by the profile's id, each holding its own file. */
 object DataHandler {

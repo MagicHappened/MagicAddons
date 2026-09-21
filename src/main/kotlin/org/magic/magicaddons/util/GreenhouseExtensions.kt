@@ -1,13 +1,13 @@
 package org.magic.magicaddons.util
 
-import net.minecraft.core.BlockPos
-import net.minecraft.world.phys.AABB
-import net.minecraft.world.phys.Vec3
-import org.magic.magicaddons.data.greenhouse.GREENHOUSE_SIZE
-import tech.thatgravyboat.skyblockapi.api.profile.garden.Plot
 import java.time.Duration
 import java.time.Instant
 import kotlin.math.abs
+import net.minecraft.core.BlockPos
+import net.minecraft.world.phys.AABB
+import net.minecraft.world.phys.Vec3
+import org.magic.magicaddons.data.greenhouse.plot.GREENHOUSE_SIZE
+import tech.thatgravyboat.skyblockapi.api.profile.garden.Plot
 
 /** Where a garden plot keeps its greenhouse, offset from the corner of the plot itself. */
 private const val BUILD_OFFSET = 43

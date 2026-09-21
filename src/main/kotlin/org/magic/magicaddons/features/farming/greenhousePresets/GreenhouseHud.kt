@@ -1,10 +1,13 @@
 package org.magic.magicaddons.features.farming.greenhousePresets
 
+import java.time.Duration
 import net.minecraft.network.chat.Component
 import org.magic.magicaddons.Common
 import org.magic.magicaddons.data.config.BooleanSetting
-import org.magic.magicaddons.data.greenhouse.GreenhouseGrid
-import org.magic.magicaddons.data.greenhouse.WaterModel
+import org.magic.magicaddons.data.greenhouse.plot.GreenhouseGrid
+import org.magic.magicaddons.data.greenhouse.plot.PlotPrediction
+import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseData
+import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GrowthClock
 import org.magic.magicaddons.ui.hud.ConfigTarget
 import org.magic.magicaddons.ui.hud.HudContent
 import org.magic.magicaddons.ui.hud.HudElement
@@ -13,9 +16,6 @@ import org.magic.magicaddons.ui.hud.HudSituation
 import org.magic.magicaddons.util.toReadableDuration
 import org.magic.magicaddons.util.toShortDuration
 import tech.thatgravyboat.skyblockapi.api.location.LocationAPI
-import java.time.Duration
-import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseData
-import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GrowthClock
 
 /** A small panel on screen in the player's own garden: the next tick, and in a greenhouse what the plants need. */
 object GreenhouseHud : HudElement("greenhouse", "Greenhouse") {
@@ -94,8 +94,8 @@ object GreenhouseHud : HudElement("greenhouse", "Greenhouse") {
 
                 // a plant that reaches its last stage on the water it holds is not dying of thirst
                 if (plant.waterLastsUntilGrown(effect) == true) return@mapNotNull null
-                if (water <= WaterModel.DEATH_LEVEL) 0L
-                else WaterModel.timeUntilDeath(water, effect, remainingMs, tickMs)
+                if (water <= PlotPrediction.WATER_DEATH_LEVEL) 0L
+                else PlotPrediction.timeUntilDeath(water, effect, remainingMs, tickMs)
             }
             .minOrNull()
         val asleep = plants.count { it.isAsleep }

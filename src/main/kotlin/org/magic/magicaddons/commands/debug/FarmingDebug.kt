@@ -1,43 +1,44 @@
 package org.magic.magicaddons.commands.debug
 
+import com.mojang.blaze3d.vertex.PoseStack
 import com.mojang.brigadier.arguments.BoolArgumentType
 import com.mojang.brigadier.arguments.DoubleArgumentType
 import com.mojang.brigadier.arguments.StringArgumentType
 import com.mojang.brigadier.builder.LiteralArgumentBuilder
 import com.mojang.brigadier.builder.RequiredArgumentBuilder
-import com.mojang.blaze3d.vertex.PoseStack
-import net.minecraft.client.renderer.SubmitNodeCollector
-import net.minecraft.world.phys.AABB
-import net.minecraft.world.phys.Vec3
-import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseSpawnLog
-import org.magic.magicaddons.render.WorldRenderer
 import java.time.Duration
 import java.time.Instant
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource
 import net.minecraft.ChatFormatting
 import net.minecraft.client.Minecraft
+import net.minecraft.client.renderer.SubmitNodeCollector
 import net.minecraft.network.chat.ClickEvent
 import net.minecraft.network.chat.Component
 import net.minecraft.network.chat.HoverEvent
 import net.minecraft.network.chat.Style
 import net.minecraft.world.entity.Display
-import org.magic.mixins.TextDisplayAccessor
 import net.minecraft.world.entity.Entity
-import net.minecraft.world.entity.Interaction
 import net.minecraft.world.entity.EquipmentSlot
+import net.minecraft.world.entity.Interaction
 import net.minecraft.world.entity.decoration.ArmorStand
+import net.minecraft.world.phys.AABB
+import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.commands.AbstractCommand
 import org.magic.magicaddons.commands.CropWords
 import org.magic.magicaddons.commands.fmt
-import org.magic.magicaddons.data.greenhouse.CropDefinition
-import org.magic.magicaddons.data.greenhouse.PlantDex
-import org.magic.magicaddons.ui.screens.CropPreviewScreen
-import org.magic.magicaddons.features.farming.greenhousePresets.render.LayoutRenderState
-import org.magic.magicaddons.util.ChatUtils
+import org.magic.magicaddons.data.greenhouse.crops.CropDataGaps
+import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
+import org.magic.magicaddons.data.greenhouse.crops.Plant
+import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseSpawnLog
 import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseData
+import org.magic.magicaddons.features.farming.greenhousePresets.render.LayoutRenderState
+import org.magic.magicaddons.render.WorldRenderer
+import org.magic.magicaddons.ui.screens.CropPreviewScreen
+import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.EntityUtils.typePath
 import org.magic.magicaddons.util.PlayerUtils
 import org.magic.magicaddons.util.ScreenUtil
+import org.magic.mixins.TextDisplayAccessor
 
 /**
  * Reads the entities standing around the player. Greenhouse stands have no hit box to aim at, so
@@ -177,7 +178,7 @@ object FarmingDebug : AbstractCommand() {
                     )
             )
             .then(
-                plantDexCommand()
+                cropDataGapsCommand()
             )
             .then(previewCommand())
             .then(
@@ -249,10 +250,10 @@ object FarmingDebug : AbstractCommand() {
             )
 
     /** The dex, and under it "missing" then every crop as a command word. */
-    private fun plantDexCommand(): LiteralArgumentBuilder<FabricClientCommandSource> =
+    private fun cropDataGapsCommand(): LiteralArgumentBuilder<FabricClientCommandSource> =
         LiteralArgumentBuilder.literal<FabricClientCommandSource>("plantDex")
             .executes {
-                dumpPlantDex()
+                dumpCropDataGaps()
                 return@executes 1
             }
             .then(
@@ -267,7 +268,7 @@ object FarmingDebug : AbstractCommand() {
 
                     when {
                         word.equals(MISSING_WORD, ignoreCase = true) -> dumpMissingPlants()
-                        def != null -> dumpPlantDexFor(def)
+                        def != null -> dumpCropDataGapsFor(def)
                         else -> ChatUtils.sendWithPrefix("No crop called $word.")
                     }
                     return@executes 1
@@ -276,7 +277,7 @@ object FarmingDebug : AbstractCommand() {
 
     /** Every crop still missing something, one line per tier with the crops in its hover. */
     private fun dumpMissingPlants() {
-        val gaps = PlantDex.gapsByTier()
+        val gaps = CropDataGaps.gapsByTier()
 
         if (gaps.isEmpty()) {
             ChatUtils.sendWithPrefix("Nothing missing. The dex is complete.")
@@ -304,8 +305,8 @@ object FarmingDebug : AbstractCommand() {
     }
 
     /** What one crop is still missing, said in chat rather than copied. */
-    private fun dumpPlantDexFor(def: CropDefinition) {
-        val missing = PlantDex.missingSummary(def)
+    private fun dumpCropDataGapsFor(def: CropDefinition) {
+        val missing = CropDataGaps.missingSummary(def)
 
         if (missing == null) {
             ChatUtils.sendWithPrefix(
@@ -316,7 +317,7 @@ object FarmingDebug : AbstractCommand() {
         }
 
         ChatUtils.sendWithPrefix(
-            Component.literal("${def.name}: ${PlantDex.recordedPercent(def)}% of ${def.maxStage} stages")
+            Component.literal("${def.name}: ${CropDataGaps.recordedPercent(def)}% of ${def.maxStage} stages")
                 .withStyle(ChatFormatting.GOLD)
         )
         ChatUtils.send(
@@ -328,8 +329,8 @@ object FarmingDebug : AbstractCommand() {
      * How much of every crop the definitions cover. The percentage goes to chat, the gap list to
      * the clipboard, sorted so a collection trip can be planned off it.
      */
-    private fun dumpPlantDex() {
-        val report = PlantDex.cropDataReport()
+    private fun dumpCropDataGaps() {
+        val report = CropDataGaps.cropDataReport()
 
         ChatUtils.sendWithPrefix(
             Component.literal(

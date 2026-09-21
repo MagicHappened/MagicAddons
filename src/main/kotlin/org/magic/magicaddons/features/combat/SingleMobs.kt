@@ -62,6 +62,7 @@ object SingleMobs {
     }
 
     val all: List<Mob> = listOf(
+        Mob("Sanger", Rule.Skin("c60812527ebb2d72e6119effd0cce5f1f2966ad45edbb705ed04948aba6f1b74"), SkyBlockIsland.TORRHUS_CANYON),
         Mob("Vanquisher", Rule.Type(WitherBoss::class), SkyBlockIsland.CRIMSON_ISLE),
         Mob("Matcho", Rule.Skin("ef2daabb78a1f7aa12d145d88c0ca46b9e856f5534e9286e555faf0c291f4fd5"), SkyBlockIsland.CRIMSON_ISLE),
         Mob("Ragnarok", Rule.Skin("a8e1fe214b71f6ea69c541a861c64bafda7bf9b85de5dd17ab2b6ccd1d32b039"), SkyBlockIsland.CRIMSON_ISLE),

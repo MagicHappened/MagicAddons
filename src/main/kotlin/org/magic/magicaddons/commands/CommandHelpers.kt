@@ -4,25 +4,18 @@ import com.mojang.brigadier.context.StringRange
 import com.mojang.brigadier.suggestion.Suggestion
 import com.mojang.brigadier.suggestion.Suggestions
 import com.mojang.brigadier.suggestion.SuggestionsBuilder
-import net.minecraft.world.phys.Vec3
-import org.magic.magicaddons.data.greenhouse.CropDefinition
-import org.magic.magicaddons.data.greenhouse.CropRegistry
 import java.util.concurrent.CompletableFuture
+import net.minecraft.world.phys.Vec3
+import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
+import org.magic.magicaddons.data.greenhouse.crops.CropRegistry
 
-/** Crop names as single command words, since a word cannot hold a space. */
 object CropWords {
 
-    /** A crop's name as one word: letters and digits only. */
     fun of(def: CropDefinition): String = def.name.filter { c -> c.isLetterOrDigit() }
 
-    /** The crop whose word is [word], ignoring case, or null. */
     fun find(word: String): CropDefinition? =
         CropRegistry.all.firstOrNull { def -> of(def).equals(word, ignoreCase = true) }
 
-    /**
-     * Every crop word starting with what was typed, [leading] words first. Built by hand because
-     * the builder sorts alphabetically and would bury the leading words among the crops.
-     */
     fun suggest(builder: SuggestionsBuilder, leading: List<String> = emptyList()): CompletableFuture<Suggestions> {
         val typed = builder.remainingLowerCase
         val range = StringRange.between(builder.start, builder.input.length)

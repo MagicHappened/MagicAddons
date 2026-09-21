@@ -1,8 +1,11 @@
 package org.magic.magicaddons.commands.debug
 
-import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseData
-import net.minecraft.world.entity.EquipmentSlot
 import com.mojang.blaze3d.vertex.PoseStack
+import java.io.File
+import java.time.Instant
+import kotlin.math.abs
+import kotlin.math.max
+import kotlin.math.roundToInt
 import net.minecraft.ChatFormatting
 import net.minecraft.client.Minecraft
 import net.minecraft.client.multiplayer.ClientLevel
@@ -10,40 +13,39 @@ import net.minecraft.client.renderer.SubmitNodeCollector
 import net.minecraft.core.BlockPos
 import net.minecraft.network.chat.ClickEvent
 import net.minecraft.network.chat.Component
-import net.minecraft.network.chat.MutableComponent
 import net.minecraft.network.chat.HoverEvent
+import net.minecraft.network.chat.MutableComponent
 import net.minecraft.network.chat.Style
 import net.minecraft.network.chat.TextColor
 import net.minecraft.util.Mth
 import net.minecraft.world.entity.Entity
+import net.minecraft.world.entity.EquipmentSlot
 import net.minecraft.world.entity.decoration.ArmorStand
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
-import org.magic.magicaddons.data.greenhouse.CropDefinition
-import org.magic.magicaddons.data.handlers.DataHandler
-import org.magic.magicaddons.data.greenhouse.GREENHOUSE_SOIL_Y
-import org.magic.magicaddons.data.greenhouse.CropRegistry
-import org.magic.magicaddons.util.getBuildableArea
-import tech.thatgravyboat.skyblockapi.api.location.LocationAPI
-import tech.thatgravyboat.skyblockapi.api.location.SkyBlockIsland
-import tech.thatgravyboat.skyblockapi.api.profile.garden.PlotAPI
 import org.magic.magicaddons.commands.internal.MainInternal
 import org.magic.magicaddons.commands.internal.farming.CollectToggle
-import org.magic.magicaddons.data.greenhouse.GreenhouseGrid
-import org.magic.magicaddons.data.greenhouse.GrowthStageInfo
-import org.magic.magicaddons.data.greenhouse.LayoutSlot
-import org.magic.magicaddons.data.greenhouse.PlantDex
-import org.magic.magicaddons.data.greenhouse.WaterModel
-import org.magic.magicaddons.data.greenhouse.WorldRotation
+import org.magic.magicaddons.data.greenhouse.crops.CropDataGaps
+import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
+import org.magic.magicaddons.data.greenhouse.crops.CropRegistry
+import org.magic.magicaddons.data.greenhouse.crops.PlantStage
+import org.magic.magicaddons.data.greenhouse.crops.WorldRotation
+import org.magic.magicaddons.data.greenhouse.crops.definitions.misc.DevourerRoots
+import org.magic.magicaddons.data.greenhouse.crops.definitions.mutations.legendary.Devourer
+import org.magic.magicaddons.data.greenhouse.plot.GREENHOUSE_SOIL_Y
+import org.magic.magicaddons.data.greenhouse.plot.GreenhouseGrid
+import org.magic.magicaddons.data.greenhouse.plot.LayoutSlot
+import org.magic.magicaddons.data.greenhouse.plot.PlotPrediction
+import org.magic.magicaddons.data.handlers.DataHandler
+import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseData
 import org.magic.magicaddons.render.WorldRenderer
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.EntityUtils
 import org.magic.magicaddons.util.PlayerUtils
-import java.io.File
-import java.time.Instant
-import kotlin.math.abs
-import kotlin.math.max
-import kotlin.math.roundToInt
+import org.magic.magicaddons.util.getBuildableArea
+import tech.thatgravyboat.skyblockapi.api.location.LocationAPI
+import tech.thatgravyboat.skyblockapi.api.location.SkyBlockIsland
+import tech.thatgravyboat.skyblockapi.api.profile.garden.PlotAPI
 
 /**
  * Collects stage definitions from a whole greenhouse at once. until we finish collecting the data.
@@ -224,15 +226,15 @@ object CropCollector : EntityUtils.HighlightSource {
                 val def = found.plant.cropDef
 
                 val (text, num) = when (val g = found.plant.growthStage) {
-                    is GrowthStageInfo.Known -> g.stage.toString() to g.stage
-                    is GrowthStageInfo.Estimated -> "${g.range.first}..${g.range.last}" to null
+                    is PlantStage.Known -> g.stage.toString() to g.stage
+                    is PlantStage.Estimated -> "${g.range.first}..${g.range.last}" to null
                     else -> null to null
                 }
 
                 // the same promotion the correction pass makes: matched fine, but recorded
                 // without the way its stands are turned, so worth taking again
                 val status = when {
-                    num != null && PlantDex.isMissingRotation(def, num) -> Status.Unturned
+                    num != null && CropDataGaps.isMissingRotation(def, num) -> Status.Unturned
                     num != null && def.stemAgeVaries && !stemAgesMatch(def, num, slotPos, stands) -> Status.StemAge
                     else -> Status.Current
                 }.let { if (num != null) sizeMismatch(def, num, stands) ?: it else it }
@@ -377,7 +379,7 @@ object CropCollector : EntityUtils.HighlightSource {
         val grid = GreenhouseData.getCurrentGrid() ?: return "water=?"
         val plant = grid.getSlotAt(origin, matchY = false)?.let { grid.layout.plantCovering(it) } ?: return "water=?"
         val water = plant.waterLevel ?: return "water=none"
-        return "water=${WaterModel.formatWaterLevel(water)}" + if (plant.waterExact) "" else "(estimated)"
+        return "water=${PlotPrediction.formatWaterLevel(water)}" + if (plant.waterExact) "" else "(estimated)"
     }
 
     private fun addEntry(
@@ -441,7 +443,7 @@ object CropCollector : EntityUtils.HighlightSource {
     private val defsByState: Map<net.minecraft.world.level.block.state.BlockState, List<CropDefinition>> by lazy {
         buildMap<net.minecraft.world.level.block.state.BlockState, MutableList<CropDefinition>> {
             CropRegistry.all.forEach { def ->
-                def.stageDefs
+                def.stages
                     .flatMap { it.blocks.orEmpty() }
                     .map { it.blockState }
                     .distinct()
@@ -473,7 +475,7 @@ object CropCollector : EntityUtils.HighlightSource {
         val owners = mutableMapOf<String, MutableSet<CropDefinition>>()
 
         CropRegistry.all.forEach { def ->
-            def.stageDefs.forEach { stage ->
+            def.stages.forEach { stage ->
                 stage.armorStands?.forEach { stand ->
                     stand.hashString?.let { owners.getOrPut(it) { mutableSetOf() }.add(def) }
                 }
@@ -517,7 +519,7 @@ object CropCollector : EntityUtils.HighlightSource {
             }
         }
 
-        if (status != null) PlantDex.noteSizeCorrection(def.name, stage, needsSmall = status == Status.Undersized)
+        if (status != null) CropDataGaps.noteSizeCorrection(def.name, stage, needsSmall = status == Status.Undersized)
         return status
     }
 
@@ -785,7 +787,7 @@ object CropCollector : EntityUtils.HighlightSource {
 
         // a stage matched from a recording that never said how its stands are turned can be
         // matched but not drawn, so a run is the moment to say it is worth taking again
-        val turned = if (status == Status.Current && PlantDex.isMissingRotation(def, stage)) {
+        val turned = if (status == Status.Current && CropDataGaps.isMissingRotation(def, stage)) {
             Status.Unturned
         } else {
             status

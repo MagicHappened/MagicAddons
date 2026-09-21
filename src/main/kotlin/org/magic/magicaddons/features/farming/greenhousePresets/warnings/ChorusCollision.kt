@@ -1,13 +1,13 @@
 package org.magic.magicaddons.features.farming.greenhousePresets.warnings
 
-import org.magic.magicaddons.data.greenhouse.GREENHOUSE_SIZE
-import org.magic.magicaddons.data.greenhouse.GreenhouseGrid
-import org.magic.magicaddons.data.greenhouse.GreenhouseLayout
-import org.magic.magicaddons.data.greenhouse.SpawnOdds
-import org.magic.magicaddons.data.greenhouse.elements.mutation.epic.ChorusFruit
-import org.magic.magicaddons.data.greenhouse.elements.mutation.rare.MagicJellybean
 import kotlin.math.ceil
 import kotlin.math.sqrt
+import org.magic.magicaddons.data.greenhouse.crops.definitions.mutations.epic.ChorusFruit
+import org.magic.magicaddons.data.greenhouse.crops.definitions.mutations.rare.MagicJellybean
+import org.magic.magicaddons.data.greenhouse.plot.GREENHOUSE_SIZE
+import org.magic.magicaddons.data.greenhouse.plot.GreenhouseGrid
+import org.magic.magicaddons.data.greenhouse.plot.PlotLayout
+import org.magic.magicaddons.data.greenhouse.plot.PlotPrediction
 
 /** whether a greenhouse's chorus will run out of tiles and start breaking the other crops in it */
 object ChorusCollision {
@@ -33,7 +33,7 @@ object ChorusCollision {
     fun reportFor(grid: GreenhouseGrid, ticks: Int, weightMultiplier: Double): Report? =
         reportFor(grid.layout, ticks, weightMultiplier)
 
-    fun reportFor(layout: GreenhouseLayout, ticks: Int, weightMultiplier: Double): Report? {
+    fun reportFor(layout: PlotLayout, ticks: Int, weightMultiplier: Double): Report? {
         if (ticks <= 0) return null
 
         val chorusPlants = layout.plants.filter { it.cropDef == ChorusFruit.definition }
@@ -51,7 +51,7 @@ object ChorusCollision {
         val freeTiles = occupied.count { !it }
 
         val spawnChances = occupied.indices.filter { !occupied[it] }.mapNotNull { tile ->
-            SpawnOdds.mutationChancesAtSlot(layout, tile % GREENHOUSE_SIZE, tile / GREENHOUSE_SIZE, weightMultiplier)
+            PlotPrediction.mutationChancesAtSlot(layout, tile % GREENHOUSE_SIZE, tile / GREENHOUSE_SIZE, weightMultiplier)
                 .firstOrNull { it.crop == ChorusFruit.definition }
                 ?.chance
         }
@@ -86,7 +86,7 @@ object ChorusCollision {
     }
 
     /** a big crop fills every tile it covers */
-    private fun occupiedTiles(layout: GreenhouseLayout): BooleanArray {
+    private fun occupiedTiles(layout: PlotLayout): BooleanArray {
         val occupied = BooleanArray(GREENHOUSE_SIZE * GREENHOUSE_SIZE)
 
         layout.plants.forEach { plant ->

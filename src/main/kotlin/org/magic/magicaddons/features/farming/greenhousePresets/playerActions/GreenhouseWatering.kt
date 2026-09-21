@@ -1,17 +1,17 @@
 package org.magic.magicaddons.features.farming.greenhousePresets.playerActions
 
+import java.time.Duration
+import java.time.Instant
 import net.minecraft.client.Minecraft
 import net.minecraft.network.chat.Component
 import net.minecraft.world.entity.decoration.ArmorStand
-import org.magic.magicaddons.data.greenhouse.CropStandReader
-import org.magic.magicaddons.data.greenhouse.WaterModel
+import org.magic.magicaddons.data.greenhouse.crops.StandReader
+import org.magic.magicaddons.data.greenhouse.plot.PlotPrediction
 import org.magic.magicaddons.events.EventHandler
 import org.magic.magicaddons.events.world.WorldTickEvent
+import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseData
 import org.magic.magicaddons.util.getBuildableArea
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockId
-import java.time.Duration
-import java.time.Instant
-import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseData
 
 object GreenhouseWatering {
 
@@ -71,7 +71,7 @@ object GreenhouseWatering {
 
             plant.waterLevel = barPercent.toDouble()
             // a bar is only good to a notch, so the level it gives is exact only when it reads full
-            plant.waterExact = barPercent >= WaterModel.FULL_LEVEL
+            plant.waterExact = barPercent >= PlotPrediction.WATER_FULL_LEVEL
             plant.waterBestCase = null
             plant.waterPredictedInDebt = false
         }
@@ -82,7 +82,7 @@ object GreenhouseWatering {
      * Any other colour is somebody else's bar, refused.
      */
     private fun waterBarPercent(name: Component): Int? {
-        val counted = CropStandReader.barNotches(name) ?: return null
+        val counted = StandReader.barNotches(name) ?: return null
         if (counted.otherColoured > 0) return null
 
         // a bar cannot show both at once, and a negative level is the one worth reporting

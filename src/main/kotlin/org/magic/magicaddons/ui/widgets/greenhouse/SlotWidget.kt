@@ -1,14 +1,14 @@
 package org.magic.magicaddons.ui.widgets.greenhouse
 
-import org.magic.magicaddons.util.ScreenUtil.drawCheckerboard
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.components.Renderable
 import net.minecraft.client.renderer.RenderPipelines
 import net.minecraft.client.renderer.texture.TextureAtlasSprite
 import net.minecraft.core.Direction
 import net.minecraft.world.level.block.Blocks
-import org.magic.magicaddons.data.greenhouse.LayoutSlot
+import org.magic.magicaddons.data.greenhouse.plot.LayoutSlot
 import org.magic.magicaddons.util.ScreenUtil
+import org.magic.magicaddons.util.ScreenUtil.drawCheckerboard
 
 /** One slot of a grid: the soil asked for, or the checkerboard when a preset asks for air. */
 class SlotWidget(

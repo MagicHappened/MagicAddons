@@ -2,14 +2,6 @@ package org.magic.magicaddons.features.farming.greenhousePresets
 
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
-import org.magic.magicaddons.data.greenhouse.GreenhouseGrid
-import org.magic.magicaddons.data.greenhouse.GreenhouseLayout
-import org.magic.magicaddons.data.greenhouse.GrowthStageInfo
-import org.magic.magicaddons.data.greenhouse.LayoutSlot
-import org.magic.magicaddons.data.greenhouse.Plant
-import org.magic.magicaddons.data.greenhouse.SpawnOdds
-import org.magic.magicaddons.data.handlers.DataHandler
-import org.magic.magicaddons.util.ChatUtils
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardOpenOption
@@ -21,7 +13,15 @@ import kotlin.io.path.readLines
 import kotlin.io.path.readText
 import kotlin.io.path.writeText
 import kotlin.math.pow
+import org.magic.magicaddons.data.greenhouse.crops.Plant
+import org.magic.magicaddons.data.greenhouse.crops.PlantStage
+import org.magic.magicaddons.data.greenhouse.plot.GreenhouseGrid
+import org.magic.magicaddons.data.greenhouse.plot.LayoutSlot
+import org.magic.magicaddons.data.greenhouse.plot.PlotLayout
+import org.magic.magicaddons.data.greenhouse.plot.PlotPrediction
+import org.magic.magicaddons.data.handlers.DataHandler
 import org.magic.magicaddons.features.farming.greenhousePresets.lookups.BioanalysisAccessory
+import org.magic.magicaddons.util.ChatUtils
 
 object GreenhouseSpawnLog {
 
@@ -112,7 +112,7 @@ object GreenhouseSpawnLog {
         )
     }
 
-    fun recordSpawn(spawn: Plant, layout: GreenhouseLayout) {
+    fun recordSpawn(spawn: Plant, layout: PlotLayout) {
         if (!isEnabled) return
         openRecordByGrid.entries.firstOrNull { it.key.layout === layout }?.value?.spawns?.add(recordedPlant(spawn))
     }
@@ -172,8 +172,8 @@ object GreenhouseSpawnLog {
             if (plant.cropDef.name != recorded.cropName) return@forEach
 
             val narrowed = when (val stage = plant.growthStage) {
-                is GrowthStageInfo.Known -> stage.stage..stage.stage
-                is GrowthStageInfo.Estimated -> stage.range
+                is PlantStage.Known -> stage.stage..stage.stage
+                is PlantStage.Estimated -> stage.range
                 null -> return@forEach
             }
             if (narrowed.first < recordedRange.first || narrowed.last > recordedRange.last) return@forEach
@@ -196,21 +196,21 @@ object GreenhouseSpawnLog {
             .filter { it.slot.mark == LayoutSlot.Marking.Target }
             .filter { planned -> grid.layout.getSlot(planned.slot.x, planned.slot.y)?.let { grid.layout.plantCovering(it) } == null }
             .map { planned ->
-                val chances = SpawnOdds.mutationChancesAtSlot(grid.layout, planned.slot.x, planned.slot.y, weightMultiplier)
+                val chances = PlotPrediction.mutationChancesAtSlot(grid.layout, planned.slot.x, planned.slot.y, weightMultiplier)
                 val (targetChances, otherChances) = chances.partition { planned.acceptsCrop(it.crop) }
                 EmptyTargetSpot(planned.slot.x, planned.slot.y, planned, targetChances.sumOf { it.chance }, otherChances.sumOf { it.chance })
             }
     }
 
-    private fun recordedPlants(layout: GreenhouseLayout): List<RecordedPlant> =
+    private fun recordedPlants(layout: PlotLayout): List<RecordedPlant> =
         layout.plants.sortedWith(compareBy({ it.slot.y }, { it.slot.x })).map { recordedPlant(it) }
 
     private fun recordedPlant(plant: Plant): RecordedPlant =
         RecordedPlant(plant.slot.x, plant.slot.y, plant.cropDef.name, stagesOf(plant), plant.waterLevel)
 
     private fun stagesOf(plant: Plant): String = when (val stage = plant.growthStage) {
-        is GrowthStageInfo.Known -> stage.stage.toString()
-        is GrowthStageInfo.Estimated -> "${stage.range.first}-${stage.range.last}"
+        is PlantStage.Known -> stage.stage.toString()
+        is PlantStage.Estimated -> "${stage.range.first}-${stage.range.last}"
         null -> "?"
     }
 

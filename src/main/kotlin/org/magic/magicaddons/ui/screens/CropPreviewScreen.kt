@@ -1,8 +1,5 @@
 package org.magic.magicaddons.ui.screens
 
-import net.minecraft.util.LightCoordsUtil
-import org.magic.magicaddons.data.greenhouse.CropStandReader
-import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.screens.Screen
@@ -11,24 +8,27 @@ import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.core.BlockPos
 import net.minecraft.network.chat.Component
+import net.minecraft.util.LightCoordsUtil
+import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.Common
+import org.magic.magicaddons.data.greenhouse.crops.CropDataGaps
+import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
+import org.magic.magicaddons.data.greenhouse.crops.CropRegistry
+import org.magic.magicaddons.data.greenhouse.crops.CropStage
+import org.magic.magicaddons.data.greenhouse.crops.StandReader
 import org.magic.magicaddons.features.customization.Customization
-import org.magic.magicaddons.ui.widgets.SliderWidget
-import org.magic.magicaddons.data.greenhouse.CropDefinition
-import org.magic.magicaddons.data.greenhouse.CropRegistry
-import org.magic.magicaddons.data.greenhouse.CropStage
-import org.magic.magicaddons.data.greenhouse.PlantDex
 import org.magic.magicaddons.render.CropPreviewRenderState
 import org.magic.magicaddons.render.StandInScene
 import org.magic.magicaddons.ui.OverlayContext
 import org.magic.magicaddons.ui.OverlayRenderable
 import org.magic.magicaddons.ui.widgets.EnumWidget
-import org.magic.magicaddons.util.compat.McCompat
+import org.magic.magicaddons.ui.widgets.SliderWidget
+import org.magic.magicaddons.util.ScreenUtil.drawMultilineBoxCentered
+import org.magic.magicaddons.util.ScreenUtil.drawPanel
 import org.magic.magicaddons.util.ScreenUtil.drawSimpleTooltip
 import org.magic.magicaddons.util.ScreenUtil.drawWarningBadge
-import org.magic.magicaddons.util.ScreenUtil.drawPanel
-import org.magic.magicaddons.util.ScreenUtil.drawMultilineBoxCentered
+import org.magic.magicaddons.util.compat.McCompat
 
 /**
  * Any crop at any stage, drawn as it would stand in a greenhouse: the picker searches, the slider
@@ -49,7 +49,7 @@ class CropPreviewScreen(
 
     /** The stage as it will be drawn, or null while it is unrecorded and shown as a question. */
     private var sceneStage: CropStage? = null
-    private var sceneData: CropStage.RenderData? = null
+    private var sceneData: CropStage.HologramStage? = null
 
     /** The ground under the plant: the first soil its definition asks for, one per footprint cell. */
     private var soilBlocks: Map<BlockPos, BlockState> = emptyMap()
@@ -86,7 +86,7 @@ class CropPreviewScreen(
     private val variant: Variant? get() = variantSelector.currentValue
 
     private fun variantsFor(def: CropDefinition): List<Variant> = when {
-        def.stageDefs.any { CropStandReader.NEEDS_TIME in it.traits } -> listOf(Variant.Day, Variant.Night)
+        def.stages.any { StandReader.NEEDS_TIME in it.traits } -> listOf(Variant.Day, Variant.Night)
         def.sleepStages.isNotEmpty() -> listOf(Variant.Awake, Variant.Asleep)
         else -> emptyList()
     }
@@ -96,10 +96,10 @@ class CropPreviewScreen(
      * Asleep only means anything at the stages a plant sleeps at; elsewhere it is awake either way.
      */
     private fun CropStage.wears(variant: Variant?, def: CropDefinition, stage: Int): Boolean = when (variant) {
-        Variant.Day -> traits[CropStandReader.NEEDS_TIME] == CropStandReader.NEEDS_DAY
-        Variant.Night -> traits[CropStandReader.NEEDS_TIME] == CropStandReader.NEEDS_NIGHT
-        Variant.Asleep -> if (stage in def.sleepStages) readers.any { it.key == CropStandReader.ASLEEP } else readers.none { it.key == CropStandReader.ASLEEP }
-        Variant.Awake -> readers.none { it.key == CropStandReader.ASLEEP }
+        Variant.Day -> traits[StandReader.NEEDS_TIME] == StandReader.NEEDS_DAY
+        Variant.Night -> traits[StandReader.NEEDS_TIME] == StandReader.NEEDS_NIGHT
+        Variant.Asleep -> if (stage in def.sleepStages) readers.any { it.key == StandReader.ASLEEP } else readers.none { it.key == StandReader.ASLEEP }
+        Variant.Awake -> readers.none { it.key == StandReader.ASLEEP }
         null -> true
     }
 
@@ -168,7 +168,7 @@ class CropPreviewScreen(
         val level = Minecraft.getInstance().level ?: return
 
         def.stages
-            .mapNotNull { it.toRenderData(level, ORIGIN, def.footprint, def.standPoses, def.rotatesWithPlot) }
+            .mapNotNull { it.hologramAt(level, ORIGIN, def.footprint, def.standPoses, def.rotatesWithPlot) }
             .forEach { data ->
                 data.blockMap.keys.forEach {
                     cropMinY = minOf(cropMinY, it.y.toDouble())
@@ -214,7 +214,7 @@ class CropPreviewScreen(
             ?: return
 
         sceneStage = stageDef
-        sceneData = stageDef.toRenderData(level, ORIGIN, def.footprint, def.standPoses, def.rotatesWithPlot)
+        sceneData = stageDef.hologramAt(level, ORIGIN, def.footprint, def.standPoses, def.rotatesWithPlot)
 
         // so the plant is not left floating in a void: the ground it grows from, drawn under it
         soilBlocks = def.requiredSoil.firstOrNull()?.defaultBlockState()?.let { soil ->
@@ -251,8 +251,8 @@ class CropPreviewScreen(
 
         val missing = mutableListOf<String>()
 
-        if (PlantDex.isMissingRotation(def, stage)) missing += "rotation data"
-        PlantDex.neededIsSmall(def, stage)?.let { missing += "isSmall = $it" }
+        if (CropDataGaps.isMissingRotation(def, stage)) missing += "rotation data"
+        CropDataGaps.neededIsSmall(def, stage)?.let { missing += "isSmall = $it" }
 
         return missing
     }

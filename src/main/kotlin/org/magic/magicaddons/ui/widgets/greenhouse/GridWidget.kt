@@ -1,34 +1,34 @@
 package org.magic.magicaddons.ui.widgets.greenhouse
 
-import net.minecraft.network.chat.Component
+import kotlin.math.abs
 import net.minecraft.client.Minecraft
-import org.magic.magicaddons.data.greenhouse.CropDefinition
-import org.magic.magicaddons.data.greenhouse.LayoutSlot
-import org.magic.magicaddons.data.greenhouse.SpawnOdds
-import org.magic.magicaddons.util.ScreenUtil.component4
-import org.magic.magicaddons.util.ScreenUtil.renderFakeItem
-import org.magic.magicaddons.util.ScreenUtil.eased
-import net.minecraft.world.item.ItemStack
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.components.Renderable
 import net.minecraft.client.gui.components.events.GuiEventListener
 import net.minecraft.client.input.MouseButtonEvent
-import org.magic.magicaddons.data.greenhouse.Footprint
-import org.magic.magicaddons.data.greenhouse.Plant
+import net.minecraft.network.chat.Component
+import net.minecraft.world.item.ItemStack
 import org.magic.magicaddons.Common
-import org.magic.magicaddons.data.greenhouse.GreenhouseGrid
+import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
+import org.magic.magicaddons.data.greenhouse.crops.Footprint
+import org.magic.magicaddons.data.greenhouse.crops.Plant
+import org.magic.magicaddons.data.greenhouse.plot.GreenhouseGrid
+import org.magic.magicaddons.data.greenhouse.plot.LayoutSlot
+import org.magic.magicaddons.data.greenhouse.plot.PlotLayout
+import org.magic.magicaddons.data.greenhouse.plot.PlotPrediction
 import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseData
-import org.magic.magicaddons.data.greenhouse.GreenhouseLayout
-import org.magic.magicaddons.ui.HoverableContainer
-import org.magic.magicaddons.util.ScreenUtil.inRect
-import org.magic.magicaddons.util.ScreenUtil.stackFor
-import org.magic.magicaddons.util.ScreenUtil.drawCountedCrop
-import org.magic.magicaddons.util.ScreenUtil.drawBorder
-import kotlin.math.abs
 import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GrowthClock
+import org.magic.magicaddons.ui.HoverableContainer
+import org.magic.magicaddons.util.ScreenUtil.component4
+import org.magic.magicaddons.util.ScreenUtil.drawBorder
+import org.magic.magicaddons.util.ScreenUtil.drawCountedCrop
+import org.magic.magicaddons.util.ScreenUtil.eased
+import org.magic.magicaddons.util.ScreenUtil.inRect
+import org.magic.magicaddons.util.ScreenUtil.renderFakeItem
+import org.magic.magicaddons.util.ScreenUtil.stackFor
 
 class GridWidget(
-    val layout: GreenhouseLayout,
+    val layout: PlotLayout,
     val slotSize: Int
 ) : Renderable, HoverableContainer {
 
@@ -51,7 +51,7 @@ class GridWidget(
 
     var cropIdsWithoutPinnedInfo: Set<String> = emptySet()
 
-    var targetPlan: () -> GreenhouseLayout? = { null }
+    var targetPlan: () -> PlotLayout? = { null }
 
     var showUnplannedMutations: Boolean = false
 
@@ -60,13 +60,13 @@ class GridWidget(
 
     fun unplannedMutationSpots(): Map<Pair<Int, Int>, List<CropDefinition>> {
         val plan = targetPlan() ?: return emptyMap()
-        val plannedCropsBySlot = SpawnOdds.targetCropsBySlot(plan)
+        val plannedCropsBySlot = PlotPrediction.targetCropsBySlot(plan)
         var key = plannedCropsBySlot.hashCode()
         layout.slots.forEach { key = key * 31 + (it.soil?.block?.hashCode() ?: 0) }
         layout.plants.forEach { key = key * 31 + (it.slot.x * 64 + it.slot.y) * 31 + it.cropDef.name.hashCode() + (it.slot.mark?.ordinal ?: -1) }
 
         if (key != unplannedSpotsKey) {
-            unplannedSpotsCache = SpawnOdds.unplannedMutationSpots(layout, plannedCropsBySlot)
+            unplannedSpotsCache = PlotPrediction.unplannedMutationSpots(layout, plannedCropsBySlot)
             unplannedSpotsKey = key
         }
         return unplannedSpotsCache
@@ -243,7 +243,7 @@ class GridWidget(
             for (sy in 0 until layout.size) {
                 val slot = layout.getSlot(sx, sy) ?: continue
 
-                val widget = SlotWidget(slot, layout.kind == GreenhouseLayout.Kind.MASTER_PRESET)
+                val widget = SlotWidget(slot, layout.kind == PlotLayout.Kind.MASTER_PRESET)
 
                 widget.width = slotSize
                 widget.height = slotSize
@@ -271,7 +271,7 @@ class GridWidget(
             if (instance.slot.mark == LayoutSlot.Marking.Target && instance.cropDef.spawnRule != null) {
                 // a run of overlapping targets is clear for as long as one of its corners is
                 widget.missingSpawnConditions = (run ?: listOf(instance))
-                    .map { SpawnOdds.missingConditionsForTarget(layout, it) }
+                    .map { PlotPrediction.missingConditionsForTarget(layout, it) }
                     .minBy { it.size }
             }
 
@@ -312,7 +312,7 @@ class GridWidget(
 
             // a soggybud's time is walked on the whole greenhouse, its donors drying out as they
             // will, once per build rather than every frame
-            if (instance.cropDef.drainsNeighbours && layout.kind != GreenhouseLayout.Kind.MASTER_PRESET) {
+            if (instance.cropDef.drainsNeighbours && layout.kind != PlotLayout.Kind.MASTER_PRESET) {
                 val grid = GreenhouseData.greenhouseGrids.find { it.layout.id == layout.id }
                 val tickMs = GrowthClock.tickLengthMs()
                 if (grid != null && tickMs != null) {
@@ -324,7 +324,7 @@ class GridWidget(
             widget.renderedStack = stackFor(instance.cropDef)
             if (instance in justPlaced) widget.appearedAt = System.currentTimeMillis()
             if (instance in justMarked) widget.markedAt = System.currentTimeMillis()
-            widget.inPreset = layout.kind == GreenhouseLayout.Kind.MASTER_PRESET
+            widget.inPreset = layout.kind == PlotLayout.Kind.MASTER_PRESET
             elementWidgets.add(widget)
         }
         justPlaced.clear()

@@ -1,6 +1,6 @@
 package org.magic.magicaddons.ui.widgets.greenhouse
 
-import org.magic.magicaddons.data.greenhouse.LayoutSlot
+import org.magic.magicaddons.data.greenhouse.plot.LayoutSlot
 
 /** What a plant in a preset stands for: the target, an ingredient, or nothing. */
 enum class MarkOption(private val label: String, val marking: LayoutSlot.Marking?) {

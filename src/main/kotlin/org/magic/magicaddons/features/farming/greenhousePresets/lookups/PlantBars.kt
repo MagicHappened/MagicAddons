@@ -2,12 +2,12 @@ package org.magic.magicaddons.features.farming.greenhousePresets.lookups
 
 import net.minecraft.client.Minecraft
 import net.minecraft.world.entity.decoration.ArmorStand
-import org.magic.magicaddons.data.greenhouse.CropStandReader
+import org.magic.magicaddons.data.greenhouse.crops.StandReader
 import org.magic.magicaddons.events.EventHandler
 import org.magic.magicaddons.events.world.WorldTickEvent
-import org.magic.magicaddons.util.getBuildableArea
 import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseData
 import org.magic.magicaddons.features.farming.greenhousePresets.playerActions.GreenhouseWatering
+import org.magic.magicaddons.util.getBuildableArea
 
 /** Reads other information about plants that isn't directly tied to stage. */
 object PlantBars {
@@ -42,16 +42,16 @@ object PlantBars {
 
             val chargeRule = plant.cropDef.chargeRule
             if (chargeRule != null) {
-                val chargePercent = CropStandReader.chargeBarPercent(barName) ?: return@forEach
+                val chargePercent = StandReader.chargeBarPercent(barName) ?: return@forEach
 
-                plant.readings[CropStandReader.CHARGE] = chargePercent
+                plant.readings[StandReader.CHARGE] = chargePercent
                 plant.charge = chargeRule.chargeShownBy(chargePercent)
                 plant.chargeKnown = true
                 return@forEach
             }
 
             if (plant.cropDef.hasHungerBar) {
-                plant.readings[CropStandReader.HUNGER] = CropStandReader.nonWaterBarPercent(barName) ?: return@forEach
+                plant.readings[StandReader.HUNGER] = StandReader.nonWaterBarPercent(barName) ?: return@forEach
             }
         }
     }

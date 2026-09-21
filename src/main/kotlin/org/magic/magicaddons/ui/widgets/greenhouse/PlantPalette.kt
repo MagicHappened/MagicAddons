@@ -1,16 +1,8 @@
 package org.magic.magicaddons.ui.widgets.greenhouse
 
-import org.magic.magicaddons.util.ScreenUtil.splitMod
-import org.magic.magicaddons.util.ScreenUtil.modText
-import org.magic.magicaddons.util.ScreenUtil.drawCheckerboard
-import net.minecraft.world.level.block.Blocks
-import net.minecraft.world.level.block.Block
+import kotlin.math.abs
+import kotlin.math.roundToInt
 import net.minecraft.ChatFormatting
-import org.magic.magicaddons.util.ScreenUtil.drawTooltipLinesAtCursor
-import org.magic.magicaddons.util.compat.McCompat
-import org.magic.magicaddons.data.greenhouse.LayoutSlot
-import org.magic.magicaddons.ui.widgets.EnumWidget
-import org.magic.magicaddons.ui.OverlayContext
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.input.CharacterEvent
@@ -18,22 +10,32 @@ import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.network.chat.Component
 import net.minecraft.world.item.ItemStack
+import net.minecraft.world.level.block.Block
+import net.minecraft.world.level.block.Blocks
 import org.magic.magicaddons.Common
-import org.magic.magicaddons.data.greenhouse.CropDefinition
-import org.magic.magicaddons.data.greenhouse.CropRegistry
-import org.magic.magicaddons.data.greenhouse.CropTier
+import org.magic.magicaddons.data.greenhouse.crops.*
+import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
+import org.magic.magicaddons.data.greenhouse.crops.CropRegistry
+import org.magic.magicaddons.data.greenhouse.crops.CropTier
+import org.magic.magicaddons.data.greenhouse.crops.definitions.mutations.legendary.Devourer
+import org.magic.magicaddons.data.greenhouse.plot.LayoutSlot
+import org.magic.magicaddons.ui.OverlayContext
+import org.magic.magicaddons.ui.widgets.EnumWidget
 import org.magic.magicaddons.ui.widgets.TextField
 import org.magic.magicaddons.ui.widgets.config.ClickableButtonWidget
 import org.magic.magicaddons.util.ScreenUtil
 import org.magic.magicaddons.util.ScreenUtil.drawBorder
+import org.magic.magicaddons.util.ScreenUtil.drawCheckerboard
 import org.magic.magicaddons.util.ScreenUtil.drawScrollBar
-import org.magic.magicaddons.util.ScreenUtil.drawTooltipAtCursor
-import org.magic.magicaddons.util.ScreenUtil.inRect
-import org.magic.magicaddons.util.ScreenUtil.renderFakeItem
 import org.magic.magicaddons.util.ScreenUtil.drawShelf
+import org.magic.magicaddons.util.ScreenUtil.drawTooltipAtCursor
+import org.magic.magicaddons.util.ScreenUtil.drawTooltipLinesAtCursor
+import org.magic.magicaddons.util.ScreenUtil.inRect
+import org.magic.magicaddons.util.ScreenUtil.modText
+import org.magic.magicaddons.util.ScreenUtil.renderFakeItem
+import org.magic.magicaddons.util.ScreenUtil.splitMod
 import org.magic.magicaddons.util.ScreenUtil.stepScroll
-import kotlin.math.abs
-import kotlin.math.roundToInt
+import org.magic.magicaddons.util.compat.McCompat
 
 class PlantPalette(
     overlayContext: OverlayContext,
@@ -146,7 +148,7 @@ class PlantPalette(
         .sortedWith(compareBy({ sortTier(it) }, { it.name.lowercase() }))
 
     private fun sortTier(def: CropDefinition): Double =
-        if (def.name == DEAD_PLANT) 0.5 else CropRegistry.tierOf(def).ordinal.toDouble()
+        if (def.name == DEAD_PLANT) 0.5 else def.tier.ordinal.toDouble()
 
     /** Every soil some crop grows on, after the plants, so a plot's ground can be laid by hand. */
     private val soils: List<Block> = CropRegistry.all
@@ -226,7 +228,7 @@ class PlantPalette(
     }
 
     /** The ground under an icon, in the colour of the plant's rarity, or its own for base and rare crops. */
-    private fun rarityColor(def: CropDefinition): Int = when (CropRegistry.tierOf(def)) {
+    private fun rarityColor(def: CropDefinition): Int = when (def.tier) {
         CropTier.Common -> RARITY_COMMON
         CropTier.Uncommon -> RARITY_UNCOMMON
         CropTier.Rare -> RARITY_RARE
