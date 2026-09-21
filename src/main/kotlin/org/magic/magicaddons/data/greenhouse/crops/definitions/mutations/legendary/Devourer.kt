@@ -54,6 +54,22 @@ object Devourer {
                 blocks = listOf(
                     StageBlock(
                         offset = BlockPos(0, 1, 0),
+                        blockState = wheatState(1)
+                    )
+                ),
+                armorStands = listOf(
+                    StageStand(
+                        offset = Vec3(0.0, -0.65625, 0.0),
+                        hashString = "d5dcd6e26e5ab3c3a60ccc824c05b0fd195f526961019d3249776e8d57399d27",
+                        isSmall = false
+                    )
+                ),
+                2..2
+            ),
+            CropStage(
+                blocks = listOf(
+                    StageBlock(
+                        offset = BlockPos(0, 1, 0),
                         blockState = wheatState(2)
                     )
                 ),

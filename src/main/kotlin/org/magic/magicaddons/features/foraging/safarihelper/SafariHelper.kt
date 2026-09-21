@@ -1,5 +1,7 @@
 package org.magic.magicaddons.features.foraging.safarihelper
 
+import java.time.Duration
+import java.time.Instant
 import net.minecraft.ChatFormatting
 import net.minecraft.client.Minecraft
 import net.minecraft.network.chat.Component
@@ -233,6 +235,9 @@ object SafariHelper : HighlightFeature() {
 
     private val caughtUniques = mutableSetOf<String>()
 
+    /** when the island was arrived on, which every done message counts from */
+    private var arrivedOnIslandAt: Instant? = null
+
     private val catchesByPlayer = mutableMapOf<String, MutableList<SafariZone>>()
 
     /** each players assigned zone */
@@ -353,6 +358,7 @@ object SafariHelper : HighlightFeature() {
             zoneDoneMessageMap.values.forEach { it.reset() }
             catchesByPlayer.clear()
             playerZones.clear()
+            arrivedOnIslandAt = if (event.new == SkyBlockIsland.SAFARI) Instant.now() else null
         }
     }
 
@@ -447,12 +453,21 @@ object SafariHelper : HighlightFeature() {
     }
 
     private fun announceDone(message: String) {
+        val timed = message + timeOnIsland()
+
         if (sendToPartyChat.value) {
-            ChatUtils.sendCommand("pc $message")
+            ChatUtils.sendCommand("pc $timed")
             return
         }
 
-        ChatUtils.sendWithPrefix(Component.literal(message).withStyle(ChatFormatting.GREEN))
+        ChatUtils.sendWithPrefix(Component.literal(timed).withStyle(ChatFormatting.GREEN))
+    }
+
+    /** how long the visit has run, or nothing when the arrival was never seen */
+    private fun timeOnIsland(): String {
+        val arrived = arrivedOnIslandAt ?: return ""
+
+        return " (${ChatUtils.shortDuration(Duration.between(arrived, Instant.now()).toMillis())})"
     }
 
     /** remaining uniques for the safari zone (for hud) */

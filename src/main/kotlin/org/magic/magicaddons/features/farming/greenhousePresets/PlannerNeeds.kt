@@ -15,6 +15,7 @@ import net.minecraft.world.level.block.Blocks
 import org.magic.magicaddons.commands.internal.MainInternal
 import org.magic.magicaddons.commands.internal.farming.GetPlannerItemCommand
 import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
+import org.magic.magicaddons.data.greenhouse.crops.CropRegistry
 import org.magic.magicaddons.data.greenhouse.plot.GreenhouseGrid
 import org.magic.magicaddons.events.EventHandler
 import org.magic.magicaddons.events.chat.SystemChatEvent
@@ -156,14 +157,13 @@ object PlannerNeeds {
         if (seeding != null) return@mapNotNull seedNeed(def, count, seeding)
 
         val label = def.name
-        val id = def.skyblockId
-        val left = count - (id?.let { heldItems(it) } ?: 0)
+        val left = count - heldCrops(def)
         val name = label.lowercase()
 
         when {
             left <= 0 -> null
-            else -> fromStorage(label, left) { id != null && it.getSkyBlockId() == id }
-                ?: if (id == null) {
+            else -> fromStorage(label, left) { cropOfStack(it) == def }
+                ?: if (def.skyblockId == null) {
                     RequestedItem(label, null, unbuyableHover(label, left))
                 } else {
                     RequestedItem(label, "/gfs $name $left", sackHover(left, name))
@@ -374,4 +374,11 @@ object PlannerNeeds {
 
     private fun heldItems(id: SkyBlockId): Int =
         inventory().filter { !it.isEmpty && it.getSkyBlockId() == id }.sumOf { it.count }
+
+    /** the crop an item stands for, under any of the ids its definition records */
+    private fun cropOfStack(stack: ItemStack): CropDefinition? =
+        if (stack.isEmpty) null else stack.getSkyBlockId()?.id?.let { CropRegistry.findByIdOrName(it) }
+
+    private fun heldCrops(crop: CropDefinition): Int =
+        inventory().filter { cropOfStack(it) == crop }.sumOf { it.count }
 }

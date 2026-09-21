@@ -66,6 +66,13 @@ object ChatUtils {
         Minecraft.getInstance().player?.connection?.sendCommand(command)
     }
 
+    /** a length of time as the mod writes it in chat: "2m 18s", or "45s" under a minute */
+    fun shortDuration(ms: Long): String {
+        val seconds = (ms / 1000).coerceAtLeast(0)
+
+        return if (seconds >= 60) "${seconds / 60}m ${seconds % 60}s" else "${seconds}s"
+    }
+
     fun buildWithPrefix(message: Component?): MutableComponent {
         val prefix = Component.literal("[MA] ").withColor(Customization.prefixColour)
 

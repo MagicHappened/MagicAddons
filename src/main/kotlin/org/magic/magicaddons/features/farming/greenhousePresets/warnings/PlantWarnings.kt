@@ -260,18 +260,12 @@ object PlantWarnings {
         sendDehydrationWarning(listOf(plant), remaining)
     }
 
-    private fun shortDuration(ms: Long): String {
-        val seconds = (ms / 1000).coerceAtLeast(0)
-
-        return if (seconds >= 60) "${seconds / 60}m ${seconds % 60}s" else "${seconds}s"
-    }
-
     /** The warning itself, plants grouped by greenhouse, with a way home when away. */
     private fun sendDehydrationWarning(dying: List<DyingPlant>, remainingMs: Long) {
         val byHouse = dying.groupBy({ it.greenhouse }, { it.plant })
 
         val message = ChatUtils.buildWithPrefix(
-                Component.literal("Dying of thirst in ${shortDuration(remainingMs)}: ")
+                Component.literal("Dying of thirst in ${ChatUtils.shortDuration(remainingMs)}: ")
                     .withStyle(ChatFormatting.RED)
             )
 
