@@ -3,10 +3,18 @@ package org.magic.magicaddons.data.greenhouse.transfer
 import blazing.chain.LZSEncoding
 import com.google.gson.JsonArray
 import com.google.gson.JsonParser
-import org.magic.magicaddons.data.greenhouse.CropRegistry
-import org.magic.magicaddons.data.greenhouse.Plant
-import org.magic.magicaddons.data.greenhouse.GreenhouseLayout
-import org.magic.magicaddons.data.greenhouse.LayoutSlot
+import org.magic.magicaddons.data.greenhouse.crops.*
+import org.magic.magicaddons.data.greenhouse.crops.CropRegistry
+import org.magic.magicaddons.data.greenhouse.crops.Plant
+import org.magic.magicaddons.data.greenhouse.crops.definitions.basecrops.Melon
+import org.magic.magicaddons.data.greenhouse.crops.definitions.basecrops.Pumpkin
+import org.magic.magicaddons.data.greenhouse.crops.definitions.basecrops.Wheat
+import org.magic.magicaddons.data.greenhouse.crops.definitions.misc.DevourerRoots
+import org.magic.magicaddons.data.greenhouse.crops.definitions.rarecrops.Cropie
+import org.magic.magicaddons.data.greenhouse.crops.definitions.rarecrops.Helianthus
+import org.magic.magicaddons.data.greenhouse.crops.definitions.rarecrops.Squash
+import org.magic.magicaddons.data.greenhouse.plot.LayoutSlot
+import org.magic.magicaddons.data.greenhouse.plot.PlotLayout
 
 /**
  * Layouts as skymutations.eu shares them: a link whose `layout` parameter is an LZString compressed
@@ -50,7 +58,7 @@ object SkyMutationsFormat : LayoutFormat {
         val entries = runCatching { JsonParser.parseString(decoded).asJsonArray }.getOrNull()
             ?: return LayoutTransferResult.Failure("SkyMutations layout was not a list of plants.")
 
-        val layout = GreenhouseLayout(id = layoutId)
+        val layout = PlotLayout(id = layoutId)
         val occupied = Array(layout.size) { BooleanArray(layout.size) }
         val notes = mutableListOf<String>()
 
@@ -113,7 +121,7 @@ object SkyMutationsFormat : LayoutFormat {
         return LayoutTransferResult.Imported(layout, notes)
     }
 
-    override fun export(layout: GreenhouseLayout): LayoutTransferResult {
+    override fun export(layout: PlotLayout): LayoutTransferResult {
         val entries = JsonArray()
         val unsupported = mutableSetOf<String>()
 

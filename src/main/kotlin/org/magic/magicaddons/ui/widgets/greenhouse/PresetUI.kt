@@ -1,17 +1,17 @@
 package org.magic.magicaddons.ui.widgets.greenhouse
 
-import org.magic.magicaddons.data.greenhouse.MasterLayout
-import org.magic.magicaddons.data.greenhouse.transfer.SkyLayoutsFormat
 import net.minecraft.client.Minecraft
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.network.chat.Component
-import org.magic.magicaddons.data.greenhouse.GreenhouseGrid
+import org.magic.magicaddons.data.greenhouse.plot.GreenhouseGrid
+import org.magic.magicaddons.data.greenhouse.plot.GreenhouseLayout
+import org.magic.magicaddons.data.greenhouse.plot.PlotLayout
 import org.magic.magicaddons.data.greenhouse.transfer.LayoutFormat
-import org.magic.magicaddons.data.greenhouse.transfer.ShareCodeFormat
 import org.magic.magicaddons.data.greenhouse.transfer.LayoutTransferResult
+import org.magic.magicaddons.data.greenhouse.transfer.ShareCodeFormat
+import org.magic.magicaddons.data.greenhouse.transfer.SkyLayoutsFormat
 import org.magic.magicaddons.data.greenhouse.transfer.SkyMutationsFormat
 import org.magic.magicaddons.data.greenhouse.transfer.SkyShardsFormat
-import org.magic.magicaddons.data.greenhouse.GreenhouseLayout
 import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseData
 import org.magic.magicaddons.ui.OverlayContext
 import org.magic.magicaddons.ui.OverlayRenderable
@@ -23,15 +23,15 @@ import org.magic.magicaddons.util.ChatUtils
 
 class PresetUI(
     val overlayContext: OverlayContext,
-    val onAssignedLayout: (assignedLayout: GreenhouseLayout?, selectedGrid: GreenhouseGrid) -> Unit,
+    val onAssignedLayout: (assignedLayout: PlotLayout?, selectedGrid: GreenhouseGrid) -> Unit,
     /** An import to lay into the preset on show; true when it is laid over what is there instead of replacing it. */
     val onImported: (LayoutTransferResult.Imported, Boolean) -> Unit,
     /** Takes a plot off the preset, or with null the whole preset. */
-    val onRemove: (GreenhouseLayout?) -> Unit,
+    val onRemove: (PlotLayout?) -> Unit,
     /** Starts a preset with one empty plot. */
     val onNewPreset: () -> Unit,
     /** What the Delete button is about: the shown plot of a master layout, or the preset itself. */
-    val shownLayout: () -> GreenhouseLayout?,
+    val shownLayout: () -> PlotLayout?,
     /** Turns the shown plot a quarter turn: 1 clockwise, -1 anticlockwise. */
     val onTurn: (Int) -> Unit,
 ) : ActionPanel() {
@@ -107,7 +107,7 @@ class PresetUI(
     }
 
     /** The yes or no before anything is deleted; no, or a click elsewhere, deletes nothing. */
-    private fun confirmDelete(master: MasterLayout, plot: GreenhouseLayout?, clickX: Int, clickY: Int) {
+    private fun confirmDelete(master: GreenhouseLayout, plot: PlotLayout?, clickX: Int, clickY: Int) {
         val question = if (plot != null) {
             "Delete ${master.plotTitle(plot)} from ${master.displayName()}?"
         } else {
@@ -126,7 +126,7 @@ class PresetUI(
             return
         }
 
-        val result = format.import(clipboard, GreenhouseLayout.presetId(GreenhouseData.computeNextAvailableId()))
+        val result = format.import(clipboard, PlotLayout.presetId(GreenhouseData.computeNextAvailableId()))
 
         result.notes.forEach { ChatUtils.sendWithPrefix(it) }
 

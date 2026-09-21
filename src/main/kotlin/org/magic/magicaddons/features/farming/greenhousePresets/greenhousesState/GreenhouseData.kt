@@ -1,20 +1,23 @@
 package org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState
 
-import org.magic.magicaddons.commands.debug.LostPlantReport
-import org.magic.magicaddons.commands.internal.MainInternal
-import org.magic.magicaddons.commands.internal.farming.SetTimestalkAttribute
-import org.magic.magicaddons.util.getBuildableArea
-import org.magic.magicaddons.util.center
-import org.magic.magicaddons.util.toShortDuration
+import java.time.Duration
+import java.time.Instant
 import net.minecraft.client.Minecraft
 import net.minecraft.core.BlockPos
 import net.minecraft.network.chat.Component
 import net.minecraft.world.entity.decoration.ArmorStand
-import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.level.Level
+import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.phys.Vec3
-import org.magic.magicaddons.data.greenhouse.*
-import org.magic.magicaddons.data.greenhouse.elements.FireElement
+import org.magic.magicaddons.commands.debug.LostPlantReport
+import org.magic.magicaddons.commands.internal.MainInternal
+import org.magic.magicaddons.commands.internal.farming.SetTimestalkAttribute
+import org.magic.magicaddons.data.greenhouse.crops.*
+import org.magic.magicaddons.data.greenhouse.crops.definitions.basecrops.Moonflower
+import org.magic.magicaddons.data.greenhouse.crops.definitions.basecrops.Sunflower
+import org.magic.magicaddons.data.greenhouse.crops.definitions.misc.FireElement
+import org.magic.magicaddons.data.greenhouse.crops.definitions.mutations.legendary.Timestalk
+import org.magic.magicaddons.data.greenhouse.plot.*
 import org.magic.magicaddons.data.handlers.DataHandler
 import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.events.EventHandler
@@ -22,15 +25,23 @@ import org.magic.magicaddons.events.chat.SystemChatEvent
 import org.magic.magicaddons.events.greenhouse.GrowthTickEvent
 import org.magic.magicaddons.events.greenhouse.PlotChangedEvent
 import org.magic.magicaddons.events.interact.*
-import org.magic.magicaddons.events.world.WorldTickEvent
 import org.magic.magicaddons.events.world.EntityAddedEvent
 import org.magic.magicaddons.events.world.EntityRemovedEvent
 import org.magic.magicaddons.events.world.LevelUnloadingEvent
+import org.magic.magicaddons.events.world.WorldTickEvent
+import org.magic.magicaddons.features.farming.greenhousePresets.GreenhousePresets
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhousePresets.baseSetting
-import org.magic.magicaddons.util.ChatUtils
+import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseSpawnLog
+import org.magic.magicaddons.features.farming.greenhousePresets.playerActions.GreenhousePlantDischarge
+import org.magic.magicaddons.features.farming.greenhousePresets.playerActions.GreenhouseWatering
+import org.magic.magicaddons.features.farming.greenhousePresets.render.LayoutRenderState
+import org.magic.magicaddons.features.farming.greenhousePresets.warnings.PlantWarnings
 import org.magic.magicaddons.ui.widgets.config.SettingDetail
+import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.ServerUtils
-import tech.thatgravyboat.skyblockapi.api.profile.profile.ProfileAPI
+import org.magic.magicaddons.util.center
+import org.magic.magicaddons.util.getBuildableArea
+import org.magic.magicaddons.util.toShortDuration
 import tech.thatgravyboat.skyblockapi.api.events.base.Subscription
 import tech.thatgravyboat.skyblockapi.api.events.base.predicates.OnlyIn
 import tech.thatgravyboat.skyblockapi.api.events.base.predicates.OnlyNonGuest
@@ -42,16 +53,9 @@ import tech.thatgravyboat.skyblockapi.api.location.LocationAPI
 import tech.thatgravyboat.skyblockapi.api.location.SkyBlockIsland
 import tech.thatgravyboat.skyblockapi.api.profile.garden.Plot
 import tech.thatgravyboat.skyblockapi.api.profile.garden.PlotAPI
+import tech.thatgravyboat.skyblockapi.api.profile.profile.ProfileAPI
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockId.Companion.getSkyBlockId
 import tech.thatgravyboat.skyblockapi.utils.extentions.isSkyblockFiller
-import java.time.Duration
-import java.time.Instant
-import org.magic.magicaddons.features.farming.greenhousePresets.GreenhousePresets
-import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseSpawnLog
-import org.magic.magicaddons.features.farming.greenhousePresets.playerActions.GreenhousePlantDischarge
-import org.magic.magicaddons.features.farming.greenhousePresets.playerActions.GreenhouseWatering
-import org.magic.magicaddons.features.farming.greenhousePresets.render.LayoutRenderState
-import org.magic.magicaddons.features.farming.greenhousePresets.warnings.PlantWarnings
 
 object GreenhouseData : GridCallbacks {
 
@@ -66,19 +70,19 @@ object GreenhouseData : GridCallbacks {
     var checkGreenhouses = false
     var greenhousesInitialized = false
     var greenhouseGrids = mutableListOf<GreenhouseGrid>()
-    var presetGrids = mutableListOf<MasterLayout>()
+    var presetGrids = mutableListOf<GreenhouseLayout>()
 
-    fun allPlots(): List<GreenhouseLayout> = presetGrids.flatMap { it.plots }
+    fun allPlots(): List<PlotLayout> = presetGrids.flatMap { it.plots }
 
-    fun masterOf(plot: GreenhouseLayout): MasterLayout? = presetGrids.find { plot in it.plots }
+    fun masterOf(plot: PlotLayout): GreenhouseLayout? = presetGrids.find { plot in it.plots }
 
-    fun fullPlotName(plot: GreenhouseLayout): String {
+    fun fullPlotName(plot: PlotLayout): String {
         val master = masterOf(plot) ?: return plot.displayName()
         return if (master.plots.size > 1) "${master.plotTitle(plot)} of ${master.displayName()}" else master.displayName()
     }
 
 
-    fun nameInFull(plot: GreenhouseLayout): String {
+    fun nameInFull(plot: PlotLayout): String {
         val master = masterOf(plot) ?: return plot.displayName()
 
         return "${master.displayName()} - ${master.plotTitle(plot)}"
@@ -86,7 +90,7 @@ object GreenhouseData : GridCallbacks {
 
     var miscInfo = MiscGreenhouseInfo()
 
-    var currentPreset: MasterLayout? = null
+    var currentPreset: GreenhouseLayout? = null
     var currentGridIndex: Int = 0
 
     var lastCheckTime: Instant? = null
@@ -137,10 +141,10 @@ object GreenhouseData : GridCallbacks {
 
         PlotAPI.plots.forEach { plot ->
             if (plot.data?.isGreenhouse != true) return@forEach
-            val plotId = GreenhouseLayout.plotId(plot.id)
+            val plotId = PlotLayout.plotId(plot.id)
             val existingGrid = greenhouseGrids.find { plotId == it.layout.id }
             existingGrid ?: run {
-                val gridLayout = GreenhouseLayout(id = plotId)
+                val gridLayout = PlotLayout(id = plotId)
                 val gridState = GreenhouseGrid.GridState(
                     lastScanTime = null,
                     needsRescan = true,
@@ -176,18 +180,11 @@ object GreenhouseData : GridCallbacks {
 
         val now = System.currentTimeMillis()
 
-        if (arrivalScanPending) {
-            // the plot is named as current off the scoreboard, which can come before its first stand
-            // has, so the quiet is counted from the arrival as well as from the last entity
-            val quietSince = maxOf(lastEntityChangeAt ?: 0L, arrivalPendingSince)
+        // the plot is named as current off the scoreboard, which can come before its first stand
+        // has, so on arriving the quiet is counted from the arrival as well as from the last entity
+        val quietSince = maxOf(lastEntityChangeAt ?: 0L, if (arrivalScanPending) arrivalPendingSince else 0L)
 
-            return now - quietSince >= ENTITY_QUIET_MS
-        }
-
-        val standsOnTheirWay = standsStillMoving(level)
-        val movedAt = lastEntityChangeAt ?: return true
-
-        if (standsOnTheirWay == 0 && now - movedAt >= ENTITY_MOVE_QUIET_MS) return true
+        if (standsStillMoving(level) == 0 && now - quietSince >= ENTITY_QUIET_MS) return true
 
         // a stand that never arrives would otherwise hold the scan off for good
         return now - (lastChangeAt ?: now) >= MAX_SCAN_DEFER_MS
@@ -220,13 +217,11 @@ object GreenhouseData : GridCallbacks {
     private var arrivalPendingSince: Long = 0L
 
     /**
-     * How long the plot has to go without a new entity before it is taken as fully sent. A stand's
-     * height can still move for a moment after it arrives, which a scan reads as the wrong stage.
+     * How long the plot has to go without an entity arriving before it is taken as fully sent. Short,
+     * because a stand that is still on its way is waited on by name rather than by guessing at a
+     * duration, and a stand that moves later reads its cells again.
      */
-    private const val ENTITY_QUIET_MS: Long = 2_000
-
-    /** How long a stand has to hold still before a scan of an already known plot reads it. */
-    private const val ENTITY_MOVE_QUIET_MS: Long = 500
+    private const val ENTITY_QUIET_MS: Long = 250
 
     /** The longest a moving stand may put a scan off, counted from the plot's last change. */
     private const val MAX_SCAN_DEFER_MS: Long = 3_000
@@ -457,12 +452,12 @@ object GreenhouseData : GridCallbacks {
 
     fun getCurrentGrid(): GreenhouseGrid? {
         val plotId = PlotAPI.getCurrentPlot()?.id ?: return null
-        return greenhouseGrids.find { it.layout.id == GreenhouseLayout.plotId(plotId) }
+        return greenhouseGrids.find { it.layout.id == PlotLayout.plotId(plotId) }
     }
     fun computeNextAvailableId(): Int {
         val usedIds = presetGrids
             .mapNotNull {
-                it.id.removePrefix(GreenhouseLayout.MASTER_PRESET_PREFIX).toIntOrNull()
+                it.id.removePrefix(PlotLayout.MASTER_PRESET_PREFIX).toIntOrNull()
             }
             .toSet()
 
@@ -997,8 +992,8 @@ object GreenhouseData : GridCallbacks {
         plant.age = 0L
 
         val stage = plant.growthStage
-        if (stage is GrowthStageInfo.Estimated && plant.cropDef.stagePlacedAt in stage.range) {
-            plant.growthStage = GrowthStageInfo.Known(plant.cropDef.stagePlacedAt)
+        if (stage is PlantStage.Estimated && plant.cropDef.stagePlacedAt in stage.range) {
+            plant.growthStage = PlantStage.Known(plant.cropDef.stagePlacedAt)
         }
 
         if (plant.consumesWater) {
@@ -1013,20 +1008,20 @@ object GreenhouseData : GridCallbacks {
     }
 
 
-    override fun claimSpawnedMutation(plant: Plant, layout: GreenhouseLayout) {
+    override fun claimSpawnedMutation(plant: Plant, layout: PlotLayout) {
         val grown = ((plant.lowestStage ?: 1) - 1).coerceAtLeast(0)
         val now = Instant.now()
 
 
         if (plant.cropDef.drainsNeighbours) {
-            plant.waterLevel = WaterModel.DRAIN_PER_STAGE * grown
+            plant.waterLevel = PlotPrediction.DRAIN_PER_STAGE * grown
             plant.waterExact = false
         } else if (plant.cropDef.needsWater) {
             val waterEffect = GreenhouseGrid.waterEffectAt(layout, plant.slot)
-            val predictedWater = WaterModel.waterLevelAfter(0.0, grown, waterEffect)
+            val predictedWater = PlotPrediction.waterLevelAfter(0.0, grown, waterEffect)
             // a spawn still standing is alive
-            plant.waterLevel = WaterModel.lowestWaterLevelStillAlive(predictedWater, waterEffect)
-            plant.waterExact = predictedWater > WaterModel.DEATH_LEVEL
+            plant.waterLevel = PlotPrediction.lowestWaterLevelStillAlive(predictedWater, waterEffect)
+            plant.waterExact = predictedWater > PlotPrediction.WATER_DEATH_LEVEL
         }
 
         plant.waterBestCase = null

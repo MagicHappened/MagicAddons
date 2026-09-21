@@ -1,9 +1,10 @@
 package org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState
 
-import tech.thatgravyboat.skyblockapi.api.profile.hunting.AttributeAPI
 import java.time.Instant
-import org.magic.magicaddons.data.greenhouse.*
+import org.magic.magicaddons.data.greenhouse.crops.*
+import org.magic.magicaddons.data.greenhouse.plot.*
 import org.magic.magicaddons.events.interact.*
+import tech.thatgravyboat.skyblockapi.api.profile.hunting.AttributeAPI
 
 /** How long a growth tick takes for this greenhouse, and how much of the running one is left. */
 object GrowthClock {

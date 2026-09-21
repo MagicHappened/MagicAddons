@@ -1,23 +1,26 @@
 package org.magic.magicaddons.commands.debug
 
-import net.minecraft.world.entity.Entity
-import net.minecraft.util.Mth
-import org.magic.magicaddons.data.greenhouse.WorldRotation
-import net.minecraft.network.chat.Component
 import net.minecraft.ChatFormatting
 import net.minecraft.client.Minecraft
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Rotations
+import net.minecraft.network.chat.Component
+import net.minecraft.util.Mth
+import net.minecraft.world.entity.Entity
+import net.minecraft.world.entity.EquipmentSlot
 import net.minecraft.world.entity.decoration.ArmorStand
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.commands.fmt
-import org.magic.magicaddons.data.greenhouse.CropDefinition
-import org.magic.magicaddons.data.greenhouse.CropStates.toCode
+import org.magic.magicaddons.data.greenhouse.crops.CropBlocks.toCode
+import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
+import org.magic.magicaddons.data.greenhouse.crops.CropStage
+import org.magic.magicaddons.data.greenhouse.crops.StageBlock
+import org.magic.magicaddons.data.greenhouse.crops.StageStand
+import org.magic.magicaddons.data.greenhouse.crops.WorldRotation
 import org.magic.magicaddons.util.ChatUtils
-import net.minecraft.world.entity.EquipmentSlot
 import org.magic.magicaddons.util.EntityUtils
 import org.magic.magicaddons.util.PlayerUtils
 
@@ -195,7 +198,7 @@ object CropStageExporter {
                     }
 
                     parts += """
-            CropBlockState.atPositions(
+            StageBlock.atPositions(
                 positions = listOf(
                     $posList
                 ),
@@ -219,7 +222,7 @@ object CropStageExporter {
             if (singletons.isNotEmpty()) {
                 val singletonPart = singletons.joinToString(",\n") { block ->
                     """
-    CropBlockState(
+    StageBlock(
         offset = BlockPos(${block.offset.x}, ${block.offset.y}, ${block.offset.z}),
         blockState = ${toCode(block.blockState)}
     )
@@ -318,7 +321,7 @@ object CropStageExporter {
                         fields.add("itemSlot = EquipmentSlot.$itemSlot")
                     }
 
-                    patternSections += "CropArmorStand.atOffsets(\n" +
+                    patternSections += "StageStand.atOffsets(\n" +
                             indent(fields.joinToString(",\n")) +
                             "\n)"
                 }
@@ -353,7 +356,7 @@ object CropStageExporter {
                             fields.add("itemSlot = EquipmentSlot.${stand.itemSlot}")
                         }
 
-                        append("CropArmorStand(\n")
+                        append("StageStand(\n")
                         append(indent(fields.joinToString(",\n")))
                         append("\n)")
                     }

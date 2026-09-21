@@ -5,11 +5,13 @@ import org.magic.magicaddons.data.config.BooleanSetting
 import org.magic.magicaddons.data.config.IntSetting
 import org.magic.magicaddons.data.config.ParentSetting
 import org.magic.magicaddons.data.config.TextSetting
-import org.magic.magicaddons.data.greenhouse.CropRegistry
+import org.magic.magicaddons.data.greenhouse.crops.CropRegistry
+import org.magic.magicaddons.data.greenhouse.crops.Plant
+import org.magic.magicaddons.data.greenhouse.crops.definitions.mutations.rare.Chloronite
+import org.magic.magicaddons.data.greenhouse.crops.definitions.mutations.rare.Noctilume
+import org.magic.magicaddons.data.greenhouse.crops.definitions.mutations.rare.Snoozling
 import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.features.Feature
-import tech.thatgravyboat.skyblockapi.api.profile.hunting.AttributeAPI
-import tech.thatgravyboat.skyblockapi.api.SkyBlockAPI
 import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseData
 import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.OtherProfiles
 import org.magic.magicaddons.features.farming.greenhousePresets.lookups.PlantBars
@@ -23,6 +25,8 @@ import org.magic.magicaddons.features.farming.greenhousePresets.render.PlannerMa
 import org.magic.magicaddons.features.farming.greenhousePresets.render.WaterIndicator
 import org.magic.magicaddons.features.farming.greenhousePresets.warnings.ChorusCollision
 import org.magic.magicaddons.features.farming.greenhousePresets.warnings.PlantWarnings
+import tech.thatgravyboat.skyblockapi.api.SkyBlockAPI
+import tech.thatgravyboat.skyblockapi.api.profile.hunting.AttributeAPI
 
 object GreenhousePresets : Feature() {
 

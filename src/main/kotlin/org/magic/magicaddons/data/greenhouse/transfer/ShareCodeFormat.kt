@@ -1,19 +1,20 @@
 package org.magic.magicaddons.data.greenhouse.transfer
 
-import net.minecraft.core.registries.BuiltInRegistries
-import net.minecraft.resources.Identifier
-import net.minecraft.world.level.block.Block
-import net.minecraft.world.level.block.Blocks
-import org.magic.magicaddons.data.greenhouse.CropDefinition
-import org.magic.magicaddons.data.greenhouse.CropRegistry
-import org.magic.magicaddons.data.greenhouse.Plant
-import org.magic.magicaddons.data.greenhouse.GreenhouseLayout
-import org.magic.magicaddons.data.greenhouse.LayoutSlot
-import org.magic.magicaddons.data.greenhouse.MasterLayout
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.DataInputStream
 import java.io.DataOutputStream
+import net.minecraft.core.registries.BuiltInRegistries
+import net.minecraft.resources.Identifier
+import net.minecraft.world.level.block.Block
+import net.minecraft.world.level.block.Blocks
+import org.magic.magicaddons.data.greenhouse.crops.*
+import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
+import org.magic.magicaddons.data.greenhouse.crops.CropRegistry
+import org.magic.magicaddons.data.greenhouse.crops.Plant
+import org.magic.magicaddons.data.greenhouse.plot.GreenhouseLayout
+import org.magic.magicaddons.data.greenhouse.plot.LayoutSlot
+import org.magic.magicaddons.data.greenhouse.plot.PlotLayout
 
 /**
  * This mod's own way of sharing a preset: one short line for chat, `MAGH1|name|data`. The name is
@@ -99,7 +100,7 @@ object ShareCodeFormat : LayoutFormat {
         val plotCount = input.readUnsignedByte()
         val plots = List(plotCount) { index ->
             val plotName = input.readUTF().takeIf { it.isNotEmpty() }
-            val layout = GreenhouseLayout(id = MasterLayout.plotId(layoutId, index), name = plotName)
+            val layout = PlotLayout(id = GreenhouseLayout.plotId(layoutId, index), name = plotName)
 
             for (cell in 0 until size * size) {
                 val crop = input.readUnsignedByte()
@@ -122,16 +123,16 @@ object ShareCodeFormat : LayoutFormat {
                 if (crop > 0) crops.getOrNull(crop - 1)?.let { plant(layout, it, slot, notes, merged) }
             }
             layout
-        }.take(MasterLayout.MAX_PLOTS)
+        }.take(GreenhouseLayout.MAX_PLOTS)
 
         if (plots.isEmpty()) return LayoutTransferResult.Failure("That share code holds no plots.")
-        if (plotCount > MasterLayout.MAX_PLOTS) notes.add("Only the first ${MasterLayout.MAX_PLOTS} plots were taken.")
+        if (plotCount > GreenhouseLayout.MAX_PLOTS) notes.add("Only the first ${GreenhouseLayout.MAX_PLOTS} plots were taken.")
         return LayoutTransferResult.Imported(plots.first(), notes, plots.drop(1), presetName)
     }
 
     /** Puts [definition] down with its top left on [slot], its own soil under any cell not given one. */
     private fun plant(
-        layout: GreenhouseLayout,
+        layout: PlotLayout,
         definition: CropDefinition,
         slot: LayoutSlot,
         notes: MutableList<String>,
@@ -153,11 +154,11 @@ object ShareCodeFormat : LayoutFormat {
         )
     }
 
-    override fun export(layout: GreenhouseLayout): LayoutTransferResult = write(layout.name, listOf(layout))
+    override fun export(layout: PlotLayout): LayoutTransferResult = write(layout.name, listOf(layout))
 
-    override fun exportAll(master: MasterLayout): LayoutTransferResult = write(master.name, master.plots)
+    override fun exportAll(master: GreenhouseLayout): LayoutTransferResult = write(master.name, master.plots)
 
-    private fun write(name: String?, plots: List<GreenhouseLayout>): LayoutTransferResult {
+    private fun write(name: String?, plots: List<PlotLayout>): LayoutTransferResult {
         val crops = plots.flatMap { plot -> plot.plants.flatMap { it.acceptedCrops } }.distinct()
         val anyMerged = plots.any { plot -> plot.plants.any { it.hasAlternatives } }
         val version = if (anyMerged) PAYLOAD_VERSION else PLAIN_VERSION

@@ -1,8 +1,11 @@
 package org.magic.magicaddons.features.farming.greenhousePresets.playerActions
 
+import java.time.Duration
+import java.time.Instant
 import net.minecraft.world.entity.decoration.ArmorStand
-import org.magic.magicaddons.data.greenhouse.Plant
-import org.magic.magicaddons.data.greenhouse.ScannedPlant
+import org.magic.magicaddons.data.greenhouse.crops.Plant
+import org.magic.magicaddons.data.greenhouse.crops.ScannedPlant
+import org.magic.magicaddons.data.greenhouse.crops.definitions.mutations.rare.Chloronite
 import org.magic.magicaddons.events.EventHandler
 import org.magic.magicaddons.events.interact.AttackEntityEvent
 import org.magic.magicaddons.events.interact.BlockBreakEvent
@@ -14,8 +17,6 @@ import org.magic.magicaddons.util.ChatUtils
 import tech.thatgravyboat.skyblockapi.api.events.base.Subscription
 import tech.thatgravyboat.skyblockapi.api.events.location.ServerDisconnectEvent
 import tech.thatgravyboat.skyblockapi.api.profile.garden.PlotAPI
-import java.time.Duration
-import java.time.Instant
 
 object BreakProtection {
 

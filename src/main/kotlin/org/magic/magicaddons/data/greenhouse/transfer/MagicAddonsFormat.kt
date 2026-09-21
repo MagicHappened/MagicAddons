@@ -2,11 +2,12 @@ package org.magic.magicaddons.data.greenhouse.transfer
 
 import com.google.gson.JsonArray
 import com.google.gson.JsonParser
-import org.magic.magicaddons.data.greenhouse.CropRegistry
-import org.magic.magicaddons.data.greenhouse.Plant
-import org.magic.magicaddons.data.greenhouse.GreenhouseLayout
-import org.magic.magicaddons.data.greenhouse.LayoutSlot
-import org.magic.magicaddons.data.greenhouse.MasterLayout
+import org.magic.magicaddons.data.greenhouse.crops.*
+import org.magic.magicaddons.data.greenhouse.crops.CropRegistry
+import org.magic.magicaddons.data.greenhouse.crops.Plant
+import org.magic.magicaddons.data.greenhouse.plot.GreenhouseLayout
+import org.magic.magicaddons.data.greenhouse.plot.LayoutSlot
+import org.magic.magicaddons.data.greenhouse.plot.PlotLayout
 
 /**
  * Reads the json this mod shared layouts as before the share code: one line per plant, written
@@ -45,11 +46,11 @@ object MagicAddonsFormat {
             val plots = plotsJson.mapIndexedNotNull { index, element ->
                 val plot = runCatching { element.asJsonObject }.getOrNull() ?: return@mapIndexedNotNull null
                 val plants = runCatching { plot.getAsJsonArray(PLANTS) }.getOrNull() ?: JsonArray()
-                val id = MasterLayout.plotId(layoutId, index)
-                GreenhouseLayout(id = id, name = plot.get(NAME)?.asString).also { readPlants(plants, it, notes) }
-            }.take(MasterLayout.MAX_PLOTS)
+                val id = GreenhouseLayout.plotId(layoutId, index)
+                PlotLayout(id = id, name = plot.get(NAME)?.asString).also { readPlants(plants, it, notes) }
+            }.take(GreenhouseLayout.MAX_PLOTS)
             if (plots.isEmpty()) return LayoutTransferResult.Failure("That layout lists no plots.")
-            if (plotsJson.size() > MasterLayout.MAX_PLOTS) notes.add("Only the first ${MasterLayout.MAX_PLOTS} plots were taken.")
+            if (plotsJson.size() > GreenhouseLayout.MAX_PLOTS) notes.add("Only the first ${GreenhouseLayout.MAX_PLOTS} plots were taken.")
 
             return LayoutTransferResult.Imported(plots.first(), notes, plots.drop(1), presetName)
         }
@@ -57,13 +58,13 @@ object MagicAddonsFormat {
         val plants = runCatching { root.getAsJsonArray(PLANTS) }.getOrNull()
             ?: return LayoutTransferResult.Failure("That layout lists no plants.")
 
-        val layout = GreenhouseLayout(id = layoutId, name = presetName)
+        val layout = PlotLayout(id = layoutId, name = presetName)
         readPlants(plants, layout, notes)
         return LayoutTransferResult.Imported(layout, notes)
     }
 
     /** Puts the plants of one json list onto [layout], noting whatever could not be placed. */
-    private fun readPlants(plants: JsonArray, layout: GreenhouseLayout, notes: MutableList<String>) {
+    private fun readPlants(plants: JsonArray, layout: PlotLayout, notes: MutableList<String>) {
         plants.forEach { element ->
             val plant = runCatching { element.asJsonObject }.getOrNull() ?: return@forEach
 

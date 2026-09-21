@@ -1,0 +1,239 @@
+package org.magic.magicaddons.data.greenhouse.crops.definitions.basecrops
+
+import net.minecraft.core.BlockPos
+import net.minecraft.core.Rotations
+import net.minecraft.world.phys.Vec3
+import org.magic.magicaddons.data.greenhouse.crops.CropBlocks.melonStemState
+import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
+import org.magic.magicaddons.data.greenhouse.crops.CropEffect
+import org.magic.magicaddons.data.greenhouse.crops.CropStage
+import org.magic.magicaddons.data.greenhouse.crops.CropTier
+import org.magic.magicaddons.data.greenhouse.crops.StageBlock
+import org.magic.magicaddons.data.greenhouse.crops.StageStand
+import org.magic.magicaddons.data.greenhouse.crops.StandPose
+import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
+
+object Pumpkin {
+    val definition = CropDefinition(
+        name = "Pumpkin",
+        tier = CropTier.BaseCrop,
+        dropMultiplier = 0.2,
+        effects = setOf(
+            CropEffect.BonusDrops
+        ),
+        skyblockId = SkyBlockItemId.item("PUMPKIN"),
+        aliases = listOf(SkyBlockItemId.item("PUMPKIN_SEEDS")),
+        /** Each skull's pose, found constant across every stage it appears in. */
+        standPoses = mapOf(
+            "18bd4aa55673e90a3c611117277d94f6ce185b5d13d2a862a3376f50a6139c4f" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f))
+        ),
+        stages = listOf(
+            CropStage(
+                blocks = listOf(
+                    StageBlock(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = melonStemState(3)
+                    )
+                ),
+                armorStands = listOf(
+                    StageStand(
+                        offset = Vec3(0.0, 0.125, 0.0),
+                        hashString = "18bd4aa55673e90a3c611117277d94f6ce185b5d13d2a862a3376f50a6139c4f",
+                        isSmall = true
+                    )
+                ),
+                1..1
+            ),
+            CropStage(
+                blocks = listOf(
+                    StageBlock(
+                        offset = BlockPos(0,1,0),
+                        blockState = melonStemState(5)
+                    )
+                ),
+                armorStands = listOf(
+                    StageStand(
+                        offset = Vec3(0.0, 0.28125, 0.0),
+                        hashString = "18bd4aa55673e90a3c611117277d94f6ce185b5d13d2a862a3376f50a6139c4f",
+                        isSmall = true
+                    )
+                ),
+                2..2,
+            ),
+            CropStage(
+                blocks = listOf(
+                    StageBlock(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = melonStemState(5)
+                    )
+                ),
+                armorStands = listOf(
+                    StageStand(
+                        isSmall = false,
+                        offset = Vec3(0.0, -0.53125, 0.0),
+                        headRotation = Rotations(0.0f, 0.0f, -22.5f),
+                        hashString = "18bd4aa55673e90a3c611117277d94f6ce185b5d13d2a862a3376f50a6139c4f"
+                    )
+                ),
+                // stages three and four look the same, so one entry covers both
+                3..4,
+            ),
+            CropStage(
+                blocks = listOf(
+                    StageBlock(
+                        offset = BlockPos(0,1,0),
+                        blockState = melonStemState(6)
+                    )
+                ),
+                armorStands = listOf(
+                    StageStand(
+                        offset = Vec3(0.0, -0.53125, 0.0),
+                        headRotation = Rotations(0.0f, 0.0f, -22.5f),
+                        hashString = "18bd4aa55673e90a3c611117277d94f6ce185b5d13d2a862a3376f50a6139c4f",
+                        isSmall = false,
+                    )
+                ),
+                5..5
+            ) ,
+            CropStage(
+                blocks = listOf(
+                    StageBlock(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = melonStemState(6)
+                    )
+                ),
+                armorStands = listOf(
+                    StageStand(
+                        offset = Vec3(0.0, -0.53125, 0.0),
+                        headRotation = Rotations(0.0f, 0.0f, -22.5f),
+                        hashString = "18bd4aa55673e90a3c611117277d94f6ce185b5d13d2a862a3376f50a6139c4f",
+                        isSmall = false
+                    ),
+                    StageStand(
+                        offset = Vec3(0.21875, 0.1875, 0.1875),
+                        headRotation = Rotations(22.5f, 0.0f, 22.5f),
+                        hashString = "1408c8f3063204487451961fab8e7d5dd3702c06c8ef88f777ae83a79aa3a36f",
+                        isSmall = true
+                    )
+                ),
+                6..6
+            ),CropStage(
+                blocks = listOf(
+                    StageBlock(
+                        offset = BlockPos(0,1,0),
+                        blockState = melonStemState(6)
+                    )
+                ),
+                armorStands = listOf(
+                    StageStand(
+                        offset = Vec3(0.0, -0.53125, 0.0),
+                        headRotation = Rotations(0.0f, 0.0f, -22.5f),
+                        hashString = "18bd4aa55673e90a3c611117277d94f6ce185b5d13d2a862a3376f50a6139c4f",
+                        isSmall = false
+                    ),
+                    StageStand(
+                        offset = Vec3(0.21875, 0.1875, 0.1875),
+                        hashString = "18bd4aa55673e90a3c611117277d94f6ce185b5d13d2a862a3376f50a6139c4f",
+                        isSmall = true,
+                    )
+                ),
+                7..7,
+            ),
+            CropStage(
+                blocks = listOf(
+                    StageBlock(
+                        offset = BlockPos(0,1,0),
+                        blockState = melonStemState(7)
+                    )
+                ),
+                armorStands =
+                    listOf(
+                        StageStand(
+                            offset = Vec3(0.21875, 0.1875, 0.1875),
+                            headRotation = Rotations(22.5f, 0.0f, 22.5f),
+                            hashString = "18bd4aa55673e90a3c611117277d94f6ce185b5d13d2a862a3376f50a6139c4f",
+                            isSmall = true,
+                        ),
+                        StageStand(
+                            offset = Vec3(0.0, -0.53125, 0.0),
+                            headRotation = Rotations(0.0f, 0.0f, -22.5f),
+                            hashString = "a9d2abe3c6d6400a20b47179bbe9be278ed336c07fcc1e03ab0eb0c470d620c",
+                            isSmall = false
+                        )
+                    ),
+                8..8,
+            ),
+            CropStage(
+                blocks = listOf(
+                    StageBlock(
+                        offset = BlockPos(0,1,0),
+                        blockState = melonStemState(7)
+                    )
+                ),
+                armorStands = listOf(
+                    StageStand(
+                        isSmall = false,
+                        offset = Vec3(0.09375, -0.625, 0.09375),
+                        headRotation = Rotations(22.5f, 0.0f, 22.5f),
+                        hashString = "18bd4aa55673e90a3c611117277d94f6ce185b5d13d2a862a3376f50a6139c4f"
+                    ),
+                    StageStand(
+                        isSmall = false,
+                        offset = Vec3(-0.0625, -0.46875, 0.0),
+                        headRotation = Rotations(0.0f, 0.0f, -22.5f),
+                        hashString = "a9d2abe3c6d6400a20b47179bbe9be278ed336c07fcc1e03ab0eb0c470d620c"
+                    )
+                ),
+                9..9,
+            ),
+            CropStage(
+                blocks = listOf(
+                    StageBlock(
+                        offset = BlockPos(0,1,0),
+                        blockState = melonStemState(7)
+                    )
+                ),
+                armorStands = StageStand.atOffsets(
+                    offsets = listOf(
+                        Vec3(0.09375, -0.625, 0.09375),
+                        Vec3(-0.0625, -0.46875, 0.0)
+                    ),
+                    rotations = listOf(
+                        Rotations(22.5f, 0.0f, 22.5f),
+                        Rotations(0.0f, 0.0f, -22.5f)
+                    ),
+                    hashString = "a9d2abe3c6d6400a20b47179bbe9be278ed336c07fcc1e03ab0eb0c470d620c",
+                    isSmall = false
+                ),
+                10..10,
+            ),
+            CropStage(
+                blocks = listOf(
+                    StageBlock(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = melonStemState(7)
+                    )
+                ),
+                armorStands = StageStand.atOffsets(
+                    offsets = listOf(
+                        Vec3(-0.0625, -0.46875, 0.0),
+                        Vec3(0.09375, -0.625, 0.09375)
+                    ),
+                    rotations = listOf(
+                        Rotations(0.0f, 0.0f, -22.5f),
+                        Rotations(22.5f, 0.0f, 22.5f)
+                    ),
+                    hashString = "1839c3565f36c9d6e52d55a1760b11c2060953143ffe4ffe9c8b606ee4e3648f",
+                    isSmall = false
+                ),
+                11..11,
+            )
+
+
+
+
+        ),
+        maxStage = 11,
+        isBaseCrop = true
+    )
+}

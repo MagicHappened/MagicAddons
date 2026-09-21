@@ -1,18 +1,18 @@
 package org.magic.magicaddons.commands.debug
 
+import kotlin.math.abs
 import net.minecraft.client.Minecraft
 import net.minecraft.core.BlockPos
 import net.minecraft.world.entity.decoration.ArmorStand
 import net.minecraft.world.phys.Vec3
-import org.magic.magicaddons.data.greenhouse.CROP_HEIGHT
-import org.magic.magicaddons.data.greenhouse.CropArmorStand
-import org.magic.magicaddons.data.greenhouse.CropStage
-import org.magic.magicaddons.data.greenhouse.Footprint
-import org.magic.magicaddons.data.greenhouse.Plant
-import org.magic.magicaddons.data.greenhouse.WorldRotation
+import org.magic.magicaddons.data.greenhouse.crops.CropStage
+import org.magic.magicaddons.data.greenhouse.crops.Footprint
+import org.magic.magicaddons.data.greenhouse.crops.Plant
+import org.magic.magicaddons.data.greenhouse.crops.StageStand
+import org.magic.magicaddons.data.greenhouse.crops.WorldRotation
+import org.magic.magicaddons.data.greenhouse.plot.CROP_HEIGHT
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.PlayerUtils
-import kotlin.math.abs
 
 /** why a scan stopped matching a plant the records already had */
 object LostPlantReport {
@@ -80,7 +80,7 @@ object LostPlantReport {
         return "matches now"
     }
 
-    private fun matches(stand: ArmorStand, recordedStand: CropArmorStand, footprintCenter: Vec3, expectedOffset: Vec3): Boolean =
+    private fun matches(stand: ArmorStand, recordedStand: StageStand, footprintCenter: Vec3, expectedOffset: Vec3): Boolean =
         furthestAxis(stand.position().subtract(footprintCenter), expectedOffset) < OFFSET_TOLERANCE &&
                 (recordedStand.hashString?.let { it == PlayerUtils.getSkullHash(stand) } ?: true)
 

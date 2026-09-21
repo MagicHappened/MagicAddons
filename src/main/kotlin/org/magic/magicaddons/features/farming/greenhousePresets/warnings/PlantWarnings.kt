@@ -1,31 +1,30 @@
 package org.magic.magicaddons.features.farming.greenhousePresets.warnings
 
-import org.magic.magicaddons.util.ChatUtils
+import java.time.Duration
+import java.time.Instant
 import net.minecraft.ChatFormatting
 import net.minecraft.client.Minecraft
+import net.minecraft.network.chat.ClickEvent
 import net.minecraft.network.chat.Component
 import net.minecraft.network.chat.HoverEvent
 import net.minecraft.network.chat.Style
-import org.magic.magicaddons.data.greenhouse.CropStandReader
-import org.magic.magicaddons.data.greenhouse.Plant
-import org.magic.magicaddons.data.greenhouse.GreenhouseGrid
-import org.magic.magicaddons.data.greenhouse.LayoutSlot
+import org.magic.magicaddons.data.greenhouse.crops.Plant
+import org.magic.magicaddons.data.greenhouse.crops.StandReader
+import org.magic.magicaddons.data.greenhouse.plot.DyingPlant
+import org.magic.magicaddons.data.greenhouse.plot.GreenhouseGrid
+import org.magic.magicaddons.data.greenhouse.plot.LayoutSlot
+import org.magic.magicaddons.data.greenhouse.plot.PlotLayout
+import org.magic.magicaddons.data.greenhouse.plot.PlotPrediction
 import org.magic.magicaddons.events.EventHandler
 import org.magic.magicaddons.events.greenhouse.GrowthTickEvent
-import org.magic.magicaddons.util.toShortDuration
-import tech.thatgravyboat.skyblockapi.api.location.LocationAPI
-import tech.thatgravyboat.skyblockapi.api.location.SkyBlockIsland
-import java.time.Duration
-import java.time.Instant
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhousePresets
 import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseData
 import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.OtherProfiles
-import net.minecraft.network.chat.ClickEvent
-import org.magic.magicaddons.data.greenhouse.DyingPlant
-import org.magic.magicaddons.data.greenhouse.GreenhouseLayout
-import org.magic.magicaddons.data.greenhouse.WaterModel
 import org.magic.magicaddons.features.farming.greenhousePresets.lookups.BioanalysisAccessory
-
+import org.magic.magicaddons.util.ChatUtils
+import org.magic.magicaddons.util.toShortDuration
+import tech.thatgravyboat.skyblockapi.api.location.LocationAPI
+import tech.thatgravyboat.skyblockapi.api.location.SkyBlockIsland
 
 object PlantWarnings {
 
@@ -150,7 +149,7 @@ object PlantWarnings {
     }
 
     /** What to break, where, and why. A growing jellybean is named when there is one to lose. */
-    private fun sendChorusWarning(crowded: List<Pair<GreenhouseLayout, ChorusCollision.Report>>) {
+    private fun sendChorusWarning(crowded: List<Pair<PlotLayout, ChorusCollision.Report>>) {
         val message = ChatUtils.buildWithPrefix(
                 Component.literal("Chorus collision likely: ").withStyle(ChatFormatting.RED)
             )
@@ -215,14 +214,14 @@ object PlantWarnings {
                 if (!instance.consumesWater) return@forEach
 
                 val water = instance.waterLevel ?: return@forEach
-                if (water <= WaterModel.DEATH_LEVEL) return@forEach
+                if (water <= PlotPrediction.WATER_DEATH_LEVEL) return@forEach
 
                 // a plant that has finished growing stopped drinking, so nothing kills it
                 val lowestStage = instance.lowestStage
                 if (lowestStage != null && lowestStage >= instance.cropDef.maxStage) return@forEach
 
                 val effect = GreenhouseGrid.waterEffectAt(grid.layout, instance.slot)
-                val ticksLeft = WaterModel.ticksUntilDeath(water, effect) ?: return@forEach
+                val ticksLeft = PlotPrediction.ticksUntilDeath(water, effect) ?: return@forEach
 
                 if (ticksLeft <= 1) {
                     dying += DyingPlant(
@@ -311,7 +310,7 @@ object PlantWarnings {
 
         if (LocationAPI.island != SkyBlockIsland.GARDEN || LocationAPI.isGuest) return
 
-        val plotNumber = offer.plotId.removePrefix(GreenhouseLayout.PRESET_PREFIX)
+        val plotNumber = offer.plotId.removePrefix(PlotLayout.PRESET_PREFIX)
 
         val message = ChatUtils.buildWithPrefix(
                 Component.literal(
@@ -537,7 +536,7 @@ object PlantWarnings {
     }
 
     private fun timeName(craving: Int): String =
-        if (craving == CropStandReader.NEEDS_NIGHT) "Night" else "Day"
+        if (craving == StandReader.NEEDS_NIGHT) "Night" else "Day"
 
     /** A rung as the headline says it: "6 hours", "20 minutes", "1 minute". */
     private fun rungText(rung: Duration): String {

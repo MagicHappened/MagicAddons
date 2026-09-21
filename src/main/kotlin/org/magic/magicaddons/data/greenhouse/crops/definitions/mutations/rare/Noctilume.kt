@@ -1,0 +1,177 @@
+package org.magic.magicaddons.data.greenhouse.crops.definitions.mutations.rare
+
+import net.minecraft.core.BlockPos
+import net.minecraft.core.Rotations
+import net.minecraft.world.phys.Vec3
+import org.magic.magicaddons.data.greenhouse.crops.CropBlocks.wheatState
+import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
+import org.magic.magicaddons.data.greenhouse.crops.CropEffect
+import org.magic.magicaddons.data.greenhouse.crops.CropStage
+import org.magic.magicaddons.data.greenhouse.crops.CropTier
+import org.magic.magicaddons.data.greenhouse.crops.Footprint
+import org.magic.magicaddons.data.greenhouse.crops.SIX_DAY_DECAY_TIME_MS
+import org.magic.magicaddons.data.greenhouse.crops.SpawnRule
+import org.magic.magicaddons.data.greenhouse.crops.StageBlock
+import org.magic.magicaddons.data.greenhouse.crops.StageStand
+import org.magic.magicaddons.data.greenhouse.crops.StandReader
+import org.magic.magicaddons.data.greenhouse.crops.definitions.mutations.common.Lonelily
+import org.magic.magicaddons.data.greenhouse.crops.definitions.mutations.uncommon.Duskbloom
+import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
+
+/**
+ * Craves either day or night, shown by which skull it carries. It only advances while the garden's
+ * clock matches that craving, and the craving flips on every advance, so each stage has two skulls.
+ */
+object Noctilume {
+
+    private val wheatPositions = listOf(
+        BlockPos(0, 1, 0),
+        BlockPos(0, 1, 1),
+        BlockPos(1, 1, 0),
+        BlockPos(1, 1, 1)
+    )
+
+    /** At the first stage all four stands ride high; the fourth settles a stage later. */
+    private val seedOffsets = listOf(
+        Vec3(-0.21875, 0.6875, 0.15625),
+        Vec3(0.375, 0.84375, -0.3125),
+        Vec3(0.28125, 0.78125, 0.125),
+        Vec3(-0.125, 0.71875, -0.40625)
+    )
+
+    /** The four stands of a young plant sit high on the stalks, then settle as it grows. */
+    private val youngOffsets = listOf(
+        Vec3(-0.21875, 0.6875, 0.15625),
+        Vec3(0.375, 0.84375, -0.3125),
+        Vec3(0.28125, 0.78125, 0.125),
+        Vec3(-0.125, -0.03125, -0.40625)
+    )
+
+    /** At the third stage three stands have settled and the third still rides high. */
+    private val settlingOffsets = listOf(
+        Vec3(-0.21875, -0.0625, 0.15625),
+        Vec3(0.375, 0.09375, -0.3125),
+        Vec3(0.28125, 0.78125, 0.125),
+        Vec3(-0.125, -0.03125, -0.40625)
+    )
+
+    private val grownOffsets = listOf(
+        Vec3(-0.21875, -0.0625, 0.15625),
+        Vec3(0.375, 0.09375, -0.3125),
+        Vec3(0.28125, 0.03125, 0.125),
+        Vec3(-0.125, -0.03125, -0.40625)
+    )
+
+    private val standRotations = listOf(
+        Rotations(22.5f, 0.0f, -22.5f),
+        Rotations(-22.5f, 0.0f, 22.5f),
+        Rotations(22.5f, 0.0f, 22.5f),
+        Rotations(-22.5f, 0.0f, -22.5f)
+    )
+
+    /** One look of a stage: the shared geometry wearing the skull of what it craves, if anything. [fullSized] lists the stands not small. */
+    private fun look(
+        stage: Int,
+        hash: String,
+        craving: Int?,
+        wheatAge: Int,
+        offsets: List<Vec3>,
+        fullSized: Set<Int> = emptySet()
+    ): CropStage = CropStage(
+        blocks = StageBlock.atPositions(
+            positions = wheatPositions,
+            blockState = wheatState(wheatAge)
+        ),
+        armorStands = offsets.indices.map { index ->
+            StageStand(
+                offset = offsets[index],
+                headRotation = standRotations[index],
+                hashString = hash,
+                isSmall = index !in fullSized
+            )
+        },
+        stageRange = stage..stage,
+        traits = craving?.let { mapOf(StandReader.NEEDS_TIME to it) } ?: emptyMap()
+    )
+
+    val definition = CropDefinition(
+        name = "Noctilume",
+        tier = CropTier.Rare,
+        dropMultiplier = 5.3,
+        effects = setOf(
+            CropEffect.EffectSpread,
+            CropEffect.ImprovedWaterRetain,
+            CropEffect.HarvestLoss
+        ),
+        skyblockId = SkyBlockItemId.item("NOCTILUME"),
+        stages = listOf(
+            look(
+                stage = 1,
+                hash = "281e8164cf7af240cc235d4826996013bd045de20d40abd262145dc24c790a09",
+                craving = StandReader.NEEDS_NIGHT,
+                wheatAge = 3,
+                offsets = seedOffsets
+            ),
+            look(
+                stage = 1,
+                hash = "329aa65e77ecc216dbadc774121dec2f3d7267289462eb5d11d3bafa6f5996c8",
+                craving = StandReader.NEEDS_DAY,
+                wheatAge = 3,
+                offsets = seedOffsets
+            ),
+            look(
+                stage = 2,
+                hash = "329aa65e77ecc216dbadc774121dec2f3d7267289462eb5d11d3bafa6f5996c8",
+                craving = StandReader.NEEDS_DAY,
+                wheatAge = 4,
+                offsets = youngOffsets,
+                fullSized = setOf(3)
+            ),
+            look(
+                stage = 2,
+                hash = "281e8164cf7af240cc235d4826996013bd045de20d40abd262145dc24c790a09",
+                craving = StandReader.NEEDS_NIGHT,
+                wheatAge = 4,
+                offsets = youngOffsets,
+                fullSized = setOf(3)
+            ),
+            look(
+                stage = 3,
+                hash = "281e8164cf7af240cc235d4826996013bd045de20d40abd262145dc24c790a09",
+                craving = StandReader.NEEDS_NIGHT,
+                wheatAge = 5,
+                offsets = settlingOffsets,
+                fullSized = setOf(0, 1, 3)
+            ),
+            look(
+                stage = 3,
+                hash = "329aa65e77ecc216dbadc774121dec2f3d7267289462eb5d11d3bafa6f5996c8",
+                craving = StandReader.NEEDS_DAY,
+                wheatAge = 5,
+                offsets = settlingOffsets,
+                fullSized = setOf(0, 1, 3)
+            ),
+            look(
+                stage = 4,
+                hash = "b1b18493d50ff8972f7ef359893d9063fdc54cb822c679002957c294fc8b0005",
+                craving = StandReader.NEEDS_NIGHT,
+                wheatAge = 6,
+                offsets = grownOffsets,
+                fullSized = setOf(0, 1, 2, 3)
+            ),
+            look(
+                stage = 4,
+                hash = "5cdd8c3d5d76a1dc07cdbedc5fd0bb230852df9c1864896f8893f5bfdf3d4c96",
+                craving = StandReader.NEEDS_DAY,
+                wheatAge = 6,
+                offsets = grownOffsets,
+                fullSized = setOf(0, 1, 2, 3)
+            )
+        ),
+        decayTimeMs = SIX_DAY_DECAY_TIME_MS,
+        maxStage = 4,
+        footprint = Footprint(2, 2),
+        isMutation = true,
+        spawnRule = SpawnRule(weight = 25, requiredNeighbourCells = mapOf("Duskbloom" to 6, "Lonelily" to 6))
+    )
+}

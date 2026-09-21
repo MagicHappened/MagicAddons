@@ -1,11 +1,12 @@
 package org.magic.magicaddons.data.greenhouse.transfer
 
-import org.magic.magicaddons.data.greenhouse.CropDefinition
-import org.magic.magicaddons.data.greenhouse.CropRegistry
-import org.magic.magicaddons.data.greenhouse.GREENHOUSE_SIZE
-import org.magic.magicaddons.data.greenhouse.Plant
-import org.magic.magicaddons.data.greenhouse.GreenhouseLayout
-import org.magic.magicaddons.data.greenhouse.LayoutSlot
+import org.magic.magicaddons.data.greenhouse.crops.*
+import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
+import org.magic.magicaddons.data.greenhouse.crops.CropRegistry
+import org.magic.magicaddons.data.greenhouse.crops.Plant
+import org.magic.magicaddons.data.greenhouse.plot.GREENHOUSE_SIZE
+import org.magic.magicaddons.data.greenhouse.plot.LayoutSlot
+import org.magic.magicaddons.data.greenhouse.plot.PlotLayout
 
 /**
  * Layouts as greenhouse.skyshards.com shares them: `inputs|targets|grid`, raw-deflated and written
@@ -113,7 +114,7 @@ object SkyShardsFormat : LayoutFormat {
         val inputs = palette(inputField)
         val targets = palette(targetField)
 
-        val layout = GreenhouseLayout(id = layoutId)
+        val layout = PlotLayout(id = layoutId)
         val claimed = Array(GRID) { BooleanArray(GRID) }
         val unknown = mutableSetOf<String>()
 
@@ -185,7 +186,7 @@ object SkyShardsFormat : LayoutFormat {
 
     // ------------------------------------------------------------------ writing
 
-    override fun export(layout: GreenhouseLayout): LayoutTransferResult {
+    override fun export(layout: PlotLayout): LayoutTransferResult {
         val notes = mutableListOf<String>()
         val unsupported = mutableSetOf<String>()
 

@@ -1,7 +1,7 @@
 package org.magic.magicaddons.data.greenhouse.transfer
 
-import org.magic.magicaddons.data.greenhouse.GreenhouseLayout
-import org.magic.magicaddons.data.greenhouse.MasterLayout
+import org.magic.magicaddons.data.greenhouse.plot.GreenhouseLayout
+import org.magic.magicaddons.data.greenhouse.plot.PlotLayout
 
 /**
  * One way of writing a layout down so it can leave the game and come back. Formats deal in text,
@@ -19,10 +19,10 @@ interface LayoutFormat {
     fun import(text: String, layoutId: String): LayoutTransferResult
 
     /** Writes one plot out as the text a player can share. */
-    fun export(layout: GreenhouseLayout): LayoutTransferResult
+    fun export(layout: PlotLayout): LayoutTransferResult
 
     /** Writes every plot of a preset; a format that holds one plot writes the first. */
-    fun exportAll(master: MasterLayout): LayoutTransferResult = export(master.plots.first())
+    fun exportAll(master: GreenhouseLayout): LayoutTransferResult = export(master.plots.first())
 }
 
 /** What came of a transfer. Notes carry whatever the player should know that did not stop it. */
@@ -31,14 +31,14 @@ sealed interface LayoutTransferResult {
     val notes: List<String>
 
     data class Imported(
-        val layout: GreenhouseLayout,
+        val layout: PlotLayout,
         override val notes: List<String> = emptyList(),
         /** Plots after the first, when the text held more than one. */
-        val extraPlots: List<GreenhouseLayout> = emptyList(),
+        val extraPlots: List<PlotLayout> = emptyList(),
         /** The preset's name when the text carried one apart from the plots' own. */
         val presetName: String? = null
     ) : LayoutTransferResult {
-        val plots: List<GreenhouseLayout> get() = listOf(layout) + extraPlots
+        val plots: List<PlotLayout> get() = listOf(layout) + extraPlots
 
         /** The name a preset made of this takes: the preset's, or the first plot's. */
         val nameForPreset: String? get() = presetName ?: layout.name

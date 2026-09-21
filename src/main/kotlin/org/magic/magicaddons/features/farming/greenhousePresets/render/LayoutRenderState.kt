@@ -1,40 +1,40 @@
 package org.magic.magicaddons.features.farming.greenhousePresets.render
 
-import java.time.Instant
-import java.time.Duration
-import org.magic.magicaddons.data.greenhouse.GreenhouseLayout
-import java.util.UUID
 import com.mojang.blaze3d.vertex.PoseStack
+import java.time.Duration
+import java.time.Instant
+import java.util.UUID
+import net.minecraft.client.Minecraft
+import net.minecraft.client.renderer.SubmitNodeCollector
+import net.minecraft.core.BlockPos
+import net.minecraft.world.entity.decoration.ArmorStand
+import net.minecraft.world.level.Level
+import net.minecraft.world.level.block.Block
+import net.minecraft.world.level.block.Blocks
+import net.minecraft.world.level.block.FarmlandBlock
+import net.minecraft.world.level.block.state.BlockState
+import net.minecraft.world.level.block.state.properties.IntegerProperty
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
-import net.minecraft.world.level.block.Blocks
-import net.minecraft.world.level.block.Block
-import net.minecraft.world.level.Level
-import org.magic.magicaddons.data.greenhouse.CROP_HEIGHT
-import org.magic.magicaddons.data.greenhouse.LayoutSlot
-import org.magic.magicaddons.data.greenhouse.Plant
-import org.magic.magicaddons.data.greenhouse.ScannedPlant
-import org.magic.magicaddons.data.greenhouse.Footprint
-import net.minecraft.client.renderer.SubmitNodeCollector
-import net.minecraft.world.entity.decoration.ArmorStand
-import net.minecraft.client.Minecraft
-import net.minecraft.core.BlockPos
-import net.minecraft.world.level.block.FarmlandBlock
-import net.minecraft.world.level.block.state.properties.IntegerProperty
-import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.shapes.Shapes
 import net.minecraft.world.phys.shapes.VoxelShape
-import org.magic.magicaddons.data.greenhouse.CropDefinition
-import org.magic.magicaddons.data.greenhouse.CropStage
-import org.magic.magicaddons.data.greenhouse.GreenhouseGrid
-import org.magic.magicaddons.render.WorldRenderer
-import org.magic.magicaddons.util.ChatUtils
-import org.magic.magicaddons.util.EntityUtils
-import org.magic.magicaddons.data.greenhouse.CropRegistry
-import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockId.Companion.getSkyBlockId
+import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
+import org.magic.magicaddons.data.greenhouse.crops.CropRegistry
+import org.magic.magicaddons.data.greenhouse.crops.CropStage
+import org.magic.magicaddons.data.greenhouse.crops.Footprint
+import org.magic.magicaddons.data.greenhouse.crops.Plant
+import org.magic.magicaddons.data.greenhouse.crops.ScannedPlant
+import org.magic.magicaddons.data.greenhouse.plot.CROP_HEIGHT
+import org.magic.magicaddons.data.greenhouse.plot.GreenhouseGrid
+import org.magic.magicaddons.data.greenhouse.plot.LayoutSlot
+import org.magic.magicaddons.data.greenhouse.plot.PlotLayout
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhousePresets
 import org.magic.magicaddons.features.farming.greenhousePresets.PlannerNeeds
 import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseData
+import org.magic.magicaddons.render.WorldRenderer
+import org.magic.magicaddons.util.ChatUtils
+import org.magic.magicaddons.util.EntityUtils
+import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockId.Companion.getSkyBlockId
 
 /**
  * preset hologram in world renderer starting with soil blocks then plants
@@ -318,7 +318,7 @@ object LayoutRenderState {
                 cropsNeeded.merge(instance.cropDef, 1, Int::plus)
 
                 val stage = ghostStageOf(instance.cropDef) ?: return@forEach
-                val render = stage.toRenderData(level, soil, instance.cropDef.footprint, instance.cropDef.standPoses, instance.cropDef.rotatesWithPlot)
+                val render = stage.hologramAt(level, soil, instance.cropDef.footprint, instance.cropDef.standPoses, instance.cropDef.rotatesWithPlot)
 
                 render.blockMap.forEach { (pos, state) ->
                     // the plant's own blocks, which have no second form the way its soil does
@@ -368,7 +368,7 @@ object LayoutRenderState {
      * Sends the finished message once, when a plan first has nothing left to mark, ghost or place. A
      * plan that finishes again within half a minute is not announced twice.
      */
-    private fun announceIfFinished(grid: GreenhouseGrid, layout: GreenhouseLayout, next: PlannerLayout, nothingToPlace: Boolean) {
+    private fun announceIfFinished(grid: GreenhouseGrid, layout: PlotLayout, next: PlannerLayout, nothingToPlace: Boolean) {
         if (grid.state.buildAnnounced) return
 
         // a crop skipped for a slot that reads as taken is not a crop that got planted, and a crop
@@ -425,7 +425,7 @@ object LayoutRenderState {
     private fun watchTargets(
         level: Level,
         grid: GreenhouseGrid,
-        layout: GreenhouseLayout,
+        layout: PlotLayout,
         marks: MutableMap<BlockPos, Pair<VoxelShape, PlannerMark>>,
         stands: MutableMap<UUID, Int>
     ) {
