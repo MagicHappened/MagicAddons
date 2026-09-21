@@ -201,7 +201,7 @@ object Godseed {
                         hashString = "ab849bae7ab0927a52836da1a45768527d1c7be5853a9290a283ae9aca0c908b"
                     )
                 ),
-                13..15
+                13..16
             ),
             CropStage(
                 blocks = StageBlock.atPositions(
@@ -254,7 +254,7 @@ object Godseed {
                         isSmall = false
                     )
                 ),
-                18..19
+                17..20
             ),
             CropStage(
                 blocks = StageBlock.atPositions(
@@ -307,7 +307,7 @@ object Godseed {
                         isSmall = false
                     )
                 ),
-                21..24
+                21..26
             ),
             CropStage(
                 blocks = StageBlock.atPositions(

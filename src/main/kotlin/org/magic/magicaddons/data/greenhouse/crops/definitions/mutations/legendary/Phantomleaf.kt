@@ -120,6 +120,57 @@ object Phantomleaf {
                 blocks = listOf(
                     StageBlock(
                         offset = BlockPos(0, 1, 0),
+                        blockState = wheatState(2)
+                    )
+                ),
+                armorStands = listOf(
+                    StageStand(
+                        isSmall = false,
+                        offset = Vec3(0.0, -0.4375, -0.15625),
+                        headRotation = Rotations(22.5f, 0.0f, 0.0f),
+                        hashString = "988eaca2c41056ed3fb34669548843c62bae0b406441ea9d224fd7bd2f73f86e"
+                    )
+                ),
+                6..6
+            ),
+            CropStage(
+                blocks = listOf(
+                    StageBlock(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = wheatState(3)
+                    )
+                ),
+                armorStands = listOf(
+                    StageStand(
+                        isSmall = false,
+                        offset = Vec3(0.0, -0.375, -0.28125),
+                        headRotation = Rotations(45.0f, 0.0f, 0.0f),
+                        hashString = "bf3d71c3fc8bfcfd3003b7d7fde62748c1701aaa8185268cc9ce963feda2f631"
+                    )
+                ),
+                7..8
+            ),
+            CropStage(
+                blocks = listOf(
+                    StageBlock(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = wheatState(3)
+                    )
+                ),
+                armorStands = listOf(
+                    StageStand(
+                        isSmall = false,
+                        offset = Vec3(0.0, -0.375, -0.28125),
+                        headRotation = Rotations(45.0f, 0.0f, 0.0f),
+                        hashString = "92fb1e0e18cadb45a4d96721a9ee9c1d2c36d99826b3c23c19ee18801f721dd3"
+                    )
+                ),
+                9..9
+            ),
+            CropStage(
+                blocks = listOf(
+                    StageBlock(
+                        offset = BlockPos(0, 1, 0),
                         blockState = wheatState(3)
                     )
                 ),
