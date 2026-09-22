@@ -139,6 +139,123 @@ object PlantBoyAdvance {
                 3..3
             ),
             CropStage(
+                blocks = StageBlock.atPositions(
+                    positions = listOf(
+                        BlockPos(0, 1, 0),
+                        BlockPos(1, 1, 0)
+                    ),
+                    blockState = melonStemState(4)
+                ) + StageBlock.atPositions(
+                    positions = listOf(
+                        BlockPos(0, 1, 1),
+                        BlockPos(1, 1, 1)
+                    ),
+                    blockState = melonStemState(1)
+                ),
+                armorStands = StageStand.atOffsets(
+                    offsets = listOf(
+                        Vec3(0.5, -0.75, 0.0),
+                        Vec3(-0.5, -0.75, 0.0)
+                    ),
+                    rotations = listOf(
+                        Rotations(45.0f, 180.0f, 0.0f),
+                        Rotations(45.0f, 0.0f, 0.0f)
+                    ),
+                    yRotations = listOf(
+                        90.0f,
+                        90.0f
+                    ),
+                    hashString = "9eaf5fc0bf98649111f53d7516b18dec5d9d13f19273bef2b2b04f068ca9d337",
+                    isSmall = false
+                ) + listOf(
+                    StageStand(
+                        isSmall = false,
+                        offset = Vec3(0.0, -0.59375, 0.0),
+                        headRotation = Rotations(-22.5f, 0.0f, 0.0f),
+                        hashString = "f10e337f0a17a99e94bed4e8b13d5c7863debdd301f457da19763cf73a34d200"
+                    )
+                ),
+                4..4
+            ),
+            CropStage(
+                blocks = StageBlock.atPositions(
+                    positions = listOf(
+                        BlockPos(0, 1, 0),
+                        BlockPos(1, 1, 0)
+                    ),
+                    blockState = melonStemState(5)
+                ) + StageBlock.atPositions(
+                    positions = listOf(
+                        BlockPos(0, 1, 1),
+                        BlockPos(1, 1, 1)
+                    ),
+                    blockState = melonStemState(1)
+                ),
+                armorStands = StageStand.atOffsets(
+                    offsets = listOf(
+                        Vec3(0.5, -0.75, 0.0),
+                        Vec3(-0.5, -0.75, 0.0)
+                    ),
+                    rotations = listOf(
+                        Rotations(45.0f, 180.0f, 0.0f),
+                        Rotations(45.0f, 0.0f, 0.0f)
+                    ),
+                    yRotations = listOf(
+                        90.0f,
+                        90.0f
+                    ),
+                    hashString = "9eaf5fc0bf98649111f53d7516b18dec5d9d13f19273bef2b2b04f068ca9d337",
+                    isSmall = false
+                ) + listOf(
+                    StageStand(
+                        isSmall = false,
+                        offset = Vec3(0.0, -0.5625, 0.0),
+                        headRotation = Rotations(-22.5f, 0.0f, 0.0f),
+                        hashString = "f10e337f0a17a99e94bed4e8b13d5c7863debdd301f457da19763cf73a34d200"
+                    )
+                ),
+                5..5
+            ),
+            CropStage(
+                blocks = StageBlock.atPositions(
+                    positions = listOf(
+                        BlockPos(0, 1, 0),
+                        BlockPos(1, 1, 0)
+                    ),
+                    blockState = melonStemState(5)
+                ) + StageBlock.atPositions(
+                    positions = listOf(
+                        BlockPos(0, 1, 1),
+                        BlockPos(1, 1, 1)
+                    ),
+                    blockState = melonStemState(2)
+                ),
+                armorStands = StageStand.atOffsets(
+                    offsets = listOf(
+                        Vec3(0.5, -0.65625, 0.0),
+                        Vec3(-0.5, -0.65625, 0.0)
+                    ),
+                    rotations = listOf(
+                        Rotations(45.0f, 180.0f, 0.0f),
+                        Rotations(45.0f, 0.0f, 0.0f)
+                    ),
+                    yRotations = listOf(
+                        90.0f,
+                        90.0f
+                    ),
+                    hashString = "9eaf5fc0bf98649111f53d7516b18dec5d9d13f19273bef2b2b04f068ca9d337",
+                    isSmall = false
+                ) + listOf(
+                    StageStand(
+                        isSmall = false,
+                        offset = Vec3(0.0, -0.5625, 0.0),
+                        headRotation = Rotations(-22.5f, 0.0f, 0.0f),
+                        hashString = "e39c5ac1ad3751dd6b349eba679a046ff9ca8bfc321bff6ec63ea88506cb79e"
+                    )
+                ),
+                6..7
+            ),
+            CropStage(
                 blocks = listOf(
                     StageBlock(
                         offset = BlockPos(0, 1, 0),

@@ -41,7 +41,11 @@ object PlantWarnings {
     /** The setting key of the thirst warning, under the warning types heading. */
     const val THIRST_KEY: String = "DehydrationWarning"
 
+    /** The setting key of its child, under the thirst warning. */
+    const val NEGATIVE_WATER_KEY: String = "AlsoOnNegative"
+
     private const val DEHYDRATION: String = "dehydration"
+    private const val NEGATIVE_WATER: String = "negative-water"
     private const val CHORUS_COLLISION: String = "chorus-collision"
 
     val THRESHOLDS: List<Duration> = listOf(
@@ -208,6 +212,7 @@ object PlantWarnings {
         tick(DEHYDRATION, remainingMs)
 
         val dying = mutableListOf<DyingPlant>()
+        val inDebt = mutableListOf<DyingPlant>()
 
         GreenhouseData.greenhouseGrids.forEach { grid ->
             grid.layout.plants.forEach { instance ->
@@ -223,20 +228,31 @@ object PlantWarnings {
                 val effect = GreenhouseGrid.waterEffectAt(grid.layout, instance.slot)
                 val ticksLeft = PlotPrediction.ticksUntilDeath(water, effect) ?: return@forEach
 
-                if (ticksLeft <= 1) {
-                    dying += DyingPlant(
-                        instance.cropDef.name,
-                        grid.layout.displayName(),
-                        grid.layout.id
-                    )
+                val plant = DyingPlant(
+                    instance.cropDef.name,
+                    grid.layout.displayName(),
+                    grid.layout.id
+                )
+
+                // below zero the coming tick may be skipped, which the dying warning already covers
+                // for the plant the same tick would kill
+                when {
+                    ticksLeft <= 1 -> dying += plant
+                    water < 0 -> inDebt += plant
                 }
             }
         }
 
-        if (dying.isEmpty()) return
-        if (!shouldWarn(DEHYDRATION, remainingMs)) return
+        if (dying.isNotEmpty() && shouldWarn(DEHYDRATION, remainingMs)) {
+            sendDehydrationWarning(dying, remainingMs)
+        }
 
-        sendDehydrationWarning(dying, remainingMs)
+        if (inDebt.isEmpty() || !GreenhousePresets.negativeWaterWarningEnabled()) return
+
+        tick(NEGATIVE_WATER, remainingMs)
+        if (!shouldWarn(NEGATIVE_WATER, remainingMs)) return
+
+        sendWaterWarning(inDebt, remainingMs, OUT_OF_WATER_HEADING, ChatFormatting.GOLD)
     }
 
     /** Returning to the garden soon after a warning is treated as an answer to it. */
@@ -260,13 +276,24 @@ object PlantWarnings {
         sendDehydrationWarning(listOf(plant), remaining)
     }
 
+    private const val DYING_HEADING: String = "Dying from water"
+    private const val OUT_OF_WATER_HEADING: String = "Out of water"
+
+    private fun sendDehydrationWarning(dying: List<DyingPlant>, remainingMs: Long) =
+        sendWaterWarning(dying, remainingMs, DYING_HEADING, ChatFormatting.RED)
+
     /** The warning itself, plants grouped by greenhouse, with a way home when away. */
-    private fun sendDehydrationWarning(dying: List<DyingPlant>, remainingMs: Long) {
+    private fun sendWaterWarning(
+        dying: List<DyingPlant>,
+        remainingMs: Long,
+        heading: String,
+        headingColor: ChatFormatting
+    ) {
         val byHouse = dying.groupBy({ it.greenhouse }, { it.plant })
 
         val message = ChatUtils.buildWithPrefix(
-                Component.literal("Dying of thirst in ${ChatUtils.shortDuration(remainingMs)}: ")
-                    .withStyle(ChatFormatting.RED)
+                Component.literal("$heading in ${ChatUtils.shortDuration(remainingMs)}: ")
+                    .withStyle(headingColor)
             )
 
         byHouse.entries.forEachIndexed { index, (house, plants) ->
@@ -326,7 +353,7 @@ object PlantWarnings {
 
 
     private fun harvestNotes(): List<HouseNote> = notes { grid, instance ->
-        if (!instance.readyToHarvest) return@notes null
+        if (!GreenhousePresets.isHarvestable(instance)) return@notes null
         if (GreenhousePresets.harvestHighlightOnlyTargets() && !onWantedTarget(grid, instance)) return@notes null
 
         instance.cropDef.name to null

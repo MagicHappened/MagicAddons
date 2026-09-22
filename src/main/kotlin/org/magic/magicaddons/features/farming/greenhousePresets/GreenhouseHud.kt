@@ -57,7 +57,7 @@ object GreenhouseHud : HudElement("greenhouse", "Greenhouse") {
             Line("Next tick", "12m 30s"),
             Line("Plants", "24"),
             Line("Ready to harvest", "2", Common.UI.SUCCESS_COLOR),
-            Line("Dies of thirst in", "3h 10m", Common.UI.WARNING_COLOR),
+            Line("Dying from water in", "3h 10m", Common.UI.WARNING_COLOR),
             Line("Next decay", "1d 4h")
         )
     )
@@ -82,7 +82,7 @@ object GreenhouseHud : HudElement("greenhouse", "Greenhouse") {
         add(Line("Plants", plants.size.toString()))
 
         val gardenTime = GreenhouseGrid.dayOrNightNow()
-        val ready = plants.count { it.readyToHarvest }
+        val ready = plants.count { GreenhousePresets.isHarvestable(it) }
         // the soonest a plant here dies of thirst, by the same clock the warnings use
         val tickMs = GrowthClock.tickLengthMs()
         val remainingMs = GrowthClock.remainingTickMs()
@@ -103,7 +103,7 @@ object GreenhouseHud : HudElement("greenhouse", "Greenhouse") {
         val decaying = plants.mapNotNull { it.decayRemainingMs }.minOrNull()
 
         if (ready > 0) add(Line("Ready to harvest", ready.toString(), Common.UI.SUCCESS_COLOR))
-        if (thirst != null) add(Line("Dies of thirst in", if (thirst == 0L) "now" else thirst.toShortDuration(), if (thirst < URGENT_MS) Common.UI.DANGER_COLOR else Common.UI.WARNING_COLOR))
+        if (thirst != null) add(Line("Dying from water in", if (thirst == 0L) "now" else thirst.toShortDuration(), if (thirst < URGENT_MS) Common.UI.DANGER_COLOR else Common.UI.WARNING_COLOR))
         if (asleep > 0) add(Line("Asleep", asleep.toString(), Common.UI.WARNING_COLOR))
         if (craving > 0) add(Line("Wrong time of day", craving.toString(), Common.UI.WARNING_COLOR))
         if (decaying != null) add(Line("Next decay", decaying.toShortDuration(), if (decaying < URGENT_MS) Common.UI.DANGER_COLOR else Common.UI.TEXT_COLOR))
