@@ -16,7 +16,6 @@ import org.magic.magicaddons.features.farming.greenhousePresets.lookups.StatsWid
 import org.magic.magicaddons.util.ChatUtils
 import tech.thatgravyboat.skyblockapi.api.events.base.Subscription
 import tech.thatgravyboat.skyblockapi.api.events.location.ServerDisconnectEvent
-import tech.thatgravyboat.skyblockapi.api.profile.garden.PlotAPI
 
 object BreakProtection {
 
@@ -92,7 +91,7 @@ object BreakProtection {
             return fortunePreventionMessage(crop, StatsWidget.MINING_FORTUNE, "mining fortune", GreenhousePresets.miningFortuneThreshold)
         }
 
-        if (GreenhousePresets.preventBreakingDuringPestDebuff() && PlotAPI.hasPestDebuff) {
+        if (GreenhousePresets.preventBreakingDuringPestDebuff() && GreenhouseData.pestDebuffActive) {
             return PREVENTED_PEST_DEBUFF.format(crop)
         }
         if (!GreenhousePresets.preventBreakingUnderFarmingFortune()) return null
@@ -102,7 +101,7 @@ object BreakProtection {
 
     /** returns a reason to prevent a fortune crop from breaking, null when its allowed to be broken */
     private fun fortunePreventionMessage(crop: String, stat: String, statInWords: String, threshold: Int): String? {
-        if (!StatsWidget.isShown) return PREVENTED_WIDGET_OFF.format(crop, statInWords)
+        if (StatsWidget.isShown != true) return PREVENTED_WIDGET_OFF.format(crop, statInWords)
 
         val fortune = StatsWidget.value(stat) ?: return PREVENTED_STAT_MISSING.format(crop, stat)
         if (fortune >= threshold) return null
@@ -132,6 +131,12 @@ object BreakProtection {
             return
         }
 
+        // dont send a message too early
+        if (StatsWidget.isShown == null) {
+            hintDueAt = null
+            return
+        }
+
         // armed from the tick rather than the island change, so it also covers the mod starting up
         // with the player already standing in their garden
         val due = hintDueAt ?: Instant.now().plus(HINT_DELAY).also { hintDueAt = it }
@@ -147,7 +152,7 @@ object BreakProtection {
 
     private fun hintIfUnreadable(stat: String, settingName: String) {
         val hint = when {
-            !StatsWidget.isShown -> HINT_WIDGET_OFF.format(settingName)
+            StatsWidget.isShown != true -> HINT_WIDGET_OFF.format(settingName)
             StatsWidget.value(stat) == null -> HINT_STAT_MISSING.format(stat, settingName)
             else -> return
         }

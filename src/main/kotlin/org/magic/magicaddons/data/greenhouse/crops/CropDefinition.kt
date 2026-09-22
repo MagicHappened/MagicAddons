@@ -46,7 +46,8 @@ data class CropDefinition(
     val chargeRule: ChargeRule? = null,
     val dropMultiplier: Double? = null,
     /** the stems' age changes with something other than the stage */
-    val stemAgeVaries: Boolean = false
+    val stemAgeVaries: Boolean = false,
+    val resetsToFirstStage: Boolean = false
 ){
     val stagePlacedAt: Int get() = if (isMutation) maxStage else 1
     val elementId: String get() = skyblockId?.id ?: name

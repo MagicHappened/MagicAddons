@@ -470,7 +470,7 @@ class GreenhouseGrid(
                 // a grown plant stops drinking, judged by its lowest possible stage
                 val lowestStage = plant.lowestStage
 
-                if (lowestStage != null && lowestStage >= maxStage) {
+                if (lowestStage != null && lowestStage >= maxStage && !plant.cropDef.resetsToFirstStage) {
                     plant.age = plant.age?.plus(ticks * tickMs)
                     return@forEach
                 }
@@ -539,10 +539,14 @@ class GreenhouseGrid(
                 fun nextSleepStage(fromStage: Int): Int =
                     sleepStages.filter { it > fromStage }.minOrNull()?.coerceAtMost(maxStage) ?: maxStage
 
+                fun stageAfter(fromStage: Int, grownBy: Int): Int = when {
+                    plant.cropDef.resetsToFirstStage -> (fromStage - 1 + grownBy) % maxStage + 1
+                    else -> (fromStage + grownBy).coerceAtMost(nextSleepStage(fromStage))
+                }
+
                 // in debt the low end stays and the high end grows
-                val lowestStageAfter =
-                    if (inDebt) stageRange.first else (stageRange.first + ticksFed).coerceAtMost(nextSleepStage(stageRange.first))
-                val highestStageAfter = (stageRange.last + ticksFed).coerceAtMost(nextSleepStage(stageRange.last))
+                val lowestStageAfter = if (inDebt) stageRange.first else stageAfter(stageRange.first, ticksFed)
+                val highestStageAfter = stageAfter(stageRange.last, ticksFed)
 
                 plant.growthStage =
                     if (lowestStageAfter == highestStageAfter) PlantStage.Known(lowestStageAfter)

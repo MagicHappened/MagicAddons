@@ -180,7 +180,6 @@ object FarmingDebug : AbstractCommand() {
             .then(
                 cropDataGapsCommand()
             )
-            .then(previewCommand())
             .then(
                 LiteralArgumentBuilder.literal<FabricClientCommandSource>("spawnLog")
                     .executes {
@@ -197,57 +196,10 @@ object FarmingDebug : AbstractCommand() {
                         return@executes 1
                     }
             )
-            .then(
-                LiteralArgumentBuilder.literal<FabricClientCommandSource>("scan")
-                    .executes {
-                        GreenhouseData.scanUpdatesState = !GreenhouseData.scanUpdatesState
-                        ChatUtils.sendWithPrefix(
-                            "Greenhouse scans ${allowed(GreenhouseData.scanUpdatesState)} update the mod's data."
-                        )
-                        return@executes 1
-                    }
-            )
-            .then(
-                LiteralArgumentBuilder.literal<FabricClientCommandSource>("tool")
-                    .executes {
-                        GreenhouseData.toolUpdatesState = !GreenhouseData.toolUpdatesState
-                        ChatUtils.sendWithPrefix(
-                            "Diagnostic tool readings ${allowed(GreenhouseData.toolUpdatesState)} update the mod's data."
-                        )
-                        return@executes 1
-                    }
-            )
     }
 
     /** How a toggle reads in the line that reports it. */
     private fun allowed(on: Boolean): String = if (on) "now" else "no longer"
-
-    /** The crop preview, on a crop when one is named and empty when not. */
-    private fun previewCommand(): LiteralArgumentBuilder<FabricClientCommandSource> =
-        LiteralArgumentBuilder.literal<FabricClientCommandSource>("preview")
-            .executes {
-                ScreenUtil.setScreen(CropPreviewScreen(null))
-                return@executes 1
-            }
-            .then(
-                RequiredArgumentBuilder.argument<FabricClientCommandSource, String>(
-                    "crop",
-                    StringArgumentType.word()
-                ).suggests { _, builder ->
-                    CropWords.suggest(builder)
-                }.executes {
-                    val word = StringArgumentType.getString(it, "crop")
-                    val def = CropWords.find(word)
-
-                    if (def == null) {
-                        ChatUtils.sendWithPrefix("No crop called $word.")
-                        return@executes 0
-                    }
-
-                    ScreenUtil.setScreen(CropPreviewScreen(null, def))
-                    return@executes 1
-                }
-            )
 
     /** The dex, and under it "missing" then every crop as a command word. */
     private fun cropDataGapsCommand(): LiteralArgumentBuilder<FabricClientCommandSource> =

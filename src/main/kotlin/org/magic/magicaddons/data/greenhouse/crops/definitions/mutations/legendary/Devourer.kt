@@ -154,14 +154,52 @@ object Devourer {
                 blocks = listOf(
                     StageBlock(
                         offset = BlockPos(0, 1, 0),
+                        blockState = melonStemState(3)
+                    )
+                ),
+                armorStands = listOf(
+                    StageStand(
+                        offset = Vec3(0.0, -0.25, 0.0),
+                        headRotation = Rotations(0.0f, 45.0f, 0.0f),
+                        yRotation = 90.0f,
+                        hashString = "ed83f2f247c8a9374ac9e14eb67b55dbb1f17b7db3a5052342968af71cc2c2a0",
+                        isSmall = false
+                    )
+                ),
+                8..8
+            ),
+            CropStage(
+                blocks = listOf(
+                    StageBlock(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = melonStemState(3)
+                    )
+                ),
+                armorStands = listOf(
+                    StageStand(
+                        offset = Vec3(0.0, -0.15625, 0.0),
+                        headRotation = Rotations(0.0f, 45.0f, 0.0f),
+                        yRotation = 90.0f,
+                        hashString = "ed83f2f247c8a9374ac9e14eb67b55dbb1f17b7db3a5052342968af71cc2c2a0",
+                        isSmall = false
+                    )
+                ),
+                9..9
+            ),
+            CropStage(
+                blocks = listOf(
+                    StageBlock(
+                        offset = BlockPos(0, 1, 0),
                         blockState = melonStemState(4)
                     )
                 ),
                 armorStands = listOf(
                     StageStand(
                         offset = Vec3(0.0, -0.0625, 0.0),
+                        headRotation = Rotations(0.0f, 45.0f, 0.0f),
+                        yRotation = 90.0f,
                         hashString = "ed83f2f247c8a9374ac9e14eb67b55dbb1f17b7db3a5052342968af71cc2c2a0",
-                        isSmall = true
+                        isSmall = false
                     )
                 ),
                 10..10
@@ -176,8 +214,10 @@ object Devourer {
                 armorStands = listOf(
                     StageStand(
                         offset = Vec3(0.0, 0.03125, 0.0),
+                        headRotation = Rotations(0.0f, 45.0f, 0.0f),
+                        yRotation = 90.0f,
                         hashString = "ed83f2f247c8a9374ac9e14eb67b55dbb1f17b7db3a5052342968af71cc2c2a0",
-                        isSmall = true
+                        isSmall = false
                     )
                 ),
                 11..11
@@ -192,11 +232,31 @@ object Devourer {
                 armorStands = listOf(
                     StageStand(
                         offset = Vec3(0.0, 0.03125, 0.0),
+                        headRotation = Rotations(0.0f, 45.0f, 0.0f),
+                        yRotation = 90.0f,
                         hashString = "4100d3b81c8dd0af22af3b42c97045bd844438d2f0297b0f267a46bd35ffb33f",
-                        isSmall = true
+                        isSmall = false
                     )
                 ),
                 12..12
+            ),
+            CropStage(
+                blocks = listOf(
+                    StageBlock(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = melonStemState(6)
+                    )
+                ),
+                armorStands = listOf(
+                    StageStand(
+                        offset = Vec3(0.0, 0.15625, 0.0),
+                        headRotation = Rotations(0.0f, 45.0f, 0.0f),
+                        yRotation = 90.0f,
+                        hashString = "4100d3b81c8dd0af22af3b42c97045bd844438d2f0297b0f267a46bd35ffb33f",
+                        isSmall = false
+                    )
+                ),
+                13..13
             ),
             CropStage(
                 blocks = listOf(
@@ -215,6 +275,41 @@ object Devourer {
                     )
                 ),
                 14..14
+            ),
+            CropStage(
+                blocks = listOf(
+                    StageBlock(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = melonStemState(7)
+                    )
+                ),
+                armorStands = listOf(
+                    StageStand(
+                        offset = Vec3(0.0, 0.34375, 0.0),
+                        headRotation = Rotations(-22.5f, 90.0f, 0.0f),
+                        yRotation = 90.0f,
+                        hashString = "4100d3b81c8dd0af22af3b42c97045bd844438d2f0297b0f267a46bd35ffb33f",
+                        isSmall = false
+                    )
+                ),
+                15..15
+            ),
+            CropStage(
+                blocks = listOf(
+                    StageBlock(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = melonStemState(7)
+                    )
+                ),
+                armorStands = listOf(
+                    StageStand(
+                        offset = Vec3(0.0, 0.5625, 0.0),
+                        headRotation = Rotations(112.5f, 0.0f, 0.0f),
+                        hashString = "4100d3b81c8dd0af22af3b42c97045bd844438d2f0297b0f267a46bd35ffb33f",
+                        isSmall = false
+                    )
+                ),
+                16..16
             )
 
         ),

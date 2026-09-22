@@ -28,6 +28,7 @@ import org.magic.magicaddons.commands.internal.farming.CollectToggle
 import org.magic.magicaddons.data.greenhouse.crops.CropDataGaps
 import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
 import org.magic.magicaddons.data.greenhouse.crops.CropRegistry
+import org.magic.magicaddons.data.greenhouse.crops.StandReader
 import org.magic.magicaddons.data.greenhouse.crops.PlantStage
 import org.magic.magicaddons.data.greenhouse.crops.WorldRotation
 import org.magic.magicaddons.data.greenhouse.crops.definitions.misc.DevourerRoots
@@ -849,7 +850,8 @@ object CropCollector : EntityUtils.HighlightSource {
                 appendLine(
                     "// status=${entry.status.label} stage=${entry.stageText ?: "unread"}" +
                             " worldStep=${WorldRotation.quarterTurnsAt(entry.origin.x, entry.origin.z)}" +
-                            " stands=${entry.stands.size} names=${entry.names} ${waterNote(entry.origin)}"
+                            " stands=${entry.stands.size} names=${entry.names} ${waterNote(entry.origin)}" +
+                            " time=${if (GreenhouseGrid.dayOrNightNow() == StandReader.NEEDS_NIGHT) "night" else "day"}"
                 )
 
                 val code = CropStageExporter.buildCropStageData(

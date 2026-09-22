@@ -259,8 +259,7 @@ class ElementWidget(val instance: Plant) : Renderable, GuiEventListener {
                 return
             }
 
-            // a charged plant has no water, so its charge takes the meter's place
-            instance.cropDef.chargeRule?.let {
+            if (!instance.isPlacedMutation) instance.cropDef.chargeRule?.let {
                 renderChargeBar(graphics, it)
                 return
             }
@@ -585,7 +584,7 @@ class ElementWidget(val instance: Plant) : Renderable, GuiEventListener {
                     add(labelled("Water", waterText(instance) ?: "Unknown"))
                 }
 
-                instance.cropDef.chargeRule?.let { rule ->
+                if (!instance.isPlacedMutation) instance.cropDef.chargeRule?.let { rule ->
                     add(labelled("Charge", "${instance.charge}/${rule.limit}" + if (instance.chargeKnown) "" else DEBT_MARK))
                     if (!instance.chargeKnown) add(Component.literal(CHARGE_ESTIMATED).withStyle(ChatFormatting.GRAY))
                 }

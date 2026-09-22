@@ -269,13 +269,76 @@ object AllinAloe {
                 ),
                 armorStands = listOf(
                     StageStand(
+                        isSmall = false,
+                        offset = Vec3(0.0, 0.65625, 0.09375),
+                        headRotation = Rotations(-22.5f, 0.0f, 0.0f),
+                        hashString = "eef0a5b20bf0ba3eb017955cc5209cf0635f15598b5ccca83a82a09c66914a1c"
+                    )
+                ),
+                10..10
+            ),
+            CropStage(
+                blocks = listOf(
+                    StageBlock(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = stateOf("minecraft:spruce_fence[east=false,north=false,south=false,waterlogged=false,west=false]")
+                    ),
+                    StageBlock(
+                        offset = BlockPos(0, 2, 0),
+                        blockState = melonStemState(5)
+                    )
+                ),
+                armorStands = listOf(
+                    StageStand(
+                        isSmall = false,
+                        offset = Vec3(0.0, 0.84375, 0.09375),
+                        headRotation = Rotations(-22.5f, 0.0f, 0.0f),
+                        hashString = "eef0a5b20bf0ba3eb017955cc5209cf0635f15598b5ccca83a82a09c66914a1c"
+                    )
+                ),
+                11..11
+            ),
+            CropStage(
+                blocks = listOf(
+                    StageBlock(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = stateOf("minecraft:spruce_fence[east=false,north=false,south=false,waterlogged=false,west=false]")
+                    ),
+                    StageBlock(
+                        offset = BlockPos(0, 2, 0),
+                        blockState = melonStemState(7)
+                    )
+                ),
+                armorStands = listOf(
+                    StageStand(
+                        isSmall = false,
+                        offset = Vec3(0.0, 1.0625, 0.09375),
+                        headRotation = Rotations(-22.5f, 0.0f, 0.0f),
+                        hashString = "eef0a5b20bf0ba3eb017955cc5209cf0635f15598b5ccca83a82a09c66914a1c"
+                    )
+                ),
+                12..12
+            ),
+            CropStage(
+                blocks = listOf(
+                    StageBlock(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = stateOf("minecraft:spruce_fence[east=false,north=false,south=false,waterlogged=false,west=false]")
+                    ),
+                    StageBlock(
+                        offset = BlockPos(0, 2, 0),
+                        blockState = melonStemState(7)
+                    )
+                ),
+                armorStands = listOf(
+                    StageStand(
                         offset = Vec3(0.0, 1.25, 0.09375),
                         headRotation = Rotations(-45.0f, 0.0f, 0.0f),
                         hashString = "d846f1f7ea8b021e1feedb00811baa8d3eb4de88800a7ebd8f852e806e60af90",
                         isSmall = false
                     )
                 ),
-                14..14,
+                13..14,
                 readers = listOf(
                     StandReader.stageNumberLabel(),
                     StandReader.percentLabel(StandReader.REWARDS_RESET, "reset"),

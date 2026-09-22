@@ -189,8 +189,11 @@ object GreenhousePresets : Feature() {
     private fun harvestStageFor(cropName: String): Int? = when (cropName) {
         "Magic Jellybean" -> jellybeanHarvestStageSetting.value
         "All-in Aloe" -> aloeHarvestStageSetting.value
+        "Glasscorn" -> GLASSCORN_HARVEST_STAGE
         else -> null
     }
+
+    private const val GLASSCORN_HARVEST_STAGE: Int = 7
 
     private val farmingFortuneThresholdSetting = IntSetting(
         key = "FarmingFortuneThreshold",
