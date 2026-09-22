@@ -14,7 +14,7 @@ object StatsWidget {
     // the widget draws an icon between the colon and the number
     private val STAT_LINE = Regex("""^[^A-Za-z]*([A-Za-z][A-Za-z ]*?)\s*:\s*\D*?([\d,]+)""")
 
-    var isShown: Boolean = false
+    var isShown: Boolean? = null
         private set
 
     private val valueByStat = mutableMapOf<String, Int>()
@@ -35,7 +35,7 @@ object StatsWidget {
 
     @Subscription
     fun onDisconnect(event: ServerDisconnectEvent) {
-        isShown = false
+        isShown = null
         valueByStat.clear()
     }
 }

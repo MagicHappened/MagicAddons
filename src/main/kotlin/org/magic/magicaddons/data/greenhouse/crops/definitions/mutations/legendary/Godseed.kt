@@ -273,7 +273,7 @@ object Godseed {
                         isSmall = false
                     )
                 ),
-                21..26
+                21..27
             ),
             CropStage(
                 blocks = StageBlock.atPositions(
@@ -471,6 +471,55 @@ object Godseed {
                     )
                 ),
                 34..34
+            ),
+            CropStage(
+                blocks = StageBlock.atPositions(
+                    positions = surroundWheatPositions,
+                    blockState = wheatState(6)
+                ) + listOf(
+                    StageBlock(
+                        offset = BlockPos(1, 1, 1),
+                        blockState = melonStemState(7)
+                    )
+                ),
+                armorStands = StageStand.atOffsets(
+                    offsets = listOf(
+                        Vec3(-1.0, -0.4375, -1.0),
+                        Vec3(-1.0, -0.4375, 1.0),
+                        Vec3(1.0, -0.4375, -1.0),
+                        Vec3(1.0, -0.4375, 1.0)
+                    ),
+                    rotations = List(4) { Rotations(0.0f, 0.0f, 0.0f) },
+                    hashString = "a0cc95bd6b1e5c007cf0d2b8c613a33a7ad3500b27638947c0b6b1db8fcb4887",
+                    isSmall = false
+                ) + StageStand.atOffsets(
+                    offsets = listOf(
+                        Vec3(-1.0, 0.65625, -1.0),
+                        Vec3(-1.0, 0.65625, 1.0),
+                        Vec3(1.0, 0.65625, -1.0),
+                        Vec3(1.0, 0.65625, 1.0)
+                    ),
+                    rotations = List(4) { Rotations(180.0f, 90.0f, 0.0f) },
+                    hashString = "a0cc95bd6b1e5c007cf0d2b8c613a33a7ad3500b27638947c0b6b1db8fcb4887",
+                    isSmall = false
+                ) + StageStand.atOffsets(
+                    offsets = listOf(
+                        Vec3(0.0, -0.0625, -1.0),
+                        Vec3(0.0, -0.0625, 1.0),
+                        Vec3(-1.0, -0.0625, 0.0),
+                        Vec3(1.0, -0.0625, 0.0)
+                    ),
+                    rotations = List(4) { Rotations(180.0f, 0.0f, 0.0f) },
+                    hashString = "a0cc95bd6b1e5c007cf0d2b8c613a33a7ad3500b27638947c0b6b1db8fcb4887",
+                    isSmall = false
+                ) + listOf(
+                    StageStand(
+                        isSmall = false,
+                        offset = Vec3(0.0, 0.4375, 0.0),
+                        hashString = "9bc7d71431dcdcfa432e8ef9fdb6aa4c4683786ac657e7ece038fb94f71e42be"
+                    )
+                ),
+                35..35
             )
 
         ),

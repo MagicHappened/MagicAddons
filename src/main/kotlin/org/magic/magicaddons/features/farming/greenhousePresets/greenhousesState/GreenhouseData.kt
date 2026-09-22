@@ -45,6 +45,11 @@ import org.magic.magicaddons.util.toShortDuration
 import tech.thatgravyboat.skyblockapi.api.events.base.Subscription
 import tech.thatgravyboat.skyblockapi.api.events.base.predicates.OnlyIn
 import tech.thatgravyboat.skyblockapi.api.events.base.predicates.OnlyNonGuest
+import java.util.Optional
+import net.minecraft.ChatFormatting
+import net.minecraft.world.phys.AABB
+import net.minecraft.network.chat.Style
+import org.magic.magicaddons.util.compat.McCompat
 import tech.thatgravyboat.skyblockapi.api.events.info.ScoreboardUpdateEvent
 import tech.thatgravyboat.skyblockapi.api.events.location.IslandChangeEvent
 import tech.thatgravyboat.skyblockapi.api.events.location.ServerDisconnectEvent
@@ -128,9 +133,7 @@ object GreenhouseData : GridCallbacks {
 
     private var plantDiagnosticHitBaseBlock: BlockPos? = null
 
-    var scanUpdatesState: Boolean = true
 
-    var toolUpdatesState: Boolean = true
 
     private var plantDiagnosticListeningElement: ScannedPlant? = null
 
@@ -163,79 +166,59 @@ object GreenhouseData : GridCallbacks {
         checkGreenhouses = true
     }
 
-    /**
-     * Whether the plot can be read: every chunk under it has been sent, and every stand in it is
-     * standing where the server last put it. Stands come in their own packets after their chunk and
-     * are moved into place after that, so a scan run early reads a plant with half its stands as
-     * another crop or as nothing, and drops what it cannot match.
-     */
     private fun plotReady(plot: Plot): Boolean {
-        // a plot on its way out is never read again until the player next arrives at it
         if (plotUnloading) return false
 
         val level = Minecraft.getInstance().level ?: return false
         val area = plot.getBuildableArea() ?: return false
 
-        if (!level.hasChunksAt(area.minX.toInt(), area.minZ.toInt(), area.maxX.toInt(), area.maxZ.toInt())) return false
+        if (!chunksLoadedOver(level, area)) return false
 
         val now = System.currentTimeMillis()
 
-        // the plot is named as current off the scoreboard, which can come before its first stand
-        // has, so on arriving the quiet is counted from the arrival as well as from the last entity
-        val quietSince = maxOf(lastEntityChangeAt ?: 0L, if (arrivalScanPending) arrivalPendingSince else 0L)
+        val quietSince = maxOf(lastEntityChangeAt ?: 0L, plotEnteredAt)
 
         if (standsStillMoving(level) == 0 && now - quietSince >= ENTITY_QUIET_MS) return true
 
-        // a stand that never arrives would otherwise hold the scan off for good
         return now - (lastChangeAt ?: now) >= MAX_SCAN_DEFER_MS
     }
+    
+    private fun chunksLoadedOver(level: Level, area: AABB): Boolean {
+        val chunkSource = level.chunkSource
 
-    /**
-     * How many stands have not reached where the server last sent them, forgetting those that have.
-     * A stand part way to its place stands at a height that belongs to another stage, so a plant
-     * read then matches the wrong one or none at all.
-     */
+        for (chunkX in (area.minX.toInt() shr 4)..(area.maxX.toInt() shr 4)) {
+            for (chunkZ in (area.minZ.toInt() shr 4)..(area.maxZ.toInt() shr 4)) {
+                if (!chunkSource.hasChunk(chunkX, chunkZ)) return false
+            }
+        }
+
+        return true
+    }
+
     private fun standsStillMoving(level: Level): Int {
         standTargets.entries.removeIf { (entityId, target) ->
             val standing = level.getEntity(entityId)?.position() ?: return@removeIf true
-            standing.distanceToSqr(target) <= ARRIVED_DISTANCE_SQR
+            standing.distanceToSqr(target) <= STAND_ARRIVED_WITHIN_SQR
         }
 
         return standTargets.size
     }
 
-    /** Where the server last sent each stand in the plot, until it gets there. */
     private val standTargets: MutableMap<Int, Vec3> = HashMap()
 
-    /** A stand this close to where it was sent has arrived; the lerp lands exactly, so this is slack. */
-    private const val ARRIVED_DISTANCE_SQR: Double = 1.0e-6
+    private const val STAND_ARRIVED_WITHIN_SQR: Double = 1.0e-6
 
-    /** Whether the level is being torn down around the player, see [onLevelUnloading]. */
     private var plotUnloading: Boolean = false
 
-    /** When the arrival scan was asked for, so a plot whose stands never come still gets read. */
-    private var arrivalPendingSince: Long = 0L
+    private var plotEnteredAt: Long = 0L
 
-    /**
-     * How long the plot has to go without an entity arriving before it is taken as fully sent. Short,
-     * because a stand that is still on its way is waited on by name rather than by guessing at a
-     * duration, and a stand that moves later reads its cells again.
-     */
     private const val ENTITY_QUIET_MS: Long = 250
 
-    /** The longest a moving stand may put a scan off, counted from the plot's last change. */
+    /** counted from the plot's last change */
     private const val MAX_SCAN_DEFER_MS: Long = 3_000
 
-    /** When an entity last turned up, moved or was re-posed inside the plot being stood in. */
     private var lastEntityChangeAt: Long? = null
 
-    /**
-     * An entity inside the plot was moved or re-posed. [movingTo] is where the packet sends it,
-     * which is not where it stands yet: the client walks it there over the following ticks.
-     *
-     * Called for every such packet in the world, so it costs a plot lookup and nothing more until
-     * one lands inside the plot.
-     */
     fun noteEntityChanged(entityId: Int, movingTo: Vec3? = null) {
         if (!greenhousesInitialized || !inOwnGarden()) return
 
@@ -250,22 +233,17 @@ object GreenhouseData : GridCallbacks {
         val grid = getCurrentGrid() ?: return
         if (!grid.isScanned()) return
 
-        // a stand moving changes what stands on every cell along its way, so all of them are read
-        // again rather than only the two ends
+        // a stand moving invalidates every cell, so plants in between are properly scanned
         val from = BlockPos.containing(entity.position())
         val to = BlockPos.containing(movingTo)
 
-        requestReconcile(BlockPos.betweenClosed(from, to).map { it.immutable() })
+        rescanCellsAt(BlockPos.betweenClosed(from, to).map { it.immutable() })
     }
 
-    /** Whether the first scan since arriving at the plot, or since it was dumped, is still to run. */
-    private var arrivalScanPending: Boolean = false
+    private var isPlanTurned: Boolean = false
 
     private fun scanGridData() {
-        if (!scanUpdatesState) return
         if (!greenhousesInitialized) return
-        // the grid is found by plot number, which a visited garden has too: read there, somebody
-        // else's plants would land in the player's own record
         if (!inOwnGarden()) return
         val plot = PlotAPI.getCurrentPlot() ?: return
 
@@ -288,7 +266,7 @@ object GreenhouseData : GridCallbacks {
 
         // the plan is laid the way the plot agrees with, judged afresh on arriving: what stands now
         // says which way it was built, and a turn picked on assign may be stale by then
-        if (arrivalScanPending) {
+        if (!isPlanTurned) {
             grid.state.assignedLayout?.let { plan ->
                 val turns = grid.bestTurnKeeping(plan, grid.state.planTurns)
                 if (turns != grid.state.planTurns) {
@@ -296,6 +274,7 @@ object GreenhouseData : GridCallbacks {
                     ChatUtils.sendWithPrefix("Plan on ${grid.layout.displayName()} re-laid at ${turns * 90}°, the turn what stands fits best.")
                 }
             }
+            isPlanTurned = true
         }
 
         claimPlantedCrop(grid)
@@ -309,7 +288,6 @@ object GreenhouseData : GridCallbacks {
         grid.state.needsRescan = false
         grid.state.lastScanTime = Instant.now()
         grid.state.ticksSinceLastScan = 0
-        arrivalScanPending = false
     }
 
 
@@ -325,6 +303,12 @@ object GreenhouseData : GridCallbacks {
     /** Whether the whole plot has to be read, for a change with no place to it. */
     private var fullScanWanted: Boolean = false
 
+    private var lastScanAt: Long = 0L
+
+    private const val FULL_SCAN_INTERVAL_MS: Long = 5_000
+
+    private const val PESTS_LABEL: String = "Pests"
+
     /** When the plot last changed; once it has been quiet for [SETTLE_MS] the whole plot is read once. */
     private var lastChangeAt: Long? = null
 
@@ -332,16 +316,16 @@ object GreenhouseData : GridCallbacks {
     private const val SETTLE_MS: Long = 400
 
     /** Something in the plot changed at [positions], so what is stored around them can no longer be trusted. */
-    fun requestReconcile(positions: Collection<BlockPos>) {
+    fun rescanCellsAt(positions: Collection<BlockPos>) {
         if (positions.isEmpty()) return
         touched.addAll(positions)
         lastChangeAt = System.currentTimeMillis()
     }
 
-    fun requestReconcile(position: BlockPos) = requestReconcile(listOf(position))
+    fun rescanCellsAt(position: BlockPos) = rescanCellsAt(listOf(position))
 
     /** Something changed with no place to it, so the whole plot is read on the next tick. */
-    fun requestReconcile() {
+    fun rescanWholePlot() {
         fullScanWanted = true
     }
 
@@ -358,8 +342,8 @@ object GreenhouseData : GridCallbacks {
         grid.state.needsRescan = true
 
         if (getCurrentGrid() === grid) {
-            arrivalScanPending = true
-            arrivalPendingSince = System.currentTimeMillis()
+            isPlanTurned = false
+            plotEnteredAt = System.currentTimeMillis()
             plotUnloading = false
             scanGridData()
         }
@@ -376,13 +360,17 @@ object GreenhouseData : GridCallbacks {
             val positions = touched.toList()
             touched.clear()
             rescanAround(positions)
+            lastScanAt = now
         }
+
+        if (now - lastScanAt >= FULL_SCAN_INTERVAL_MS) fullScanWanted = true
 
         val settled = lastChangeAt?.let { now - it >= SETTLE_MS } == true
         if (!fullScanWanted && !settled) return
 
         fullScanWanted = false
         lastChangeAt = null
+        lastScanAt = now
         getCurrentGrid()?.state?.needsRescan = true
         scanGridData()
     }
@@ -601,6 +589,7 @@ object GreenhouseData : GridCallbacks {
 
     @EventHandler
     fun onTick(event: WorldTickEvent) {
+        notePlotChange()
         runDueReconcile()
         ensureProfile()
         if (DataHandler.activeProfile == null) return
@@ -636,6 +625,9 @@ object GreenhouseData : GridCallbacks {
             PlantWarnings.onGardenArrival()
         }
 
+        scoreboardLines = emptyList()
+        pestDebuffActive = false
+
         if (event.new != SkyBlockIsland.GARDEN) {
             DataHandler.saveGardenData()
             greenhouseGrids.forEach {
@@ -649,19 +641,47 @@ object GreenhouseData : GridCallbacks {
 
     @Subscription
     fun onGameShutdown(event: ServerDisconnectEvent) {
+        scoreboardLines = emptyList()
+        pestDebuffActive = false
         GreenhouseSpawnLog.onGameClosing()
         DataHandler.saveGardenData()
     }
 
 
+    var pestDebuffActive: Boolean = false
+        private set
+
+    private var scoreboardLines: List<Component> = emptyList()
+
+    private fun readPestDebuff() {
+        pestDebuffActive = scoreboardLines.any { line ->
+            if (!line.string.contains(PESTS_LABEL, ignoreCase = true)) return@any false
+
+            var red = false
+            line.visit({ style, _ ->
+                if (style.color?.value == McCompat.chatColor(ChatFormatting.RED)) red = true
+                Optional.empty<Unit>()
+            }, Style.EMPTY)
+            red
+        }
+    }
+
     @Subscription
     @OnlyNonGuest
     @OnlyIn(SkyBlockIsland.GARDEN)
     fun onScoreboardUpdate(event: ScoreboardUpdateEvent) {
-        if (lastPlot != PlotAPI.getCurrentPlot()) {
-            EventBus.post(PlotChangedEvent(lastPlot,PlotAPI.getCurrentPlot()))
-            lastPlot = PlotAPI.getCurrentPlot()
-        }
+        scoreboardLines = event.newComponents
+        readPestDebuff()
+    }
+
+    private fun notePlotChange() {
+        if (!inOwnGarden()) return
+
+        val plot = PlotAPI.getCurrentPlot()
+        if (lastPlot == plot) return
+
+        EventBus.post(PlotChangedEvent(lastPlot, plot))
+        lastPlot = plot
     }
 
     @EventHandler
@@ -674,8 +694,8 @@ object GreenhouseData : GridCallbacks {
         // then reads a near-empty greenhouse and saves it over the good copy
         if (event.new == null) return
 
-        arrivalScanPending = true
-        arrivalPendingSince = System.currentTimeMillis()
+        isPlanTurned = false
+        plotEnteredAt = System.currentTimeMillis()
         plotUnloading = false
         scanGridData()
         regenRender()
@@ -728,7 +748,7 @@ object GreenhouseData : GridCallbacks {
         plantDiagnosticHitBaseBlock = null
 
         when (event.title) {
-            "Crop Diagnostics" -> if (toolUpdatesState) PlantDiagnostics.readDiagnosis(realItems, listening, hit)
+            "Crop Diagnostics" -> PlantDiagnostics.readDiagnosis(realItems, listening, hit)
             "Desk" -> MenuReadings.updateCropGrowth(realItems)
             "Greenhouse Upgrades" -> MenuReadings.updateUpgrades(realItems)
         }
@@ -755,7 +775,7 @@ object GreenhouseData : GridCallbacks {
             grid.removePlantWithBlockAt(pos)
         }
 
-        requestReconcile(pos)
+        rescanCellsAt(pos)
     }
 
     @EventHandler
@@ -768,7 +788,7 @@ object GreenhouseData : GridCallbacks {
         val blockVec3 = Vec3.atCenterOf(event.pos)
         if (grid.plot?.aabb?.contains(blockVec3) != true) return
 
-        requestReconcile(event.pos)
+        rescanCellsAt(event.pos)
     }
 
     @EventHandler
@@ -786,7 +806,7 @@ object GreenhouseData : GridCallbacks {
         val grid = getCurrentGrid() ?: return
         if (!grid.isScanned()) return
 
-        requestReconcile(arrived.map { BlockPos.containing(it) })
+        rescanCellsAt(arrived.map { BlockPos.containing(it) })
     }
 
     @EventHandler
@@ -815,7 +835,7 @@ object GreenhouseData : GridCallbacks {
         if (event.packet.pos.y != GREENHOUSE_SOIL_Y) return
         slot.soil = event.packet.blockState
 
-        requestReconcile(event.packet.pos)
+        rescanCellsAt(event.packet.pos)
     }
 
 
@@ -829,7 +849,7 @@ object GreenhouseData : GridCallbacks {
         if (!grid.isScanned()) return
 
         val area = grid.plot?.getBuildableArea() ?: return
-        requestReconcile(event.removedEntityList.map { it.entity.position() }.filter { area.contains(it) }.map { BlockPos.containing(it) })
+        rescanCellsAt(event.removedEntityList.map { it.entity.position() }.filter { area.contains(it) }.map { BlockPos.containing(it) })
     }
 
     /**
@@ -853,7 +873,7 @@ object GreenhouseData : GridCallbacks {
         val area = grid.plot?.getBuildableArea() ?: return
         if (!area.contains(event.target.position())) return
 
-        requestReconcile(BlockPos.containing(event.target.position()))
+        rescanCellsAt(BlockPos.containing(event.target.position()))
     }
 
     @EventHandler
@@ -916,7 +936,7 @@ object GreenhouseData : GridCallbacks {
             val soil = BlockPos(pos.x, GREENHOUSE_SOIL_Y, pos.z)
             cropPlacements.entries.removeAll { (at, placed) -> overlaps(at, placed.def, soil, foundCrop) }
             cropPlacements[soil] = CropPlacement(foundCrop, System.currentTimeMillis())
-            requestReconcile(pos)
+            rescanCellsAt(pos)
         }
     }
 

@@ -90,8 +90,6 @@ object CropDataGaps {
 
     /** listed by hand, by crop name */
     private val STAGES_WITHOUT_ROTATION: Map<String, Set<Int>> = mapOf(
-        "Devourer" to (10..12).toSet(),
-        "PlantBoy Advance" to setOf(9, 10),
         "Zombud" to setOf(7) + (10..15)
     )
 
