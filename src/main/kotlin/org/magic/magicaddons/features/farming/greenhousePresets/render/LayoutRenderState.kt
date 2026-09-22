@@ -405,7 +405,6 @@ object LayoutRenderState {
         grid.scannedPlants
             .filter { harvestable(it.plant) }
             // an ingredient that is not to be broken is not one to point at either
-            .filterNot { GreenhousePresets.preventBreakingIngredients() && GreenhouseData.isPlannedIngredient(it) }
             .forEach { growing -> markReady(grid, growing, marks) }
     }
 
@@ -458,7 +457,7 @@ object LayoutRenderState {
     }
 
     /** Whether a mutation that appeared on a target slot has grown out; a one stage crop arrives grown. */
-    private fun harvestable(plant: Plant): Boolean = plant.readyToHarvest
+    private fun harvestable(plant: Plant): Boolean = GreenhousePresets.isHarvestable(plant)
 
     /** The soil under a plant, so a crop made only of stands still has a box to pulse. */
     private fun soilOf(grid: GreenhouseGrid, growing: ScannedPlant): List<BlockPos> {

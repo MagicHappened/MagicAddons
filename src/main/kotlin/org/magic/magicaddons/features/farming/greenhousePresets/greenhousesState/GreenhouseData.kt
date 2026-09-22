@@ -1052,11 +1052,10 @@ object GreenhouseData : GridCallbacks {
         scannedGrid()?.let { grid -> plantAtStand(stand, grid) }
 
     /** Whether the running plan wants this very crop kept as an ingredient where it stands. */
-    fun isPlannedIngredient(scanned: ScannedPlant): Boolean {
-        val slot = scanned.plant.slot
-        val planned = scannedGrid()?.plannedPlantAt(slot.x, slot.y) ?: return false
+    fun isPlannedIngredient(plant: Plant): Boolean {
+        val planned = scannedGrid()?.plannedPlantAt(plant.slot.x, plant.slot.y) ?: return false
 
-        return planned.slot.mark == LayoutSlot.Marking.Ingredient && planned.acceptsCrop(scanned.plant.cropDef)
+        return planned.slot.mark == LayoutSlot.Marking.Ingredient && planned.acceptsCrop(plant.cropDef)
     }
 
     private fun scannedGrid(): GreenhouseGrid? = getCurrentGrid()?.takeIf { it.isScanned() }

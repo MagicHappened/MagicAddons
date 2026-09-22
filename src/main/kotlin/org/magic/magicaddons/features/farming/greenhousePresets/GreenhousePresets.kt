@@ -39,8 +39,8 @@ object GreenhousePresets : Feature() {
     private const val PLANT_TRANSPARENCY_KEY = "PlantTransparency"
     private const val PLANT_HIGHLIGHTS_KEY = "PlantHighlights"
     private const val HARVEST_HIGHLIGHT_KEY = "HarvestHighlight"
-    private const val PREVENT_BREAKING_INGREDIENTS_KEY = "PreventBreakingIngredients"
-    private const val PREVENT_BREAKING_GROWING_KEY = "PreventBreakingGrowingMutations"
+    private const val PREVENT_BREAKING_NON_HARVESTABLE_KEY = "PreventBreakingNonHarvestable"
+    private const val HARVESTABLE_KEY = "Harvestable"
     private const val HARVEST_ONLY_TARGETS_KEY = "OnlyPresetTargets"
     private const val PLANNER_COLORS_KEY = "PlannerColors"
     private const val WATER_INDICATOR_KEY = "WaterIndicator"
@@ -125,20 +125,41 @@ object GreenhousePresets : Feature() {
         value = false
     )
 
-    private val preventBreakingIngredientsSetting = BooleanSetting(
-        key = PREVENT_BREAKING_INGREDIENTS_KEY,
-        displayName = "Prevent Breaking Ingredients",
-        description = "Prevents breaking crops marked as ingredients in the assigned layout for that greenhouse.\n\n" +
-                "§7Enabling this option will also prevent ingredient crops showing up in harvest highlight.",
+    private val harvestableBaseCropsSetting = BooleanSetting(
+        key = "HarvestableBaseCrops",
+        displayName = "Base Crops",
+        description = "Counts a fully grown base crop as harvestable",
         value = false
     )
 
-    fun preventBreakingIngredients(): Boolean = baseSetting.value && preventBreakingIngredientsSetting.value
+    private val harvestableIngredientsSetting = BooleanSetting(
+        key = "HarvestableIngredients",
+        displayName = "Layout Ingredients",
+        description = "Counts a fully grown crop that the assigned layout uses as an ingredient as harvestable",
+        value = false
+    )
+
+    /**
+     * Whether the plant is worth taking: what the harvest highlight pulses, what the ready to
+     * harvest warning names, and what break protection lets through.
+     */
+    fun isHarvestable(plant: Plant): Boolean {
+        if (plant.isPlacedMutation) return false
+
+        val harvestStage = harvestStageFor(plant.cropDef.name)
+        val grown = if (harvestStage != null) (plant.lowestStage ?: 0) >= harvestStage else plant.isFullyGrown
+        if (!grown) return false
+
+        if (plant.cropDef.isBaseCrop && !harvestableBaseCropsSetting.value) return false
+        if (!harvestableIngredientsSetting.value && GreenhouseData.isPlannedIngredient(plant)) return false
+
+        return plant.cropDef.isMutation || plant.cropDef.isBaseCrop
+    }
 
     private val jellybeanHarvestStageSetting = IntSetting(
         key = "MagicJellybeanHarvestStage",
         displayName = "Magic Jellybean Harvest Stage",
-        description = "Allows breaking a Magic Jellybean once it reaches this stage",
+        description = "Considers Magic Jellybean as harvestable from the selected stage or higher",
         value = 12,
         range = 12..120,
         step = 12,
@@ -148,23 +169,23 @@ object GreenhousePresets : Feature() {
     private val aloeHarvestStageSetting = IntSetting(
         key = "AllInAloeHarvestStage",
         displayName = "All-in Aloe Harvest Stage",
-        description = "Allows breaking an All-in Aloe once it reaches this stage",
+        description = "Considers all in aloe as harvestable from the selected stage or higher",
         value = 12,
         range = 1..27,
         scrollable = false
     )
 
-    private val preventBreakingGrowingSetting = BooleanSetting(
-        key = PREVENT_BREAKING_GROWING_KEY,
-        displayName = "Prevent Breaking Growing Mutations",
-        description = "Prevents breaking a mutation that has not finished growing.",
-        value = false,
-        children = listOf(jellybeanHarvestStageSetting, aloeHarvestStageSetting)
+    private val preventBreakingNonHarvestableSetting = BooleanSetting(
+        key = PREVENT_BREAKING_NON_HARVESTABLE_KEY,
+        displayName = "Non Harvestable",
+        description = "Prevent breaking any non harvestable crop.\n\n" +
+                "§7§oConfigurable in the setting above",
+        value = false
     )
 
-    fun preventBreakingGrowingMutations(): Boolean = baseSetting.value && preventBreakingGrowingSetting.value
+    fun preventBreakingNonHarvestable(): Boolean = baseSetting.value && preventBreakingNonHarvestableSetting.value
 
-    fun harvestStageFor(cropName: String): Int? = when (cropName) {
+    private fun harvestStageFor(cropName: String): Int? = when (cropName) {
         "Magic Jellybean" -> jellybeanHarvestStageSetting.value
         "All-in Aloe" -> aloeHarvestStageSetting.value
         else -> null
@@ -333,6 +354,12 @@ object GreenhousePresets : Feature() {
         ?.getChild<BooleanSetting>(CHORUS_KEY)
         ?.getChild<IntSetting>(CHORUS_TICKS_KEY)
         ?.value
+
+    fun negativeWaterWarningEnabled(): Boolean = types()
+        ?.getChild<BooleanSetting>(PlantWarnings.THIRST_KEY)
+        ?.takeIf { it.value }
+        ?.getChild<BooleanSetting>(PlantWarnings.NEGATIVE_WATER_KEY)
+        ?.value == true
     override val id = "GreenhousePresets"
     override val displayName = "Greenhouse Presets"
     override val description = "Enables Greenhouse Presets..."
@@ -362,12 +389,22 @@ object GreenhousePresets : Feature() {
                 children = listOf(harvestHighlightSetting, waterIndicatorSetting)
             ),
             ParentSetting(
+                key = HARVESTABLE_KEY,
+                displayName = "Harvestable",
+                description = "Configure what crops count as harvestable for different features",
+                children = listOf(
+                    harvestableBaseCropsSetting,
+                    harvestableIngredientsSetting,
+                    jellybeanHarvestStageSetting,
+                    aloeHarvestStageSetting
+                )
+            ),
+            ParentSetting(
                 key = BREAK_PROTECTION_KEY,
                 displayName = "Break Protection",
                 description = "Prevents breaking plants under several conditions, configure below.",
                 children = listOf(
-                    preventBreakingIngredientsSetting,
-                    preventBreakingGrowingSetting,
+                    preventBreakingNonHarvestableSetting,
                     preventBreakingUnderFarmingFortuneSetting,
                     preventBreakingChloroniteSetting,
                     preventBreakingDuringPestDebuffSetting
@@ -393,9 +430,18 @@ object GreenhousePresets : Feature() {
                             ),
                             BooleanSetting(
                                 key = PlantWarnings.THIRST_KEY,
-                                displayName = "Dying Of Thirst",
+                                displayName = "Water",
                                 description = "Warns before a growth tick kills a plant that has run out of water",
-                                value = false
+                                value = false,
+                                children = listOf(
+                                    BooleanSetting(
+                                        key = PlantWarnings.NEGATIVE_WATER_KEY,
+                                        displayName = "Also On Negative",
+                                        description = "Also sends a warning when a plant entered negative water " +
+                                                "and has a chance to skip the next tick",
+                                        value = false
+                                    )
+                                )
                             ),
                             BooleanSetting(
                                 key = PlantWarnings.DECAY_KEY,

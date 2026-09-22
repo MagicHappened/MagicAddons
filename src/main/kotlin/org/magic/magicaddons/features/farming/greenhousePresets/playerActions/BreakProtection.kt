@@ -75,12 +75,9 @@ object BreakProtection {
         val plant = scanned.plant
         val crop = plant.cropDef.name
 
-        if (GreenhousePresets.preventBreakingIngredients() && GreenhouseData.isPlannedIngredient(scanned)) {
-            return PREVENTED.format(crop)
-        }
         if (!plant.cropDef.isMutation) return null
 
-        if (GreenhousePresets.preventBreakingGrowingMutations() && !plant.isFullyGrown && !isConsideredHarvestable(plant)) {
+        if (GreenhousePresets.preventBreakingNonHarvestable() && !GreenhousePresets.isHarvestable(plant)) {
             return PREVENTED.format(crop)
         }
 
@@ -98,13 +95,6 @@ object BreakProtection {
         if (!GreenhousePresets.preventBreakingUnderFarmingFortune()) return null
 
         return fortunePreventionMessage(crop, StatsWidget.FARMING_FORTUNE, "farming fortune", GreenhousePresets.farmingFortuneThreshold)
-    }
-
-    /** based on the users setting, if a plant is considered "harvestable" */
-    private fun isConsideredHarvestable(plant: Plant): Boolean {
-        val harvestStage = GreenhousePresets.harvestStageFor(plant.cropDef.name) ?: return false
-
-        return (plant.lowestStage ?: 0) >= harvestStage
     }
 
     /** returns a reason to prevent a fortune crop from breaking, null when its allowed to be broken */
