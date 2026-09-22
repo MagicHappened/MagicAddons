@@ -135,14 +135,12 @@ object GreenhousePresets : Feature() {
     private val harvestableIngredientsSetting = BooleanSetting(
         key = "HarvestableIngredients",
         displayName = "Layout Ingredients",
-        description = "Counts a fully grown crop that the assigned layout uses as an ingredient as harvestable",
+        description = "Counts a fully grown crop that the assigned layout uses as an ingredient as harvestable\n\n" +
+                "§7§oOverrides Base Crops for crops marked as ingredients",
         value = false
     )
 
-    /**
-     * Whether the plant is worth taking: what the harvest highlight pulses, what the ready to
-     * harvest warning names, and what break protection lets through.
-     */
+
     fun isHarvestable(plant: Plant): Boolean {
         if (plant.isPlacedMutation) return false
 
@@ -150,8 +148,11 @@ object GreenhousePresets : Feature() {
         val grown = if (harvestStage != null) (plant.lowestStage ?: 0) >= harvestStage else plant.isFullyGrown
         if (!grown) return false
 
-        if (plant.cropDef.isBaseCrop && !harvestableBaseCropsSetting.value) return false
-        if (!harvestableIngredientsSetting.value && GreenhouseData.isPlannedIngredient(plant)) return false
+        if (GreenhouseData.isPlannedIngredient(plant)) {
+            if (!harvestableIngredientsSetting.value) return false
+        } else if (plant.cropDef.isBaseCrop && !harvestableBaseCropsSetting.value) {
+            return false
+        }
 
         return plant.cropDef.isMutation || plant.cropDef.isBaseCrop
     }
