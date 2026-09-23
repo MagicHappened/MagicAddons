@@ -44,7 +44,7 @@ class ConfigScreen(title: Component, val parent: Screen?) : ScrollableScreen(tit
         super.init()
         MagicAddonsConfigJsonHandler.load()
         VersionChecker.check()
-        categories = FeatureManager.features
+        categories = FeatureManager.availableFeatures
             .groupBy { it.category }
             .mapValues { it.value.toMutableList() }
             .toMutableMap()

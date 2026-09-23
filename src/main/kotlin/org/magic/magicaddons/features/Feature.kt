@@ -12,6 +12,7 @@ abstract class Feature {
     abstract val category: String
     abstract val baseSetting: BooleanSetting
 
+    val isAvailable: Boolean get() = baseSetting.isAvailable
 
     fun serializeSettings(): MutableMap<String, Any> = baseSetting.serializeAsFeatureRoot()
 

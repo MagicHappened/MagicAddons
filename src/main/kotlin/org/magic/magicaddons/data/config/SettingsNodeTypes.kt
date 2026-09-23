@@ -1,5 +1,6 @@
 package org.magic.magicaddons.data.config
 
+import org.magic.magicaddons.ExtensionPack
 import org.magic.magicaddons.data.ListEntry
 import kotlin.collections.get
 
@@ -7,10 +8,14 @@ sealed class SettingNode<T>(
     val key: String,
     val displayName: String,
     val tooltip: String,
-    open var value: T
-
+    open var value: T,
+    val needsExtensionPack: Boolean = false
 ) {
     open val children: List<SettingNode<*>>? = null
+
+    val isAvailable: Boolean get() = !needsExtensionPack || ExtensionPack.isInstalled
+
+    val availableChildren: List<SettingNode<*>> get() = children.orEmpty().filter { it.isAvailable }
 
     /**
      * The key this node is stored under, namespaced by the path of its parent ("Parent.Child").
@@ -59,8 +64,9 @@ class ToggleListSetting(
     override var value: MutableList<ListEntry>,
     val choices: () -> List<String>,
     /** What the closed selector says. It searches the whole catalogue, listed and not. */
-    val searchLabel: String = "Search"
-) : SettingNode<MutableList<ListEntry>>(key, displayName, tooltip, value) {
+    val searchLabel: String = "Search",
+    needsExtensionPack: Boolean = false
+) : SettingNode<MutableList<ListEntry>>(key, displayName, tooltip, value, needsExtensionPack) {
 
     override fun parseValue(value: Any): MutableList<ListEntry> {
         val list = value as? List<*> ?: return mutableListOf()
@@ -103,12 +109,21 @@ class BooleanSetting(
     key: String = "enabled",
     displayName: String,
     tooltip: String,
-    override var value: Boolean,
-    override var children: List<SettingNode<*>>? = null
-) : SettingNode<Boolean>(key, displayName, tooltip, value) {
+    value: Boolean,
+    override var children: List<SettingNode<*>>? = null,
+    needsExtensionPack: Boolean = false
+) : SettingNode<Boolean>(key, displayName, tooltip, value, needsExtensionPack) {
+
+    private var storedValue: Boolean = value
+
+    override var value: Boolean
+        get() = storedValue && isAvailable
+        set(newValue) {
+            storedValue = newValue
+        }
 
     override fun serializeSettings(parentPath: String): MutableMap<String, Any> {
-        val map = super.serializeSettings(parentPath)
+        val map = mutableMapOf<String, Any>(pathIn(parentPath) to storedValue)
         val childPath = pathIn(parentPath)
         children?.forEach { child ->
             map.putAll(child.serializeSettings(childPath))
@@ -129,7 +144,7 @@ class BooleanSetting(
      * start at the top level, so no stored key carries a redundant "enabled." prefix.
      */
     fun serializeAsFeatureRoot(): MutableMap<String, Any> {
-        val map = mutableMapOf<String, Any>(key to value)
+        val map = mutableMapOf<String, Any>(key to storedValue)
         children?.forEach { child ->
             map.putAll(child.serializeSettings())
         }
@@ -148,8 +163,9 @@ class TextSetting(
     key: String,
     displayName: String,
     tooltip: String,
-    override var value: String
-) : SettingNode<String>(key, displayName, tooltip, value) {
+    override var value: String,
+    needsExtensionPack: Boolean = false
+) : SettingNode<String>(key, displayName, tooltip, value, needsExtensionPack) {
 
     val history: MutableSet<String> = mutableSetOf()
 
@@ -193,8 +209,9 @@ class EnumSetting<T : Enum<T>>(
     tooltip: String,
     value: T,
     override val children: List<SettingNode<*>>? = null,
-    val childrenProvider: ((T) -> List<SettingNode<*>>)? = null
-) : SettingNode<T>(key, displayName, tooltip, value) {
+    val childrenProvider: ((T) -> List<SettingNode<*>>)? = null,
+    needsExtensionPack: Boolean = false
+) : SettingNode<T>(key, displayName, tooltip, value, needsExtensionPack) {
 
     private var activeChildren: List<SettingNode<*>>? =
         childrenProvider?.invoke(value)

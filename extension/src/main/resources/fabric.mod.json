@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "magicaddons-extension",
+  "version": "${version}",
+  "name": "MagicAddons Extension Pack",
+  "description": "Turns on the MagicAddons features that ship switched off.",
+  "authors": [],
+  "contact": {},
+  "license": "GPL-3.0",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "org.magic.magicaddons.extension.ExtensionPackInstaller"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=${loader_version}",
+    "magicaddons": "*"
+  }
+}

@@ -55,4 +55,5 @@ jobs:
             gh release create "v$VERSION" \
               --title "$(cat title.txt)" \
               --notes-file notes.txt \
-              versions/*/build/libs/magicaddons-*.jar
+              versions/*/build/libs/magicaddons-*.jar \
+              extension/build/libs/magicaddons-extension-*.jar

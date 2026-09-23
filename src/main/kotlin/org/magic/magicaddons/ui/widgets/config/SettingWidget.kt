@@ -49,7 +49,7 @@ abstract class SettingWidget<T>(
         // built fresh: a second call would otherwise leave the first set alive and clickable
         childrenWidgets.clear()
 
-        node.children?.forEach {
+        node.availableChildren.forEach {
             childrenWidgets.add(SettingWidgetFactory.create(it).apply {
                 requestRelayout = {
                     this@SettingWidget.layoutChildrenBut(this@SettingWidget) // this is calling upper layer!! dont touch

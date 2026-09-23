@@ -76,6 +76,7 @@ object HighlightMobs : HighlightFeature() {
         displayName = displayName,
         tooltip = tooltipMessage,
         value = false,
+        needsExtensionPack = true,
         children = listOf(
             BooleanSetting(
                 key = "PresetsEnabled",

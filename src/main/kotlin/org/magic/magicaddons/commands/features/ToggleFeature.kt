@@ -22,7 +22,7 @@ object ToggleFeature : AbstractCommand() {
     }
 
     fun buildFeatureLiterals(){
-        FeatureManager.features.forEach { feature ->
+        FeatureManager.availableFeatures.forEach { feature ->
             mainCommand.then(
                 literal<FabricClientCommandSource>(feature.id)
                     .executes {

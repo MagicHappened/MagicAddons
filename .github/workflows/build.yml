@@ -42,3 +42,9 @@ jobs:
               versions/26.2/build/libs/*.jar
               !versions/26.2/build/libs/*-sources.jar
             archive: false
+
+        - name: Upload extension pack jar
+          uses: actions/upload-artifact@v7
+          with:
+            path: extension/build/libs/*.jar
+            archive: false
