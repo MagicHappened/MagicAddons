@@ -35,7 +35,7 @@ object PlotPrediction {
         weightMultiplier: Double,
         ignoredPlant: Plant? = null
     ): List<MutationChance> {
-        val weights = CropRegistry.all
+        val weights = CropRegistry.allCrops
             .filter { crop -> (crop.spawnRule?.weight ?: 0) > 0 && missingSpawnConditions(layout, crop, x, y, ignoredPlant).isEmpty() }
             .associateWith { it.spawnRule!!.weight * weightMultiplier }
         val rollTotal = max(MIN_ROLL_WEIGHT_TOTAL, weights.values.sum())
@@ -100,7 +100,7 @@ object PlotPrediction {
         layout: PlotLayout,
         plannedCropsBySlot: Map<Pair<Int, Int>, Set<CropDefinition>>
     ): Map<Pair<Int, Int>, List<CropDefinition>> {
-        val mutations = CropRegistry.all.filter { (it.spawnRule?.weight ?: 0) > 0 }
+        val mutations = CropRegistry.allCrops.filter { (it.spawnRule?.weight ?: 0) > 0 }
         val spots = linkedMapOf<Pair<Int, Int>, List<CropDefinition>>()
 
         for (y in 0 until layout.size) {

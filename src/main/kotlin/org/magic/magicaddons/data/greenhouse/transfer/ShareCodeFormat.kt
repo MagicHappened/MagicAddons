@@ -8,7 +8,6 @@ import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.resources.Identifier
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.Blocks
-import org.magic.magicaddons.data.greenhouse.crops.*
 import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
 import org.magic.magicaddons.data.greenhouse.crops.CropRegistry
 import org.magic.magicaddons.data.greenhouse.crops.Plant
@@ -150,7 +149,7 @@ object ShareCodeFormat : LayoutFormat {
             }
         }
         layout.plants.add(
-            Plant(definition.elementId, slot, cropDef = definition, alternatives = merged.toMutableList())
+            Plant(definition.elementId, slot, cropDef = definition, presetAlternatives = merged.toMutableList())
         )
     }
 
@@ -196,8 +195,8 @@ object ShareCodeFormat : LayoutFormat {
                 out.writeByte(mark or (soil shl 2))
 
                 if (plant != null && version >= PAYLOAD_VERSION) {
-                    out.writeByte(plant.alternatives.size)
-                    plant.alternatives.forEach { out.writeByte(crops.indexOf(it) + 1) }
+                    out.writeByte(plant.presetAlternatives.size)
+                    plant.presetAlternatives.forEach { out.writeByte(crops.indexOf(it) + 1) }
                 }
             }
         }

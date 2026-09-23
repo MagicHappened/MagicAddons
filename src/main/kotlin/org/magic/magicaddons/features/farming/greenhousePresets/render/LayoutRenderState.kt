@@ -253,7 +253,7 @@ object LayoutRenderState {
         }
 
         // turned the way it was found to fit on assign
-        val layout = assigned.turned(grid.state.planTurns)
+        val layout = assigned.turnedBy(grid.state.planTurns)
 
         val marks = mutableMapOf<BlockPos, Pair<VoxelShape, PlannerMark>>()
         val ghosts = mutableMapOf<BlockPos, BlockState>()
@@ -325,7 +325,7 @@ object LayoutRenderState {
                 cropsNeeded.merge(instance.cropDef, 1, Int::plus)
 
                 val stage = ghostStageOf(instance.cropDef) ?: return@forEach
-                val render = stage.hologramAt(level, soil, instance.cropDef.footprint, instance.cropDef.standPoses, instance.cropDef.rotatesWithPlot)
+                val render = stage.hologramStageAt(level, soil, instance.cropDef.footprint, instance.cropDef.standPoses, instance.cropDef.rotatesWithPlot)
 
                 render.blockMap.forEach { (pos, state) ->
                     // the plant's own blocks, which have no second form the way its soil does

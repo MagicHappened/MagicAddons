@@ -15,16 +15,15 @@ import org.magic.magicaddons.data.greenhouse.crops.definitions.rarecrops.*
 object CropRegistry {
     private val crops = mutableListOf<CropDefinition>()
 
-    val all: List<CropDefinition> get() = crops
+    val allCrops: List<CropDefinition> get() = crops
 
     private fun register(crop: CropDefinition) {
         crops.add(crop)
     }
 
-    // built once, since lookups happen on every block update
     private val cropsByIdOrName: Map<String, CropDefinition> by lazy {
         buildMap {
-            all.forEach { crop ->
+            allCrops.forEach { crop ->
                 crop.skyblockId?.id?.let { putIfAbsent(it, crop) }
                 crop.aliases?.forEach { putIfAbsent(it.id, crop) }
                 putIfAbsent(crop.name, crop)
@@ -35,14 +34,13 @@ object CropRegistry {
     fun findByIdOrName(idOrName: String): CropDefinition? = cropsByIdOrName[idOrName]
 
     fun findByIdOrNameIgnoringCase(name: String): CropDefinition? =
-        findByIdOrName(name) ?: all.find { it.name.equals(name, ignoreCase = true) }
+        findByIdOrName(name) ?: allCrops.find { it.name.equals(name, ignoreCase = true) }
 
-    /** "do_not_eat_shroom" and "Do-not-eat-shroom" give the same key */
     private fun looseNameKey(text: String): String = text.lowercase().filter { it.isLetterOrDigit() }
 
     private val cropsByLooseName: Map<String, CropDefinition> by lazy {
         buildMap {
-            all.forEach { crop ->
+            allCrops.forEach { crop ->
                 putIfAbsent(looseNameKey(crop.name), crop)
                 crop.skyblockId?.id?.substringAfter(':')?.let { putIfAbsent(looseNameKey(it), crop) }
             }
@@ -52,7 +50,7 @@ object CropRegistry {
     fun findByLooseName(text: String): CropDefinition? = cropsByLooseName[looseNameKey(text)]
 
     val cropsBySoil: Map<Block, List<CropDefinition>> by lazy {
-        all.flatMap { crop -> crop.requiredSoil.map { soil -> soil to crop } }
+        allCrops.flatMap { crop -> crop.requiredSoil.map { soil -> soil to crop } }
             .groupBy(keySelector = { it.first }, valueTransform = { it.second })
     }
 

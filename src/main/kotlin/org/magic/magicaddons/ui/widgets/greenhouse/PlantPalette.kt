@@ -13,11 +13,9 @@ import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.Blocks
 import org.magic.magicaddons.Common
-import org.magic.magicaddons.data.greenhouse.crops.*
 import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
 import org.magic.magicaddons.data.greenhouse.crops.CropRegistry
 import org.magic.magicaddons.data.greenhouse.crops.CropTier
-import org.magic.magicaddons.data.greenhouse.crops.definitions.mutations.legendary.Devourer
 import org.magic.magicaddons.data.greenhouse.plot.LayoutSlot
 import org.magic.magicaddons.ui.OverlayContext
 import org.magic.magicaddons.ui.widgets.EnumWidget
@@ -143,7 +141,7 @@ class PlantPalette(
     private var cellHeight = MIN_CELL
 
     /** Plants a player can place, by rarity then name, the dead plant right after the base crops. */
-    private val crops: List<CropDefinition> = CropRegistry.all
+    private val crops: List<CropDefinition> = CropRegistry.allCrops
         .filter { it.skyblockId != null }
         .sortedWith(compareBy({ sortTier(it) }, { it.name.lowercase() }))
 
@@ -151,7 +149,7 @@ class PlantPalette(
         if (def.name == DEAD_PLANT) 0.5 else def.tier.ordinal.toDouble()
 
     /** Every soil some crop grows on, after the plants, so a plot's ground can be laid by hand. */
-    private val soils: List<Block> = CropRegistry.all
+    private val soils: List<Block> = CropRegistry.allCrops
         .flatMap { it.requiredSoil }
         .distinct()
         .sortedBy { it.name.string.lowercase() }
@@ -308,7 +306,7 @@ class PlantPalette(
     }
 
     fun stackFor(item: PaletteItem): ItemStack = when (item) {
-        is PaletteItem.Crop -> ScreenUtil.stackFor(item.def)
+        is PaletteItem.Crop -> ScreenUtil.itemStackFor(item.def)
         is PaletteItem.Soil -> ItemStack(item.block.asItem())
     }
 

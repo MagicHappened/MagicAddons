@@ -28,7 +28,7 @@ object SoftImport {
      */
     fun bestFit(existing: PlotLayout, incoming: PlotLayout, preferredTurns: Int): Fit {
         val fits = (0 until 4).flatMap { turns ->
-            val turned = incoming.turned(turns)
+            val turned = incoming.turnedBy(turns)
             val box = boxOf(turned) ?: return@flatMap listOf(laidOver(existing, turned, turns, 0, 0, null))
 
             val offsetsX = -box.minX..(turned.size - 1 - box.maxX)

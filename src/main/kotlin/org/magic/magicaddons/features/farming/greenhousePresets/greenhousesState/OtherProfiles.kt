@@ -26,7 +26,7 @@ object OtherProfiles {
             val file = DataHandler.greenhouseFile(id)
             val misc = CodecStorage.load(file, MISC_GREENHOUSE_INFO_CODEC, wrapperKey = "misc_info") ?: return@mapNotNull null
             val grids = CodecStorage.load(file, GREENHOUSE_GRID_CODEC.listOf(), wrapperKey = "greenhouses") ?: return@mapNotNull null
-            Profile(DataHandler.profileName(id) ?: id.toString().take(8), misc, grids)
+            Profile(DataHandler.profileFruitName(id) ?: id.toString().take(8), misc, grids)
         }
     }
 

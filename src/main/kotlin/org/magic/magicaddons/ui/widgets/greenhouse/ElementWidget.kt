@@ -20,7 +20,6 @@ import org.magic.magicaddons.data.greenhouse.crops.Plant
 import org.magic.magicaddons.data.greenhouse.crops.PlantStage
 import org.magic.magicaddons.data.greenhouse.plot.LayoutSlot
 import org.magic.magicaddons.data.greenhouse.plot.PlotPrediction
-import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseData
 import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GrowthClock
 import org.magic.magicaddons.util.ScreenUtil
 import org.magic.magicaddons.util.ScreenUtil.drawBorder
@@ -237,7 +236,7 @@ class ElementWidget(val instance: Plant) : Renderable, GuiEventListener {
     }
 
     /** icons of the crops merged into this slot */
-    private val alternativeStacks: List<ItemStack> by lazy { instance.alternatives.map { ScreenUtil.stackFor(it) } }
+    private val alternativeStacks: List<ItemStack> by lazy { instance.presetAlternatives.map { ScreenUtil.itemStackFor(it) } }
 
     private fun renderFire(graphics: GuiGraphicsExtractor) {
         val sprite = FIRE_SPRITE ?: return

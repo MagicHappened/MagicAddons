@@ -61,7 +61,7 @@ object Codecs {
 
         // older files hold a bare plot where a preset is; it comes back as a preset of one plot
         Codec.either(master, GREENHOUSE_LAYOUT_CODEC).xmap(
-            { either -> either.map({ it }, { GreenhouseLayout.of(it) }) },
+            { either -> either.map({ it }, { GreenhouseLayout.create(it) }) },
             { Either.left(it) }
         )
     }
@@ -132,7 +132,7 @@ object Codecs {
                     .forGetter { it.chargeKnown },
 
                 Codec.STRING.listOf().optionalFieldOf("alternatives", emptyList())
-                    .forGetter { plant -> plant.alternatives.map { it.elementId } }
+                    .forGetter { plant -> plant.presetAlternatives.map { it.elementId } }
             ).apply(instance) { id, slot, waterOpt, growthOpt, ageOpt, readingsOpt, firstSeenOpt, placed, waterExact, charge, chargeKnown, alternativeIds ->
                 Plant(
                     elementId = id,
@@ -142,7 +142,7 @@ object Codecs {
                     age = ageOpt.orElse(null),
                     readings = readingsOpt.orElse(emptyMap()).toMutableMap(),
                     cropDef = CropRegistry.findByIdOrName(id) ?: throw IllegalStateException("Unable to find crop for id $id"),
-                    alternatives = alternativeIds.mapNotNull { CropRegistry.findByIdOrName(it) }.toMutableList()
+                    presetAlternatives = alternativeIds.mapNotNull { CropRegistry.findByIdOrName(it) }.toMutableList()
                 ).also { plant ->
                     plant.firstSeenStage = firstSeenOpt.orElse(null)
                     plant.placed = placed
