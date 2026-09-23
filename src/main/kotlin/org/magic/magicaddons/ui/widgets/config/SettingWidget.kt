@@ -59,14 +59,14 @@ abstract class SettingWidget<T>(
     protected abstract val controlHeight: Int
 
     /** The settings the chevron unfolds. */
-    open fun childNodes(): List<SettingNode<*>> = node.children.orEmpty()
+    open fun childNodes(): List<SettingNode<*>> = node.availableChildren
 
     fun hasChildren(): Boolean = childNodes().isNotEmpty()
 
     /** Every setting under this one, at any depth. */
     fun descendantCount(): Int = childNodes().sumOf { 1 + countUnder(it) }
 
-    private fun countUnder(node: SettingNode<*>): Int = node.children.orEmpty().sumOf { 1 + countUnder(it) }
+    private fun countUnder(node: SettingNode<*>): Int = node.availableChildren.sumOf { 1 + countUnder(it) }
 
     private var nameLines: List<FormattedCharSequence> = emptyList()
     private var descriptionLines: List<FormattedCharSequence> = emptyList()

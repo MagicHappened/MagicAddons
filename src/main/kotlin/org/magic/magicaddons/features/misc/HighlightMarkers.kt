@@ -77,6 +77,7 @@ object HighlightMarkers : Feature() {
         displayName = displayName,
         description = description,
         value = false,
+        needsExtensionPack = true,
         children = listOf(
             iconSetting,
             arrowsSetting,
@@ -88,7 +89,7 @@ object HighlightMarkers : Feature() {
     )
 
     private fun highlightFeatures(): List<HighlightFeature> =
-        FeatureManager.features.filterIsInstance<HighlightFeature>()
+        FeatureManager.availableFeatures.filterIsInstance<HighlightFeature>()
 
     /**
      * A row leading here, for a feature whose highlights these settings mark. Each feature gets its

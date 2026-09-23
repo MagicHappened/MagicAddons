@@ -48,7 +48,7 @@ object HudElements {
             org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseHud,
             org.magic.magicaddons.features.foraging.safarihelper.SafariHelper.hud,
             org.magic.magicaddons.features.mining.PickaxeAbilityCooldown.hud
-        )
+        ).filter { it.configTarget?.feature?.isAvailable != false }
 
     fun byId(id: String): HudElement? = all.firstOrNull { it.id == id }
 }

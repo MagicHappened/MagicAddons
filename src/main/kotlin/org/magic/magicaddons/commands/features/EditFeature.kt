@@ -17,7 +17,7 @@ object EditFeature : AbstractCommand() {
             it.source.sendError(ChatUtils.buildWithPrefix("Must provide a feature to edit"))
             return@executes 0
         }
-        FeatureManager.features.forEach { feature ->
+        FeatureManager.availableFeatures.forEach { feature ->
             val featureNode = LiteralArgumentBuilder.literal<FabricClientCommandSource>(feature.id)
                 .executes {
                     ScreenUtil.setScreen(ConfigScreen(null).apply { showFeature(feature) })

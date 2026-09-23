@@ -1,5 +1,6 @@
 package org.magic.magicaddons.data.config
 
+import org.magic.magicaddons.ExtensionPack
 import org.magic.magicaddons.data.ListEntry
 import org.magic.magicaddons.ui.widgets.config.SettingDetail
 import kotlin.collections.get
@@ -10,10 +11,14 @@ sealed class SettingNode<T>(
     val description: String,
     open var value: T,
     /** Live text under this setting's row, asked afresh every frame rather than stored. */
-    val detail: (() -> SettingDetail?)? = null
-
+    val detail: (() -> SettingDetail?)? = null,
+    val needsExtensionPack: Boolean = false
 ) {
     open val children: List<SettingNode<*>>? = null
+
+    val isAvailable: Boolean get() = !needsExtensionPack || ExtensionPack.isInstalled
+
+    val availableChildren: List<SettingNode<*>> get() = children.orEmpty().filter { it.isAvailable }
 
     /**
      * The key this node is stored under, namespaced by its parent ("Parent.Child"), so keys only
@@ -64,8 +69,9 @@ class ToggleListSetting(
     val searchLabel: String = "Search",
     /** Whether a search box sits above the rows; a short fixed list has nothing worth searching. */
     val searchable: Boolean = true,
-    detail: (() -> SettingDetail?)? = null
-) : SettingNode<MutableList<ListEntry>>(key, displayName, description, value, detail) {
+    detail: (() -> SettingDetail?)? = null,
+    needsExtensionPack: Boolean = false
+) : SettingNode<MutableList<ListEntry>>(key, displayName, description, value, detail, needsExtensionPack) {
 
     override fun parseValue(value: Any): MutableList<ListEntry> {
         val list = value as? List<*> ?: return mutableListOf()
@@ -108,13 +114,22 @@ class BooleanSetting(
     key: String = "enabled",
     displayName: String,
     description: String,
-    override var value: Boolean,
+    value: Boolean,
     override var children: List<SettingNode<*>>? = null,
-    detail: (() -> SettingDetail?)? = null
-) : SettingNode<Boolean>(key, displayName, description, value, detail) {
+    detail: (() -> SettingDetail?)? = null,
+    needsExtensionPack: Boolean = false
+) : SettingNode<Boolean>(key, displayName, description, value, detail, needsExtensionPack) {
+
+    private var storedValue: Boolean = value
+
+    override var value: Boolean
+        get() = storedValue && isAvailable
+        set(newValue) {
+            storedValue = newValue
+        }
 
     override fun serializeSettings(parentPath: String): MutableMap<String, Any> {
-        val map = super.serializeSettings(parentPath)
+        val map = mutableMapOf<String, Any>(pathIn(parentPath) to storedValue)
         val childPath = pathIn(parentPath)
         children?.forEach { child ->
             map.putAll(child.serializeSettings(childPath))
@@ -132,7 +147,7 @@ class BooleanSetting(
 
     /** A feature toggle is its own root: stored under its key, children at the top level. */
     fun serializeAsFeatureRoot(): MutableMap<String, Any> {
-        val map = mutableMapOf<String, Any>(key to value)
+        val map = mutableMapOf<String, Any>(key to storedValue)
         children?.forEach { child ->
             map.putAll(child.serializeSettings())
         }
@@ -160,8 +175,9 @@ class IntSetting(
     val step: Int = 1,
     /** Whether the wheel over the bar moves the number, for one a stray scroll should not change. */
     val scrollable: Boolean = true,
-    detail: (() -> SettingDetail?)? = null
-) : SettingNode<Int>(key, displayName, description, value, detail) {
+    detail: (() -> SettingDetail?)? = null,
+    needsExtensionPack: Boolean = false
+) : SettingNode<Int>(key, displayName, description, value, detail, needsExtensionPack) {
 
     /** Gson hands numbers back as doubles, and an older config may hold the number as text. */
     override fun parseValue(value: Any): Int {
@@ -180,8 +196,9 @@ class TextSetting(
     displayName: String,
     description: String,
     override var value: String,
-    detail: (() -> SettingDetail?)? = null
-) : SettingNode<String>(key, displayName, description, value, detail) {
+    detail: (() -> SettingDetail?)? = null,
+    needsExtensionPack: Boolean = false
+) : SettingNode<String>(key, displayName, description, value, detail, needsExtensionPack) {
 
     val history: MutableSet<String> = mutableSetOf()
 
@@ -231,8 +248,9 @@ class ActionSetting(
     val buttonLabel: String,
     override var value: String = "",
     val onPressed: (ActionSetting) -> Unit,
-    detail: (() -> SettingDetail?)? = null
-) : SettingNode<String>(key, displayName, description, value, detail) {
+    detail: (() -> SettingDetail?)? = null,
+    needsExtensionPack: Boolean = false
+) : SettingNode<String>(key, displayName, description, value, detail, needsExtensionPack) {
 
     override fun parseValue(value: Any): String = value.toString()
 }
@@ -249,8 +267,9 @@ class PresetLibrarySetting(
     val subject: () -> SettingNode<*>,
     /** The preset every list starts with, which cannot be written over or removed. */
     val defaultName: String,
-    detail: (() -> SettingDetail?)? = null
-) : SettingNode<String>(key, displayName, description, defaultName, detail) {
+    detail: (() -> SettingDetail?)? = null,
+    needsExtensionPack: Boolean = false
+) : SettingNode<String>(key, displayName, description, defaultName, detail, needsExtensionPack) {
 
     /** Each saved preset by name, holding what the settings looked like when it was saved. */
     val presets: MutableMap<String, MutableMap<String, Any>> = mutableMapOf()
@@ -338,8 +357,9 @@ class ParentSetting(
     key: String,
     displayName: String,
     description: String,
-    override val children: List<SettingNode<*>>
-) : SettingNode<Unit>(key, displayName, description, Unit) {
+    override val children: List<SettingNode<*>>,
+    needsExtensionPack: Boolean = false
+) : SettingNode<Unit>(key, displayName, description, Unit, needsExtensionPack = needsExtensionPack) {
 
     override fun parseValue(value: Any) = Unit
 
@@ -372,8 +392,9 @@ class ChoiceSetting(
     val onChosen: ((ChoiceSetting) -> Unit)? = null,
     /** What to ask before a value is taken, or null for one that needs no asking. */
     val confirm: ((String) -> Confirmation?)? = null,
-    detail: (() -> SettingDetail?)? = null
-) : SettingNode<String>(key, displayName, description, value, detail) {
+    detail: (() -> SettingDetail?)? = null,
+    needsExtensionPack: Boolean = false
+) : SettingNode<String>(key, displayName, description, value, detail, needsExtensionPack) {
 
     /** A question put before a value is taken, with a warning under it when there is one. */
     class Confirmation(val question: String, val warning: String? = null)
@@ -388,14 +409,15 @@ class EnumSetting<T : Enum<T>>(
     value: T,
     override val children: List<SettingNode<*>>? = null,
     val childrenProvider: ((T) -> List<SettingNode<*>>)? = null,
-    detail: (() -> SettingDetail?)? = null
-) : SettingNode<T>(key, displayName, description, value, detail) {
+    detail: (() -> SettingDetail?)? = null,
+    needsExtensionPack: Boolean = false
+) : SettingNode<T>(key, displayName, description, value, detail, needsExtensionPack) {
 
     private var activeChildren: List<SettingNode<*>>? =
         childrenProvider?.invoke(value)
 
     /** The settings the current value brings with it, none when there is no provider. */
-    val providedChildren: List<SettingNode<*>> get() = activeChildren.orEmpty()
+    val providedChildren: List<SettingNode<*>> get() = activeChildren.orEmpty().filter { it.isAvailable }
 
     override var value: T = value
         set(newValue) {

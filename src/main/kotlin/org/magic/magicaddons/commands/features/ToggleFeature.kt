@@ -18,7 +18,7 @@ object ToggleFeature : AbstractCommand() {
                 return@executes 0
             }
 
-        FeatureManager.features.forEach { feature ->
+        FeatureManager.availableFeatures.forEach { feature ->
             command.then(
                 literal<FabricClientCommandSource>(feature.id)
                     .executes {

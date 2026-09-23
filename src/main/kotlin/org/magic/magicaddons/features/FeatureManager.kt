@@ -36,7 +36,7 @@ object FeatureManager {
     /** categories that are unrelated to game features. */
     private val BELOW_DIVIDER = setOf(Customization.CATEGORY, "debug")
 
-    fun categories(): List<Category> = features
+    fun categories(): List<Category> = availableFeatures
         .groupBy { it.category }
         .map { (key, list) -> Category(key, key.replaceFirstChar { it.uppercase() }, list, key in BELOW_DIVIDER) }
         .sortedWith(
@@ -45,6 +45,7 @@ object FeatureManager {
                 .thenBy { it.key }
         )
 
+    val availableFeatures: List<Feature> get() = features.filter { it.isAvailable }
 
     fun syncToConfigJson() {
 

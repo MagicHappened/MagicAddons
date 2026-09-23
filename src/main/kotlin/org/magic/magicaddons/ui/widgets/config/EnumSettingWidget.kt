@@ -38,7 +38,7 @@ class EnumSettingWidget<T : Enum<T>>(
     override val controlWidth: Int get() = selector.width
     override val controlHeight: Int = FIELD_HEIGHT
 
-    override fun childNodes(): List<SettingNode<*>> = setting.children.orEmpty() + setting.providedChildren
+    override fun childNodes(): List<SettingNode<*>> = setting.availableChildren + setting.providedChildren
 
     override fun layoutControl() {
         selector.x = controlLeft()

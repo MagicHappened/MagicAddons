@@ -150,6 +150,7 @@ object SafariHelper : HighlightFeature() {
         displayName = "Mob Highlight",
         description = "Highlights the mobs and the grass treasure belonging to the safari zone you are in.",
         value = false,
+        needsExtensionPack = true,
         children = listOf(
             throughWallsSetting,
             onlyUncaught,
