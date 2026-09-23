@@ -42,7 +42,7 @@ class EnumSettingWidget<T : Enum<T>>(
 
     override fun initChildren() {
         childrenWidgets.clear()
-        setting.childrenProvider?.invoke(setting.value)?.forEach {
+        setting.childrenProvider?.invoke(setting.value)?.filter { it.isAvailable }?.forEach {
             childrenWidgets.add(SettingWidgetFactory.create(it).apply {
                 selectionMenuExpanded = true
             }

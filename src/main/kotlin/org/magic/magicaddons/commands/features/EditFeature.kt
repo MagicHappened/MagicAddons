@@ -18,10 +18,10 @@ object EditFeature : AbstractCommand() {
             it.source.sendError(ChatUtils.buildWithPrefix("Must provide a feature to edit"))
             return@executes 0
         }
-        FeatureManager.features.forEach { feature ->
+        FeatureManager.availableFeatures.forEach { feature ->
             val featureNode = LiteralArgumentBuilder.literal<FabricClientCommandSource>(feature.id)
                 .executes {
-                    if (feature.baseSetting.children == null) {
+                    if (feature.baseSetting.availableChildren.isEmpty()) {
                         it.source.sendError(ChatUtils.buildWithPrefix("Feature ${feature.displayName} does not have sub settings."))
                         return@executes 0
                     }

@@ -105,7 +105,7 @@ class FeatureToggleWidget(
                 if (currentScreen !is ConfigScreen) {
                     return false
                 }
-                if (feature.baseSetting.children == null){
+                if (feature.baseSetting.availableChildren.isEmpty()) {
                     ChatUtils.sendWithPrefix("Feature ${feature.displayName} does not have sub settings.")
                     return true
                 }

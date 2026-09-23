@@ -16,6 +16,7 @@ object FeatureManager {
         MobHitDebugInfo
     ) // need to call objects somehow for initialization
 
+    val availableFeatures: List<Feature> get() = features.filter { it.isAvailable }
 
     fun syncToConfigJson() {
 
