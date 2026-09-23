@@ -2,7 +2,7 @@ plugins {
     java
 }
 
-version = project.property("mod_version") as String
+version = project.property("extension_version") as String
 group = project.property("maven_group") as String
 
 base {
