@@ -253,7 +253,7 @@ class ConfigScreen(val parent: Screen?) : MagicScreen(Component.literal("Magic A
         fun walk(category: FeatureManager.Category, feature: Feature, node: SettingNode<*>, above: List<SettingNode<*>>) {
             val path = above + node
             if (node.displayName.contains(query, ignoreCase = true)) found.add(SearchResult(category, feature, path))
-            val under = node.children.orEmpty() + ((node as? EnumSetting<*>)?.providedChildren ?: emptyList())
+            val under = node.availableChildren + ((node as? EnumSetting<*>)?.providedChildren ?: emptyList())
             under.forEach { walk(category, feature, it, path) }
         }
         categories.forEach { category ->

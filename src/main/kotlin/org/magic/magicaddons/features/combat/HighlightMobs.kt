@@ -77,6 +77,7 @@ object HighlightMobs : HighlightFeature() {
         displayName = "Through Walls",
         description = "§cThis feature might be considered as a cheat and is therefore used at your own risk.",
         value = false,
+        needsExtensionPack = true,
         children = listOf(HighlightMarkers.linkSetting())
     )
 
