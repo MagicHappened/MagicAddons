@@ -14,12 +14,12 @@ object CropWords {
     fun of(def: CropDefinition): String = def.name.filter { c -> c.isLetterOrDigit() }
 
     fun find(word: String): CropDefinition? =
-        CropRegistry.all.firstOrNull { def -> of(def).equals(word, ignoreCase = true) }
+        CropRegistry.allCrops.firstOrNull { def -> of(def).equals(word, ignoreCase = true) }
 
     fun suggest(builder: SuggestionsBuilder, leading: List<String> = emptyList()): CompletableFuture<Suggestions> {
         val typed = builder.remainingLowerCase
         val range = StringRange.between(builder.start, builder.input.length)
-        val suggestions = (leading + CropRegistry.all.map { of(it) }.distinct())
+        val suggestions = (leading + CropRegistry.allCrops.map { of(it) }.distinct())
             .filter { it.lowercase().startsWith(typed) }
             .map { Suggestion(range, it) }
 

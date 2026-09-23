@@ -113,8 +113,7 @@ object ScreenUtil {
     fun stepScroll(scroll: Int, scrollY: Double, total: Int, visible: Int): Int =
         (scroll - scrollY.toInt().coerceIn(-1, 1)).coerceIn(0, (total - visible).coerceAtLeast(0))
 
-    /** The item that stands for a crop: its display item, its skyblock item, or a barrier when neither exists. */
-    fun stackFor(def: CropDefinition): ItemStack =
+    fun itemStackFor(def: CropDefinition): ItemStack =
         def.displayItem?.let { ItemStack(it) }
             ?: def.skyblockId?.toItem()?.takeUnless { it.isEmpty }
             ?: ItemStack(Items.BARRIER)

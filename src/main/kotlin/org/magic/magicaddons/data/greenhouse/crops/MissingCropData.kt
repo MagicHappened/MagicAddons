@@ -1,24 +1,10 @@
 package org.magic.magicaddons.data.greenhouse.crops
 
-import org.magic.magicaddons.data.greenhouse.crops.definitions.mutations.epic.Zombud
-import org.magic.magicaddons.data.greenhouse.crops.definitions.mutations.legendary.Devourer
-
-/** what the definitions still miss, crop by crop */
-object CropDataGaps {
-
-    /** per crop, the stages whose stands stood at the other size, with the isSmall the definition needs */
-    private val sizeCorrections: MutableMap<String, MutableMap<Int, Boolean>> = mutableMapOf()
-
-    fun noteSizeCorrection(cropName: String, stage: Int, needsSmall: Boolean) {
-        sizeCorrections.getOrPut(cropName) { mutableMapOf() }[stage] = needsSmall
-    }
-
-    /** null when no run this session found a size to correct */
-    fun neededIsSmall(crop: CropDefinition, stage: Int): Boolean? = sizeCorrections[crop.name]?.get(stage)
+object MissingCropData {
 
     class CropGap(val crop: CropDefinition, val missingParts: List<String>)
 
-    fun gapsByTier(): Map<CropTier, List<CropGap>> = CropRegistry.all
+    fun gapsByTier(): Map<CropTier, List<CropGap>> = CropRegistry.allCrops
         .sortedWith(compareBy({ it.tier }, { it.name }))
         .mapNotNull { crop -> missingParts(crop).takeIf { it.isNotEmpty() }?.let { CropGap(crop, it) } }
         .groupBy { it.crop.tier }
@@ -29,8 +15,8 @@ object CropDataGaps {
     }
 
     fun cropDataReport(): CropDataReport {
-        val recordedStages = CropRegistry.all.sumOf { it.maxStage - unrecordedStages(it).size }
-        val totalStages = CropRegistry.all.sumOf { it.maxStage }
+        val recordedStages = CropRegistry.allCrops.sumOf { it.maxStage - unrecordedStages(it).size }
+        val totalStages = CropRegistry.allCrops.sumOf { it.maxStage }
         val gapsByTier = gapsByTier()
 
         val listing = buildString {
@@ -74,32 +60,13 @@ object CropDataGaps {
 
     private fun missingParts(crop: CropDefinition): List<String> {
         val missing = unrecordedStages(crop)
-        val unturned = stagesWithoutRotation(crop)
-        val sizes = sizeCorrections[crop.name].orEmpty()
-        val oversized = sizes.filterValues { !it }.keys.sorted()
-        val undersized = sizes.filterValues { it }.keys.sorted()
 
         val parts = mutableListOf<String>()
         if (missing.isNotEmpty()) parts += "stages ${asRanges(missing)} unrecorded"
         parts += missingVariants(crop)
-        if (unturned.isNotEmpty()) parts += "stages ${asRanges(unturned)} need rotation data"
-        if (oversized.isNotEmpty()) parts += "stages ${asRanges(oversized)} need isSmall = false"
-        if (undersized.isNotEmpty()) parts += "stages ${asRanges(undersized)} need isSmall = true"
         return parts
     }
 
-    /** listed by hand, by crop name */
-    private val STAGES_WITHOUT_ROTATION: Map<String, Set<Int>> = mapOf(
-        "Zombud" to setOf(7) + (10..15)
-    )
-
-    fun stagesWithoutRotation(crop: CropDefinition): List<Int> =
-        STAGES_WITHOUT_ROTATION[crop.name].orEmpty().filter { it in 1..crop.maxStage }.sorted()
-
-    fun isMissingRotation(crop: CropDefinition, stage: Int): Boolean =
-        stage in STAGES_WITHOUT_ROTATION[crop.name].orEmpty()
-
-    /** null when the crop misses nothing */
     fun missingSummary(crop: CropDefinition): String? =
         missingParts(crop).joinToString("; ").takeIf { it.isNotEmpty() }
 
@@ -109,7 +76,6 @@ object CropDataGaps {
         return if (crop.maxStage == 0) 100 else covered * 100 / crop.maxStage
     }
 
-    /** 1, 2, 3, 7 written as 1-3, 7 */
     private fun asRanges(sortedStages: List<Int>): String = buildString {
         var i = 0
         while (i < sortedStages.size) {

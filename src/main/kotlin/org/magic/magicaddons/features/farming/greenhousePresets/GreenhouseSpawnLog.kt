@@ -39,15 +39,15 @@ object GreenhouseSpawnLog {
 
     private class Record(
         val plotId: String,
-        val ticks: Int,
-        val leftGarden: Boolean,
+        var ticks: Int,
+        var leftGarden: Boolean,
         val weightMultiplier: Double,
         val emptyTargetSpots: List<EmptyTargetSpot>,
         val plantsBefore: List<RecordedPlant>
     ) {
         val time: LocalDateTime = LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS)
         val spawns = mutableListOf<RecordedPlant>()
-        var plantsAfter: List<RecordedPlant> = emptyList()
+        var plantsAfter: List<RecordedPlant>? = null
     }
 
     private val SETTINGS_FILE: Path = DataHandler.modDir.resolve("spawn-log.json")
@@ -99,7 +99,13 @@ object GreenhouseSpawnLog {
     fun noteGrowthTicks(grid: GreenhouseGrid, ticks: Int, leftGarden: Boolean) {
         if (!isEnabled) return
 
-        openRecordByGrid.remove(grid)?.let { submit(grid, it) }
+        val openRecord = openRecordByGrid[grid]
+        if (openRecord != null && openRecord.plantsAfter == null) {
+            openRecord.ticks += ticks
+            openRecord.leftGarden = openRecord.leftGarden && leftGarden
+            return
+        }
+        openRecord?.let { submit(grid, it) }
 
         val weightMultiplier = BioanalysisAccessory.mutationWeightMultiplier()
         openRecordByGrid[grid] = Record(
@@ -114,13 +120,16 @@ object GreenhouseSpawnLog {
 
     fun recordSpawn(spawn: Plant, layout: PlotLayout) {
         if (!isEnabled) return
-        openRecordByGrid.entries.firstOrNull { it.key.layout === layout }?.value?.spawns?.add(recordedPlant(spawn))
+        val record = openRecordByGrid.entries.firstOrNull { it.key.layout === layout }?.value ?: return
+        val recorded = recordedPlant(spawn)
+        if (record.spawns.any { it.x == recorded.x && it.y == recorded.y && it.cropName == recorded.cropName }) return
+        record.spawns.add(recorded)
     }
 
     fun noteScan(grid: GreenhouseGrid) {
         if (!isEnabled) return
         val record = openRecordByGrid[grid] ?: return
-        if (record.plantsAfter.isEmpty()) record.plantsAfter = recordedPlants(grid.layout)
+        if (record.plantsAfter == null) record.plantsAfter = recordedPlants(grid.layout)
     }
 
     fun onGameClosing() {
@@ -137,6 +146,9 @@ object GreenhouseSpawnLog {
         val fileName = activeFileName ?: return
 
         narrowStageRanges(grid, record)
+
+        val plantsAfter = record.plantsAfter.orEmpty()
+        val plantsAfterWithSpawns = plantsAfter + record.spawns.filter { spawn -> plantsAfter.none { it.x == spawn.x && it.y == spawn.y } }
 
         val spotsByPosition = record.emptyTargetSpots.associateBy { it.x to it.y }
         val (spawnsOnTargets, spawnsElsewhere) = record.spawns.partition { (it.x to it.y) in spotsByPosition }
@@ -158,7 +170,7 @@ object GreenhouseSpawnLog {
             spawnsElsewhere.size.toString(),
             csvField(record.spawns.joinToString(";")),
             csvField(record.plantsBefore.joinToString(";")),
-            csvField(record.plantsAfter.joinToString(";"))
+            csvField(plantsAfterWithSpawns.sortedWith(compareBy({ it.y }, { it.x })).joinToString(";"))
         )
         Files.write(LOG_DIR.resolve(fileName), listOf(row.joinToString(",")), StandardOpenOption.CREATE, StandardOpenOption.APPEND)
     }
@@ -166,7 +178,7 @@ object GreenhouseSpawnLog {
     private fun narrowStageRanges(grid: GreenhouseGrid, record: Record) {
         val plantsBySlot = grid.layout.plants.associateBy { it.slot.x to it.slot.y }
 
-        (record.plantsAfter + record.spawns).forEach { recorded ->
+        (record.plantsAfter.orEmpty() + record.spawns).forEach { recorded ->
             val recordedRange = stageRangeOf(recorded.stages) ?: return@forEach
             val plant = plantsBySlot[recorded.x to recorded.y] ?: return@forEach
             if (plant.cropDef.name != recorded.cropName) return@forEach
@@ -190,7 +202,7 @@ object GreenhouseSpawnLog {
     }
 
     private fun emptyTargetSpots(grid: GreenhouseGrid, weightMultiplier: Double): List<EmptyTargetSpot> {
-        val plan = grid.state.assignedLayout?.turned(grid.state.planTurns) ?: return emptyList()
+        val plan = grid.state.assignedLayout?.turnedBy(grid.state.planTurns) ?: return emptyList()
 
         return plan.plants
             .filter { it.slot.mark == LayoutSlot.Marking.Target }

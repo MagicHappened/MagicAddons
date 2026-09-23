@@ -25,7 +25,7 @@ import org.magic.magicaddons.util.ScreenUtil.drawCountedCrop
 import org.magic.magicaddons.util.ScreenUtil.eased
 import org.magic.magicaddons.util.ScreenUtil.inRect
 import org.magic.magicaddons.util.ScreenUtil.renderFakeItem
-import org.magic.magicaddons.util.ScreenUtil.stackFor
+import org.magic.magicaddons.util.ScreenUtil.itemStackFor
 
 class GridWidget(
     val layout: PlotLayout,
@@ -88,7 +88,7 @@ class GridWidget(
         val footprint = instance.cropDef.footprint
         val rect = cellRect(instance.slot.x, instance.slot.y, footprint.width, footprint.height)
 
-        vanishing.add(Vanishing(rect, stackFor(instance.cropDef), System.currentTimeMillis()))
+        vanishing.add(Vanishing(rect, itemStackFor(instance.cropDef), System.currentTimeMillis()))
     }
 
     /** Quarter turns clockwise the picture is given; the slots underneath never move. */
@@ -321,7 +321,7 @@ class GridWidget(
                 }
             }
 
-            widget.renderedStack = stackFor(instance.cropDef)
+            widget.renderedStack = itemStackFor(instance.cropDef)
             if (instance in justPlaced) widget.appearedAt = System.currentTimeMillis()
             if (instance in justMarked) widget.markedAt = System.currentTimeMillis()
             widget.inPreset = layout.kind == PlotLayout.Kind.MASTER_PRESET
@@ -400,7 +400,7 @@ class GridWidget(
             if (run.size == 1) {
                 val rect = footprintRect(run[0].first, run[0].second, crop.footprint)
                 graphics.renderFakeItem(
-                    stackFor(crop), rect[0] + padding, rect[1] + padding,
+                    itemStackFor(crop), rect[0] + padding, rect[1] + padding,
                     rect[2] - rect[0] - padding * 2, rect[3] - rect[1] - padding * 2
                 )
                 graphics.drawBorder(rect[0] + padding, rect[1] + padding, rect[2] - padding, rect[3] - padding, CROP_BORDER_SIZE, color)
@@ -409,7 +409,7 @@ class GridWidget(
                 val cell = freeCellIn(cells, taken)
                 val rect = cellRect(cell.first, cell.second, 1, 1)
 
-                graphics.drawCountedCrop(font, stackFor(crop), rect, run.size, color)
+                graphics.drawCountedCrop(font, itemStackFor(crop), rect, run.size, color)
                 graphics.drawBorder(rect[0] + padding, rect[1] + padding, rect[2] - padding, rect[3] - padding, CROP_BORDER_SIZE, color)
                 taken += cell
             }

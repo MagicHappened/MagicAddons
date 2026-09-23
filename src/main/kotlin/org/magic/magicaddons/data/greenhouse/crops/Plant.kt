@@ -28,19 +28,18 @@ data class Plant(
     var age: Long? = null,
     val cropDef: CropDefinition,
     val readings: MutableMap<String, Int> = mutableMapOf(),
-    val alternatives: MutableList<CropDefinition> = mutableListOf(),
+    val presetAlternatives: MutableList<CropDefinition> = mutableListOf(),
 ) {
-    val hasAlternatives: Boolean get() = alternatives.isNotEmpty()
+    val hasAlternatives: Boolean get() = presetAlternatives.isNotEmpty()
 
-    fun acceptsCrop(crop: CropDefinition): Boolean = crop == cropDef || crop in alternatives
+    fun acceptsCrop(crop: CropDefinition): Boolean = crop == cropDef || crop in presetAlternatives
 
-    val acceptedCrops: List<CropDefinition> get() = listOf(cropDef) + alternatives
+    val acceptedCrops: List<CropDefinition> get() = listOf(cropDef) + presetAlternatives
 
     val isAsleep: Boolean get() = readings[StandReader.ASLEEP] == 1
 
     val timeOfDayNeeded: Int? get() = readings[StandReader.NEEDS_TIME]
 
-    /** 0 to 100, null without a hunger bar */
     val hunger: Int? get() = readings[StandReader.HUNGER]
 
     /** if a tick has passed with negative water, then we don't know if it truly passed or not */
@@ -70,7 +69,7 @@ data class Plant(
     val consumesWater: Boolean get() = cropDef.needsWater && !isPlacedMutation && !isFullyGrown
 
     fun copyForPrediction(slot: LayoutSlot): Plant =
-        copy(slot = slot, readings = readings.toMutableMap(), alternatives = alternatives.toMutableList()).also {
+        copy(slot = slot, readings = readings.toMutableMap(), presetAlternatives = presetAlternatives.toMutableList()).also {
             it.waterPredictedInDebt = waterPredictedInDebt
             it.waterExact = waterExact
             it.firstSeenStage = firstSeenStage

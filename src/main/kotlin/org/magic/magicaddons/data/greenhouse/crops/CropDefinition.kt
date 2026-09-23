@@ -19,39 +19,35 @@ data class Footprint(val width: Int, val height: Int) {
 
 data class CropDefinition(
     val name: String,
-    val tier: CropTier,
+
     val skyblockId: SkyBlockId?,
     val aliases: List<SkyBlockId>? = null,
     val stages: List<CropStage>,
     val maxStage: Int = 1,
-
+    val isBaseCrop: Boolean = false,
+    val isMutation: Boolean = false,
     val decayTimeMs: Long = THREE_DAY_DECAY_TIME_MS,
     val footprint: Footprint = Footprint(1,1),
     val requiredSoil: Set<Block> = setOf(Blocks.FARMLAND),
     val needsWater: Boolean = true,
+    val effects: Set<CropEffect> = emptySet(),
+    val spawnRule: SpawnRule? = null,
+    val dropMultiplier: Double? = null,
+
+    val tier: CropTier,
+    val displayItem: Item? = null,
+    val standPoses: Map<String, StandPose> = emptyMap(),
+    val rotatesWithPlot: Boolean = true,
 
     val drainsNeighbours: Boolean = false,
-    val isBaseCrop: Boolean = false,
-    val isMutation: Boolean = false,
-    val displayItem: Item? = null,
-
-    val effects: Set<CropEffect> = emptySet(),
-
-    val standPoses: Map<String, StandPose> = emptyMap(),
+    val resetsToFirstStage: Boolean = false,
     val sleepStages: Set<Int> = emptySet(),
-    /** what the player has to do for a plant stopped at one of [sleepStages] to grow on */
     val stallExplanation: String? = null,
-    val rotatesWithPlot: Boolean = true,
-    val spawnRule: SpawnRule? = null,
     val chargeRule: ChargeRule? = null,
-    val dropMultiplier: Double? = null,
-    /** the stems' age changes with something other than the stage */
-    val stemAgeVaries: Boolean = false,
-    val resetsToFirstStage: Boolean = false
+    val stemAgeVaries: Boolean = false
 ){
     val stagePlacedAt: Int get() = if (isMutation) maxStage else 1
     val elementId: String get() = skyblockId?.id ?: name
-
     val hasHungerBar: Boolean get() = stages.any { stage -> stage.readers.any { it.key == StandReader.HUNGER } }
 
     override fun toString(): String {
@@ -70,6 +66,48 @@ enum class CropTier(val listingName: String, val heading: String) {
     Other("other", "Misc")
 }
 
+enum class CropEffect(val kind: EffectKind, val percent: Int, val label: String) {
+
+    HarvestBoost(EffectKind.Yield, 20, "Harvest Boost"),
+    ImprovedHarvestBoost(EffectKind.Yield, 30, "Improved Harvest Boost"),
+    HarvestLoss(EffectKind.Yield, -20, "Harvest Loss"),
+
+    XpBoost(EffectKind.Xp, 20, "XP Boost"),
+    ImprovedXpBoost(EffectKind.Xp, 30, "Improved XP Boost"),
+    XpLoss(EffectKind.Xp, -20, "XP Loss"),
+
+    WaterRetain(EffectKind.Water, 50, "Water Retain"),
+    ImprovedWaterRetain(EffectKind.Water, 100, "Improved Water Retain"),
+    WaterDrain(EffectKind.Water, -30, "Water Drain"),
+
+    BonusDrops(EffectKind.Drops, 0, "Bonus Drops"),
+
+    Immunity(EffectKind.Immunity, 0, "Immunity"),
+
+    EffectSpread(EffectKind.Spread, 0, "Effect Spread");
+
+    enum class EffectKind {
+        Yield,
+        Xp,
+        Water,
+        Drops,
+        Immunity,
+        Spread
+    }
+
+
+    companion object {
+        fun appliedEffect(effects: Iterable<CropEffect>, kind: EffectKind): Int {
+            val percents = effects.filter { it.kind == kind }.map { it.percent }
+            val maxEffect = percents.maxOrNull() ?: 0
+            if (maxEffect <= 0) return maxEffect
+            return maxEffect + (percents.minOrNull()?.coerceAtMost(0) ?: 0)
+        }
+
+    }
+}
+
+
 data class SpawnRule(
     val weight: Int,
     val requiredNeighbourCells: Map<String, Int> = emptyMap(),
@@ -83,8 +121,7 @@ data class ChargeRule(
 ) {
     fun stagesUntilOverload(charge: Int): Int = (limit - charge) / perStage
 
-    /** the most a plant at [stage] can hold if it has never been discharged: nothing at stage 1 */
-    fun chargeImpliedBy(stage: Int): Int = perStage * (stage - 1).coerceAtLeast(0)
+    fun chargeByStageNum(stage: Int): Int = perStage * (stage - 1).coerceAtLeast(0)
 
     /** the charge a bar filled to [percent] stands for, which can only ever be whole stages */
     fun chargeShownBy(percent: Int): Int = (limit * percent / 100.0 / perStage).roundToInt() * perStage

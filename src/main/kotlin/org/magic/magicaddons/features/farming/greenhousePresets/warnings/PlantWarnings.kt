@@ -361,7 +361,7 @@ object PlantWarnings {
 
     /** Whether [instance] covers a target slot of the plan running on [grid] that accepts its crop. */
     private fun onWantedTarget(grid: GreenhouseGrid, instance: Plant): Boolean {
-        val plan = grid.state.assignedLayout?.turned(grid.state.planTurns) ?: return false
+        val plan = grid.state.assignedLayout?.turnedBy(grid.state.planTurns) ?: return false
         val footprint = instance.cropDef.footprint
 
         return plan.plants.any { target ->

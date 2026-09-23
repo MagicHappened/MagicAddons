@@ -49,25 +49,24 @@ class GreenhouseGrid(
         return BlockPos(worldX, GREENHOUSE_SOIL_Y, worldZ)
     }
 
-    fun bestTurnFor(plan: PlotLayout): Int =
-        (0 until 4).maxBy { turns -> agreementWith(plan.turned(turns)) }
+    fun bestRotationFor(plan: PlotLayout): Int =
+        (0 until 4).maxBy { turns -> configurationForLayout(plan.turnedBy(turns)) }
 
-    /** keeps [currentTurns] unless another turn agrees strictly better */
-    fun bestTurnKeeping(plan: PlotLayout, currentTurns: Int): Int {
-        val bestTurns = bestTurnFor(plan)
+    /** keeps [currentRotation] unless another turn agrees strictly better */
+    fun bestRotationKeeping(plan: PlotLayout, currentRotation: Int): Int {
+        val bestRotation = bestRotationFor(plan)
 
-        return if (agreementWith(plan.turned(bestTurns)) > agreementWith(plan.turned(currentTurns))) bestTurns else currentTurns
+        return if (configurationForLayout(plan.turnedBy(bestRotation)) > configurationForLayout(plan.turnedBy(currentRotation))) bestRotation else currentRotation
     }
 
-    /** plants compare before soil */
-    class Agreement(val plants: Int, val soil: Int) : Comparable<Agreement> {
-        override fun compareTo(other: Agreement): Int =
+    class PlotConfiguration(val plants: Int, val soil: Int) : Comparable<PlotConfiguration> {
+        override fun compareTo(other: PlotConfiguration): Int =
             compareValuesBy(this, other, { it.plants }, { it.soil })
 
         override fun toString(): String = "$plants plants, $soil soil"
     }
 
-    fun agreementWith(plan: PlotLayout): Agreement {
+    fun configurationForLayout(plan: PlotLayout): PlotConfiguration {
         val soil = plan.slots.count { plannedSlot ->
             val plannedSoil = plannedSlot.soil?.block ?: return@count false
             plannedSoil == layout.getSlot(plannedSlot.x, plannedSlot.y)?.soil?.block
@@ -79,7 +78,7 @@ class GreenhouseGrid(
             }
         }
 
-        return Agreement(plants, soil)
+        return PlotConfiguration(plants, soil)
     }
 
     fun getPosForSlotCoords(x: Int, y: Int): BlockPos? {
@@ -90,7 +89,7 @@ class GreenhouseGrid(
     }
 
     /** The plan this plot is running, turned the way the plot itself stands. */
-    fun assignedPlan(): PlotLayout? = state.assignedLayout?.turned(state.planTurns)
+    fun assignedPlan(): PlotLayout? = state.assignedLayout?.turnedBy(state.planTurns)
 
     /** The plant the running plan wants covering ([x], [y]), null where it asks for nothing. */
     fun plannedPlantAt(x: Int, y: Int): Plant? {
@@ -167,7 +166,7 @@ class GreenhouseGrid(
 
     /** every slot within a crop's width of each position */
     fun scanSlotsReachedFrom(positions: Collection<BlockPos>): Set<Pair<Int, Int>> {
-        val reach = CropRegistry.all.maxOf { maxOf(it.footprint.width, it.footprint.height) } - 1
+        val reach = CropRegistry.allCrops.maxOf { maxOf(it.footprint.width, it.footprint.height) } - 1
         val region = mutableSetOf<Pair<Int, Int>>()
         positions.forEach { pos ->
             val slot = getSlotAt(pos, matchY = false) ?: return@forEach
@@ -215,7 +214,6 @@ class GreenhouseGrid(
             .filterNot { it.isMarker }
             .toMutableList()
 
-        // the instances carry age, water and stage; the wrappers are rebuilt each scan
         val previousBySlot = layout.plants.associateBy { it.slot.x to it.slot.y }
         val standCache = CropStage.StandCache()
         val merged = mutableListOf<ScannedPlant>()
@@ -704,7 +702,7 @@ class GreenhouseGrid(
             if (plant.chargeKnown) return
 
             val stage = plant.highestStage ?: 1
-            plant.charge = maxOf(plant.charge, rule.chargeImpliedBy(stage))
+            plant.charge = maxOf(plant.charge, rule.chargeByStageNum(stage))
 
             // a plant that has not grown a stage yet holds nothing, so stage 1 is read off, not guessed
             plant.chargeKnown = stage <= 1

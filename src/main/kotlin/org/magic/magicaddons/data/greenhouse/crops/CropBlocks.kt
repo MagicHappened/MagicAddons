@@ -12,7 +12,6 @@ import net.minecraft.world.level.block.state.properties.DoubleBlockHalf
 
 object CropBlocks {
 
-    /** The code for a state: a helper where one exists, the game's own state string otherwise. */
     fun toCode(state: BlockState): String =
         toFunctionString(state) ?: "stateOf(\"${BlockStateParser.serialize(state)}\")"
 
@@ -65,8 +64,6 @@ object CropBlocks {
     }
 
 
-
-    /** Which half of a two block plant a state is, written as the code that names it. */
     private fun halfOf(state: BlockState): String =
         if (state.getValue(DoublePlantBlock.HALF) == DoubleBlockHalf.UPPER) {
             "DoubleBlockHalf.UPPER"
@@ -74,7 +71,6 @@ object CropBlocks {
             "DoubleBlockHalf.LOWER"
         }
 
-    /** Any block state from the text the game itself writes it as, for blocks with no helper above. */
     fun stateOf(text: String): BlockState =
         BlockStateParser.parseForBlock(BuiltInRegistries.BLOCK, text, false).blockState()
 
@@ -106,11 +102,13 @@ object CropBlocks {
     fun redMushroomState(): BlockState = Blocks.RED_MUSHROOM.defaultBlockState()
     fun brownMushroomState(): BlockState = Blocks.BROWN_MUSHROOM.defaultBlockState()
     fun cactusState(): BlockState = Blocks.CACTUS.defaultBlockState()
-    /** A sunflower is two blocks; the lower half is what a crop is planted as, so it is the default. */
-    fun sunflowerState(half: DoubleBlockHalf = DoubleBlockHalf.LOWER): BlockState =
-        Blocks.SUNFLOWER.defaultBlockState().setValue(DoublePlantBlock.HALF, half)
-    fun shortGrassState(): BlockState = Blocks.SHORT_GRASS.defaultBlockState()
+
     fun roseBushState(half: DoubleBlockHalf = DoubleBlockHalf.LOWER): BlockState =
         Blocks.ROSE_BUSH.defaultBlockState().setValue(DoublePlantBlock.HALF, half)
+
+    fun sunflowerState(half: DoubleBlockHalf = DoubleBlockHalf.LOWER): BlockState =
+        Blocks.SUNFLOWER.defaultBlockState().setValue(DoublePlantBlock.HALF, half)
+
+    fun shortGrassState(): BlockState = Blocks.SHORT_GRASS.defaultBlockState()
     fun deadBushState(): BlockState = Blocks.DEAD_BUSH.defaultBlockState()
 }

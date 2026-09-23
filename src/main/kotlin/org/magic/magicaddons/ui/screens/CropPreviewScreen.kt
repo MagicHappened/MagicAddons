@@ -12,7 +12,6 @@ import net.minecraft.util.LightCoordsUtil
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.Common
-import org.magic.magicaddons.data.greenhouse.crops.CropDataGaps
 import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
 import org.magic.magicaddons.data.greenhouse.crops.CropRegistry
 import org.magic.magicaddons.data.greenhouse.crops.CropStage
@@ -26,8 +25,6 @@ import org.magic.magicaddons.ui.widgets.EnumWidget
 import org.magic.magicaddons.ui.widgets.SliderWidget
 import org.magic.magicaddons.util.ScreenUtil.drawMultilineBoxCentered
 import org.magic.magicaddons.util.ScreenUtil.drawPanel
-import org.magic.magicaddons.util.ScreenUtil.drawSimpleTooltip
-import org.magic.magicaddons.util.ScreenUtil.drawWarningBadge
 import org.magic.magicaddons.util.compat.McCompat
 
 /**
@@ -104,7 +101,7 @@ class CropPreviewScreen(
     }
 
     private val selector = EnumWidget(
-        values = CropRegistry.all.sortedBy { it.name },
+        values = CropRegistry.allCrops.sortedBy { it.name },
         currentValue = null as CropDefinition?,
         overlayContext = this,
         valueChanged = { picked(it) }
@@ -168,7 +165,7 @@ class CropPreviewScreen(
         val level = Minecraft.getInstance().level ?: return
 
         def.stages
-            .mapNotNull { it.hologramAt(level, ORIGIN, def.footprint, def.standPoses, def.rotatesWithPlot) }
+            .mapNotNull { it.hologramStageAt(level, ORIGIN, def.footprint, def.standPoses, def.rotatesWithPlot) }
             .forEach { data ->
                 data.blockMap.keys.forEach {
                     cropMinY = minOf(cropMinY, it.y.toDouble())
@@ -214,7 +211,7 @@ class CropPreviewScreen(
             ?: return
 
         sceneStage = stageDef
-        sceneData = stageDef.hologramAt(level, ORIGIN, def.footprint, def.standPoses, def.rotatesWithPlot)
+        sceneData = stageDef.hologramStageAt(level, ORIGIN, def.footprint, def.standPoses, def.rotatesWithPlot)
 
         // so the plant is not left floating in a void: the ground it grows from, drawn under it
         soilBlocks = def.requiredSoil.firstOrNull()?.defaultBlockState()?.let { soil ->
@@ -244,19 +241,6 @@ class CropPreviewScreen(
         return center to extent
     }
 
-    /** What this stage was recorded without, in the collector's own words. Empty when whole. */
-    private fun missingData(): List<String> {
-        val def = selectedDef ?: return emptyList()
-        if (sceneStage == null) return emptyList()
-
-        val missing = mutableListOf<String>()
-
-        if (CropDataGaps.isMissingRotation(def, stage)) missing += "rotation data"
-        CropDataGaps.neededIsSmall(def, stage)?.let { missing += "isSmall = $it" }
-
-        return missing
-    }
-
     override fun onRender(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
         val def = selectedDef
 
@@ -282,10 +266,7 @@ class CropPreviewScreen(
             else -> submitScene(graphics, delta)
         }
 
-        if (def != null) {
-            drawSlider(graphics, def, mouseX, mouseY)
-            drawIncompleteMark(graphics, mouseX, mouseY)
-        }
+        if (def != null) drawSlider(graphics, def, mouseX, mouseY)
 
         selector.extractRenderState(graphics, mouseX, mouseY, delta)
         if (variantSelector.values.isNotEmpty()) variantSelector.extractRenderState(graphics, mouseX, mouseY, delta)
@@ -369,27 +350,6 @@ class CropPreviewScreen(
             Common.UI.TEXT_COLOR,
             false
         )
-    }
-
-    /** The red mark on a stage recorded without all of itself, naming what is missing on hover. */
-    private fun drawIncompleteMark(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int) {
-        val missing = missingData()
-        if (missing.isEmpty()) return
-
-        val markX = previewX + previewSize - BORDER_PAD - BADGE_SIZE
-        val markY = previewY + BORDER_PAD
-
-        graphics.drawWarningBadge(markX, markY, BADGE_SIZE)
-
-        if (mouseX in markX..markX + BADGE_SIZE && mouseY in markY..markY + BADGE_SIZE) {
-            // under the badge, so it never covers what it is about
-            graphics.drawSimpleTooltip(
-                "Data is incomplete for this stage, may be inaccurate\n" +
-                        "data missing: ${missing.joinToString(", ")}",
-                markX + BADGE_SIZE - TOOLTIP_WIDTH_HINT,
-                markY + BADGE_SIZE + Common.UI.SPACING
-            )
-        }
     }
 
     override fun onMouseClicked(event: MouseButtonEvent, doubled: Boolean): Boolean {
@@ -498,10 +458,5 @@ class CropPreviewScreen(
 
         /** How many times its size the question mark for an unrecorded stage is drawn at. */
         const val UNKNOWN_MARK_SCALE: Float = 4f
-
-        const val BADGE_SIZE: Int = 16
-
-        /** The badge is at the box's right edge, so the tooltip is pulled left to stay inside it. */
-        const val TOOLTIP_WIDTH_HINT: Int = 170
     }
 }

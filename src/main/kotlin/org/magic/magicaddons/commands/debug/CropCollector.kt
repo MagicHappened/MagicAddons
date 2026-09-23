@@ -25,14 +25,11 @@ import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.commands.internal.MainInternal
 import org.magic.magicaddons.commands.internal.farming.CollectToggle
-import org.magic.magicaddons.data.greenhouse.crops.CropDataGaps
 import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
 import org.magic.magicaddons.data.greenhouse.crops.CropRegistry
 import org.magic.magicaddons.data.greenhouse.crops.StandReader
 import org.magic.magicaddons.data.greenhouse.crops.PlantStage
 import org.magic.magicaddons.data.greenhouse.crops.WorldRotation
-import org.magic.magicaddons.data.greenhouse.crops.definitions.misc.DevourerRoots
-import org.magic.magicaddons.data.greenhouse.crops.definitions.mutations.legendary.Devourer
 import org.magic.magicaddons.data.greenhouse.plot.GREENHOUSE_SOIL_Y
 import org.magic.magicaddons.data.greenhouse.plot.GreenhouseGrid
 import org.magic.magicaddons.data.greenhouse.plot.LayoutSlot
@@ -85,15 +82,6 @@ object CropCollector : EntityUtils.HighlightSource {
     private enum class Status(val label: String) {
         /** Matches the definitions as they stand, nothing to collect; listed gray, ignored. */
         Current("matches current data"),
-
-        /** Matched, and described, but recorded without the way its stands are turned. */
-        Unturned("needs rotation data"),
-
-        /** Matched, but a stand stood full sized where its definition says small. */
-        Oversized("needs isSmall = false"),
-
-        /** Matched, but a stand stood small where its definition says full sized. */
-        Undersized("needs isSmall = true"),
 
         /** Matched only once the stems' age was ignored. */
         StemAge("stem ages differ"),
@@ -232,13 +220,10 @@ object CropCollector : EntityUtils.HighlightSource {
                     else -> null to null
                 }
 
-                // the same promotion the correction pass makes: matched fine, but recorded
-                // without the way its stands are turned, so worth taking again
                 val status = when {
-                    num != null && CropDataGaps.isMissingRotation(def, num) -> Status.Unturned
                     num != null && def.stemAgeVaries && !stemAgesMatch(def, num, slotPos, stands) -> Status.StemAge
                     else -> Status.Current
-                }.let { if (num != null) sizeMismatch(def, num, stands) ?: it else it }
+                }
 
                 addEntry(def, slotPos, stands, status, text, num, stands.standNames())
             }
@@ -443,7 +428,7 @@ object CropCollector : EntityUtils.HighlightSource {
     /** Every block state a definition's stages describe, for the plants that have no stands. */
     private val defsByState: Map<net.minecraft.world.level.block.state.BlockState, List<CropDefinition>> by lazy {
         buildMap<net.minecraft.world.level.block.state.BlockState, MutableList<CropDefinition>> {
-            CropRegistry.all.forEach { def ->
+            CropRegistry.allCrops.forEach { def ->
                 def.stages
                     .flatMap { it.blocks.orEmpty() }
                     .map { it.blockState }
@@ -475,7 +460,7 @@ object CropCollector : EntityUtils.HighlightSource {
     private val defsByHash: Map<String, CropDefinition> by lazy {
         val owners = mutableMapOf<String, MutableSet<CropDefinition>>()
 
-        CropRegistry.all.forEach { def ->
+        CropRegistry.allCrops.forEach { def ->
             def.stages.forEach { stage ->
                 stage.armorStands?.forEach { stand ->
                     stand.hashString?.let { owners.getOrPut(it) { mutableSetOf() }.add(def) }
@@ -498,32 +483,6 @@ object CropCollector : EntityUtils.HighlightSource {
         return BlockPos(area.minX.toInt(), GREENHOUSE_SOIL_Y, area.minZ.toInt())
     }
 
-    /**
-     * The size status when a stand of [stands] is not the size the definition gives that skull at
-     * [stage], or null when every size agrees. Remembered in the dex, so every listing says so.
-     * A skull the stage lists at both sizes is left alone, since either stand could be the one.
-     */
-    private fun sizeMismatch(def: CropDefinition, stage: Int, stands: List<ArmorStand>): Status? {
-        val sizeOf = def.stages
-            .filter { stage in it.stageRange }
-            .flatMap { it.armorStands.orEmpty() }
-            .filter { it.hashString != null }
-            .groupBy({ it.hashString!! }, { it.isSmall })
-            .filterValues { sizes -> sizes.distinct().size == 1 }
-            .mapValues { it.value.first() }
-
-        val status = stands.firstNotNullOfOrNull { stand ->
-            when (sizeOf[PlayerUtils.getSkullHash(stand)]) {
-                true -> if (stand.isSmall) null else Status.Oversized
-                false -> if (stand.isSmall) Status.Undersized else null
-                null -> null
-            }
-        }
-
-        if (status != null) CropDataGaps.noteSizeCorrection(def.name, stage, needsSmall = status == Status.Undersized)
-        return status
-    }
-
     private fun identify(stand: ArmorStand): CropDefinition? =
         defForName(stand.standName())
             ?: PlayerUtils.getSkullHash(stand)?.let { defsByHash[it] }
@@ -536,7 +495,7 @@ object CropCollector : EntityUtils.HighlightSource {
         val n = name?.let(::norm) ?: return null
         if (n.isEmpty()) return null
 
-        return CropRegistry.all
+        return CropRegistry.allCrops
             .filter { n.startsWith(norm(it.name)) }
             .maxByOrNull { norm(it.name).length }
     }
@@ -742,7 +701,7 @@ object CropCollector : EntityUtils.HighlightSource {
             }
 
         // a diagnosis on a root names the devourer, but what stands there is the roots
-        val roots = CropRegistry.all.firstOrNull { it.name == DEVOURER_ROOTS }
+        val roots = CropRegistry.allCrops.firstOrNull { it.name == DEVOURER_ROOTS }
         val rootSkulls = roots?.stages.orEmpty()
             .flatMap { it.armorStands.orEmpty() }
             .mapNotNull { it.hashString }
@@ -783,22 +742,14 @@ object CropCollector : EntityUtils.HighlightSource {
         val status = when {
             recorded == null && recordedIgnoringStemAge != null -> Status.StemAge
             recorded == null -> Status.Unrecorded
-            else -> sizeMismatch(def, stage, stands) ?: Status.Current
-        }
-
-        // a stage matched from a recording that never said how its stands are turned can be
-        // matched but not drawn, so a run is the moment to say it is worth taking again
-        val turned = if (status == Status.Current && CropDataGaps.isMissingRotation(def, stage)) {
-            Status.Unturned
-        } else {
-            status
+            else -> Status.Current
         }
 
         addEntry(
             def = def,
             origin = standingOn,
             stands = stands,
-            status = turned,
+            status = status,
             stageText = stage.toString(),
             stageNum = stage,
             names = stands.standNames()
@@ -808,7 +759,7 @@ object CropCollector : EntityUtils.HighlightSource {
         val matcher = if (recorded != null) "matcher matched stage $stage" else "matcher found nothing at stage $stage"
 
         s.entries.lastOrNull()?.let { entry ->
-            entry.toolNote = "${def.name}: tool says stage $diagnosedStage/${diagnosed.maxStage}, $matcher - ${turned.label}, " +
+            entry.toolNote = "${def.name}: tool says stage $diagnosedStage/${diagnosed.maxStage}, $matcher - ${status.label}, " +
                     "started at (${standingOn.x}, ${standingOn.z})$note"
             sendLine(entry)
         }

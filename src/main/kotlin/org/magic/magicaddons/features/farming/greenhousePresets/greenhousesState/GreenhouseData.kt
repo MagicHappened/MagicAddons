@@ -13,10 +13,7 @@ import org.magic.magicaddons.commands.debug.LostPlantReport
 import org.magic.magicaddons.commands.internal.MainInternal
 import org.magic.magicaddons.commands.internal.farming.SetTimestalkAttribute
 import org.magic.magicaddons.data.greenhouse.crops.*
-import org.magic.magicaddons.data.greenhouse.crops.definitions.basecrops.Moonflower
-import org.magic.magicaddons.data.greenhouse.crops.definitions.basecrops.Sunflower
 import org.magic.magicaddons.data.greenhouse.crops.definitions.misc.FireElement
-import org.magic.magicaddons.data.greenhouse.crops.definitions.mutations.legendary.Timestalk
 import org.magic.magicaddons.data.greenhouse.plot.*
 import org.magic.magicaddons.data.handlers.DataHandler
 import org.magic.magicaddons.events.EventBus
@@ -77,20 +74,27 @@ object GreenhouseData : GridCallbacks {
     var greenhouseGrids = mutableListOf<GreenhouseGrid>()
     var presetGrids = mutableListOf<GreenhouseLayout>()
 
-    fun allPlots(): List<PlotLayout> = presetGrids.flatMap { it.plots }
+    fun greenhouseLayoutFor(plot: PlotLayout): GreenhouseLayout? = presetGrids.find { plot in it.plots }
 
-    fun masterOf(plot: PlotLayout): GreenhouseLayout? = presetGrids.find { plot in it.plots }
+    fun resolveAssignedLayoutIds() {
+        val plots = presetGrids.flatMap { it.plots }
+
+        greenhouseGrids.forEach { grid ->
+            grid.state.assignedLayout = plots.find { it.id == grid.state.assignedLayoutId }
+            grid.state.assignedLayoutId = null
+        }
+    }
 
     fun fullPlotName(plot: PlotLayout): String {
-        val master = masterOf(plot) ?: return plot.displayName()
-        return if (master.plots.size > 1) "${master.plotTitle(plot)} of ${master.displayName()}" else master.displayName()
+        val greenhouse = greenhouseLayoutFor(plot) ?: return plot.displayName()
+        return if (greenhouse.plots.size > 1) "${greenhouse.plotTitle(plot)} of ${greenhouse.displayName()}" else greenhouse.displayName()
     }
 
 
     fun nameInFull(plot: PlotLayout): String {
-        val master = masterOf(plot) ?: return plot.displayName()
+        val greenhouse = greenhouseLayoutFor(plot) ?: return plot.displayName()
 
-        return "${master.displayName()} - ${master.plotTitle(plot)}"
+        return "${greenhouse.displayName()} - ${greenhouse.plotTitle(plot)}"
     }
 
     var miscInfo = MiscGreenhouseInfo()
@@ -237,7 +241,7 @@ object GreenhouseData : GridCallbacks {
         val from = BlockPos.containing(entity.position())
         val to = BlockPos.containing(movingTo)
 
-        rescanCellsAt(BlockPos.betweenClosed(from, to).map { it.immutable() })
+        markBlocksDirty(BlockPos.betweenClosed(from, to).map { it.immutable() })
     }
 
     private var isPlanTurned: Boolean = false
@@ -252,7 +256,7 @@ object GreenhouseData : GridCallbacks {
 
         // read again on a later tick, once the rest of the plot has been sent
         if (!plotReady(plot)) {
-            fullScanWanted = true
+            shouldRescanCurrentPlot = true
             return
         }
 
@@ -268,7 +272,7 @@ object GreenhouseData : GridCallbacks {
         // says which way it was built, and a turn picked on assign may be stale by then
         if (!isPlanTurned) {
             grid.state.assignedLayout?.let { plan ->
-                val turns = grid.bestTurnKeeping(plan, grid.state.planTurns)
+                val turns = grid.bestRotationKeeping(plan, grid.state.planTurns)
                 if (turns != grid.state.planTurns) {
                     grid.state.planTurns = turns
                     ChatUtils.sendWithPrefix("Plan on ${grid.layout.displayName()} re-laid at ${turns * 90}°, the turn what stands fits best.")
@@ -294,14 +298,12 @@ object GreenhouseData : GridCallbacks {
     /** The most one look at the clock may move the next tick by, so a wrong guess cannot walk it away. */
     private const val MAX_TICK_ADJUSTMENT_MS: Long = 5_000
 
-    /** The hunting shard carrying greenhouse speed, ten levels of a tenth of a percent each. */
+    // each level is 0.1% growth speed
     const val GREENHOUSE_SPEED_ATTRIBUTE_ID: String = "attribute:l57"
 
-    /** Where the plot changed since the last tick; those slots are read again on the tick itself. */
-    private val touched = mutableSetOf<BlockPos>()
+    private val dirtyBlocks = mutableSetOf<BlockPos>()
 
-    /** Whether the whole plot has to be read, for a change with no place to it. */
-    private var fullScanWanted: Boolean = false
+    private var shouldRescanCurrentPlot: Boolean = false
 
     private var lastScanAt: Long = 0L
 
@@ -309,24 +311,22 @@ object GreenhouseData : GridCallbacks {
 
     private const val PESTS_LABEL: String = "Pests"
 
-    /** When the plot last changed; once it has been quiet for [SETTLE_MS] the whole plot is read once. */
     private var lastChangeAt: Long? = null
 
     /** How long the plot has to be quiet before the full scan that squares everything with the world. */
     private const val SETTLE_MS: Long = 400
 
-    /** Something in the plot changed at [positions], so what is stored around them can no longer be trusted. */
-    fun rescanCellsAt(positions: Collection<BlockPos>) {
+    fun markBlocksDirty(positions: Collection<BlockPos>) {
         if (positions.isEmpty()) return
-        touched.addAll(positions)
+        dirtyBlocks.addAll(positions)
         lastChangeAt = System.currentTimeMillis()
     }
 
-    fun rescanCellsAt(position: BlockPos) = rescanCellsAt(listOf(position))
+    fun markBlocksDirty(position: BlockPos) = markBlocksDirty(listOf(position))
 
     /** Something changed with no place to it, so the whole plot is read on the next tick. */
     fun rescanWholePlot() {
-        fullScanWanted = true
+        shouldRescanCurrentPlot = true
     }
 
     /**
@@ -349,48 +349,44 @@ object GreenhouseData : GridCallbacks {
         }
     }
 
-    /**
-     * Each tick: the slots around this tick's changes are read again at once, and after the plot
-     * has been quiet for a moment the whole of it is read once, so nothing drifts from the world.
-     */
-    private fun runDueReconcile() {
+    private fun rescanIfNeeded() {
         val now = System.currentTimeMillis()
 
-        if (touched.isNotEmpty()) {
-            val positions = touched.toList()
-            touched.clear()
+        if (dirtyBlocks.isNotEmpty()) {
+            val positions = dirtyBlocks.toList()
+            dirtyBlocks.clear()
             rescanAround(positions)
             lastScanAt = now
         }
 
-        if (now - lastScanAt >= FULL_SCAN_INTERVAL_MS) fullScanWanted = true
+        if (now - lastScanAt >= FULL_SCAN_INTERVAL_MS) shouldRescanCurrentPlot = true
 
         val settled = lastChangeAt?.let { now - it >= SETTLE_MS } == true
-        if (!fullScanWanted && !settled) return
+        if (!shouldRescanCurrentPlot && !settled) return
 
-        fullScanWanted = false
+        shouldRescanCurrentPlot = false
         lastChangeAt = null
         lastScanAt = now
         getCurrentGrid()?.state?.needsRescan = true
         scanGridData()
     }
 
-    /** Reads only the slots a change at [positions] can have reached; a plot never read gets the full scan. */
+
     private fun rescanAround(positions: List<BlockPos>) {
         val grid = getCurrentGrid() ?: return
         rescanSlots(grid, grid.scanSlotsReachedFrom(positions))
     }
 
-    internal fun rescanSlots(grid: GreenhouseGrid, region: Set<Pair<Int, Int>>) {
+    fun rescanSlots(grid: GreenhouseGrid, region: Set<Pair<Int, Int>>) {
         if (!inOwnGarden()) return
         if (getCurrentGrid() !== grid) return
         if (!grid.state.scanned) {
-            fullScanWanted = true
+            shouldRescanCurrentPlot = true
             return
         }
         val plot = PlotAPI.getCurrentPlot() ?: return
         if (!plotReady(plot)) {
-            fullScanWanted = true
+            shouldRescanCurrentPlot = true
             return
         }
         grid.plot = plot
@@ -577,7 +573,6 @@ object GreenhouseData : GridCallbacks {
         DataHandler.switchProfile(id, ProfileAPI.profileName ?: return)
     }
 
-    /** Forgets what was learned about the last profile's garden, so the new one is read afresh. */
     fun resetForProfile() {
         checkGreenhouses = false
         currentPreset = null
@@ -590,7 +585,7 @@ object GreenhouseData : GridCallbacks {
     @EventHandler
     fun onTick(event: WorldTickEvent) {
         notePlotChange()
-        runDueReconcile()
+        rescanIfNeeded()
         ensureProfile()
         if (DataHandler.activeProfile == null) return
         OtherProfiles.advanceTicks()
@@ -775,7 +770,7 @@ object GreenhouseData : GridCallbacks {
             grid.removePlantWithBlockAt(pos)
         }
 
-        rescanCellsAt(pos)
+        markBlocksDirty(pos)
     }
 
     @EventHandler
@@ -788,7 +783,7 @@ object GreenhouseData : GridCallbacks {
         val blockVec3 = Vec3.atCenterOf(event.pos)
         if (grid.plot?.aabb?.contains(blockVec3) != true) return
 
-        rescanCellsAt(event.pos)
+        markBlocksDirty(event.pos)
     }
 
     @EventHandler
@@ -806,7 +801,7 @@ object GreenhouseData : GridCallbacks {
         val grid = getCurrentGrid() ?: return
         if (!grid.isScanned()) return
 
-        rescanCellsAt(arrived.map { BlockPos.containing(it) })
+        markBlocksDirty(arrived.map { BlockPos.containing(it) })
     }
 
     @EventHandler
@@ -835,7 +830,7 @@ object GreenhouseData : GridCallbacks {
         if (event.packet.pos.y != GREENHOUSE_SOIL_Y) return
         slot.soil = event.packet.blockState
 
-        rescanCellsAt(event.packet.pos)
+        markBlocksDirty(event.packet.pos)
     }
 
 
@@ -849,7 +844,7 @@ object GreenhouseData : GridCallbacks {
         if (!grid.isScanned()) return
 
         val area = grid.plot?.getBuildableArea() ?: return
-        rescanCellsAt(event.removedEntityList.map { it.entity.position() }.filter { area.contains(it) }.map { BlockPos.containing(it) })
+        markBlocksDirty(event.removedEntityList.map { it.entity.position() }.filter { area.contains(it) }.map { BlockPos.containing(it) })
     }
 
     /**
@@ -860,9 +855,9 @@ object GreenhouseData : GridCallbacks {
     @EventHandler
     fun onLevelUnloading(event: LevelUnloadingEvent) {
         plotUnloading = true
-        touched.clear()
+        dirtyBlocks.clear()
         lastChangeAt = null
-        fullScanWanted = false
+        shouldRescanCurrentPlot = false
     }
 
     @EventHandler
@@ -873,7 +868,7 @@ object GreenhouseData : GridCallbacks {
         val area = grid.plot?.getBuildableArea() ?: return
         if (!area.contains(event.target.position())) return
 
-        rescanCellsAt(BlockPos.containing(event.target.position()))
+        markBlocksDirty(BlockPos.containing(event.target.position()))
     }
 
     @EventHandler
@@ -936,7 +931,7 @@ object GreenhouseData : GridCallbacks {
             val soil = BlockPos(pos.x, GREENHOUSE_SOIL_Y, pos.z)
             cropPlacements.entries.removeAll { (at, placed) -> overlaps(at, placed.def, soil, foundCrop) }
             cropPlacements[soil] = CropPlacement(foundCrop, System.currentTimeMillis())
-            rescanCellsAt(pos)
+            markBlocksDirty(pos)
         }
     }
 
@@ -1113,7 +1108,7 @@ object GreenhouseData : GridCallbacks {
 
     fun getMissingUniques(): Set<UniqueCropKey> {
         val found = getCurrentUniques()
-        return CropRegistry.all
+        return CropRegistry.allCrops
             .filter { it.isBaseCrop }
             .map { UniqueCropKey.from(it) }
             .toSet()

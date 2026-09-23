@@ -19,8 +19,6 @@ import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
 import org.magic.magicaddons.data.greenhouse.crops.CropRegistry
 import org.magic.magicaddons.data.greenhouse.crops.Footprint
 import org.magic.magicaddons.data.greenhouse.crops.Plant
-import org.magic.magicaddons.data.greenhouse.crops.definitions.basecrops.Moonflower
-import org.magic.magicaddons.data.greenhouse.crops.definitions.basecrops.Sunflower
 import org.magic.magicaddons.data.greenhouse.plot.GREENHOUSE_SIZE
 import org.magic.magicaddons.data.greenhouse.plot.GreenhouseGrid
 import org.magic.magicaddons.data.greenhouse.plot.GreenhouseLayout
@@ -75,7 +73,7 @@ import org.magic.magicaddons.util.ScreenUtil.drawWarningBadge
 import org.magic.magicaddons.util.ScreenUtil.inRect
 import org.magic.magicaddons.util.ScreenUtil.modText
 import org.magic.magicaddons.util.ScreenUtil.renderFakeItem
-import org.magic.magicaddons.util.ScreenUtil.stackFor
+import org.magic.magicaddons.util.ScreenUtil.itemStackFor
 import org.magic.magicaddons.util.toReadableDuration
 import org.magic.magicaddons.util.toShortDuration
 import tech.thatgravyboat.skyblockapi.api.location.LocationAPI
@@ -236,7 +234,7 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
     }
 
     private fun partTitle(layout: PlotLayout): String =
-        GreenhouseData.masterOf(layout)?.plotTitle(layout) ?: layout.displayName()
+        GreenhouseData.greenhouseLayoutFor(layout)?.plotTitle(layout) ?: layout.displayName()
 
     private var shownPlot: PlotLayout? = null
 
@@ -381,7 +379,7 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
             targetPlan = if (layout.kind == PlotLayout.Kind.MASTER_PRESET) {
                 { layout }
             } else {
-                { GreenhouseData.greenhouseGrids.firstOrNull { it.layout === layout }?.let { grid -> grid.state.assignedLayout?.turned(grid.state.planTurns) } }
+                { GreenhouseData.greenhouseGrids.firstOrNull { it.layout === layout }?.let { grid -> grid.state.assignedLayout?.turnedBy(grid.state.planTurns) } }
             }
             init()
         }
@@ -511,7 +509,7 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
     private class UniqueLine(val crops: List<CropDefinition>, val text: String)
 
     private fun missingUniques(): List<UniqueLine> = GreenhouseData.getMissingUniques().map { key ->
-        fun named(vararg names: String) = names.mapNotNull { name -> CropRegistry.all.find { it.name == name } }
+        fun named(vararg names: String) = names.mapNotNull { name -> CropRegistry.allCrops.find { it.name == name } }
         when (key) {
             is GreenhouseData.UniqueCropKey.Def -> {
                 val def = CropRegistry.findByIdOrName(key.id)
@@ -528,7 +526,7 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
         val texts = (listOf(heading) + lines.map { it.text }).map { Component.literal(it).visualOrderText }
 
         graphics.drawTooltipLinesAtCursor(texts, mouseX, mouseY) { index ->
-            lines.getOrNull(index - 1)?.crops?.map { stackFor(it) } ?: emptyList()
+            lines.getOrNull(index - 1)?.crops?.map { itemStackFor(it) } ?: emptyList()
         }
     }
 
@@ -717,7 +715,7 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
         if (standing.acceptsCrop(def)) return
 
         remember(grid.layout)
-        val merged = standing.copyForPrediction(standing.slot).also { it.alternatives.add(def) }
+        val merged = standing.copyForPrediction(standing.slot).also { it.presetAlternatives.add(def) }
         grid.layout.plants.remove(standing)
         grid.layout.plants.add(merged)
         merged.slot.mark = LayoutSlot.Marking.Target
@@ -745,7 +743,7 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
 
         remember(grid.layout)
         if (instance.hasAlternatives && marking == null) {
-            val single = instance.copyForPrediction(instance.slot).also { it.alternatives.clear() }
+            val single = instance.copyForPrediction(instance.slot).also { it.presetAlternatives.clear() }
             grid.layout.plants.remove(instance)
             grid.layout.plants.add(single)
             single.slot.mark = null
@@ -767,7 +765,7 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
         if (!def.isBaseCrop) return false
 
         val layout = displayedGridWidget?.layout ?: return false
-        val plots = GreenhouseData.masterOf(layout)?.plots ?: listOf(layout)
+        val plots = GreenhouseData.greenhouseLayoutFor(layout)?.plots ?: listOf(layout)
         val key = GreenhouseData.UniqueCropKey.from(def)
 
         return plots.flatMap { it.plants }.none {
@@ -810,7 +808,7 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
         }
         // the plot may sit on another bookmark, or in another preset, than the one on show
         if (presetGridWidgets.none { it.layout === saved.layout }) {
-            GreenhouseData.masterOf(saved.layout)?.let { master ->
+            GreenhouseData.greenhouseLayoutFor(saved.layout)?.let { master ->
                 GreenhouseData.currentPreset = master
                 shownPlot = saved.layout
                 presetCleared = false
@@ -887,7 +885,7 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
         layout.plants.forEach { instance ->
             val slot = preset.getSlot(instance.slot.x, instance.slot.y) ?: return@forEach
             preset.plants.add(
-                Plant(instance.elementId, slot, cropDef = instance.cropDef, alternatives = instance.alternatives.toMutableList())
+                Plant(instance.elementId, slot, cropDef = instance.cropDef, presetAlternatives = instance.presetAlternatives.toMutableList())
             )
         }
         return preset
@@ -923,7 +921,7 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
         val grid = displayedGridWidget ?: return
 
         remember(grid.layout)
-        grid.layout.copyContentsFrom(grid.layout.turned(turns))
+        grid.layout.copyContentsFrom(grid.layout.turnedBy(turns))
 
         GreenhouseData.greenhouseGrids
             .filter { it.state.assignedLayout === grid.layout }
@@ -1272,7 +1270,7 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
                 graphics.fill(rowX, rowY, rowX + columnWidth, rowY + CONTENTS_ROW_HEIGHT, Common.UI.HOVER_WASH)
             }
 
-            graphics.renderFakeItem(stackFor(def), rowX + 1, rowY + 1, CONTENTS_ICON_SIZE, CONTENTS_ICON_SIZE)
+            graphics.renderFakeItem(itemStackFor(def), rowX + 1, rowY + 1, CONTENTS_ICON_SIZE, CONTENTS_ICON_SIZE)
 
             var textRight = rowX + columnWidth
             if (withChecklist) {
@@ -1774,7 +1772,7 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
                 val targets = incoming.indices.map { index -> unsetPlots.getOrNull(index) ?: master.addPlot() }
                 incoming.zip(targets).forEach { (plot, target) ->
                     remember(target)
-                    target.copyContentsFrom(plot.turned(facing))
+                    target.copyContentsFrom(plot.turnedBy(facing))
                     if (target.name == null && incoming.size > 1) target.name = plot.name
                 }
                 shownPlot = targets.first()
@@ -1784,7 +1782,7 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
             }
             incoming.size == 1 -> {
                 remember(shown)
-                shown.copyContentsFrom(incoming.first().turned(facing))
+                shown.copyContentsFrom(incoming.first().turnedBy(facing))
                 initPresetLayout()
                 ChatUtils.sendWithPrefix("Imported into ${GreenhouseData.fullPlotName(shown)}")
             }
@@ -1796,7 +1794,7 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
         val preset = GreenhouseLayout(id = result.layout.id, name = result.nameForPreset)
         result.plots.forEachIndexed { index, plot ->
             PlotLayout(id = preset.plotId(index), name = plot.name.takeIf { index > 0 || result.plots.size > 1 })
-                .also { it.copyContentsFrom(plot.turned(facing)) }
+                .also { it.copyContentsFrom(plot.turnedBy(facing)) }
                 .let(preset.plots::add)
         }
         addPresetLayout(preset)
@@ -1972,14 +1970,14 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
 
         // how well each turn fits what stands, so a plan that does not line up can be turned to
         val plan = grid.state.assignedLayout ?: return
-        val fits = (0 until 4).joinToString("; ") { turns -> "${turns * 90}°: ${grid.agreementWith(plan.turned(turns))}" }
+        val fits = (0 until 4).joinToString("; ") { turns -> "${turns * 90}°: ${grid.configurationForLayout(plan.turnedBy(turns))}" }
         ChatUtils.sendWithPrefix("Plan turned to ${grid.state.planTurns * 90}°. In place per turn - $fits")
     }
 
     /** Shows the plot this greenhouse runs in preset mode, so it can be changed. */
     private fun editAssignedPreset() {
         val plot = displayedGrid()?.state?.assignedLayout ?: return
-        val master = GreenhouseData.masterOf(plot) ?: return
+        val master = GreenhouseData.greenhouseLayoutFor(plot) ?: return
 
         GreenhouseData.currentPreset = master
         shownPlot = plot
@@ -2022,7 +2020,7 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
         }
         grid.state.assignedLayout = layout
         // turned the way it best fits what is already built
-        grid.state.planTurns = grid.bestTurnFor(layout)
+        grid.state.planTurns = grid.bestRotationFor(layout)
         grid.state.buildAnnounced = false
         PlannerNeeds.forgetSentMessage(grid)
         GreenhouseData.regenRender()

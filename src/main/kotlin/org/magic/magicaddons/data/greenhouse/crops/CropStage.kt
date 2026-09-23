@@ -24,7 +24,6 @@ data class StageMatch(
 )
 
 data class StageStand(
-    /** feet position from the footprint centre at soil height */
     val offset: Vec3,
     val isSmall: Boolean,
     val headRotation: Rotations? = null,
@@ -32,7 +31,7 @@ data class StageStand(
     val yRotation: Float? = null,
     val hashString: String? = null,
     val nameContains: String? = null,
-    /** a held item other than a skull, as "minecraft:gold_block" */
+
     val heldItemId: String? = null,
     val itemSlot: EquipmentSlot = EquipmentSlot.HEAD,
 ) {
@@ -86,7 +85,6 @@ open class CropStage(
     val readers: List<StandReader> = emptyList()
 ) {
 
-    /** the highest value when several stands are found */
     fun readValues(stands: List<ArmorStand>): Map<String, Int> = readers.mapNotNull { reader ->
         stands.filter { reader.matches(it) }
             .mapNotNull { reader.read(it) }
@@ -181,7 +179,6 @@ open class CropStage(
         )
     }
 
-    /** with [ignoreStemAge] a stem matches at any age */
     private fun blocksMatch(world: BlockState, recorded: BlockState, ignoreStemAge: Boolean): Boolean =
         world == recorded || (ignoreStemAge && recorded.block is StemBlock && world.block == recorded.block)
 
@@ -196,8 +193,7 @@ open class CropStage(
                 abs(actual.z - expected.z) < OFFSET_TOLERANCE
     }
 
-    /** the stands and blocks that stand in for this stage where nothing is planted */
-    fun hologramAt(
+    fun hologramStageAt(
         level: Level,
         baseBlock: BlockPos,
         footprint: Footprint,
@@ -208,6 +204,7 @@ open class CropStage(
         val blockMap = mutableMapOf<BlockPos, BlockState>()
 
         val quarterTurns = if (rotatesWithPlot) WorldRotation.quarterTurnsAt(baseBlock.x, baseBlock.z) else 0
+
         val footprintCenter = Vec3(
             baseBlock.x + footprint.width / 2.0,
             baseBlock.y.toDouble(),
@@ -221,6 +218,7 @@ open class CropStage(
             val heldItem = recordedStand.hashString?.let { PlayerUtils.getItemFromHash(it) }
                 ?: recordedStand.heldItemId?.let { EntityUtils.itemStackOf(it) }
                 ?: return@forEach
+
             val turnedOffset = WorldRotation.turned(recordedStand.offset, quarterTurns)
             val stand = ArmorStand(
                 level,
@@ -237,19 +235,16 @@ open class CropStage(
                 )
             }
 
-            // rendering a held item needs an entity id the world never hands out
             stand.id = FAKE_ENTITY_ID
-
             stand.isInvisible = true
-            // the stand's own rotation wins over the crop's standPoses
             val cropStandPose = recordedStand.hashString?.let { standPoses[it] }
+
             val headPose = recordedStand.headRotation
                 ?: cropStandPose?.headAt(baseBlock.x, baseBlock.z, recordedStand.offset)
 
             headPose?.let { stand.headPose = it }
             val yaw = Mth.wrapDegrees((recordedStand.yRotation ?: cropStandPose?.yRotation ?: 0f) + 90f * quarterTurns)
 
-            // never ticked, so the previous-tick yaws are set too
             stand.yRot = yaw
             stand.yRotO = yaw
             stand.yBodyRot = yaw
@@ -295,8 +290,7 @@ sealed interface StandPose {
     ) : StandPose {
         override fun headAt(x: Int, z: Int, offset: Vec3): Rotations = headRotation
     }
-
-    /** poses[(x + z + height) mod size], as the jellybean's canes do */
+    
     data class Cycle(val poses: List<Rotations>) : StandPose {
         override fun headAt(x: Int, z: Int, offset: Vec3): Rotations =
             poses[Math.floorMod(x + z + floor(offset.y + 0.5).toInt(), poses.size)]

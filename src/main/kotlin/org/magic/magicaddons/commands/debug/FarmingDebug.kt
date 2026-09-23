@@ -26,18 +26,14 @@ import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.commands.AbstractCommand
 import org.magic.magicaddons.commands.CropWords
 import org.magic.magicaddons.commands.fmt
-import org.magic.magicaddons.data.greenhouse.crops.CropDataGaps
+import org.magic.magicaddons.data.greenhouse.crops.MissingCropData
 import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
-import org.magic.magicaddons.data.greenhouse.crops.Plant
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseSpawnLog
-import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseData
 import org.magic.magicaddons.features.farming.greenhousePresets.render.LayoutRenderState
 import org.magic.magicaddons.render.WorldRenderer
-import org.magic.magicaddons.ui.screens.CropPreviewScreen
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.EntityUtils.typePath
 import org.magic.magicaddons.util.PlayerUtils
-import org.magic.magicaddons.util.ScreenUtil
 import org.magic.mixins.TextDisplayAccessor
 
 /**
@@ -229,7 +225,7 @@ object FarmingDebug : AbstractCommand() {
 
     /** Every crop still missing something, one line per tier with the crops in its hover. */
     private fun dumpMissingPlants() {
-        val gaps = CropDataGaps.gapsByTier()
+        val gaps = MissingCropData.gapsByTier()
 
         if (gaps.isEmpty()) {
             ChatUtils.sendWithPrefix("Nothing missing. The dex is complete.")
@@ -258,7 +254,7 @@ object FarmingDebug : AbstractCommand() {
 
     /** What one crop is still missing, said in chat rather than copied. */
     private fun dumpCropDataGapsFor(def: CropDefinition) {
-        val missing = CropDataGaps.missingSummary(def)
+        val missing = MissingCropData.missingSummary(def)
 
         if (missing == null) {
             ChatUtils.sendWithPrefix(
@@ -269,7 +265,7 @@ object FarmingDebug : AbstractCommand() {
         }
 
         ChatUtils.sendWithPrefix(
-            Component.literal("${def.name}: ${CropDataGaps.recordedPercent(def)}% of ${def.maxStage} stages")
+            Component.literal("${def.name}: ${MissingCropData.recordedPercent(def)}% of ${def.maxStage} stages")
                 .withStyle(ChatFormatting.GOLD)
         )
         ChatUtils.send(
@@ -282,7 +278,7 @@ object FarmingDebug : AbstractCommand() {
      * the clipboard, sorted so a collection trip can be planned off it.
      */
     private fun dumpCropDataGaps() {
-        val report = CropDataGaps.cropDataReport()
+        val report = MissingCropData.cropDataReport()
 
         ChatUtils.sendWithPrefix(
             Component.literal(

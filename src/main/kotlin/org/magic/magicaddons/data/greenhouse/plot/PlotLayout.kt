@@ -37,11 +37,11 @@ data class PlotLayout(
 
     fun deepCopy(): PlotLayout = PlotLayout(id = id, name = name, size = size).also { it.copyContentsFrom(this) }
 
-    fun turned(turns: Int): PlotLayout {
+    fun turnedBy(quarterTurns: Int): PlotLayout {
         val copy = PlotLayout(id = id, name = name, size = size)
 
         slots.forEach { slot ->
-            val (x, y) = turnedOrigin(slot.x, slot.y, 1, turns)
+            val (x, y) = turnedOrigin(slot.x, slot.y, 1, quarterTurns)
             copy.getSlot(x, y)?.let {
                 it.soil = slot.soil
                 it.mark = slot.mark
@@ -49,12 +49,11 @@ data class PlotLayout(
         }
         plants.forEach { plant ->
             val footprintWidth = plant.cropDef.footprint.width
-            val (x, y) = turnedOrigin(plant.slot.x, plant.slot.y, footprintWidth, turns)
+            val (x, y) = turnedOrigin(plant.slot.x, plant.slot.y, footprintWidth, quarterTurns)
             val slot = copy.getSlot(x, y) ?: return@forEach
 
-            // a plant's mark sits on its top left slot, which the turn moved
             if (footprintWidth > 1) {
-                val (markX, markY) = turnedOrigin(plant.slot.x, plant.slot.y, 1, turns)
+                val (markX, markY) = turnedOrigin(plant.slot.x, plant.slot.y, 1, quarterTurns)
                 copy.getSlot(markX, markY)?.mark = null
                 slot.mark = plant.slot.mark
             }
