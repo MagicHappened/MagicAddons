@@ -8,7 +8,9 @@ import org.magic.magicaddons.commands.internal.farming.CollectToggle
 import org.magic.magicaddons.commands.internal.farming.GetPlannerItemCommand
 import org.magic.magicaddons.commands.internal.farming.UnplanGreenhouse
 import org.magic.magicaddons.commands.internal.farming.SetTimestalkAttribute
+import org.magic.magicaddons.commands.internal.farming.TickReport
 import org.magic.magicaddons.util.ChatUtils
+import org.magic.magicaddons.util.VersionChecker
 
 object MainInternal : AbstractCommand() {
     override val argument: String = "internal"
@@ -18,11 +20,12 @@ object MainInternal : AbstractCommand() {
 
     const val COMMAND: String = "/$PATH"
 
-    val internalCommandList = listOf(
-        CollectToggle,
+    val internalCommandList = listOfNotNull(
+        CollectToggle.takeIf { VersionChecker.onBeta() },
         UnplanGreenhouse,
         SetTimestalkAttribute,
-        GetPlannerItemCommand
+        GetPlannerItemCommand,
+        TickReport
     )
 
     override fun build(): LiteralArgumentBuilder<FabricClientCommandSource> {

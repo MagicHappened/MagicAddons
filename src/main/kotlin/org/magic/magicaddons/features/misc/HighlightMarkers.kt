@@ -63,7 +63,6 @@ object HighlightMarkers : Feature() {
         step = 5
     )
 
-    /** Every feature that outlines something can have its outlines marked; the player says which do. */
     private val featuresSetting = ToggleListSetting(
         key = "MarkedFeatures",
         displayName = "Features to use markers with:",
@@ -91,40 +90,30 @@ object HighlightMarkers : Feature() {
     private fun highlightFeatures(): List<HighlightFeature> =
         FeatureManager.availableFeatures.filterIsInstance<HighlightFeature>()
 
-    /**
-     * A row leading here, for a feature whose highlights these settings mark. Each feature gets its
-     * own, since one node cannot sit in two setting trees at once.
-     */
     fun linkSetting(): ActionSetting = ActionSetting(
         key = "MarkerOptions",
         displayName = "Navigate to highlight marker configuration",
         description = "",
         buttonLabel = "Navigate To",
-        onPressed = { showSettings() }
+        onPressed = { navigateToFeature() }
     )
 
-    /** Opens this feature's settings on the config screen the button was pressed on. */
-    private fun showSettings() {
+    private fun navigateToFeature() {
         (McCompat.currentScreen() as? ConfigScreen)?.showSetting(this, listOf(baseSetting))
     }
 
-    /** Whether anything is drawn at all, so a frame with nothing switched on costs nothing. */
-    fun marking(): Boolean = baseSetting.value && (iconSetting.value || arrowsSetting.value)
 
-    /**
-     * Whether this entity is marked instead of outlined. A marker stands in for the outline rather
-     * than sitting on top of it: at this range the outline is the dot the marker was drawn to replace.
-     */
+    fun markingEnabled(): Boolean = baseSetting.value && (iconSetting.value || arrowsSetting.value)
+
     @JvmStatic
-    fun replacesOutline(entity: Entity, source: EntityUtils.HighlightSource): Boolean {
-        if (!marking() || !marks(source)) return false
+    fun markingReplacesOutline(entity: Entity, source: EntityUtils.HighlightSource): Boolean {
+        if (!markingEnabled() || !marks(source)) return false
 
         val player = Minecraft.getInstance().player ?: return false
 
         return entity.distanceToSqr(player) >= distanceSetting.value.toDouble() * distanceSetting.value
     }
 
-    /** Whether the outlines this source drew are among the ones the player asked to be marked. */
     fun marks(source: EntityUtils.HighlightSource): Boolean {
         val feature = source as? Feature ?: return false
 

@@ -1,11 +1,11 @@
 package org.magic.magicaddons.data.greenhouse.plot
 
-import net.minecraft.world.level.block.state.BlockState
+import net.minecraft.world.level.block.Block
 
 class LayoutSlot(
     val x: Int,
     val y: Int,
-    var soil: BlockState?,
+    var soil: Block?,
     var mark: Marking? = null
 ) {
     /** the colour belongs to the marking, so a role reads the same everywhere */

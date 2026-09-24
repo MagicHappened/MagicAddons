@@ -18,10 +18,6 @@ import org.magic.magicaddons.data.greenhouse.crops.definitions.mutations.common.
 import org.magic.magicaddons.data.greenhouse.crops.definitions.mutations.uncommon.Duskbloom
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
-/**
- * Craves either day or night, shown by which skull it carries. It only advances while the garden's
- * clock matches that craving, and the craving flips on every advance, so each stage has two skulls.
- */
 object Noctilume {
 
     private val wheatPositions = listOf(
@@ -31,7 +27,6 @@ object Noctilume {
         BlockPos(1, 1, 1)
     )
 
-    /** At the first stage all four stands ride high; the fourth settles a stage later. */
     private val seedOffsets = listOf(
         Vec3(-0.21875, 0.6875, 0.15625),
         Vec3(0.375, 0.84375, -0.3125),
@@ -39,7 +34,6 @@ object Noctilume {
         Vec3(-0.125, 0.71875, -0.40625)
     )
 
-    /** The four stands of a young plant sit high on the stalks, then settle as it grows. */
     private val youngOffsets = listOf(
         Vec3(-0.21875, 0.6875, 0.15625),
         Vec3(0.375, 0.84375, -0.3125),
@@ -47,7 +41,6 @@ object Noctilume {
         Vec3(-0.125, -0.03125, -0.40625)
     )
 
-    /** At the third stage three stands have settled and the third still rides high. */
     private val settlingOffsets = listOf(
         Vec3(-0.21875, -0.0625, 0.15625),
         Vec3(0.375, 0.09375, -0.3125),
@@ -69,8 +62,7 @@ object Noctilume {
         Rotations(-22.5f, 0.0f, -22.5f)
     )
 
-    /** One look of a stage: the shared geometry wearing the skull of what it craves, if anything. [fullSized] lists the stands not small. */
-    private fun look(
+    private fun generateStage(
         stage: Int,
         hash: String,
         craving: Int?,
@@ -105,21 +97,21 @@ object Noctilume {
         ),
         skyblockId = SkyBlockItemId.item("NOCTILUME"),
         stages = listOf(
-            look(
+            generateStage(
                 stage = 1,
                 hash = "281e8164cf7af240cc235d4826996013bd045de20d40abd262145dc24c790a09",
                 craving = StandReader.NEEDS_NIGHT,
                 wheatAge = 3,
                 offsets = seedOffsets
             ),
-            look(
+            generateStage(
                 stage = 1,
                 hash = "329aa65e77ecc216dbadc774121dec2f3d7267289462eb5d11d3bafa6f5996c8",
                 craving = StandReader.NEEDS_DAY,
                 wheatAge = 3,
                 offsets = seedOffsets
             ),
-            look(
+            generateStage(
                 stage = 2,
                 hash = "329aa65e77ecc216dbadc774121dec2f3d7267289462eb5d11d3bafa6f5996c8",
                 craving = StandReader.NEEDS_DAY,
@@ -127,7 +119,7 @@ object Noctilume {
                 offsets = youngOffsets,
                 fullSized = setOf(3)
             ),
-            look(
+            generateStage(
                 stage = 2,
                 hash = "281e8164cf7af240cc235d4826996013bd045de20d40abd262145dc24c790a09",
                 craving = StandReader.NEEDS_NIGHT,
@@ -135,7 +127,7 @@ object Noctilume {
                 offsets = youngOffsets,
                 fullSized = setOf(3)
             ),
-            look(
+            generateStage(
                 stage = 3,
                 hash = "281e8164cf7af240cc235d4826996013bd045de20d40abd262145dc24c790a09",
                 craving = StandReader.NEEDS_NIGHT,
@@ -143,7 +135,7 @@ object Noctilume {
                 offsets = settlingOffsets,
                 fullSized = setOf(0, 1, 3)
             ),
-            look(
+            generateStage(
                 stage = 3,
                 hash = "329aa65e77ecc216dbadc774121dec2f3d7267289462eb5d11d3bafa6f5996c8",
                 craving = StandReader.NEEDS_DAY,
@@ -151,7 +143,7 @@ object Noctilume {
                 offsets = settlingOffsets,
                 fullSized = setOf(0, 1, 3)
             ),
-            look(
+            generateStage(
                 stage = 4,
                 hash = "b1b18493d50ff8972f7ef359893d9063fdc54cb822c679002957c294fc8b0005",
                 craving = StandReader.NEEDS_NIGHT,
@@ -159,7 +151,7 @@ object Noctilume {
                 offsets = grownOffsets,
                 fullSized = setOf(0, 1, 2, 3)
             ),
-            look(
+            generateStage(
                 stage = 4,
                 hash = "5cdd8c3d5d76a1dc07cdbedc5fd0bb230852df9c1864896f8893f5bfdf3d4c96",
                 craving = StandReader.NEEDS_DAY,

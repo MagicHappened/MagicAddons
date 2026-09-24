@@ -25,7 +25,6 @@ object PlantBars {
     }
 
     private fun readBarsInPlot() {
-        if (!GreenhouseData.inOwnGarden()) return
         // avoid reading plant bars when the watering window is open
         if (GreenhouseWatering.wateringWindowOpen()) return
         val grid = GreenhouseData.getCurrentGrid() ?: return

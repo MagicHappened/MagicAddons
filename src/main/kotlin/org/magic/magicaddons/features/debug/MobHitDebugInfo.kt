@@ -31,10 +31,6 @@ import org.magic.magicaddons.util.EntityUtils.typePath
 import org.magic.magicaddons.util.PlayerUtils
 import java.net.URI
 
-/**
- * Prints what the client knows about whatever was hit, as one chat line whose hover carries the
- * detail and whose click copies the whole thing as json.
- */
 object MobHitDebugInfo : Feature() {
     init {
         EventBus.register(this)
@@ -42,17 +38,23 @@ object MobHitDebugInfo : Feature() {
 
     override val id: String = "MobHitDebug"
     override val displayName: String = "Mob Hit Debug"
-    override val description: String = "On next mob hit will cancel the actual event and print debug information"
+    override val description: String = "Hit a mob to print what it is made of, for asking a dev to add it to Hypixel Mobs"
     override val category: String = "debug"
+
+    private val letHitThroughSetting = BooleanSetting(
+        key = "LetHitThrough",
+        displayName = "Let Hit Through",
+        description = "The hit still lands on the mob instead of being cancelled",
+        value = false
+    )
 
     override val baseSetting: BooleanSetting = BooleanSetting(
         displayName = displayName,
         description = description,
-        value = false
-        //todo add the select option to return
+        value = false,
+        children = listOf(letHitThroughSetting)
     )
 
-    /** How far around the hit entity to look for the stands and displays that belong to it. */
     private const val NEARBY_RADIUS: Double = 0.5
     private const val NEARBY_HEIGHT: Double = 2.0
 
@@ -61,27 +63,25 @@ object MobHitDebugInfo : Feature() {
     @EventHandler
     fun onAttackEntity(event: AttackEntityEvent) {
         if (!baseSetting.value) return
-        event.canceled = true
+        event.canceled = !letHitThroughSetting.value
 
         report(event.target)
     }
 
-    /** One item of an entity's equipment, as the debug cares about it. */
-    private data class ItemLine(
+    private data class EntityEquipmentLine(
         val slot: String,
         val id: String,
         val dyeColor: Int?,
         val skullHash: String?
     )
 
-    /** One entity, the hit one or something standing in it. */
     private data class EntityLine(
         val type: String,
         val name: String?,
         val invisible: Boolean,
         val marker: Boolean?,
         val skinHash: String?,
-        val items: List<ItemLine>
+        val equipmentLines: List<EntityEquipmentLine>
     )
 
     private fun report(entity: Entity) {
@@ -115,7 +115,7 @@ object MobHitDebugInfo : Feature() {
         append(subject.name ?: subject.type)
         append(" · ").append(subject.type)
         append(" · ").append(if (subject.invisible) "invisible" else "visible")
-        if (subject.items.isNotEmpty()) append(" · ").append("${subject.items.size} worn")
+        if (subject.equipmentLines.isNotEmpty()) append(" · ").append("${subject.equipmentLines.size} worn")
         append(" · ").append("$neighbours nearby")
         append(" ")
     }
@@ -160,11 +160,11 @@ object MobHitDebugInfo : Feature() {
                 text.append(Component.literal("   marker: ${yesNo(it)}").withStyle(ChatFormatting.GRAY))
             }
             line.skinHash?.let {
-                text.append(Component.literal("\nskin  ${shorten(it)}").withStyle(ChatFormatting.GRAY))
+                text.append(Component.literal("\nskin  ${shortenHash(it)}").withStyle(ChatFormatting.GRAY))
             }
         }
 
-        line.items.forEach { item ->
+        line.equipmentLines.forEach { item ->
             text.append(Component.literal("\n${if (short) "    " else "  "}${item.slot}  ${item.id}")
                 .withStyle(ChatFormatting.WHITE))
 
@@ -174,7 +174,7 @@ object MobHitDebugInfo : Feature() {
             }
 
             item.skullHash?.let {
-                text.append(Component.literal("  ${shorten(it)}").withStyle(ChatFormatting.GRAY))
+                text.append(Component.literal("  ${shortenHash(it)}").withStyle(ChatFormatting.GRAY))
             }
         }
     }
@@ -185,24 +185,24 @@ object MobHitDebugInfo : Feature() {
         invisible = entity.isInvisible,
         marker = (entity as? ArmorStand)?.isMarker,
         skinHash = (entity as? Player)?.let { PlayerUtils.getSkinHash(it) },
-        items = items(entity)
+        equipmentLines = equipmentLinesFor(entity)
     )
 
-    private fun items(entity: Entity): List<ItemLine> = when (entity) {
+    private fun equipmentLinesFor(entity: Entity): List<EntityEquipmentLine> = when (entity) {
         is LivingEntity -> ARMOR_SLOTS.mapNotNull { slot ->
-            itemLine(slot.getName(), entity.getItemBySlot(slot))
+            equipmentLine(slot.getName(), entity.getItemBySlot(slot))
         }
 
-        is Display.ItemDisplay -> listOfNotNull(itemLine("item", entity.itemStack))
+        is Display.ItemDisplay -> listOfNotNull(equipmentLine("item", entity.itemStack))
 
         else -> emptyList()
     }
 
-    private fun itemLine(slot: String, stack: ItemStack): ItemLine? {
+    private fun equipmentLine(slotName: String, stack: ItemStack): EntityEquipmentLine? {
         if (stack.isEmpty) return null
 
-        return ItemLine(
-            slot = slot,
+        return EntityEquipmentLine(
+            slot = slotName,
             id = stack.item.toString(),
             dyeColor = stack.get(DataComponents.DYED_COLOR)?.rgb,
             skullHash = PlayerUtils.getSkinHash(stack)
@@ -218,7 +218,6 @@ object MobHitDebugInfo : Feature() {
         ).filter { it !== entity }
     }
 
-    /** every part of the entity information as json */
     private fun json(entity: Entity, neighbours: List<Entity>): String {
         val root = entityJson(entity)
 
@@ -248,7 +247,7 @@ object MobHitDebugInfo : Feature() {
         }
         (entity as? LivingEntity)?.let { living ->
             obj.addProperty("scale", living.scale)
-            obj.add("attributes", attributesJson(living))
+            obj.add("attributes", attributesAsJson(living))
         }
 
         obj.add("components", componentsJson(entity))
@@ -273,8 +272,7 @@ object MobHitDebugInfo : Feature() {
         return obj
     }
 
-    /** all the attributes of an entity to a json object */
-    private fun attributesJson(entity: LivingEntity): JsonObject {
+    private fun attributesAsJson(entity: LivingEntity): JsonObject {
         val obj = JsonObject()
 
         entity.attributes.syncableAttributes.forEach { instance ->
@@ -286,12 +284,11 @@ object MobHitDebugInfo : Feature() {
         return obj
     }
 
-    /** last sent server information for the entity */
     private fun syncedDataJson(entity: Entity): JsonObject {
         val obj = JsonObject()
 
         entity.entityData.nonDefaultValues?.forEach { entry ->
-            obj.addProperty(entry.id().toString(), entry.value()?.toString())
+            obj.addProperty(entry.id().toString(), entry.value().toString())
         }
 
         return obj
@@ -302,16 +299,16 @@ object MobHitDebugInfo : Feature() {
 
         when (entity) {
             is LivingEntity -> ARMOR_SLOTS.forEach { slot ->
-                itemJson(slot.getName(), entity.getItemBySlot(slot))?.let { array.add(it) }
+                equipmentJson(slot.getName(), entity.getItemBySlot(slot))?.let { array.add(it) }
             }
 
-            is Display.ItemDisplay -> itemJson("item", entity.itemStack)?.let { array.add(it) }
+            is Display.ItemDisplay -> equipmentJson("item", entity.itemStack)?.let { array.add(it) }
         }
 
         return array
     }
 
-    private fun itemJson(slot: String, stack: ItemStack): JsonObject? {
+    private fun equipmentJson(slot: String, stack: ItemStack): JsonObject? {
         if (stack.isEmpty) return null
 
         val obj = JsonObject()
@@ -323,7 +320,7 @@ object MobHitDebugInfo : Feature() {
 
         val components = JsonObject()
         stack.components.forEach { component ->
-            componentName(component.type())?.let { components.addProperty(it, component.value()?.toString()) }
+            componentName(component.type())?.let { components.addProperty(it, component.value().toString()) }
         }
         obj.add("components", components)
 
@@ -342,11 +339,9 @@ object MobHitDebugInfo : Feature() {
         EquipmentSlot.OFFHAND
     )
 
-    /** max size for a hash */
     private const val SHORT_HASH_LENGTH: Int = 20
 
-    /** shortened hash for displaying */
-    private fun shorten(hash: String): String =
+    private fun shortenHash(hash: String): String =
         if (hash.length <= SHORT_HASH_LENGTH) hash else "${hash.take(8)}…${hash.takeLast(6)}"
 
     private fun yesNo(value: Boolean): String = if (value) "yes" else "no"

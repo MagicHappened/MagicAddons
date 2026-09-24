@@ -98,7 +98,7 @@ object MagicAddonsFormat {
             for (offsetX in 0 until footprint.width) {
                 for (offsetY in 0 until footprint.height) {
                     val slot = layout.getSlot(x + offsetX, y + offsetY)
-                    slot?.soil = definition.requiredSoil.firstOrNull()?.defaultBlockState()
+                    slot?.soil = definition.requiredSoil.firstOrNull()
                     slot?.mark = marking
 
                     if (offsetX == 0 && offsetY == 0) anchor = slot

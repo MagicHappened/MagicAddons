@@ -7,6 +7,7 @@ import net.minecraft.client.gui.Font
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.navigation.ScreenRectangle
 import net.minecraft.client.gui.render.TextureSetup
+import net.minecraft.client.gui.screens.ChatScreen
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.client.input.MouseButtonInfo
@@ -51,8 +52,16 @@ object ScreenUtil {
 
     private var newScreen: Screen? = null
 
+    private var screenAfterChat: Screen? = null
+
     fun setScreen(screen: Screen) {
         newScreen = screen
+    }
+
+    /** Opens the chat with [command] already typed, and puts [returnTo] back when the chat closes. */
+    fun openChatThenReturn(command: String, returnTo: Screen) {
+        screenAfterChat = returnTo
+        McCompat.setScreen(ChatScreen(command, false))
     }
 
     fun register() {
@@ -61,6 +70,17 @@ object ScreenUtil {
 
     @EventHandler
     fun onTick(event: WorldTickEvent) {
+        screenAfterChat?.let { screen ->
+            when (McCompat.currentScreen()) {
+                null -> {
+                    screenAfterChat = null
+                    setScreen(screen)
+                }
+                is ChatScreen -> Unit
+                else -> screenAfterChat = null
+            }
+        }
+
         val target = newScreen ?: return
 
         if (McCompat.currentScreen() !== target) {

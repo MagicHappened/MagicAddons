@@ -11,9 +11,8 @@ import net.minecraft.network.chat.Component
 import org.magic.magicaddons.commands.AbstractCommand
 import org.magic.magicaddons.commands.internal.MainInternal
 import org.magic.magicaddons.commands.toExactDuration
-import org.magic.magicaddons.data.greenhouse.crops.definitions.mutations.legendary.Timestalk
 import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseData
-import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GrowthClock
+import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseTickTime
 import org.magic.magicaddons.util.ChatUtils
 
 /**
@@ -47,7 +46,7 @@ object SetTimestalkAttribute : AbstractCommand() {
                             .withStyle(ChatFormatting.GREEN)
                     )
 
-                    GrowthClock.tickLengthMs()?.let { tick ->
+                    GreenhouseTickTime.tickMs?.let { tick ->
                         ChatUtils.sendWithPrefix("A growth tick is now ${tick.toExactDuration()}")
                     }
 

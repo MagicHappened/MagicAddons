@@ -24,7 +24,7 @@ class PresetLibraryWidget(
 ) : SettingWidget<String>(setting, overlays) {
 
     private val selector = EnumWidget(
-        values = setting.names(),
+        values = setting.presetNames(),
         currentValue = setting.value,
         overlayContext = overlays,
         valueChanged = { picked -> pick(picked) }
@@ -43,7 +43,7 @@ class PresetLibraryWidget(
 
     /** Switches preset, asking what to do with edits to the current one first. */
     private fun pick(picked: String) {
-        if (!setting.edited()) {
+        if (!setting.settingsDirty()) {
             switchTo(picked)
             return
         }
@@ -51,7 +51,7 @@ class PresetLibraryWidget(
         // the list has already shown the pick, so it is put back until the question is answered
         selector.currentValue = "${setting.value}$EDITED"
 
-        val saveTo = setting.saveTarget()
+        val saveTo = setting.savePreset()
         val (menuX, menuY) = OverlayRenderable.placeOnScreen(
             selector.x,
             selector.y + selector.height,
@@ -71,7 +71,7 @@ class PresetLibraryWidget(
     }
 
     private fun switchTo(picked: String) {
-        setting.apply(picked)
+        setting.applyPreset(picked)
         name.value = picked
     }
 
@@ -81,11 +81,11 @@ class PresetLibraryWidget(
     override val controlHeight: Int = FIELD_HEIGHT
 
     override fun layoutControl() {
-        setting.rememberShipped()
-        selector.values = setting.names()
+        setting.storeDefault()
+        selector.values = setting.presetNames()
 
         // the list says which look is on, and an edited one is marked so it is not mistaken for saved
-        selector.currentValue = if (setting.edited()) "${setting.value}$EDITED" else setting.value
+        selector.currentValue = if (setting.settingsDirty()) "${setting.value}$EDITED" else setting.value
 
         selector.x = controlLeft()
         selector.y = controlTop()
@@ -115,7 +115,7 @@ class PresetLibraryWidget(
             val wanted = name.value.trim()
 
             // writing over one already saved is worth asking about; a new name is not
-            if (wanted in setting.presets) {
+            if (wanted in setting.configSettingPresets) {
                 ask(event, "Overwrite $wanted?") { setting.save(wanted) }
             } else {
                 setting.save(wanted)

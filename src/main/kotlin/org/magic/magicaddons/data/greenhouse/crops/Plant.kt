@@ -25,7 +25,7 @@ data class Plant(
     val slot: LayoutSlot,
     var waterLevel: Double? = null,
     var growthStage: PlantStage? = null,
-    var age: Long? = null,
+    var appearedAt: Long? = null,
     val cropDef: CropDefinition,
     val readings: MutableMap<String, Int> = mutableMapOf(),
     val presetAlternatives: MutableList<CropDefinition> = mutableListOf(),
@@ -125,6 +125,9 @@ data class Plant(
         val stage = lowestStage
         return needed != dayOrNight && (stage == null || stage < cropDef.maxStage)
     }
+
+    val age: Long?
+        get() = appearedAt?.let { (System.currentTimeMillis() - it).coerceAtLeast(0L) }
 
     val decayRemainingMs: Long?
         get() {

@@ -13,7 +13,8 @@ import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.core.Direction
 import net.minecraft.network.chat.Component
-import net.minecraft.world.level.block.state.BlockState
+import net.minecraft.world.level.block.Block
+import net.minecraft.world.level.block.Blocks
 import org.magic.magicaddons.Common
 import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
 import org.magic.magicaddons.data.greenhouse.crops.CropRegistry
@@ -31,7 +32,7 @@ import org.magic.magicaddons.features.customization.Customization
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhousePresets
 import org.magic.magicaddons.features.farming.greenhousePresets.PlannerNeeds
 import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseData
-import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GrowthClock
+import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseTickTime
 import org.magic.magicaddons.features.farming.greenhousePresets.lookups.BioanalysisAccessory
 import org.magic.magicaddons.features.farming.greenhousePresets.render.PlantHighlight
 import org.magic.magicaddons.ui.HoverableContainer
@@ -56,6 +57,8 @@ import org.magic.magicaddons.ui.widgets.greenhouse.PaletteItem
 import org.magic.magicaddons.ui.widgets.greenhouse.PlantPalette
 import org.magic.magicaddons.ui.widgets.greenhouse.PresetUI
 import org.magic.magicaddons.ui.widgets.greenhouse.ScrollHint
+import org.magic.magicaddons.commands.internal.MainInternal
+import org.magic.magicaddons.commands.internal.farming.SetTimestalkAttribute
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.ScreenUtil
 import org.magic.magicaddons.util.ScreenUtil.at
@@ -79,9 +82,9 @@ import org.magic.magicaddons.util.toShortDuration
 import tech.thatgravyboat.skyblockapi.api.location.LocationAPI
 import tech.thatgravyboat.skyblockapi.api.profile.garden.PlotAPI
 
-class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "the greenhouse screen"), HoverableContainer, OverlayContext {
+class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"), "the greenhouse screen"), HoverableContainer, OverlayContext {
 
-    override val backgroundName: String = Customization.GREENHOUSE_SCREEN
+    override val backgroundImageName: String = Customization.GREENHOUSE_SCREEN
 
 
     enum class CurrentDisplay {
@@ -499,12 +502,24 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
     
     private fun drawPinnedClock(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int) {
         val lines = clockTooltip().split('\n').map { Component.literal(it).visualOrderText }
-        val box = graphics.drawTooltipLines(lines, TIME_LEFT, timeBox[3] + Common.UI.SPACING)
+        pinnedClockBox = graphics.drawTooltipLines(lines, TIME_LEFT, timeBox[3] + Common.UI.SPACING)
 
-        val lineTop = box[1] + ScreenUtil.TOOLTIP_PAD + UNIQUE_LINE * font.lineHeight
-        if (inRect(mouseX, mouseY, box[0], lineTop, box[2] - box[0], font.lineHeight)) {
+        if (overClockLine(mouseX, mouseY, UNIQUE_LINE)) {
             drawMissingUniques(graphics, mouseX, mouseY)
         }
+
+        if (overClockLine(mouseX, mouseY, ATTRIBUTE_LINE)) {
+            graphics.drawTooltipAtCursor(SET_ATTRIBUTE_HINT, mouseX, mouseY)
+        }
+    }
+
+    private var pinnedClockBox: IntArray = IntArray(4)
+
+    private fun overClockLine(mouseX: Int, mouseY: Int, line: Int): Boolean {
+        val box = pinnedClockBox
+        val lineTop = box[1] + ScreenUtil.TOOLTIP_PAD + line * font.lineHeight
+
+        return inRect(mouseX, mouseY, box[0], lineTop, box[2] - box[0], font.lineHeight)
     }
     private class UniqueLine(val crops: List<CropDefinition>, val text: String)
 
@@ -544,7 +559,7 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
             return "$colour$value§7/$max"
         }
 
-        val tickTime = GrowthClock.tickLengthMs()?.let { ms ->
+        val tickTime = GreenhouseTickTime.tickMs?.let { ms ->
             val seconds = ms / 1000
             "§f%dh %dm %ds".format(seconds / 3600, seconds % 3600 / 60, seconds % 60)
         } ?: "§8?"
@@ -553,7 +568,7 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
             "§7Your tick time: $tickTime",
             "§7Unique crops: " + graded(GreenhouseData.getCurrentUniques().size, MAX_UNIQUE_CROPS),
             "§7Greenhouse speed upgrade: " + graded(misc.cropSpeedUpgradeValue, MAX_SPEED_UPGRADE),
-            "§7Greenhouse attribute: " + graded(GrowthClock.speedAttribute(), MAX_ATTRIBUTE),
+            "§7Greenhouse attribute: " + graded(GreenhouseTickTime.speedAttribute(), MAX_ATTRIBUTE),
             "§7Crop growth: §f" + (misc.cropGrowthValue?.toString() ?: "§8?")
         ).joinToString("\n")
     }
@@ -606,7 +621,7 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
         val plant = plantsCovering(grid.layout, sx, sy).firstOrNull()
         val picked = when {
             plant != null -> PaletteItem.Crop(plant.cropDef)
-            else -> grid.layout.getSlot(sx, sy)?.soil?.block?.let { PaletteItem.Soil(it) }
+            else -> grid.layout.getSlot(sx, sy)?.soil?.let { PaletteItem.Soil(it) }
         } ?: return false
 
         plantPalette.pickUp(picked)
@@ -673,7 +688,7 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
         // soil goes under whatever stands there
         if (item is PaletteItem.Soil) {
             remember(grid.layout)
-            slot.soil = item.block.defaultBlockState()
+            slot.soil = item.block
             grid.init()
             return
         }
@@ -695,7 +710,7 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
         def.requiredSoil.firstOrNull()?.let { soil ->
             for (dx in 0 until def.footprint.width) {
                 for (dy in 0 until def.footprint.height) {
-                    grid.layout.getSlot(sx + dx, sy + dy)?.soil = soil.defaultBlockState()
+                    grid.layout.getSlot(sx + dx, sy + dy)?.soil = soil
                 }
             }
         }
@@ -780,7 +795,7 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
     private class PresetSnapshot(
         val layout: PlotLayout,
         val elements: List<Plant>,
-        val slots: List<Triple<LayoutSlot, BlockState?, LayoutSlot.Marking?>>
+        val slots: List<Triple<LayoutSlot, Block?, LayoutSlot.Marking?>>
     )
 
     private val undoStack = ArrayDeque<PresetSnapshot>()
@@ -1218,7 +1233,7 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
         var tabX = left + Common.UI.TEXT_X_PAD
         val tabTitleBoxes = mutableMapOf<ContentsTab, IntArray>()
 
-        ContentsTab.entries.forEachIndexed { index, tab ->
+        ContentsTab.shown.forEachIndexed { index, tab ->
             if (index > 0) {
                 graphics.modText(font, Component.literal(" | "), tabX, top + Common.UI.SPACING, Common.UI.TEXT_DIM_COLOR)
                 tabX += font.width(" | ")
@@ -1301,7 +1316,7 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
         val innerLeft = left + ActionPanel.PADDING
         val innerWidth = width - ActionPanel.PADDING * 2
         var lineY = rowsTop
-        val tickMs = GrowthClock.tickLengthMs()
+        val tickMs = GreenhouseTickTime.tickMs
 
         fun text(value: Component, textX: Int, color: Int) {
             if (draw) graphics.modText(font, value, textX, lineY, color)
@@ -1372,7 +1387,7 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
     private fun layoutReportFor(plan: PlotLayout, tickMs: Long): RunningLayoutReport? {
         val multiplier = BioanalysisAccessory.mutationWeightMultiplier()
         var key = awayTicks * 31 + multiplier.hashCode() + tickMs.hashCode() * 17
-        plan.slots.forEach { key = key * 31 + (it.soil?.block?.hashCode() ?: 0) + (it.mark?.ordinal ?: -1) }
+        plan.slots.forEach { key = key * 31 + (it.soil?.hashCode() ?: 0) + (it.mark?.ordinal ?: -1) }
         plan.plants.forEach { key = key * 31 + (it.slot.x * 64 + it.slot.y) * 31 + it.cropDef.name.hashCode() }
 
         runningLayoutReport?.takeIf { it.key == key }?.let { return it }
@@ -1381,7 +1396,7 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
         // the simulation runs off the render thread, so it gets its own copy
         val planCopy = plan.deepCopy()
         val awayTicksAtStart = awayTicks
-        val started = RunningLayoutReport(key, java.util.concurrent.CompletableFuture.supplyAsync { PlotPrediction.simulateVisits(planCopy, awayTicksAtStart, multiplier, tickMs) })
+        val started = RunningLayoutReport(key, java.util.concurrent.CompletableFuture.supplyAsync { PlotPrediction.simulateVisits(planCopy, awayTicksAtStart, multiplier) })
         runningLayoutReport = started
         return started
     }
@@ -1488,6 +1503,11 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
         // the next tick box pins its breakdown, and unpins it
         if (mouseButtonEvent.button() == 0 && overTimeBox(mouseButtonEvent.x, mouseButtonEvent.y)) {
             timePinned = !timePinned
+            return true
+        }
+
+        if (timePinned && overClockLine(mouseButtonEvent.x.toInt(), mouseButtonEvent.y.toInt(), ATTRIBUTE_LINE)) {
+            ScreenUtil.openChatThenReturn("${MainInternal.COMMAND} ${SetTimestalkAttribute.NAME} ", this)
             return true
         }
 
@@ -1661,10 +1681,10 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
         hoverWarning = overName(scaledX, scaledY) && shouldWarn
     }
 
-    override fun onCharTyped(characterEvent: CharacterEvent): Boolean {
-        if (overlaysCharTyped(characterEvent)) return true
-        if (currentDisplay == CurrentDisplay.Presets && plantPalette.charTyped(characterEvent)) return true
-        return super.onCharTyped(characterEvent)
+    override fun onCharTyped(event: CharacterEvent): Boolean {
+        if (overlaysCharTyped(event)) return true
+        if (currentDisplay == CurrentDisplay.Presets && plantPalette.charTyped(event)) return true
+        return super.onCharTyped(event)
     }
 
     override fun onMouseDragged(event: MouseButtonEvent, dragX: Double, dragY: Double): Boolean {
@@ -1810,10 +1830,10 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
         else -> 0
     }
 
-    override fun onKeyPressed(keyEvent: KeyEvent): Boolean {
-        if (overlaysKeyPressed(keyEvent)) return true
-        if (currentDisplay == CurrentDisplay.Presets && plantPalette.keyPressed(keyEvent)) return true
-        return super.onKeyPressed(keyEvent)
+    override fun onKeyPressed(event: KeyEvent): Boolean {
+        if (overlaysKeyPressed(event)) return true
+        if (currentDisplay == CurrentDisplay.Presets && plantPalette.keyPressed(event)) return true
+        return super.onKeyPressed(event)
     }
 
     /** The rename panel at the mouse; [apply] writes the name, then everything sized from names relays out. */
@@ -1868,10 +1888,9 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
         }
 
         val grid = GreenhouseData.greenhouseGrids.firstOrNull { it.layout === real.layout } ?: return
-        val tickMs = GrowthClock.tickLengthMs() ?: return
 
         predictionBase = real
-        displayedGridWidget = newGridWidget(grid.predictedLayout(ticks, tickMs), gridTurns())
+        displayedGridWidget = newGridWidget(grid.predictedLayout(ticks), gridTurns())
     }
 
     /** Puts the real greenhouse back on screen, for when the screen moves to another one. */
@@ -1890,8 +1909,8 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
      */
     private fun predictWindowMs(): LongRange? {
         val ticks = predictSlider.value
-        val tickMs = GrowthClock.tickLengthMs() ?: return null
-        val remaining = GrowthClock.remainingTickMs() ?: return null
+        val tickMs = GreenhouseTickTime.tickMs ?: return null
+        val remaining = GreenhouseTickTime.remainingTickMs() ?: return null
 
         return (remaining + (ticks - 1) * tickMs)..(remaining + ticks * tickMs)
     }
@@ -1995,7 +2014,7 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
         val plot = master.plots.first()
 
         plot.copyContentsFrom(grid.layout)
-        plot.slots.forEach { slot -> if (slot.soil?.isAir == true) slot.soil = null }
+        plot.slots.forEach { slot -> if (slot.soil == Blocks.AIR) slot.soil = null }
 
         presetCleared = false
         addPresetLayout(master)
@@ -2161,6 +2180,9 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
 
         /** Which line of the clock breakdown is the unique crops one, counted from the tick time line. */
         private const val UNIQUE_LINE: Int = 1
+        private const val ATTRIBUTE_LINE: Int = 3
+
+        private const val SET_ATTRIBUTE_HINT: String = "Click to open chat to set your attribute level"
         private const val MAX_SPEED_UPGRADE: Int = 9
         private const val MAX_ATTRIBUTE: Int = 10
 
@@ -2175,5 +2197,9 @@ class GreenhouseScreen : MagicScreen(Component.literal("Greenhouse Screen"), "th
 
 private enum class ContentsTab(val label: String) {
     Contents("Contents"),
-    Report("Report")
+    Report("Report");
+
+    companion object {
+        val shown: List<ContentsTab> = listOf(Contents)
+    }
 }

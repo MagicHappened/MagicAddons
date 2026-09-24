@@ -55,7 +55,6 @@ object GreenhouseWatering {
             return
         }
 
-        if (!GreenhouseData.inOwnGarden()) return
         val grid = GreenhouseData.getCurrentGrid() ?: return
         if (!grid.isScanned()) return
 

@@ -53,15 +53,6 @@ object ChatUtils {
         chat.`magicaddons$refreshTrimmedMessages`()
     }
 
-    /** Runs a command as if the player typed it, [command] is given without the leading slash. */
-    /** the link that takes the player back to the garden, for a warning sent while away */
-    fun gardenWarpLink(): Component = Component.literal("[GARDEN]").withStyle(
-        Style.EMPTY
-            .withColor(ChatFormatting.GREEN)
-            .withClickEvent(ClickEvent.RunCommand("/warp garden"))
-            .withHoverEvent(HoverEvent.ShowText(Component.literal("Click here to warp to garden!")))
-    )
-
     fun sendCommand(command: String) {
         Minecraft.getInstance().player?.connection?.sendCommand(command)
     }

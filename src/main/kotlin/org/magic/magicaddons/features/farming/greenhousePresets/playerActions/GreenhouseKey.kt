@@ -29,7 +29,7 @@ object GreenhouseKey {
     private fun openScreen() {
         if (McCompat.currentScreen() != null) return
         if (!GreenhousePresets.baseSetting.value) return
-        if (!GreenhousePresets.keyWorksAnywhere() && !GreenhouseData.inGreenhouse()) return
+        if (!GreenhousePresets.keyWorksAnywhere() && !GreenhouseData.inOwnGarden()) return
 
         ScreenUtil.setScreen(GreenhouseScreen())
     }

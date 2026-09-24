@@ -125,7 +125,7 @@ object SkyLayoutsFormat : LayoutFormat {
                 val slot = layout.getSlot(x, y) ?: continue
 
                 layout.plants.add(Plant(def.elementId, slot, cropDef = def))
-                val soil = def.requiredSoil.firstOrNull()?.defaultBlockState()
+                val soil = def.requiredSoil.firstOrNull()
                 for (dx in 0 until def.footprint.width) {
                     for (dy in 0 until def.footprint.height) {
                         if (x + dx >= layout.size || y + dy >= layout.size) continue
@@ -143,7 +143,7 @@ object SkyLayoutsFormat : LayoutFormat {
                     if (taken[x][y]) continue
                     val slot = layout.getSlot(x, y) ?: continue
                     slot.mark = LayoutSlot.Marking.Target
-                    target.requiredSoil.firstOrNull()?.let { slot.soil = it.defaultBlockState() }
+                    target.requiredSoil.firstOrNull()?.let { slot.soil = it }
                     layout.plants.add(Plant(target.elementId, slot, cropDef = target))
                 }
             }

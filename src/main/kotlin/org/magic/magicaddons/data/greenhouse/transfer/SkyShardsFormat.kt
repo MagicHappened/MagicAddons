@@ -165,7 +165,7 @@ object SkyShardsFormat : LayoutFormat {
                     claimed[row + offsetY][column + offsetX] = true
 
                     val slot = layout.getSlot(column + offsetX, row + offsetY)
-                    slot?.soil = definition.requiredSoil.firstOrNull()?.defaultBlockState()
+                    slot?.soil = definition.requiredSoil.firstOrNull()
                     slot?.mark = marking
 
                     if (offsetX == 0 && offsetY == 0) anchor = slot

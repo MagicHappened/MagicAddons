@@ -11,5 +11,6 @@ enum class PlannerMark(val displayName: String, val defaultColor: Int) {
     Ready("Harvestable", 0xFF33FF66.toInt()),
     Blocking("Blocking A Target", 0xFFFF3333.toInt());
 
-    val color: Int get() = GreenhousePresets.plannerColor(this)
+    val color: Int
+        get() = GreenhousePresets.plannerColor(this)
 }

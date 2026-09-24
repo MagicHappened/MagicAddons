@@ -21,8 +21,10 @@ object BreakProtection {
 
     private const val CHLORONITE: String = "Chloronite"
 
-    // message templates for each break prevention
-    private const val PREVENTED: String = "Prevented breaking %s"
+    private const val PREVENTED_NOT_HARVESTABLE: String = "Prevented breaking %s, it isn't harvestable yet"
+    private const val PREVENTED_INGREDIENT: String = "Prevented breaking %s, your layout uses it as an ingredient"
+    private const val PREVENTED_INGREDIENT_UNGROWN: String =
+        "Prevented breaking %s, your layout uses it as an ingredient and it isn't harvestable yet"
     private const val PREVENTED_PEST_DEBUFF: String = "Prevented breaking %s, the pest debuff is active"
     private const val PREVENTED_UNDER_FORTUNE: String = "Prevented breaking %s, %,d %s is under your %,d threshold"
     private const val PREVENTED_WIDGET_OFF: String =
@@ -37,7 +39,6 @@ object BreakProtection {
     // dont spam messages because we use startBreaking event
     private const val MESSAGE_COOLDOWN_MS: Long = 1_000
 
-    /** the delay after joining the garden when the break prevention setting is enabled but fortune stats are disabled to warn the user to enable them*/
     private val HINT_DELAY: Duration = Duration.ofSeconds(5)
 
     // map for each slot that have sent its message to avoid repeats
@@ -69,16 +70,12 @@ object BreakProtection {
         return true
     }
 
-    /** the message for why a plant was prevented from breaking */
     private fun messageForPlantBreak(scanned: ScannedPlant): String? {
         val plant = scanned.plant
         val crop = plant.cropDef.name
 
-        
-        if (plant.cropDef.isMutation || plant.cropDef.isBaseCrop) {
-            if (GreenhousePresets.preventBreakingNonHarvestable() && !GreenhousePresets.isHarvestable(plant)) {
-                return PREVENTED.format(crop)
-            }
+        if (GreenhousePresets.preventBreakingNonHarvestable() && !GreenhousePresets.isHarvestable(plant)) {
+            notHarvestableMessage(plant, crop)?.let { return it }
         }
 
         if (!plant.cropDef.isMutation) return null
@@ -99,7 +96,15 @@ object BreakProtection {
         return fortunePreventionMessage(crop, StatsWidget.FARMING_FORTUNE, "farming fortune", GreenhousePresets.farmingFortuneThreshold)
     }
 
-    /** returns a reason to prevent a fortune crop from breaking, null when its allowed to be broken */
+    private fun notHarvestableMessage(plant: Plant, crop: String): String? = when {
+        GreenhouseData.isPlannedIngredient(plant) ->
+            if (GreenhousePresets.countsIngredientsAsHarvestable()) PREVENTED_INGREDIENT_UNGROWN.format(crop)
+            else PREVENTED_INGREDIENT.format(crop)
+
+        plant.cropDef.isMutation -> PREVENTED_NOT_HARVESTABLE.format(crop)
+        else -> null
+    }
+
     private fun fortunePreventionMessage(crop: String, stat: String, statInWords: String, threshold: Int): String? {
         if (StatsWidget.isShown != true) return PREVENTED_WIDGET_OFF.format(crop, statInWords)
 
@@ -137,8 +142,6 @@ object BreakProtection {
             return
         }
 
-        // armed from the tick rather than the island change, so it also covers the mod starting up
-        // with the player already standing in their garden
         val due = hintDueAt ?: Instant.now().plus(HINT_DELAY).also { hintDueAt = it }
         if (Instant.now().isBefore(due)) return
 

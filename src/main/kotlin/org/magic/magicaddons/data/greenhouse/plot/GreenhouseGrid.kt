@@ -10,6 +10,7 @@ import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.crops.*
 import org.magic.magicaddons.data.greenhouse.crops.definitions.misc.DeadPlant
+import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseTickTime
 import org.magic.magicaddons.util.getBuildableArea
 import tech.thatgravyboat.skyblockapi.api.profile.garden.Plot
 import tech.thatgravyboat.skyblockapi.api.profile.garden.PlotAPI
@@ -68,8 +69,8 @@ class GreenhouseGrid(
 
     fun configurationForLayout(plan: PlotLayout): PlotConfiguration {
         val soil = plan.slots.count { plannedSlot ->
-            val plannedSoil = plannedSlot.soil?.block ?: return@count false
-            plannedSoil == layout.getSlot(plannedSlot.x, plannedSlot.y)?.soil?.block
+            val plannedSoil = plannedSlot.soil ?: return@count false
+            plannedSoil == layout.getSlot(plannedSlot.x, plannedSlot.y)?.soil
         }
         val plants = plan.plants.count { plannedPlant ->
             scannedPlants.any {
@@ -158,7 +159,7 @@ class GreenhouseGrid(
             )
 
             layout.getSlot(gridX, gridY)?.let {
-                it.soil = state
+                it.soil = state.block
             }
         }
     }
@@ -335,7 +336,7 @@ class GreenhouseGrid(
         scanned: ScannedPlant
     ): ScannedPlant {
         val scannedPlant = scanned.plant
-        scannedPlant.age = previous.age
+        scannedPlant.appearedAt = previous.appearedAt
 
         scannedPlant.charge = previous.charge
         scannedPlant.chargeKnown = previous.chargeKnown
@@ -359,10 +360,6 @@ class GreenhouseGrid(
                 PlotPrediction.lowestWaterLevelStillAlive(previousWater, waterEffectAt(layout, scannedPlant.slot))
             scannedPlant.waterBestCase = null
             scannedPlant.waterPredictedInDebt = true
-
-            callbacks.warnSurvivor(
-                DyingPlant(scannedPlant.cropDef.name, layout.displayName(), layout.id)
-            )
         } else {
             scannedPlant.waterLevel = previousWater
             scannedPlant.waterBestCase = previous.waterBestCase
@@ -382,29 +379,32 @@ class GreenhouseGrid(
         return scanned
     }
 
-    fun simulateGreenhouse(ticks: Int, tickMs: Long) {
-        simulateLayout(layout, ticks, tickMs)
+    fun simulateGreenhouse(ticks: Int) {
+        val losses = simulateLayout(layout, ticks)
+        state.thunderlingsDestroyed = losses.thunderlingsDestroyed
+        state.glasscornsReset = losses.glasscornsReset
     }
 
-    /** a copy of the layout after that many ticks */
-    fun predictedLayout(ticks: Int, tickMs: Long): PlotLayout {
+    fun predictedLayout(ticks: Int): PlotLayout {
         val layoutCopy = layout.deepCopy()
 
-        simulateLayout(layoutCopy, ticks, tickMs)
+        simulateLayout(layoutCopy, ticks)
 
         return layoutCopy
     }
 
-    /** null when the soggybud decays or passes the limit before it is grown */
-    fun ticksUntilGrown(from: PlotLayout, slot: LayoutSlot, tickMs: Long): Int? {
+    // null if predicted to not grow
+    fun ticksUntilGrown(from: PlotLayout, slot: LayoutSlot, tickMs: Long? = GreenhouseTickTime.tickMs): Int? {
+        val knownTickMs = tickMs ?: return null
         val layoutCopy = from.deepCopy()
         val soggybud = layoutCopy.plants.find { it.slot.x == slot.x && it.slot.y == slot.y } ?: return null
-        val limitTicks = soggybud.decayRemainingMs?.let { (it / tickMs).toInt() } ?: SOGGYBUD_GROWTH_LIMIT_TICKS
+        val ticksBeforeDecay = soggybud.decayRemainingMs?.let { (it / knownTickMs).toInt() }
+        val limitTicks = minOf(ticksBeforeDecay ?: SOGGYBUD_GROWTH_LIMIT_TICKS, SOGGYBUD_GROWTH_LIMIT_TICKS)
 
         var ticks = 0
         while (!soggybud.isFullyGrown) {
             if (ticks >= limitTicks) return null
-            simulateLayout(layoutCopy, 1, tickMs)
+            simulateLayout(layoutCopy, 1)
             ticks++
         }
         return ticks
@@ -414,20 +414,24 @@ class GreenhouseGrid(
 
         private const val SOGGYBUD_GROWTH_LIMIT_TICKS: Int = 200
 
-        fun simulateLayout(layout: PlotLayout, ticks: Int, tickMs: Long) {
-            if (ticks <= 0) return
+        class PredictedLostPlants(var thunderlingsDestroyed: Int = 0, var glasscornsReset: Int = 0)
+
+        fun simulateLayout(layout: PlotLayout, ticks: Int): PredictedLostPlants {
+            val losses = PredictedLostPlants()
+            if (ticks <= 0) return losses
 
             val soggybuds = layout.plants.filter { it.cropDef.drainsNeighbours }
             if (soggybuds.isEmpty()) {
-                growPlants(layout, ticks, tickMs)
-                return
+                growPlants(layout, ticks, losses)
+                return losses
             }
 
             // a grown soggybud stops draining; a grown plant is still drained
             repeat(ticks) {
                 soggybudsDrainNeighbours(soggybuds.filter { !it.isFullyGrown }, layout)
-                growPlants(layout, 1, tickMs)
+                growPlants(layout, 1, losses)
             }
+            return losses
         }
 
         /** taken before the tick's own loss, from every plant around it holding water, corners included */
@@ -453,7 +457,7 @@ class GreenhouseGrid(
             }
         }
 
-        private fun growPlants(layout: PlotLayout, ticks: Int, tickMs: Long) {
+        private fun growPlants(layout: PlotLayout, ticks: Int, losses: PredictedLostPlants) {
             val gardenTime = dayOrNightNow()
             val overloaded = mutableListOf<Plant>()
 
@@ -469,12 +473,12 @@ class GreenhouseGrid(
                 val lowestStage = plant.lowestStage
 
                 if (lowestStage != null && lowestStage >= maxStage && !plant.cropDef.resetsToFirstStage) {
-                    plant.age = plant.age?.plus(ticks * tickMs)
                     return@forEach
                 }
 
                 // a stuck plant still dries out
                 val stalledByTimeOfDay = plant.needsOtherTimeOfDay(gardenTime)
+                val cravesTimeOfDay = plant.timeOfDayNeeded != null
 
                 // a plant in debt may skip the tick
                 val inDebt = (plant.waterLevel ?: 0.0) < 0
@@ -496,7 +500,8 @@ class GreenhouseGrid(
                     return@forEach
                 }
 
-                plant.age = plant.age?.plus(ticksFed * tickMs)
+                // a plant craving a time of day grows one stage, then craves the other one and stalls
+                val stagesGrown = if (cravesTimeOfDay) ticksFed.coerceAtMost(1) else ticksFed
 
                 // only ticks spent growing cost water; a plant that starves first dries through every tick
                 val stageToGrow = if (inDebt) plant.highestStage else lowestStage
@@ -542,13 +547,20 @@ class GreenhouseGrid(
                     else -> (fromStage + grownBy).coerceAtMost(nextSleepStage(fromStage))
                 }
 
-                // in debt the low end stays and the high end grows
-                val lowestStageAfter = if (inDebt) stageRange.first else stageAfter(stageRange.first, ticksFed)
-                val highestStageAfter = stageAfter(stageRange.last, ticksFed)
+                // on negative water the low end stays and the high end grows
+                val lowestStageAfter = if (inDebt) stageRange.first else stageAfter(stageRange.first, stagesGrown)
+                val highestStageAfter = stageAfter(stageRange.last, stagesGrown)
 
                 plant.growthStage =
                     if (lowestStageAfter == highestStageAfter) PlantStage.Known(lowestStageAfter)
                     else PlantStage.Estimated(lowestStageAfter..highestStageAfter)
+
+                if (plant.cropDef.resetsToFirstStage && lowestStageAfter < stageRange.first) losses.glasscornsReset++
+
+                if (cravesTimeOfDay && lowestStageAfter > stageRange.first) {
+                    plant.readings[StandReader.NEEDS_TIME] =
+                        if (plant.timeOfDayNeeded == StandReader.NEEDS_DAY) StandReader.NEEDS_NIGHT else StandReader.NEEDS_DAY
+                }
 
                 // asleep only once it grows into a sleep stage
                 if (lowestStageAfter in sleepStages && lowestStageAfter > stageRange.first) plant.readings[StandReader.ASLEEP] = 1
@@ -559,8 +571,9 @@ class GreenhouseGrid(
                 }
             }
 
-            // a charged plant destroys itself on reaching its limit
+            // a charged thunderling destroys itself on reaching its limit
             layout.plants.removeAll(overloaded)
+            losses.thunderlingsDestroyed += overloaded.size
         }
 
 
@@ -637,7 +650,7 @@ class GreenhouseGrid(
 
             callbacks.forgetPlayerPlacementAt(origin)
 
-            // a noctilume's craving comes from which skull matched
+            // noctilume needs based on which version matched
             bestStage?.traits?.let { plant.readings.putAll(it) }
 
             // while watering cans are out, the game's water bars replace the plants' own
@@ -742,7 +755,7 @@ class GreenhouseGrid(
         remainingStands: MutableList<ArmorStand>,
         standCache: CropStage.StandCache = CropStage.StandCache()
     ): ScannedPlant? {
-        val soil = slot.soil?.block ?: return null
+        val soil = slot.soil ?: return null
         val origin = getPosForSlot(slot) ?: return null
 
         return matchPlantAt(origin, soil, remainingStands, slot, standCache)
@@ -760,6 +773,9 @@ class GreenhouseGrid(
     ) {
         /** read from disk, resolved once the presets load */
         var assignedLayoutId: String? = null
+
+        var thunderlingsDestroyed: Int = 0
+        var glasscornsReset: Int = 0
     }
 
     override fun toString(): String = layout.displayName()

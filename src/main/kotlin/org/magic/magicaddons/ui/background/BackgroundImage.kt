@@ -113,7 +113,7 @@ class BackgroundImage private constructor(
 
     /** Writes the canvas onto the texture, scaled down on the way when the gif is larger than we draw. */
     private fun upload() {
-        val pixels = texture.pixels ?: return
+        val pixels = texture.pixels
 
         for (y in 0 until height) {
             val sourceY = y * canvasHeight / height
@@ -160,7 +160,7 @@ class BackgroundImage private constructor(
             .getOrNull()
 
         private fun loadStill(bytes: ByteArray): Loaded? {
-            val source = bytes.inputStream().use { NativeImage.read(it) } ?: return null
+            val source = bytes.inputStream().use { NativeImage.read(it) }
 
             val notes = mutableListOf<String>()
             val shrinkBy = shrinkForWidth(source.width)

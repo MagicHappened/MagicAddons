@@ -118,7 +118,7 @@ class IntSettingWidget(
 
     override fun mouseScrolled(mouseX: Double, mouseY: Double, scrollX: Double, scrollY: Double): Boolean {
         if (super.mouseScrolled(mouseX, mouseY, scrollX, scrollY)) return true
-        if (!setting.scrollable) return false
+        if (!setting.mouseScrollEnabled) return false
         if (!overBar(mouseX, mouseY) || scrollY == 0.0) return false
 
         val direction = if (scrollY > 0) 1 else -1

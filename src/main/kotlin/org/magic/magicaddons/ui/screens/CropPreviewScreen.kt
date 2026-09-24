@@ -27,19 +27,14 @@ import org.magic.magicaddons.util.ScreenUtil.drawMultilineBoxCentered
 import org.magic.magicaddons.util.ScreenUtil.drawPanel
 import org.magic.magicaddons.util.compat.McCompat
 
-/**
- * Any crop at any stage, drawn as it would stand in a greenhouse: the picker searches, the slider
- * walks the stages, and an unrecorded stage shows a question mark rather than a guess.
- */
 class CropPreviewScreen(
     private val parent: Screen?,
-    /** A crop to open on, or null for the empty stage. */
-    private val initial: CropDefinition? = null
-) : MagicScreen(Component.literal("Crop Preview"), "the crop preview"), OverlayContext {
+    private val initialCrop: CropDefinition? = null
+) : MagicAddonsScreen(Component.literal("Crop Preview"), "the crop preview"), OverlayContext {
 
     override val overlays: MutableList<OverlayRenderable> = mutableListOf()
 
-    override val backgroundName: String = Customization.PREVIEW_SCREEN
+    override val backgroundImageName: String = Customization.PREVIEW_SCREEN
 
     private var selectedDef: CropDefinition? = null
     private var stage: Int = 1
@@ -116,9 +111,9 @@ class CropPreviewScreen(
 
     override fun onInit() {
         super.onInit()
-        if (selectedDef == null && initial != null) {
-            selector.currentValue = initial
-            picked(initial)
+        if (selectedDef == null && initialCrop != null) {
+            selector.currentValue = initialCrop
+            picked(initialCrop)
         }
 
         // a margin of the screen above and below; everything between is the preview's
@@ -405,14 +400,14 @@ class CropPreviewScreen(
     override fun onMouseScrolled(mouseX: Double, mouseY: Double, scrollX: Double, scrollY: Double): Boolean =
         overlaysMouseScrolled(mouseX, mouseY, scrollX, scrollY) || super.onMouseScrolled(mouseX, mouseY, scrollX, scrollY)
 
-    override fun onCharTyped(characterEvent: CharacterEvent): Boolean =
-        overlaysCharTyped(characterEvent) || super.onCharTyped(characterEvent)
+    override fun onCharTyped(event: CharacterEvent): Boolean =
+        overlaysCharTyped(event) || super.onCharTyped(event)
 
-    override fun onKeyPressed(keyEvent: KeyEvent): Boolean =
-        overlaysKeyPressed(keyEvent) || super.onKeyPressed(keyEvent)
+    override fun onKeyPressed(event: KeyEvent): Boolean =
+        overlaysKeyPressed(event) || super.onKeyPressed(event)
 
     /** Escape goes back to the screen it came from, or out to the game when opened by command. */
-    override fun finishClose() {
+    override fun onCloseFinished() {
         McCompat.setScreen(parent)
     }
 

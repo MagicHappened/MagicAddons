@@ -7,19 +7,13 @@ import net.minecraft.network.chat.Component
 import org.magic.magicaddons.util.ScreenUtil.drawWrappedText
 import org.magic.magicaddons.util.ScreenUtil.wrappedHeight
 
-/**
- * Something drawn under a setting's row that the setting does not store: what the chosen value
- * currently means, worked out afresh each frame and never written to disk.
- */
+
 sealed interface SettingDetail {
 
-    /** How tall this wants to be drawn when given [width] to wrap in. */
     fun height(font: Font, width: Int): Int
 
-    /** Draws itself into the strip a row has set aside for it. */
     fun render(graphics: GuiGraphicsExtractor, font: Font, x: Int, y: Int, width: Int)
 
-    /** Plain text, wrapped to the strip's width. */
     data class Text(val text: String, val color: Int = Common.UI.TEXT_DIM_COLOR) : SettingDetail {
 
         override fun height(font: Font, width: Int): Int =

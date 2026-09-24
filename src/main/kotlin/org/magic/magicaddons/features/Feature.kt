@@ -20,15 +20,12 @@ abstract class Feature {
         baseSetting.updateAsFeatureRoot(settings)
     }
 
-    /**
-     * Every setting key of this feature mapped to the path it is stored under. Used by config
-     * migrations that have to find a value written under an older key layout.
-     */
+
     fun settingPaths(): Map<String, String> {
         val paths = mutableMapOf<String, String>()
 
         fun collect(node: SettingNode<*>, parentPath: String) {
-            val path = node.pathIn(parentPath)
+            val path = node.settingKey(parentPath)
             paths[node.key] = path
             node.children?.forEach { child -> collect(child, path) }
         }
