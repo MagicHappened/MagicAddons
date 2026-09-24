@@ -269,7 +269,7 @@ object HudRenderer {
     fun onHudRender(event: HudRenderEvent) {
         if (McCompat.hudHidden() || McCompat.currentScreen() != null) return
         val window = Minecraft.getInstance().window
-        ModFont.applied {
+        ModFont.replaceDefaultFont {
             HudScene.buildLayout(HudLayoutStore.layout, window.guiScaledWidth, window.guiScaledHeight, sample = false).drawBoxes(event.graphics)
         }
     }

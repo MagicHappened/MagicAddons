@@ -4,7 +4,7 @@ import org.magic.magicaddons.data.handlers.DataHandler
 import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.events.EventHandler
 import org.magic.magicaddons.events.world.SetTimePacketEvent
-import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseData.checkForUpdate
+import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseData.checkForGrowthTickUpdate
 import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseData.greenhouseGrids
 import tech.thatgravyboat.skyblockapi.api.SkyBlockAPI
 import tech.thatgravyboat.skyblockapi.api.events.base.Subscription
@@ -34,7 +34,7 @@ object ServerUtils {
                 it.state.scanned = false
             }
         }
-        checkForUpdate()
+        checkForGrowthTickUpdate()
 
     }
 

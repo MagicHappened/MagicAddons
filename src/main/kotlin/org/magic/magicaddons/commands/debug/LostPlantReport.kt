@@ -29,7 +29,7 @@ object LostPlantReport {
             "${crop.name} at ${previous.slot.x},${previous.slot.y} stage ${previous.lowestStage ?: "?"} was not matched"
         )
         ChatUtils.send(
-            "  soil ${previous.slot.soil?.block?.descriptionId ?: "none"}," +
+            "  soil ${previous.slot.soil?.descriptionId ?: "none"}," +
                     " stands around it ${standsInWorld.size} (${standsInPool.size} still free)"
         )
 

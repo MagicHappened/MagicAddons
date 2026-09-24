@@ -4,12 +4,6 @@ import net.minecraft.core.BlockPos
 import net.minecraft.world.entity.decoration.ArmorStand
 import org.magic.magicaddons.data.greenhouse.crops.*
 
-data class DyingPlant(
-    val plant: String,
-    val greenhouse: String,
-    val plotId: String
-)
-
 interface GridCallbacks {
 
     fun placedCropAt(soilPos: BlockPos): CropDefinition?
@@ -29,9 +23,6 @@ interface GridCallbacks {
     /** marks [plant] as a mutation that spawned where nothing stood at the last look */
     fun claimSpawnedMutation(plant: Plant, layout: PlotLayout)
 
-    /** a plant predicted dead was found standing */
-    fun warnSurvivor(plant: DyingPlant)
-
     /** a scan no longer matches a plant the records had */
     fun plantLostInScan(previous: Plant, origin: BlockPos, remainingStands: List<ArmorStand>) = Unit
 
@@ -41,6 +32,5 @@ interface GridCallbacks {
         override fun placementConfirmed(crop: CropDefinition, slot: LayoutSlot, grid: GreenhouseGrid): Boolean = false
         override fun markAsPlaced(plant: Plant) = Unit
         override fun claimSpawnedMutation(plant: Plant, layout: PlotLayout) = Unit
-        override fun warnSurvivor(plant: DyingPlant) = Unit
     }
 }

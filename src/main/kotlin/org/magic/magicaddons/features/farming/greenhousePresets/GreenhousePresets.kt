@@ -7,9 +7,6 @@ import org.magic.magicaddons.data.config.ParentSetting
 import org.magic.magicaddons.data.config.TextSetting
 import org.magic.magicaddons.data.greenhouse.crops.CropRegistry
 import org.magic.magicaddons.data.greenhouse.crops.Plant
-import org.magic.magicaddons.data.greenhouse.crops.definitions.mutations.rare.Chloronite
-import org.magic.magicaddons.data.greenhouse.crops.definitions.mutations.rare.Noctilume
-import org.magic.magicaddons.data.greenhouse.crops.definitions.mutations.rare.Snoozling
 import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.features.Feature
 import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseData
@@ -22,7 +19,6 @@ import org.magic.magicaddons.features.farming.greenhousePresets.playerActions.Gr
 import org.magic.magicaddons.features.farming.greenhousePresets.playerActions.GreenhouseWatering
 import org.magic.magicaddons.features.farming.greenhousePresets.render.LayoutRenderState
 import org.magic.magicaddons.features.farming.greenhousePresets.render.PlannerMark
-import org.magic.magicaddons.features.farming.greenhousePresets.render.WaterIndicator
 import org.magic.magicaddons.features.farming.greenhousePresets.warnings.ChorusCollision
 import org.magic.magicaddons.features.farming.greenhousePresets.warnings.PlantWarnings
 import tech.thatgravyboat.skyblockapi.api.SkyBlockAPI
@@ -111,7 +107,7 @@ object GreenhousePresets : Feature() {
         value = 25,
         range = 0..100,
         step = 5,
-        scrollable = false
+        mouseScrollEnabled = false
     )
 
     @JvmStatic
@@ -128,15 +124,17 @@ object GreenhousePresets : Feature() {
     private val harvestableBaseCropsSetting = BooleanSetting(
         key = "HarvestableBaseCrops",
         displayName = "Base Crops",
-        description = "Counts a fully grown base crop as harvestable",
+        description = "Counts a fully grown base crop as harvestable. " +
+                "Only for harvest highlight and warning messages",
         value = false
     )
 
     private val harvestableIngredientsSetting = BooleanSetting(
         key = "HarvestableIngredients",
         displayName = "Layout Ingredients",
-        description = "Counts a fully grown crop that the assigned layout uses as an ingredient as harvestable\n\n" +
-                "§7§oOverrides Base Crops for crops marked as ingredients",
+        description = "On: counts a fully grown crop on your preset marked as an ingredient as harvestable, " +
+                "so it appears in harvest highlight and break protection would consider it harvestable.\n\n" +
+                "Off: Isn't highlighted as harvestable, and is never allowed to be broken.",
         value = false
     )
 
@@ -164,7 +162,7 @@ object GreenhousePresets : Feature() {
         value = 12,
         range = 12..120,
         step = 12,
-        scrollable = false
+        mouseScrollEnabled = false
     )
 
     private val aloeHarvestStageSetting = IntSetting(
@@ -173,18 +171,23 @@ object GreenhousePresets : Feature() {
         description = "Considers all in aloe as harvestable from the selected stage or higher",
         value = 12,
         range = 1..27,
-        scrollable = false
+        mouseScrollEnabled = false
     )
 
     private val preventBreakingNonHarvestableSetting = BooleanSetting(
         key = PREVENT_BREAKING_NON_HARVESTABLE_KEY,
         displayName = "Non Harvestable",
-        description = "Prevent breaking any non harvestable crop.\n\n" +
-                "§7§oConfigurable in the setting above",
+        description = "Prevents breaking these while they aren't harvestable:\n" +
+                "- any mutation\n" +
+                "- a crop your preset marks as an ingredient\n\n" +
+                "Everything else in the greenhouse breaks as normal.\n\n" +
+                "§7§oWhat counts as harvestable is set in Harvestable above",
         value = false
     )
 
     fun preventBreakingNonHarvestable(): Boolean = baseSetting.value && preventBreakingNonHarvestableSetting.value
+
+    fun countsIngredientsAsHarvestable(): Boolean = harvestableIngredientsSetting.value
 
     private fun harvestStageFor(cropName: String): Int? = when (cropName) {
         "Magic Jellybean" -> jellybeanHarvestStageSetting.value
@@ -202,7 +205,7 @@ object GreenhousePresets : Feature() {
         value = 1000,
         range = 0..5000,
         step = 50,
-        scrollable = false
+        mouseScrollEnabled = false
     )
 
     private val preventBreakingUnderFarmingFortuneSetting = BooleanSetting(
@@ -225,7 +228,7 @@ object GreenhousePresets : Feature() {
         value = 1000,
         range = 0..5000,
         step = 50,
-        scrollable = false
+        mouseScrollEnabled = false
     )
 
     private val preventBreakingChloroniteSetting = BooleanSetting(
@@ -343,6 +346,8 @@ object GreenhousePresets : Feature() {
     private fun reminders(): BooleanSetting? = warnings()?.getChild<BooleanSetting>(REMINDERS_KEY)?.takeIf { it.value }
 
 
+    fun warningsEnabled(): Boolean = warnings() != null
+
     fun warningTypeEnabled(key: String): Boolean = types()?.getChild<BooleanSetting>(key)?.value == true
 
 
@@ -364,6 +369,16 @@ object GreenhousePresets : Feature() {
         ?.takeIf { it.value }
         ?.getChild<BooleanSetting>(PlantWarnings.NEGATIVE_WATER_KEY)
         ?.value == true
+
+    fun fleshtrapMeatThreshold(): Int = typesSetting()
+        ?.getChild<BooleanSetting>(PlantWarnings.FLESHTRAP_KEY)
+        ?.getChild<IntSetting>(PlantWarnings.FLESHTRAP_MEAT_KEY)
+        ?.value ?: 20
+
+    fun thunderlingChargeThreshold(): Int = typesSetting()
+        ?.getChild<BooleanSetting>(PlantWarnings.THUNDERLING_KEY)
+        ?.getChild<IntSetting>(PlantWarnings.THUNDERLING_CHARGE_KEY)
+        ?.value ?: 12_000
     override val id = "GreenhousePresets"
     override val displayName = "Greenhouse Presets"
     override val description = "Enables Greenhouse Presets..."
@@ -417,7 +432,8 @@ object GreenhousePresets : Feature() {
             BooleanSetting(
                 key = WARNINGS_KEY,
                 displayName = "Warnings",
-                description = "Chat warnings about the greenhouses: which ones, and how far ahead",
+                description = "Chat warnings about the greenhouses: which ones, and how far ahead\n" +
+                        "§7Does not send a warning if you are standing in a greenhouse.",
                 value = false,
                 children = listOf(
                     BooleanSetting(
@@ -450,16 +466,16 @@ object GreenhousePresets : Feature() {
                             BooleanSetting(
                                 key = PlantWarnings.DECAY_KEY,
                                 displayName = "Decay",
-                                description = "Warns six hours, one hour, twenty, five and one minute before a plant " +
-                                        "rots away. Needs a plant diagnostic to have been used on the plant, " +
+                                description = "Lists the plants closest to rotting away, once one is under a day " +
+                                        "from it. Needs a plant diagnostic to have been used on the plant, " +
                                         "since nothing else says how old it is",
                                 value = false
                             ),
                             BooleanSetting(
                                 key = PlantWarnings.SNOOZLING_KEY,
                                 displayName = "Snoozling Asleep",
-                                description = "Warns when a snoozling has dropped asleep, which it does on reaching " +
-                                        "stage 5, 10 and 15, and grows no further until it is woken",
+                                description = "Warns when a snoozling or jerryflower is asleep, which they do on " +
+                                        "reaching certain stages, and grow no further until woken",
                                 value = false
                             ),
                             BooleanSetting(
@@ -467,6 +483,46 @@ object GreenhousePresets : Feature() {
                                 displayName = "Noctilume Time",
                                 description = "Warns while a noctilume craves a time of day the garden is not on, " +
                                         "since it stalls every tick until the garden time is changed",
+                                value = false
+                            ),
+                            BooleanSetting(
+                                key = PlantWarnings.FLESHTRAP_KEY,
+                                displayName = "Fleshtrap Meat",
+                                description = "Warns when a fleshtrap's meat has run down to the threshold below",
+                                value = false,
+                                children = listOf(
+                                    IntSetting(
+                                        key = PlantWarnings.FLESHTRAP_MEAT_KEY,
+                                        displayName = "Meat Threshold",
+                                        description = "The meat percentage at or under which a fleshtrap is warned about",
+                                        value = 20,
+                                        range = 0..80,
+                                        step = 20
+                                    )
+                                )
+                            ),
+                            BooleanSetting(
+                                key = PlantWarnings.THUNDERLING_KEY,
+                                displayName = "Thunderling Charge",
+                                description = "Warns when a thunderling's charge has reached the amount below, " +
+                                        "before it destroys itself at 16,000",
+                                value = false,
+                                children = listOf(
+                                    IntSetting(
+                                        key = PlantWarnings.THUNDERLING_CHARGE_KEY,
+                                        displayName = "Charge To Warn About",
+                                        description = "The charge at or over which a thunderling is warned about",
+                                        value = 12_000,
+                                        range = 6_000..14_000,
+                                        step = 2_000
+                                    )
+                                )
+                            ),
+                            BooleanSetting(
+                                key = PlantWarnings.GLASSCORN_KEY,
+                                displayName = "Glasscorn Reset",
+                                description = "Warns when a glasscorn stands at its last stage, since the next tick " +
+                                        "rolls it back to the first",
                                 value = false
                             ),
                             BooleanSetting(
@@ -500,7 +556,7 @@ object GreenhousePresets : Feature() {
                     BooleanSetting(
                         key = REMINDERS_KEY,
                         displayName = "Reminders",
-                        description = "When a warning about the next tick is sent. Off, none are",
+                        description = "When the tick line is sent. Off, none are",
                         value = false,
                         children = listOf(
                             BooleanSetting(

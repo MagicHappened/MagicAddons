@@ -14,8 +14,8 @@ enum class HudSituation(val label: String) {
     companion object {
         /** Where the player is now, or everything when nowhere named. */
         fun current(): HudSituation = when {
-            GreenhouseData.inGreenhouse() -> GREENHOUSE
-            LocationAPI.island == SkyBlockIsland.GARDEN -> GARDEN
+            GreenhouseData.inOwnGreenhouse() -> GREENHOUSE
+            GreenhouseData.inGarden() -> GARDEN
             LocationAPI.island == SkyBlockIsland.SAFARI -> SAFARI
             else -> EVERYTHING
         }

@@ -128,43 +128,16 @@ object CropCollector : EntityUtils.HighlightSource {
 
     // ------------------------------------------------------------------ scanning
 
-    fun scan(adjust: String? = null) {
+    fun scan() {
         val client = Minecraft.getInstance()
-        val player = client.player ?: return
         val level = client.level ?: return
 
-        // "west2" says the player stands two west of the spot the grid is measured from, so undoing
-        // it recovers the spot
-        val displacement = adjust?.let {
-            parseAdjust(it) ?: run {
-                ChatUtils.sendWithPrefix(
-                    "Could not read \"$it\", say a direction then blocks, such as west2 or north1."
-                )
-                return
-            }
-        }
-
-        // on any garden the plot under the player says where the grid is, so they may stand anywhere
         val origin = plotOrigin() ?: run {
-            // north is the whole orientation contract, so standing any other way is an error now
-            // rather than a grid collected sideways
-            if (abs(Mth.wrapDegrees(player.yRot)) < 135f) {
-                ChatUtils.sendWithPrefix(
-                    Component.literal("Face north (the grid ahead and to the left), then run this again.")
-                        .withStyle(ChatFormatting.RED)
-                )
-                return
-            }
-
-            // only x and z come from the player: greenhouse soil sits at one height, whatever the
-            // player happens to be standing on
-            val feet = player.blockPosition()
-            val actual = BlockPos(feet.x, GREENHOUSE_SOIL_Y, feet.z)
-            val standingOn = displacement?.let { (dx, dz) -> actual.offset(-dx, 0, -dz) } ?: actual
-
-            // one south of the south-eastern corner: the corner is a step north, and the grid runs
-            // nine further north and nine west from it
-            BlockPos(standingOn.x - (GRID - 1), standingOn.y, standingOn.z - GRID)
+            ChatUtils.sendWithPrefix(
+                Component.literal("Nothing to collect: stand in a greenhouse plot first.")
+                    .withStyle(ChatFormatting.RED)
+            )
+            return
         }
 
         clear()
@@ -206,7 +179,7 @@ object CropCollector : EntityUtils.HighlightSource {
                     slotPos,
                     soilState.block,
                     pool,
-                    LayoutSlot(slotPos.x, slotPos.z, soilState)
+                    LayoutSlot(slotPos.x, slotPos.z, soilState.block)
                 ) ?: continue
 
                 val stands = found.stands.orEmpty().filterIsInstance<ArmorStand>()
@@ -411,20 +384,6 @@ object CropCollector : EntityUtils.HighlightSource {
     private fun norm(text: String): String = text.lowercase().filter { it.isLetter() }
 
     /** "west2" as the two axes it moves, or null for anything that is not direction-then-count. */
-    private fun parseAdjust(spec: String): Pair<Int, Int>? {
-        val match = Regex("(north|south|east|west)(\\d+)", RegexOption.IGNORE_CASE)
-            .matchEntire(spec.trim()) ?: return null
-
-        val count = match.groupValues[2].toIntOrNull()?.takeIf { it in 1..64 } ?: return null
-
-        return when (match.groupValues[1].lowercase()) {
-            "north" -> 0 to -count
-            "south" -> 0 to count
-            "east" -> count to 0
-            else -> -count to 0
-        }
-    }
-
     /** Every block state a definition's stages describe, for the plants that have no stands. */
     private val defsByState: Map<net.minecraft.world.level.block.state.BlockState, List<CropDefinition>> by lazy {
         buildMap<net.minecraft.world.level.block.state.BlockState, MutableList<CropDefinition>> {
@@ -476,8 +435,12 @@ object CropCollector : EntityUtils.HighlightSource {
      * plot. Plots sit at the same coordinates on every garden, so this holds for a guest as well.
      */
     private fun plotOrigin(): BlockPos? {
-        if (LocationAPI.island != SkyBlockIsland.GARDEN) return null
-        val plot = PlotAPI.getCurrentPlot()?.takeUnless { it.isBarn } ?: return null
+        if (!GreenhouseData.inGarden()) return null
+
+        val plot = PlotAPI.getCurrentPlot() ?: return null
+        val collectable = if (LocationAPI.isGuest) !plot.isBarn else plot.data?.isGreenhouse == true
+        if (!collectable) return null
+
         val area = plot.getBuildableArea()
 
         return BlockPos(area.minX.toInt(), GREENHOUSE_SOIL_Y, area.minZ.toInt())

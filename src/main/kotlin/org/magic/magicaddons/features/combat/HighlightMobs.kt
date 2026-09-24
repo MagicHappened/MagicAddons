@@ -5,7 +5,6 @@ import net.minecraft.world.entity.Display
 import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.EquipmentSlot
 import net.minecraft.world.entity.LivingEntity
-import net.minecraft.world.entity.player.Player
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
 import org.magic.magicaddons.data.EntityInfo
@@ -23,7 +22,6 @@ import org.magic.magicaddons.events.world.EntityUpdatedEvent
 import org.magic.magicaddons.features.HighlightFeature
 import org.magic.magicaddons.features.misc.HighlightMarkers
 import org.magic.magicaddons.util.EntityUtils
-import org.magic.magicaddons.util.PlayerUtils
 import tech.thatgravyboat.skyblockapi.api.SkyBlockAPI
 import tech.thatgravyboat.skyblockapi.api.events.base.Subscription
 import tech.thatgravyboat.skyblockapi.api.events.location.IslandChangeEvent
@@ -46,36 +44,29 @@ object HighlightMobs : HighlightFeature() {
     override val id: String = "HighlightMobs"
     override val displayName: String = "Mob Highlight"
     override val description: String = "§fHighlights mobs of your choosing.\n" +
-            "§fPresets, single mobs, a name, or advanced filters."
+            "§fPresets, single mobs, or a name."
     override val category: String = "combat"
-
-    val entityTypePlayerSkinHash = TextSetting(
-        key = "EntityTypePlayerSkinHash",
-        displayName = "Skin Hash Value",
-        description = "§fThe skin hash to look for.\n§eGet it from the mob hit debug.",
-        value = "f2b33640bfb71557e0e1d852287263ceafc9bec205301acf046b7c29fe8cb37b"
-    )
 
     val hypixelMobsList = ToggleListSetting(
         key = "HypixelMobs",
-        displayName = "Mobs",
+        displayName = "Hypixel Mobs",
         description = "",
         value = mutableListOf(),
-        choices = { SingleMobs.names }
+        choices = { SingleMobs.hypixelNames }
     )
 
     val vanillaMobsList = ToggleListSetting(
         key = "VanillaMobs",
-        displayName = "Mobs",
+        displayName = "Vanilla Mobs",
         description = "",
         value = mutableListOf(),
-        choices = { VanillaMobs.names }
+        choices = { SingleMobs.vanillaNames }
     )
 
     private val throughWallsSetting = BooleanSetting(
         key = "ThroughWalls",
         displayName = "Through Walls",
-        description = "§cThis feature might be considered as a cheat and is therefore used at your own risk.",
+        description = "§cShows the mobs through walls",
         value = false,
         needsExtensionPack = true,
         children = listOf(HighlightMarkers.linkSetting())
@@ -159,46 +150,6 @@ object HighlightMobs : HighlightFeature() {
                         value = "Littlefoot"
                     )
                 )
-            ),
-            BooleanSetting(
-                key = "AdvancedHighlightEnabled",
-                displayName = "Advanced Highlight",
-                description = "§fFilters by skin hash or helmet skull,\n" +
-                        "§ffor mobs no preset covers.\n" +
-                        "§eValues come from the mob hit debug.",
-                value = false,
-                children = listOf(
-                    BooleanSetting(
-                        key = "EntityTypeEnabled",
-                        displayName = "Entity Type",
-                        description = "§fMatch on what the entity is, by a player's skin hash.",
-                        value = false,
-                        children = listOf(
-                            BooleanSetting(
-                                key = "EntityTypePlayerEnabled",
-                                displayName = "Player Entity",
-                                description = "§fMatch players by skin hash.",
-                                value = false,
-                                children = listOf(entityTypePlayerSkinHash)
-                            )
-                        )
-                    ),
-                    BooleanSetting(
-                        key = "EntityEquipmentDetectionEnabled",
-                        displayName = "Entity Helmet",
-                        description = "§fMatch on the skull an entity wears,\n" +
-                                "§for one carried by a stand or display standing in it.",
-                        value = false,
-                        children = listOf(
-                            TextSetting(
-                                key = "EntityEquipmentHelmetSkullHash",
-                                displayName = "Helmet Skull Hash",
-                                description = "§fThe skull hash to look for.\n§eGet it from the mob hit debug.",
-                                value = "a8abb471db0ab78703011979dc8b40798a941f3a4dec3ec61cbeec2af8cffe8" //default rat helmet skin
-                            )
-                        )
-                    )
-                )
             )
         )
     )
@@ -223,40 +174,27 @@ object HighlightMobs : HighlightFeature() {
         handleEntitiesUpdated(event.updatedEntityList)
     }
 
-    /**
-     * The armour colour each mineshaft corpse wears, which is also what it is outlined in. Read off
-     * the dyed leather with the mob hit debug: lapis, umber and tungsten.
-     */
     private val CORPSE_COLORS: Set<Int> = setOf(0x0000FF, 0xC83200, 0xCCE5FF)
 
-    /**
-     * The corpse colour this entity wears, or null when it is not a corpse. Taken from the dyed
-     * chestplate, which all three wear; their heads differ, a sea lantern, a helmet and a skull.
-     */
     private fun corpseColor(entity: Entity): Int? {
         if (entity !is LivingEntity) return null
 
-        val dyed = entity.getItemBySlot(EquipmentSlot.CHEST)
+        val dyedItems = entity.getItemBySlot(EquipmentSlot.CHEST)
             .get(DataComponents.DYED_COLOR)
             ?.rgb
             ?: return null
 
-        val rgb = dyed and 0xFFFFFF
+        val rgb = dyedItems and 0xFFFFFF
 
         return if (rgb in CORPSE_COLORS) 0xFF000000.toInt() or rgb else null
     }
 
-    /** Corpses looted this visit, by entity id. Cleared when the mineshaft is left. */
     private val lootedCorpses: MutableSet<Int> = mutableSetOf()
 
-    /** The corpse just right clicked, waiting for chat to say whether the loot went through. */
     private var pendingCorpse: Entity? = null
     private var pendingSince: Long = 0
-
-    /** How long a right click waits for its loot message before it is forgotten. */
     private const val LOOT_WINDOW_MS: Long = 3000
 
-    /** "  LAPIS CORPSE LOOT!", sent only to the player who opened it. */
     private val CORPSE_LOOT_MESSAGE = Regex("\\s*\\w+ CORPSE LOOT!\\s*")
 
     @EventHandler
@@ -268,7 +206,6 @@ object HighlightMobs : HighlightFeature() {
         pendingSince = System.currentTimeMillis()
     }
 
-    /** The loot message names the type but not which corpse, so it settles the one just clicked. */
     @EventHandler
     fun onSystemChat(event: SystemChatEvent) {
         if (event.overlay) return
@@ -295,7 +232,7 @@ object HighlightMobs : HighlightFeature() {
             ?.getChild<BooleanSetting>("HideLootedCorpses")
             ?.value == true
 
-    /** The entity a preset wants outlined, or null when no preset matched. */
+
     private fun presetTarget(info: EntityInfo): Entity? {
         val presets = baseSetting.getChild<BooleanSetting>("PresetsEnabled") ?: return null
         if (!presets.value) return null
@@ -306,8 +243,6 @@ object HighlightMobs : HighlightFeature() {
             }
         }
 
-        // only inside a mineshaft: the three colours are ordinary dyes, and anything else wearing
-        // one of them elsewhere in the game is not a corpse
         if (presets.getChild<BooleanSetting>("PresetsShaftCorpses")?.value == true &&
             LocationAPI.island == SkyBlockIsland.MINESHAFT &&
             corpseColor(info.entity) != null &&
@@ -319,42 +254,40 @@ object HighlightMobs : HighlightFeature() {
         return null
     }
 
-    /** The entity one of the picked single mobs wants outlined, or null. */
-    /** A picked mob that matched: the name it was picked by, and what it wants outlined. */
-    private class PickedMatch(val name: String, val icon: ItemStack?, val target: Entity)
+    private class SingleMobsMatch(val name: String, val icon: ItemStack?, val target: Entity)
 
     private fun singleMobTarget(info: EntityInfo): Entity? = singleMobMatch(info)?.target
 
-    private fun singleMobMatch(info: EntityInfo): PickedMatch? {
+    private fun singleMobMatch(info: EntityInfo): SingleMobsMatch? {
         val singleMobs = baseSetting.getChild<BooleanSetting>("SingleMobsEnabled") ?: return null
         if (!singleMobs.value) return null
 
         return hypixelMobMatch(singleMobs, info) ?: vanillaMobMatch(singleMobs, info)
     }
 
-    private fun hypixelMobMatch(singleMobs: BooleanSetting, info: EntityInfo): PickedMatch? {
+    private fun hypixelMobMatch(singleMobs: BooleanSetting, info: EntityInfo): SingleMobsMatch? {
         if (singleMobs.getChild<BooleanSetting>("HypixelMobsEnabled")?.value != true) return null
 
         return hypixelMobsList.value
             .asSequence()
             .filter { it.enabled }
-            .mapNotNull { SingleMobs.byName(it.value) }
-            .mapNotNull { mob -> SingleMobs.target(mob, info)?.let { PickedMatch(mob.name, SingleMobs.iconFor(mob), it) } }
+            .mapNotNull { SingleMobs.hypixelByName(it.value) }
+            .mapNotNull { mob -> SingleMobs.hypixelTarget(mob, info)?.let { SingleMobsMatch(mob.name, SingleMobs.iconFor(mob), it) } }
             .firstOrNull()
     }
 
-    private fun vanillaMobMatch(singleMobs: BooleanSetting, info: EntityInfo): PickedMatch? {
+    private fun vanillaMobMatch(singleMobs: BooleanSetting, info: EntityInfo): SingleMobsMatch? {
         if (singleMobs.getChild<BooleanSetting>("VanillaMobsEnabled")?.value != true) return null
 
         return vanillaMobsList.value
             .asSequence()
             .filter { it.enabled }
-            .mapNotNull { VanillaMobs.byName(it.value) }
-            .mapNotNull { mob -> VanillaMobs.target(mob, info)?.let { PickedMatch(mob.name, null, it) } }
+            .mapNotNull { SingleMobs.vanillaByName(it.value) }
+            .mapNotNull { mob -> SingleMobs.vanillaTarget(mob, info)?.let { SingleMobsMatch(mob.name, null, it) } }
             .firstOrNull()
     }
 
-    /** The mob, when its own name or a tag beside it contains the filter text. */
+    // for names above the mobs
     private fun nameTarget(info: EntityInfo): Entity? {
         val nameSetting = baseSetting.getChild<BooleanSetting>("MobInfoEnabled") ?: return null
         if (!nameSetting.value) return null
@@ -371,46 +304,14 @@ object HighlightMobs : HighlightFeature() {
         return entity.takeIf { matches }
     }
 
-    /** The advanced filters: entity type, skin hash and helmet skull. */
-    private fun advancedTarget(info: EntityInfo): Entity? {
-        val advanced = baseSetting.getChild<BooleanSetting>("AdvancedHighlightEnabled") ?: return null
-        if (!advanced.value) return null
-
-        val entity = info.entity
-
-        val entityType = advanced.getChild<BooleanSetting>("EntityTypeEnabled")
-        if (entityType?.value == true) {
-            val playerEnabled = entityType.getChild<BooleanSetting>("EntityTypePlayerEnabled")?.value == true
-            if (playerEnabled && entity is Player) {
-                val expected = entityTypePlayerSkinHash.value
-                if (expected.isNotBlank() && PlayerUtils.getSkinHash(entity) == expected) return entity
-            }
-        }
-
-        val helmet = advanced.getChild<BooleanSetting>("EntityEquipmentDetectionEnabled")
-        if (helmet?.value == true && entity is LivingEntity) {
-            val expected = helmet.getChild<TextSetting>("EntityEquipmentHelmetSkullHash")?.value
-                ?: return null
-
-            EntityUtils.skullCarrier(info, expected)?.let { return it }
-        }
-
-        return null
-    }
-
     override fun highlightTarget(info: EntityInfo): Entity? {
         if (!baseSetting.value) return null
 
         return presetTarget(info)
             ?: singleMobTarget(info)
             ?: nameTarget(info)
-            ?: advancedTarget(info)
     }
 
-    /**
-     * Only a picked mob is marked: it is the one match the player named, so it has a name worth
-     * writing and an item worth drawing. The other filters match whatever they match.
-     */
     override fun markOf(info: EntityInfo): EntityUtils.HighlightMark? {
         val picked = singleMobMatch(info) ?: return null
 

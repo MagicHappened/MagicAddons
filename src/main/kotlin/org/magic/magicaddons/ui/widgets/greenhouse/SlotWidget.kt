@@ -28,9 +28,9 @@ class SlotWidget(
 
     fun init() {
         val block = slot.soil
-        val isAir = block?.block == Blocks.AIR
+        val isAir = block == Blocks.AIR
         air = isAir && inPreset
-        sprite = if (block == null || isAir) null else ScreenUtil.getSpriteForState(block, Direction.UP)
+        sprite = if (block == null || isAir) null else ScreenUtil.getSpriteForState(block.defaultBlockState(), Direction.UP)
     }
 
     override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {

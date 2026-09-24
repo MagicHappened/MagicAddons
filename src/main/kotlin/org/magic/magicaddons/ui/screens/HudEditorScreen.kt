@@ -42,7 +42,7 @@ import kotlin.math.roundToInt
  * faded with the wheel, scaled with shift and the wheel, merged by dropping one on another,
  * tied to each other or to anchors through the right click menu, and reset with R.
  */
-class HudEditorScreen : MagicScreen(Component.literal("HUD Editor"), "the hud editor"), OverlayContext {
+class HudEditorScreen : MagicAddonsScreen(Component.literal("HUD Editor"), "the hud editor"), OverlayContext {
 
     override val overlays: MutableList<OverlayRenderable> = mutableListOf()
 
@@ -439,7 +439,7 @@ class HudEditorScreen : MagicScreen(Component.literal("HUD Editor"), "the hud ed
 
     // ------------------------------------------------------------------ drawing
 
-    override fun extractBackground(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
+    override fun onExtractBackground(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
         graphics.fill(0, 0, width, height, Common.UI.SCREEN_DIM_COLOR)
     }
 
@@ -918,8 +918,8 @@ class HudEditorScreen : MagicScreen(Component.literal("HUD Editor"), "the hud ed
         return true
     }
 
-    override fun onKeyPressed(keyEvent: KeyEvent): Boolean {
-        if (keyEvent.key() == GLFW.GLFW_KEY_ESCAPE) {
+    override fun onKeyPressed(event: KeyEvent): Boolean {
+        if (event.key() == GLFW.GLFW_KEY_ESCAPE) {
             if (picking != null) {
                 picking = null
                 return true
@@ -930,7 +930,7 @@ class HudEditorScreen : MagicScreen(Component.literal("HUD Editor"), "the hud ed
             }
         }
         if (overlays.isEmpty() && selectedId != null) {
-            val step = when (keyEvent.key()) {
+            val step = when (event.key()) {
                 GLFW.GLFW_KEY_LEFT -> -1 to 0
                 GLFW.GLFW_KEY_RIGHT -> 1 to 0
                 GLFW.GLFW_KEY_UP -> 0 to -1
@@ -943,17 +943,17 @@ class HudEditorScreen : MagicScreen(Component.literal("HUD Editor"), "the hud ed
                 return true
             }
         }
-        if (keyEvent.key() == GLFW.GLFW_KEY_R && overlays.isEmpty()) {
+        if (event.key() == GLFW.GLFW_KEY_R && overlays.isEmpty()) {
             hoveredPart()?.let {
                 reset(it.element.id)
                 HudLayoutStore.save()
                 return true
             }
         }
-        return super.onKeyPressed(keyEvent)
+        return super.onKeyPressed(event)
     }
 
-    override fun finishClose() {
+    override fun onCloseFinished() {
         HudLayoutStore.save()
         McCompat.setScreen(null)
     }

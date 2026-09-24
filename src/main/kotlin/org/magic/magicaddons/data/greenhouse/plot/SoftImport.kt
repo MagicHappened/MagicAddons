@@ -113,7 +113,7 @@ object SoftImport {
             val accepted = acceptedSoils(plant)
             cellsOf(plant).any { cell ->
                 cell in incomingPlantAt ||
-                        incoming.getSlot(cell.first, cell.second)?.soil?.let { it.block !in accepted } == true
+                        incoming.getSlot(cell.first, cell.second)?.soil?.let { it !in accepted } == true
             }
         }
         merged.plants.removeAll(removedPlants.toSet())
@@ -127,11 +127,11 @@ object SoftImport {
             if (incomingSoil != null) {
                 when {
                     standingSoil == null -> Unit
-                    standingSoil.block == incomingSoil.block -> soilsReused++
+                    standingSoil == incomingSoil -> soilsReused++
                     else -> soilsReplaced++
                 }
                 slot.soil = incomingSoil
-            } else if (incomingPlant != null && standingSoil != null && standingSoil.block !in acceptedSoils(incomingPlant)) {
+            } else if (incomingPlant != null && standingSoil != null && standingSoil !in acceptedSoils(incomingPlant)) {
                 // a soil the imported plant cannot grow on is cleared rather than guessed at
                 soilsReplaced++
                 slot.soil = null

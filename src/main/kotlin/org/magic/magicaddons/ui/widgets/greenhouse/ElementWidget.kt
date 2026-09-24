@@ -20,7 +20,7 @@ import org.magic.magicaddons.data.greenhouse.crops.Plant
 import org.magic.magicaddons.data.greenhouse.crops.PlantStage
 import org.magic.magicaddons.data.greenhouse.plot.LayoutSlot
 import org.magic.magicaddons.data.greenhouse.plot.PlotPrediction
-import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GrowthClock
+import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseTickTime
 import org.magic.magicaddons.util.ScreenUtil
 import org.magic.magicaddons.util.ScreenUtil.drawBorder
 import org.magic.magicaddons.util.ScreenUtil.drawCountedCrop
@@ -403,8 +403,8 @@ class ElementWidget(val instance: Plant) : Renderable, GuiEventListener {
     private fun renderOverloadTime(graphics: GuiGraphicsExtractor, chargeRule: ChargeRule, barTop: Int) {
         if (instance.isFullyGrown) return
 
-        val remainingMs = GrowthClock.remainingTickMs()
-        val tickMs = GrowthClock.tickLengthMs()
+        val remainingMs = GreenhouseTickTime.remainingTickMs()
+        val tickMs = GreenhouseTickTime.tickMs
         // a plant stops gaining charge once grown, so one that finishes below the limit never overloads
         val stagesToGrow = (instance.cropDef.maxStage - (instance.lowestStage ?: 1)).coerceAtLeast(0)
         val overloads = instance.charge + chargeRule.perStage * stagesToGrow >= chargeRule.limit
@@ -444,8 +444,8 @@ class ElementWidget(val instance: Plant) : Renderable, GuiEventListener {
         // past death in the estimate there is no time left to state; the dead bush says it instead
         if (waterLevel <= PlotPrediction.WATER_DEATH_LEVEL) return
 
-        val remainingMs = GrowthClock.remainingTickMs()
-        val tickMs = GrowthClock.tickLengthMs()
+        val remainingMs = GreenhouseTickTime.remainingTickMs()
+        val tickMs = GreenhouseTickTime.tickMs
         val inDebt = instance.waterPredictedInDebt
 
         // the ticks the plant can still take, which are all that can cost it water: from the low

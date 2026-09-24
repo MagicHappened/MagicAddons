@@ -6,7 +6,7 @@ object MissingCropData {
 
     fun gapsByTier(): Map<CropTier, List<CropGap>> = CropRegistry.allCrops
         .sortedWith(compareBy({ it.tier }, { it.name }))
-        .mapNotNull { crop -> missingParts(crop).takeIf { it.isNotEmpty() }?.let { CropGap(crop, it) } }
+        .mapNotNull { crop -> missingStages(crop).takeIf { it.isNotEmpty() }?.let { CropGap(crop, it) } }
         .groupBy { it.crop.tier }
         .toSortedMap()
 
@@ -29,46 +29,22 @@ object MissingCropData {
 
         return CropDataReport(recordedStages, totalStages, gapsByTier.values.sumOf { it.size }, listing)
     }
-    
-    private fun missingVariants(crop: CropDefinition): List<String> {
-        val parts = mutableListOf<String>()
-        val looks = crop.stages
-
-        if (crop.sleepStages.isNotEmpty()) {
-            val sleeping = crop.sleepStages.filter { it <= crop.maxStage }.sorted()
-            val asleepMissing = sleeping.filter { stage -> looks.none { stage in it.stageRange && it.readers.any { r -> r.key == StandReader.ASLEEP } } }
-            val awakeMissing = sleeping.filter { stage -> looks.none { stage in it.stageRange && it.readers.none { r -> r.key == StandReader.ASLEEP } } }
-            if (asleepMissing.isNotEmpty()) parts += "asleep look unrecorded at stages ${asRanges(asleepMissing)}"
-            if (awakeMissing.isNotEmpty()) parts += "awake look unrecorded at stages ${asRanges(awakeMissing)}"
-        }
-
-        if (looks.any { StandReader.NEEDS_TIME in it.traits }) {
-            val stages = (1..crop.maxStage).toList()
-            val dayMissing = stages.filter { stage -> looks.none { stage in it.stageRange && it.traits[StandReader.NEEDS_TIME] == StandReader.NEEDS_DAY } }
-            val nightMissing = stages.filter { stage -> looks.none { stage in it.stageRange && it.traits[StandReader.NEEDS_TIME] == StandReader.NEEDS_NIGHT } }
-            if (dayMissing.isNotEmpty()) parts += "day look unrecorded at stages ${asRanges(dayMissing)}"
-            if (nightMissing.isNotEmpty()) parts += "night look unrecorded at stages ${asRanges(nightMissing)}"
-        }
-
-        return parts
-    }
 
     private fun unrecordedStages(crop: CropDefinition): List<Int> {
         val covered = crop.stages.flatMap { it.stageRange }.toSet()
         return (1..crop.maxStage).filterNot { it in covered }
     }
 
-    private fun missingParts(crop: CropDefinition): List<String> {
+    private fun missingStages(crop: CropDefinition): List<String> {
         val missing = unrecordedStages(crop)
 
         val parts = mutableListOf<String>()
-        if (missing.isNotEmpty()) parts += "stages ${asRanges(missing)} unrecorded"
-        parts += missingVariants(crop)
+        if (missing.isNotEmpty()) parts += "stages ${asRanges(missing)}"
         return parts
     }
 
-    fun missingSummary(crop: CropDefinition): String? =
-        missingParts(crop).joinToString("; ").takeIf { it.isNotEmpty() }
+    fun missingStagesSummary(crop: CropDefinition): String? =
+        missingStages(crop).joinToString("; ").takeIf { it.isNotEmpty() }
 
     fun recordedPercent(crop: CropDefinition): Int {
         val covered = crop.stages.flatMap { it.stageRange }.toSet().count { it in 1..crop.maxStage }

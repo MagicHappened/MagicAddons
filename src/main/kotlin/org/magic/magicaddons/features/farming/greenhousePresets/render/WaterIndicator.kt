@@ -25,8 +25,8 @@ object WaterIndicator {
         if (!GreenhousePresets.waterIndicatorOn()) return
         if (GreenhousePresets.waterIndicatorOnlyWithoutPlanner() && LayoutRenderState.hasSomethingToShow) return
 
+        if (!GreenhouseData.inOwnGreenhouse()) return
         val grid = GreenhouseData.getCurrentGrid() ?: return
-        if (!GreenhouseData.inOwnGarden() || !GreenhouseData.inGreenhouse()) return
 
         val ignoreGrown = GreenhousePresets.waterIndicatorIgnoresGrown()
 

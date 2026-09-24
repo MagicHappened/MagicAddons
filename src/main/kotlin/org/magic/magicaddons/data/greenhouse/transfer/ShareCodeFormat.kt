@@ -111,8 +111,8 @@ object ShareCodeFormat : LayoutFormat {
                 slot.mark = LayoutSlot.Marking.entries.getOrNull((flags and 0b11) - 1)
                 when (val soil = flags shr 2) {
                     SOIL_UNSET -> {}
-                    SOIL_AIR -> slot.soil = Blocks.AIR.defaultBlockState()
-                    else -> soils.getOrNull(soil - SOIL_FIRST)?.let { slot.soil = it.defaultBlockState() }
+                    SOIL_AIR -> slot.soil = Blocks.AIR
+                    else -> soils.getOrNull(soil - SOIL_FIRST)?.let { slot.soil = it }
                 }
                 val merged = if (crop > 0 && version >= PAYLOAD_VERSION) {
                     List(input.readUnsignedByte()) { crops.getOrNull(input.readUnsignedByte() - 1) }.filterNotNull()
@@ -145,7 +145,7 @@ object ShareCodeFormat : LayoutFormat {
         for (dx in 0 until footprint.width) {
             for (dy in 0 until footprint.height) {
                 val covered = layout.getSlot(slot.x + dx, slot.y + dy) ?: continue
-                if (covered.soil == null) covered.soil = definition.requiredSoil.firstOrNull()?.defaultBlockState()
+                if (covered.soil == null) covered.soil = definition.requiredSoil.firstOrNull()
             }
         }
         layout.plants.add(
@@ -161,7 +161,7 @@ object ShareCodeFormat : LayoutFormat {
         val crops = plots.flatMap { plot -> plot.plants.flatMap { it.acceptedCrops } }.distinct()
         val anyMerged = plots.any { plot -> plot.plants.any { it.hasAlternatives } }
         val version = if (anyMerged) PAYLOAD_VERSION else PLAIN_VERSION
-        val soils = plots.flatMap { plot -> plot.slots.mapNotNull { it.soil?.block } }.filter { it != Blocks.AIR }.distinct()
+        val soils = plots.flatMap { plot -> plot.slots.mapNotNull { it.soil } }.filter { it != Blocks.AIR }.distinct()
         if (crops.size > 255 || soils.size > 250) return LayoutTransferResult.Failure("Too many different crops or soils for a share code.")
 
         val bytes = ByteArrayOutputStream()
@@ -186,7 +186,7 @@ object ShareCodeFormat : LayoutFormat {
                 out.writeByte(plant?.let { crops.indexOf(it.cropDef) + 1 } ?: 0)
 
                 val mark = slot?.mark?.let { it.ordinal + 1 } ?: 0
-                val block = slot?.soil?.block
+                val block = slot?.soil
                 val soil = when {
                     block == null -> SOIL_UNSET
                     block == Blocks.AIR -> SOIL_AIR

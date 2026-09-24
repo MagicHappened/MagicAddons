@@ -1,6 +1,9 @@
 package org.magic.magicaddons.features.combat
 
+import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.world.entity.Entity
+import net.minecraft.world.entity.EntityType
+import net.minecraft.world.entity.MobCategory
 import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.animal.armadillo.Armadillo
 import net.minecraft.world.entity.animal.bee.Bee
@@ -61,7 +64,7 @@ object SingleMobs {
         override fun toString(): String = name
     }
 
-    val all: List<Mob> = listOf(
+    val hypixel: List<Mob> = listOf(
         Mob("Sanger", Rule.Skin("c60812527ebb2d72e6119effd0cce5f1f2966ad45edbb705ed04948aba6f1b74"), SkyBlockIsland.TORRHUS_CANYON),
         Mob("Vanquisher", Rule.Type(WitherBoss::class), SkyBlockIsland.CRIMSON_ISLE),
         Mob("Matcho", Rule.Skin("ef2daabb78a1f7aa12d145d88c0ca46b9e856f5534e9286e555faf0c291f4fd5"), SkyBlockIsland.CRIMSON_ISLE),
@@ -89,13 +92,13 @@ object SingleMobs {
         Mob("Trinity", Rule.Skin("5841a16a5bd4a646cedb4b5437723226c7cf9f8669e558773fae0a9452c94d90"), SkyBlockIsland.THE_CATACOMBS),
     )
 
-    val names: List<String> = all.map { it.name }
-    
+    val hypixelNames: List<String> = hypixel.map { it.name }
+
     fun iconFor(mob: Mob): ItemStack? = (mob.rule as? Rule.Skull)?.let { PlayerUtils.getItemFromHash(it.hash) }
 
-    fun byName(name: String): Mob? = all.firstOrNull { it.name == name }
+    fun hypixelByName(name: String): Mob? = hypixel.firstOrNull { it.name == name }
 
-    fun target(mob: Mob, info: EntityInfo): Entity? {
+    fun hypixelTarget(mob: Mob, info: EntityInfo): Entity? {
         if (mob.island != null && LocationAPI.island != mob.island) return null
 
         val entity = info.entity
@@ -133,7 +136,6 @@ object SingleMobs {
         }
     }
 
-    /** the attribute arrives as a float, so an exact scale is read within this much of it */
     private const val SCALE_TOLERANCE: Float = 0.01f
 
     private fun matchesScale(entity: Entity, scaleMatch: ScaleMatch?): Boolean {
@@ -146,4 +148,23 @@ object SingleMobs {
             is ScaleMatch.Exactly -> abs(scale - scaleMatch.scale) < SCALE_TOLERANCE
         }
     }
+
+    class VanillaMob(val name: String, val type: EntityType<*>) {
+        override fun toString(): String = name
+    }
+
+    private val LIVING_MISC_IDS: Set<String> = setOf("player", "villager", "wandering_trader", "iron_golem", "snow_golem")
+
+    val vanilla: List<VanillaMob> by lazy {
+        BuiltInRegistries.ENTITY_TYPE
+            .filter { it.category != MobCategory.MISC || BuiltInRegistries.ENTITY_TYPE.getKey(it).path in LIVING_MISC_IDS }
+            .map { VanillaMob(it.description.string, it) }
+            .sortedBy { it.name }
+    }
+
+    val vanillaNames: List<String> get() = vanilla.map { it.name }
+
+    fun vanillaByName(name: String): VanillaMob? = vanilla.firstOrNull { it.name == name }
+
+    fun vanillaTarget(mob: VanillaMob, info: EntityInfo): Entity? = info.entity.takeIf { it.type === mob.type }
 }

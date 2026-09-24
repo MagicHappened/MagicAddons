@@ -8,7 +8,6 @@ import org.magic.magicaddons.util.ChatUtils
 object MainDebug : AbstractCommand() {
     override val argument: String = "debug"
     val debugCommandList = listOf(
-        ForceUpdate,
         FarmingDebug,
         MiningDebug
     )

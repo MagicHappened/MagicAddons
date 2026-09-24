@@ -29,7 +29,6 @@ import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix4fc;
 import org.joml.Vector4f;
 import org.jspecify.annotations.Nullable;
-import org.magic.magicaddons.commands.debug.FarmingDebug;
 import org.magic.magicaddons.commands.debug.CropCollector;
 import org.magic.magicaddons.features.farming.greenhousePresets.render.LayoutRenderState;
 import org.magic.magicaddons.features.misc.HighlightMarkers;
@@ -103,7 +102,7 @@ public abstract class LevelRendererMixin {
             }
 
             // far enough off to be marked instead, and the marker is drawn in the outline's place
-            if (HighlightMarkers.replacesOutline(entity, source)) {
+            if (HighlightMarkers.markingReplacesOutline(entity, source)) {
                 continue;
             }
 
@@ -145,14 +144,6 @@ public abstract class LevelRendererMixin {
                     levelRenderState.cameraRenderState.pos
             );
 
-            // whatever the farming debug last listed, lit up so it can be counted by eye
-            FarmingDebug.INSTANCE.submitHighlights(
-                    poseStack,
-                    submitNodeCollector,
-                    levelRenderState.cameraRenderState.pos
-            );
-
-            // whatever the crop collector last grouped, held up for confirmation
             CropCollector.INSTANCE.submitHighlights(
                     poseStack,
                     submitNodeCollector,

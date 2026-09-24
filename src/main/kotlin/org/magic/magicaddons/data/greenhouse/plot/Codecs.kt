@@ -8,7 +8,7 @@ import java.time.Instant
 import java.util.*
 import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.world.level.block.Block
-import net.minecraft.world.level.block.state.BlockState
+import net.minecraft.world.level.block.Blocks
 import org.magic.magicaddons.data.greenhouse.crops.*
 import org.magic.magicaddons.data.greenhouse.crops.PlantStage.Estimated
 import org.magic.magicaddons.data.greenhouse.crops.PlantStage.Known
@@ -27,20 +27,18 @@ object Codecs {
                     .fieldOf("slots")
                     .forGetter { it.slots },
 
-                GREENHOUSE_ELEMENT_INSTANCE_CODEC.listOf()
+                GREENHOUSE_PLANT_CODEC.listOf()
                     .fieldOf("element_instances")
                     .forGetter { it.plants },
 
-                // written since air became something asked for; a file without it has air meaning nothing
                 Codec.BOOL.optionalFieldOf("explicit_air").forGetter { Optional.of(true) }
             ).apply(instance) { id, nameOpt, slots, elements, explicitAir ->
                 if (!explicitAir.orElse(false)) {
-                    slots.forEach { slot -> if (slot.soil?.isAir == true) slot.soil = null }
+                    slots.forEach { slot -> if (slot.soil == Blocks.AIR) slot.soil = null }
                 }
                 PlotLayout(
                     id = id,
-                    // older files carry "unnamed" as the name the mod itself wrote, which is no name
-                    name = nameOpt.orElse(null)?.takeUnless { it == "unnamed" },
+                    name = nameOpt.orElse(null),
                     slots = slots,
                     plants = elements.toMutableList()
                 )
@@ -59,7 +57,6 @@ object Codecs {
             }
         }
 
-        // older files hold a bare plot where a preset is; it comes back as a preset of one plot
         Codec.either(master, GREENHOUSE_LAYOUT_CODEC).xmap(
             { either -> either.map({ it }, { GreenhouseLayout.create(it) }) },
             { Either.left(it) }
@@ -97,7 +94,7 @@ object Codecs {
         }
     }
 
-    val GREENHOUSE_ELEMENT_INSTANCE_CODEC: Codec<Plant> by lazy {
+    val GREENHOUSE_PLANT_CODEC: Codec<Plant> by lazy {
         RecordCodecBuilder.create { instance ->
             instance.group(
                 Codec.STRING.fieldOf("id").forGetter { it.elementId },
@@ -110,8 +107,8 @@ object Codecs {
                 GROWTH_STAGE_INFO_CODEC.optionalFieldOf("growthStage")
                     .forGetter { Optional.ofNullable(it.growthStage) },
 
-                Codec.LONG.optionalFieldOf("age")
-                    .forGetter { Optional.ofNullable(it.age) },
+                Codec.LONG.optionalFieldOf("appeared_at")
+                    .forGetter { Optional.ofNullable(it.appearedAt) },
 
                 Codec.unboundedMap(Codec.STRING, Codec.INT).optionalFieldOf("readings")
                     .forGetter { Optional.of(it.readings.toMap()) },
@@ -133,13 +130,13 @@ object Codecs {
 
                 Codec.STRING.listOf().optionalFieldOf("alternatives", emptyList())
                     .forGetter { plant -> plant.presetAlternatives.map { it.elementId } }
-            ).apply(instance) { id, slot, waterOpt, growthOpt, ageOpt, readingsOpt, firstSeenOpt, placed, waterExact, charge, chargeKnown, alternativeIds ->
+            ).apply(instance) { id, slot, waterOpt, growthOpt, appearedAtOpt, readingsOpt, firstSeenOpt, placed, waterExact, charge, chargeKnown, alternativeIds ->
                 Plant(
                     elementId = id,
                     slot = slot.orElse(null),
                     waterLevel = waterOpt.orElse(null),
                     growthStage = growthOpt.orElse(null),
-                    age = ageOpt.orElse(null),
+                    appearedAt = appearedAtOpt.orElse(null),
                     readings = readingsOpt.orElse(emptyMap()).toMutableMap(),
                     cropDef = CropRegistry.findByIdOrName(id) ?: throw IllegalStateException("Unable to find crop for id $id"),
                     presetAlternatives = alternativeIds.mapNotNull { CropRegistry.findByIdOrName(it) }.toMutableList()
@@ -173,17 +170,8 @@ object Codecs {
         }
     }
 
-    /**
-     * A soil as its block name alone. No soil a greenhouse takes has state worth keeping: farmland's
-     * moisture is the only one, and the planner ignores it. Read either way, since files written
-     * before this carried the whole state.
-     */
-    private val SOIL_CODEC: Codec<BlockState> by lazy {
-        Codec.either(BuiltInRegistries.BLOCK.byNameCodec(), BlockState.CODEC).xmap(
-            { either: Either<Block, BlockState> -> either.map({ it.defaultBlockState() }, { it }) },
-            { state: BlockState -> Either.left<Block, BlockState>(state.block) }
-        )
-    }
+
+    private val SOIL_CODEC: Codec<Block> by lazy { BuiltInRegistries.BLOCK.byNameCodec() }
 
     val GREENHOUSE_SLOT_CODEC: Codec<LayoutSlot> by lazy {
         RecordCodecBuilder.create { instance ->
@@ -201,7 +189,6 @@ object Codecs {
                     x,
                     y,
                     block.orElse(null),
-                    // a mark from a version that had more of them is dropped rather than crashing the load
                     marking.orElse(null)?.let { LayoutSlot.Marking.entries.getOrNull(it) }
                 )
             }

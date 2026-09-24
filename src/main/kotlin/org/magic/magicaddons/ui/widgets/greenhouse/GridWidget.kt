@@ -17,7 +17,7 @@ import org.magic.magicaddons.data.greenhouse.plot.LayoutSlot
 import org.magic.magicaddons.data.greenhouse.plot.PlotLayout
 import org.magic.magicaddons.data.greenhouse.plot.PlotPrediction
 import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseData
-import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GrowthClock
+import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseTickTime
 import org.magic.magicaddons.ui.HoverableContainer
 import org.magic.magicaddons.util.ScreenUtil.component4
 import org.magic.magicaddons.util.ScreenUtil.drawBorder
@@ -62,7 +62,7 @@ class GridWidget(
         val plan = targetPlan() ?: return emptyMap()
         val plannedCropsBySlot = PlotPrediction.targetCropsBySlot(plan)
         var key = plannedCropsBySlot.hashCode()
-        layout.slots.forEach { key = key * 31 + (it.soil?.block?.hashCode() ?: 0) }
+        layout.slots.forEach { key = key * 31 + (it.soil?.hashCode() ?: 0) }
         layout.plants.forEach { key = key * 31 + (it.slot.x * 64 + it.slot.y) * 31 + it.cropDef.name.hashCode() + (it.slot.mark?.ordinal ?: -1) }
 
         if (key != unplannedSpotsKey) {
@@ -314,9 +314,8 @@ class GridWidget(
             // will, once per build rather than every frame
             if (instance.cropDef.drainsNeighbours && layout.kind != PlotLayout.Kind.MASTER_PRESET) {
                 val grid = GreenhouseData.greenhouseGrids.find { it.layout.id == layout.id }
-                val tickMs = GrowthClock.tickLengthMs()
-                if (grid != null && tickMs != null) {
-                    widget.soggybudTicksToGrow = grid.ticksUntilGrown(layout, instance.slot, tickMs)
+                if (grid != null && GreenhouseTickTime.tickMs != null) {
+                    widget.soggybudTicksToGrow = grid.ticksUntilGrown(layout, instance.slot)
                     widget.soggybudSimulated = true
                 }
             }

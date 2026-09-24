@@ -105,7 +105,7 @@ object PlantDiagnostics {
         val nextStage = saplingLore.valueFor("Next Stage")
 
         if (nextStage?.contains(Regex("\\d")) ?: false) {
-            if (!LocationAPI.isGuest) {
+            if (GreenhouseData.inOwnGreenhouse()) {
                 val was = GreenhouseData.miscInfo.nextTickTime
 
                 GreenhouseData.miscInfo.nextTickTime = Instant.now().plusMillis(nextStage.parseDurationToMs())
@@ -126,7 +126,7 @@ object PlantDiagnostics {
         val target = listening?.takeIf { GreenhouseData.inOwnGarden() }?.let { disputeRecordWith(it, def, statusPage) }
 
         target?.let { element ->
-            age?.parseDurationToMs()?.let { element.plant.age = it }
+            age?.parseDurationToMs()?.let { element.plant.appearedAt = System.currentTimeMillis() - it }
             stageRaw?.let { element.plant.growthStage = PlantStage.Known(it) }
 
             val plant = element.plant

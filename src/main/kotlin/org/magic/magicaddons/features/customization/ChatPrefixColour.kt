@@ -1,7 +1,6 @@
 package org.magic.magicaddons.features.customization
 
-/** The colour of the tag the mod puts before its chat messages. */
-enum class PrefixColour(private val label: String, val rgb: Int) {
+enum class ChatPrefixColour(private val label: String, val rgb: Int) {
     Default("Default", 0xFFAA00),
     FollowAccent("Follow Accent", 0xFFAA00),
     Green("Green", 0x55FF55),

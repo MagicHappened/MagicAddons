@@ -23,7 +23,6 @@ import kotlin.math.roundToInt
 import kotlin.math.sqrt
 import org.magic.magicaddons.ui.background.ConfigBackground
 
-/** What the mod's screens look like. The colours in Common.UI are read from the palette picked here. */
 object Customization : Feature() {
 
     override val id: String = "Customization"
@@ -31,12 +30,11 @@ object Customization : Feature() {
     override val description: String = "The colours the mod's screens are drawn in"
     override val category: String = CATEGORY
 
-    /** One colour of a custom palette, written as hex. Blank or unreadable falls back to the preset's. */
-    private class HexSetting(key: String, displayName: String, val slot: (PaletteColors) -> Int) {
+    private class CustomColorField(key: String, displayName: String, val slot: (PaletteColors) -> Int) {
         val setting = TextSetting(
             key = key,
             displayName = displayName,
-            description = "A colour as hex, such as 1F3330. Left blank, the preset's colour is used",
+            description = "A colour as hex, such as 1F3330.",
             value = ""
         )
 
@@ -48,18 +46,17 @@ object Customization : Feature() {
         }
     }
 
-    private val hexFields = listOf(
-        HexSetting("CustomPanel", "Panel") { it.background },
-        HexSetting("CustomFrame", "Frame") { it.border },
-        HexSetting("CustomField", "Field") { it.field },
-        HexSetting("CustomText", "Text") { it.text },
-        HexSetting("CustomDimText", "Dim Text") { it.textDim },
-        HexSetting("CustomDisabledText", "Disabled Text") { it.disabledText },
-        HexSetting("CustomAccent", "Accent") { it.accent }
+    private val customColorFields = listOf(
+        CustomColorField("CustomPanel", "Panel") { it.background },
+        CustomColorField("CustomFrame", "Frame") { it.border },
+        CustomColorField("CustomField", "Field") { it.field },
+        CustomColorField("CustomText", "Text") { it.text },
+        CustomColorField("CustomDimText", "Dim Text") { it.textDim },
+        CustomColorField("CustomDisabledText", "Disabled Text") { it.disabledText },
+        CustomColorField("CustomAccent", "Accent") { it.accent }
     )
 
-    /** The preset the custom colours start from, which is whichever was picked before Custom was. */
-    private var seededFrom: ColorPalette = ColorPalette.PineAmber
+    private var prefilledFromPalette: ColorPalette = ColorPalette.PineAmber
 
     private val paletteSetting = EnumSetting(
         key = "ColorPalette",
@@ -68,42 +65,40 @@ object Customization : Feature() {
         value = ColorPalette.PineAmber,
         childrenProvider = { picked ->
             if (picked == ColorPalette.Custom) {
-                seedCustomFields()
-                hexFields.map { it.setting }
+                prefillCustomValues()
+                customColorFields.map { it.setting }
             } else {
-                seededFrom = picked
+                prefilledFromPalette = picked
                 emptyList()
             }
         }
     )
 
-    /** Writes the preset's colours into any custom field still blank, so editing starts from it. */
-    private fun seedCustomFields() {
-        val from = seededFrom.colors
+    private fun prefillCustomValues() {
+        val from = prefilledFromPalette.colors
 
-        hexFields.forEach { field ->
+        customColorFields.forEach { field ->
             if (field.setting.value.isBlank()) {
                 field.setting.value = "%06X".format(field.slot(from) and 0xFFFFFF)
             }
         }
     }
 
-    /** The palette every screen draws in; turned off, the mod goes back to the colours it ships with. */
     val palette: PaletteColors
         get() {
             if (!baseSetting.value) return ColorPalette.PineAmber.colors
             if (paletteSetting.value != ColorPalette.Custom) return paletteSetting.value.colors
 
-            val fallback = seededFrom.colors
+            val fallback = prefilledFromPalette.colors
 
             return PaletteColors(
-                background = hexFields[0].colorOr(fallback),
-                border = hexFields[1].colorOr(fallback),
-                field = hexFields[2].colorOr(fallback),
-                text = hexFields[3].colorOr(fallback),
-                textDim = hexFields[4].colorOr(fallback),
-                disabledText = hexFields[5].colorOr(fallback),
-                accent = hexFields[6].colorOr(fallback)
+                background = customColorFields[0].colorOr(fallback),
+                border = customColorFields[1].colorOr(fallback),
+                field = customColorFields[2].colorOr(fallback),
+                text = customColorFields[3].colorOr(fallback),
+                textDim = customColorFields[4].colorOr(fallback),
+                disabledText = customColorFields[5].colorOr(fallback),
+                accent = customColorFields[6].colorOr(fallback)
             )
         }
 
@@ -113,10 +108,9 @@ object Customization : Feature() {
         description = "How thick the frame around every panel is drawn",
         value = 2,
         range = 1..4,
-        scrollable = false
+        mouseScrollEnabled = false
     )
 
-    /** How thick a panel's frame is drawn. */
     val borderSize: Int get() = if (baseSetting.value) borderThicknessSetting.value else 2
 
     private val hoverStrengthSetting = IntSetting(
@@ -126,10 +120,9 @@ object Customization : Feature() {
         value = 16,
         range = 0..60,
         step = 2,
-        scrollable = false
+        mouseScrollEnabled = false
     )
 
-    /** The white laid over a control the mouse is on. */
     val hoverWash: Int
         get() {
             val strength = if (baseSetting.value) hoverStrengthSetting.value else 16
@@ -145,7 +138,7 @@ object Customization : Feature() {
         value = 0,
         range = 0..100,
         step = 5,
-        scrollable = false
+        mouseScrollEnabled = false
     )
 
     private val panelTransparencySetting = IntSetting(
@@ -155,7 +148,7 @@ object Customization : Feature() {
         value = 0,
         range = 0..100,
         step = 5,
-        scrollable = false
+        mouseScrollEnabled = false
     )
 
     private val borderTransparencySetting = IntSetting(
@@ -165,31 +158,26 @@ object Customization : Feature() {
         value = 0,
         range = 0..100,
         step = 5,
-        scrollable = false
+        mouseScrollEnabled = false
     )
 
-    /** A text colour with the text transparency taken out of it. */
     fun fadedText(color: Int): Int = faded(color, textTransparencySetting.value)
 
-    /** A panel colour with the panel transparency taken out of it. */
     fun fadedPanel(color: Int): Int = faded(color, panelTransparencySetting.value)
 
-    /** A frame or divider colour with the border transparency taken out of it. */
     fun fadedBorder(color: Int): Int = faded(color, borderTransparencySetting.value)
 
     private fun faded(color: Int, transparency: Int): Int {
         if (!baseSetting.value || transparency <= 0) return color
         if (transparency >= 100) return color and 0xFFFFFF
 
-        // alpha and how faint something looks are not the same: taking a straight tenth of the alpha
-        // leaves a colour already invisible, so the slider is curved to keep the last steps apart
-        val left = sqrt(1.0 - transparency / 100.0)
-        val alpha = (((color ushr 24) and 0xFF) * left).roundToInt().coerceIn(0, 0xFF)
+        // a linear step would make the last alpha steps appear invisible anyway
+        val alphaKept = sqrt(1.0 - transparency / 100.0)
+        val alpha = (((color ushr 24) and 0xFF) * alphaKept).roundToInt().coerceIn(0, 0xFF)
 
         return (color and 0xFFFFFF) or (alpha shl 24)
     }
 
-    /** Puts every appearance setting back to what the mod ships with. */
     fun restoreDefaults() {
         paletteSetting.value = ColorPalette.PineAmber
         backgroundSetting.value = BackgroundSource.None
@@ -202,17 +190,13 @@ object Customization : Feature() {
         uiScaleSetting.value = 100
         fontSetting.value = SystemFonts.defaultName
         textShadowSetting.value = false
-        prefixColourSetting.value = PrefixColour.Default
+        prefixColourSetting.value = ChatPrefixColour.Default
         prefixHexSetting.value = ""
-        hexFields.forEach { it.setting.value = "" }
+        customColorFields.forEach { it.setting.value = "" }
         ConfigBackground.forgetLoadedPicture()
     }
 
-    /**
-     * Puts into effect what was written straight into the settings rather than picked in the ui: the
-     * font has to be installed before it can be drawn with, and the background picture is cached.
-     */
-    fun reapplyAppearance() {
+    fun applyImportedAppearance() {
         val font = fontSetting.value
         if (!SystemFonts.isBuiltIn(font)) SystemFonts.install(font)
 
@@ -264,7 +248,6 @@ object Customization : Feature() {
         value = BackgroundFit.Cover
     )
 
-    /** How the picture is fitted to the space behind the settings. */
     val backgroundFit: BackgroundFit get() = backgroundFitSetting.value
 
     private val backgroundDimSetting = IntSetting(
@@ -274,10 +257,9 @@ object Customization : Feature() {
         value = 40,
         range = 0..100,
         step = 5,
-        scrollable = false
+        mouseScrollEnabled = false
     )
 
-    /** The black laid over the picture, or zero when none is asked for. */
     val backgroundDim: Int
         get() {
             val alpha = (backgroundDimSetting.value * 0xFF / 100).coerceIn(0, 0xFF)
@@ -310,7 +292,6 @@ object Customization : Feature() {
         searchable = false
     )
 
-    /** Whether the picture is drawn behind the screen named. */
     fun backgroundShowsOn(screen: String): Boolean =
         backgroundScreensSetting.value.any { it.value == screen && it.enabled }
 
@@ -334,17 +315,13 @@ object Customization : Feature() {
         }
     )
 
-    /** Where the picture behind the config screen comes from; turned off, there is no picture. */
     val backgroundSource: BackgroundSource
         get() = if (baseSetting.value) backgroundSetting.value else BackgroundSource.None
 
-    /** The picture in the mod's backgrounds folder that is picked, empty when none is. */
     val backgroundFile: String get() = savedPictureSetting.value
 
-    /** The link the picture is read from. */
     val backgroundUrl: String get() = urlSetting.value
 
-    /** Points the saved picture setting at a file just added, so a new pick shows at once. */
     fun useSavedPicture(name: String) {
         savedPictureSetting.value = name
     }
@@ -356,8 +333,7 @@ object Customization : Feature() {
         value = 100,
         range = 50..200,
         step = 10,
-        // scrolling the settings past it would otherwise resize the whole screen under the mouse
-        scrollable = false,
+        mouseScrollEnabled = false,
         detail = {
             SettingDetail.Text(
                 "Unexpected behavior may occur with extreme values.",
@@ -366,7 +342,6 @@ object Customization : Feature() {
         }
     )
 
-    /** What the mod's screens multiply their own drawing scale by. */
     val uiScale: Float get() = if (baseSetting.value) uiScaleSetting.value / 100f else 1f
 
     private val interfaceGroup = ParentSetting(
@@ -400,24 +375,23 @@ object Customization : Feature() {
         key = "PrefixColour",
         displayName = "Chat Prefix",
         description = "The colour of the [MA] tag the mod puts before its chat messages",
-        value = PrefixColour.Default,
+        value = ChatPrefixColour.Default,
         childrenProvider = { picked ->
-            if (picked == PrefixColour.Custom) listOf(prefixHexSetting) else emptyList()
+            if (picked == ChatPrefixColour.Custom) listOf(prefixHexSetting) else emptyList()
         }
     )
 
-    /** The colour the chat prefix is drawn in. */
     val prefixColour: Int
         get() {
-            if (!baseSetting.value) return PrefixColour.Default.rgb
+            if (!baseSetting.value) return ChatPrefixColour.Default.rgb
 
             val picked = prefixColourSetting.value
-            if (picked == PrefixColour.FollowAccent) return palette.accent and 0xFFFFFF
-            if (picked != PrefixColour.Custom) return picked.rgb
+            if (picked == ChatPrefixColour.FollowAccent) return palette.accent and 0xFFFFFF
+            if (picked != ChatPrefixColour.Custom) return picked.rgb
 
             val typed = prefixHexSetting.value.trim().removePrefix("#").removePrefix("0x")
 
-            return typed.takeIf { it.length == 6 }?.toIntOrNull(16) ?: PrefixColour.Default.rgb
+            return typed.takeIf { it.length == 6 }?.toIntOrNull(16) ?: ChatPrefixColour.Default.rgb
         }
 
     private val fontSetting = ChoiceSetting(
@@ -426,13 +400,13 @@ object Customization : Feature() {
         description = "What the mod's screens write in: the game's fonts, or one installed on this computer",
         value = SystemFonts.defaultName,
         options = { SystemFonts.choices() },
-        confirm = { picked ->
-            if (SystemFonts.isBuiltIn(picked)) {
+        confirm = { pickedFont ->
+            if (SystemFonts.isBuiltIn(pickedFont)) {
                 null
             } else {
                 ChoiceSetting.Confirmation(
                     question = "Use this font? The game will reload its resources.",
-                    warning = if (SystemFonts.coverage(picked) < SystemFonts.WARN_BELOW) {
+                    warning = if (SystemFonts.coverage(pickedFont) < SystemFonts.WARN_BELOW) {
                         "Most of the characters in this font will not render correctly. " +
                                 "Are you sure you want to continue?"
                     } else {
@@ -444,7 +418,6 @@ object Customization : Feature() {
         onChosen = { picked -> if (!SystemFonts.isBuiltIn(picked.value)) SystemFonts.install(picked.value) }
     )
 
-    /** The font the mod's screens write in, or null for the game's own, which needs no style. */
     val fontId: Identifier?
         get() = if (baseSetting.value) SystemFonts.fontIdFor(fontSetting.value) else null
 
@@ -455,7 +428,6 @@ object Customization : Feature() {
         value = false
     )
 
-    /** Whether the mod's screens draw their writing with a shadow under it. */
     val textShadow: Boolean get() = baseSetting.value && textShadowSetting.value
 
     private val textGroup = ParentSetting(
@@ -468,11 +440,10 @@ object Customization : Feature() {
     private val backgroundGroup = ParentSetting(
         key = "Background",
         displayName = "Background",
-        description = "A picture behind the settings, from this computer or from a link",
+        description = "A background image behind the settings, from this computer or from a link",
         children = listOf(backgroundSetting, backgroundScreensSetting)
     )
 
-    /** Everything a preset is taken from: the whole look, minus the list of presets itself. */
     private val appearanceGroup = ParentSetting(
         key = "Appearance",
         displayName = "Appearance",
@@ -483,15 +454,14 @@ object Customization : Feature() {
     private val presetSetting = PresetLibrarySetting(
         key = "UiPresets",
         displayName = "UI Presets",
-        description = "Saved looks: pick one to put it on, or name one and save what is set now",
-        subject = { appearanceGroup },
+        description = "Change how the mod looks, with an option to save as a preset so you can quickly change between variations",
+        settingUnder = { appearanceGroup },
         defaultName = "Default"
     )
 
     override val baseSetting: BooleanSetting = BooleanSetting(
         displayName = displayName,
         description = description,
-        // the palette applies whatever this says, so it is on and stays on
         value = true,
         children = listOf(presetSetting, appearanceGroup)
     )

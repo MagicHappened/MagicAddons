@@ -41,7 +41,7 @@ import org.magic.magicaddons.util.compat.McCompat
 /**
  magic addons config screen
  */
-class ConfigScreen(val parent: Screen?) : MagicScreen(Component.literal("Magic Addons Config"), "the config screen"), OverlayContext, ScrollView {
+class ConfigScreen(val parent: Screen?) : MagicAddonsScreen(Component.literal("Magic Addons Config"), "the config screen"), OverlayContext, ScrollView {
 
     /** currently opened overlays */
     override val overlays: MutableList<OverlayRenderable> = mutableListOf()
@@ -159,7 +159,7 @@ class ConfigScreen(val parent: Screen?) : MagicScreen(Component.literal("Magic A
 
     /** Lays the screen out again at the scale just picked. */
     private fun rebuildAtNewScale() {
-        val window = minecraft?.window ?: return
+        val window = minecraft.window
 
         resize(window.guiScaledWidth, window.guiScaledHeight)
     }
@@ -626,74 +626,74 @@ class ConfigScreen(val parent: Screen?) : MagicScreen(Component.literal("Magic A
     private fun scaled(event: MouseButtonEvent): MouseButtonEvent =
         event.at(event.x / drawScale, event.y / drawScale)
 
-    override fun onMouseClicked(rawEvent: MouseButtonEvent, doubled: Boolean): Boolean {
+    override fun onMouseClicked(event: MouseButtonEvent, doubled: Boolean): Boolean {
         // the second event of a double click is the same click again; acting on it would undo the first
         if (doubled) return true
 
         // the window's coordinates are turned into the ones this screen laid itself out in
-        val event = scaled(rawEvent)
+        val scaledEvent = scaled(event)
         mouseHeld = true
 
-        hitAt(event.x, event.y)?.let {
+        hitAt(scaledEvent.x, scaledEvent.y)?.let {
             navigate(it)
             return true
         }
-        if (overDropdown(event.x, event.y)) return true
+        if (overDropdown(scaledEvent.x, scaledEvent.y)) return true
 
-        if (search.mouseClicked(event, doubled)) {
+        if (search.mouseClicked(scaledEvent, doubled)) {
             if (search.value.isNotBlank()) openDropdown()
             return true
         }
         closeDropdown()
 
-        if (overClose(event.x, event.y)) {
+        if (overClose(scaledEvent.x, scaledEvent.y)) {
             onClose()
             return true
         }
 
-        if (overExport(event.x, event.y)) {
+        if (overExport(scaledEvent.x, scaledEvent.y)) {
             copyConfig(ConfigShare.Kind.Features)
             return true
         }
-        if (overImport(event.x, event.y)) {
+        if (overImport(scaledEvent.x, scaledEvent.y)) {
             pasteConfig(ConfigShare.Kind.Features)
             return true
         }
 
-        if (overCopyUi(event.x, event.y)) {
+        if (overCopyUi(scaledEvent.x, scaledEvent.y)) {
             copyConfig(ConfigShare.Kind.Ui)
             return true
         }
-        if (overImportUi(event.x, event.y)) {
+        if (overImportUi(scaledEvent.x, scaledEvent.y)) {
             pasteConfig(ConfigShare.Kind.Ui)
             return true
         }
 
         categoryRows.firstOrNull {
-            event.x.toInt() in sideLeft until sideRight && event.y.toInt() in it.top until it.top + CATEGORY_ROW_HEIGHT
+            scaledEvent.x.toInt() in sideLeft until sideRight && scaledEvent.y.toInt() in it.top until it.top + CATEGORY_ROW_HEIGHT
         }?.let {
             select(it.category)
             return true
         }
 
-        if (event.button() == 0 && overBar(event.x, event.y)) {
+        if (scaledEvent.button() == 0 && overBar(scaledEvent.x, scaledEvent.y)) {
             draggingBar = true
             return true
         }
 
-        if (!overMain(event.x, event.y)) {
+        if (!overMain(scaledEvent.x, scaledEvent.y)) {
             // a click off the blocks still lets a focused field go
             shownBlocks().forEach { it.dropFocus() }
-            return super.onMouseClicked(event, doubled)
+            return super.onMouseClicked(scaledEvent, doubled)
         }
 
         // read off the screen rather than the scrolled content, since the button does not scroll
-        if (overRestore(event.x, event.y)) {
+        if (overRestore(scaledEvent.x, scaledEvent.y)) {
             Customization.restoreDefaults()
             return true
         }
 
-        val content = shifted(event)
+        val content = shifted(scaledEvent)
         // an open list takes the click if it lands inside it; anywhere else closes every list and
         // the click goes on to the settings underneath
         if (overlaysMouseClicked(content, doubled)) return true
@@ -704,61 +704,61 @@ class ConfigScreen(val parent: Screen?) : MagicScreen(Component.literal("Magic A
         return handled
     }
 
-    override fun onMouseReleased(rawEvent: MouseButtonEvent): Boolean {
-        val event = scaled(rawEvent)
+    override fun onMouseReleased(event: MouseButtonEvent): Boolean {
+        val scaledEvent = scaled(event)
         mouseHeld = false
 
         if (draggingBar) {
             draggingBar = false
             return true
         }
-        return shownBlocks().any { it.mouseReleased(shifted(event)) }
+        return shownBlocks().any { it.mouseReleased(shifted(scaledEvent)) }
     }
 
-    override fun onMouseDragged(rawEvent: MouseButtonEvent, dragX: Double, dragY: Double): Boolean {
-        val event = scaled(rawEvent)
+    override fun onMouseDragged(event: MouseButtonEvent, dragX: Double, dragY: Double): Boolean {
+        val scaledEvent = scaled(event)
 
         if (draggingBar) {
-            scroll = (((event.y - clipTop) / viewHeight) * contentHeight - viewHeight / 2).toInt().coerceIn(0, maxScroll)
+            scroll = (((scaledEvent.y - clipTop) / viewHeight) * contentHeight - viewHeight / 2).toInt().coerceIn(0, maxScroll)
             return true
         }
-        return shownBlocks().any { it.mouseDragged(shifted(event), dragX / drawScale, dragY / drawScale) }
+        return shownBlocks().any { it.mouseDragged(shifted(scaledEvent), dragX / drawScale, dragY / drawScale) }
     }
 
-    override fun onMouseMoved(rawX: Double, rawY: Double) {
-        val mouseX = rawX / drawScale
-        val contentY = rawY / drawScale + scroll
+    override fun onMouseMoved(mouseX: Double, mouseY: Double) {
+        val scaledX = mouseX / drawScale
+        val contentY = mouseY / drawScale + scroll
 
-        overlaysMouseMoved(mouseX, contentY)
-        shownBlocks().forEach { it.mouseMoved(mouseX, contentY) }
+        overlaysMouseMoved(scaledX, contentY)
+        shownBlocks().forEach { it.mouseMoved(scaledX, contentY) }
     }
 
-    override fun onMouseScrolled(rawX: Double, rawY: Double, scrollX: Double, scrollY: Double): Boolean {
-        val mouseX = rawX / drawScale
-        val mouseY = rawY / drawScale
+    override fun onMouseScrolled(mouseX: Double, mouseY: Double, scrollX: Double, scrollY: Double): Boolean {
+        val scaledX = mouseX / drawScale
+        val scaledY = mouseY / drawScale
 
-        if (overDropdown(mouseX, mouseY)) {
+        if (overDropdown(scaledX, scaledY)) {
             dropdownScroll = stepScroll(dropdownScroll, scrollY, searchResults.size, DROPDOWN_MAX_ROWS)
             return true
         }
-        if (!overMain(mouseX, mouseY)) return false
+        if (!overMain(scaledX, scaledY)) return false
 
-        val contentY = mouseY + scroll
-        if (overlaysMouseScrolled(mouseX, contentY, scrollX, scrollY)) return true
-        if (shownBlocks().any { it.mouseScrolled(mouseX, contentY, scrollX, scrollY) }) return true
+        val contentY = scaledY + scroll
+        if (overlaysMouseScrolled(scaledX, contentY, scrollX, scrollY)) return true
+        if (shownBlocks().any { it.mouseScrolled(scaledX, contentY, scrollX, scrollY) }) return true
 
         scroll = (scroll - (scrollY * Common.UI.SCROLL_STEP).toInt()).coerceIn(0, maxScroll)
         return true
     }
 
-    override fun onCharTyped(characterEvent: CharacterEvent): Boolean {
-        if (search.charTyped(characterEvent)) return true
-        if (overlaysCharTyped(characterEvent)) return true
-        return shownBlocks().any { it.charTyped(characterEvent) }
+    override fun onCharTyped(event: CharacterEvent): Boolean {
+        if (search.charTyped(event)) return true
+        if (overlaysCharTyped(event)) return true
+        return shownBlocks().any { it.charTyped(event) }
     }
 
-    override fun onKeyPressed(keyEvent: KeyEvent): Boolean {
-        if (keyEvent.key() == GLFW.GLFW_KEY_ESCAPE) {
+    override fun onKeyPressed(event: KeyEvent): Boolean {
+        if (event.key() == GLFW.GLFW_KEY_ESCAPE) {
             // escape backs out one step: the search, then the open lists, then the screen
             if (search.focused) {
                 search.focused = false
@@ -771,18 +771,18 @@ class ConfigScreen(val parent: Screen?) : MagicScreen(Component.literal("Magic A
             }
         }
         if (search.focused) {
-            if (keyEvent.key() == GLFW.GLFW_KEY_ENTER || keyEvent.key() == GLFW.GLFW_KEY_KP_ENTER) {
+            if (event.key() == GLFW.GLFW_KEY_ENTER || event.key() == GLFW.GLFW_KEY_KP_ENTER) {
                 searchResults.firstOrNull()?.let { navigate(it) }
                 return true
             }
-            if (search.keyPressed(keyEvent)) return true
+            if (search.keyPressed(event)) return true
         }
-        if (overlaysKeyPressed(keyEvent)) return true
-        if (shownBlocks().any { it.keyPressed(keyEvent) }) return true
-        return super.onKeyPressed(keyEvent)
+        if (overlaysKeyPressed(event)) return true
+        if (shownBlocks().any { it.keyPressed(event) }) return true
+        return super.onKeyPressed(event)
     }
 
-    override fun finishClose() {
+    override fun onCloseFinished() {
         McCompat.setScreen(parent)
     }
 

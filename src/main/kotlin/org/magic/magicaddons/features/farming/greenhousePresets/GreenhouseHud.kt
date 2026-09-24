@@ -7,7 +7,7 @@ import org.magic.magicaddons.data.config.BooleanSetting
 import org.magic.magicaddons.data.greenhouse.plot.GreenhouseGrid
 import org.magic.magicaddons.data.greenhouse.plot.PlotPrediction
 import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseData
-import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GrowthClock
+import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseTickTime
 import org.magic.magicaddons.ui.hud.ConfigTarget
 import org.magic.magicaddons.ui.hud.HudContent
 import org.magic.magicaddons.ui.hud.HudElement
@@ -47,7 +47,7 @@ object GreenhouseHud : HudElement("greenhouse", "Greenhouse") {
         val ownGarden = GreenhouseData.inOwnGarden()
         if (!ownGarden && !(GreenhousePresets.hudAnywhere() && LocationAPI.isOnSkyBlock)) return null
 
-        val grid = if (ownGarden && GreenhouseData.inGreenhouse()) GreenhouseData.getCurrentGrid() else null
+        val grid = if (GreenhouseData.inOwnGreenhouse()) GreenhouseData.getCurrentGrid() else null
         return content(grid?.layout?.displayName() ?: "Greenhouse", lines(grid))
     }
 
@@ -84,8 +84,8 @@ object GreenhouseHud : HudElement("greenhouse", "Greenhouse") {
         val gardenTime = GreenhouseGrid.dayOrNightNow()
         val ready = plants.count { GreenhousePresets.isHarvestable(it) }
         // the soonest a plant here dies of thirst, by the same clock the warnings use
-        val tickMs = GrowthClock.tickLengthMs()
-        val remainingMs = GrowthClock.remainingTickMs()
+        val tickMs = GreenhouseTickTime.tickMs
+        val remainingMs = GreenhouseTickTime.remainingTickMs()
         val thirst = if (tickMs == null || remainingMs == null) null else plants
             .filter { it.consumesWater }
             .mapNotNull { plant ->

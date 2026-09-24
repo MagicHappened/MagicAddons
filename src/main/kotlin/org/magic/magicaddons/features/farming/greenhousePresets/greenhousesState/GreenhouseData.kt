@@ -103,6 +103,10 @@ object GreenhouseData : GridCallbacks {
     var currentGridIndex: Int = 0
 
     var lastCheckTime: Instant? = null
+
+    var joiningSkyBlock: Boolean = true
+        private set
+
     var lastServerTick: Long? = null
 
     private class PlayerPlacement(val def: CropDefinition, val pos: BlockPos, val at: Instant)
@@ -174,7 +178,7 @@ object GreenhouseData : GridCallbacks {
         if (plotUnloading) return false
 
         val level = Minecraft.getInstance().level ?: return false
-        val area = plot.getBuildableArea() ?: return false
+        val area = plot.getBuildableArea()
 
         if (!chunksLoadedOver(level, area)) return false
 
@@ -224,7 +228,7 @@ object GreenhouseData : GridCallbacks {
     private var lastEntityChangeAt: Long? = null
 
     fun noteEntityChanged(entityId: Int, movingTo: Vec3? = null) {
-        if (!greenhousesInitialized || !inOwnGarden()) return
+        if (!greenhousesInitialized) return
 
         val gridArea = PlotAPI.getCurrentPlot()?.getBuildableArea() ?: return
         val entity = Minecraft.getInstance().level?.getEntity(entityId) ?: return
@@ -248,11 +252,15 @@ object GreenhouseData : GridCallbacks {
 
     private fun scanGridData() {
         if (!greenhousesInitialized) return
-        if (!inOwnGarden()) return
         val plot = PlotAPI.getCurrentPlot() ?: return
 
         val grid = getCurrentGrid() ?: return
         if (grid.state.scanned && !grid.state.needsRescan) return
+
+        if (joiningSkyBlock) {
+            shouldRescanCurrentPlot = true
+            return
+        }
 
         // read again on a later tick, once the rest of the plot has been sent
         if (!plotReady(plot)) {
@@ -293,9 +301,6 @@ object GreenhouseData : GridCallbacks {
         grid.state.lastScanTime = Instant.now()
         grid.state.ticksSinceLastScan = 0
     }
-
-
-    /** The most one look at the clock may move the next tick by, so a wrong guess cannot walk it away. */
     private const val MAX_TICK_ADJUSTMENT_MS: Long = 5_000
 
     // each level is 0.1% growth speed
@@ -313,8 +318,7 @@ object GreenhouseData : GridCallbacks {
 
     private var lastChangeAt: Long? = null
 
-    /** How long the plot has to be quiet before the full scan that squares everything with the world. */
-    private const val SETTLE_MS: Long = 400
+    private const val PLOT_SETTLE_MS: Long = 400
 
     fun markBlocksDirty(positions: Collection<BlockPos>) {
         if (positions.isEmpty()) return
@@ -324,16 +328,6 @@ object GreenhouseData : GridCallbacks {
 
     fun markBlocksDirty(position: BlockPos) = markBlocksDirty(listOf(position))
 
-    /** Something changed with no place to it, so the whole plot is read on the next tick. */
-    fun rescanWholePlot() {
-        shouldRescanCurrentPlot = true
-    }
-
-    /**
-     * Forgets every plant of [grid] and reads the plot again as if it had never been seen, so a
-     * placed mutation is only known again once the player is seen placing it. Read at once when
-     * the player stands in it, otherwise on their next visit.
-     */
     fun rescanFromScratch(grid: GreenhouseGrid) {
         grid.scannedPlants.clear()
         grid.layout.plants.clear()
@@ -349,7 +343,7 @@ object GreenhouseData : GridCallbacks {
         }
     }
 
-    private fun rescanIfNeeded() {
+    private fun rescanCurrentPlot() {
         val now = System.currentTimeMillis()
 
         if (dirtyBlocks.isNotEmpty()) {
@@ -361,7 +355,7 @@ object GreenhouseData : GridCallbacks {
 
         if (now - lastScanAt >= FULL_SCAN_INTERVAL_MS) shouldRescanCurrentPlot = true
 
-        val settled = lastChangeAt?.let { now - it >= SETTLE_MS } == true
+        val settled = lastChangeAt?.let { now - it >= PLOT_SETTLE_MS } == true
         if (!shouldRescanCurrentPlot && !settled) return
 
         shouldRescanCurrentPlot = false
@@ -378,7 +372,6 @@ object GreenhouseData : GridCallbacks {
     }
 
     fun rescanSlots(grid: GreenhouseGrid, region: Set<Pair<Int, Int>>) {
-        if (!inOwnGarden()) return
         if (getCurrentGrid() !== grid) return
         if (!grid.state.scanned) {
             shouldRescanCurrentPlot = true
@@ -404,8 +397,8 @@ object GreenhouseData : GridCallbacks {
     fun absenceDetail(): SettingDetail? {
         val ticks = GreenhousePresets.chorusAbsenceTicks() ?: return null
 
-        val tickMs = GrowthClock.tickLengthMs()
-        val remaining = GrowthClock.remainingTickMs()
+        val tickMs = GreenhouseTickTime.tickMs
+        val remaining = GreenhouseTickTime.remainingTickMs()
 
         if (tickMs == null || remaining == null) {
             return SettingDetail.Text(
@@ -424,17 +417,20 @@ object GreenhouseData : GridCallbacks {
 
     private const val MISSING_COLOR: Int = 0xFFFF8855.toInt()
 
-    override fun warnSurvivor(plant: DyingPlant) = PlantWarnings.warnSurvivor(plant)
-
     override fun plantLostInScan(previous: Plant, origin: BlockPos, remainingStands: List<ArmorStand>) {
         if (GreenhouseSpawnLog.lostPlantsMessages) LostPlantReport.sendReport(previous, origin, remainingStands)
     }
 
-    fun inGreenhouse(): Boolean = PlotAPI.getCurrentPlot()?.takeUnless { it.isBarn } != null
+    fun inGarden(): Boolean = LocationAPI.island == SkyBlockIsland.GARDEN
 
-    fun inOwnGarden(): Boolean = LocationAPI.island == SkyBlockIsland.GARDEN && !LocationAPI.isGuest
+    fun inOwnGarden(): Boolean = inGarden() && !LocationAPI.isGuest
+
+    // cant detect someone elses greenhouse plot without some like weird block detection so its left out
+    fun inOwnGreenhouse(): Boolean = inOwnGarden() && PlotAPI.getCurrentPlot()?.data?.isGreenhouse == true
 
     fun getCurrentGrid(): GreenhouseGrid? {
+        if (!inOwnGarden()) return null
+
         val plotId = PlotAPI.getCurrentPlot()?.id ?: return null
         return greenhouseGrids.find { it.layout.id == PlotLayout.plotId(plotId) }
     }
@@ -454,30 +450,22 @@ object GreenhouseData : GridCallbacks {
         return nextId
     }
 
-    /**
-     * How far the server may fall behind before the gap reads as an absence. A stalled server still
-     * sends ticks; one the client is disconnected from sends none.
-     */
     private val AWAY_THRESHOLD: Duration = Duration.ofSeconds(20)
 
-    fun checkForUpdate() {
+    fun checkForGrowthTickUpdate() {
         if (!greenhousesInitialized) return
-
-        // only the values the clock actually needs stop it. Warning about them is the screen's job,
-        // not something to do from inside a check that runs every tick
         val cropGrowth = miscInfo.cropGrowthValue ?: return
         val speedUpgrade = miscInfo.cropSpeedUpgradeValue ?: return
-
         val nextTick = miscInfo.nextTickTime ?: return
 
-        val growthTickMs = GrowthClock.stageTimeMs(
+
+        val growthTickMs = GreenhouseTickTime.stageTimeMs(
             getCurrentUniques().size,
             cropGrowth,
             speedUpgrade,
-            GrowthClock.speedAttribute() ?: 0
+            GreenhouseTickTime.speedAttribute() ?: 0
         )
 
-        // the countdown as it stands once this check has nudged it
         var current = nextTick
 
         val now = Instant.now()
@@ -493,8 +481,6 @@ object GreenhouseData : GridCallbacks {
 
             lastServerTick = currentTick
 
-            // leaving without updating lastCheckTime makes the next call measure real time across
-            // the whole gap against server time from the last moment only
             if (previousTick == null) {
                 lastCheckTime = now
                 return
@@ -514,21 +500,15 @@ object GreenhouseData : GridCallbacks {
             val serverMs = passedServerTicks * 50L
             val realMs = now.toEpochMilli() - lastCheck.toEpochMilli()
 
-            // a stalled server still sends ticks so its time nearly keeps up; an absence arrives as
-            // unaccounted time and must not be handed to the countdown as lag
             val unaccountedMs = realMs - serverMs
 
             if (Duration.ofMillis(unaccountedMs) > AWAY_THRESHOLD) {
                 lastCheckTime = now
                 return
             }
-            // bounded: this nudges a drifted countdown, so one long pause cannot move it further
-            // than the gap it is measuring
-            val adjustmentDelta = unaccountedMs
-                .coerceIn(-MAX_TICK_ADJUSTMENT_MS, MAX_TICK_ADJUSTMENT_MS)
 
-            // added, not taken off: time the server spent behind is time the tick has not served
-            // yet. Taking it off ran the screen ahead of the game
+            val adjustmentDelta = unaccountedMs.coerceIn(-MAX_TICK_ADJUSTMENT_MS, MAX_TICK_ADJUSTMENT_MS)
+
             current = nextTick.plusMillis(adjustmentDelta)
             miscInfo.nextTickTime = current
             lastCheckTime = now
@@ -544,8 +524,6 @@ object GreenhouseData : GridCallbacks {
 
         if (passedGrowthTicks <= 0 && !nextTick.isBefore(now)) return
 
-        // the countdown running out is itself a tick, and passedGrowthTicks counts only the whole
-        // periods after it
         val elapsedTicks = passedGrowthTicks.toInt() + 1
         val nextTickAdvance = (passedGrowthTicks + 1) * growthTickMs
         miscInfo.nextTickTime = current.plusMillis(nextTickAdvance)
@@ -557,17 +535,13 @@ object GreenhouseData : GridCallbacks {
             grid.state.ticksSinceLastScan += elapsedTicks
             grid.state.needsRescan = true
 
-            // nobody is looking at this greenhouse, so the clock is all we have to go on
-            grid.simulateGreenhouse(elapsedTicks, growthTickMs)
+            grid.simulateGreenhouse(elapsedTicks)
         }
 
-        // posted after every plant has been moved on, so a listener reads the garden as it now
-        // stands. An absence arrives as one event carrying all of its ticks rather than as a burst
-        EventBus.post(GrowthTickEvent(elapsedTicks, growthTickMs))
+        EventBus.post(GrowthTickEvent(elapsedTicks, growthTickMs, ProfileAPI.profileName, isActiveProfile = true))
     }
 
-    /** Loads the profile the game says is being played, the first time and on every switch. */
-    private fun ensureProfile() {
+    private fun switchProfileIfChanged() {
         if (!ProfileAPI.isLoaded) return
         val id = runCatching { ProfileAPI.profileId }.getOrNull() ?: return
         DataHandler.switchProfile(id, ProfileAPI.profileName ?: return)
@@ -579,51 +553,58 @@ object GreenhouseData : GridCallbacks {
         lastCheckTime = null
         lastServerTick = null
         gardenArrivedAt = null
+        joiningSkyBlock = true
         regenRender()
+    }
+
+    private fun updateTickTimeAfterJoin() {
+        if (!joiningSkyBlock || !greenhousesInitialized || DataHandler.activeProfile == null) return
+
+        checkForGrowthTickUpdate()
+        joiningSkyBlock = false
     }
 
     @EventHandler
     fun onTick(event: WorldTickEvent) {
-        notePlotChange()
-        rescanIfNeeded()
-        ensureProfile()
+        switchProfileIfChanged()
         if (DataHandler.activeProfile == null) return
+
         OtherProfiles.advanceTicks()
-
-        val now = Instant.now()
-        val last = lastCheckTime
-
-        // the game may already be on the garden when the mod starts, which no island change reports
-        if (gardenArrivedAt == null && LocationAPI.island == SkyBlockIsland.GARDEN) gardenArrivedAt = now
-        if (
-            last == null ||
-            last.plusSeconds(60).isBefore(now) ||
-            miscInfo.nextTickTime?.isBefore(now) ?: false
-        ) {
-            checkForUpdate()
-        }
-
-        // asked every tick rather than once a minute, so each threshold fires the moment it
-        // is crossed rather than up to a minute late
+        updateTickTimeAfterJoin()
+        checkForTickTimeUpdate()
         PlantWarnings.onTick()
+
+        if (!inOwnGarden()) return
+
+        noteGardenArrival()
+        checkPlotChange()
+        rescanCurrentPlot()
+    }
+
+    private fun noteGardenArrival() {
+        if (gardenArrivedAt == null) gardenArrivedAt = Instant.now()
+    }
+
+    private fun checkForTickTimeUpdate() {
+        val last = lastCheckTime ?: return
+        val now = Instant.now()
+
+        if (last.plusSeconds(60).isBefore(now) || miscInfo.nextTickTime?.isBefore(now) == true) {
+            checkForGrowthTickUpdate()
+        }
     }
 
 
 
     @Subscription
     fun onIslandChange(event: IslandChangeEvent) {
-        // returning to the garden just after a dehydration warning is treated as a response to it,
-        // so a teleport to the plot is offered two seconds later, once the world has loaded
-        if (event.new == SkyBlockIsland.GARDEN) {
-            gardenArrivedAt = Instant.now()
-
-            PlantWarnings.onGardenArrival()
-        }
+        if (event.old == null) joiningSkyBlock = true
 
         scoreboardLines = emptyList()
         pestDebuffActive = false
 
         if (event.new != SkyBlockIsland.GARDEN) {
+            gardenArrivedAt = null
             DataHandler.saveGardenData()
             greenhouseGrids.forEach {
                 it.state.scanned = false
@@ -631,7 +612,7 @@ object GreenhouseData : GridCallbacks {
             EventBus.post(PlotChangedEvent(lastPlot,null))
             lastPlot = null
         }
-        checkForUpdate()
+        if (joiningSkyBlock) updateTickTimeAfterJoin() else checkForGrowthTickUpdate()
     }
 
     @Subscription
@@ -669,7 +650,7 @@ object GreenhouseData : GridCallbacks {
         readPestDebuff()
     }
 
-    private fun notePlotChange() {
+    private fun checkPlotChange() {
         if (!inOwnGarden()) return
 
         val plot = PlotAPI.getCurrentPlot()
@@ -683,10 +664,6 @@ object GreenhouseData : GridCallbacks {
     fun onPlotChanged(event: PlotChangedEvent) {
         if (!baseSetting.value) return
         initKnownIds()
-
-        // leaving is not a reason to read: on the way out of the garden, and on a disconnect, the
-        // plot is still named as current while its plants are already being unloaded, so a scan
-        // then reads a near-empty greenhouse and saves it over the good copy
         if (event.new == null) return
 
         isPlanTurned = false
@@ -696,7 +673,6 @@ object GreenhouseData : GridCallbacks {
         regenRender()
     }
 
-    /** Takes the plan off the greenhouse being stood in, for both the button and the chat word. */
     fun unplanCurrentGreenhouse(): Boolean {
         val grid = getCurrentGrid() ?: run {
             ChatUtils.sendWithPrefix("Not standing in a greenhouse.")
@@ -706,10 +682,6 @@ object GreenhouseData : GridCallbacks {
         return unplanGreenhouse(grid)
     }
 
-    /**
-     * Takes the plan off one particular greenhouse: the screen means whichever was picked from its
-     * selector, not the one being stood in.
-     */
     fun unplanGreenhouse(grid: GreenhouseGrid): Boolean {
         if (grid.state.assignedLayout == null) {
             ChatUtils.sendWithPrefix("No planner running on ${grid.layout.displayName()}.")
@@ -765,7 +737,7 @@ object GreenhouseData : GridCallbacks {
 
         val slot = grid.getSlotAt(pos, false) ?: return
         if (event.pos.y == GREENHOUSE_SOIL_Y) {
-            slot.soil = Blocks.AIR.defaultBlockState()
+            slot.soil = Blocks.AIR
         } else {
             grid.removePlantWithBlockAt(pos)
         }
@@ -828,7 +800,7 @@ object GreenhouseData : GridCallbacks {
         }
 
         if (event.packet.pos.y != GREENHOUSE_SOIL_Y) return
-        slot.soil = event.packet.blockState
+        slot.soil = event.packet.blockState.block
 
         markBlocksDirty(event.packet.pos)
     }
@@ -957,7 +929,7 @@ object GreenhouseData : GridCallbacks {
                 )
             )
         }
-        if (GrowthClock.speedAttribute() == null) {
+        if (GreenhouseTickTime.speedAttribute() == null) {
             warnings.add(
                 ChatUtils.buildWithCommand(
                     "Unknown Timestalk attribute, ticks are timed as if it were zero. Click to set it",
@@ -1004,7 +976,7 @@ object GreenhouseData : GridCallbacks {
 
     override fun markAsPlaced(plant: Plant) {
         plant.placed = true
-        plant.age = 0L
+        plant.appearedAt = System.currentTimeMillis()
 
         val stage = plant.growthStage
         if (stage is PlantStage.Estimated && plant.cropDef.stagePlacedAt in stage.range) {
@@ -1040,7 +1012,7 @@ object GreenhouseData : GridCallbacks {
         }
 
         plant.waterBestCase = null
-        plant.age = Duration.between(gardenArrivedAt ?: now, now).toMillis().coerceAtLeast(0L)
+        plant.appearedAt = (gardenArrivedAt ?: now).toEpochMilli()
         plant.firstSeenStage = 1
         GreenhouseSpawnLog.recordSpawn(plant, layout)
     }

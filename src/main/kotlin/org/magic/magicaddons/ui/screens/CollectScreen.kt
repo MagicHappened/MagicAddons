@@ -17,7 +17,7 @@ private var scroll: Int = 0
 /**
  * collector screen, currently only for collecting crops that dont have data, eventually, will not have a use.
  */
-class CollectScreen : MagicScreen(Component.literal("Crop Collection"), "the collector screen") {
+class CollectScreen : MagicAddonsScreen(Component.literal("Crop Collection"), "the collector screen") {
 
     private companion object {
         const val ROW_HEIGHT: Int = 13
@@ -178,17 +178,17 @@ class CollectScreen : MagicScreen(Component.literal("Crop Collection"), "the col
         return true
     }
 
-    override fun onKeyPressed(keyEvent: KeyEvent): Boolean {
+    override fun onKeyPressed(event: KeyEvent): Boolean {
         // the key that opened it closes it, so reviewing is one hand on one key
-        if (keyEvent.key() == GLFW.GLFW_KEY_G) {
+        if (event.key() == GLFW.GLFW_KEY_G) {
             onClose()
             return true
         }
-        return super.onKeyPressed(keyEvent)
+        return super.onKeyPressed(event)
     }
 
     /** remove the default background blur */
-    override fun extractBackground(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) = Unit
+    override fun onExtractBackground(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) = Unit
 
     override fun isPauseScreen(): Boolean = false
 }

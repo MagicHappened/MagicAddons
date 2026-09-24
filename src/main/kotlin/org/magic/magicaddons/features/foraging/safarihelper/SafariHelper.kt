@@ -132,6 +132,7 @@ object SafariHelper : HighlightFeature() {
         displayName = "Through Walls",
         description = "§cThis feature might be considered as a cheat and is therefore used at your own risk.",
         value = false,
+        needsExtensionPack = true,
         children = listOf(HighlightMarkers.linkSetting())
     )
 
@@ -150,7 +151,6 @@ object SafariHelper : HighlightFeature() {
         displayName = "Mob Highlight",
         description = "Highlights the mobs and the grass treasure belonging to the safari zone you are in.",
         value = false,
-        needsExtensionPack = true,
         children = listOf(
             throughWallsSetting,
             onlyUncaught,
@@ -419,7 +419,7 @@ object SafariHelper : HighlightFeature() {
     }
 
     private fun localPlayerName(): String? =
-        Minecraft.getInstance().user?.name?.takeIf { it.isNotBlank() }
+        Minecraft.getInstance().user.name.takeIf { it.isNotBlank() }
 
     /** the players in a zone, shouldn't be more than 1 realistically */
     private fun playersIn(zone: SafariZone): List<String> =

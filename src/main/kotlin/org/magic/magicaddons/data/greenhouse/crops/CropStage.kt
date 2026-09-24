@@ -270,8 +270,6 @@ open class CropStage(
     companion object {
         private const val FAKE_ENTITY_ID: Int = -1
         private const val OFFSET_TOLERANCE: Double = 0.01
-
-        /** recorded head poses are several degrees apart at the closest */
         private const val HEAD_POSE_TOLERANCE_DEGREES: Float = 1f
     }
 }

@@ -1,6 +1,8 @@
 package org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState
 
 import java.time.Instant
+import org.magic.magicaddons.events.EventBus
+import org.magic.magicaddons.events.greenhouse.GrowthTickEvent
 import org.magic.magicaddons.data.greenhouse.plot.Codecs.GREENHOUSE_GRID_CODEC
 import org.magic.magicaddons.data.greenhouse.plot.Codecs.MISC_GREENHOUSE_INFO_CODEC
 import org.magic.magicaddons.data.greenhouse.plot.GreenhouseGrid
@@ -47,7 +49,7 @@ object OtherProfiles {
                 .filter { it.cropDef.isBaseCrop }
                 .map { GreenhouseData.UniqueCropKey.from(it.cropDef) }
                 .toSet()
-            val tickMs = GrowthClock.stageTimeMs(uniques.size, cropGrowth, upgrade, misc.greenhouseSpeedAttribute ?: 0)
+            val tickMs = GreenhouseTickTime.stageTimeMs(uniques.size, cropGrowth, upgrade, misc.greenhouseSpeedAttribute ?: 0)
 
             val overdueMs = now.toEpochMilli() - nextTick.toEpochMilli()
             val elapsedTicks = (overdueMs / tickMs).toInt() + 1
@@ -55,8 +57,9 @@ object OtherProfiles {
             misc.nextTickTime = nextTick.plusMillis(elapsedTicks * tickMs)
             profile.grids.forEach { grid ->
                 grid.state.ticksSinceLastScan += elapsedTicks
-                grid.simulateGreenhouse(elapsedTicks, tickMs)
+                grid.simulateGreenhouse(elapsedTicks)
             }
+            EventBus.post(GrowthTickEvent(elapsedTicks, tickMs, profile.name, isActiveProfile = false))
         }
     }
 }

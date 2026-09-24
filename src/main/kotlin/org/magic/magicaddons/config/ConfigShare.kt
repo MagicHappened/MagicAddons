@@ -56,7 +56,7 @@ object ConfigShare {
      * so a code from an older version leaves everything it never knew about alone.
      */
     fun paste(kind: Kind): Pasted {
-        val text = Minecraft.getInstance().keyboardHandler.clipboard?.trim().orEmpty()
+        val text = Minecraft.getInstance().keyboardHandler.clipboard.trim()
         if (text.isEmpty()) return Pasted.Failed("The clipboard is empty")
 
         val other = Kind.entries.firstOrNull { it != kind && text.startsWith("${it.prefix}$SEPARATOR") }
@@ -87,7 +87,7 @@ object ConfigShare {
         }
 
         FeatureManager.syncFromConfigJson()
-        if (kind == Kind.Ui) Customization.reapplyAppearance()
+        if (kind == Kind.Ui) Customization.applyImportedAppearance()
         MagicAddonsConfigJsonHandler.save()
 
         return Pasted.Applied(parts[1], written)
@@ -101,5 +101,5 @@ object ConfigShare {
 
     /** Written into the code so a shared one says whose it is. */
     private fun playerName(): String =
-        Minecraft.getInstance().user?.name?.replace(SEPARATOR, ' ')?.takeIf { it.isNotBlank() } ?: "Unknown"
+        Minecraft.getInstance().user.name.replace(SEPARATOR, ' ').takeIf { it.isNotBlank() } ?: "Unknown"
 }

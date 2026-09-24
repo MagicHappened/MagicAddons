@@ -66,7 +66,7 @@ object PlotPrediction {
 
         if (footprintCells.any { (cellX, cellY) -> plantOn(cellX, cellY) != null }) missing += "no room"
 
-        val footprintSoils = footprintCells.map { (cellX, cellY) -> layout.getSlot(cellX, cellY)?.soil?.block }
+        val footprintSoils = footprintCells.map { (cellX, cellY) -> layout.getSlot(cellX, cellY)?.soil }
         if (footprintSoils.any { it == null || it !in crop.requiredSoil }) {
             missing += "needs ${crop.requiredSoil.joinToString(" or ") { it.name.string }}"
         }
@@ -211,7 +211,10 @@ object PlotPrediction {
 
     private class TargetSpot(val x: Int, val y: Int, val crop: CropDefinition, val targetChance: Double, val unplannedChance: Double)
 
-    fun simulateVisits(plan: PlotLayout, awayTicks: Int, weightMultiplier: Double, tickMs: Long, random: Random = Random.Default): Result {
+    // TODO: figure out how mutations spawned inside the simulation consider their age and decay
+    //  time, probably with the visit ticks but until we get conclusive data on spawning logic,
+    //  this will remain unused
+    fun simulateVisits(plan: PlotLayout, awayTicks: Int, weightMultiplier: Double, random: Random = Random.Default): Result {
         val targets = plan.plants.filter { it.slot.mark == LayoutSlot.Marking.Target && it.cropDef.spawnRule != null }
         val spots = targets.map { target -> targetSpotOf(plan, target, weightMultiplier) }
 
@@ -224,7 +227,7 @@ object PlotPrediction {
         var harvested = 0L
 
         repeat(SIMULATED_RUNS) {
-            harvested += simulateOneRun(builtLayout, spots, awayTicks, warmUpTicks, measuredTicks, tickMs, random)
+            harvested += simulateOneRun(builtLayout, spots, awayTicks, warmUpTicks, measuredTicks, random)
         }
 
         val harvestedPerTick = harvested.toDouble() / SIMULATED_RUNS / measuredTicks
@@ -250,7 +253,6 @@ object PlotPrediction {
         awayTicks: Int,
         warmUpTicks: Int,
         measuredTicks: Int,
-        tickMs: Long,
         random: Random
     ): Int {
         val layout = builtLayout.deepCopy()
@@ -267,7 +269,7 @@ object PlotPrediction {
             frozenSpawns.forEach { graceTicksLeftBySpawn[it] = graceTicksLeftBySpawn.getValue(it) - 1 }
 
             val frozenStates = frozenSpawns.map { FrozenState(it) }
-            GreenhouseGrid.simulateLayout(layout, 1, tickMs)
+            GreenhouseGrid.simulateLayout(layout, 1)
             frozenStates.forEach { it.restore() }
 
             occupiedSpots.entries.forEach { entry ->
@@ -287,7 +289,7 @@ object PlotPrediction {
                         val slot = layout.getSlot(spot.x, spot.y) ?: return@forEach
                         val spawnedTarget = Plant(spot.crop.elementId, slot, growthStage = PlantStage.Known(1), cropDef = spot.crop)
                         spawnedTarget.waterLevel = if (spot.crop.needsWater) 0.0 else null
-                        spawnedTarget.age = 0L
+                        spawnedTarget.appearedAt = System.currentTimeMillis()
                         layout.plants.add(spawnedTarget)
                         occupiedSpots[spot] = spawnedTarget
                         graceTicksLeftBySpawn[spawnedTarget] = OFFLINE_GRACE_TICKS
@@ -326,13 +328,13 @@ object PlotPrediction {
     private class FrozenState(val plant: Plant) {
         private val waterLevel = plant.waterLevel
         private val growthStage = plant.growthStage
-        private val age = plant.age
+        private val appearedAt = plant.appearedAt
         private val readings = plant.readings.toMap()
 
         fun restore() {
             plant.waterLevel = waterLevel
             plant.growthStage = growthStage
-            plant.age = age
+            plant.appearedAt = appearedAt
             plant.readings.clear()
             plant.readings.putAll(readings)
         }
@@ -340,7 +342,7 @@ object PlotPrediction {
 
     private fun setGrownAndWatered(plant: Plant) {
         plant.growthStage = PlantStage.Known(plant.cropDef.maxStage)
-        plant.age = 0L
+        plant.appearedAt = System.currentTimeMillis()
         waterToFull(plant)
     }
 

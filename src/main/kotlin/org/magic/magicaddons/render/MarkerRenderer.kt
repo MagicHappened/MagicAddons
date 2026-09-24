@@ -101,7 +101,7 @@ object MarkerRenderer {
         val player = Minecraft.getInstance().player ?: return emptyList()
         val found = mutableListOf<Marker>()
 
-        if (!HighlightMarkers.marking()) return emptyList()
+        if (!HighlightMarkers.markingEnabled()) return emptyList()
 
         EntityUtils.resolvedMap.forEach { (entity, source) ->
             if (!source.throughWalls || !entity.isAlive || !HighlightMarkers.marks(source)) return@forEach

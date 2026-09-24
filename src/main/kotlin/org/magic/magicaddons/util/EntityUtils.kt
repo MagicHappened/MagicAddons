@@ -16,6 +16,7 @@ import net.minecraft.world.item.ItemStack
 import net.minecraft.core.BlockPos
 import net.minecraft.world.level.ClipContext
 import net.minecraft.world.level.Level
+import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.HitResult
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.EntityInfo
@@ -25,7 +26,9 @@ import org.magic.magicaddons.events.world.EntityAddedEvent
 import org.magic.magicaddons.events.world.EntityRemovedEvent
 import org.magic.magicaddons.events.world.EntityUpdatedEvent
 import org.magic.magicaddons.events.world.WorldTickEvent
+import kotlin.math.floor
 import kotlin.math.sqrt
+import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
 object EntityUtils {
@@ -35,6 +38,8 @@ object EntityUtils {
 
     private const val NEARBY_RADIUS: Double = 0.5
     private const val NEARBY_HEIGHT: Double = 2.0
+
+    private const val NEIGHBOUR_CELL_SIZE: Double = 4.0
 
     private const val PLAYER_UUID_VERSION: Int = 4
 
@@ -117,7 +122,7 @@ object EntityUtils {
 
     var entityInfoList: List<EntityInfo>? = null
 
-    private var entityMapCurr: Map<String, EntityInfo> = emptyMap()
+    private var entityMapCurr: Map<UUID, EntityInfo> = emptyMap()
 
     private val addedEntities = mutableListOf<EntityInfo>()
     private val removedEntities = mutableListOf<EntityInfo>()
@@ -161,28 +166,25 @@ object EntityUtils {
         val level = client.level ?: return
 
         val newList = mutableListOf<EntityInfo>()
-        val newMap = mutableMapOf<String, EntityInfo>()
+        val newMap = mutableMapOf<UUID, EntityInfo>()
 
         val detailed = FeatureManager.features.any { it is HighlightFeature && it.baseSetting.value }
+        val neighbours = if (detailed) NeighbourGrid(level.entitiesForRendering()) else null
 
         level.entitiesForRendering().forEach { entity ->
             val informationEntities: List<Entity>?
 
-            if (detailed) {
-                val nearby = level.getEntities(entity, entity.boundingBox.inflate(NEARBY_RADIUS, NEARBY_HEIGHT, NEARBY_RADIUS))
+            if (neighbours != null) {
+                val nearby = neighbours.inside(
+                    entity.boundingBox.inflate(NEARBY_RADIUS, NEARBY_HEIGHT, NEARBY_RADIUS),
+                    entity
+                )
 
                 if ((entity is ArmorStand || entity is Display) && isNearMeaningfulEntity(entity, nearby)) {
                     return@forEach
                 }
 
-
-                informationEntities = nearby
-                    .filter {
-                        it !== entity && (
-                                (it is ArmorStand && it.hasCustomName()) ||
-                                it is Display
-                                )
-                    }
+                informationEntities = nearby.filter { it is Display || (it is ArmorStand && it.hasCustomName()) }
             } else {
                 informationEntities = null
             }
@@ -191,7 +193,7 @@ object EntityUtils {
 
             val info = EntityInfo(entity, informationEntities, distance)
             newList += info
-            newMap[entity.uuid.toString()] = info
+            newMap[entity.uuid] = info
         }
 
         addedEntities.clear()
@@ -238,6 +240,59 @@ object EntityUtils {
         // update state
         entityInfoList = newList
         entityMapCurr = newMap
+    }
+
+    private class NeighbourGrid(entities: Iterable<Entity>) {
+        private val byCell = HashMap<Long, MutableList<Entity>>()
+
+        init {
+            entities.forEach { entity ->
+                if (!canStandInFor(entity)) return@forEach
+
+                val box = entity.boundingBox
+                for (x in cellOf(box.minX)..cellOf(box.maxX)) {
+                    for (y in cellOf(box.minY)..cellOf(box.maxY)) {
+                        for (z in cellOf(box.minZ)..cellOf(box.maxZ)) {
+                            byCell.getOrPut(keyOf(x, y, z)) { mutableListOf() }.add(entity)
+                        }
+                    }
+                }
+            }
+        }
+
+        fun inside(box: AABB, except: Entity): List<Entity> {
+            var found: MutableList<Entity>? = null
+
+            for (x in cellOf(box.minX)..cellOf(box.maxX)) {
+                for (y in cellOf(box.minY)..cellOf(box.maxY)) {
+                    for (z in cellOf(box.minZ)..cellOf(box.maxZ)) {
+                        val cell = byCell[keyOf(x, y, z)] ?: continue
+
+                        cell.forEach { other ->
+                            if (other === except) return@forEach
+                            if (!other.boundingBox.intersects(box)) return@forEach
+
+                            val list = found ?: mutableListOf<Entity>().also { found = it }
+                            if (other !in list) list.add(other)
+                        }
+                    }
+                }
+            }
+
+            return found ?: emptyList()
+        }
+
+        private fun canStandInFor(entity: Entity): Boolean = when {
+            entity.isSpectator -> false
+            entity is Display -> true
+            entity is ArmorStand -> entity.hasCustomName()
+            else -> entity is LivingEntity
+        }
+
+        private fun cellOf(coordinate: Double): Int = floor(coordinate / NEIGHBOUR_CELL_SIZE).toInt()
+
+        private fun keyOf(x: Int, y: Int, z: Int): Long =
+            (x.toLong() and 0xFFFFFF shl 40) or (y.toLong() and 0xFFFF shl 24) or (z.toLong() and 0xFFFFFF)
     }
 
     private fun EntityInfo.tagSignature(): List<String> =
