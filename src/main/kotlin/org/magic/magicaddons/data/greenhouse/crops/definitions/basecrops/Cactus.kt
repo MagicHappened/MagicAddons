@@ -11,7 +11,6 @@ import org.magic.magicaddons.data.greenhouse.crops.CropStage
 import org.magic.magicaddons.data.greenhouse.crops.CropTier
 import org.magic.magicaddons.data.greenhouse.crops.StageBlock
 import org.magic.magicaddons.data.greenhouse.crops.StageStand
-import org.magic.magicaddons.data.greenhouse.crops.StandPose
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
 object Cactus {
@@ -24,10 +23,6 @@ object Cactus {
             CropEffect.HarvestLoss
         ),
         skyblockId = SkyBlockItemId.item("CACTUS"),
-        /** Each skull's pose, found constant across every stage it appears in. */
-        standPoses = mapOf(
-            "d4b3ea5cb6b6f046e326621ca11ffb7d6aec22d66c0d81e5039b19ee4400309f" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f))
-        ),
         stages = listOf(
             CropStage(
                 blocks = listOf(),
@@ -91,7 +86,6 @@ object Cactus {
                         blockState = cactusState()
                     )
                 ),
-                // written out rather than as a pattern: the two stands are not the same size
                 armorStands = listOf(
                     StageStand(
                         offset = Vec3(0.0, 0.5, 0.0),
@@ -135,7 +129,6 @@ object Cactus {
                     blockState = cactusState()
                 ),
                 armorStands = listOf(
-                    // the top pad is the one small stand of the three
                     StageStand(
                         offset = Vec3(-0.15625, 2.59375, -0.03125),
                         headRotation = Rotations(0.0f, 0.0f, -67.5f),

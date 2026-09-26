@@ -9,16 +9,10 @@ import org.magic.magicaddons.data.greenhouse.plot.GreenhouseLayout
 import org.magic.magicaddons.data.greenhouse.plot.LayoutSlot
 import org.magic.magicaddons.data.greenhouse.plot.PlotLayout
 
-/**
- * Reads the json this mod shared layouts as before the share code: one line per plant, written
- * once at the slot it starts from. Version 1 holds one plot under `plants`, version 2 several
- * under `plots`, each with its own name and plants. Nothing writes this shape any more.
- */
 object MagicAddonsFormat {
 
     val displayName: String = "MagicAddons (json)"
 
-    /** The newest shape this reader understands. */
     private const val VERSION: Int = 2
 
     fun canImport(text: String): Boolean =
@@ -63,7 +57,6 @@ object MagicAddonsFormat {
         return LayoutTransferResult.Imported(layout, notes)
     }
 
-    /** Puts the plants of one json list onto [layout], noting whatever could not be placed. */
     private fun readPlants(plants: JsonArray, layout: PlotLayout, notes: MutableList<String>) {
         plants.forEach { element ->
             val plant = runCatching { element.asJsonObject }.getOrNull() ?: return@forEach

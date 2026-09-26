@@ -43,7 +43,6 @@ object SafariHelper : HighlightFeature() {
         SkyBlockAPI.eventBus.register(this)
     }
 
-    /** hud element for uniques left */
     val hud: HudElement = object : HudElement("safari", "Safari Uniques") {
         override val defaultX: Int = 20
         override val defaultY: Int = 20
@@ -55,8 +54,6 @@ object SafariHelper : HighlightFeature() {
 
         override fun content(): HudContent? {
             if (!baseSetting.value || !uniqueTracking.value) return null
-            // the hud shows everything anywhere unnamed, so the island is checked here rather than
-            // left to the situation
             if (LocationAPI.island != SkyBlockIsland.SAFARI) return null
 
             return HudContent(hudLines().map { HudLine.Text(it) })
@@ -78,7 +75,7 @@ object SafariHelper : HighlightFeature() {
             }
 
             zone("Forest", "MagicHappened", listOf("Macaw", "Woodchucker", "Treefrog"))
-            zone("Ice", null, listOf("Snowbert"))
+            zone("Ice", null, listOf("Wumpa"))
         })
     }
 
@@ -86,14 +83,11 @@ object SafariHelper : HighlightFeature() {
     private const val SPARKLING_HIGHLIGHT_COLOR: Int = 0xFFFFAA00.toInt()
     private const val TREASURE_HIGHLIGHT_COLOR: Int = 0xFF55FF55.toInt()
 
-    /** Marks the rarer version of a mob, written on the name tag standing next to it. */
     private const val SPARKLING_TAG: String = "sparkling"
 
-    /** The title fades over these many ticks either side of staying two seconds. */
     private const val SPARKLING_TITLE_FADE: Int = 5
     private const val SPARKLING_TITLE_STAY: Int = 40
 
-    /** A rising run of three plings, this many ticks apart. */
     private val SPARKLING_PLING_PITCHES: List<Float> = listOf(1.0f, 1.0f, 1.0f)
     private const val SPARKLING_PLING_GAP: Int = 4
 
@@ -117,7 +111,6 @@ object SafariHelper : HighlightFeature() {
     override val description: String = "Helpers for the safari island"
     override val category: String = "foraging"
 
-    // above HighlightMobs so the zone specific coloring wins when both highlight the same entity
     override val highlightPriority: Int = 1
 
     private val onlyUncaught = BooleanSetting(
@@ -175,8 +168,7 @@ object SafariHelper : HighlightFeature() {
     private val ownZoneOnly = BooleanSetting(
         key = "OwnZoneOnly",
         displayName = "Only Own Zone",
-        description = "Only sends the zone done message for your own zone, the one you had spent the " +
-                "most time in when the first zone was finished.",
+        description = "Only sends the zone done message for your own zone",
         value = false
     )
 

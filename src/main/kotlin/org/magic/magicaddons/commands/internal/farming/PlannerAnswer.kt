@@ -5,7 +5,6 @@ import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource
 import org.magic.magicaddons.commands.AbstractCommand
 import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseData
 
-/** Takes the plan off the greenhouse being stood in, for the Unplan button and a click in chat. */
 object UnplanGreenhouse : AbstractCommand() {
 
     override val argument: String = "unplan"

@@ -243,7 +243,7 @@ class GridWidget(
             for (sy in 0 until layout.size) {
                 val slot = layout.getSlot(sx, sy) ?: continue
 
-                val widget = SlotWidget(slot, layout.kind == PlotLayout.Kind.MASTER_PRESET)
+                val widget = SlotWidget(slot, layout.kind == PlotLayout.Kind.GREENHOUSE_PRESET)
 
                 widget.width = slotSize
                 widget.height = slotSize
@@ -312,7 +312,7 @@ class GridWidget(
 
             // a soggybud's time is walked on the whole greenhouse, its donors drying out as they
             // will, once per build rather than every frame
-            if (instance.cropDef.drainsNeighbours && layout.kind != PlotLayout.Kind.MASTER_PRESET) {
+            if (instance.cropDef.drainsNeighbours && layout.kind != PlotLayout.Kind.GREENHOUSE_PRESET) {
                 val grid = GreenhouseData.greenhouseGrids.find { it.layout.id == layout.id }
                 if (grid != null && GreenhouseTickTime.tickMs != null) {
                     widget.soggybudTicksToGrow = grid.ticksUntilGrown(layout, instance.slot)
@@ -323,7 +323,7 @@ class GridWidget(
             widget.renderedStack = itemStackFor(instance.cropDef)
             if (instance in justPlaced) widget.appearedAt = System.currentTimeMillis()
             if (instance in justMarked) widget.markedAt = System.currentTimeMillis()
-            widget.inPreset = layout.kind == PlotLayout.Kind.MASTER_PRESET
+            widget.inPreset = layout.kind == PlotLayout.Kind.GREENHOUSE_PRESET
             elementWidgets.add(widget)
         }
         justPlaced.clear()

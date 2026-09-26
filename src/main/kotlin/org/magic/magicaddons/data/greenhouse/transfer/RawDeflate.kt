@@ -5,7 +5,6 @@ import java.util.Base64
 import java.util.zip.Deflater
 import java.util.zip.Inflater
 
-/** Bytes deflated raw, with no zlib header, and written in url-safe base64 without padding. */
 object RawDeflate {
 
     fun encode(bytes: ByteArray): String {
@@ -21,7 +20,6 @@ object RawDeflate {
         return Base64.getUrlEncoder().withoutPadding().encodeToString(out.toByteArray())
     }
 
-    /** The bytes behind [text], or null when it is not base64 or not deflated data. Padding may be present or missing. */
     fun decode(text: String): ByteArray? = runCatching {
         val inflater = Inflater(true)
         inflater.setInput(Base64.getUrlDecoder().decode(text.trim()))

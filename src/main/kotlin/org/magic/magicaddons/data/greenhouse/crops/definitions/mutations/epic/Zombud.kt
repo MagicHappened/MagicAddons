@@ -1,7 +1,6 @@
 package org.magic.magicaddons.data.greenhouse.crops.definitions.mutations.epic
 
 import net.minecraft.core.BlockPos
-import net.minecraft.core.Rotations
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.crops.CropBlocks.netherwartState
@@ -14,7 +13,6 @@ import org.magic.magicaddons.data.greenhouse.crops.Plant
 import org.magic.magicaddons.data.greenhouse.crops.SpawnRule
 import org.magic.magicaddons.data.greenhouse.crops.StageBlock
 import org.magic.magicaddons.data.greenhouse.crops.StageStand
-import org.magic.magicaddons.data.greenhouse.crops.StandPose
 import org.magic.magicaddons.data.greenhouse.crops.definitions.mutations.rare.Fleshtrap
 import org.magic.magicaddons.data.greenhouse.crops.definitions.mutations.uncommon.Cindershade
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
@@ -29,12 +27,6 @@ object Zombud {
             CropEffect.BonusDrops
         ),
         skyblockId = SkyBlockItemId.item("ZOMBUD"),
-        /** Each skull's pose, found constant across every stage it appears in. */
-        standPoses = mapOf(
-            "de090b85462e85f7f44be07e55f1486602c141bb6fd0c277d5bb7c68deda265d" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f)),
-            "b2c4994b7a1c45231b623b8245c117382b267c8856c57cffa2d808c241027a51" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f)),
-            "29e27b7ee26e272ce53f19e169a593ea83cc120bfa3a209e1a8a279fcdf463e7" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f))
-        ),
         stages = listOf(
             CropStage(
                 blocks = listOf(

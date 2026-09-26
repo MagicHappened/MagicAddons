@@ -540,7 +540,7 @@ object GreenhousePresets : Feature() {
                                                 "already running",
                                         value = 5,
                                         range = 1..48,
-                                        detail = { GreenhouseData.absenceDetail() }
+                                        detail = { GreenhouseData.absenceForChorusDetail() }
                                     )
                                 )
                             ),

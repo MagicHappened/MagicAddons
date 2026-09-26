@@ -2,34 +2,25 @@ package org.magic.magicaddons.features.farming.greenhousePresets.greenhousesStat
 
 import java.time.Duration
 import java.time.Instant
-import net.minecraft.ChatFormatting
 import net.minecraft.core.BlockPos
-import net.minecraft.network.chat.ClickEvent
 import net.minecraft.network.chat.Component
-import net.minecraft.network.chat.HoverEvent
-import net.minecraft.network.chat.Style
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
 import org.magic.magicaddons.Common
 import org.magic.magicaddons.commands.debug.CropCollector
 import org.magic.magicaddons.data.greenhouse.crops.*
-import org.magic.magicaddons.data.greenhouse.plot.*
-import org.magic.magicaddons.events.interact.*
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhousePresets.baseSetting
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.parseDurationToMs
-import tech.thatgravyboat.skyblockapi.api.location.LocationAPI
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockId.Companion.getSkyBlockId
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 import tech.thatgravyboat.skyblockapi.utils.extentions.getLore
 
-/**
- * What the beacon page and the tool in hand say about one plant, and what to do when they
- * disagree with what is recorded.
- */
 object PlantDiagnostics {
 
-    fun readDiagnosis(realItems: List<ItemStack>, listening: ScannedPlant?, hit: BlockPos?) {
+    private const val WATER_LABEL: String = "Water"
+
+    fun readDiagnosticTool(realItems: List<ItemStack>, listening: ScannedPlant?, hit: BlockPos?) {
         if (!baseSetting.value) return
         val identifyStack = realItems.firstOrNull() ?: return
 
@@ -51,7 +42,7 @@ object PlantDiagnostics {
         val bucketLore = realItems.firstOrNull { it.item == Items.WATER_BUCKET }?.getLore()
 
         if (beaconLore == null || saplingLore == null || bucketLore == null) {
-            if (CropCollector.isActive()) ChatUtils.sendWithPrefix(
+            if (CropCollector.isCollectorActive()) ChatUtils.sendWithPrefix(
                 "The diagnosis is missing a page: " +
                         listOfNotNull(
                             "status".takeIf { beaconLore == null },
@@ -62,32 +53,31 @@ object PlantDiagnostics {
             return
         }
 
-        val waterLevel = runCatching {
-            bucketLore[0].siblings[1].string.trim().toDouble()
-        }.getOrNull()
+        val waterLevel = bucketLore
+            .firstOrNull { it.string.trimStart().startsWith(WATER_LABEL, ignoreCase = true) }
+            ?.string
+            ?.substringAfter(':')
+            ?.substringBefore('/')
+            ?.trim()
+            ?.toDoubleOrNull()
 
         val status = beaconLore.valueFor("Status") ?: runCatching {
             beaconLore[0].siblings[1].string
         }.getOrNull()
 
-        // "Uncollectable" and its like sit on their own lines as often as on the status line
         val statusPage = beaconLore.joinToString(" ") { it.string }
 
-        // these two are read out of a fixed position in the lore rather than by label, so an empty
-        // result prints the page it came from
-        if (waterLevel == null && CropCollector.isActive()) {
-            ChatUtils.sendWithPrefix("Could not read the water level, the water page reads:")
-            dumpLore(bucketLore)
+        if (waterLevel == null && CropCollector.isCollectorActive()) {
+            sendLoreOnHover("Could not read the water level, hover to see details", bucketLore)
         }
 
-        if (status == null && CropCollector.isActive()) {
-            ChatUtils.sendWithPrefix("Could not read the status, the status page reads:")
-            dumpLore(beaconLore)
+        if (status == null && CropCollector.isCollectorActive()) {
+            sendLoreOnHover("Could not read the status, hover to see details", beaconLore)
         }
 
         val age = saplingLore.valueFor("Age")
 
-        // "Stage: 1/15", of which only the part before the slash is the stage
+        // "Stage: 1/15"
         val stageRaw = saplingLore.valueFor("Stage")?.substringBefore('/')?.trim()
             ?.let { raw ->
                 when {
@@ -148,7 +138,7 @@ object PlantDiagnostics {
             }
         }
 
-        if (!CropCollector.isActive()) return
+        if (!CropCollector.isCollectorActive()) return
 
         if (def == null) {
             ChatUtils.sendWithPrefix(
@@ -158,11 +148,7 @@ object PlantDiagnostics {
         }
 
         if (stageRaw == null) {
-            ChatUtils.sendWithPrefix(
-                "Could not read what stage ${def.name} is at, the growth page reads:"
-            )
-
-            dumpLore(saplingLore)
+            sendLoreOnHover("Could not read what stage ${def.name} is at, hover to see details", saplingLore)
             return
         }
 
@@ -182,7 +168,7 @@ object PlantDiagnostics {
             return
         }
         
-        CropCollector.correct(def, stageRaw, hit)
+        CropCollector.correctEntries(def, stageRaw, hit)
     }
 
     
@@ -216,22 +202,15 @@ object PlantDiagnostics {
             ?.trim()
             ?.takeIf { it.isNotEmpty() }
 
-    private fun dumpLore(lore: List<Component>) {
-        lore.forEachIndexed { index, line ->
+    private fun sendLoreOnHover(message: String, lore: List<Component>) {
+        val dump = lore.mapIndexed { index, line ->
             val pieces = line.siblings
                 .mapIndexed { pieceIndex, piece -> "[$pieceIndex]${piece.string}" }
                 .joinToString(" ")
 
-            val whole = "[$index] ${line.string}    pieces: $pieces"
+            "[$index] ${line.string}    pieces: $pieces"
+        }.joinToString("\n")
 
-            ChatUtils.send(
-                Component.literal("  $whole").withStyle(
-                    Style.EMPTY
-                        .withColor(ChatFormatting.GRAY)
-                        .withClickEvent(ClickEvent.CopyToClipboard(whole))
-                        .withHoverEvent(HoverEvent.ShowText(Component.literal("Click to copy")))
-                )
-            )
-        }
+        ChatUtils.sendWithCopyableHover(message, dump)
     }
 }

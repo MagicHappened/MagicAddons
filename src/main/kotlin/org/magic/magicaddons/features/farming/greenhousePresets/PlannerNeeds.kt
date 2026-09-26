@@ -7,7 +7,6 @@ import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen
 import net.minecraft.network.chat.ClickEvent
 import net.minecraft.network.chat.Component
-import net.minecraft.network.chat.HoverEvent
 import net.minecraft.network.chat.Style
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.block.Block
@@ -214,7 +213,7 @@ object PlannerNeeds {
 
         val key = "${grid.layout.id}|$phase"
         messageMap[key] = Instant.now()
-        val body = line(needs)
+        val body = requestedItemsLine(needs)
         lastMessage = LastPlannerMessage(key, count, body, ChatUtils.sendWithPrefix(body))
     }
 
@@ -262,7 +261,7 @@ object PlannerNeeds {
                 lastMessage = null
                 return
             }
-            sent.body = line(needs)
+            sent.body = requestedItemsLine(needs)
         }
 
         sent.line = ChatUtils.sendWithPrefix(sent.body)
@@ -323,30 +322,25 @@ object PlannerNeeds {
         }
     }
 
-    private fun line(requestedItems: List<RequestedItem>): Component {
+    private fun requestedItemsLine(requestedItems: List<RequestedItem>): Component {
         val line = Component.literal("Click to get: ").withStyle(ChatFormatting.GRAY)
         requestedItems.forEachIndexed { index, need ->
             if (index > 0) line.append(Component.literal(" "))
-            line.append(entry(need))
+            line.append(requestedItemButton(need))
         }
         return line
     }
 
-    /** One name in brackets, clickable unless there is nowhere to get the thing from. */
-    private fun entry(requestedItem: RequestedItem): Component {
-        val text = Component.literal("[${requestedItem.label}]")
+    private fun requestedItemButton(requestedItem: RequestedItem): Component {
+        val label = "[${requestedItem.label}]"
         val command = requestedItem.command
-            ?: return text.withStyle(
-                Style.EMPTY
-                    .withColor(ChatFormatting.GRAY)
-                    .withHoverEvent(HoverEvent.ShowText(requestedItem.hover))
-            )
+            ?: return ChatUtils.buildStyled(label, ChatFormatting.GRAY, requestedItem.hover)
 
-        return text.withStyle(
-            Style.EMPTY
-                .withColor(ChatFormatting.AQUA)
-                .withClickEvent(ClickEvent.RunCommand("${MainInternal.COMMAND} ${GetPlannerItemCommand.NAME} $command"))
-                .withHoverEvent(HoverEvent.ShowText(requestedItem.hover))
+        return ChatUtils.buildStyled(
+            label,
+            ChatFormatting.AQUA,
+            requestedItem.hover,
+            ClickEvent.RunCommand("${MainInternal.COMMAND} ${GetPlannerItemCommand.NAME} $command"),
         )
     }
 

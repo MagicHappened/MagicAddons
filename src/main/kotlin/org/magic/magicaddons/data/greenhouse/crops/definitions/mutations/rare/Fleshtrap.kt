@@ -28,7 +28,6 @@ object Fleshtrap {
         ),
         skyblockId = SkyBlockItemId.item("FLESHTRAP"),
         stages = listOf(
-            // the hunger label floats above every stage and is read, not matched
             CropStage(
                 blocks = listOf(
                     StageBlock(
@@ -260,14 +259,11 @@ object Fleshtrap {
                     )
                 ),
                 13..13,
-                // hunger and bonus change from moment to moment, so neither can be part of matching.
-                // A missing bonus label means never fed, not fed nothing
                 readers = listOf(
                     StandReader.nonWaterBar(StandReader.HUNGER),
                     StandReader.percentLabel(StandReader.BONUS, "Bonus")
                 )
             ),
-            // the skull changes with hunger, so either look is stage 14
             CropStage(
                 blocks = listOf(
                     StageBlock(

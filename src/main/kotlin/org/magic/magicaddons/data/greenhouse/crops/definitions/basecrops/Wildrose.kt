@@ -1,7 +1,6 @@
 package org.magic.magicaddons.data.greenhouse.crops.definitions.basecrops
 
 import net.minecraft.core.BlockPos
-import net.minecraft.core.Rotations
 import net.minecraft.world.level.block.state.properties.DoubleBlockHalf
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.crops.CropBlocks.roseBushState
@@ -13,7 +12,6 @@ import org.magic.magicaddons.data.greenhouse.crops.CropStage
 import org.magic.magicaddons.data.greenhouse.crops.CropTier
 import org.magic.magicaddons.data.greenhouse.crops.StageBlock
 import org.magic.magicaddons.data.greenhouse.crops.StageStand
-import org.magic.magicaddons.data.greenhouse.crops.StandPose
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
 object Wildrose {
@@ -25,13 +23,6 @@ object Wildrose {
             CropEffect.EffectSpread
         ),
         skyblockId = SkyBlockItemId.item("WILD_ROSE"),
-        /** Each skull's pose, found constant across every stage it appears in. */
-        standPoses = mapOf(
-            "f341905af17c74a1c6181a56c88d8f91853f2cff0a9a33aaa16c0d835fdceece" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f)),
-            "4a99a01317a01f65f7a7610122bea792c22a771e7a48ce1a5b352bccc8335074" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f)),
-            "61a37adb8bcad712663771235feeb136ebe0f5c4d593070a5410ccb6f6706aa0" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f)),
-            "816176a32c70d53e5aaade1f16e7d4ab6f5750e37d55b3e9e99977cbd5fa9f19" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f))
-        ),
         stages = listOf(
             CropStage(
                 blocks = listOf(

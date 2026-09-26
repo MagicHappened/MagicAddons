@@ -226,7 +226,6 @@ object Jerryflower {
                 10..10
             )
         ),
-        // stops growing at stage 5, stall explanation explains.
         sleepStages = setOf(5),
         stallExplanation = "This plant needs 10 Move Jerries in order to continue growing.",
         maxStage = 10,

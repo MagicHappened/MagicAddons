@@ -53,7 +53,7 @@ class PresetUI(
             turnLeftButton -> onTurn(-1)
             turnRightButton -> onTurn(1)
             importButton -> openImportMenu(event)
-            exportButton -> openFormatMenu(event) { exportPreset(it) }
+            exportButton -> openExportMenu(event)
             applyToButton -> openMenu(event, "Assign To:", assignTargets()) { onAssignedLayout(shownLayout(), it) }
             deleteButton -> askDelete(event)
             else -> return false
@@ -79,6 +79,19 @@ class PresetUI(
         ) { type, soft ->
             softImport = soft
             importPreset(type, soft)
+        }
+        menu.init()
+        overlayContext.addContext(menu)
+    }
+
+    /** The formats with the shown plot box under them, which keeps its state until the game closes. */
+    private fun openExportMenu(event: MouseButtonEvent) {
+        val menu = PickWithOptionContext(
+            event.x.toInt(), event.y.toInt(), "Format:", LayoutFormatType.entries,
+            SHOWN_PLOT_LABEL, exportShownOnly, SHOWN_PLOT_TOOLTIP, overlayContext
+        ) { type, shownOnly ->
+            exportShownOnly = shownOnly
+            exportPreset(type, shownOnly)
         }
         menu.init()
         overlayContext.addContext(menu)
@@ -142,7 +155,7 @@ class PresetUI(
         }
     }
 
-    private fun exportPreset(type: LayoutFormatType) {
+    private fun exportPreset(type: LayoutFormatType, shownOnly: Boolean) {
         val preset = GreenhouseData.currentPreset
 
         if (preset == null) {
@@ -152,7 +165,7 @@ class PresetUI(
 
         val format = formatFor(type)
         val shown = shownLayout()
-        val result = if (preset.plots.size > 1 && shown != null && !format.isSinglePlot()) {
+        val result = if (!shownOnly && preset.plots.size > 1 && shown != null && !format.isSinglePlot()) {
             format.exportAll(preset)
         } else {
             format.export(shown ?: preset.plots.first())
@@ -183,6 +196,10 @@ class PresetUI(
         const val SOFT_IMPORT_TOOLTIP: String = "Soft import tries to fit your imported preset onto the current preset while " +
                 "destroying as few plants and replacing as little soil as possible.\nMatters greatly for smaller presets"
 
+        const val SHOWN_PLOT_LABEL: String = "Shown plot only"
+        const val SHOWN_PLOT_TOOLTIP: String = "Writes only the plot on show instead of every plot in the preset"
+
         var softImport: Boolean = false
+        var exportShownOnly: Boolean = false
     }
 }

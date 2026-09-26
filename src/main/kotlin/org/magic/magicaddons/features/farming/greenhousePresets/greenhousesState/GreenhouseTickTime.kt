@@ -3,7 +3,6 @@ package org.magic.magicaddons.features.farming.greenhousePresets.greenhousesStat
 import java.time.Instant
 import tech.thatgravyboat.skyblockapi.api.profile.hunting.AttributeAPI
 
-/** How long a growth tick takes for this greenhouse, and how much of the running one is left. */
 object GreenhouseTickTime {
 
     fun speedAttribute(): Int? =
@@ -31,6 +30,14 @@ object GreenhouseTickTime {
         val next = GreenhouseData.miscInfo.nextTickTime ?: return null
 
         return (next.toEpochMilli() - Instant.now().toEpochMilli()).coerceAtLeast(0L)
+    }
+
+    fun hasGrowthTickPassedSince(epochMs: Long): Boolean? {
+        val nextTickMs = GreenhouseData.miscInfo.nextTickTime?.toEpochMilli() ?: return null
+        val growthTickMs = tickMs ?: return null
+
+        return Math.floorDiv(System.currentTimeMillis() - nextTickMs, growthTickMs) >
+                Math.floorDiv(epochMs - nextTickMs, growthTickMs)
     }
 
     fun stageTimeMs(

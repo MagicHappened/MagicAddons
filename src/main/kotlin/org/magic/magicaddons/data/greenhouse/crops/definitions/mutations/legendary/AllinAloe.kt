@@ -30,10 +30,8 @@ object AllinAloe {
             CropEffect.HarvestBoost
         ),
         skyblockId = SkyBlockItemId.item("ALL_IN_ALOE"),
-        /** Each skull's pose, found constant across every stage it appears in. */
         standPoses = mapOf(
-            "dde18b1db0f938380dd8bed0c9189c3e62ea3acf900a19b2e95f52708c3ae3f2" to StandPose.Fixed(Rotations(22.5f, 0.0f, 0.0f)),
-            "955a5ebfc03404c361753d267f7d1664692a2da3ebc63fc3b74925015ab7171b" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f))
+            "dde18b1db0f938380dd8bed0c9189c3e62ea3acf900a19b2e95f52708c3ae3f2" to StandPose.Fixed(Rotations(22.5f, 0.0f, 0.0f))
         ),
         stages = listOf(
             CropStage(

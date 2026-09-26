@@ -10,7 +10,6 @@ import org.magic.magicaddons.data.greenhouse.crops.CropStage
 import org.magic.magicaddons.data.greenhouse.crops.CropTier
 import org.magic.magicaddons.data.greenhouse.crops.StageBlock
 import org.magic.magicaddons.data.greenhouse.crops.StageStand
-import org.magic.magicaddons.data.greenhouse.crops.StandPose
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
 object Melon {
@@ -23,10 +22,6 @@ object Melon {
         ),
         skyblockId = SkyBlockItemId.item("MELON"),
         aliases = listOf(SkyBlockItemId.item("MELON_SEEDS")),
-        /** Each skull's pose, found constant across every stage it appears in. */
-        standPoses = mapOf(
-            "360549bf880605bba628e89b1cca4b8a0e428b61d879f45edd9f45469d87aec4" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f))
-        ),
         stages = listOf(
             CropStage(
                 blocks = listOf(

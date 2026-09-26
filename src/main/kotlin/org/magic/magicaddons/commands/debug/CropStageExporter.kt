@@ -13,36 +13,21 @@ import net.minecraft.world.entity.player.Player
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
-import org.magic.magicaddons.commands.fmt
+import org.magic.magicaddons.commands.formatPosition
 import org.magic.magicaddons.data.greenhouse.crops.CropBlocks.toCode
 import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
-import org.magic.magicaddons.data.greenhouse.crops.CropStage
-import org.magic.magicaddons.data.greenhouse.crops.StageBlock
-import org.magic.magicaddons.data.greenhouse.crops.StageStand
 import org.magic.magicaddons.data.greenhouse.crops.WorldRotation
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.EntityUtils
 import org.magic.magicaddons.util.PlayerUtils
 
-/**
- * Writes the blocks and stands around a plant as the kotlin a CropDefinition is made of, so a new
- * crop can be described by standing next to one and pasting. A development tool; nothing reads its output.
- */
 object CropStageExporter {
 
-    /** The skulls the plot's own marker stands carry, which belong to no crop. */
-    val PLOT_MARKER_SKINS: Set<String> = setOf(
-        "4099589796de185787ab92c3066d0d0af832ffad7153a42bb2e2d23598e7ea60",
-        "df03ad96092f3f789902436709cdf69de6b727c121b3c2daef9ffa1ccaed186c"
-    )
-
-    /** The stage as kotlin, or null without a world. Quiet keeps the skipped-entity report out of chat. */
     fun buildCropStageData(
         basePos: BlockPos,
         stageNum: Int? = null,
         foundDefinition: CropDefinition? = null,
         quiet: Boolean = false,
-        /** The stands seen when the plant was pinned, used when the world has none there any more. */
         knownStands: List<Entity> = emptyList()
     ): String? {
         val world = Minecraft.getInstance().level ?: return null
@@ -83,7 +68,6 @@ object CropStageExporter {
                 }
             }
         }
-        // tall enough for any plant; players caught in it are skipped below
         val box = AABB(
             basePos.x.toDouble(),
             basePos.y.toDouble() - 2,
@@ -95,28 +79,21 @@ object CropStageExporter {
 
         val stands = world.getEntities(null, box).ifEmpty { knownStands }
 
-        // how far the world has turned this plant, undone so the stage exports identically wherever
-        // it stands. The head pose rides on the body and needs nothing
         val worldStep = if (foundDefinition?.rotatesWithPlot == false) 0 else WorldRotation.quarterTurnsAt(basePos.x, basePos.z)
         val unturn = Math.floorMod(-worldStep, 4)
 
-        // the middle of the footprint on both axes, which is what the mirroring check measures
-        // from. z takes the height, not the width: they only agree while every crop is square
         val originVec = Vec3(
             basePos.x.toDouble() + width / 2.0,
             basePos.y.toDouble(),
             basePos.z.toDouble() + height / 2.0
         )
 
-
-        // what the export could not describe, so an empty armorStands list can be told apart from
-        // a plant whose parts are not stands at all
         val skipped = mutableListOf<String>()
 
         for (entity in stands) {
             if (entity !is ArmorStand) {
                 if (entity !is Player) {
-                    skipped += "${entity.type.description.string} at ${fmt(entity.position())}"
+                    skipped += "${entity.type.description.string} at ${formatPosition(entity.position())}"
                 }
                 continue
             }
@@ -125,29 +102,21 @@ object CropStageExporter {
 
             val hash = PlayerUtils.getSkullHash(entity)
 
-            // every greenhouse carries these, one per plot, and one standing high above a crop was
-            // being written into that crop's stage as a stand nine blocks in the air
-            if (hash in PLOT_MARKER_SKINS) continue
             val headRotations = entity.headPose
             val customName = if (entity.hasCustomName()) {
                 entity.name.string.replace("\"", "\\\"")
             } else null
 
-            // a stand can carry a plain item instead of a skull, as godseed's gold blocks do
             val held = if (hash == null) EntityUtils.heldItem(entity) else null
             val itemId = held?.second
 
-            // a stand with nothing to match on at all, and standing anywhere near a player puts
-            // their own nameplate stands inside the box
             if (hash == null && customName == null && itemId == null) {
-                skipped += "nameless empty-handed stand at ${fmt(entity.position())}"
+                skipped += "nameless empty-handed stand at ${formatPosition(entity.position())}"
                 continue
             }
 
             standData.add(
                 ArmorStandExport(
-                    // negative zero is zero wearing the sign the un-rotation left on it, and it
-                    // made byte-identical stages read as two different ones
                     offset = WorldRotation.turned(offset, unturn).let {
                         Vec3(it.x + 0.0, it.y + 0.0, it.z + 0.0)
                     },
@@ -162,8 +131,6 @@ object CropStageExporter {
                 )
             )
         }
-
-
 
         if (skipped.isNotEmpty() && !quiet) {
             ChatUtils.sendWithPrefix(
@@ -262,8 +229,6 @@ object CropStageExporter {
                 it.hash ?: it.itemId
             }
 
-            // a pattern carries one size for the whole group, so stands of mixed size are
-            // written one by one instead
             val (uniform, mixed) = grouped.values.partition { group -> group.map { it.isSmall }.distinct().size == 1 }
 
             val singletons = uniform
@@ -305,15 +270,11 @@ object CropStageExporter {
                     fields.add("offsets = listOf(\n$offsets\n)")
                     fields.add("isSmall = ${group.first().isSmall}")
 
-                    // the head poses are always written, poses of zeros included
                     fields.add("rotations = listOf(\n$rotations\n)")
 
-                    // a stand turned no further than the plot is written without a turn of its own
                     if (group.any { it.xRotation != 0f }) fields.add("xRotations = listOf(\n$xRotations\n)")
                     if (group.any { it.yRotation != 0f }) fields.add("yRotations = listOf(\n$yRotations\n)")
 
-                    // only written when the stand has one, so no export contains the string "null"
-                    // as a hash
                     if (hash != null) fields.add("hashString = \"$hash\"")
                     if (name != null) fields.add("nameContains = \"$name\"")
                     if (itemId != null) fields.add("heldItemId = \"$itemId\"")
@@ -337,10 +298,8 @@ object CropStageExporter {
                         val fields = mutableListOf<String>()
                         fields.add("offset = Vec3(${stand.offset.x}, ${stand.offset.y}, ${stand.offset.z})")
                         fields.add("isSmall = ${stand.isSmall}")
-                        // the head pose is always written, a pose of zeros included
                         fields.add("headRotation = Rotations(${stand.rotation.x}f, ${stand.rotation.y}f, ${stand.rotation.z}f)")
 
-                        // a stand turned no further than the plot is written without a turn of its own
                         if (stand.xRotation != 0f) fields.add("xRotation = ${stand.xRotation}f")
                         if (stand.yRotation != 0f) fields.add("yRotation = ${stand.yRotation}f")
                         if (stand.hash != null){
@@ -382,8 +341,6 @@ object CropStageExporter {
                 else -> "listOf()"
             }
 
-            // indented once at the end rather than per piece, so every level lines up whatever the
-            // pieces were built from
             sb.appendLine("    armorStands = ${indent(final).trimStart()},")
         } else {
             sb.appendLine("    armorStands = listOf(),")
@@ -395,7 +352,6 @@ object CropStageExporter {
         return sb.toString()
     }
 
-    /** Moves a block built at the left margin under whatever line it is being written into. */
     private fun indent(text: String, by: String = "    "): String =
         text.lineSequence().joinToString("\n") { if (it.isBlank()) it else by + it }
 
@@ -406,11 +362,8 @@ object CropStageExporter {
         val yRotation: Float,
         val hash: String?,
         val customName: String?,
-        /** What the stand carries when that is not a skull, as "minecraft:gold_block". */
         val itemId: String?,
-        /** Which slot that item is in, since a stand can hold one as well as wear one. */
         val itemSlot: EquipmentSlot?,
-        /** How the stand is built, which is what decides where the head it carries ends up. */
         val isSmall: Boolean
     )
 

@@ -4,8 +4,6 @@ import net.minecraft.ChatFormatting
 import net.minecraft.client.Minecraft
 import net.minecraft.network.chat.ClickEvent
 import net.minecraft.network.chat.Component
-import net.minecraft.network.chat.HoverEvent
-import net.minecraft.network.chat.Style
 import org.magic.magicaddons.Common
 import java.lang.reflect.InvocationTargetException
 import java.time.Duration
@@ -27,12 +25,12 @@ object ErrorReporter {
     /** The errors already reported this session, so a broken frame does not flood chat or the log. */
     private val seen: MutableMap<String, Reported> = HashMap()
 
-    fun report(where: String, error: Throwable, vararg extra: Pair<String, Any?>) {
+    fun report(errorLocation: String, error: Throwable, vararg extra: Pair<String, Any?>) {
         val cause = unwrap(error)
         // the game itself is going down; nothing here can help
         if (cause is VirtualMachineError) throw cause
 
-        val key = "$where|${cause.javaClass.name}|${cause.stackTrace.firstOrNull()}"
+        val key = "$errorLocation|${cause.javaClass.name}|${cause.stackTrace.firstOrNull()}"
         val already = seen[key]
 
         // an error thrown every frame wrote its whole trace every frame, which is a log nobody can read
@@ -41,7 +39,7 @@ object ErrorReporter {
 
             val now = Instant.now()
             if (now.isAfter(already.lastLogged.plus(REPEAT_INTERVAL))) {
-                Common.LOGGER.error("Something went wrong in $where ${already.sinceLogged} more times")
+                Common.LOGGER.error("Something went wrong in $errorLocation ${already.sinceLogged} more times")
                 already.lastLogged = now
                 already.sinceLogged = 0
             }
@@ -49,25 +47,24 @@ object ErrorReporter {
         }
 
         seen[key] = Reported(Instant.now(), 0)
-        Common.LOGGER.error("Something went wrong in $where", cause)
+        Common.LOGGER.error("Something went wrong in $errorLocation", cause)
 
         val player = Minecraft.getInstance().player ?: return
 
         val details = buildString {
             appendLine("MagicAddons ${VersionChecker.currentVersion()}")
-            appendLine("Where: $where")
+            appendLine("Where: $errorLocation")
             extra.forEach { (name, value) -> appendLine("$name: $value") }
             appendLine()
             append(cause.stackTraceToString())
         }
 
-        val line = Component.literal("Something went wrong in $where: ${cause.javaClass.simpleName}. Click to copy the details.")
-            .withStyle(
-                Style.EMPTY
-                    .withColor(ChatFormatting.RED)
-                    .withClickEvent(ClickEvent.CopyToClipboard(details))
-                    .withHoverEvent(HoverEvent.ShowText(Component.literal("Copies the error and where it happened, for a bug report")))
-            )
+        val line = ChatUtils.buildStyled(
+            "Something went wrong in $errorLocation: ${cause.javaClass.simpleName}. Click to copy the details.",
+            ChatFormatting.RED,
+            Component.literal("Copies the error and where it happened, for a bug report"),
+            ClickEvent.CopyToClipboard(details),
+        )
         player.sendSystemMessage(ChatUtils.buildWithPrefix(line))
     }
 

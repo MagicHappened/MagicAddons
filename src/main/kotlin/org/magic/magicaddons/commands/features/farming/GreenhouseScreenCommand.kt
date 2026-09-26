@@ -11,7 +11,6 @@ import org.magic.magicaddons.ui.screens.GreenhouseScreen
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.ScreenUtil
 
-/** Opens the greenhouse screen, or with "preview" the crop preview, on a crop when one is named. */
 object GreenhouseScreenCommand : AbstractCommand() {
     override val argument: String = "GreenhouseScreen"
     override val aliases: List<String> = listOf("gh")
@@ -24,7 +23,7 @@ object GreenhouseScreenCommand : AbstractCommand() {
             }
             .then(
                 RequiredArgumentBuilder.argument<FabricClientCommandSource, String>("crop", StringArgumentType.word())
-                    .suggests { _, builder -> CropWords.suggest(builder) }
+                    .suggests { _, builder -> CropWords.suggestCrops(builder) }
                     .executes {
                         val word = StringArgumentType.getString(it, "crop")
                         val def = CropWords.find(word)

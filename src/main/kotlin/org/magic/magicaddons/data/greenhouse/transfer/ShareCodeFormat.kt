@@ -15,31 +15,6 @@ import org.magic.magicaddons.data.greenhouse.plot.GreenhouseLayout
 import org.magic.magicaddons.data.greenhouse.plot.LayoutSlot
 import org.magic.magicaddons.data.greenhouse.plot.PlotLayout
 
-/**
- * This mod's own way of sharing a preset: one short line for chat, `MAGH1|name|data`. The name is
- * a label the importer takes as the preset's name. Importing also still reads the json this mod
- * wrote before. The data is the bytes below, deflated (raw, no zlib header) and base64url encoded
- * without padding:
- *
- * ```
- * u8    payload version (1)
- * utf   preset name, empty for none            (java modified utf, u16 length first)
- * u8    grid size
- * u8    crop count, then that many utf crop names
- * u8    soil count, then that many utf block ids such as minecraft:sand
- * u8    plot count, then per plot:
- *   utf plot name, empty for none
- *   size*size cells, row by row, two bytes each:
- *     u8 crop: 0 for none, else the crop's index plus one, on the plant's top left cell only
- *     u8 flags: bits 0-1 the mark (0 none, 1 target, 2 ingredient), bits 2-7 the soil
- *              (0 unset, 1 air required, else the soil's index plus two)
- *     payload version 2, after a cell with a crop: u8 count of merged crops, then that many
- *              u8 crop indices plus one
- * ```
- *
- * Version 2 is only written when a plot holds a merged slot, so a plain preset still reads on
- * older builds.
- */
 object ShareCodeFormat : LayoutFormat {
 
     override val displayName: String = "MagicAddons"
@@ -49,7 +24,6 @@ object ShareCodeFormat : LayoutFormat {
     private const val SEPARATOR: Char = '|'
     private const val PAYLOAD_VERSION: Int = 2
 
-    /** The version before merged slots, still written when nothing is merged. */
     private const val PLAIN_VERSION: Int = 1
 
     private const val SOIL_UNSET: Int = 0
@@ -74,10 +48,10 @@ object ShareCodeFormat : LayoutFormat {
         val bytes = RawDeflate.decode(data)
             ?: return LayoutTransferResult.Failure("That share code is damaged.")
 
-        return runCatching { read(bytes, layoutId, label) }.getOrElse { LayoutTransferResult.Failure("That share code is damaged.") }
+        return runCatching { readBytes(bytes, layoutId, label) }.getOrElse { LayoutTransferResult.Failure("That share code is damaged.") }
     }
 
-    private fun read(bytes: ByteArray, layoutId: String, label: String?): LayoutTransferResult {
+    private fun readBytes(bytes: ByteArray, layoutId: String, label: String?): LayoutTransferResult {
         val input = DataInputStream(ByteArrayInputStream(bytes))
         val version = input.readUnsignedByte()
         if (version > PAYLOAD_VERSION) return LayoutTransferResult.Failure("That share code was written by a newer version of the mod.")
@@ -124,12 +98,11 @@ object ShareCodeFormat : LayoutFormat {
             layout
         }.take(GreenhouseLayout.MAX_PLOTS)
 
-        if (plots.isEmpty()) return LayoutTransferResult.Failure("That share code holds no plots.")
+        if (plots.isEmpty()) return LayoutTransferResult.Failure("That share code has no plots.")
         if (plotCount > GreenhouseLayout.MAX_PLOTS) notes.add("Only the first ${GreenhouseLayout.MAX_PLOTS} plots were taken.")
         return LayoutTransferResult.Imported(plots.first(), notes, plots.drop(1), presetName)
     }
 
-    /** Puts [definition] down with its top left on [slot], its own soil under any cell not given one. */
     private fun plant(
         layout: PlotLayout,
         definition: CropDefinition,

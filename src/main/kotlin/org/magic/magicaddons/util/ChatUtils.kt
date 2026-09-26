@@ -16,6 +16,8 @@ import java.time.Instant
 object ChatUtils {
     private const val WARNING_COOLDOWN_SECONDS: Long = 60
 
+    private const val COPY_HINT: String = "Click to copy"
+
     var lastWarningTime: Instant? = null
 
     fun send(message: String){
@@ -74,22 +76,44 @@ object ChatUtils {
         Minecraft.getInstance().player?.sendSystemMessage(component)
     }
 
-    /** The prefixed message, clicking it runs [command]. */
-    fun buildWithCommand(message: String, command: String): Component {
-        return buildWithPrefix(
-            Component.literal(message)
-                .withStyle(
-                    Style.EMPTY
-                        .withColor(ChatFormatting.WHITE)
-                        .withClickEvent(
-                            ClickEvent.RunCommand(command)
-                        )
-                        .withHoverEvent(
-                            HoverEvent.ShowText(
-                                Component.literal("Running: $command")
-                            )
-                        )
+    fun buildWithCommand(message: String, command: String): Component =
+        buildWithPrefix(
+            buildStyled(
+                message,
+                ChatFormatting.WHITE,
+                Component.literal("Running: $command"),
+                ClickEvent.RunCommand(command),
+            )
+        )
+
+    fun buildStyled(
+        text: String,
+        color: ChatFormatting? = null,
+        hover: Component? = null,
+        click: ClickEvent? = null,
+        underlined: Boolean = false,
+    ): MutableComponent {
+        var style = Style.EMPTY
+        color?.let { style = style.withColor(it) }
+        hover?.let { style = style.withHoverEvent(HoverEvent.ShowText(it)) }
+        click?.let { style = style.withClickEvent(it) }
+        if (underlined) style = style.withUnderlined(true)
+
+        return Component.literal(text).setStyle(style)
+    }
+
+    fun buildWithHover(message: String, hover: Component): Component =
+        buildWithPrefix(buildStyled(message, hover = hover))
+
+    fun sendWithCopyableHover(message: String, copied: String, hover: String = copied) {
+        send(
+            buildWithPrefix(
+                buildStyled(
+                    message,
+                    hover = Component.literal("$hover\n$COPY_HINT"),
+                    click = ClickEvent.CopyToClipboard(copied),
                 )
+            )
         )
     }
 

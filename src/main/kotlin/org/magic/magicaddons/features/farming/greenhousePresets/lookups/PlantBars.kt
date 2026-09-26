@@ -44,7 +44,7 @@ object PlantBars {
                 val chargePercent = StandReader.chargeBarPercent(barName) ?: return@forEach
 
                 plant.readings[StandReader.CHARGE] = chargePercent
-                plant.charge = chargeRule.chargeShownBy(chargePercent)
+                plant.charge = chargeRule.clampToNearest2k(chargePercent)
                 plant.chargeKnown = true
                 return@forEach
             }

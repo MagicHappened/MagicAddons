@@ -43,7 +43,7 @@ class CollectScreen : MagicAddonsScreen(Component.literal("Crop Collection"), "t
     private var finishY: Int = 0
     private var quitY: Int = 0
 
-    private fun layout(rows: List<CropCollector.Row>) {
+    private fun layout(rows: List<CropCollector.ChecklistRow>) {
         val widest = rows.maxOfOrNull { font.width(it.label) } ?: 0
 
         panelWidth = (CHECKBOX + PAD * 3 + widest).coerceIn(120, MAX_PANEL_WIDTH)
@@ -165,7 +165,7 @@ class CollectScreen : MagicAddonsScreen(Component.literal("Crop Collection"), "t
             val row = CropCollector.rows().getOrNull(scroll + (y - listTop) / ROW_HEIGHT)
 
             if (row != null && row.collectable) {
-                CropCollector.toggle(row.id)
+                CropCollector.toggleEntry(row.id)
             }
             return true
         }

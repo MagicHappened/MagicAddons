@@ -7,7 +7,6 @@ abstract class AbstractCommand {
     abstract val argument: String
     abstract fun build(): LiteralArgumentBuilder<FabricClientCommandSource>
 
-    /** Shorter names the same command answers to. */
     open val aliases: List<String> = emptyList()
 
 }

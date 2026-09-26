@@ -29,10 +29,7 @@ object StoplightPetal {
         ),
         skyblockId = SkyBlockItemId.item("STOPLIGHT_PETAL"),
         standPoses = mapOf(
-            "57f6c922e742b5c571b1cf091d6d4bc06360f4f03443d79c5174097b0b373d7e" to StandPose.Fixed(Rotations(90.0f, 0.0f, 0.0f)),
-            "4c2b797e7172a05169e313739908515864d6b372f9a5ecc772f81d9c4e402a54" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f)),
-            "d6653a481cc301bcf694a70bfb5969485dc42f1e6803288d24d31b7261b61811" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f)),
-            "f15bd3a726eee1f2f8ffd3a92ae95c44a2f37f6b0345a795b44e0360564c67fe" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f))
+            "57f6c922e742b5c571b1cf091d6d4bc06360f4f03443d79c5174097b0b373d7e" to StandPose.Fixed(Rotations(90.0f, 0.0f, 0.0f))
         ),
         stages = listOf(
             CropStage(

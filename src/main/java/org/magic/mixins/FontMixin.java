@@ -11,8 +11,12 @@ import org.spongepowered.asm.mixin.injection.ModifyVariable;
 @Mixin(Font.class)
 public class FontMixin {
 
-    @ModifyVariable(method = "getGlyphSource", at = @At("HEAD"), argsOnly = true)
-    private FontDescription magicaddons$substituteModFont(FontDescription description) {
-        return ModFont.substitute(description);
+    @ModifyVariable(
+            method = "getGlyphSource",
+            at = @At("HEAD"),
+            argsOnly = true,
+            name = "fontLocation")
+    private FontDescription magicaddons$substituteModFont(FontDescription fontLocation) {
+        return ModFont.substitute(fontLocation);
     }
 }

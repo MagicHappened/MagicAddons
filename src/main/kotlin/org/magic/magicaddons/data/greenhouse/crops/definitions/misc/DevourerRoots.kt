@@ -27,8 +27,7 @@ object DevourerRoots {
                 ),
                 1..1
             )),
-        decayTimeMs = NEVER_DECAYS, // devourer has a decay time, so clicking on the roots with a diagnosis tool will bring up the devourer itself,
-        // but since we are clicking on the roots stand configuration, we should avoid writing the decay time to them on the ui
+        decayTimeMs = NEVER_DECAYS,
         needsWater = false,
         requiredSoil = setOf(Blocks.FARMLAND, Blocks.SOUL_SAND)
 

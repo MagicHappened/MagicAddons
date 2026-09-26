@@ -7,7 +7,6 @@ import org.magic.magicaddons.commands.AbstractCommand
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.VersionChecker
 
-/** Asks GitHub whether a newer build exists, and answers either way. */
 object VersionCommand : AbstractCommand() {
     override val argument: String = "version"
 
@@ -21,7 +20,7 @@ object VersionCommand : AbstractCommand() {
                 val player = Minecraft.getInstance().player ?: return@check
 
                 if (found.outdated) {
-                    player.sendSystemMessage(VersionChecker.message(found))
+                    player.sendSystemMessage(VersionChecker.updateMessage(found))
                 } else {
                     ChatUtils.sendWithPrefix("Up to date (${found.current})")
                 }

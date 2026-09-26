@@ -25,9 +25,7 @@ object Thunderling {
             CropEffect.EffectSpread
         ),
         skyblockId = SkyBlockItemId.item("THUNDERLING"),
-        /** Each skull's pose, found constant across every stage it appears in. */
         standPoses = mapOf(
-            "63650fc953438755b13b6d0b72e77e43d183cf8d911f8fe12ca4d66168308d46" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f)),
             "b35914deb539a1fde1b1c473f8e05cacca257b959e7270d444c1dc5ad2bf7cc8" to StandPose.Fixed(Rotations(22.5f, 22.5f, 0.0f))
         ),
         stages = listOf(

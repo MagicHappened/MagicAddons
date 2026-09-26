@@ -39,16 +39,12 @@ object SafariHelperCommand : AbstractCommand() {
             .then(remainingMobs)
     }
 
-    /**
-     * Reports one zone, or every unfinished zone. One message per biome, so a right-click copy takes
-     * exactly one biome with its title and mobs.
-     */
     private fun sendRemainingReport(source: FabricClientCommandSource, zone: SafariZone?) {
         val zones = zone?.let { listOf(it) } ?: SafariZone.entries.toList()
-        // a finished biome is only worth reporting when it was asked for by name
-        val reported = zones.filter { zone != null || SafariHelper.remainingIn(it).isNotEmpty() }
 
-        if (reported.isEmpty()) {
+        val zonesRemaining = zones.filter { zone != null || SafariHelper.remainingIn(it).isNotEmpty() }
+
+        if (zonesRemaining.isEmpty()) {
             source.sendFeedback(
                 ChatUtils.buildWithPrefix(
                     Component.literal("All safari uniques caught").withStyle(ChatFormatting.GREEN)
@@ -63,20 +59,20 @@ object SafariHelperCommand : AbstractCommand() {
             )
         )
 
-        reported.forEach { biome -> source.sendFeedback(biomeReport(biome)) }
+        zonesRemaining.forEach { biome -> source.sendFeedback(biomeReport(biome)) }
     }
 
     private fun biomeReport(biome: SafariZone): Component {
-        val remaining = SafariHelper.remainingIn(biome)
+        val uniquesRemaining = SafariHelper.remainingIn(biome)
 
         val report = Component.literal("${biome.displayName} Biome left:").withStyle(ChatFormatting.GOLD)
 
-        if (remaining.isEmpty()) {
+        if (uniquesRemaining.isEmpty()) {
             return report.append(Component.literal("\nall caught").withStyle(ChatFormatting.GREEN))
         }
 
         return report.append(
-            Component.literal("\n${remaining.joinToString(", ")}").withStyle(ChatFormatting.GREEN)
+            Component.literal("\n${uniquesRemaining.joinToString(", ")}").withStyle(ChatFormatting.GREEN)
         )
     }
 }

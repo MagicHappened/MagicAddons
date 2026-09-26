@@ -2,6 +2,7 @@ package org.magic.magicaddons.data.greenhouse.crops
 
 import kotlin.math.roundToInt
 import net.minecraft.core.BlockPos
+import net.minecraft.core.Rotations
 import net.minecraft.world.item.Item
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.Blocks
@@ -15,6 +16,9 @@ data class Footprint(val width: Int, val height: Int) {
         (soil.y + height).toDouble(),
         (soil.z + this.height).toDouble()
     )
+
+    fun cellsFrom(x: Int, y: Int): List<Pair<Int, Int>> =
+        (0 until width).flatMap { offsetX -> (0 until height).map { offsetY -> (x + offsetX) to (y + offsetY) } }
 }
 
 data class CropDefinition(
@@ -46,6 +50,9 @@ data class CropDefinition(
     val chargeRule: ChargeRule? = null,
     val stemAgeVaries: Boolean = false
 ){
+    fun headPoseFor(stand: StageStand, x: Int, z: Int): Rotations? =
+        stand.headRotation ?: standPoses[stand.hashString]?.headAt(x, z, stand.offset)
+
     val stagePlacedAt: Int get() = if (isMutation) maxStage else 1
     val elementId: String get() = skyblockId?.id ?: name
     val hasHungerBar: Boolean get() = stages.any { stage -> stage.readers.any { it.key == StandReader.HUNGER } }
@@ -86,13 +93,13 @@ enum class CropEffect(val kind: EffectKind, val percent: Int, val label: String)
 
     EffectSpread(EffectKind.Spread, 0, "Effect Spread");
 
-    enum class EffectKind {
-        Yield,
-        Xp,
-        Water,
-        Drops,
-        Immunity,
-        Spread
+    enum class EffectKind(val positiveLabel: String) {
+        Yield("Harvest Boost"),
+        Xp("XP Boost"),
+        Water("Water Retain"),
+        Drops("Bonus Drops"),
+        Immunity("Immunity"),
+        Spread("Effect Spread")
     }
 
 
@@ -123,8 +130,7 @@ data class ChargeRule(
 
     fun chargeByStageNum(stage: Int): Int = perStage * (stage - 1).coerceAtLeast(0)
 
-    /** the charge a bar filled to [percent] stands for, which can only ever be whole stages */
-    fun chargeShownBy(percent: Int): Int = (limit * percent / 100.0 / perStage).roundToInt() * perStage
+    fun clampToNearest2k(percent: Int): Int = (limit * percent / 100.0 / perStage).roundToInt() * perStage
 }
 
 const val NEVER_DECAYS: Long = -1L

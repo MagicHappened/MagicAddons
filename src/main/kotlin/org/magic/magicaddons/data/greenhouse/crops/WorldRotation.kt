@@ -1,10 +1,8 @@
 package org.magic.magicaddons.data.greenhouse.crops
 
-import kotlin.math.floor
-import net.minecraft.core.Rotations
 import net.minecraft.world.phys.Vec3
 
-/** how skyblock turns its plants, a quarter turn per `(z - x) mod 4` of the base block */
+// skyblock turns the plants by 90 degrees * ((z - x) mod 4)
 object WorldRotation {
 
     fun quarterTurnsAt(x: Int, z: Int): Int = Math.floorMod(z - x, 4)

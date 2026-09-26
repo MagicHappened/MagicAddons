@@ -1,7 +1,6 @@
 package org.magic.magicaddons.data.greenhouse.crops.definitions.mutations.rare
 
 import net.minecraft.core.BlockPos
-import net.minecraft.core.Rotations
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.crops.CropBlocks.melonStemState
 import org.magic.magicaddons.data.greenhouse.crops.CropBlocks.sunflowerState
@@ -13,7 +12,6 @@ import org.magic.magicaddons.data.greenhouse.crops.CropTier
 import org.magic.magicaddons.data.greenhouse.crops.SpawnRule
 import org.magic.magicaddons.data.greenhouse.crops.StageBlock
 import org.magic.magicaddons.data.greenhouse.crops.StageStand
-import org.magic.magicaddons.data.greenhouse.crops.StandPose
 import org.magic.magicaddons.data.greenhouse.crops.definitions.mutations.uncommon.Creambloom
 import org.magic.magicaddons.data.greenhouse.crops.definitions.rarecrops.Fermento
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
@@ -28,10 +26,6 @@ object Cheesebite {
             CropEffect.HarvestLoss
         ),
         skyblockId = SkyBlockItemId.item("CHEESEBITE"),
-        /** Each skull's pose, found constant across every stage it appears in. */
-        standPoses = mapOf(
-            "411f19c783959807338e2bf7080b1e34abb8c452464c0dce5bdf434cdc250717" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f))
-        ),
         stages = listOf(
             CropStage(
                 blocks = listOf(

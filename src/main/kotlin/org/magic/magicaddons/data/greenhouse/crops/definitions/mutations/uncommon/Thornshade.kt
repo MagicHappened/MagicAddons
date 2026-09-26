@@ -1,7 +1,6 @@
 package org.magic.magicaddons.data.greenhouse.crops.definitions.mutations.uncommon
 
 import net.minecraft.core.BlockPos
-import net.minecraft.core.Rotations
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.crops.CropBlocks.melonStemState
 import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
@@ -11,7 +10,6 @@ import org.magic.magicaddons.data.greenhouse.crops.CropTier
 import org.magic.magicaddons.data.greenhouse.crops.SpawnRule
 import org.magic.magicaddons.data.greenhouse.crops.StageBlock
 import org.magic.magicaddons.data.greenhouse.crops.StageStand
-import org.magic.magicaddons.data.greenhouse.crops.StandPose
 import org.magic.magicaddons.data.greenhouse.crops.definitions.mutations.common.Veilshroom
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
@@ -24,11 +22,6 @@ object Thornshade {
             CropEffect.EffectSpread
         ),
         skyblockId = SkyBlockItemId.item("THORNSHADE"),
-        /** Each skull's pose, found constant across every stage it appears in. */
-        standPoses = mapOf(
-            "f847308b40613358974ba94675da63759b442dc50a241a506a77e5ca446f130f" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f)),
-            "dcc9a4a7aadb373adc3be05242924c8985e2f993dd8e4d96f20721052ff7e7a8" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f))
-        ),
         stages = listOf(
             CropStage(
                 blocks = listOf(

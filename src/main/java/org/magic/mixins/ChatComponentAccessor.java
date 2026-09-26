@@ -8,7 +8,6 @@ import org.spongepowered.asm.mixin.gen.Invoker;
 
 import java.util.List;
 
-/** removes a chat line this mod sent */
 @Mixin(ChatComponent.class)
 public interface ChatComponentAccessor {
 

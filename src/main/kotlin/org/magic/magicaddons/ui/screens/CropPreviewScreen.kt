@@ -160,7 +160,7 @@ class CropPreviewScreen(
         val level = Minecraft.getInstance().level ?: return
 
         def.stages
-            .mapNotNull { it.hologramStageAt(level, ORIGIN, def.footprint, def.standPoses, def.rotatesWithPlot) }
+            .mapNotNull { it.hologramStageAt(level, ORIGIN, def) }
             .forEach { data ->
                 data.blockMap.keys.forEach {
                     cropMinY = minOf(cropMinY, it.y.toDouble())
@@ -206,7 +206,7 @@ class CropPreviewScreen(
             ?: return
 
         sceneStage = stageDef
-        sceneData = stageDef.hologramStageAt(level, ORIGIN, def.footprint, def.standPoses, def.rotatesWithPlot)
+        sceneData = stageDef.hologramStageAt(level, ORIGIN, def)
 
         // so the plant is not left floating in a void: the ground it grows from, drawn under it
         soilBlocks = def.requiredSoil.firstOrNull()?.defaultBlockState()?.let { soil ->

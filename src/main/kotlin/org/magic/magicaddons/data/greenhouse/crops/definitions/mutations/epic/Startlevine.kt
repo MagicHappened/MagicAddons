@@ -1,7 +1,6 @@
 package org.magic.magicaddons.data.greenhouse.crops.definitions.mutations.epic
 
 import net.minecraft.core.BlockPos
-import net.minecraft.core.Rotations
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.crops.CropBlocks.melonStemState
 import org.magic.magicaddons.data.greenhouse.crops.CropBlocks.sunflowerState
@@ -14,7 +13,6 @@ import org.magic.magicaddons.data.greenhouse.crops.FIVE_DAY_DECAY_TIME_MS
 import org.magic.magicaddons.data.greenhouse.crops.SpawnRule
 import org.magic.magicaddons.data.greenhouse.crops.StageBlock
 import org.magic.magicaddons.data.greenhouse.crops.StageStand
-import org.magic.magicaddons.data.greenhouse.crops.StandPose
 import org.magic.magicaddons.data.greenhouse.crops.definitions.mutations.rare.Blastberry
 import org.magic.magicaddons.data.greenhouse.crops.definitions.mutations.rare.Cheesebite
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
@@ -30,11 +28,6 @@ object Startlevine {
             CropEffect.HarvestLoss
         ),
         skyblockId = SkyBlockItemId.item("STARTLEVINE"),
-        /** Each skull's pose, found constant across every stage it appears in. */
-        standPoses = mapOf(
-            "a7c545c10c035790615642a9ed6d689448b778cc16ac423c0f7fb19a0d057c6a" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f)),
-            "98bef15a64354093d26b8f002e476b8012ed3ad9b061796953b6b1dad447d7" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f))
-        ),
         stages = listOf(
             CropStage(
                 blocks = listOf(

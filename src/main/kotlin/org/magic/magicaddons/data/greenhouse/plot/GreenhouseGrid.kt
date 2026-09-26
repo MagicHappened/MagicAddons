@@ -53,18 +53,20 @@ class GreenhouseGrid(
     fun bestRotationFor(plan: PlotLayout): Int =
         (0 until 4).maxBy { turns -> configurationForLayout(plan.turnedBy(turns)) }
 
-    /** keeps [currentRotation] unless another turn agrees strictly better */
-    fun bestRotationKeeping(plan: PlotLayout, currentRotation: Int): Int {
+    // compare 2 rotations and keep the one that is better
+    fun compareRotations(plan: PlotLayout, currentRotation: Int): Int {
         val bestRotation = bestRotationFor(plan)
 
         return if (configurationForLayout(plan.turnedBy(bestRotation)) > configurationForLayout(plan.turnedBy(currentRotation))) bestRotation else currentRotation
     }
 
-    class PlotConfiguration(val plants: Int, val soil: Int) : Comparable<PlotConfiguration> {
-        override fun compareTo(other: PlotConfiguration): Int =
-            compareValuesBy(this, other, { it.plants }, { it.soil })
+    class PlotConfiguration(val plants: Int, val clashingCropSlots: Int, val soil: Int) : Comparable<PlotConfiguration> {
+        private val score: Int get() = plants * MATCHED_PLANT_SCORE - clashingCropSlots
 
-        override fun toString(): String = "$plants plants, $soil soil"
+        override fun compareTo(other: PlotConfiguration): Int =
+            compareValuesBy(this, other, { it.score }, { it.soil })
+
+        override fun toString(): String = "$plants plants, $clashingCropSlots clashing slots, $soil soil"
     }
 
     fun configurationForLayout(plan: PlotLayout): PlotConfiguration {
@@ -78,8 +80,19 @@ class GreenhouseGrid(
                         it.plant.slot.x == plannedPlant.slot.x && it.plant.slot.y == plannedPlant.slot.y
             }
         }
+        val clashingCrops = scannedPlants.count { scanned ->
+            val footprint = scanned.plant.cropDef.footprint
+            (0 until footprint.width).any { offsetX ->
+                (0 until footprint.height).any { offsetY ->
+                    val x = scanned.plant.slot.x + offsetX
+                    val y = scanned.plant.slot.y + offsetY
+                    val plannedSoil = plan.getSlot(x, y)?.soil
+                    plannedSoil != null && plannedSoil != layout.getSlot(x, y)?.soil
+                }
+            }
+        }
 
-        return PlotConfiguration(plants, soil)
+        return PlotConfiguration(plants, clashingCrops, soil)
     }
 
     fun getPosForSlotCoords(x: Int, y: Int): BlockPos? {
@@ -89,16 +102,12 @@ class GreenhouseGrid(
         return null
     }
 
-    /** The plan this plot is running, turned the way the plot itself stands. */
-    fun assignedPlan(): PlotLayout? = state.assignedLayout?.turnedBy(state.planTurns)
+    fun assignedPlanAfterTurn(): PlotLayout? = state.assignedLayout?.turnedBy(state.planTurns)
 
-    /** The plant the running plan wants covering ([x], [y]), null where it asks for nothing. */
     fun plannedPlantAt(x: Int, y: Int): Plant? {
-        val plan = assignedPlan() ?: return null
+        val plan = assignedPlanAfterTurn() ?: return null
         return plan.getSlot(x, y)?.let { plan.plantCovering(it) }
     }
-
-    fun plannedMarkAt(x: Int, y: Int): LayoutSlot.Marking? = plannedPlantAt(x, y)?.slot?.mark
 
     fun getSlotAt(blockPos: BlockPos, matchY: Boolean = true): LayoutSlot? {
         val buildArea = plot?.getBuildableArea() ?: return null
@@ -165,10 +174,10 @@ class GreenhouseGrid(
     }
 
 
-    /** every slot within a crop's width of each position */
-    fun scanSlotsReachedFrom(positions: Collection<BlockPos>): Set<Pair<Int, Int>> {
+    fun regionSetFromPositions(positions: Collection<BlockPos>): Set<Pair<Int, Int>> {
         val reach = CropRegistry.allCrops.maxOf { maxOf(it.footprint.width, it.footprint.height) } - 1
         val region = mutableSetOf<Pair<Int, Int>>()
+
         positions.forEach { pos ->
             val slot = getSlotAt(pos, matchY = false) ?: return@forEach
             for (x in (slot.x - reach).coerceAtLeast(0)..(slot.x + reach).coerceAtMost(width - 1)) {
@@ -183,6 +192,7 @@ class GreenhouseGrid(
     private fun footprintOverlaps(scannedPlant: ScannedPlant, region: Set<Pair<Int, Int>>): Boolean {
         val origin = scannedPlant.plant.slot
         val footprint = scannedPlant.plant.cropDef.footprint
+
         for (dx in 0 until footprint.width) {
             for (dy in 0 until footprint.height) {
                 if ((origin.x + dx) to (origin.y + dy) in region) return true
@@ -196,6 +206,7 @@ class GreenhouseGrid(
         scannedPlants.filter { footprintOverlaps(it, region) }.forEach { scannedPlant ->
             val origin = scannedPlant.plant.slot
             val footprint = scannedPlant.plant.cropDef.footprint
+
             for (dx in 0 until footprint.width) {
                 for (dy in 0 until footprint.height) grown.add((origin.x + dx) to (origin.y + dy))
             }
@@ -215,7 +226,7 @@ class GreenhouseGrid(
             .filterNot { it.isMarker }
             .toMutableList()
 
-        val previousBySlot = layout.plants.associateBy { it.slot.x to it.slot.y }
+        val plantBeforeBySlot = layout.plants.associateBy { it.slot.x to it.slot.y }
         val standCache = CropStage.StandCache()
         val merged = mutableListOf<ScannedPlant>()
 
@@ -241,40 +252,36 @@ class GreenhouseGrid(
 
                 val slot = layout.getSlot(x, y) ?: continue
 
-                val previous = previousBySlot[x to y]
-                val scanned = readPlantOn(slot, remainingStands, standCache)
+                val plantBefore = plantBeforeBySlot[x to y]
+                val scannedPlant = slot.soil?.let { soil ->
+                    getPosForSlot(slot)?.let { matchPlantAt(it, soil, remainingStands, slot, standCache) }
+                }
 
-                // a placed mutation stays until the soil is bare or it decays
-                val runtime = if (previous != null && previous.isPlacedMutation && !shouldReplacePlacedPlant(previous, scanned)) {
-                    stillPlaced(previous, remainingStands) ?: continue
+                val scannedPlantResult = if (plantBefore != null && plantBefore.isPlacedMutation && !scanMatchesPlacedPlant(plantBefore, scannedPlant)) {
+                    plantBeforeIfFootprintFilled(plantBefore, remainingStands) ?: continue
                 } else {
-                    if (scanned == null) {
-                        previous?.let { callbacks.plantLostInScan(it, getPosForSlot(slot) ?: continue, remainingStands) }
-                        continue
-                    }
-                    val scannedPlant = scanned
+                    if (scannedPlant == null) continue
                     val def = scannedPlant.plant.cropDef
 
-                    if (previous != null && previous.elementId == scannedPlant.plant.elementId) {
-                        keepRecordedState(previous, scannedPlant)
+                    if (plantBefore != null && plantBefore.cropTypeEquals(scannedPlant.plant)) {
+                        keepRecordedState(plantBefore, scannedPlant)
                     } else {
-                        // only a plant placed down counts as placed
                         if (def.isMutation && state.lastScanTime != null) {
                             val placedNow = callbacks.placementConfirmed(def, scannedPlant.plant.slot, this)
                             if (scannedPlant.plant.placed || placedNow) {
                                 callbacks.markAsPlaced(scannedPlant.plant)
-                            } else if (previous == null) {
+                            } else if (plantBefore == null) {
                                 callbacks.claimSpawnedMutation(scannedPlant.plant, layout)
-                                capToTicksSinceLook(scannedPlant.plant)
+                                capStageToTicksSinceScan(scannedPlant.plant)
                             }
                         }
                         scannedPlant
                     }
                 }
 
-                val def = runtime.plant.cropDef
+                val def = scannedPlantResult.plant.cropDef
 
-                remainingStands.removeAll((runtime.stands ?: emptyList()).toSet())
+                remainingStands.removeAll((scannedPlantResult.stands ?: emptyList()).toSet())
 
                 if (x + def.footprint.width > width ||
                     y + def.footprint.height > height
@@ -286,7 +293,7 @@ class GreenhouseGrid(
                     }
                 }
 
-                merged.add(runtime)
+                merged.add(scannedPlantResult)
             }
         }
 
@@ -299,7 +306,7 @@ class GreenhouseGrid(
         return true
     }
 
-    private fun capToTicksSinceLook(plant: Plant) {
+    private fun capStageToTicksSinceScan(plant: Plant) {
         val ticks = state.ticksSinceLastScan
         if (ticks <= 0) return
 
@@ -311,63 +318,59 @@ class GreenhouseGrid(
             if (stageRange.first == highestStage) PlantStage.Known(highestStage) else PlantStage.Estimated(stageRange.first..highestStage)
     }
 
-    /** the same crop, or the dead plant it decays into */
-    private fun shouldReplacePlacedPlant(previous: Plant, scanned: ScannedPlant?): Boolean {
+    private fun scanMatchesPlacedPlant(previous: Plant, scanned: ScannedPlant?): Boolean {
         val scannedPlant = scanned?.plant ?: return false
 
-        return scannedPlant.elementId == previous.elementId || scannedPlant.cropDef === DeadPlant.definition
+        return scannedPlant.cropTypeEquals(previous) || scannedPlant.cropDef === DeadPlant.definition
     }
 
-    /** null once the soil is bare */
-    private fun stillPlaced(
+    private fun plantBeforeIfFootprintFilled(
         previous: Plant,
-        remainingStands: MutableList<ArmorStand>
+        remainingStands: List<ArmorStand>
     ): ScannedPlant? {
         val origin = getPosForSlot(previous.slot) ?: return null
 
-        val (stands, blocks) = whatRemainsInFootprint(origin, previous.cropDef.footprint, remainingStands)
+        val (stands, blocks) = existsInFootprint(origin, previous.cropDef.footprint, remainingStands)
         if (stands.isEmpty() && blocks.isEmpty()) return null
 
         return ScannedPlant(plant = previous, stands = stands, blocks = blocks)
     }
 
     private fun keepRecordedState(
-        previous: Plant,
-        scanned: ScannedPlant
+        plantBefore: Plant,
+        plantAfter: ScannedPlant
     ): ScannedPlant {
-        val scannedPlant = scanned.plant
-        scannedPlant.appearedAt = previous.appearedAt
+        val scannedPlant = plantAfter.plant
+        scannedPlant.appearedAt = plantBefore.appearedAt
 
-        scannedPlant.charge = previous.charge
-        scannedPlant.chargeKnown = previous.chargeKnown
+        scannedPlant.charge = plantBefore.charge
+        scannedPlant.chargeKnown = plantBefore.chargeKnown
 
-        scannedPlant.firstSeenStage = previous.firstSeenStage ?: scannedPlant.lowestStage
-        scannedPlant.placed = previous.placed
+        scannedPlant.firstSeenStage = plantBefore.firstSeenStage ?: scannedPlant.lowestStage
+        scannedPlant.placed = plantBefore.placed
 
-        // the charge and sleep are not carried: each is read afresh off the look every scan, since
-        // a plant woken since would otherwise stay asleep in the record for good
         val readerKeys = scannedPlant.cropDef.stages.flatMapTo(mutableSetOf()) { stage -> stage.readers.map { it.key } } -
                 StandReader.CHARGE - StandReader.ASLEEP
-        previous.readings.forEach { (key, value) ->
+        plantBefore.readings.forEach { (key, value) ->
             if (key in readerKeys) scannedPlant.readings.putIfAbsent(key, value)
         }
         settleCharge(scannedPlant)
 
-        val previousWater = previous.waterLevel
+        val waterBefore = plantBefore.waterLevel
 
-        if (previousWater != null && previousWater <= PlotPrediction.WATER_DEATH_LEVEL && scannedPlant.consumesWater) {
+        if (waterBefore != null && waterBefore <= PlotPrediction.WATER_DEATH_LEVEL && scannedPlant.consumesWater) {
             scannedPlant.waterLevel =
-                PlotPrediction.lowestWaterLevelStillAlive(previousWater, waterEffectAt(layout, scannedPlant.slot))
+                PlotPrediction.lowestWaterLevelStillAlive(waterBefore, waterEffectAt(layout, scannedPlant.slot))
             scannedPlant.waterBestCase = null
             scannedPlant.waterPredictedInDebt = true
         } else {
-            scannedPlant.waterLevel = previousWater
-            scannedPlant.waterBestCase = previous.waterBestCase
-            scannedPlant.waterPredictedInDebt = previous.waterPredictedInDebt
-            scannedPlant.waterExact = previous.waterExact
+            scannedPlant.waterLevel = waterBefore
+            scannedPlant.waterBestCase = plantBefore.waterBestCase
+            scannedPlant.waterPredictedInDebt = plantBefore.waterPredictedInDebt
+            scannedPlant.waterExact = plantBefore.waterExact
         }
 
-        val previousStage = previous.growthStage
+        val previousStage = plantBefore.growthStage
         val scannedStage = scannedPlant.growthStage
 
         if (previousStage is PlantStage.Known && scannedStage is PlantStage.Estimated &&
@@ -376,7 +379,7 @@ class GreenhouseGrid(
             scannedPlant.growthStage = previousStage
         }
 
-        return scanned
+        return plantAfter
     }
 
     fun simulateGreenhouse(ticks: Int) {
@@ -386,7 +389,7 @@ class GreenhouseGrid(
     }
 
     fun predictedLayout(ticks: Int): PlotLayout {
-        val layoutCopy = layout.deepCopy()
+        val layoutCopy = layout.freshCopy()
 
         simulateLayout(layoutCopy, ticks)
 
@@ -396,7 +399,7 @@ class GreenhouseGrid(
     // null if predicted to not grow
     fun ticksUntilGrown(from: PlotLayout, slot: LayoutSlot, tickMs: Long? = GreenhouseTickTime.tickMs): Int? {
         val knownTickMs = tickMs ?: return null
-        val layoutCopy = from.deepCopy()
+        val layoutCopy = from.freshCopy()
         val soggybud = layoutCopy.plants.find { it.slot.x == slot.x && it.slot.y == slot.y } ?: return null
         val ticksBeforeDecay = soggybud.decayRemainingMs?.let { (it / knownTickMs).toInt() }
         val limitTicks = minOf(ticksBeforeDecay ?: SOGGYBUD_GROWTH_LIMIT_TICKS, SOGGYBUD_GROWTH_LIMIT_TICKS)
@@ -413,6 +416,8 @@ class GreenhouseGrid(
     companion object {
 
         private const val SOGGYBUD_GROWTH_LIMIT_TICKS: Int = 200
+
+        private const val MATCHED_PLANT_SCORE: Int = 2
 
         class PredictedLostPlants(var thunderlingsDestroyed: Int = 0, var glasscornsReset: Int = 0)
 
@@ -612,7 +617,7 @@ class GreenhouseGrid(
             for (cropCandidate in cropCandidates) {
                 for (stageCandidate in cropCandidate.stages) {
                     val stageResult = stageCandidate.matchesStage(
-                        origin, remainingStands, cropCandidate.footprint, cropCandidate.rotatesWithPlot,
+                        origin, remainingStands, cropCandidate,
                         ignoreStemAge = cropCandidate.stemAgeVaries,
                         standCache = standCache
                     ) ?: continue
@@ -679,7 +684,7 @@ class GreenhouseGrid(
             val placedCrop = callbacks.placedCropAt(origin) ?: return null
             if (soil !in placedCrop.requiredSoil) return null
 
-            val (stands, blocks) = whatRemainsInFootprint(origin, placedCrop.footprint, remainingStands)
+            val (stands, blocks) = existsInFootprint(origin, placedCrop.footprint, remainingStands)
             if (stands.isEmpty() && blocks.isEmpty()) {
                 callbacks.forgetPlayerPlacementAt(origin)
                 return null
@@ -707,7 +712,7 @@ class GreenhouseGrid(
             val shown = plant.readings[StandReader.CHARGE]
 
             if (shown != null) {
-                plant.charge = rule.chargeShownBy(shown)
+                plant.charge = rule.clampToNearest2k(shown)
                 plant.chargeKnown = true
                 return
             }
@@ -721,15 +726,12 @@ class GreenhouseGrid(
             plant.chargeKnown = stage <= 1
         }
 
-        /** markers included: bars over a plant are marker stands */
         private fun currentStandsInFootprint(origin: BlockPos, footprint: Footprint): List<ArmorStand> {
             val level = Minecraft.getInstance().level ?: return emptyList()
-
             return level.getEntitiesOfClass(ArmorStand::class.java, footprint.spaceAbove(origin, CROP_HEIGHT))
         }
 
-        /** The unclaimed stands and the blocks above the soil across [footprint] from [origin]. */
-        private fun whatRemainsInFootprint(
+        private fun existsInFootprint(
             origin: BlockPos,
             footprint: Footprint,
             remainingStands: List<ArmorStand>
@@ -748,17 +750,6 @@ class GreenhouseGrid(
             }
             return stands to blocks
         }
-    }
-
-    fun readPlantOn(
-        slot: LayoutSlot,
-        remainingStands: MutableList<ArmorStand>,
-        standCache: CropStage.StandCache = CropStage.StandCache()
-    ): ScannedPlant? {
-        val soil = slot.soil ?: return null
-        val origin = getPosForSlot(slot) ?: return null
-
-        return matchPlantAt(origin, soil, remainingStands, slot, standCache)
     }
 
     data class GridState(

@@ -26,7 +26,6 @@ object PlantBoyAdvance {
             CropEffect.HarvestBoost
         ),
         skyblockId = SkyBlockItemId.item("PLANTBOY_ADVANCE"),
-        /** Each skull's pose, found constant across every stage it appears in. */
         standPoses = mapOf(
             "765accb195aad0d7212eedd647e3f80ed5d4acdffe4329ead074f7587f366457" to StandPose.Fixed(Rotations(-22.5f, 0.0f, 0.0f)),
             "f10e337f0a17a99e94bed4e8b13d5c7863debdd301f457da19763cf73a34d200" to StandPose.Fixed(Rotations(-45.0f, 0.0f, 0.0f))
@@ -126,6 +125,10 @@ object PlantBoyAdvance {
                     rotations = listOf(
                         Rotations(45.0f, 180.0f, 0.0f),
                         Rotations(45.0f, 0.0f, 0.0f)
+                    ),
+                    yRotations = listOf(
+                        90.0f,
+                        90.0f
                     ),
                     hashString = "9eaf5fc0bf98649111f53d7516b18dec5d9d13f19273bef2b2b04f068ca9d337",
                     isSmall = false
