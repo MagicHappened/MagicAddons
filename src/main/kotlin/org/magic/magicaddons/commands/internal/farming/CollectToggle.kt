@@ -21,7 +21,7 @@ object CollectToggle : AbstractCommand() {
                     "id",
                     IntegerArgumentType.integer(0)
                 ).executes {
-                    CropCollector.toggle(IntegerArgumentType.getInteger(it, "id"))
+                    CropCollector.toggleEntry(IntegerArgumentType.getInteger(it, "id"))
                     return@executes 1
                 }
             )

@@ -120,8 +120,7 @@ open class CropStage(
     fun matchesStage(
         origin: BlockPos,
         remainingStands: List<ArmorStand>,
-        footprint: Footprint,
-        rotatesWithPlot: Boolean = true,
+        definition: CropDefinition,
         ignoreStemAge: Boolean = false,
         standCache: StandCache = StandCache()
     ): StageMatch? {
@@ -142,12 +141,13 @@ open class CropStage(
             score += 1
         }
         val footprintCenter = Vec3(
-            origin.x + footprint.width / 2.0,
+            origin.x + definition.footprint.width / 2.0,
             origin.y.toDouble(),
-            origin.z + footprint.height / 2.0
+            origin.z + definition.footprint.height / 2.0
         )
 
-        val quarterTurns = if (rotatesWithPlot) WorldRotation.quarterTurnsAt(origin.x, origin.z) else 0
+        val quarterTurns =
+            if (definition.rotatesWithPlot) WorldRotation.quarterTurnsAt(origin.x, origin.z) else 0
         val matchedStands = mutableListOf<Entity>()
 
         for (recordedStand in this.armorStands.orEmpty()) {
@@ -167,7 +167,8 @@ open class CropStage(
         }
 
         val matchingHeadPoses = this.armorStands.orEmpty().zip(matchedStands).count { (recordedStand, stand) ->
-            val recordedHeadPose = recordedStand.headRotation ?: return@count false
+            val recordedHeadPose =
+                definition.headPoseFor(recordedStand, origin.x, origin.z) ?: return@count false
             (stand as? ArmorStand)?.headPose?.let { headPosesMatch(it, recordedHeadPose) } == true
         }
 
@@ -196,19 +197,18 @@ open class CropStage(
     fun hologramStageAt(
         level: Level,
         baseBlock: BlockPos,
-        footprint: Footprint,
-        standPoses: Map<String, StandPose> = emptyMap(),
-        rotatesWithPlot: Boolean = true
+        definition: CropDefinition
     ): HologramStage {
         val renderStands = mutableListOf<ArmorStand>()
         val blockMap = mutableMapOf<BlockPos, BlockState>()
 
-        val quarterTurns = if (rotatesWithPlot) WorldRotation.quarterTurnsAt(baseBlock.x, baseBlock.z) else 0
+        val quarterTurns =
+            if (definition.rotatesWithPlot) WorldRotation.quarterTurnsAt(baseBlock.x, baseBlock.z) else 0
 
         val footprintCenter = Vec3(
-            baseBlock.x + footprint.width / 2.0,
+            baseBlock.x + definition.footprint.width / 2.0,
             baseBlock.y.toDouble(),
-            baseBlock.z + footprint.height / 2.0
+            baseBlock.z + definition.footprint.height / 2.0
         )
 
         blocks?.forEach { recordedBlock ->
@@ -237,12 +237,10 @@ open class CropStage(
 
             stand.id = FAKE_ENTITY_ID
             stand.isInvisible = true
-            val cropStandPose = recordedStand.hashString?.let { standPoses[it] }
+            val cropStandPose = recordedStand.hashString?.let { definition.standPoses[it] }
 
-            val headPose = recordedStand.headRotation
-                ?: cropStandPose?.headAt(baseBlock.x, baseBlock.z, recordedStand.offset)
-
-            headPose?.let { stand.headPose = it }
+            definition.headPoseFor(recordedStand, baseBlock.x, baseBlock.z)
+                ?.let { stand.headPose = it }
             val yaw = Mth.wrapDegrees((recordedStand.yRotation ?: cropStandPose?.yRotation ?: 0f) + 90f * quarterTurns)
 
             stand.yRot = yaw

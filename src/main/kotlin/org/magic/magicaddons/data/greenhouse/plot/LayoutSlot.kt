@@ -8,7 +8,6 @@ class LayoutSlot(
     var soil: Block?,
     var mark: Marking? = null
 ) {
-    /** the colour belongs to the marking, so a role reads the same everywhere */
     enum class Marking(val color: Int) {
         Target(0xFF2DBCF6.toInt()),
         Ingredient(0xFF89F336.toInt())

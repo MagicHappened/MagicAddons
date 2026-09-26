@@ -10,7 +10,6 @@ import org.magic.magicaddons.data.greenhouse.crops.CropStage
 import org.magic.magicaddons.data.greenhouse.crops.CropTier
 import org.magic.magicaddons.data.greenhouse.crops.StageBlock
 import org.magic.magicaddons.data.greenhouse.crops.StageStand
-import org.magic.magicaddons.data.greenhouse.crops.StandPose
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
 object Pumpkin {
@@ -23,10 +22,6 @@ object Pumpkin {
         ),
         skyblockId = SkyBlockItemId.item("PUMPKIN"),
         aliases = listOf(SkyBlockItemId.item("PUMPKIN_SEEDS")),
-        /** Each skull's pose, found constant across every stage it appears in. */
-        standPoses = mapOf(
-            "18bd4aa55673e90a3c611117277d94f6ce185b5d13d2a862a3376f50a6139c4f" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f))
-        ),
         stages = listOf(
             CropStage(
                 blocks = listOf(
@@ -75,7 +70,6 @@ object Pumpkin {
                         hashString = "18bd4aa55673e90a3c611117277d94f6ce185b5d13d2a862a3376f50a6139c4f"
                     )
                 ),
-                // stages three and four look the same, so one entry covers both
                 3..4,
             ),
             CropStage(

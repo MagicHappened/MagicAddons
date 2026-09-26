@@ -24,11 +24,6 @@ import org.spongepowered.asm.mixin.injection.At;
 @Mixin(CustomHeadLayer.class)
 public class CustomHeadLayerMixin {
 
-    /**
-     * A ghost head is drawn cutout unless plants are see-through: translucent models are drawn a
-     * pass each, cutout models batch by skin. The translucent type culls back faces, since without
-     * culling the inside of the skull shows through its front.
-     */
     @WrapOperation(
             method = "resolveSkullRenderType",
             at = @At(
@@ -39,7 +34,7 @@ public class CustomHeadLayerMixin {
     private RenderType cutoutForGhosts(
             PlayerSkinRenderCache.RenderInfo info,
             Operation<RenderType> original,
-            @Local(argsOnly = true) LivingEntityRenderState state
+            @Local(argsOnly = true, name = "state") LivingEntityRenderState state
     ) {
         if (state instanceof WrappedEntityRenderState wrapped && wrapped.magicaddons$headOutlineColor() != 0) {
             Identifier texture = info.playerSkin().body().texturePath();
@@ -50,6 +45,7 @@ public class CustomHeadLayerMixin {
         return original.call(info);
     }
 
+    @Unique
     private static final int OPAQUE = 0xFF;
 
     @WrapOperation(
@@ -71,14 +67,12 @@ public class CustomHeadLayerMixin {
             Operation<Void> original,
             @Local(argsOnly = true, name = "state") LivingEntityRenderState state
             ){
-        // an outline meant for the head rather than the whole body arrives here instead of on
-        // the render state, since a colour there outlines the whole body as well
+
         if (state instanceof WrappedEntityRenderState wrapped
                 && wrapped.magicaddons$headOutlineColor() != 0) {
             outlineColor = wrapped.magicaddons$headOutlineColor();
         }
 
-        // a ghost head is faded by the plant transparency; a stand in the way is tinted red
         boolean ghost = state instanceof WrappedEntityRenderState wrapped && wrapped.magicaddons$headOutlineColor() != 0;
         if (ghost && GreenhousePresets.plantAlpha() < OPAQUE) {
             submitSkullWithTint(
@@ -126,10 +120,6 @@ public class CustomHeadLayerMixin {
         );
     }
 
-    /**
-     * The tinted stand in for vanilla's skull submission. Neither pushes nor pops, as vanilla does
-     * not: popping here took an entry nothing had put there.
-     */
     @Unique
     private static void submitSkullWithTint(
             float animationValue,

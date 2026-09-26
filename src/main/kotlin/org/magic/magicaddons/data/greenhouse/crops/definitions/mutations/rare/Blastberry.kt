@@ -12,7 +12,6 @@ import org.magic.magicaddons.data.greenhouse.crops.CropTier
 import org.magic.magicaddons.data.greenhouse.crops.SpawnRule
 import org.magic.magicaddons.data.greenhouse.crops.StageBlock
 import org.magic.magicaddons.data.greenhouse.crops.StageStand
-import org.magic.magicaddons.data.greenhouse.crops.StandPose
 import org.magic.magicaddons.data.greenhouse.crops.definitions.mutations.common.Ashwreath
 import org.magic.magicaddons.data.greenhouse.crops.definitions.mutations.uncommon.Chocoberry
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
@@ -28,10 +27,6 @@ object Blastberry {
             CropEffect.XpLoss
         ),
         skyblockId = SkyBlockItemId.item("BLASTBERRY"),
-        /** Each skull's pose, found constant across every stage it appears in. */
-        standPoses = mapOf(
-            "bacae0e87ffeadb750260c2e6531004d69d14473376cb22577fafe70569349f3" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f))
-        ),
         stages = listOf(
             CropStage(
                 blocks = listOf(),
@@ -69,7 +64,6 @@ object Blastberry {
                 ),
                 3..3
             ),
-            // the run could not name the block at stage four, so the stand alone says the stage
             CropStage(
                 blocks = null,
                 armorStands = listOf(

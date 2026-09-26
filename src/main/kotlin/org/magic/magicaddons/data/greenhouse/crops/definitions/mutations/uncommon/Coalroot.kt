@@ -26,7 +26,6 @@ object Coalroot {
             CropEffect.XpBoost
         ),
         skyblockId = SkyBlockItemId.item("COALROOT"),
-        /** Each skull's pose, found constant across every stage it appears in. */
         standPoses = mapOf(
             "f946443fa0039354edd31a70c749c4f963464744dc20b79137bd9910356ee90" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f))
         ),

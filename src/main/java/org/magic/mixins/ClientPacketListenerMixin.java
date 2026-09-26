@@ -118,7 +118,6 @@ public class ClientPacketListenerMixin {
         EntityUtils.INSTANCE.noteDataChanged(packet.getEntityId());
     }
 
-    /** stands are moved into place after they spawn, which changes what a plot scan reads */
     @Inject(method = "handleEntityPositionSync", at = @At("TAIL"))
     private void onEntityPositionSync(ClientboundEntityPositionSyncPacket packet, CallbackInfo ci) {
         GreenhouseData.INSTANCE.noteEntityChanged(packet.id(), packet.values().position());

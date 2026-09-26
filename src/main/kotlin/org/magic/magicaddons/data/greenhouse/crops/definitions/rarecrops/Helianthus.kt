@@ -1,13 +1,11 @@
 package org.magic.magicaddons.data.greenhouse.crops.definitions.rarecrops
 
-import net.minecraft.core.Rotations
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
 import org.magic.magicaddons.data.greenhouse.crops.CropStage
 import org.magic.magicaddons.data.greenhouse.crops.CropTier
 import org.magic.magicaddons.data.greenhouse.crops.NEVER_DECAYS
 import org.magic.magicaddons.data.greenhouse.crops.StageStand
-import org.magic.magicaddons.data.greenhouse.crops.StandPose
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
 object Helianthus {
@@ -15,12 +13,7 @@ object Helianthus {
         name = "Helianthus",
         tier = CropTier.RareCrop,
         skyblockId = SkyBlockItemId.item("HELIANTHUS"),
-        /** Each skull's pose, found constant across every stage it appears in. */
-        standPoses = mapOf(
-            "a98ac9224491a9dd480531bd971591724ce29921ec8f141461276f1bf3a59ed3" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f))
-        ),
         stages = listOf(
-            // placed rather than grown, so it has the one look it is put down with
             CropStage(
                 blocks = listOf(),
                 armorStands = listOf(

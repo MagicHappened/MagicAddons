@@ -5,8 +5,6 @@ import net.fabricmc.loader.api.FabricLoader
 import net.minecraft.ChatFormatting
 import net.minecraft.network.chat.ClickEvent
 import net.minecraft.network.chat.Component
-import net.minecraft.network.chat.HoverEvent
-import net.minecraft.network.chat.Style
 import org.magic.magicaddons.Common
 import java.net.URI
 import java.net.http.HttpClient
@@ -15,10 +13,6 @@ import java.net.http.HttpResponse
 import java.time.Duration
 import java.util.concurrent.CompletableFuture
 
-/**
- * Whether a newer build of the mod exists. Release builds compare against the published releases,
- * beta builds against the head of the beta branch.
- */
 object VersionChecker {
 
     private const val REPO = "MagicHappened/MagicAddons"
@@ -32,13 +26,11 @@ object VersionChecker {
         HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build()
     }
 
-    /** What a check found, once it has been made. Null until then. */
     var result: Result? = null
         private set
 
     private var checking = false
 
-    /** The outcome of a check: what is running, what is newest, and how far apart they are. */
     data class Result(
         val current: String,
         val latest: String,
@@ -47,7 +39,6 @@ object VersionChecker {
     ) {
         val outdated: Boolean get() = current != latest
 
-        /** "(1.2.1 -> 1.5.3 - 5 version changes)", the count dropped when only one version passed. */
         fun span(): String = when {
             beta && versionsBehind > 1 -> "($current -> $latest - $versionsBehind commits behind)"
             beta || versionsBehind <= 1 -> "($current -> $latest)"
@@ -60,26 +51,18 @@ object VersionChecker {
         fun page(): String = if (beta) BETA_PAGE else RELEASES_PAGE
     }
 
-    /** The version this jar was built as, straight from its own metadata. */
     fun currentVersion(): String =
         FabricLoader.getInstance()
             .getModContainer(Common.MOD_ID)
             .map { it.metadata.version.friendlyString }
             .orElse("unknown")
 
-    /** Whether this build came off the beta branch, which its build metadata says. */
     fun onBeta(): Boolean = currentVersion().contains(".beta.")
 
-    /** The release number without the Minecraft version and build tag: 1.2.1+26.1.2 is 1.2.1. */
     private fun releaseNumber(version: String): String = version.substringBefore('+')
 
-    /** The commit a beta build came from: 1.2.1+26.1.2.beta.c1e57d1 is c1e57d1, a local build's "-dirty" dropped. */
     private fun betaCommit(version: String): String = version.substringAfter(".beta.", "").removeSuffix("-dirty")
 
-    /**
-     * Asks GitHub what the newest build is, once. Runs off the game thread and hands the answer
-     * back through [result], which stays null when anything about the request fails.
-     */
     fun check(onDone: (Result) -> Unit = {}) {
         if (checking) return
         result?.let {
@@ -106,7 +89,6 @@ object VersionChecker {
 
     private fun fetch(): Result? = if (onBeta()) fetchBeta() else fetchRelease()
 
-    /** The releases list, newest first: the top entry is the latest, and the rest give the count. */
     private fun fetchRelease(): Result? {
         val body = get(RELEASES_URL) ?: return null
         val tags = JsonParser.parseString(body).asJsonArray
@@ -117,16 +99,11 @@ object VersionChecker {
         val current = releaseNumber(currentVersion())
         val latest = tags.first()
 
-        // how many releases sit above the one being run, so a jump of several says so
         val behind = tags.indexOf(current).let { if (it < 0) 1 else it }
 
         return Result(current, latest, behind, beta = false)
     }
 
-    /**
-     * Whether the beta branch has moved on past the commit being run. A build ahead of the branch,
-     * or of a commit GitHub does not know, is not behind; only commits the branch added count.
-     */
     private fun fetchBeta(): Result? {
         val current = currentVersion()
         val running = betaCommit(current)
@@ -159,14 +136,13 @@ object VersionChecker {
         return response.body().takeIf { response.statusCode() == 200 }
     }
 
-    /** The chat line, with the download page behind a click. */
-    fun message(found: Result): Component =
+    fun updateMessage(found: Result): Component =
         ChatUtils.buildWithPrefix(
-            Component.literal(found.headline()).setStyle(
-                Style.EMPTY
-                    .withColor(ChatFormatting.WHITE)
-                    .withClickEvent(ClickEvent.OpenUrl(URI(found.page())))
-                    .withHoverEvent(HoverEvent.ShowText(Component.literal(found.page())))
+            ChatUtils.buildStyled(
+                found.headline(),
+                ChatFormatting.WHITE,
+                Component.literal(found.page()),
+                ClickEvent.OpenUrl(URI(found.page())),
             )
         )
 }

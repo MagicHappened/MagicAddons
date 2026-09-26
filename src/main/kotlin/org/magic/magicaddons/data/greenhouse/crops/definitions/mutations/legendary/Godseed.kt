@@ -13,7 +13,6 @@ import org.magic.magicaddons.data.greenhouse.crops.Footprint
 import org.magic.magicaddons.data.greenhouse.crops.SpawnRule
 import org.magic.magicaddons.data.greenhouse.crops.StageBlock
 import org.magic.magicaddons.data.greenhouse.crops.StageStand
-import org.magic.magicaddons.data.greenhouse.crops.StandPose
 import org.magic.magicaddons.data.greenhouse.crops.TEN_DAY_DECAY_TIME_MS
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
@@ -42,11 +41,6 @@ object Godseed {
         ),
         skyblockId = SkyBlockItemId.item("GODSEED"),
         footprint = Footprint(3, 3),
-        /** Each skull's pose, found constant across every stage it appears in. */
-        standPoses = mapOf(
-            "9bc7d71431dcdcfa432e8ef9fdb6aa4c4683786ac657e7ece038fb94f71e42be" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f)),
-            "ab849bae7ab0927a52836da1a45768527d1c7be5853a9290a283ae9aca0c908b" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f))
-        ),
         stages = listOf(
             CropStage(
                 blocks = StageBlock.atPositions(
@@ -386,7 +380,6 @@ object Godseed {
                         Vec3(1.0, -0.5625, -1.0),
                         Vec3(1.0, 0.5625, -1.0),
                         Vec3(1.0, -0.5625, 1.0),
-                        // this one corner really does sit 0.03125 below its three mirrors, read twice
                         Vec3(1.0, 0.53125, 1.0)
                     ),
                     rotations = listOf(

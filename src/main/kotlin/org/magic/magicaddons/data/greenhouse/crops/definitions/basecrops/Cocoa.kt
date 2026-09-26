@@ -23,10 +23,8 @@ object Cocoa {
             CropEffect.Immunity
         ),
         skyblockId = SkyBlockItemId.item("INK_SACK-3"),
-        // the same item written the other way round, so whichever separator the game hands us matches
         aliases = listOf(SkyBlockItemId.item("INK_SACK:3")),
         displayItem = Items.COCOA_BEANS,
-        /** Each skull's pose, found constant across every stage it appears in. */
         standPoses = mapOf(
             "db8f7d08f93594e385058afda93b0a077b218345751c1b9415d2623110e6afbd" to StandPose.Fixed(Rotations(0.0f, 22.5f, 22.5f))
         ),

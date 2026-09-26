@@ -18,13 +18,11 @@ public class MinecraftMixin {
         EventBus.post(new WorldTickEvent());
     }
 
-    /** Every level swap comes through here: a respawn, a server switch, a login. The old level is torn down after. */
     @Inject(method = "setLevel", at = @At("HEAD"))
     private void onLevelReplaced(ClientLevel level, CallbackInfo ci) {
         EventBus.post(new LevelUnloadingEvent());
     }
 
-    /** Every disconnect comes through here, closing the game included. */
     @Inject(method = "clearClientLevel", at = @At("HEAD"))
     private void onLevelCleared(Screen screen, CallbackInfo ci) {
         EventBus.post(new LevelUnloadingEvent());

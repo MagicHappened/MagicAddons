@@ -219,7 +219,7 @@ object LayoutRenderState {
             val pos = grid.getPosForSlotCoords(slot.x, slot.y) ?: return@forEach
             val wantedState = wantedSoil.defaultBlockState()
 
-            if (markBlockDifference(level, pos, wantedState, layout.soilsAcceptedAt(slot), marks, ghosts)) return@forEach
+            if (markBlockDifference(level, pos, wantedState, layout.soilsPlantAcceptsAt(slot), marks, ghosts)) return@forEach
 
             soilComplete = false
             if (needsPlacing(level, pos, wantedState)) soilNeeded.merge(wantedSoil, 1, Int::plus)
@@ -263,7 +263,7 @@ object LayoutRenderState {
                 cropsNeeded.merge(layoutPlant.cropDef, 1, Int::plus)
 
                 val stage = ghostStageOf(layoutPlant.cropDef) ?: return@forEach
-                val render = stage.hologramStageAt(level, soil, layoutPlant.cropDef.footprint, layoutPlant.cropDef.standPoses, layoutPlant.cropDef.rotatesWithPlot)
+                val render = stage.hologramStageAt(level, soil, layoutPlant.cropDef)
 
                 render.blockMap.forEach { (pos, state) ->
                     markBlockDifference(level, pos, state, emptySet(), marks, ghosts)

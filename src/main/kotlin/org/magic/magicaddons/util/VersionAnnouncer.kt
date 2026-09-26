@@ -44,6 +44,6 @@ object VersionAnnouncer {
 
         if (!found.outdated) return
 
-        player.sendSystemMessage(VersionChecker.message(found))
+        player.sendSystemMessage(VersionChecker.updateMessage(found))
     }
 }

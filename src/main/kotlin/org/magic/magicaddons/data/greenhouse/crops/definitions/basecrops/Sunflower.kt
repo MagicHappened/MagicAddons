@@ -24,7 +24,6 @@ object Sunflower {
             CropEffect.BonusDrops
         ),
         skyblockId = SkyBlockItemId.item("DOUBLE_PLANT"),
-        /** Each skull's pose, found constant across every stage it appears in. */
         standPoses = mapOf(
             "8082ca3aa210204d1daa8a3b737f594e102daf3c87b776530d49ba79b9b22e71" to StandPose.Fixed(Rotations(15.0f, 0.0f, 0.0f)),
             "b40d6fc1e1b67c58d7f82350bcac083f9e9547f9131236463164417fbdd3bee4" to StandPose.Fixed(Rotations(-45.0f, 0.0f, 0.0f)),

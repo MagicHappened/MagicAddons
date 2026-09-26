@@ -25,7 +25,6 @@ object Shadevine {
             CropEffect.HarvestLoss
         ),
         skyblockId = SkyBlockItemId.item("SHADEVINE"),
-        /** Each skull's pose, found constant across every stage it appears in. */
         standPoses = mapOf(
             "c3c6d9dcb8fbd73de6171a2c2155314d097a9c99d09c9fce9cba068d7e5aedf7" to StandPose.Fixed(Rotations(-45.0f, 0.0f, 0.0f))
         ),

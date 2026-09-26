@@ -7,22 +7,16 @@ import org.magic.magicaddons.data.greenhouse.transfer.RawDeflate
 import org.magic.magicaddons.features.FeatureManager
 import org.magic.magicaddons.features.customization.Customization
 
-/**
- * The config as one line of text, so a look or a set of features can be handed to someone else. The
- * two halves travel separately: hardly anyone wants a friend's keybinds along with their colours.
- */
 object ConfigShare {
 
     private const val SEPARATOR: Char = ':'
 
-    /** Which half of the config a code carries, named in the code so the wrong one is turned away. */
-    enum class Kind(val prefix: String, val label: String) {
+    enum class ConfigType(val prefix: String, val label: String) {
         Ui("MAUI1", "UI config"),
         Features("MACFG1", "feature config")
     }
 
     sealed interface Pasted {
-        /** [author] is whoever copied it, which the code carries so a share can be recognised. */
         class Applied(val author: String, val settings: Int) : Pasted
         class Failed(val reason: String) : Pasted
     }
@@ -34,15 +28,14 @@ object ConfigShare {
                     MutableMap<String,
                             MutableMap<String, Any>>>>() {}.type
 
-    /** Writes this half of the config to the clipboard, or null when there is nothing stored yet. */
-    fun copy(kind: Kind): String? {
+    fun exportConfig(configType: ConfigType): String? {
         FeatureManager.syncToConfigJson()
 
-        val section = sectionOf(kind)
+        val section = exportConfigType(configType)
         if (section.isEmpty()) return null
 
         val code = listOf(
-            kind.prefix,
+            configType.prefix,
             playerName(),
             RawDeflate.encode(gson.toJson(section).toByteArray())
         ).joinToString(SEPARATOR.toString())
@@ -51,18 +44,14 @@ object ConfigShare {
         return code
     }
 
-    /**
-     * Reads this half of the config off the clipboard. Only the settings the code names are written,
-     * so a code from an older version leaves everything it never knew about alone.
-     */
-    fun paste(kind: Kind): Pasted {
+    fun importConfig(configType: ConfigType): Pasted {
         val text = Minecraft.getInstance().keyboardHandler.clipboard.trim()
         if (text.isEmpty()) return Pasted.Failed("The clipboard is empty")
 
-        val other = Kind.entries.firstOrNull { it != kind && text.startsWith("${it.prefix}$SEPARATOR") }
+        val other = ConfigType.entries.firstOrNull { it != configType && text.startsWith("${it.prefix}$SEPARATOR") }
         if (other != null) return Pasted.Failed("That code is a ${other.label}")
 
-        if (!text.startsWith("${kind.prefix}$SEPARATOR")) return Pasted.Failed("That is not a ${kind.label} code")
+        if (!text.startsWith("${configType.prefix}$SEPARATOR")) return Pasted.Failed("That is not a ${configType.label} code")
 
         val parts = text.split(SEPARATOR)
         if (parts.size < 3) return Pasted.Failed("That code is incomplete")
@@ -73,7 +62,7 @@ object ConfigShare {
             runCatching { gson.fromJson<MutableMap<String, MutableMap<String, MutableMap<String, Any>>>>(String(bytes), sectionType) }
                 .getOrNull() ?: return Pasted.Failed("That code is damaged")
 
-        if (section.keys.any { (it == Customization.CATEGORY) != (kind == Kind.Ui) }) {
+        if (section.keys.any { (it == Customization.CATEGORY) != (configType == ConfigType.Ui) }) {
             return Pasted.Failed("That code holds the other half of the config")
         }
 
@@ -87,19 +76,17 @@ object ConfigShare {
         }
 
         FeatureManager.syncFromConfigJson()
-        if (kind == Kind.Ui) Customization.applyImportedAppearance()
+        if (configType == ConfigType.Ui) Customization.applyImportedAppearance()
         MagicAddonsConfigJsonHandler.save()
 
         return Pasted.Applied(parts[1], written)
     }
 
-    /** The look, or everything else; the two never overlap. */
-    private fun sectionOf(kind: Kind): Map<String, MutableMap<String, MutableMap<String, Any>>> =
+    private fun exportConfigType(configType: ConfigType): Map<String, MutableMap<String, MutableMap<String, Any>>> =
         MagicAddonsConfigJsonHandler.configMap.filter {
-            (it.key == Customization.CATEGORY) == (kind == Kind.Ui)
+            (it.key == Customization.CATEGORY) == (configType == ConfigType.Ui)
         }
 
-    /** Written into the code so a shared one says whose it is. */
     private fun playerName(): String =
         Minecraft.getInstance().user.name.replace(SEPARATOR, ' ').takeIf { it.isNotBlank() } ?: "Unknown"
 }

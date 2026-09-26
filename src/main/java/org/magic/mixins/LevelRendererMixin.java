@@ -73,8 +73,6 @@ public abstract class LevelRendererMixin {
         levelRenderState.haveGlowingEntities = true;
     }
 
-    // 26.1.2 never builds the outline target on its own, so the glow had nothing to draw into
-    // until something else asked for one. 26.2 removed the call and does it itself
     @Inject(method = "renderLevel", at = @At("HEAD"))
     private void initOutlineIfNeeded(GraphicsResourceAllocator resourceAllocator, DeltaTracker deltaTracker, boolean renderOutline, CameraRenderState cameraState, Matrix4fc modelViewMatrix, GpuBufferSlice terrainFog, Vector4f fogColor, boolean shouldRenderSky, ChunkSectionsToRender chunkSectionsToRender, CallbackInfo ci) {
         if (this.entityOutlineTarget == null) {
@@ -101,7 +99,6 @@ public abstract class LevelRendererMixin {
                 continue;
             }
 
-            // far enough off to be marked instead, and the marker is drawn in the outline's place
             if (HighlightMarkers.markingReplacesOutline(entity, source)) {
                 continue;
             }
@@ -137,7 +134,6 @@ public abstract class LevelRendererMixin {
                     levelRenderState.cameraRenderState.pos
             );
 
-            // soil of plants short of water
             WaterIndicator.INSTANCE.submitDryPlants(
                     poseStack,
                     submitNodeCollector,
@@ -153,7 +149,6 @@ public abstract class LevelRendererMixin {
             ErrorReporter.INSTANCE.report("the hologram", error);
         }
 
-        // the stands a ghosted crop is made of, drawn alongside its blocks
         for (ArmorStand stand : LayoutRenderState.INSTANCE.getGhostStands()) {
             renderFakeEntity(
                     stand,
@@ -161,8 +156,6 @@ public abstract class LevelRendererMixin {
                     levelRenderState,
                     submitNodeCollector,
                     (ent, state) -> {
-                        // only the head should be drawn, so all three ways the body could appear are
-                        // closed off: visible, translucent, and outlined. Hidden, and no outline colour
                         state.isInvisible = true;
                         state.outlineColor = EntityRenderState.NO_OUTLINE;
 
@@ -170,8 +163,6 @@ public abstract class LevelRendererMixin {
                             living.isInvisibleToPlayer = false;
                         }
 
-                        // the head's own outline, which the head layer reads instead. The outline
-                        // alone says this head is a plan rather than a plant
                         if (state instanceof WrappedEntityRenderState wrapped) {
                             wrapped.magicaddons$setHeadOutlineColor(
                                     LayoutRenderState.ghostOutlineColorOf(stand.getUUID())
@@ -198,7 +189,6 @@ public abstract class LevelRendererMixin {
                 .getDeltaTracker()
                 .getGameTimeDeltaPartialTick(false) : 1.0f;
 
-
         EntityRenderer<? super Entity, ?> baseRenderer =
                 entityRenderDispatcher.getRenderer(entity);
 
@@ -206,15 +196,9 @@ public abstract class LevelRendererMixin {
         EntityRenderer<Entity, EntityRenderState> renderer =
                 (EntityRenderer<Entity, EntityRenderState>) baseRenderer;
 
-
         EntityRenderState state = renderer.createRenderState(entity, partialTicks);
-
-        // run after extractRenderState, which writes outlineColor and isInvisible from the entity
-        // and would overwrite anything set before it
         renderer.extractRenderState(entity, state, partialTicks);
         modifier.modify(entity, state);
-
-
 
         poseStack.pushPose();
 

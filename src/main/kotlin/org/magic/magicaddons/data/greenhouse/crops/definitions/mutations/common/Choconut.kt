@@ -24,7 +24,6 @@ object Choconut {
             CropEffect.Immunity
         ),
         skyblockId = SkyBlockItemId.item("CHOCONUT"),
-        /** Each skull's pose, found constant across every stage it appears in. */
         standPoses = mapOf(
             "2a8d74b77a0e510d058c544c7292a8844e70b9293880caffc562ce5ab5a49ad8" to StandPose.Fixed(Rotations(45.0f, 0.0f, 45.0f))
         ),

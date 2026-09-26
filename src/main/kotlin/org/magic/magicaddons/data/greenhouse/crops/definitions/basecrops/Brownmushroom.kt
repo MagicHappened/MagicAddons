@@ -1,7 +1,6 @@
 package org.magic.magicaddons.data.greenhouse.crops.definitions.basecrops
 
 import net.minecraft.core.BlockPos
-import net.minecraft.core.Rotations
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.crops.CropBlocks.brownMushroomState
@@ -11,7 +10,6 @@ import org.magic.magicaddons.data.greenhouse.crops.CropStage
 import org.magic.magicaddons.data.greenhouse.crops.CropTier
 import org.magic.magicaddons.data.greenhouse.crops.StageBlock
 import org.magic.magicaddons.data.greenhouse.crops.StageStand
-import org.magic.magicaddons.data.greenhouse.crops.StandPose
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
 object Brownmushroom {
@@ -24,11 +22,7 @@ object Brownmushroom {
             CropEffect.WaterDrain
         ),
         skyblockId = SkyBlockItemId.item("BROWN_MUSHROOM"),
-        /** Each skull's pose, found constant across every stage it appears in. */
-        standPoses = mapOf(
-            "578897b83f51fb96b59ba418ff0868cef7bdf661e315ba5dbac51d876d1d15d" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f)),
-            "7019992b5d440f85d2b05148aa9b85f450985d5f16ae960d1cdb32e06e3c896f" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f))
-        ),
+
         stages = listOf(
             CropStage(
                 blocks = listOf(

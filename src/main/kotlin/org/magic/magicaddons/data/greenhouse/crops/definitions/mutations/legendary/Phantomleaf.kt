@@ -27,7 +27,6 @@ object Phantomleaf {
             CropEffect.Immunity
         ),
         skyblockId = SkyBlockItemId.item("PHANTOMLEAF"),
-        /** Each skull's pose, found constant across every stage it appears in. */
         standPoses = mapOf(
             "92fb1e0e18cadb45a4d96721a9ee9c1d2c36d99826b3c23c19ee18801f721dd3" to StandPose.Fixed(Rotations(20.0f, 0.0f, 0.0f)),
             "988eaca2c41056ed3fb34669548843c62bae0b406441ea9d224fd7bd2f73f86e" to StandPose.Fixed(Rotations(45.0f, 0.0f, 0.0f)),

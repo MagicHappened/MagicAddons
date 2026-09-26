@@ -13,7 +13,6 @@ import org.magic.magicaddons.data.greenhouse.crops.FIVE_DAY_DECAY_TIME_MS
 import org.magic.magicaddons.data.greenhouse.crops.SpawnRule
 import org.magic.magicaddons.data.greenhouse.crops.StageBlock
 import org.magic.magicaddons.data.greenhouse.crops.StageStand
-import org.magic.magicaddons.data.greenhouse.crops.StandPose
 import org.magic.magicaddons.data.greenhouse.crops.definitions.mutations.epic.Shellfruit
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
@@ -28,11 +27,6 @@ object Timestalk {
             CropEffect.HarvestLoss
         ),
         skyblockId = SkyBlockItemId.item("TIMESTALK"),
-        standPoses = mapOf(
-            "d2306f4c5946990204517a73bbfa8281fd7d9a294f908b0286e708c51f79a063" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f)),
-            "7cf25e2106b1f8ac856c2d13e8850cdb6b4f96ae9df243a605d6a6d2e1fdacf8" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f)),
-            "1b9add43e0e770b7c4ccdcf6708f8b9e875ff13b2a75ab63ff69f2f0e57af9e5" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f))
-        ),
         stages = listOf(
             CropStage(
                 blocks = StageBlock.atPositions(
@@ -347,6 +341,7 @@ object Timestalk {
         maxStage = 14,
         requiredSoil = setOf(Blocks.END_STONE),
         isMutation = true,
-        spawnRule = SpawnRule(weight = 20, requiredNeighbourCells = mapOf("Stoplight Petal" to 4, "Chorus Fruit" to 2, "Shellfruit" to 2))
+        spawnRule = SpawnRule(weight = 20, requiredNeighbourCells = mapOf("Stoplight Petal" to 4, "Chorus Fruit" to 2, "Shellfruit" to 2)),
+        stemAgeVaries = true
     )
 }

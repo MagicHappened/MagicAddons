@@ -8,7 +8,6 @@ import net.minecraft.world.entity.decoration.ArmorStand
 import org.magic.magicaddons.util.PlayerUtils
 import org.magic.magicaddons.util.compat.McCompat
 
-/** extra data for a plant that doesn't contribute to its stage but needs parsing */
 class StandReader(
     val key: String,
     val matches: (ArmorStand) -> Boolean,
@@ -81,7 +80,6 @@ class StandReader(
             (it.filled + it.debt + it.otherColoured) * 100 / it.total
         }
 
-        /** any coloured notches but the water bar's blue; an all-white bar says nothing */
         fun nonWaterBar(key: String): StandReader = StandReader(
             key = key,
             matches = { it.customName?.let { name -> nonWaterBarPercent(name) } != null },

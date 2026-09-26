@@ -45,8 +45,6 @@ object MagicAddonsConfigJsonHandler {
 
         FeatureManager.syncFromConfigJson()
 
-        // written straight back from the live settings so migrated keys, keys of settings that no
-        // longer exist and keys of removed features never linger in the file
         writeToDisk()
 
         Common.LOGGER.info("Successfully loaded config")

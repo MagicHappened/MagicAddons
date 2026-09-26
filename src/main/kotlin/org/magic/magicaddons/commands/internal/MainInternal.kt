@@ -15,7 +15,6 @@ import org.magic.magicaddons.util.VersionChecker
 object MainInternal : AbstractCommand() {
     override val argument: String = "internal"
 
-    /** The starting path of every internal command */
     const val PATH: String = "${Common.MOD_NAME} internal"
 
     const val COMMAND: String = "/$PATH"

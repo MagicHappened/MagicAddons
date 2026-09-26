@@ -6,7 +6,7 @@ data class GreenhouseLayout(
     val plots: MutableList<PlotLayout> = mutableListOf()
 ) {
     fun displayName(): String = name
-        ?: id.removePrefix(PlotLayout.MASTER_PRESET_PREFIX).takeIf { it != id }?.let { "Preset $it" }
+        ?: id.removePrefix(PlotLayout.GREENHOUSE_PRESET_PREFIX).takeIf { it != id }?.let { "Preset $it" }
         ?: id
 
     override fun toString(): String = displayName()

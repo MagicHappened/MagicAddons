@@ -8,8 +8,6 @@ import net.minecraft.ChatFormatting
 import net.minecraft.client.Minecraft
 import net.minecraft.network.chat.ClickEvent
 import net.minecraft.network.chat.Component
-import net.minecraft.network.chat.HoverEvent
-import net.minecraft.network.chat.Style
 import org.magic.magicaddons.commands.AbstractCommand
 import org.magic.magicaddons.commands.CropWords
 import org.magic.magicaddons.data.greenhouse.crops.MissingCropData
@@ -20,7 +18,6 @@ import org.magic.magicaddons.util.VersionChecker
 
 object FarmingDebug : AbstractCommand() {
 
-    /** The plant dex word that lists every gap instead of one crop. */
     private const val MISSING_WORD: String = "missing"
 
     override val argument: String = "farming"
@@ -28,7 +25,7 @@ object FarmingDebug : AbstractCommand() {
     override fun build(): LiteralArgumentBuilder<FabricClientCommandSource> {
         val collect = LiteralArgumentBuilder.literal<FabricClientCommandSource>("collect")
                     .executes {
-                        CropCollector.scan()
+                        CropCollector.scanGreenhouse()
                         return@executes 1
                     }
                     .then(
@@ -68,21 +65,10 @@ object FarmingDebug : AbstractCommand() {
                         return@executes 1
                     }
             )
-            .then(
-                LiteralArgumentBuilder.literal<FabricClientCommandSource>("lostPlants")
-                    .executes {
-                        ChatUtils.sendWithPrefix(
-                            "lost plants ${allowed(GreenhouseSpawnLog.toggleLostPlantsMessages())} send why they were lost"
-                        )
-                        return@executes 1
-                    }
-            )
 
         if (VersionChecker.onBeta()) farming.then(collect)
         return farming
     }
-
-    private fun allowed(on: Boolean): String = if (on) "now" else "no longer"
 
     /** The dex, and under it "missing" then every crop as a command word. */
     private fun cropDataGapsCommand(): LiteralArgumentBuilder<FabricClientCommandSource> =
@@ -96,7 +82,7 @@ object FarmingDebug : AbstractCommand() {
                     "crop",
                     StringArgumentType.word()
                 ).suggests { _, builder ->
-                    CropWords.suggest(builder, listOf(MISSING_WORD))
+                    CropWords.suggestCrops(builder, listOf(MISSING_WORD))
                 }.executes {
                     val word = StringArgumentType.getString(it, "crop")
                     val def = CropWords.find(word)
@@ -131,11 +117,7 @@ object FarmingDebug : AbstractCommand() {
                     .append(Component.literal(" -> ${gap.missingParts.joinToString("; ")}").withStyle(ChatFormatting.GRAY))
             }
 
-            ChatUtils.send(
-                Component.literal("  ${tier.heading} (${crops.size})")
-                    .withStyle(ChatFormatting.YELLOW)
-                    .withStyle { it.withHoverEvent(HoverEvent.ShowText(hover)) }
-            )
+            ChatUtils.send(ChatUtils.buildStyled("  ${tier.heading} (${crops.size})", ChatFormatting.YELLOW, hover))
         }
     }
 
@@ -176,18 +158,16 @@ object FarmingDebug : AbstractCommand() {
 
         Minecraft.getInstance().keyboardHandler.clipboard = report.listing
 
-        ChatUtils.send(sendWithCopyClipboard(report.listing, "${report.incompleteCrops} crops incomplete"))
-    }
+        val lines = report.listing.count { it == '\n' } + 1
 
-    private fun sendWithCopyClipboard(text: String, what: String): Component {
-        val lines = text.count { it == '\n' } + 1
-
-        return ChatUtils.buildWithPrefix(
-            Component.literal("Click to copy $lines lines ($what)").withStyle(
-                Style.EMPTY
-                    .withColor(ChatFormatting.YELLOW)
-                    .withClickEvent(ClickEvent.CopyToClipboard(text))
-                    .withHoverEvent(HoverEvent.ShowText(Component.literal("Click to copy")))
+        ChatUtils.send(
+            ChatUtils.buildWithPrefix(
+                ChatUtils.buildStyled(
+                    "Click to copy $lines lines (${report.incompleteCrops} crops incomplete)",
+                    ChatFormatting.YELLOW,
+                    Component.literal("Click to copy"),
+                    ClickEvent.CopyToClipboard(report.listing),
+                )
             )
         )
     }

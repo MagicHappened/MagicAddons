@@ -26,11 +26,9 @@ object Chloronite {
             CropEffect.Immunity
         ),
         skyblockId = SkyBlockItemId.item("CHLORONITE"),
-        /** Each skull's pose, found constant across every stage it appears in. */
         standPoses = mapOf(
             "3d9bcd3946c162aa361e537a455eddae3b55fb4bcf6208e84662b622b3ff6737" to StandPose.Fixed(Rotations(0.0f, 45.0f, 0.0f)),
-            "4696299926a2fd000f519f6b4690670914004e634c8c6546ca5b69f028e43c40" to StandPose.Fixed(Rotations(0.0f, 45.0f, 0.0f)),
-            "98056b960ff385c20cffc3d1524500fcd3bf8c31b6dcafd8520f41dfa749dd28" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f))
+            "4696299926a2fd000f519f6b4690670914004e634c8c6546ca5b69f028e43c40" to StandPose.Fixed(Rotations(0.0f, 45.0f, 0.0f))
         ),
         stages = listOf(
             CropStage(
@@ -131,10 +129,6 @@ object Chloronite {
                 10..10
             ),
             CropStage(
-                // the head is the whole of the match. A chloronite that grew to its last stage
-                // stands under green glass and one placed by hand does not, so neither block can
-                // be asked for; the glass is drawn because it is what the finished crop looks
-                // like, and asked of nothing
                 blocks = listOf(
                     StageBlock(
                         offset = BlockPos(0, 1, 0),

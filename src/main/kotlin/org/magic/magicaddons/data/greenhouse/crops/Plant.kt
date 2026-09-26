@@ -2,9 +2,11 @@ package org.magic.magicaddons.data.greenhouse.crops
 
 import net.minecraft.core.BlockPos
 import net.minecraft.world.entity.Entity
+import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.state.BlockState
 import org.magic.magicaddons.data.greenhouse.plot.LayoutSlot
 import org.magic.magicaddons.data.greenhouse.plot.PlotPrediction
+import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseTickTime
 
 sealed interface PlantStage {
 
@@ -36,13 +38,31 @@ data class Plant(
 
     val acceptedCrops: List<CropDefinition> get() = listOf(cropDef) + presetAlternatives
 
+    val requiredSoils: Set<Block>
+        get() = acceptedCrops.flatMapTo(mutableSetOf()) { it.requiredSoil }
+
+    val coveredCells: List<Pair<Int, Int>> get() = cropDef.footprint.cellsFrom(slot.x, slot.y)
+
+    fun covers(slot: LayoutSlot): Boolean =
+        slot.x in this.slot.x until this.slot.x + cropDef.footprint.width &&
+                slot.y in this.slot.y until this.slot.y + cropDef.footprint.height
+
+    fun cropTypeEquals(other: Plant): Boolean = elementId == other.elementId
+
+    fun placementEquals(other: Plant): Boolean =
+        slot.x == other.slot.x && slot.y == other.slot.y &&
+                acceptedCrops.toSet() == other.acceptedCrops.toSet()
+
+    override fun equals(other: Any?): Boolean = this === other
+
+    override fun hashCode(): Int = System.identityHashCode(this)
+
     val isAsleep: Boolean get() = readings[StandReader.ASLEEP] == 1
 
     val timeOfDayNeeded: Int? get() = readings[StandReader.NEEDS_TIME]
 
     val hunger: Int? get() = readings[StandReader.HUNGER]
 
-    /** if a tick has passed with negative water, then we don't know if it truly passed or not */
     var waterPredictedInDebt: Boolean = false
 
     var waterExact: Boolean = false
@@ -51,17 +71,16 @@ data class Plant(
 
     var placed: Boolean = false
 
-    /** electricity gained since the last look, for a crop with a [CropDefinition.chargeRule] */
     var charge: Int = 0
 
-    /** read off its bar or set by a discharge; until then the charge is what the stage implies */
     var chargeKnown: Boolean = false
 
     var waterBestCase: Double? = null
 
     val isPlacedMutation: Boolean get() = placed && cropDef.isMutation
 
-    val isCollectable: Boolean get() = isPlacedMutation && (age ?: 1L) <= 0L
+    val isCollectable: Boolean
+        get() = isPlacedMutation && appearedAt?.let { GreenhouseTickTime.hasGrowthTickPassedSince(it) } != true
 
     val readyToHarvest: Boolean
         get() = (cropDef.isMutation || cropDef.isBaseCrop) && !isPlacedMutation && (highestStage ?: 0) >= cropDef.maxStage
@@ -79,7 +98,6 @@ data class Plant(
             it.chargeKnown = chargeKnown
         }
 
-    /** null when the stage is unknown or the crop has one stage */
     fun waterLastsUntilGrown(waterEffectPercent: Int): Boolean? {
         if (!consumesWater || cropDef.drainsNeighbours) return true
 
@@ -88,7 +106,6 @@ data class Plant(
 
         val ticksLeft = PlotPrediction.ticksUntilDeath(water, waterEffectPercent) ?: return true
 
-        // in debt the highest stage is the one the water paid for
         val stage = (if (waterPredictedInDebt) highestStage else lowestStage) ?: return null
         if (cropDef.maxStage <= 1) return null
 

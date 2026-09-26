@@ -6,7 +6,6 @@ import net.minecraft.ChatFormatting
 import net.minecraft.client.Minecraft
 import net.minecraft.network.chat.ClickEvent
 import net.minecraft.network.chat.Component
-import net.minecraft.network.chat.HoverEvent
 import net.minecraft.network.chat.MutableComponent
 import net.minecraft.network.chat.Style
 import org.magic.magicaddons.commands.internal.MainInternal
@@ -153,11 +152,11 @@ object PlantWarnings {
             profile.name?.let { append(" $it") }
         }
 
-        return Component.literal("[INFO]").withStyle(
-            Style.EMPTY
-                .withColor(ChatFormatting.GREEN)
-                .withClickEvent(ClickEvent.RunCommand(command))
-                .withHoverEvent(HoverEvent.ShowText(Component.literal("Click for details")))
+        return ChatUtils.buildStyled(
+            "[INFO]",
+            ChatFormatting.GREEN,
+            Component.literal("Click for details"),
+            ClickEvent.RunCommand(command),
         )
     }
 
@@ -175,11 +174,7 @@ object PlantWarnings {
         sections.forEach { section ->
             message.append(Component.literal("\n  "))
             message.append(
-                Component.literal("${section.label}: ${section.count}").withStyle(
-                    Style.EMPTY
-                        .withColor(ChatFormatting.AQUA)
-                        .withHoverEvent(HoverEvent.ShowText(hoverText(section)))
-                )
+                ChatUtils.buildStyled("${section.label}: ${section.count}", ChatFormatting.AQUA, hoverText(section))
             )
         }
 

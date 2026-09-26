@@ -35,7 +35,7 @@ data class PlotLayout(
     fun isEmpty(): Boolean =
         plants.isEmpty() && slots.all { it.soil == null && it.mark == null }
 
-    fun deepCopy(): PlotLayout = PlotLayout(id = id, name = name, size = size).also { it.copyContentsFrom(this) }
+    fun freshCopy(): PlotLayout = PlotLayout(id = id, name = name, size = size).also { it.copyContentsFrom(this) }
 
     fun turnedBy(quarterTurns: Int): PlotLayout {
         val copy = PlotLayout(id = id, name = name, size = size)
@@ -63,7 +63,6 @@ data class PlotLayout(
         return copy
     }
 
-    /** where the corner of a [span] wide square at ([x], [y]) lands after [turns] quarter turns clockwise */
     private fun turnedOrigin(x: Int, y: Int, span: Int, turns: Int): Pair<Int, Int> {
         val lastOrigin = size - span
         return when (Math.floorMod(turns, 4)) {
@@ -76,34 +75,31 @@ data class PlotLayout(
 
     override fun toString(): String = displayName()
 
-    enum class Kind { PRESET, MASTER_PRESET }
+    enum class Kind { PLOT_PRESET, GREENHOUSE_PRESET }
 
-    val kind: Kind get() = if (id.startsWith(PRESET_PREFIX)) Kind.PRESET else Kind.MASTER_PRESET
+    val kind: Kind get() = if (id.startsWith(PLOT_PREFIX)) Kind.PLOT_PRESET else Kind.GREENHOUSE_PRESET
 
-    /** null for a placeholder whose id carries no number */
-    val number: Int? get() = id.removePrefix(PRESET_PREFIX).removePrefix(MASTER_PRESET_PREFIX).substringBefore("_p").toIntOrNull()
+    val number: Int? get() = id.removePrefix(PLOT_PREFIX).removePrefix(GREENHOUSE_PRESET_PREFIX).substringBefore("_p").toIntOrNull()
 
-    /** which plot of a multi-plot preset this is, counted from 1; null for the first and for garden plots */
     val part: Int? get() = id.substringAfter("_p", "").toIntOrNull()
 
     fun displayName(): String = name
         ?: part?.let { "Plot $it" }
-        ?: number?.let { if (kind == Kind.PRESET) "Plot $it" else "Preset $it" }
+        ?: number?.let { if (kind == Kind.PLOT_PRESET) "Plot $it" else "Preset $it" }
         ?: id
 
-    /** a crop's effects are what it gives its neighbours; spread passes on everything but itself */
     fun effectsAt(slot: LayoutSlot): Set<CropEffect> {
-        // kept while the plants are unchanged, since every plant asks every frame
-        val now = plantsHash()
-        if (now != effectsCacheHash) {
+        val hashNow = plantsHash()
+        if (hashNow != previousPlantHash) {
             effectsCache.clear()
-            effectsCacheHash = now
+            previousPlantHash = hashNow
         }
         return effectsCache.getOrPut(slot.x * SLOT_KEY_STRIDE + slot.y) { computeEffectsAt(slot) }
     }
 
     private val effectsCache = HashMap<Int, Set<CropEffect>>()
-    private var effectsCacheHash: Int = 0
+
+    private var previousPlantHash: Int = 0
 
     private fun plantsHash(): Int {
         var hash = plants.size
@@ -117,7 +113,7 @@ data class PlotLayout(
         val effects = neighbours.flatMapTo(mutableSetOf()) { it.cropDef.effects }
 
         neighbours.forEach { neighbour ->
-            val neighbourEffects = grantedTo(neighbour.slot)
+            val neighbourEffects = grantedToSlotBeforeSpread(neighbour.slot)
 
             if (CropEffect.EffectSpread in neighbourEffects) {
                 effects += neighbourEffects - CropEffect.EffectSpread
@@ -127,8 +123,7 @@ data class PlotLayout(
         return effects
     }
 
-    /** What the plants around [slot] give it directly, before any of it is spread further. */
-    private fun grantedTo(slot: LayoutSlot): Set<CropEffect> = plants
+    private fun grantedToSlotBeforeSpread(slot: LayoutSlot): Set<CropEffect> = plants
         .filter { !it.covers(slot) && it.isOrthogonallyBeside(slot) }
         .flatMapTo(mutableSetOf()) { it.cropDef.effects }
 
@@ -137,9 +132,10 @@ data class PlotLayout(
     fun plantCovering(slot: LayoutSlot): Plant? =
         plants.firstOrNull { it.covers(slot) }
 
-    /** every soil the plant on [slot] can grow in */
-    fun soilsAcceptedAt(slot: LayoutSlot): Set<Block> =
-        plantCovering(slot)?.acceptedCrops?.flatMapTo(mutableSetOf()) { it.requiredSoil }.orEmpty()
+    fun plantCovering(x: Int, y: Int): Plant? = getSlot(x, y)?.let { plantCovering(it) }
+
+    fun soilsPlantAcceptsAt(slot: LayoutSlot): Set<Block> =
+        plantCovering(slot)?.requiredSoils.orEmpty()
     
     fun plantsSurrounding(plant: Plant): List<Plant> =
         plants.filter { other -> other !== plant && other.touchesFootprintOf(plant) }
@@ -152,28 +148,15 @@ data class PlotLayout(
                 slot.y <= other.slot.y + otherFootprint.height && other.slot.y <= slot.y + myFootprint.height
     }
 
-    private fun Plant.covers(slot: LayoutSlot): Boolean =
-        slot.x in this.slot.x until this.slot.x + cropDef.footprint.width &&
-                slot.y in this.slot.y until this.slot.y + cropDef.footprint.height
-
-    private fun Plant.isOrthogonallyBeside(slot: LayoutSlot): Boolean {
-        for (dx in 0 until cropDef.footprint.width) {
-            for (dy in 0 until cropDef.footprint.height) {
-                val distance = abs(this.slot.x + dx - slot.x) + abs(this.slot.y + dy - slot.y)
-
-                if (distance == 1) return true
-            }
-        }
-
-        return false
-    }
+    private fun Plant.isOrthogonallyBeside(slot: LayoutSlot): Boolean =
+        coveredCells.any { (cellX, cellY) -> abs(cellX - slot.x) + abs(cellY - slot.y) == 1 }
 
     companion object {
-        const val PRESET_PREFIX: String = "plot_"
-        const val MASTER_PRESET_PREFIX: String = "preset_"
+        const val PLOT_PREFIX: String = "plot_"
+        const val GREENHOUSE_PRESET_PREFIX: String = "preset_"
 
-        fun plotId(number: Int): String = "$PRESET_PREFIX$number"
-        fun presetId(number: Int): String = "$MASTER_PRESET_PREFIX$number"
+        fun plotId(number: Int): String = "$PLOT_PREFIX$number"
+        fun presetId(number: Int): String = "$GREENHOUSE_PRESET_PREFIX$number"
 
         private const val SLOT_KEY_STRIDE: Int = 1024
     }

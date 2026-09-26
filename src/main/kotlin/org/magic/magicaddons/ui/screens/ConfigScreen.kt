@@ -396,17 +396,17 @@ class ConfigScreen(val parent: Screen?) : MagicAddonsScreen(Component.literal("M
     }
 
     /** Copies half the config out, saying which half went. */
-    private fun copyConfig(kind: ConfigShare.Kind) {
-        val copied = ConfigShare.copy(kind)
+    private fun copyConfig(configType: ConfigShare.ConfigType) {
+        val copied = ConfigShare.exportConfig(configType)
 
-        noteShare(if (copied == null) "There is no ${kind.label} to copy" else "Copied your ${kind.label} to the clipboard")
+        noteShare(if (copied == null) "There is no ${configType.label} to copy" else "Copied your ${configType.label} to the clipboard")
     }
 
     /** Takes half a config off the clipboard, saying whose it was. */
-    private fun pasteConfig(kind: ConfigShare.Kind) {
-        when (val pasted = ConfigShare.paste(kind)) {
+    private fun pasteConfig(configType: ConfigShare.ConfigType) {
+        when (val pasted = ConfigShare.importConfig(configType)) {
             is ConfigShare.Pasted.Applied -> {
-                noteShare("Loaded ${pasted.author}'s ${kind.label}, ${pasted.settings} settings")
+                noteShare("Loaded ${pasted.author}'s ${configType.label}, ${pasted.settings} settings")
                 rebuildAtNewScale()
             }
 
@@ -652,20 +652,20 @@ class ConfigScreen(val parent: Screen?) : MagicAddonsScreen(Component.literal("M
         }
 
         if (overExport(scaledEvent.x, scaledEvent.y)) {
-            copyConfig(ConfigShare.Kind.Features)
+            copyConfig(ConfigShare.ConfigType.Features)
             return true
         }
         if (overImport(scaledEvent.x, scaledEvent.y)) {
-            pasteConfig(ConfigShare.Kind.Features)
+            pasteConfig(ConfigShare.ConfigType.Features)
             return true
         }
 
         if (overCopyUi(scaledEvent.x, scaledEvent.y)) {
-            copyConfig(ConfigShare.Kind.Ui)
+            copyConfig(ConfigShare.ConfigType.Ui)
             return true
         }
         if (overImportUi(scaledEvent.x, scaledEvent.y)) {
-            pasteConfig(ConfigShare.Kind.Ui)
+            pasteConfig(ConfigShare.ConfigType.Ui)
             return true
         }
 

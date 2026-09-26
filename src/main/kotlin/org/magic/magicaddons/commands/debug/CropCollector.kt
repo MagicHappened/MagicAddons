@@ -17,10 +17,11 @@ import net.minecraft.network.chat.HoverEvent
 import net.minecraft.network.chat.MutableComponent
 import net.minecraft.network.chat.Style
 import net.minecraft.network.chat.TextColor
-import net.minecraft.util.Mth
 import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.EquipmentSlot
 import net.minecraft.world.entity.decoration.ArmorStand
+import net.minecraft.world.level.block.Block
+import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.commands.internal.MainInternal
@@ -42,97 +43,81 @@ import org.magic.magicaddons.util.EntityUtils
 import org.magic.magicaddons.util.PlayerUtils
 import org.magic.magicaddons.util.getBuildableArea
 import tech.thatgravyboat.skyblockapi.api.location.LocationAPI
-import tech.thatgravyboat.skyblockapi.api.location.SkyBlockIsland
 import tech.thatgravyboat.skyblockapi.api.profile.garden.PlotAPI
 
-/**
- * Collects stage definitions from a whole greenhouse at once. until we finish collecting the data.
- */
 object CropCollector : EntityUtils.HighlightSource {
 
     override val highlightPriority: Int = 100
 
     override fun highlightColor(entity: Entity): Int = standColors[entity] ?: GRAY
 
-    private const val GRID: Int = 10
+    private const val GRID_SIZE: Int = 10
 
     private const val DEVOURER: String = "Devourer"
     private const val DEVOURER_ROOTS: String = "DevourerRoots"
 
     private const val MAX_PLANT_HEIGHT: Int = 15
 
-    /** How long the boxes stay up after the file is written. */
-    private const val FINISHED_HIGHLIGHT_SECONDS: Long = 10
-
-    /** The skulls the plot marker stands carry on every greenhouse, never part of a plant. */
-    private val PLOT_MARKER_SKINS: Set<String> = CropStageExporter.PLOT_MARKER_SKINS
+    private const val FINISHED_HIGHLIGHT_SECONDS: Long = 5
 
     private const val GRAY: Int = 0xFF9E9E9E.toInt()
     private const val UNKNOWN_WHITE: Int = 0xFFFFFFFF.toInt()
 
     private const val BLOCK_ALPHA: Int = 0x38
 
-    /** One colour per crop, told apart at a glance; assigned by order of appearance. */
-    private val PALETTE: IntArray = intArrayOf(
+    private val CROP_PALETTE_COLORS: IntArray = intArrayOf(
         0xFFFF5555.toInt(), 0xFF55FF55.toInt(), 0xFF5599FF.toInt(), 0xFFFFAA00.toInt(),
         0xFFFF55FF.toInt(), 0xFF55FFFF.toInt(), 0xFFFFFF55.toInt(), 0xFFAA77FF.toInt(),
         0xFFFF9999.toInt(), 0xFF99CC66.toInt(), 0xFF66CCCC.toInt(), 0xFFCC9966.toInt()
     )
 
     private enum class Status(val label: String) {
-        /** Matches the definitions as they stand, nothing to collect; listed gray, ignored. */
-        Current("matches current data"),
+        MatchesData("matches current data"),
 
-        /** Matched only once the stems' age was ignored. */
-        StemAge("stem ages differ"),
+        StemAgeVaries("stem ages differ"),
 
-        /** Named for a crop we know, standing at a stage nobody has recorded. */
         Unrecorded("unrecorded"),
 
-        /** Named for nothing in the registry, reported but not collectable. */
         Unknown("unknown crop")
     }
 
-    private class Entry(
+    private class PlantEntry(
         val id: Int,
         val def: CropDefinition?,
         val origin: BlockPos,
         val stands: List<ArmorStand>,
         val status: Status,
-        /** What the plant said through a diagnosis, or what matching decided; null is unread. */
+
         val stageText: String?,
         val stageNum: Int?,
         val names: Set<String>,
         val color: Int,
         var confirmed: Boolean = false,
         var boxes: List<AABB> = emptyList(),
-        /** What the diagnosis tool and the matcher said about it, shown in place of the usual label. */
         var toolNote: String? = null
     )
 
-    private class Session(
+    private class CollectorSession(
         val level: ClientLevel,
         val gridOrigin: BlockPos,
-        val entries: MutableList<Entry> = mutableListOf()
+        val entries: MutableList<PlantEntry> = mutableListOf()
     ) {
         var finishedAt: Instant? = null
     }
 
-    private var session: Session? = null
+    private var session: CollectorSession? = null
 
-    /** Whether a run is live in the world the player is looking at. */
-    fun isActive(): Boolean =
+    fun isCollectorActive(): Boolean =
         session?.let { it.finishedAt == null && Minecraft.getInstance().level === it.level } == true
+
     private val standColors: MutableMap<Entity, Int> = mutableMapOf()
     private val cropColors: MutableMap<String, Int> = mutableMapOf()
 
-    // ------------------------------------------------------------------ scanning
-
-    fun scan() {
+    fun scanGreenhouse() {
         val client = Minecraft.getInstance()
         val level = client.level ?: return
 
-        val origin = plotOrigin() ?: run {
+        val origin = getPlotOrigin() ?: run {
             ChatUtils.sendWithPrefix(
                 Component.literal("Nothing to collect: stand in a greenhouse plot first.")
                     .withStyle(ChatFormatting.RED)
@@ -140,80 +125,73 @@ object CropCollector : EntityUtils.HighlightSource {
             return
         }
 
-        clear()
+        clearCollectorSession()
 
-        val s = Session(level, origin)
-        session = s
+        val collectorSession = CollectorSession(level, origin)
+        session = collectorSession
 
         ChatUtils.sendWithPrefix(
             "Collecting from (${origin.x}, ${origin.y}, ${origin.z}) to " +
-                    "(${origin.x + GRID - 1}, ${origin.y}, ${origin.z + GRID - 1})"
+                    "(${origin.x + GRID_SIZE - 1}, ${origin.y}, ${origin.z + GRID_SIZE - 1})"
         )
 
-        val pool = level.getEntitiesOfClass(
+        val entities = level.getEntitiesOfClass(
             ArmorStand::class.java,
             AABB(
                 origin.x.toDouble(), origin.y - 2.0, origin.z.toDouble(),
-                origin.x + GRID.toDouble(), origin.y + MAX_PLANT_HEIGHT.toDouble(), origin.z + GRID.toDouble()
+                origin.x + GRID_SIZE.toDouble(), origin.y + MAX_PLANT_HEIGHT.toDouble(), origin.z + GRID_SIZE.toDouble()
             )
         )
             .filterNot { it.isMarker }
-            // a stand carrying a plain item is part of the plant too, as godseed's pedestals are
             .filterNot {
                 PlayerUtils.getSkullHash(it) == null && !it.hasCustomName() &&
                         EntityUtils.heldItem(it) == null
-            }
-            // the plot's own marker head hovers high over every greenhouse without being flagged
-            // a marker, and once floated seven blocks up into a snoozling export
-            .filterNot { PlayerUtils.getSkullHash(it) in PLOT_MARKER_SKINS }
-            .toMutableList()
+            }.toMutableList()
 
-        // first pass: everything the definitions already recognise, wherever its origin lies
-        for (dx in 0 until GRID) {
-            for (dz in 0 until GRID) {
+        for (dx in 0 until GRID_SIZE) {
+            for (dz in 0 until GRID_SIZE) {
+
                 val slotPos = origin.offset(dx, 0, dz)
                 val soilState = level.getBlockState(slotPos)
+
                 if (soilState.isAir) continue
 
-                val found = GreenhouseGrid.matchPlantAt(
+                val foundPlant = GreenhouseGrid.matchPlantAt(
                     slotPos,
                     soilState.block,
-                    pool,
+                    entities,
                     LayoutSlot(slotPos.x, slotPos.z, soilState.block)
                 ) ?: continue
 
-                val stands = found.stands.orEmpty().filterIsInstance<ArmorStand>()
-                pool.removeAll(stands.toSet())
+                val usedStands = foundPlant.stands.orEmpty().filterIsInstance<ArmorStand>()
+                entities.removeAll(usedStands.toSet())
 
-                val def = found.plant.cropDef
+                val def = foundPlant.plant.cropDef
 
-                val (text, num) = when (val g = found.plant.growthStage) {
+                val (text, num) = when (val g = foundPlant.plant.growthStage) {
                     is PlantStage.Known -> g.stage.toString() to g.stage
                     is PlantStage.Estimated -> "${g.range.first}..${g.range.last}" to null
                     else -> null to null
                 }
 
                 val status = when {
-                    num != null && def.stemAgeVaries && !stemAgesMatch(def, num, slotPos, stands) -> Status.StemAge
-                    else -> Status.Current
+                    num != null && def.stemAgeVaries && !stemAgesMatch(def, num, slotPos, usedStands) -> Status.StemAgeVaries
+                    else -> Status.MatchesData
                 }
 
-                addEntry(def, slotPos, stands, status, text, num, stands.standNames())
+                addEntry(def, slotPos, usedStands, status, text, num, usedStands.standNames())
             }
         }
 
-        // second pass: whatever is left, grouped by the crop its stands are named for
-        for ((def, standsOfCrop) in pool.groupBy { identify(it) }) {
+        for ((def, standsOfCrop) in entities.groupBy { identifyDefinitionForStand(it) }) {
             if (def == null) {
-                // reported so nothing vanishes, but never collected: a crop with no definition has no
-                // footprint to anchor by
                 standsOfCrop.groupBy { it.blockPosition().atY(origin.y) }.forEach { (pos, stands) ->
                     addEntry(null, pos, stands, Status.Unknown, null, null, stands.standNames())
                 }
                 continue
             }
 
-            for (cluster in clusterByFootprint(standsOfCrop, def)) {
+            for (cluster in clusterDefinitionStandsByFootprint(standsOfCrop, def)) {
                 addEntry(
                     def,
                     guessOrigin(cluster, def, origin.y),
@@ -225,29 +203,28 @@ object CropCollector : EntityUtils.HighlightSource {
             }
         }
 
-        // third pass: plants made only of blocks, as the base crops are. A block state names its crop
-        // only when exactly one definition uses it
-        val covered = mutableSetOf<Long>()
-        s.entries.forEach { entry ->
-            val w = entry.def?.footprint?.width ?: 1
-            val h = entry.def?.footprint?.height ?: 1
-            for (cx in 0 until w) {
-                for (cz in 0 until h) {
-                    covered.add(BlockPos.asLong(entry.origin.x + cx, entry.origin.y, entry.origin.z + cz))
+        val coveredBlocks = mutableSetOf<Long>()
+        collectorSession.entries.forEach { entry ->
+            val width = entry.def?.footprint?.width ?: 1
+            val height = entry.def?.footprint?.height ?: 1
+            for (cx in 0 until width) {
+                for (cz in 0 until height) {
+                    coveredBlocks.add(BlockPos.asLong(entry.origin.x + cx, entry.origin.y, entry.origin.z + cz))
                 }
             }
         }
 
-        for (dx in 0 until GRID) {
-            for (dz in 0 until GRID) {
+        for (dx in 0 until GRID_SIZE) {
+            for (dz in 0 until GRID_SIZE) {
                 val slotPos = origin.offset(dx, 0, dz)
-                if (slotPos.asLong() in covered) continue
+
+                if (slotPos.asLong() in coveredBlocks) continue
                 if (level.getBlockState(slotPos).isAir) continue
 
                 val above = level.getBlockState(slotPos.above())
                 if (above.isAir) continue
 
-                val candidates = defsForBlockState(above, level.getBlockState(slotPos).block)
+                val candidates = defsForBlockStateMatchingSoil(above, level.getBlockState(slotPos).block)
                 val described = describeState(above)
 
                 when {
@@ -269,15 +246,13 @@ object CropCollector : EntityUtils.HighlightSource {
             }
         }
 
-        s.entries.sortBy { it.status.ordinal.let { o -> if (it.status == Status.Current) 9 else o } }
+        collectorSession.entries.sortBy { it.status.ordinal.let { statusNum -> if (it.status == Status.MatchesData) 9 else statusNum } }
 
-        sendInstructions(s.entries.size)
+        sendInstructions(collectorSession.entries.size)
     }
 
-    /** What a run asks of the player, behind one click, since the screen carries the plants themselves. */
     private fun sendInstructions(found: Int) {
-        ChatUtils.sendWithPrefix("$found plants found.")
-        ChatUtils.sendWithCommand("Press here to view a guide on how to use this", GUIDE_COMMAND)
+        ChatUtils.sendWithCommand("Found $found plants. Click here to send a guide", GUIDE_COMMAND)
     }
 
     fun sendGuide() {
@@ -286,12 +261,12 @@ object CropCollector : EntityUtils.HighlightSource {
         ChatUtils.send(
             hint("Correct plants that seem incorrect or the mod says they've matched, but actually don't exist in the ")
                 .append(
-                    Component.literal("plantDex").setStyle(
-                        Style.EMPTY
-                            .withColor(ChatFormatting.AQUA)
-                            .withUnderlined(true)
-                            .withClickEvent(ClickEvent.RunCommand(PLANT_DEX_COMMAND))
-                            .withHoverEvent(HoverEvent.ShowText(Component.literal("click to run $PLANT_DEX_COMMAND")))
+                    ChatUtils.buildStyled(
+                        "plantDex",
+                        ChatFormatting.AQUA,
+                        Component.literal("click to run $PLANT_DEX_MISSING_COMMAND"),
+                        ClickEvent.RunCommand(PLANT_DEX_MISSING_COMMAND),
+                        underlined = true,
                     )
                 )
                 .append(hint(" with the diagnostic tool"))
@@ -302,8 +277,7 @@ object CropCollector : EntityUtils.HighlightSource {
         )
     }
 
-    /** One plant as a chat line, for the diagnostic tool's answer about the plant just poked. */
-    private fun sendLine(entry: Entry) {
+    private fun sendLine(entry: PlantEntry) {
         val mark = if (entry.confirmed) "[✔] " else ""
         val body = "$mark[${entry.id}] ${rowLabel(entry)}"
 
@@ -327,13 +301,11 @@ object CropCollector : EntityUtils.HighlightSource {
     private fun hint(text: String): MutableComponent =
         Component.literal(text).withStyle(ChatFormatting.GRAY)
 
-    /** The listing of what the dex still wants, which is what a wrong looking plant is checked against. */
-    private const val PLANT_DEX_COMMAND: String = "/ma debug farming plantDex missing"
+    private const val PLANT_DEX_MISSING_COMMAND: String = "/ma debug farming plantDex missing"
 
     private fun stemAgesMatch(def: CropDefinition, stage: Int, origin: BlockPos, stands: List<ArmorStand>): Boolean =
-        def.stages.filter { stage in it.stageRange }.any { it.matchesStage(origin, stands, def.footprint, def.rotatesWithPlot) != null }
+        def.stages.filter { stage in it.stageRange }.any { it.matchesStage(origin, stands, def) != null }
 
-    /** the tracked water of the plant on [origin] in the player's own greenhouse, for telling stem ages apart */
     private fun waterNote(origin: BlockPos): String {
         val grid = GreenhouseData.getCurrentGrid() ?: return "water=?"
         val plant = grid.getSlotAt(origin, matchY = false)?.let { grid.layout.plantCovering(it) } ?: return "water=?"
@@ -353,12 +325,12 @@ object CropCollector : EntityUtils.HighlightSource {
         val s = session ?: return
 
         val color = when (status) {
-            Status.Current -> GRAY
+            Status.MatchesData -> GRAY
             Status.Unknown -> UNKNOWN_WHITE
             else -> def?.let { colorFor(it.name) } ?: UNKNOWN_WHITE
         }
 
-        val entry = Entry(
+        val entry = PlantEntry(
             id = (s.entries.maxOfOrNull { it.id } ?: -1) + 1,
             def = def,
             origin = origin,
@@ -379,14 +351,10 @@ object CropCollector : EntityUtils.HighlightSource {
         s.entries.add(entry)
     }
 
-    // ------------------------------------------------------------------ identity and geometry
+    private fun normalize(text: String): String = text.lowercase().filter { it.isLetter() }
 
-    private fun norm(text: String): String = text.lowercase().filter { it.isLetter() }
-
-    /** "west2" as the two axes it moves, or null for anything that is not direction-then-count. */
-    /** Every block state a definition's stages describe, for the plants that have no stands. */
-    private val defsByState: Map<net.minecraft.world.level.block.state.BlockState, List<CropDefinition>> by lazy {
-        buildMap<net.minecraft.world.level.block.state.BlockState, MutableList<CropDefinition>> {
+    private val defsByState: Map<BlockState, List<CropDefinition>> by lazy {
+        buildMap<BlockState, MutableList<CropDefinition>> {
             CropRegistry.allCrops.forEach { def ->
                 def.stages
                     .flatMap { it.blocks.orEmpty() }
@@ -397,13 +365,12 @@ object CropCollector : EntityUtils.HighlightSource {
         }
     }
 
-    private fun defsForBlockState(
-        state: net.minecraft.world.level.block.state.BlockState,
-        soil: net.minecraft.world.level.block.Block
+    private fun defsForBlockStateMatchingSoil(
+        state: BlockState,
+        soil: Block
     ): List<CropDefinition> = defsByState[state].orEmpty().filter { soil in it.requiredSoil }
 
-    /** A block state short enough for a row, "melon_stem[age=3]" rather than the full toString. */
-    private fun describeState(state: net.minecraft.world.level.block.state.BlockState): String =
+    private fun describeState(state: BlockState): String =
         state.toString()
             .removePrefix("Block{minecraft:")
             .replace("}", "")
@@ -413,28 +380,22 @@ object CropCollector : EntityUtils.HighlightSource {
     private fun List<ArmorStand>.standNames(): Set<String> =
         mapNotNull { it.standName() }.toSet()
 
-    /**
-     * The one definition a skull hash appears in, for stands with no name. Shared hashes are left out.
-     */
+
     private val defsByHash: Map<String, CropDefinition> by lazy {
-        val owners = mutableMapOf<String, MutableSet<CropDefinition>>()
+        val skullHashToCropDefs = mutableMapOf<String, MutableSet<CropDefinition>>()
 
         CropRegistry.allCrops.forEach { def ->
             def.stages.forEach { stage ->
                 stage.armorStands?.forEach { stand ->
-                    stand.hashString?.let { owners.getOrPut(it) { mutableSetOf() }.add(def) }
+                    stand.hashString?.let { skullHashToCropDefs.getOrPut(it) { mutableSetOf() }.add(def) }
                 }
             }
         }
 
-        owners.filterValues { it.size == 1 }.mapValues { it.value.first() }
+        skullHashToCropDefs.filterValues { it.size == 1 }.mapValues { it.value.first() }
     }
 
-    /**
-     * The grid's corner of the plot the player stands in, or null off a garden or outside every
-     * plot. Plots sit at the same coordinates on every garden, so this holds for a guest as well.
-     */
-    private fun plotOrigin(): BlockPos? {
+    private fun getPlotOrigin(): BlockPos? {
         if (!GreenhouseData.inGarden()) return null
 
         val plot = PlotAPI.getCurrentPlot() ?: return null
@@ -446,46 +407,42 @@ object CropCollector : EntityUtils.HighlightSource {
         return BlockPos(area.minX.toInt(), GREENHOUSE_SOIL_Y, area.minZ.toInt())
     }
 
-    private fun identify(stand: ArmorStand): CropDefinition? =
-        defForName(stand.standName())
+    private fun identifyDefinitionForStand(stand: ArmorStand): CropDefinition? =
+        defForStandName(stand.standName())
             ?: PlayerUtils.getSkullHash(stand)?.let { defsByHash[it] }
 
-    /**
-     * The definition a stand's name points at, by the longest name prefix that fits: the game names
-     * stands after their crop with decorations on the end.
-     */
-    private fun defForName(name: String?): CropDefinition? {
-        val n = name?.let(::norm) ?: return null
+
+    private fun defForStandName(name: String?): CropDefinition? {
+        val n = name?.let(::normalize) ?: return null
         if (n.isEmpty()) return null
 
         return CropRegistry.allCrops
-            .filter { n.startsWith(norm(it.name)) }
-            .maxByOrNull { norm(it.name).length }
+            .filter { n.startsWith(normalize(it.name)) }
+            .maxByOrNull { normalize(it.name).length }
     }
 
-    /** Stands close enough to be one plant of [def], greedily flooded from the first. */
-    private fun clusterByFootprint(stands: List<ArmorStand>, def: CropDefinition): List<List<ArmorStand>> {
-        val reach = max(def.footprint.width, def.footprint.height) - 1
-        val remaining = stands.toMutableList()
+    private fun clusterDefinitionStandsByFootprint(stands: List<ArmorStand>, def: CropDefinition): List<List<ArmorStand>> {
+        val radius = max(def.footprint.width, def.footprint.height) - 1
+        val standsRemaining = stands.toMutableList()
         val clusters = mutableListOf<List<ArmorStand>>()
 
-        while (remaining.isNotEmpty()) {
-            val cluster = mutableListOf(remaining.removeFirst())
-            var grew = true
+        while (standsRemaining.isNotEmpty()) {
+            val cluster = mutableListOf(standsRemaining.removeFirst())
+            var clusterGrew = true
 
-            while (grew) {
-                grew = false
-                val near = remaining.filter { candidate ->
+            while (clusterGrew) {
+                clusterGrew = false
+                val standNearCluster = standsRemaining.filter { candidate ->
                     cluster.any { member ->
                         val a = candidate.blockPosition()
                         val b = member.blockPosition()
-                        max(abs(a.x - b.x), abs(a.z - b.z)) <= reach
+                        max(abs(a.x - b.x), abs(a.z - b.z)) <= radius
                     }
                 }
-                if (near.isNotEmpty()) {
-                    cluster.addAll(near)
-                    remaining.removeAll(near.toSet())
-                    grew = true
+                if (standNearCluster.isNotEmpty()) {
+                    cluster.addAll(standNearCluster)
+                    standsRemaining.removeAll(standNearCluster.toSet())
+                    clusterGrew = true
                 }
             }
 
@@ -495,10 +452,7 @@ object CropCollector : EntityUtils.HighlightSource {
         return clusters
     }
 
-    /**
-     * Where the plant most likely starts, from the middle of its stands. A guess: stands need not be
-     * centred, and a diagnosis replaces it with the truth.
-     */
+    // guess plant origin by the mid-point of its furthest stands
     private fun guessOrigin(cluster: List<ArmorStand>, def: CropDefinition, soilY: Int): BlockPos {
         val xs = cluster.map { it.x }
         val zs = cluster.map { it.z }
@@ -512,15 +466,14 @@ object CropCollector : EntityUtils.HighlightSource {
         )
     }
 
-    /** The soil the entry stands on and every block of plant above it, framed for the eye. */
-    private fun boxesFor(entry: Entry): List<AABB> {
+    private fun boxesFor(entry: PlantEntry): List<AABB> {
         val level = session?.level ?: return emptyList()
-        val w = entry.def?.footprint?.width ?: 1
-        val h = entry.def?.footprint?.height ?: 1
+        val width = entry.def?.footprint?.width ?: 1
+        val height = entry.def?.footprint?.height ?: 1
 
         return buildList {
-            for (dx in 0 until w) {
-                for (dz in 0 until h) {
+            for (dx in 0 until width) {
+                for (dz in 0 until height) {
                     val soil = entry.origin.offset(dx, 0, dz)
                     add(AABB(soil))
 
@@ -535,12 +488,9 @@ object CropCollector : EntityUtils.HighlightSource {
     }
 
     private fun colorFor(cropName: String): Int =
-        cropColors.getOrPut(cropName) { PALETTE[cropColors.size % PALETTE.size] }
+        cropColors.getOrPut(cropName) { CROP_PALETTE_COLORS[cropColors.size % CROP_PALETTE_COLORS.size] }
 
-    // ------------------------------------------------------------------ the player's verdicts
-
-    /** One row of the checklist: everything a screen needs of an entry and nothing more. */
-    data class Row(
+    data class ChecklistRow(
         val id: Int,
         val label: String,
         val color: Int,
@@ -548,8 +498,8 @@ object CropCollector : EntityUtils.HighlightSource {
         val collectable: Boolean
     )
 
-    fun rows(): List<Row> = session?.entries?.map { entry ->
-        Row(
+    fun rows(): List<ChecklistRow> = session?.entries?.map { entry ->
+        ChecklistRow(
             id = entry.id,
             label = (if (entry.confirmed) "✔ " else "") + rowLabel(entry),
             color = entry.color,
@@ -558,30 +508,26 @@ object CropCollector : EntityUtils.HighlightSource {
         )
     } ?: emptyList()
 
-    /** The click on an entry's line, from chat or from the checklist screen. */
-    fun toggle(id: Int) {
+    fun toggleEntry(entryId: Int) {
         val s = session ?: run {
             ChatUtils.sendWithPrefix("No collection running.")
             return
         }
-        // by the id it was given, never by position: the list is sorted for display after the
-        // ids are handed out, so the entry sitting at index n is not entry n
-        val entry = s.entries.firstOrNull { it.id == id } ?: run {
-            ChatUtils.sendWithPrefix("No entry $id in this run.")
+        val entry = s.entries.firstOrNull { it.id == entryId } ?: run {
+            ChatUtils.sendWithPrefix("No entry $entryId in this run.")
             return
         }
 
         if (entry.status == Status.Unknown) {
             ChatUtils.sendWithPrefix(
-                "${entry.names.firstOrNull() ?: "That"} has no definition to anchor by, grow one at home first."
+                "${entry.names.firstOrNull() ?: "That"} has no definition to anchor by"
             )
             return
         }
 
         entry.confirmed = !entry.confirmed
 
-        // a ticked plant stops being lit: the highlights are the pile still to sort, so what was
-        // just confirmed disappearing from it is the feedback that the click landed
+        // toggle highlighting for selected entries to better see which one you pick
         if (entry.confirmed) {
             entry.stands.forEach {
                 standColors.remove(it)
@@ -596,10 +542,6 @@ object CropCollector : EntityUtils.HighlightSource {
 
     }
 
-    /**
-     * The block the item in a stand's hand hangs inside, modelled from its shoulder, pose and yaw.
-     * An approximation, but the only question is which whole block the item sits in.
-     */
     fun heldItemBlock(stand: ArmorStand): BlockPos? {
         val holdsItem = !stand.getItemBySlot(EquipmentSlot.MAINHAND).isEmpty ||
                 !stand.getItemBySlot(EquipmentSlot.OFFHAND).isEmpty
@@ -608,8 +550,6 @@ object CropCollector : EntityUtils.HighlightSource {
         val scale = if (stand.isSmall) 0.5 else 1.0
         val pose = stand.rightArmPose
 
-        // signs pinned by two known poses: an arm at x = -90 holds its item in front of the
-        // stand, and a right arm at z = +90 holds it out away from the body
         val arm = Vec3(0.0, -10.0 / 16.0, 0.0)
             .xRot(Math.toRadians(pose.x.toDouble()).toFloat())
             .yRot(-Math.toRadians(pose.y.toDouble()).toFloat())
@@ -621,12 +561,7 @@ object CropCollector : EntityUtils.HighlightSource {
         return BlockPos.containing(stand.position().add(turned))
     }
 
-    /**
-     * A diagnosis taken during a run, which outranks everything the scan decided: every entry over
-     * that footprint is dropped and rebuilt from the stands actually standing there.
-     * [hit] is the block or stand the tool was pointed at; only its x and z are used.
-     */
-    fun correct(diagnosed: CropDefinition, diagnosedStage: Int, hit: BlockPos) {
+    fun correctEntries(diagnosed: CropDefinition, diagnosedStage: Int, hit: BlockPos) {
         val s = session ?: return
         val client = Minecraft.getInstance()
         if (client.level !== s.level) return
@@ -636,8 +571,6 @@ object CropCollector : EntityUtils.HighlightSource {
         val w = diagnosed.footprint.width
         val h = diagnosed.footprint.height
 
-        // the same net the scan casts, but over this plant's whole footprint and blind to earlier
-        // claims, and a block wider each way since a stand may reach in from next door
         val stands = s.level.getEntitiesOfClass(
             ArmorStand::class.java,
             AABB(
@@ -646,24 +579,16 @@ object CropCollector : EntityUtils.HighlightSource {
             )
         )
             .filterNot { it.isMarker }
-            // a stand carrying a plain item is part of the plant too, as godseed's pedestals are
             .filterNot {
                 PlayerUtils.getSkullHash(it) == null && !it.hasCustomName() &&
                         EntityUtils.heldItem(it) == null
             }
-            // the plot's own marker head hovers high over every greenhouse without being flagged
-            // a marker, and once floated seven blocks up into a snoozling export
-            .filterNot { PlayerUtils.getSkullHash(it) in PLOT_MARKER_SKINS }
-            // a stand holding an item belongs where the item hangs, not where its feet are: the
-            // jellybean's smallest looks stand in the next block over with an arm reached out
             .filter { stand ->
                 val claimed = heldItemBlock(stand) ?: stand.blockPosition()
 
                 claimed.x in standingOn.x until standingOn.x + w &&
                         claimed.z in standingOn.z until standingOn.z + h
             }
-
-        // a diagnosis on a root names the devourer, but what stands there is the roots
         val roots = CropRegistry.allCrops.firstOrNull { it.name == DEVOURER_ROOTS }
         val rootSkulls = roots?.stages.orEmpty()
             .flatMap { it.armorStands.orEmpty() }
@@ -693,19 +618,17 @@ object CropCollector : EntityUtils.HighlightSource {
             }
         }
 
-        // the diagnosis names the plant, but the definitions may already describe this very
-        // stage: a fresh entry is only unrecorded when nothing recorded matches what stands here
         val recorded = def.stages
             .filter { stage in it.stageRange }
-            .firstNotNullOfOrNull { it.matchesStage(standingOn, stands, def.footprint, def.rotatesWithPlot) }
+            .firstNotNullOfOrNull { it.matchesStage(standingOn, stands, def) }
         val recordedIgnoringStemAge = recorded ?: def.stages
             .filter { stage in it.stageRange }
-            .firstNotNullOfOrNull { it.matchesStage(standingOn, stands, def.footprint, def.rotatesWithPlot, ignoreStemAge = true) }
+            .firstNotNullOfOrNull { it.matchesStage(standingOn, stands, def, ignoreStemAge = true) }
 
         val status = when {
-            recorded == null && recordedIgnoringStemAge != null -> Status.StemAge
+            recorded == null && recordedIgnoringStemAge != null -> Status.StemAgeVaries
             recorded == null -> Status.Unrecorded
-            else -> Status.Current
+            else -> Status.MatchesData
         }
 
         addEntry(
@@ -728,16 +651,13 @@ object CropCollector : EntityUtils.HighlightSource {
         }
     }
 
-    // ------------------------------------------------------------------ output
-
-    /** Ends the run without writing anything, for the scan that found nothing worth keeping. */
     fun quit() {
         if (session == null) {
             ChatUtils.sendWithPrefix("No collection running.")
             return
         }
 
-        clear()
+        clearCollectorSession()
         ChatUtils.sendWithPrefix("Collection dismissed, nothing written.")
     }
 
@@ -782,7 +702,6 @@ object CropCollector : EntityUtils.HighlightSource {
 
         val dir = DataHandler.modDir.resolve("collected").toFile()
         dir.mkdirs()
-        // a file of one crop is named after it, so a run per crop stays easy to tell apart
         val crops = confirmed.mapNotNull { it.def?.name }.toSet()
         val stamp = System.currentTimeMillis()
         val file = if (crops.size == 1) {
@@ -800,8 +719,7 @@ object CropCollector : EntityUtils.HighlightSource {
         )
     }
 
-    private fun rowLabel(entry: Entry): String {
-        // a nameless plant is still told apart from the next one by the skull it carries
+    private fun rowLabel(entry: PlantEntry): String {
         val name = entry.def?.name
             ?: entry.names.firstOrNull()
             ?: entry.stands.firstNotNullOfOrNull { PlayerUtils.getSkullHash(it) }?.take(12)?.plus("…")
@@ -811,17 +729,12 @@ object CropCollector : EntityUtils.HighlightSource {
         return entry.toolNote ?: "$name (${entry.origin.x}, ${entry.origin.z}) $stage — ${entry.status.label}"
     }
 
-
-    // ------------------------------------------------------------------ lifetime
-
-    /** Draws the run's boxes from the frame's own pass, and retires the run when its time comes. */
     fun submitHighlights(poseStack: PoseStack, collector: SubmitNodeCollector, cameraPos: Vec3) {
         val s = session ?: return
 
-        // the highlights live until the world does, or a little past the file being written
         val done = s.finishedAt?.let { Instant.now().isAfter(it.plusSeconds(FINISHED_HIGHLIGHT_SECONDS)) } ?: false
         if (done || Minecraft.getInstance().level !== s.level) {
-            clear()
+            clearCollectorSession()
             return
         }
 
@@ -834,7 +747,7 @@ object CropCollector : EntityUtils.HighlightSource {
         }
     }
 
-    private fun clear() {
+    private fun clearCollectorSession() {
         EntityUtils.removeAllForSource(this)
         standColors.clear()
         cropColors.clear()

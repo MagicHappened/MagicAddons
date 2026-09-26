@@ -16,7 +16,7 @@ object CropWords {
     fun find(word: String): CropDefinition? =
         CropRegistry.allCrops.firstOrNull { def -> of(def).equals(word, ignoreCase = true) }
 
-    fun suggest(builder: SuggestionsBuilder, leading: List<String> = emptyList()): CompletableFuture<Suggestions> {
+    fun suggestCrops(builder: SuggestionsBuilder, leading: List<String> = emptyList()): CompletableFuture<Suggestions> {
         val typed = builder.remainingLowerCase
         val range = StringRange.between(builder.start, builder.input.length)
         val suggestions = (leading + CropRegistry.allCrops.map { of(it) }.distinct())
@@ -27,10 +27,8 @@ object CropWords {
     }
 }
 
-/** A position short enough to read in chat. */
-fun fmt(pos: Vec3): String = "%.4f %.4f %.4f".format(pos.x, pos.y, pos.z)
+fun formatPosition(pos: Vec3): String = "%.4f %.4f %.4f".format(pos.x, pos.y, pos.z)
 
-/** Milliseconds as hours, minutes and seconds to the second: "1h 04m 30s". */
 fun Long.toExactDuration(): String {
     val seconds = this / 1000
 

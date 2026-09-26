@@ -61,19 +61,10 @@ object GreenhouseSpawnLog {
     private const val EXPECTED_TARGET_COLUMN: Int = 6
     private const val TARGET_SPAWNS_COLUMN: Int = 7
 
-    var lostPlantsMessages: Boolean = readLostPlantsMessages()
-        private set
-
     private var activeFileName: String? = readActiveFileName()
     private val openRecordByGrid = mutableMapOf<GreenhouseGrid, Record>()
 
     private val isEnabled: Boolean get() = activeFileName != null
-
-    fun toggleLostPlantsMessages(): Boolean {
-        lostPlantsMessages = !lostPlantsMessages
-        writeSettings()
-        return lostPlantsMessages
-    }
 
     fun toggle() {
         if (activeFileName == null) {
@@ -252,16 +243,10 @@ object GreenhouseSpawnLog {
         replacementFileName
     }.getOrNull()
 
-    private fun readLostPlantsMessages(): Boolean = runCatching {
-        SETTINGS_FILE.exists() &&
-                JsonParser.parseString(SETTINGS_FILE.readText()).asJsonObject.get("lostPlantsMessages")?.asBoolean == true
-    }.getOrDefault(false)
-
     private fun writeSettings(fileName: String? = activeFileName) {
         SETTINGS_FILE.writeText(
             JsonObject().apply {
                 fileName?.let { addProperty("activeFile", it) }
-                addProperty("lostPlantsMessages", lostPlantsMessages)
             }.toString()
         )
     }

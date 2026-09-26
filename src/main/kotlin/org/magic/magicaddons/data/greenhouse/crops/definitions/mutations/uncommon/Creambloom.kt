@@ -1,7 +1,6 @@
 package org.magic.magicaddons.data.greenhouse.crops.definitions.mutations.uncommon
 
 import net.minecraft.core.BlockPos
-import net.minecraft.core.Rotations
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.crops.CropBlocks.melonStemState
 import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
@@ -11,7 +10,6 @@ import org.magic.magicaddons.data.greenhouse.crops.CropTier
 import org.magic.magicaddons.data.greenhouse.crops.SpawnRule
 import org.magic.magicaddons.data.greenhouse.crops.StageBlock
 import org.magic.magicaddons.data.greenhouse.crops.StageStand
-import org.magic.magicaddons.data.greenhouse.crops.StandPose
 import org.magic.magicaddons.data.greenhouse.crops.definitions.mutations.common.Choconut
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
@@ -24,11 +22,6 @@ object Creambloom {
             CropEffect.Immunity
         ),
         skyblockId = SkyBlockItemId.item("CREAMBLOOM"),
-        /** Each skull's pose, found constant across every stage it appears in. */
-        standPoses = mapOf(
-            "60e98c0b598e2f5ce7c5ee8183ed157c5436a00585da711f8a87f24ea1ff055b" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f)),
-            "c777c2f2d01bd8d93f8694d63e1fcbee74aef4664625720e9062c6c7675f35a" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f))
-        ),
         stages = listOf(
             CropStage(
                 blocks = listOf(),

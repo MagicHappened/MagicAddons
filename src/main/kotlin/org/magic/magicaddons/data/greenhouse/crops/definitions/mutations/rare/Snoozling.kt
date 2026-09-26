@@ -38,11 +38,8 @@ object Snoozling {
             CropEffect.BonusDrops
         ),
         skyblockId = SkyBlockItemId.item("SNOOZLING"),
-        /** Each skull's pose, found constant across every stage it appears in. */
         standPoses = mapOf(
-            "b82d442528456547474dd88166a97818f057ecc4b3ed350ef9a5e4dbd27f98d7" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f)),
-            "77bb86dedeb827f2489aa0103d58d0e12e64a8152d5a0f5b1d4d208a3cb55999" to StandPose.Fixed(Rotations(-22.5f, 0.0f, 0.0f)),
-            "24c64afa58bef69ff567b012a2b1638cf475c5bdb050d382308399ffa0b06a8d" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f))
+            "77bb86dedeb827f2489aa0103d58d0e12e64a8152d5a0f5b1d4d208a3cb55999" to StandPose.Fixed(Rotations(-22.5f, 0.0f, 0.0f))
         ),
         stages = listOf(
             CropStage(
@@ -63,8 +60,6 @@ object Snoozling {
                             hashString = "77bb86dedeb827f2489aa0103d58d0e12e64a8152d5a0f5b1d4d208a3cb55999"
                         )
                     ),
-                // collected at stages one and two and identical at both, so the two are one stage
-                // as far as looking at the plant goes
                 1..2
             ),
             CropStage(
@@ -589,7 +584,6 @@ object Snoozling {
                 ),
                 13..14
             ),
-            // awake at stage 15: the skulls are the awake ones, so it files beside the sleeping look when that is recorded
             CropStage(
                 blocks = StageBlock.atPositions(
                     positions = wheatPositions,

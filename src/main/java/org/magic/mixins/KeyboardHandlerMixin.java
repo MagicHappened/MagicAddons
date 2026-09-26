@@ -15,10 +15,6 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(KeyboardHandler.class)
 public class KeyboardHandlerMixin {
 
-    /**
-     * G opens the collector's checklist while a run is live, cancelled so nothing else reads the
-     * key. It steps aside whenever a screen is open, and does nothing at all with no run going.
-     */
     @Inject(method = "keyPress", at = @At("HEAD"), cancellable = true)
     private void magicaddons$openCollectChecklist(long window, int action, KeyEvent event, CallbackInfo ci) {
         if (action != GLFW.GLFW_PRESS) return;
@@ -26,7 +22,7 @@ public class KeyboardHandlerMixin {
 
         if (McCompat.INSTANCE.currentScreen() != null) return;
         try {
-            if (!CropCollector.INSTANCE.isActive()) return;
+            if (!CropCollector.INSTANCE.isCollectorActive()) return;
             McCompat.INSTANCE.setScreen(new CollectScreen());
         } catch (Throwable error) {
             ErrorReporter.INSTANCE.report("the collector key", error);

@@ -24,7 +24,6 @@ object Moonflower {
             CropEffect.BonusDrops
         ),
         skyblockId = SkyBlockItemId.item("MOONFLOWER"),
-        /** Each skull's pose, found constant across every stage it appears in. */
         standPoses = mapOf(
             "10ba39f5a3bdb0f3ed6547e6e688fc43d64fabc056f3418b2bbbdfedd7248ba9" to StandPose.Fixed(Rotations(-45.0f, 0.0f, 0.0f)),
             "7775c5d80efc36c7b029470852aaf161e3733f8ae691fb5ed5450232630e4fcb" to StandPose.Fixed(Rotations(15.0f, 0.0f, 0.0f)),

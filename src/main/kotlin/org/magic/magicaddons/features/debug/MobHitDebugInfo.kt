@@ -10,7 +10,6 @@ import net.minecraft.core.component.DataComponents
 import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.network.chat.ClickEvent
 import net.minecraft.network.chat.Component
-import net.minecraft.network.chat.HoverEvent
 import net.minecraft.network.chat.MutableComponent
 import net.minecraft.network.chat.Style
 import net.minecraft.network.chat.TextColor
@@ -89,21 +88,30 @@ object MobHitDebugInfo : Feature() {
         val nearby = nearbyEntities(entity)
         val neighbours = nearby.map(::describe)
 
-        val summary = Component.literal(summaryText(subject, neighbours.size))
-            .setStyle(
-                Style.EMPTY.withHoverEvent(HoverEvent.ShowText(detailText(subject, neighbours)))
-            )
+        val summary = ChatUtils.buildStyled(
+            summaryText(subject, neighbours.size),
+            hover = detailText(subject, neighbours),
+        )
 
-        summary.append(clickable("[copy]", ChatFormatting.GREEN, "Copies the full dump as json",
-            ClickEvent.CopyToClipboard(json(entity, nearby))))
+        summary.append(
+            ChatUtils.buildStyled(
+                " [copy]",
+                ChatFormatting.GREEN,
+                Component.literal("Copies the full dump as json"),
+                ClickEvent.CopyToClipboard(json(entity, nearby)),
+            )
+        )
 
         if (entity is Player) {
             PlayerUtils.getSkinUrl(entity)?.let { url ->
-                summary.append(clickable("[skin]", ChatFormatting.AQUA, url, ClickEvent.OpenUrl(URI(url))))
+                summary.append(
+                    ChatUtils.buildStyled(" [skin]", ChatFormatting.AQUA, Component.literal(url), ClickEvent.OpenUrl(URI(url)))
+                )
             }
             subject.skinHash?.let { hash ->
-                summary.append(clickable("[Skin Hash]", ChatFormatting.YELLOW, hash,
-                    ClickEvent.CopyToClipboard(hash)))
+                summary.append(
+                    ChatUtils.buildStyled(" [Skin Hash]", ChatFormatting.YELLOW, Component.literal(hash), ClickEvent.CopyToClipboard(hash))
+                )
             }
         }
 
@@ -119,18 +127,6 @@ object MobHitDebugInfo : Feature() {
         append(" · ").append("$neighbours nearby")
         append(" ")
     }
-
-    private fun clickable(
-        label: String,
-        color: ChatFormatting,
-        hover: String,
-        click: ClickEvent
-    ): Component = Component.literal(" $label").setStyle(
-        Style.EMPTY
-            .withColor(color)
-            .withClickEvent(click)
-            .withHoverEvent(HoverEvent.ShowText(Component.literal(hover)))
-    )
 
     /** The hover: the hit entity in full, then a line for each thing standing in it. */
     private fun detailText(subject: EntityLine, neighbours: List<EntityLine>): Component {

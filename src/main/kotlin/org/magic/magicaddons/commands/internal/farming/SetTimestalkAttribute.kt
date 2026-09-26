@@ -15,9 +15,6 @@ import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState
 import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseTickTime
 import org.magic.magicaddons.util.ChatUtils
 
-/**
- * set the Timestalk attribute level manually, until sb-api fixes its shard api
- */
 object SetTimestalkAttribute : AbstractCommand() {
 
     const val NAME: String = "setTimestalkAttributeL57"
@@ -29,7 +26,7 @@ object SetTimestalkAttribute : AbstractCommand() {
     override fun build(): LiteralArgumentBuilder<FabricClientCommandSource> {
         return LiteralArgumentBuilder.literal<FabricClientCommandSource>(argument)
             .executes {
-                explain()
+                putCommand()
                 return@executes 1
             }
             .then(
@@ -55,14 +52,12 @@ object SetTimestalkAttribute : AbstractCommand() {
             )
     }
 
-    /** Says what is wanted, then hands the player the command with only the number left to add. */
-    private fun explain() {
+    private fun putCommand() {
         ChatUtils.sendWithPrefix(
             Component.literal("Type your Timestalk attribute level below:")
                 .withStyle(ChatFormatting.YELLOW)
         )
         Minecraft.getInstance().setScreenAndShow(
-            // auto type the internal command, leaving only the level to be typed in
             ChatScreen("${MainInternal.COMMAND} $argument ", false)
         )
     }
