@@ -57,7 +57,7 @@ object VersionChecker {
         val versionsBehind: Int,
         val isBeta: Boolean
     ) {
-        val isOutdated: Boolean get() = current != latest
+        val isOutdated: Boolean get() = versionsBehind > 0
 
         fun versionGapText(): String = when {
             isBeta && versionsBehind > 1 -> "($current -> $latest - $versionsBehind commits behind)"
@@ -123,10 +123,25 @@ object VersionChecker {
         val current = releaseNumberOf(currentVersion())
         val latest = tags.first()
 
-        val releasesBehind = tags.indexOf(current).let { if (it < 0) 1 else it }
+        val releasesBehind = tags.count { isNewerRelease(it, current) }
 
         return UpdateCheck(current, latest, releasesBehind, isBeta = false)
     }
+
+    private fun isNewerRelease(release: String, thanRelease: String): Boolean {
+        val releaseNumbers = versionNumbersOf(release)
+        val otherNumbers = versionNumbersOf(thanRelease)
+
+        for (index in 0 until maxOf(releaseNumbers.size, otherNumbers.size)) {
+            val releaseNumber = releaseNumbers.getOrElse(index) { 0 }
+            val otherNumber = otherNumbers.getOrElse(index) { 0 }
+            if (releaseNumber != otherNumber) return releaseNumber > otherNumber
+        }
+
+        return false
+    }
+
+    private fun versionNumbersOf(version: String): List<Int> = version.split('.').map { it.toIntOrNull() ?: 0 }
 
     private fun fetchBeta(): UpdateCheck? {
         val current = currentVersion()
