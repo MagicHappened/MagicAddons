@@ -1,87 +1,62 @@
 package org.magic.magicaddons.ui.widgets
 
 import net.minecraft.client.gui.GuiGraphicsExtractor
-import net.minecraft.client.gui.components.events.GuiEventListener
 import net.minecraft.client.input.MouseButtonEvent
 import org.magic.magicaddons.Common
 import org.magic.magicaddons.ui.Focusable
-import org.magic.magicaddons.util.ScreenUtil.drawLine
-import kotlin.math.sqrt
+import org.magic.magicaddons.util.ScreenUtil.drawField
+import org.magic.magicaddons.util.ScreenUtil.inRect
+import kotlin.math.abs
+import kotlin.math.roundToInt
 
 class CheckboxWidget(
     var size: Int = 24,
-    var checked: Boolean = false
+    var isChecked: Boolean = false
 ) : Focusable {
 
     override var focusedState: Boolean = false
 
-
     var x: Int = 0
     var y: Int = 0
 
-    val baseSize = 48f
-
-    val bgColor = 0xFFC6C6C6.toInt()
-    val checkColor = Common.UI.SUCCESS_COLOR
-
-
     fun render(graphics: GuiGraphicsExtractor) {
+        graphics.drawField(x, y, x + size, y + size, false)
 
-        graphics.fill(x, y, x + size, y + size, bgColor)
-
-        if (checked) {
+        if (isChecked) {
             drawCheckmark(graphics)
         }
     }
 
-
     private fun drawCheckmark(graphics: GuiGraphicsExtractor) {
+        fun gridToScreenX(gridX: Float) = x + gridX / CHECK_GRID_SIZE * size
+        fun gridToScreenY(gridY: Float) = y + gridY / CHECK_GRID_SIZE * size
 
-        fun sx(px: Float) = x + (px / baseSize * size)
-        fun sy(py: Float) = y + (py / baseSize * size)
+        val thickness = (size / 8).coerceAtLeast(2)
 
-        val x1 = sx(12f)
-        val y1 = sy(24f)
+        fun drawStroke(x1: Float, y1: Float, x2: Float, y2: Float) {
+            val steps = (maxOf(abs(x2 - x1), abs(y2 - y1))).toInt().coerceAtLeast(1)
+            for (step in 0..steps) {
+                val px = (x1 + (x2 - x1) * step / steps).roundToInt()
+                val py = (y1 + (y2 - y1) * step / steps).roundToInt()
+                graphics.fill(px, py, px + thickness, py + thickness, Common.UI.CHECK_COLOR)
+            }
+        }
 
-        val x2 = sx(20f)
-        val y2 = sy(32f)
-
-        val x3 = sx(36f)
-        val y3 = sy(12f)
-
-        // a small box still gets a mark two pixels thick, or the tick reads as a faint scratch
-        val thickness = (size / 8f).coerceAtLeast(2f)
-
-        // extend first segment slightly
-        val dx = x2 - x1
-        val dy = y2 - y1
-        val len = sqrt(dx * dx + dy * dy)
-
-        val extend = thickness * 0.5f
-
-        val ex = (dx / len) * extend
-        val ey = (dy / len) * extend
-
-        val newX2 = x2 + ex
-        val newY2 = y2 + ey
-
-        graphics.drawLine(x1, y1, newX2, newY2, thickness, checkColor)
-        graphics.drawLine(x2, y2, x3, y3, thickness, checkColor)
+        drawStroke(gridToScreenX(11f), gridToScreenY(23f), gridToScreenX(19f), gridToScreenY(31f))
+        drawStroke(gridToScreenX(19f), gridToScreenY(31f), gridToScreenX(35f), gridToScreenY(11f))
     }
 
     override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
-        if (mouseButtonEvent.x.toInt() in x..(x + size) &&
-            mouseButtonEvent.y.toInt() in y..(y + size)
-        ) {
-            checked = !checked
+        if (isMouseOver(mouseButtonEvent.x, mouseButtonEvent.y)) {
+            isChecked = !isChecked
             return true
         }
         return false
     }
 
-    override fun isMouseOver(mouseX: Double, mouseY: Double): Boolean {
-        return (mouseX.toInt() in x..x+size) && (mouseY.toInt() in y..y+size)
+    override fun isMouseOver(mouseX: Double, mouseY: Double): Boolean = inRect(mouseX, mouseY, x, y, size, size)
+
+    private companion object {
+        const val CHECK_GRID_SIZE: Float = 48f
     }
-
-
 }

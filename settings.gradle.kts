@@ -19,7 +19,8 @@ plugins {
 }
 
 // one source tree, built once per Minecraft version. The tree is stored in the shape 26.1.2 wants,
-// which is what vcsVersion says: everything 26.2 needs sits behind a comment in git
+// which is what vcsVersion says: everything 26.2 needs sits behind a comment in git and is
+// uncommented on the way into that version's build
 stonecutter {
     create(rootProject) {
         versions("26.1.2", "26.2")

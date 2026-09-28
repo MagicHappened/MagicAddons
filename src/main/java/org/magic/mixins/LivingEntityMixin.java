@@ -8,7 +8,7 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import org.magic.magicaddons.events.EventBus;
-import org.magic.magicaddons.events.interact.OnAnyPlayerSwingEvent;
+import org.magic.magicaddons.events.interact.AnyPlayerSwingEvent;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -16,8 +16,6 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(LivingEntity.class)
 public class LivingEntityMixin {
-
-
 
     @Inject(method = "swing(Lnet/minecraft/world/InteractionHand;Z)V", at = @At("HEAD"))
     private void onSwingHand(InteractionHand interactionHand, boolean bl, CallbackInfo ci) {
@@ -47,8 +45,8 @@ public class LivingEntityMixin {
         ItemStack stack = player.getMainHandItem();
         boolean isSelf = player instanceof LocalPlayer;
 
-        OnAnyPlayerSwingEvent event =
-                new OnAnyPlayerSwingEvent(player, stack, isSelf);
+        AnyPlayerSwingEvent event =
+                new AnyPlayerSwingEvent(player, stack, isSelf);
 
         EventBus.post(event);
     }

@@ -1,5 +1,8 @@
 name: build
 
+# the run is named after the last commit of the push, so that commit's title says what the push carries
+run-name: ${{ github.event.head_commit.message }}
+
 on:
   push:
     branches: [ "beta" ]
@@ -13,6 +16,8 @@ jobs:
     steps:
         - name: Checkout sources
           uses: actions/checkout@v6
+          with:
+            fetch-depth: 0
 
         - name: Setup Java
           uses: actions/setup-java@v5

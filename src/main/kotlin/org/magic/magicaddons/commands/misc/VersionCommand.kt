@@ -7,10 +7,8 @@ import org.magic.magicaddons.commands.AbstractCommand
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.VersionChecker
 
-/** Asks GitHub whether a newer build exists, and answers either way. */
 object VersionCommand : AbstractCommand() {
     override val argument: String = "version"
-    override val description: String = "checks whether a newer version of the mod is available"
 
     override fun build(): LiteralArgumentBuilder<FabricClientCommandSource> {
         val command = LiteralArgumentBuilder.literal<FabricClientCommandSource>(argument)
@@ -18,13 +16,13 @@ object VersionCommand : AbstractCommand() {
         command.executes {
             ChatUtils.sendWithPrefix("Checking for a newer version…")
 
-            VersionChecker.check { found ->
+            VersionChecker.check(forceRefresh = true) { update ->
                 val player = Minecraft.getInstance().player ?: return@check
 
-                if (found.outdated) {
-                    player.sendSystemMessage(VersionChecker.message(found))
-                } else {
-                    ChatUtils.sendWithPrefix("Up to date (${found.current})")
+                when {
+                    update == null -> ChatUtils.sendWithPrefix("Could not check for a newer version right now.")
+                    update.isOutdated -> player.sendSystemMessage(VersionChecker.updateChatMessage(update))
+                    else -> ChatUtils.sendWithPrefix("Up to date (${update.current})")
                 }
             }
 

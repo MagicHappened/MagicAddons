@@ -1,23 +1,27 @@
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
-
 plugins {
     kotlin("jvm") version "2.4.10"
     id("net.fabricmc.fabric-loom") version "1.17-SNAPSHOT"
     id("maven-publish")
 }
 
-// the jar says which Minecraft it is for, and a CI build says which commit it came from:
-// magicaddons-1.0.0+26.1.2.jar. A hash of nothing but digits would not be a valid semver
-// prerelease, so those are prefixed
-val buildId: String? = (findProperty("build_id") as String?)
-    ?.takeIf { it.isNotBlank() }
-    ?.let { if (it.all(Char::isDigit)) "g$it" else it }
+fun git(vararg args: String): String? = runCatching {
+    providers.exec { commandLine("git", *args) }.standardOutput.asText.get().trim()
+}.getOrNull()?.takeIf { it.isNotEmpty() }
+
+fun localBetaId(): String? {
+    if (git("rev-parse", "--abbrev-ref", "HEAD") != "beta") return null
+    val hash = git("rev-parse", "--short", "HEAD") ?: return null
+    return if (git("status", "--porcelain") == null) hash else "$hash-dirty"
+}
+
+// the jar says which Minecraft it is for, and a beta build says which commit it came from:
+// magicaddons-1.2.1+26.1.2.jar, magicaddons-1.2.1+26.1.2.beta.c1e57d1.jar
+val buildId: String? = (findProperty("build_id") as String?)?.takeIf { it.isNotBlank() } ?: localBetaId()
 
 version = buildString {
     append(project.property("mod_version") as String)
-    buildId?.let { append(".$it") }
     append("+${project.property("minecraft_version")}")
+    buildId?.let { append(".beta.$it") }
 }
 group = project.property("maven_group") as String
 
@@ -30,13 +34,9 @@ val targetJavaVersion = 25
 
 java {
     toolchain.languageVersion = JavaLanguageVersion.of(targetJavaVersion)
-    // Loom will automatically attach sourcesJar to a RemapSourcesJar task and to the "build" task
-    // if it is present.
-    // If you remove this line, sources will not be generated.
+    withSourcesJar()
 }
 
-// only the version the source tree is currently shaped for can actually be run, so the other one
-// generates no IDE run configuration and its run tasks do nothing: one game starts, not two
 val activeVersion: Boolean = stonecutter.current.isActive
 
 loom {
@@ -44,6 +44,7 @@ loom {
         isIdeConfigGenerated = activeVersion
     }
 
+    accessWidenerPath.set(rootProject.file("src/main/resources/magicaddons.accesswidener"))
     mods {
         register("magicaddons") {
             sourceSet(sourceSets.main.get())
@@ -79,6 +80,9 @@ dependencies {
     implementation("net.fabricmc:fabric-language-kotlin:${project.property("kotlin_loader_version")}")
     implementation("net.fabricmc.fabric-api:fabric-api:${project.property("fabric_version")}")
 
+    implementation("com.github.tommyettinger:blazingchain:${project.property("blazing_chain_version")}")
+    include("com.github.tommyettinger:blazingchain:${project.property("blazing_chain_version")}")
+    
     api("com.terraformersmc:modmenu:${project.property("modmenu_version")}")
 
     include("tech.thatgravyboat:skyblock-api:${project.property("skyblock_api_version")}") {
@@ -88,6 +92,9 @@ dependencies {
     api("tech.thatgravyboat:skyblock-api:${project.property("skyblock_api_version")}") {
         capabilities { requireCapability("tech.thatgravyboat:${project.property("skyblock_api_capability")}") }
     }
+
+    // read at compile time only: the planner asks it for storage contents when the player runs it
+    compileOnly("maven.modrinth:skyblock-enhanced-storage:${project.property("enhanced_storage_version")}")
 }
 
 
@@ -113,8 +120,8 @@ tasks.withType<JavaCompile>().configureEach {
     options.release.set(targetJavaVersion)
 }
 
-tasks.withType<KotlinCompile>().configureEach {
-    compilerOptions.jvmTarget.set(JvmTarget.fromTarget(targetJavaVersion.toString()))
+kotlin {
+    jvmToolchain(targetJavaVersion)
 }
 
 // hooks live outside the repository, so a fresh clone has none until this runs

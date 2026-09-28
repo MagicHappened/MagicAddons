@@ -9,7 +9,16 @@
     "LivingEntityMixin",
     "MinecraftMixin",
     "LevelRendererMixin",
-    "GuiMixin"
+    "ClientLevelMixin",
+    "ScreenMixin",
+    "EntityRenderStateMixin",
+    "AvatarRendererMixin",
+    "PlayerModelMixin",
+    "CustomHeadLayerMixin",
+    "LevelExtractorMixin",
+    "GuiMixin",
+    "KeyboardHandlerMixin",
+    "FontMixin"
   ],
   "injectors": {
     "defaultRequire": 1

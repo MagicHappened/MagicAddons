@@ -2,30 +2,34 @@ package org.magic.magicaddons.commands
 
 import net.fabricmc.fabric.api.client.command.v2.ClientCommands.literal
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback
-import net.minecraft.network.chat.Component
 import org.magic.magicaddons.Common
 import org.magic.magicaddons.commands.debug.MainDebug
 import org.magic.magicaddons.commands.features.EditFeature
-import org.magic.magicaddons.commands.foraging.SafariHelperCommand
+import org.magic.magicaddons.commands.features.foraging.SafariHelperCommand
 import org.magic.magicaddons.commands.misc.PlaySound
 import org.magic.magicaddons.commands.misc.VersionCommand
+import org.magic.magicaddons.commands.misc.HudCommand
 import org.magic.magicaddons.commands.features.ToggleFeature
+import org.magic.magicaddons.commands.features.farming.GreenhouseScreenCommand
+import org.magic.magicaddons.commands.internal.MainInternal
 import org.magic.magicaddons.ui.screens.ConfigScreen
 import org.magic.magicaddons.util.ScreenUtil
 
 
 object MainCommand {
-    val commandList = mutableListOf(
+    val commandList = listOf(
+        GreenhouseScreenCommand,
+        MainInternal,
         ToggleFeature,
         EditFeature,
         MainDebug,
         PlaySound,
         VersionCommand,
-        SafariHelperCommand
+        SafariHelperCommand,
+        HudCommand
     )
 
     init {
-
         ClientCommandRegistrationCallback.EVENT.register(
             ClientCommandRegistrationCallback { dispatcher, _ ->
 
@@ -37,13 +41,17 @@ object MainCommand {
 
                 roots.forEach { root ->
                     root.executes {
-                        val config = ConfigScreen(Component.literal("Magic Addons Config"), null)
+                        val config = ConfigScreen(null)
                         ScreenUtil.setScreen(config)
                         1
                     }
 
                     commandList.forEach { command ->
-                        root.then(command.build())
+                        val node = command.build().build()
+                        root.then(node)
+                        command.aliases.forEach { alias ->
+                            root.then(literal(alias).executes(node.command).redirect(node))
+                        }
                     }
 
                     dispatcher.register(root)
@@ -51,6 +59,4 @@ object MainCommand {
             }
         )
     }
-
-
 }

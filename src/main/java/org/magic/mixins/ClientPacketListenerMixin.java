@@ -1,13 +1,30 @@
 package org.magic.mixins;
 
-
-
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.multiplayer.ClientPacketListener;
+import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.core.BlockPos;
+import net.minecraft.network.protocol.game.ClientboundBlockUpdatePacket;
+import net.minecraft.network.protocol.game.ClientboundEntityPositionSyncPacket;
+import net.minecraft.network.protocol.game.ClientboundTeleportEntityPacket;
 import net.minecraft.network.protocol.game.ClientboundLevelParticlesPacket;
+import net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket;
+import net.minecraft.network.protocol.game.ClientboundSetTimePacket;
+import net.minecraft.network.protocol.game.ClientboundUpdateAttributesPacket;
 import net.minecraft.network.protocol.game.ClientboundSystemChatPacket;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.Vec3;
 import org.magic.magicaddons.events.EventBus;
-import org.magic.magicaddons.events.chat.OnSystemChatEvent;
+import org.magic.magicaddons.events.chat.SystemChatEvent;
+import org.magic.magicaddons.events.interact.BlockDestroyedEvent;
+import org.magic.magicaddons.events.interact.BlockPlacedEvent;
+import org.magic.magicaddons.events.interact.BlockChangedEvent;
 import org.magic.magicaddons.events.world.AddParticleEvent;
+import org.magic.magicaddons.events.world.SetTimePacketEvent;
+import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseData;
+import org.magic.magicaddons.util.EntityUtils;
+import org.magic.misc.BlockEventBufferAccess;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -35,6 +52,85 @@ public class ClientPacketListenerMixin {
     }
 
     @Inject(
+            method = "handleSetTime",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/network/protocol/PacketUtils;ensureRunningOnSameThread(Lnet/minecraft/network/protocol/Packet;Lnet/minecraft/network/PacketListener;Lnet/minecraft/network/PacketProcessor;)V",
+                    shift = At.Shift.AFTER
+            )
+    )
+    private void onSetTime(ClientboundSetTimePacket packet, CallbackInfo ci){
+        SetTimePacketEvent event = new SetTimePacketEvent(packet);
+        EventBus.post(event);
+    }
+
+
+    @Inject(
+            method = "handleBlockUpdate(Lnet/minecraft/network/protocol/game/ClientboundBlockUpdatePacket;)V",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/network/protocol/PacketUtils;ensureRunningOnSameThread(Lnet/minecraft/network/protocol/Packet;Lnet/minecraft/network/PacketListener;Lnet/minecraft/network/PacketProcessor;)V",
+                    shift = At.Shift.AFTER
+            )
+    )
+    private void onBlockUpdate(ClientboundBlockUpdatePacket packet, CallbackInfo ci) {
+        ClientLevel level = Minecraft.getInstance().level;
+        if (!(level instanceof BlockEventBufferAccess blockEventBuffer)) return;
+
+        BlockPos pos = packet.getPos();
+        BlockState newState = packet.getBlockState();
+        LocalPlayer player = Minecraft.getInstance().player;
+        if (player == null) return;
+
+        BlockState expectedPlaceState = blockEventBuffer.magicaddons$getPendingPlaces().get(pos);
+        BlockState expectedBreakState = blockEventBuffer.magicaddons$getPendingBreaks().get(pos);
+        if (expectedPlaceState != null) {
+
+            blockEventBuffer.magicaddons$getPendingPlaces().remove(pos);
+
+            if (!newState.isAir() && newState.is(expectedPlaceState.getBlock())) {
+                EventBus.post(new BlockPlacedEvent(pos, player, newState));
+            }
+            return;
+        }
+
+        if (expectedBreakState != null) {
+
+            blockEventBuffer.magicaddons$getPendingBreaks().remove(pos);
+
+            if (newState.isAir() || newState != expectedBreakState) {
+                EventBus.post(new BlockDestroyedEvent(pos, player, newState));
+            }
+            return;
+        }
+        BlockState currentState = level.getBlockState(pos);
+        if (currentState.equals(packet.getBlockState())) return;
+        EventBus.post(new BlockChangedEvent(packet));
+    }
+
+    @Inject(method = "handleSetEntityData", at = @At("TAIL"))
+    private void onSetEntityData(ClientboundSetEntityDataPacket packet, CallbackInfo ci) {
+        EntityUtils.INSTANCE.noteDataChanged(packet.id());
+        GreenhouseData.INSTANCE.noteStandChanged(packet.id(), null);
+    }
+
+    @Inject(method = "handleUpdateAttributes", at = @At("TAIL"))
+    private void onUpdateAttributes(ClientboundUpdateAttributesPacket packet, CallbackInfo ci) {
+        EntityUtils.INSTANCE.noteDataChanged(packet.getEntityId());
+    }
+
+    @Inject(method = "handleEntityPositionSync", at = @At("TAIL"))
+    private void onEntityPositionSync(ClientboundEntityPositionSyncPacket packet, CallbackInfo ci) {
+        GreenhouseData.INSTANCE.noteStandChanged(packet.id(), packet.values().position());
+    }
+
+    @Inject(method = "handleTeleportEntity", at = @At("TAIL"))
+    private void onTeleportEntity(ClientboundTeleportEntityPacket packet, CallbackInfo ci) {
+        Vec3 movingTo = packet.relatives().isEmpty() ? packet.change().position() : null;
+        GreenhouseData.INSTANCE.noteStandTeleported(packet.id(), movingTo);
+    }
+
+    @Inject(
             method = "handleSystemChat(Lnet/minecraft/network/protocol/game/ClientboundSystemChatPacket;)V",
             at = @At(
                     value = "INVOKE",
@@ -43,7 +139,7 @@ public class ClientPacketListenerMixin {
             )
     )
     private void onSystemChat(ClientboundSystemChatPacket packet, CallbackInfo ci) {
-        EventBus.post(new OnSystemChatEvent(packet.content(), packet.overlay()));
+        EventBus.post(new SystemChatEvent(packet.content(), packet.overlay()));
     }
 
 }

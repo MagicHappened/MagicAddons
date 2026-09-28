@@ -1,14 +1,19 @@
 package org.magic.magicaddons.data.config
 
+import com.google.gson.JsonArray
+import com.google.gson.JsonElement
+import com.google.gson.JsonObject
+import com.google.gson.JsonPrimitive
 import org.magic.magicaddons.ExtensionPack
 import org.magic.magicaddons.data.ListEntry
-import kotlin.collections.get
+import org.magic.magicaddons.ui.widgets.config.SettingDetail
 
 sealed class SettingNode<T>(
     val key: String,
     val displayName: String,
-    val tooltip: String,
+    val description: String,
     open var value: T,
+    val detail: (() -> SettingDetail?)? = null,
     val needsExtensionPack: Boolean = false
 ) {
     open val children: List<SettingNode<*>>? = null
@@ -17,31 +22,27 @@ sealed class SettingNode<T>(
 
     val availableChildren: List<SettingNode<*>> get() = children.orEmpty().filter { it.isAvailable }
 
-    /**
-     * The key this node is stored under, namespaced by the path of its parent ("Parent.Child").
-     * Keys only have to be unique among siblings, so renaming or moving a branch cannot collide with
-     * an unrelated setting somewhere else in the tree.
-     */
-    fun pathIn(parentPath: String): String = if (parentPath.isEmpty()) key else "$parentPath.$key"
+    fun settingKey(parentPath: String): String = if (parentPath.isEmpty()) key else "$parentPath.$key"
 
-    open fun serializeSettings(parentPath: String = ""): MutableMap<String, Any>{
-        val result = mutableMapOf<String, Any>()
-        result[pathIn(parentPath)] = value as Any
-        return result
-    }
-    open fun updateSettings(settings: Map<String, Any>, parentPath: String = "") {
-        updateOwnValue(settings, parentPath)
+    protected open val savedChildren: List<SettingNode<*>> get() = children.orEmpty()
+
+    protected abstract fun valueToJson(): JsonElement?
+
+    protected abstract fun valueFromJson(json: JsonElement): T
+
+    fun writeTo(settingsJson: JsonObject, parentPath: String = "") {
+        val path = settingKey(parentPath)
+        valueToJson()?.let { settingsJson.add(path, it) }
+        savedChildren.forEach { it.writeTo(settingsJson, path) }
     }
 
-    protected fun updateOwnValue(settings: Map<String, Any>, parentPath: String) {
-        val newValue = settings[pathIn(parentPath)] ?: return
-        try {
-            value = parseValue(newValue)
-        } catch (_: Exception) {
-
-        }
+    fun readFrom(settingsJson: JsonObject, parentPath: String = "") {
+        val path = settingKey(parentPath)
+        settingsJson.get(path)?.let { json -> runCatching { value = valueFromJson(json) } }
+        savedChildren.forEach { it.readFrom(settingsJson, path) }
     }
-    protected abstract fun parseValue(value: Any): T
+
+    fun toSettingsJson(): JsonObject = JsonObject().also { writeTo(it) }
 
     inline fun <reified R : SettingNode<*>> getChild(key: String): R? {
         return children?.filterIsInstance<R>()?.firstOrNull { it.key == key }
@@ -53,66 +54,54 @@ sealed class SettingNode<T>(
 
 }
 
-/**
- * A list picked from a fixed set of names: the widget offers whatever [choices] returns that is not
- * already in the list, and each entry keeps its own on/off switch.
- */
 class ToggleListSetting(
     key: String,
     displayName: String,
-    tooltip: String,
+    description: String,
     override var value: MutableList<ListEntry>,
     val choices: () -> List<String>,
-    /** What the closed selector says. It searches the whole catalogue, listed and not. */
     val searchLabel: String = "Search",
+    val searchable: Boolean = true,
+    detail: (() -> SettingDetail?)? = null,
     needsExtensionPack: Boolean = false
-) : SettingNode<MutableList<ListEntry>>(key, displayName, tooltip, value, needsExtensionPack) {
+) : SettingNode<MutableList<ListEntry>>(key, displayName, description, value, detail, needsExtensionPack) {
 
-    override fun parseValue(value: Any): MutableList<ListEntry> {
-        val list = value as? List<*> ?: return mutableListOf()
+    override fun valueFromJson(json: JsonElement): MutableList<ListEntry> =
+        json.asJsonArray.mapNotNull { entryJson ->
+            val entry = entryJson as? JsonObject ?: return@mapNotNull null
+            val entryValue = entry.get("value")?.asString ?: return@mapNotNull null
+            val enabledJson = entry.get("enabled") as? JsonPrimitive
 
-        return list.mapNotNull { entry ->
-            val map = entry as? Map<*, *> ?: return@mapNotNull null
-
-            val name = map["name"]?.toString() ?: ""
-            val strValue = map["value"]?.toString() ?: return@mapNotNull null
-
-            val enabled = when (val e = map["enabled"]) {
-                is Boolean -> e
-                is String -> e.toBoolean()
-                is Number -> e.toInt() != 0
-                else -> true
+            val isEnabled = when {
+                enabledJson == null -> true
+                enabledJson.isBoolean -> enabledJson.asBoolean
+                enabledJson.isNumber -> enabledJson.asInt != 0
+                else -> enabledJson.asString.toBoolean()
             }
 
-            ListEntry(
-                name = name,
-                value = strValue,
-                enabled = enabled
-            )
+            ListEntry(name = entry.get("name")?.asString ?: "", value = entryValue, enabled = isEnabled)
         }.toMutableList()
-    }
 
-    override fun serializeSettings(parentPath: String): MutableMap<String, Any> {
-        return mutableMapOf(
-            pathIn(parentPath) to value.map { entry ->
-                mapOf(
-                    "name" to entry.name,
-                    "value" to entry.value,
-                    "enabled" to entry.enabled
-                )
-            }
-        )
+    override fun valueToJson(): JsonElement = JsonArray().also { array ->
+        value.forEach { entry ->
+            array.add(JsonObject().apply {
+                addProperty("name", entry.name)
+                addProperty("value", entry.value)
+                addProperty("enabled", entry.enabled)
+            })
+        }
     }
 }
 
 class BooleanSetting(
     key: String = "enabled",
     displayName: String,
-    tooltip: String,
+    description: String,
     value: Boolean,
     override var children: List<SettingNode<*>>? = null,
+    detail: (() -> SettingDetail?)? = null,
     needsExtensionPack: Boolean = false
-) : SettingNode<Boolean>(key, displayName, tooltip, value, needsExtensionPack) {
+) : SettingNode<Boolean>(key, displayName, description, value, detail, needsExtensionPack) {
 
     private var storedValue: Boolean = value
 
@@ -122,99 +111,199 @@ class BooleanSetting(
             storedValue = newValue
         }
 
-    override fun serializeSettings(parentPath: String): MutableMap<String, Any> {
-        val map = mutableMapOf<String, Any>(pathIn(parentPath) to storedValue)
-        val childPath = pathIn(parentPath)
-        children?.forEach { child ->
-            map.putAll(child.serializeSettings(childPath))
-        }
-        return map
-    }
-    override fun updateSettings(settings: Map<String, Any>, parentPath: String) {
-        super.updateSettings(settings, parentPath)
-        val childPath = pathIn(parentPath)
-        children?.forEach { child ->
-            child.updateSettings(settings, childPath)
-        }
-    }
-    override fun parseValue(value: Any): Boolean = value as Boolean
+    override fun valueToJson(): JsonElement = JsonPrimitive(storedValue)
 
-    /**
-     * A feature toggle is the root of its tree: it is stored under its own key while its children
-     * start at the top level, so no stored key carries a redundant "enabled." prefix.
-     */
-    fun serializeAsFeatureRoot(): MutableMap<String, Any> {
-        val map = mutableMapOf<String, Any>(key to storedValue)
-        children?.forEach { child ->
-            map.putAll(child.serializeSettings())
-        }
-        return map
+    override fun valueFromJson(json: JsonElement): Boolean = json.asBoolean
+
+    fun writeAsFeatureRoot(settingsJson: JsonObject) {
+        settingsJson.addProperty(key, storedValue)
+        savedChildren.forEach { it.writeTo(settingsJson) }
     }
 
-    fun updateAsFeatureRoot(settings: Map<String, Any>) {
-        updateOwnValue(settings, "")
-        children?.forEach { child ->
-            child.updateSettings(settings)
-        }
+    fun readAsFeatureRoot(settingsJson: JsonObject) {
+        settingsJson.get(key)?.let { json -> runCatching { value = valueFromJson(json) } }
+        savedChildren.forEach { it.readFrom(settingsJson) }
+    }
+}
+
+class IntSetting(
+    key: String,
+    displayName: String,
+    description: String,
+    override var value: Int,
+    val range: IntRange,
+    val step: Int = 1,
+    val mouseScrollEnabled: Boolean = true,
+    detail: (() -> SettingDetail?)? = null,
+    needsExtensionPack: Boolean = false
+) : SettingNode<Int>(key, displayName, description, value, detail, needsExtensionPack) {
+
+    override fun valueToJson(): JsonElement = JsonPrimitive(value)
+
+    override fun valueFromJson(json: JsonElement): Int {
+        val primitive = json.asJsonPrimitive
+        val number = if (primitive.isNumber) primitive.asDouble.toInt() else primitive.asString.trim().toDouble().toInt()
+        return number.coerceIn(range)
     }
 }
 
 class TextSetting(
     key: String,
     displayName: String,
-    tooltip: String,
+    description: String,
     override var value: String,
+    detail: (() -> SettingDetail?)? = null,
     needsExtensionPack: Boolean = false
-) : SettingNode<String>(key, displayName, tooltip, value, needsExtensionPack) {
+) : SettingNode<String>(key, displayName, description, value, detail, needsExtensionPack) {
 
     val history: MutableSet<String> = mutableSetOf()
 
-    override fun parseValue(value: Any): String = value.toString()
-
-    override fun serializeSettings(parentPath: String): MutableMap<String, Any> {
-        return mutableMapOf(
-            pathIn(parentPath) to mutableMapOf(
-                "current_value" to value,
-                "history" to history
-            )
-        )
+    override fun valueToJson(): JsonElement = JsonObject().apply {
+        addProperty("current_value", value)
+        add("history", JsonArray().also { array -> history.forEach { array.add(it) } })
     }
 
-    override fun updateSettings(settings: Map<String, Any>, parentPath: String) {
-        val nested = settings[pathIn(parentPath)] as? Map<*, *> ?: return
-
-        val current = nested["current_value"]
-        if (current != null) {
-            value = parseValue(current)
+    override fun valueFromJson(json: JsonElement): String {
+        val stored = json.asJsonObject
+        stored.getAsJsonArray("history")?.let { historyJson ->
+            history.clear()
+            historyJson.forEach { entry -> runCatching { history.add(entry.asString) } }
         }
-
-        val historyList = nested["history"] as? List<*> ?: return
-
-        history.clear()
-
-        historyList.forEach { entry ->
-            val str = entry as? String
-            if (str != null) {
-                history.add(str)
-            }
-        }
+        return stored.get("current_value")?.asString ?: value
     }
 
 }
 
 
+class ActionSetting(
+    key: String,
+    displayName: String,
+    description: String,
+    val buttonLabel: String,
+    override var value: String = "",
+    val onPressed: (ActionSetting) -> Unit,
+    detail: (() -> SettingDetail?)? = null,
+    needsExtensionPack: Boolean = false
+) : SettingNode<String>(key, displayName, description, value, detail, needsExtensionPack) {
+
+    override fun valueToJson(): JsonElement = JsonPrimitive(value)
+
+    override fun valueFromJson(json: JsonElement): String = json.asString
+}
+
+class PresetLibrarySetting(
+    key: String,
+    displayName: String,
+    description: String,
+    val settingUnder: SettingNode<*>,
+    val defaultName: String,
+    detail: (() -> SettingDetail?)? = null,
+    needsExtensionPack: Boolean = false
+) : SettingNode<String>(key, displayName, description, defaultName, detail, needsExtensionPack) {
+
+    val configSettingPresets: MutableMap<String, JsonObject> = mutableMapOf()
+
+    private val defaultConfigOptions: JsonObject = settingUnder.toSettingsJson()
+
+    fun presetNames(): List<String> = listOf(defaultName) + configSettingPresets.keys.sorted()
+
+    fun save(name: String) {
+        if (name.isBlank() || name == defaultName) return //todo add a warning
+
+        configSettingPresets[name] = settingUnder.toSettingsJson()
+        value = name
+    }
+
+    fun delete(name: String) {
+        if (name == defaultName) return
+
+        configSettingPresets.remove(name) //todo add confirmation
+        if (value == name) applyPreset(defaultName)
+    }
+
+    fun applyPreset(name: String) {
+        val saved = if (name == defaultName) defaultConfigOptions else configSettingPresets[name]
+
+        value = name
+        saved?.let { settingUnder.readFrom(it) }
+    }
+
+    fun savePreset(): String {
+        if (value != defaultName) return value
+
+        return generateSequence(1) { it + 1 }.map { "Preset $it" }.first { it !in configSettingPresets }
+    }
+
+    fun settingsDirty(): Boolean {
+        val savedSettings = if (value == defaultName) defaultConfigOptions else configSettingPresets[value]
+
+        return savedSettings != null && savedSettings != settingUnder.toSettingsJson()
+    }
+
+    override fun valueToJson(): JsonElement = JsonObject().apply {
+        addProperty("current_value", value)
+        add("presets", JsonObject().also { presetsJson -> configSettingPresets.forEach { (name, settings) -> presetsJson.add(name, settings) } })
+    }
+
+    override fun valueFromJson(json: JsonElement): String {
+        val stored = json.asJsonObject
+        stored.getAsJsonObject("presets")?.let { presetsJson ->
+            configSettingPresets.clear()
+            presetsJson.entrySet().forEach { (name, settings) -> (settings as? JsonObject)?.let { configSettingPresets[name] = it } }
+        }
+        return stored.get("current_value")?.asString ?: value
+    }
+}
+
+// just a header with no setting on itself, but still namespaces the key.
+class ParentSetting(
+    key: String,
+    displayName: String,
+    description: String,
+    override val children: List<SettingNode<*>>,
+    needsExtensionPack: Boolean = false
+) : SettingNode<Unit>(key, displayName, description, Unit, needsExtensionPack = needsExtensionPack) {
+
+    override fun valueToJson(): JsonElement? = null
+
+    override fun valueFromJson(json: JsonElement) = Unit
+}
+
+class ChoiceSetting(
+    key: String,
+    displayName: String,
+    description: String,
+    override var value: String = "",
+    val options: () -> List<String>,
+    val onChosen: ((ChoiceSetting) -> Unit)? = null,
+    val confirm: ((String) -> Confirmation?)? = null,
+    detail: (() -> SettingDetail?)? = null,
+    needsExtensionPack: Boolean = false
+) : SettingNode<String>(key, displayName, description, value, detail, needsExtensionPack) {
+
+    class Confirmation(val question: String, val warning: String? = null)
+
+    override fun valueToJson(): JsonElement = JsonPrimitive(value)
+
+    override fun valueFromJson(json: JsonElement): String = json.asString
+}
+
 class EnumSetting<T : Enum<T>>(
     key: String,
     displayName: String,
-    tooltip: String,
+    description: String,
     value: T,
     override val children: List<SettingNode<*>>? = null,
     val childrenProvider: ((T) -> List<SettingNode<*>>)? = null,
+    detail: (() -> SettingDetail?)? = null,
     needsExtensionPack: Boolean = false
-) : SettingNode<T>(key, displayName, tooltip, value, needsExtensionPack) {
+) : SettingNode<T>(key, displayName, description, value, detail, needsExtensionPack) {
 
     private var activeChildren: List<SettingNode<*>>? =
         childrenProvider?.invoke(value)
+
+    val providedChildren: List<SettingNode<*>>
+        get() = activeChildren.orEmpty().filter { it.isAvailable }
 
     override var value: T = value
         set(newValue) {
@@ -223,25 +312,10 @@ class EnumSetting<T : Enum<T>>(
             activeChildren = childrenProvider?.invoke(newValue)
         }
 
-    override fun serializeSettings(parentPath: String): MutableMap<String, Any> {
-        val map = super.serializeSettings(parentPath)
-        val childPath = pathIn(parentPath)
-        children?.forEach { child ->
-            map.putAll(child.serializeSettings(childPath))
-        }
-        return map
-    }
+    override val savedChildren: List<SettingNode<*>> get() = children.orEmpty() + providedChildren
 
-    override fun updateSettings(settings: Map<String, Any>, parentPath: String) {
-        super.updateSettings(settings, parentPath)
-        val childPath = pathIn(parentPath)
-        children?.forEach { child ->
-            child.updateSettings(settings, childPath)
-        }
-    }
+    override fun valueToJson(): JsonElement = JsonPrimitive(value.name)
 
-    override fun parseValue(value: Any): T {
-        return java.lang.Enum.valueOf(this.value.javaClass, value as String)
-    }
+    override fun valueFromJson(json: JsonElement): T = java.lang.Enum.valueOf(value.javaClass, json.asString)
 
 }

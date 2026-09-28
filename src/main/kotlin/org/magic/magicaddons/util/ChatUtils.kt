@@ -1,34 +1,132 @@
 package org.magic.magicaddons.util
 
 
+import net.minecraft.network.chat.MutableComponent
 import net.minecraft.ChatFormatting
 import net.minecraft.client.Minecraft
+import net.minecraft.network.chat.ClickEvent
 import net.minecraft.network.chat.Component
+import net.minecraft.network.chat.HoverEvent
+import net.minecraft.network.chat.Style
+import org.magic.magicaddons.features.customization.Customization
+import org.magic.magicaddons.util.compat.McCompat
+import java.time.Instant
 
 object ChatUtils {
+    private const val WARNING_COOLDOWN_SECONDS: Long = 60
+
+    private const val COPY_HINT: String = "Click to copy"
+
+    var lastWarningTime: Instant? = null
+
+    fun send(message: String){
+        send(Component.literal(message))
+    }
+    fun send(message: Component){
+        Minecraft.getInstance().player?.sendSystemMessage(message)
+    }
+
     fun sendWithPrefix(message: String) {
         sendWithPrefix(Component.literal(message).withStyle(ChatFormatting.WHITE))
     }
 
-    fun buildWithPrefix(message: String?): Component {
+    fun buildWithPrefix(message: String?): MutableComponent {
         val body = message?.takeIf { it.isNotBlank() } ?: return Component.literal("")
 
         return buildWithPrefix(Component.literal(body).withStyle(ChatFormatting.WHITE))
     }
 
-    fun buildWithPrefix(message: Component?): Component {
-        val prefix = Component.literal("[MA] ").withStyle(ChatFormatting.GOLD)
+    fun sendWithPrefix(message: Component): Component {
+        val prefixed = buildWithPrefix(message)
+        Minecraft.getInstance().player?.sendSystemMessage(prefixed)
+        return prefixed
+    }
+
+    fun retract(message: Component) {
+        val chat = McCompat.chat()
+        val messages = chat.allMessages
+        val wanted = message.string
+
+        val newest = messages.filter { it.content().string == wanted }.maxByOrNull { it.addedTime() } ?: return
+        messages.remove(newest)
+        chat.refreshTrimmedMessages()
+    }
+
+    fun sendCommand(command: String) {
+        Minecraft.getInstance().player?.connection?.sendCommand(command)
+    }
+
+    fun shortDuration(ms: Long): String {
+        val seconds = (ms / 1000).coerceAtLeast(0)
+
+        return if (seconds >= 60) "${seconds / 60}m ${seconds % 60}s" else "${seconds}s"
+    }
+
+    fun buildWithPrefix(message: Component?): MutableComponent {
+        val prefix = Component.literal("[MA] ").withColor(Customization.prefixColor)
 
         return if (message != null && message != Component.empty()) prefix.append(message) else prefix
     }
-
-    fun sendWithPrefix(message: Component) {
-        val prefixed = buildWithPrefix(message)
-        Minecraft.getInstance().player?.sendSystemMessage(prefixed)
+    fun sendWithCommand(message: String, command: String) {
+        val component = buildWithCommand(message, command)
+        Minecraft.getInstance().player?.sendSystemMessage(component)
     }
-    /** Runs a command as if the player typed it, [command] is given without the leading slash. */
-    fun sendCommand(command: String) {
-        Minecraft.getInstance().player?.connection?.sendCommand(command)
+
+    fun buildWithCommand(message: String, command: String): Component =
+        buildWithPrefix(
+            buildStyled(
+                message,
+                ChatFormatting.WHITE,
+                Component.literal("Running: $command"),
+                ClickEvent.RunCommand(command),
+            )
+        )
+
+    fun buildStyled(
+        text: String,
+        color: ChatFormatting? = null,
+        hover: Component? = null,
+        click: ClickEvent? = null,
+        underlined: Boolean = false,
+    ): MutableComponent {
+        var style = Style.EMPTY
+        color?.let { style = style.withColor(it) }
+        hover?.let { style = style.withHoverEvent(HoverEvent.ShowText(it)) }
+        click?.let { style = style.withClickEvent(it) }
+        if (underlined) style = style.withUnderlined(true)
+
+        return Component.literal(text).setStyle(style)
+    }
+
+    fun buildWithHover(message: String, hover: Component): Component =
+        buildWithPrefix(buildStyled(message, hover = hover))
+
+    fun sendWithCopyableHover(message: String, copied: String, hover: String = copied) {
+        send(
+            buildWithPrefix(
+                buildStyled(
+                    message,
+                    hover = Component.literal("$hover\n$COPY_HINT"),
+                    click = ClickEvent.CopyToClipboard(copied),
+                )
+            )
+        )
+    }
+
+    fun cooldownReady(): Boolean {
+        return lastWarningTime
+            ?.plusSeconds(WARNING_COOLDOWN_SECONDS)
+            ?.isBefore(Instant.now())
+            ?: true
+    }
+
+    fun sendWarningsComponents(messages: List<Component>) {
+        if (cooldownReady()) {
+            lastWarningTime = Instant.now()
+            messages.forEach {
+                send(it)
+            }
+        }
     }
 
 }

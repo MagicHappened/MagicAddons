@@ -2,10 +2,17 @@ package org.magic.magicaddons.util
 
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
+import com.mojang.authlib.properties.Property
 import net.minecraft.core.component.DataComponents
+import net.minecraft.world.entity.EquipmentSlot
+import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.item.ItemStack
+import net.minecraft.world.item.Items
+import tech.thatgravyboat.skyblockapi.platform.GameProfile
+import tech.thatgravyboat.skyblockapi.platform.PropertyMap
 import tech.thatgravyboat.skyblockapi.platform.properties
+import tech.thatgravyboat.skyblockapi.platform.toResolvableProfile
 import java.util.*
 
 object PlayerUtils {
@@ -49,11 +56,6 @@ object PlayerUtils {
         return textures.firstOrNull()?.value
     }
 
-    fun getSkinJson(player: Player): JsonObject? {
-        val value = getTextureValue(player)
-        return getSkinDataFromValue(value)?.json
-    }
-
     fun getSkinUrl(player: Player): String? {
         val value = getTextureValue(player)
         return getSkinDataFromValue(value)?.url
@@ -71,5 +73,45 @@ object PlayerUtils {
 
         return skinData.hash
     }
+
+    fun getSkullHash(entity: LivingEntity): String? =
+        EquipmentSlot.entries.firstNotNullOfOrNull { getSkinHash(entity.getItemBySlot(it)) }
+
+    fun getHelmetHash(entity: LivingEntity): String? =
+        getSkinHash(entity.getItemBySlot(EquipmentSlot.HEAD))
+
+    private val skullCache = mutableMapOf<String, ItemStack>()
+
+    fun getItemFromHash(hash: String): ItemStack = skullCache.getOrPut(hash) {
+        val stack = ItemStack(Items.PLAYER_HEAD)
+
+        val texturesJson = """
+        {
+          "textures": {
+            "SKIN": {
+              "url": "http://textures.minecraft.net/texture/$hash"
+            }
+          }
+        }
+    """.trimIndent()
+
+        val encoded = Base64.getEncoder()
+            .encodeToString(texturesJson.toByteArray(Charsets.UTF_8))
+
+        val profile = GameProfile(
+            uuid = UUID.nameUUIDFromBytes(hash.toByteArray(Charsets.UTF_8)),
+            name = "",
+            map = PropertyMap {
+                put("textures", Property("textures", encoded))
+            }
+        )
+
+        stack.set(
+            DataComponents.PROFILE,
+            profile.toResolvableProfile()
+        )
+
+        stack
+    }.copy()
 
 }

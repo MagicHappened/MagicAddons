@@ -38,5 +38,8 @@ fabric-cache/
 remappedSrc/
 .run/
 
-# local game-behaviour notes (see memory: greenhouse-water-notes)
+# local only, the crop data backup is not worth carrying in history
+backup/
+
+# working notes, local only
 notes/

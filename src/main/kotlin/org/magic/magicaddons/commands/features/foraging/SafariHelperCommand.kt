@@ -1,0 +1,78 @@
+package org.magic.magicaddons.commands.features.foraging
+
+import com.mojang.brigadier.builder.LiteralArgumentBuilder
+import com.mojang.brigadier.builder.LiteralArgumentBuilder.literal
+import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource
+import net.minecraft.ChatFormatting
+import net.minecraft.network.chat.Component
+import org.magic.magicaddons.commands.AbstractCommand
+import org.magic.magicaddons.features.foraging.safarihelper.SafariHelper
+import org.magic.magicaddons.features.foraging.safarihelper.SafariZone
+import org.magic.magicaddons.util.ChatUtils
+
+object SafariHelperCommand : AbstractCommand() {
+
+    override val argument: String = "SafariHelper"
+
+    override fun build(): LiteralArgumentBuilder<FabricClientCommandSource> {
+        val remainingMobs = literal<FabricClientCommandSource>("SendRemainingMobs")
+            .executes {
+                sendRemainingReport(it.source, null)
+                return@executes 1
+            }
+
+        SafariZone.entries.forEach { zone ->
+            remainingMobs.then(
+                literal<FabricClientCommandSource>(zone.displayName.lowercase())
+                    .executes {
+                        sendRemainingReport(it.source, zone)
+                        return@executes 1
+                    }
+            )
+        }
+
+        return literal<FabricClientCommandSource>(argument)
+            .executes {
+                it.source.sendError(ChatUtils.buildWithPrefix("Missing safari helper action."))
+                return@executes 0
+            }
+            .then(remainingMobs)
+    }
+
+    private fun sendRemainingReport(source: FabricClientCommandSource, zone: SafariZone?) {
+        val zones = zone?.let { listOf(it) } ?: SafariZone.entries.toList()
+
+        val zonesRemaining = zones.filter { zone != null || SafariHelper.uncaughtMobNamesIn(it).isNotEmpty() }
+
+        if (zonesRemaining.isEmpty()) {
+            source.sendFeedback(
+                ChatUtils.buildWithPrefix(
+                    Component.literal("All safari uniques caught").withStyle(ChatFormatting.GREEN)
+                )
+            )
+            return
+        }
+
+        source.sendFeedback(
+            ChatUtils.buildWithPrefix(
+                Component.literal("Zones remaining:").withStyle(ChatFormatting.GOLD)
+            )
+        )
+
+        zonesRemaining.forEach { biome -> source.sendFeedback(biomeReport(biome)) }
+    }
+
+    private fun biomeReport(biome: SafariZone): Component {
+        val uniquesRemaining = SafariHelper.uncaughtMobNamesIn(biome)
+
+        val report = Component.literal("${biome.displayName} Biome left:").withStyle(ChatFormatting.GOLD)
+
+        if (uniquesRemaining.isEmpty()) {
+            return report.append(Component.literal("\nall caught").withStyle(ChatFormatting.GREEN))
+        }
+
+        return report.append(
+            Component.literal("\n${uniquesRemaining.joinToString(", ")}").withStyle(ChatFormatting.GREEN)
+        )
+    }
+}

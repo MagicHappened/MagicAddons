@@ -1,11 +1,11 @@
 package org.magic.mixins;
 
+import org.magic.magicaddons.util.ErrorReporter;
 import com.mojang.blaze3d.buffers.GpuBufferSlice;
 import com.mojang.blaze3d.framegraph.FrameGraphBuilder;
 import com.mojang.blaze3d.pipeline.RenderTarget;
 import com.mojang.blaze3d.resource.GraphicsResourceAllocator;
 import com.mojang.blaze3d.vertex.PoseStack;
-import net.minecraft.client.Camera;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.LevelRenderer;
@@ -14,7 +14,6 @@ import net.minecraft.client.renderer.chunk.ChunkSectionsToRender;
 import net.minecraft.client.renderer.culling.Frustum;
 import net.minecraft.client.renderer.entity.EntityRenderDispatcher;
 import net.minecraft.client.renderer.entity.EntityRenderer;
-import net.minecraft.client.renderer.entity.LivingEntityRenderer;
 import net.minecraft.client.renderer.entity.state.EntityRenderState;
 import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
 //? if >=26.2 {
@@ -24,18 +23,24 @@ import net.minecraft.client.renderer.state.level.CameraRenderState;
 import net.minecraft.client.renderer.state.level.LevelRenderState;
 import net.minecraft.util.profiling.ProfilerFiller;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.animal.pig.Pig;
+import net.minecraft.world.entity.decoration.ArmorStand;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.Vec3;
-import org.joml.Matrix4f;
 import org.joml.Matrix4fc;
 import org.joml.Vector4f;
 import org.jspecify.annotations.Nullable;
+import org.magic.magicaddons.commands.debug.CropCollector;
+import org.magic.magicaddons.features.farming.greenhousePresets.render.LayoutRenderState;
+import org.magic.magicaddons.features.misc.HighlightMarkers;
+import org.magic.magicaddons.features.farming.greenhousePresets.render.PlantHighlight;
+import org.magic.magicaddons.features.farming.greenhousePresets.render.WaterIndicator;
 import org.magic.magicaddons.util.EntityUtils;
+import org.magic.misc.EntityRenderModifier;
+import org.magic.misc.WrappedEntityRenderState;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
@@ -48,9 +53,6 @@ public abstract class LevelRendererMixin {
     @Shadow
     @Final
     private EntityRenderDispatcher entityRenderDispatcher;
-
-    @Shadow
-    public abstract void doEntityOutline();
 
     //? if <26.2 {
     @Shadow
@@ -71,7 +73,6 @@ public abstract class LevelRendererMixin {
         levelRenderState.haveGlowingEntities = true;
     }
 
-    // 26.1.2 never builds the outline target on its own; 26.2 removed the call and does it itself
     @Inject(method = "renderLevel", at = @At("HEAD"))
     private void initOutlineIfNeeded(GraphicsResourceAllocator resourceAllocator, DeltaTracker deltaTracker, boolean renderOutline, CameraRenderState cameraState, Matrix4fc modelViewMatrix, GpuBufferSlice terrainFog, Vector4f fogColor, boolean shouldRenderSky, ChunkSectionsToRender chunkSectionsToRender, CallbackInfo ci) {
         if (this.entityOutlineTarget == null) {
@@ -94,50 +95,123 @@ public abstract class LevelRendererMixin {
             Entity entity = entry.getKey();
             EntityUtils.HighlightSource source = entry.getValue();
 
-            if (entity instanceof Player){
-                entity.setCustomNameVisible(false);
+            if (!source.getThroughWalls() && !EntityUtils.inSight(levelRenderState.cameraRenderState.pos, entity)) {
+                continue;
             }
 
-            EntityRenderer<? super Entity, ?> baseRenderer = entityRenderDispatcher.getRenderer(entity);
+            if (HighlightMarkers.markingReplacesOutline(entity, source)) {
+                continue;
+            }
 
-            @SuppressWarnings("unchecked")
-            EntityRenderer<Entity, EntityRenderState> renderer =
-                    (EntityRenderer<Entity, EntityRenderState>) baseRenderer;
+            if (entity instanceof Player) {
+                entity.setCustomNameVisible(false);
+            }
+            renderFakeEntity(
+                    entity,
+                    poseStack,
+                    levelRenderState,
+                    submitNodeCollector,
+                    (ent, state) -> {
 
-            float partialTicks = mc.getDeltaTracker().getGameTimeDeltaPartialTick(false);
+                        // highlight-specific logic
+                        state.outlineColor = source.highlightColor(ent);
+                        state.isInvisible = true;
+                    },
+                    true
+            );
+        }
 
-            EntityRenderState state = renderer.createRenderState(entity, partialTicks);
-            renderer.extractRenderState(entity, state, partialTicks);
-
-            poseStack.pushPose();
-
-            Vec3 cam = levelRenderState.cameraRenderState.pos;
-
-            poseStack.translate(
-                    entity.getX() - cam.x,
-                    entity.getY() - cam.y,
-                    entity.getZ() - cam.z
+        try {
+            LayoutRenderState.INSTANCE.submitPlan(
+                    poseStack,
+                    submitNodeCollector,
+                    levelRenderState.cameraRenderState.pos
             );
 
-            //poseStack.scale(state.scale, state.scale, state.scale);
-            //poseStack.translate(0.0F, 0.0F, 0.0F);
+            PlantHighlight.INSTANCE.submitPlantHighlight(
+                    poseStack,
+                    submitNodeCollector,
+                    levelRenderState.cameraRenderState.pos
+            );
 
-            state.outlineColor = source.highlightColor(entity);
-            state.isInvisible = true;
+            WaterIndicator.INSTANCE.submitDryPlants(
+                    poseStack,
+                    submitNodeCollector,
+                    levelRenderState.cameraRenderState.pos
+            );
 
-
-
-            //? if >=26.2 {
-            /*levelRenderState.shouldShowEntityOutlines = true;
-            *///?} else {
-            levelRenderState.haveGlowingEntities = true;
-            //?}
-
-            renderer.submit(state, poseStack, submitNodeCollector, levelRenderState.cameraRenderState);
-
-            poseStack.popPose();
+            CropCollector.INSTANCE.submitHighlights(
+                    poseStack,
+                    submitNodeCollector,
+                    levelRenderState.cameraRenderState.pos
+            );
+        } catch (Throwable error) {
+            ErrorReporter.INSTANCE.report("the hologram", error);
         }
+
+        for (ArmorStand stand : LayoutRenderState.INSTANCE.getGhostStands()) {
+            renderFakeEntity(
+                    stand,
+                    poseStack,
+                    levelRenderState,
+                    submitNodeCollector,
+                    (ent, state) -> {
+                        state.isInvisible = true;
+                        state.outlineColor = EntityRenderState.NO_OUTLINE;
+
+                        if (state instanceof LivingEntityRenderState living) {
+                            living.isInvisibleToPlayer = false;
+                        }
+
+                        if (state instanceof WrappedEntityRenderState wrapped) {
+                            wrapped.magicaddons$setHeadOutlineColor(
+                                    LayoutRenderState.ghostOutlineColorOf(stand.getUUID())
+                            );
+                        }
+                    },
+                    false
+            );
+        }
+
+
     }
 
+    @Unique
+    private void renderFakeEntity(
+            Entity entity,
+            PoseStack poseStack,
+            LevelRenderState levelRenderState,
+            SubmitNodeCollector submitNodeCollector,
+            EntityRenderModifier modifier,
+            Boolean shouldPartialTick
+    ) {
+        float partialTicks = shouldPartialTick ? Minecraft.getInstance()
+                .getDeltaTracker()
+                .getGameTimeDeltaPartialTick(false) : 1.0f;
+
+        EntityRenderer<? super Entity, ?> baseRenderer =
+                entityRenderDispatcher.getRenderer(entity);
+
+        @SuppressWarnings("unchecked")
+        EntityRenderer<Entity, EntityRenderState> renderer =
+                (EntityRenderer<Entity, EntityRenderState>) baseRenderer;
+
+        EntityRenderState state = renderer.createRenderState(entity, partialTicks);
+        renderer.extractRenderState(entity, state, partialTicks);
+        modifier.modify(entity, state);
+
+        poseStack.pushPose();
+
+        Vec3 cam = levelRenderState.cameraRenderState.pos;
+
+        poseStack.translate(
+                entity.getX() - cam.x,
+                entity.getY() - cam.y,
+                entity.getZ() - cam.z
+        );
+
+        renderer.submit(state, poseStack, submitNodeCollector, levelRenderState.cameraRenderState);
+        poseStack.popPose();
+    }
 
 }

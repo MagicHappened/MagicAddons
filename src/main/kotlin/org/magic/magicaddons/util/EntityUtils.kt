@@ -1,42 +1,96 @@
 package org.magic.magicaddons.util
 
+import org.magic.magicaddons.features.HighlightFeature
+import org.magic.magicaddons.features.FeatureManager
 import net.minecraft.client.Minecraft
-import net.minecraft.client.multiplayer.ClientLevel
-import net.minecraft.client.player.LocalPlayer
 import net.minecraft.core.component.DataComponents
+import net.minecraft.core.registries.BuiltInRegistries
+import net.minecraft.resources.Identifier
 import net.minecraft.world.entity.Display
 import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.EquipmentSlot
 import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.decoration.ArmorStand
+import net.minecraft.client.player.LocalPlayer
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.item.ItemStack
+import net.minecraft.core.BlockPos
+import net.minecraft.world.level.ClipContext
+import net.minecraft.world.level.Level
+import net.minecraft.world.phys.AABB
+import net.minecraft.world.phys.HitResult
+import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.EntityInfo
 import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.events.EventHandler
-import org.magic.magicaddons.events.world.OnEntityAdded
-import org.magic.magicaddons.events.world.OnEntityRemoved
-import org.magic.magicaddons.events.world.OnEntityUpdated
-import org.magic.magicaddons.events.world.OnWorldTickEvent
-import tech.thatgravyboat.skyblockapi.api.SkyBlockAPI
+import org.magic.magicaddons.events.world.EntityAddedEvent
+import org.magic.magicaddons.events.world.EntityRemovedEvent
+import org.magic.magicaddons.events.world.EntityUpdatedEvent
+import org.magic.magicaddons.events.world.WorldTickEvent
+import kotlin.math.floor
 import kotlin.math.sqrt
+import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
 
 object EntityUtils {
     init {
         EventBus.register(this)
-        SkyBlockAPI.eventBus.register(this)
     }
+
+    private const val NEARBY_RADIUS: Double = 0.5
+    private const val NEARBY_HEIGHT: Double = 2.0
+
+    private const val NEIGHBOUR_CELL_SIZE: Double = 4.0
+
+    private const val PLAYER_UUID_VERSION: Int = 4
+
+    class HighlightMark(val name: String, val icon: ItemStack? = null)
 
     interface HighlightSource {
         val highlightPriority: Int
 
-        /**
-         * Color of the outline this source paints on [entity], as ARGB.
-         * Takes the entity so a single source can color the things it highlights differently
-         * (for example treasure versus mobs).
-         */
         fun highlightColor(entity: Entity): Int
+
+        val throughWalls: Boolean get() = true
+
+        fun highlightMark(entity: Entity): HighlightMark? = null
     }
+
+    @JvmStatic
+    fun inSight(camera: Vec3, entity: Entity): Boolean {
+        val level = entity.level()
+        val now = level.gameTime
+
+        if (sightCheckedAt != now) {
+            sightCheckedAt = now
+            inSight.clear()
+        }
+
+        return inSight.getOrPut(entity) { inSightRayCheck(level, camera, entity) }
+    }
+
+    private var sightCheckedAt: Long = -1
+    private val inSight: MutableMap<Entity, Boolean> = mutableMapOf()
+
+
+    private fun inSightRayCheck(level: Level, camera: Vec3, entity: Entity): Boolean {
+        val box = entity.boundingBox
+        val middleX = (box.minX + box.maxX) / 2
+        val middleZ = (box.minZ + box.maxZ) / 2
+        val points = listOf(
+            Vec3(middleX, (box.minY + box.maxY) / 2, middleZ),
+            Vec3(middleX, box.maxY - SIGHT_INSET, middleZ),
+            Vec3(middleX, box.minY + SIGHT_INSET, middleZ)
+        )
+
+        return points.any { point ->
+            val hit = level.clip(ClipContext(camera, point, ClipContext.Block.VISUAL, ClipContext.Fluid.NONE, entity))
+
+            hit.type == HitResult.Type.MISS || hit.blockPos == BlockPos.containing(point)
+        }
+    }
+
+    private const val SIGHT_INSET: Double = 0.1
 
 
     private val highlightMap: MutableMap<Entity, MutableSet<HighlightSource>> = mutableMapOf()
@@ -45,6 +99,7 @@ object EntityUtils {
     val resolvedMap: MutableMap<Entity, HighlightSource> = mutableMapOf()
 
     fun add(entity: Entity, source: HighlightSource) {
+        if (entity is LocalPlayer) return
         val set = highlightMap.computeIfAbsent(entity) { mutableSetOf() }
         set.add(source)
 
@@ -64,14 +119,9 @@ object EntityUtils {
         }
     }
 
-    fun hasSource(entity: Entity, source: HighlightSource): Boolean {
-        return highlightMap[entity]?.contains(source) == true
-    }
-
     var entityInfoList: List<EntityInfo>? = null
 
-    private var entityMapPrev: Map<String, EntityInfo> = emptyMap()
-    private var entityMapCurr: Map<String, EntityInfo> = emptyMap()
+    private var entityMapCurr: Map<UUID, EntityInfo> = emptyMap()
 
     private val addedEntities = mutableListOf<EntityInfo>()
     private val removedEntities = mutableListOf<EntityInfo>()
@@ -97,8 +147,14 @@ object EntityUtils {
 
 
     @EventHandler
-    private fun onWorldTick(event: OnWorldTickEvent){
+    private fun onWorldTick(event: WorldTickEvent){
         update()
+    }
+
+    private val entitiesWithNewData: MutableSet<Int> = ConcurrentHashMap.newKeySet()
+
+    fun noteDataChanged(entityId: Int) {
+        entitiesWithNewData += entityId
     }
 
     private fun update() {
@@ -107,31 +163,34 @@ object EntityUtils {
         val level = client.level ?: return
 
         val newList = mutableListOf<EntityInfo>()
-        val newMap = mutableMapOf<String, EntityInfo>()
+        val newMap = mutableMapOf<UUID, EntityInfo>()
+
+        val detailed = FeatureManager.features.any { it is HighlightFeature && it.baseSetting.value }
+        val neighbours = if (detailed) NeighbourGrid(level.entitiesForRendering()) else null
 
         level.entitiesForRendering().forEach { entity ->
+            val informationEntities: List<Entity>?
 
-            val nearby = level.getEntities(entity, entity.boundingBox.inflate(0.5, 2.0, 0.5))
+            if (neighbours != null) {
+                val nearby = neighbours.inside(
+                    entity.boundingBox.inflate(NEARBY_RADIUS, NEARBY_HEIGHT, NEARBY_RADIUS),
+                    entity
+                )
 
-            if ((entity is ArmorStand || entity is Display) && isNearMeaningfulEntity(entity, nearby)) {
-                return@forEach
-            }
-
-            // collected for every entity, not just mobs: a lot of entities are an item display with a
-            // name tag next to it and nothing else, and that name tag is all we know about them
-            val informationEntities = nearby
-                .filter {
-                    it !== entity && (
-                            (it is ArmorStand && it.hasCustomName()) ||
-                            it is Display
-                            )
+                if ((entity is ArmorStand || entity is Display) && isNearMeaningfulEntity(entity, nearby)) {
+                    return@forEach
                 }
+
+                informationEntities = nearby.filter { it is Display || (it is ArmorStand && it.hasCustomName()) }
+            } else {
+                informationEntities = null
+            }
 
             val distance = sqrt(entity.distanceToSqr(player))
 
             val info = EntityInfo(entity, informationEntities, distance)
             newList += info
-            newMap[entity.uuid.toString()] = info
+            newMap[entity.uuid] = info
         }
 
         addedEntities.clear()
@@ -148,55 +207,131 @@ object EntityUtils {
         newMap.forEach { (uuid, newInfo) ->
             val oldInfo = entityMapCurr[uuid] ?: return@forEach
 
-            val oldTags = oldInfo.informationEntities?.toSet()
-            val newTags = newInfo.informationEntities?.toSet()
+            if (newInfo.entity.id in entitiesWithNewData) {
+                updatedEntities += newInfo
+                return@forEach
+            }
 
-            if (oldTags != newTags) {
+            if (oldInfo.tagSignature() != newInfo.tagSignature()) {
                 updatedEntities += newInfo
             }
         }
 
+        entitiesWithNewData.clear()
+
 
         if (addedEntities.isNotEmpty()) {
-            EventBus.post(OnEntityAdded(addedEntities))
+            EventBus.post(EntityAddedEvent(addedEntities))
         }
         if (removedEntities.isNotEmpty()) {
-            EventBus.post(OnEntityRemoved(removedEntities))
+            EventBus.post(EntityRemovedEvent(removedEntities))
         }
 
         if (updatedEntities.isNotEmpty()) {
-            EventBus.post(OnEntityUpdated(updatedEntities))
+            EventBus.post(EntityUpdatedEvent(updatedEntities))
         }
         // update state
         entityInfoList = newList
-        entityMapPrev = entityMapCurr
         entityMapCurr = newMap
     }
 
-    /**
-     * Whether this stand or display is decoration belonging to a mob standing beside it, rather than
-     * a thing in its own right.
-     *
-     * A stand has to be invisible to count: a label is invisible and only its name or its head is
-     * drawn, while a mineshaft corpse is a visible stand wearing armour and stays its own entity
-     * however many mobs walk past it. The box is generous upwards, since a name tag floats over the
-     * mob's head, and tight sideways, so something merely standing next to a mob is left alone.
-     */
+    private class NeighbourGrid(entities: Iterable<Entity>) {
+        private val byCell = HashMap<Long, MutableList<Entity>>()
+
+        init {
+            entities.forEach { entity ->
+                if (!canStandInFor(entity)) return@forEach
+
+                val box = entity.boundingBox
+                for (x in cellOf(box.minX)..cellOf(box.maxX)) {
+                    for (y in cellOf(box.minY)..cellOf(box.maxY)) {
+                        for (z in cellOf(box.minZ)..cellOf(box.maxZ)) {
+                            byCell.getOrPut(keyOf(x, y, z)) { mutableListOf() }.add(entity)
+                        }
+                    }
+                }
+            }
+        }
+
+        fun inside(box: AABB, except: Entity): List<Entity> {
+            var found: MutableList<Entity>? = null
+
+            for (x in cellOf(box.minX)..cellOf(box.maxX)) {
+                for (y in cellOf(box.minY)..cellOf(box.maxY)) {
+                    for (z in cellOf(box.minZ)..cellOf(box.maxZ)) {
+                        val cell = byCell[keyOf(x, y, z)] ?: continue
+
+                        cell.forEach { other ->
+                            if (other === except) return@forEach
+                            if (!other.boundingBox.intersects(box)) return@forEach
+
+                            val list = found ?: mutableListOf<Entity>().also { found = it }
+                            if (other !in list) list.add(other)
+                        }
+                    }
+                }
+            }
+
+            return found ?: emptyList()
+        }
+
+        private fun canStandInFor(entity: Entity): Boolean = when {
+            entity.isSpectator -> false
+            entity is Display -> true
+            entity is ArmorStand -> entity.hasCustomName()
+            else -> entity is LivingEntity
+        }
+
+        private fun cellOf(coordinate: Double): Int = floor(coordinate / NEIGHBOUR_CELL_SIZE).toInt()
+
+        private fun keyOf(x: Int, y: Int, z: Int): Long =
+            (x.toLong() and 0xFFFFFF shl 40) or (y.toLong() and 0xFFFF shl 24) or (z.toLong() and 0xFFFFFF)
+    }
+
+    private fun EntityInfo.tagSignature(): List<String> =
+        informationEntities.orEmpty().map { "${it.id}:${it.customName?.string}" }
+
+
     private fun isNearMeaningfulEntity(entity: Entity, nearby: List<Entity>): Boolean {
         if (entity is ArmorStand && !entity.isInvisible) return false
 
-        // the same neighbours the caller already asked the world for, rather than a second query
         return nearby.any { other ->
             when (other) {
                 is ArmorStand -> false
                 is Display -> false
-                is LocalPlayer -> false
+                is Player -> !isRealPlayer(other)
                 is LivingEntity -> true
                 else -> false
             }
         }
     }
 
+    fun isRealPlayer(entity: Player): Boolean {
+        return entity.uuid.version() == PLAYER_UUID_VERSION
+    }
+
+    fun Entity.typeId(): String = type.toString()
+
+    fun Entity.typePath(): String = typeId().substringAfterLast('.')
+
+    fun carriedSkullHash(entity: Entity): String? = when (entity) {
+        is Display.ItemDisplay -> PlayerUtils.getSkinHash(entity.itemStack)
+        is ArmorStand -> PlayerUtils.getHelmetHash(entity)
+        else -> null
+    }
+
+    fun skullCarrier(info: EntityInfo, hash: String): Entity? {
+        val entity = info.entity
+
+        if (entity is LivingEntity && PlayerUtils.getHelmetHash(entity) == hash) {
+            return entity
+        }
+
+        val carrier = info.informationEntities?.firstOrNull { carriedSkullHash(it) == hash }
+            ?: return null
+
+        return if (entity.isInvisible) carrier else entity
+    }
 
     fun isEntityWearingArmorId(id: String, entity: Player, searchHelmet: Boolean): Boolean {
 
@@ -214,6 +349,32 @@ object EntityUtils {
         val helmet = entity.getItemBySlot(EquipmentSlot.HEAD)
         return hasArmorId(helmet, id, "HELMET")
     }
+
+    private val CARRY_SLOTS: List<EquipmentSlot> =
+        listOf(EquipmentSlot.HEAD, EquipmentSlot.MAINHAND, EquipmentSlot.OFFHAND)
+
+    fun carriesAnything(entity: LivingEntity): Boolean =
+        CARRY_SLOTS.any { !entity.getItemBySlot(it).isEmpty }
+
+    fun heldItem(entity: LivingEntity): Pair<EquipmentSlot, String>? = CARRY_SLOTS
+        .firstNotNullOfOrNull { slot ->
+            val stack = entity.getItemBySlot(slot)
+            if (stack.isEmpty || PlayerUtils.getSkinHash(stack) != null) null
+            else slot to BuiltInRegistries.ITEM.getKey(stack.item).toString()
+        }
+
+    fun itemIdIn(entity: LivingEntity, slot: EquipmentSlot): String? {
+        val stack = entity.getItemBySlot(slot)
+        if (stack.isEmpty || PlayerUtils.getSkinHash(stack) != null) return null
+
+        return BuiltInRegistries.ITEM.getKey(stack.item).toString()
+    }
+
+    fun itemStackOf(itemId: String): ItemStack? =
+        runCatching { BuiltInRegistries.ITEM.getOptional(Identifier.parse(itemId)).orElse(null) }
+            .getOrNull()
+            ?.let { ItemStack(it) }
+
     fun hasArmorId(stack: ItemStack, id: String, suffix: String): Boolean {
         val customData = stack.get(DataComponents.CUSTOM_DATA) ?: return false
         val tag = customData.copyTag()

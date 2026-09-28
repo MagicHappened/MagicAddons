@@ -1,0 +1,54 @@
+package org.magic.magicaddons.util
+
+import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseProfiles
+import org.magic.magicaddons.events.EventBus
+import org.magic.magicaddons.events.EventHandler
+import org.magic.magicaddons.events.world.SetTimePacketEvent
+import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseData.checkForGrowthTickUpdate
+import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseData.greenhouseGrids
+import tech.thatgravyboat.skyblockapi.api.SkyBlockAPI
+import tech.thatgravyboat.skyblockapi.api.events.base.Subscription
+import tech.thatgravyboat.skyblockapi.api.events.location.IslandChangeEvent
+import tech.thatgravyboat.skyblockapi.api.location.SkyBlockIsland
+
+object ServerUtils {
+    init {
+        EventBus.register(this)
+        SkyBlockAPI.eventBus.register(this)
+    }
+
+    var lastGameTime: Long? = null
+        private set
+
+    var totalServerTicks: Long = 0
+        private set
+
+    @Subscription
+    fun onIslandChange(event: IslandChangeEvent) {
+        totalServerTicks = 0
+        lastGameTime = null
+
+        if (event.new != SkyBlockIsland.GARDEN) {
+            GreenhouseProfiles.saveGreenhouseData()
+            greenhouseGrids.forEach {
+                it.state.scanned = false
+            }
+        }
+        checkForGrowthTickUpdate()
+
+    }
+
+    @EventHandler
+    fun onTick(event: SetTimePacketEvent) {
+
+        val currentGameTime = event.packet.gameTime
+        val previousGameTime = lastGameTime
+
+        if (previousGameTime != null) {
+            totalServerTicks += currentGameTime - previousGameTime
+        }
+
+        lastGameTime = currentGameTime
+
+    }
+}

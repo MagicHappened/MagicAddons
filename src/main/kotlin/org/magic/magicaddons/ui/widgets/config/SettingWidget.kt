@@ -1,205 +1,323 @@
 package org.magic.magicaddons.ui.widgets.config
 
+import org.magic.magicaddons.util.ScreenUtil.splitMod
+import org.magic.magicaddons.util.ScreenUtil.modText
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
-import net.minecraft.client.gui.components.Renderable
-import net.minecraft.client.gui.components.events.GuiEventListener
-import net.minecraft.client.gui.narration.NarratableEntry
-import net.minecraft.client.gui.narration.NarrationElementOutput
 import net.minecraft.client.input.CharacterEvent
 import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
+import net.minecraft.network.chat.Component
+import net.minecraft.util.FormattedCharSequence
+import org.magic.magicaddons.Common
+import org.magic.magicaddons.data.config.EnumSetting
 import org.magic.magicaddons.data.config.SettingNode
-import org.magic.magicaddons.ui.screens.FeatureEditScreen
-import org.magic.magicaddons.util.ScreenUtil.drawSimpleTooltip
-import org.magic.magicaddons.util.compat.McCompat
+import org.magic.magicaddons.ui.OverlayContext
+import org.magic.magicaddons.util.ScreenUtil.drawBorder
+import org.magic.magicaddons.util.ScreenUtil.drawLine
+import org.magic.magicaddons.util.ScreenUtil.easedProgress
+import org.magic.magicaddons.util.ScreenUtil.inRect
 
 abstract class SettingWidget<T>(
-    protected val node: SettingNode<T>,
-    var requestRelayout: (() -> Unit)? = null
-) : Renderable, GuiEventListener, NarratableEntry {
+    val node: SettingNode<T>,
+    protected val overlays: OverlayContext
+) {
 
     var x: Int = 0
     var y: Int = 0
-    open var width: Int = 20
-    open var height: Int = 40
+    var width: Int = 0
+    var height: Int = 0
 
-    protected val childPadding: Int = 2
-    var baseWidget = false
-    open var hovered: Boolean = false
-    open var childrenExpanded: Boolean = false
+    private var treeHeight: Int = 0
 
-    abstract val hasChildren: Boolean
-    abstract val childrenWidgets: MutableList<SettingWidget<*>>
+    var isHovered: Boolean = false
 
-    protected val borderColor: Int = 0xFF000000.toInt()
-    protected val borderSize: Int = 2
-    protected val backgroundColor: Int = 0xFF555555.toInt()
+    var isExpanded: Boolean = false
+        private set
 
-    protected val textXPad: Int = 4
-    protected val textYPad: Int = 5
+    private var foldStartedAt: Long = 0
+    private var opennessAtFoldStart: Float = 0f
 
-    /** The height a setting has before its wrapped text asks for more. */
-    protected val baseHeight: Int = 40
+    val childWidgets: MutableList<SettingWidget<*>> = mutableListOf()
+
+    var flashUntil: Long = 0
 
     protected val font get() = Minecraft.getInstance().font
 
+    protected open val controlWidth: Int = 0
+    protected open val controlHeight: Int = 0
 
-    open fun initChildren() {
-        // built fresh: a second call would otherwise leave the first set alive and clickable
-        childrenWidgets.clear()
+    open fun childNodes(): List<SettingNode<*>> = node.availableChildren
 
-        node.availableChildren.forEach {
-            childrenWidgets.add(SettingWidgetFactory.create(it).apply {
-                requestRelayout = {
-                    this@SettingWidget.layoutChildrenBut(this@SettingWidget) // this is calling upper layer!! dont touch
-                    this@SettingWidget.requestRelayout?.invoke()
+    fun hasChildren(): Boolean = childNodes().isNotEmpty()
+
+    fun descendantCount(): Int = childNodes().sumOf { 1 + descendantCountOf(it) }
+
+    private fun descendantCountOf(node: SettingNode<*>): Int {
+        val childNodes = node.availableChildren + ((node as? EnumSetting<*>)?.providedChildren ?: emptyList())
+        return childNodes.sumOf { 1 + descendantCountOf(it) }
+    }
+
+    private var nameLines: List<FormattedCharSequence> = emptyList()
+    private var descriptionLines: List<FormattedCharSequence> = emptyList()
+
+    private var chevronLeft = 0
+    private var chevronTop = 0
+    private var chevronWidth = 0
+
+    private var textAndControlHeight = 0
+
+    private var groupTop = 0
+    var shownGroupHeight = 0
+        private set
+
+    private fun rightColumnWidth(): Int = maxOf(controlWidth, if (hasChildren()) chevronAndCountWidth() else 0)
+
+    private fun chevronAndCountWidth(): Int = font.width(descendantCount().toString()) + COUNT_GAP + CHEVRON_SIZE
+
+    protected fun textLeft(): Int = x + ROW_PADDING
+    protected fun textWidth(): Int = width - ROW_PADDING * 2 - rightColumnWidth().let { if (it > 0) it + ROW_PADDING else 0 }
+
+    private fun plainDescription(): String = node.description.replace("§f", "").replace("§r", "")
+
+    protected fun controlLeft(): Int = x + width - ROW_PADDING - controlWidth
+    protected fun controlTop(): Int = y + ROW_PADDING
+
+    protected open fun belowTextHeight(): Int = 0
+
+    protected fun belowTextTop(): Int = y + ROW_PADDING + textAndControlHeight + BELOW_TEXT_GAP
+    protected fun belowTextLeft(): Int = x + ROW_PADDING
+    protected fun belowTextWidth(): Int = width - ROW_PADDING * 2
+
+    protected open val bottomPadding: Int = ROW_PADDING
+
+    open fun onGroupOpened() {}
+
+    private fun detailTop(): Int = belowTextTop() + belowTextHeight().let { if (it > 0) it + Common.UI.SPACING else 0 }
+
+    private fun detailHeight(): Int {
+        val detail = node.detail?.invoke() ?: return 0
+        return detail.height(font, belowTextWidth()) + Common.UI.SPACING
+    }
+
+    private fun groupOpenness(): Float {
+        val foldProgress = easedProgress(foldStartedAt, FOLD_MS)
+        return if (isExpanded) opennessAtFoldStart + (1f - opennessAtFoldStart) * foldProgress else opennessAtFoldStart * (1f - foldProgress)
+    }
+
+    private fun isGroupVisible(): Boolean = childWidgets.isNotEmpty() && (isExpanded || groupOpenness() > 0f)
+
+    private fun groupLeft(): Int = x + GROUP_INDENT
+
+    fun layoutTree(x: Int, y: Int, width: Int): Int {
+        this.x = x
+        this.y = y
+        this.width = width
+
+        nameLines = font.splitMod(Component.literal(node.displayName), textWidth().coerceAtLeast(font.width("W")))
+        descriptionLines = plainDescription().takeIf { it.isNotBlank() }
+            ?.lines()
+            ?.flatMap { font.splitMod(Component.literal(it), textWidth().coerceAtLeast(font.width("W"))) }
+            ?: emptyList()
+
+        val textHeight = nameLines.size * font.lineHeight +
+                if (descriptionLines.isEmpty()) 0 else Common.UI.SPACING_SMALL + descriptionLines.size * font.lineHeight
+
+        var rightColumnHeight = controlHeight
+        if (hasChildren()) {
+            chevronWidth = chevronAndCountWidth()
+            chevronLeft = x + width - ROW_PADDING - chevronWidth
+            chevronTop = y + ROW_PADDING + if (controlHeight > 0) controlHeight + Common.UI.SPACING else 0
+            rightColumnHeight += (if (controlHeight > 0) Common.UI.SPACING else 0) + CHEVRON_HEIGHT
+        } else {
+            chevronWidth = 0
+        }
+        textAndControlHeight = maxOf(textHeight, rightColumnHeight)
+
+        layoutControl()
+        height = ROW_PADDING + textAndControlHeight + belowTextHeight().let { if (it > 0) it + BELOW_TEXT_GAP else 0 } + detailHeight() + bottomPadding
+
+        if (!isGroupVisible()) {
+            shownGroupHeight = 0
+            treeHeight = height
+            return treeHeight
+        }
+
+        groupTop = y + height
+        var currentY = groupTop + GROUP_FRAME_THICKNESS
+        childWidgets.forEachIndexed { index, child ->
+            if (index > 0) currentY += ROW_DIVIDER_THICKNESS
+            currentY += child.layoutTree(groupLeft() + GROUP_FRAME_THICKNESS, currentY, x + width - groupLeft() - GROUP_FRAME_THICKNESS)
+        }
+        val fullHeight = currentY - groupTop
+
+        shownGroupHeight = kotlin.math.round(fullHeight * groupOpenness()).toInt()
+        treeHeight = height + shownGroupHeight
+        return treeHeight
+    }
+
+    fun totalHeight(): Int = treeHeight
+
+    protected open fun layoutControl() {}
+
+    protected open fun renderControl(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {}
+
+    protected open fun renderBelowText(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {}
+
+    fun render(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
+        if (shownGroupHeight > 0) graphics.fill(x, y, x + width, y + height, Common.UI.GROUP_SHADE)
+        if (isHovered) graphics.fill(x, y, x + width, y + height, Common.UI.HOVER_WASH)
+        if (System.currentTimeMillis() < flashUntil) {
+            graphics.drawBorder(x, y, x + width, y + height, 1, Common.UI.SELECTED_FRAME_COLOR)
+        }
+
+        var textY = y + ROW_PADDING
+        nameLines.forEach {
+            graphics.modText(font, it, textLeft(), textY, Common.UI.TEXT_COLOR)
+            textY += font.lineHeight
+        }
+        textY += Common.UI.SPACING_SMALL
+        descriptionLines.forEach {
+            graphics.modText(font, it, textLeft(), textY, Common.UI.TEXT_DIM_COLOR)
+            textY += font.lineHeight
+        }
+
+        renderControl(graphics, mouseX, mouseY, delta)
+        if (hasChildren()) renderChevron(graphics, mouseX, mouseY)
+        renderBelowText(graphics, mouseX, mouseY, delta)
+
+        node.detail?.invoke()?.render(graphics, font, belowTextLeft(), detailTop(), belowTextWidth())
+
+        if (shownGroupHeight > 0) renderGroup(graphics, mouseX, mouseY, delta)
+    }
+
+    private fun renderGroup(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
+        val left = groupLeft()
+        val right = x + width
+        val bottom = groupTop + shownGroupHeight
+
+        graphics.enableScissor(x, groupTop, right, bottom)
+        graphics.fill(left, groupTop, right, bottom, Common.UI.GROUP_SHADE)
+        childWidgets.forEachIndexed { index, child ->
+            if (index > 0) {
+                val rowAbove = childWidgets[index - 1]
+                if (rowAbove.shownGroupHeight > 0) {
+                    graphics.fill(left + GROUP_FRAME_THICKNESS, child.y - ROW_DIVIDER_THICKNESS, right, child.y, Common.UI.BORDER_COLOR)
+                } else {
+                    graphics.fill(left + GROUP_FRAME_THICKNESS, child.y - ROW_DIVIDER_THICKNESS, right, child.y, Common.UI.THIN_DIVIDER_COLOR)
                 }
-            })
-        }
-    }
-    open fun layout(){}
-
-    open fun layoutChildren() {
-        if (!childrenExpanded) return
-        var currentY = y + height + childPadding
-
-        childrenWidgets.forEach {
-            currentY = layoutChild(it,currentY)
-        }
-    }
-    private fun layoutChildrenBut(child: SettingWidget<*>) {
-        if (!childrenExpanded) return
-        var currentY = y + height + childPadding
-
-        childrenWidgets.forEach {
-            if (it == child) return@forEach
-            currentY = layoutChild(it,currentY)
-        }
-    }
-
-    private fun layoutChild(child: SettingWidget<*>, currentY: Int): Int {
-        child.x = x + 10
-        child.y = currentY
-        child.width = width - 10
-        child.layout()
-        child.layoutChildren()
-        return currentY + child.getTotalHeight() + childPadding
-    }
-
-    abstract override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float)
-
-    protected fun extractChildrenRenderStates(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
-        if (!childrenExpanded) return
-        childrenWidgets.forEach {
-            it.extractRenderState(graphics, mouseX, mouseY, delta)
-        }
-    }
-
-     fun renderTooltip(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int) {
-        if (hovered && node.tooltip.isNotBlank()) {
-            graphics.drawSimpleTooltip(node.tooltip, mouseX + 8, mouseY + 8)
-        }
-    }
-
-
-    override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
-        val inside = isMouseOver(mouseButtonEvent.x, mouseButtonEvent.y)
-
-        if (inside && mouseButtonEvent.button() == 1) { //right clicked on widget
-            if (!hasChildren){
-                return false // we call super after base widget so this is fine
             }
-            if (!childrenExpanded){
-                childrenExpanded = true
-                initChildren()
-                layoutChildren()
-            }
-            else {
-                childrenWidgets.clear()
-                childrenExpanded = false
-            }
+            child.render(graphics, mouseX, mouseY, delta)
+        }
+        graphics.fill(left + GROUP_FRAME_THICKNESS, groupTop, right, groupTop + GROUP_FRAME_THICKNESS, Common.UI.THIN_DIVIDER_COLOR)
+        graphics.fill(left, groupTop, left + GROUP_FRAME_THICKNESS, bottom, Common.UI.BORDER_COLOR)
+        graphics.disableScissor()
+    }
 
-            if (!baseWidget){ // prevent triggering twice.
-                requestRelayout?.invoke()
-            }
+    private fun renderChevron(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int) {
+        val color = if (isOverChevron(mouseX.toDouble(), mouseY.toDouble())) Common.UI.SELECTED_FRAME_COLOR else Common.UI.TEXT_DIM_COLOR
+
+        graphics.modText(font, Component.literal(descendantCount().toString()), chevronLeft, chevronTop + (CHEVRON_HEIGHT - font.lineHeight) / 2 + 1, color)
+
+        val left = chevronLeft + chevronWidth - CHEVRON_SIZE
+        val midX = left + CHEVRON_SIZE / 2
+        val midY = chevronTop + CHEVRON_HEIGHT / 2
+        val chevronTipOffset = kotlin.math.round(CHEVRON_SIZE / 4 * (groupOpenness() * 2f - 1f)).toInt()
+        graphics.drawLine(left, midY - chevronTipOffset, midX, midY + chevronTipOffset, 1, color)
+        graphics.drawLine(midX, midY + chevronTipOffset, left + CHEVRON_SIZE, midY - chevronTipOffset, 1, color)
+    }
+
+    private fun isOverChevron(mouseX: Double, mouseY: Double): Boolean =
+        chevronWidth > 0 && mouseX.toInt() in chevronLeft - COUNT_GAP until chevronLeft + chevronWidth + COUNT_GAP &&
+                mouseY.toInt() in chevronTop until chevronTop + CHEVRON_HEIGHT
+
+    fun isMouseOver(mouseX: Double, mouseY: Double): Boolean = inRect(mouseX, mouseY, x, y, width, height)
+
+    protected fun buildChildWidgets() {
+        childWidgets.forEach { it.dropFocus() }
+        childWidgets.clear()
+        childNodes().forEach { childWidgets.add(SettingWidgetFactory.create(it, overlays)) }
+        if (isExpanded) childWidgets.forEach { it.onGroupOpened() }
+    }
+
+    fun unfold(shouldOpen: Boolean) {
+        if (!hasChildren() || shouldOpen == isExpanded) return
+        if (shouldOpen && childWidgets.isEmpty()) buildChildWidgets()
+        if (shouldOpen) {
+            childWidgets.forEach { it.onGroupOpened() }
+        } else {
+            childWidgets.forEach { it.dropFocus() }
+            overlays.closeOverlays()
+        }
+        opennessAtFoldStart = groupOpenness()
+        foldStartedAt = System.currentTimeMillis()
+        isExpanded = shouldOpen
+    }
+
+    fun revealPath(path: List<SettingNode<*>>): SettingWidget<*>? {
+        if (path.firstOrNull() !== node) return null
+        if (path.size == 1) return this
+        unfold(true)
+        return childWidgets.firstOrNull { it.node === path[1] }?.revealPath(path.drop(1))
+    }
+
+    protected abstract fun controlClicked(event: MouseButtonEvent, doubled: Boolean): Boolean
+
+    open fun mouseClicked(event: MouseButtonEvent, doubled: Boolean): Boolean {
+        var handled = false
+        if (isExpanded) childWidgets.forEach { if (it.mouseClicked(event, doubled)) handled = true }
+        if (handled) return true
+
+        if (hasChildren() && (isOverChevron(event.x, event.y) || (event.button() == 1 && isMouseOver(event.x, event.y)))) {
+            unfold(!isExpanded)
             return true
         }
-
-        if (childrenExpanded) {
-            childrenWidgets.forEach {
-                if (it.mouseClicked(mouseButtonEvent, doubled))
-                    return true
-            }
-        }
-
-
-        return false
+        return controlClicked(event, doubled)
     }
 
-    override fun mouseMoved(mouseX: Double, mouseY: Double) {
-        hovered = isMouseOver(mouseX, mouseY)
-        val currentScreen = McCompat.currentScreen()
-        if (currentScreen is FeatureEditScreen && hovered) {
-            currentScreen.hoveredWidget = this
-        }
-        childrenWidgets.forEach {
-            it.mouseMoved(mouseX, mouseY)
-        }
+    open fun mouseMoved(mouseX: Double, mouseY: Double) {
+        isHovered = isMouseOver(mouseX, mouseY)
+        if (isExpanded) childWidgets.forEach { it.mouseMoved(mouseX, mouseY) }
     }
 
-    override fun mouseScrolled(mouseX: Double, mouseY: Double, scrollX: Double, scrollY: Double): Boolean {
-        if (!childrenExpanded) return false
+    open fun mouseDragged(event: MouseButtonEvent, dragX: Double, dragY: Double): Boolean =
+        isExpanded && childWidgets.any { it.mouseDragged(event, dragX, dragY) }
 
-        return childrenWidgets.any { it.mouseScrolled(mouseX, mouseY, scrollX, scrollY) }
+    open fun mouseReleased(event: MouseButtonEvent): Boolean {
+        var handled = false
+        childWidgets.forEach { if (it.mouseReleased(event)) handled = true }
+        return handled
     }
 
-    override fun charTyped(characterEvent: CharacterEvent): Boolean {
-        if (!childrenExpanded) return false
+    open fun mouseScrolled(mouseX: Double, mouseY: Double, scrollX: Double, scrollY: Double): Boolean =
+        isExpanded && childWidgets.any { it.mouseScrolled(mouseX, mouseY, scrollX, scrollY) }
 
-        childrenWidgets.forEach {
-            if (it.charTyped(characterEvent)) return true
-        }
-        return false
+    open fun dropFocus() {
+        childWidgets.forEach { it.dropFocus() }
     }
 
-    override fun keyPressed(keyEvent: KeyEvent): Boolean {
-        if (!childrenExpanded) return false
+    open fun charTyped(event: CharacterEvent): Boolean =
+        isExpanded && childWidgets.any { it.charTyped(event) }
 
-        childrenWidgets.forEach {
-            if (it.keyPressed(keyEvent)) return true
-        }
-        return false
+    open fun keyPressed(event: KeyEvent): Boolean =
+        isExpanded && childWidgets.any { it.keyPressed(event) }
+
+    override fun toString(): String = "${node.displayName}: ${node.value}"
+
+    companion object {
+        const val ROW_PADDING: Int = 6
+        const val GROUP_INDENT: Int = 10
+        const val BELOW_TEXT_GAP: Int = 7
+
+        const val GROUP_FRAME_THICKNESS: Int = 1
+        const val ROW_DIVIDER_THICKNESS: Int = 1
+
+        private const val CHEVRON_SIZE: Int = 8
+        private const val CHEVRON_HEIGHT: Int = 12
+        private const val COUNT_GAP: Int = 3
+
+        const val FIELD_HEIGHT: Int = 14
+
+        const val FOLD_MS: Long = 180
     }
-
-    override fun isFocused(): Boolean = isFocused
-
-    override fun setFocused(focused: Boolean) {
-        this.isFocused = focused
-    }
-
-    override fun isMouseOver(mouseX: Double, mouseY: Double): Boolean {
-        return mouseX.toInt() in x..(x + width) &&
-                mouseY.toInt() in y..(y + height)
-    }
-
-    open fun getTotalHeight(): Int {
-        if (!childrenExpanded) return height
-
-        return height + childrenWidgets.sumOf {
-            it.getTotalHeight() + childPadding
-        }
-    }
-
-    override fun toString(): String {
-        return "${node.displayName}: ${node.value}"
-    }
-
-    override fun narrationPriority(): NarratableEntry.NarrationPriority {
-        return NarratableEntry.NarrationPriority.NONE
-    }
-
-    override fun updateNarration(narrationElementOutput: NarrationElementOutput) {
-    }
-
 }

@@ -1,202 +1,148 @@
 package org.magic.magicaddons.ui.widgets.config
 
-import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
-import net.minecraft.client.gui.components.EditBox
 import net.minecraft.client.gui.components.events.GuiEventListener
 import net.minecraft.client.input.CharacterEvent
 import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
-import net.minecraft.network.chat.Component
+import org.magic.magicaddons.Common
 import org.magic.magicaddons.data.config.TextSetting
-import org.magic.magicaddons.ui.Focusable
 import org.magic.magicaddons.ui.OverlayContext
 import org.magic.magicaddons.ui.OverlayRenderable
 import org.magic.magicaddons.ui.widgets.RemovableRowWidget
+import org.magic.magicaddons.ui.widgets.TextField
 import org.magic.magicaddons.util.ScreenUtil.drawBorder
-import org.magic.magicaddons.util.ScreenUtil.drawWrappedText
-import org.magic.magicaddons.util.ScreenUtil.wrappedHeight
-import org.magic.magicaddons.util.compat.McCompat
 
-/**
- * A text box with its history dropping down under it. The history is an overlay, so it draws over
- * whatever setting sits below and takes clicks before them.
- */
 class TextSettingWidget(
-    private val setting: TextSetting
-) : SettingWidget<String>(setting) {
+    private val setting: TextSetting,
+    overlays: OverlayContext
+) : SettingWidget<String>(setting, overlays) {
 
-    override val hasChildren: Boolean = false
-    override var childrenExpanded: Boolean = false
-    override var hovered: Boolean = false
+    private var valueBeforeEditing: String = setting.value
 
-    private var lastFocusedValue: String = setting.value
-
-    override val childrenWidgets: MutableList<SettingWidget<*>> = mutableListOf()
-
-    val textFieldPadding: Int = 1
-
-    /** The box is this tall; the label above it wraps and the widget grows to hold both. */
-    private val boxHeight: Int = 17
-
-    private val label: Component get() = Component.literal("${setting.displayName}: ")
-
-    private fun labelWidth(): Int = width - (textXPad + borderSize) * 2
-
-    private val textWidget by lazy {
-        EditBox(
-            Minecraft.getInstance().font,
-            width - (borderSize + textFieldPadding) * 2,
-            boxHeight,
-            Component.literal("")
-        )
+    private val textBox = TextField(0, BOX_HEIGHT).also {
+        it.value = setting.value
+        it.setResponder { typed ->
+            setting.value = typed
+            if (historyOverlay.isOpen) historyOverlay.rebuildRows()
+        }
     }
 
-    private val history = HistoryOverlay()
+    private val historyOverlay = HistoryOverlay()
 
-    private fun overlayContext(): OverlayContext? = McCompat.currentScreen() as? OverlayContext
+    override fun belowTextHeight(): Int = BOX_HEIGHT
 
-    override fun layout() {
-        val labelHeight = wrappedHeight(font, label, labelWidth())
-
-        height = (borderSize + textFieldPadding) * 2 + textXPad * 2 + labelHeight + boxHeight
-
-        textWidget.x = x + borderSize + textFieldPadding
-        textWidget.y = y + borderSize + textFieldPadding + labelHeight + textXPad * 2
-        textWidget.width = width - (borderSize + textFieldPadding) * 2
-        textWidget.height = boxHeight
-        textWidget.setMaxLength(256)
-
-        textWidget.value = setting.value
-
-        textWidget.setResponder {
-            setting.value = it
-        }
-
-        if (history.open) history.rebuild()
+    override fun layoutControl() {
+        textBox.x = belowTextLeft()
+        textBox.y = belowTextTop()
+        textBox.width = belowTextWidth()
+        if (!textBox.isFocused && textBox.value != setting.value) textBox.value = setting.value
+        if (historyOverlay.isOpen) historyOverlay.placeRows()
     }
 
     private fun openHistory() {
-        history.rebuild()
-        history.open = true
-        overlayContext()?.addOverlay(history)
+        historyOverlay.rebuildRows()
+        historyOverlay.isOpen = true
+        overlays.addOverlay(historyOverlay)
     }
 
     private fun closeHistory() {
-        history.open = false
-        overlayContext()?.removeOverlay(history)
+        historyOverlay.isOpen = false
+        overlays.removeOverlay(historyOverlay)
     }
 
     private fun applyHistoryValue(value: String) {
         val previousValue = setting.value
         setting.value = value
-        textWidget.value = value
+        textBox.value = value
         setting.history.remove(value)
         setting.history.add(previousValue)
-        textWidget.isFocused = false
+        valueBeforeEditing = value
+        textBox.isFocused = false
         closeHistory()
     }
 
     private fun removeHistoryValue(value: String) {
         setting.history.remove(value)
-        history.rebuild()
+        historyOverlay.rebuildRows()
     }
 
-    override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
-        graphics.fill(x, y, x + width, y + height, backgroundColor)
-        graphics.drawBorder(x, y, x + width, y + height, borderSize, borderColor)
-
-        textWidget.extractRenderState(graphics, mouseX, mouseY, delta)
-
-        graphics.drawWrappedText(
-            font,
-            label,
-            x + textXPad + borderSize,
-            y + textXPad + borderSize,
-            labelWidth(),
-            0xFFCCCCCC.toInt()
-        )
+    override fun renderBelowText(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
+        textBox.render(graphics)
     }
 
-    override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
-        if (textWidget.mouseClicked(mouseButtonEvent, doubled)) {
-            textWidget.isFocused = true
+    override fun controlClicked(event: MouseButtonEvent, doubled: Boolean): Boolean {
+        val wasFocused = textBox.isFocused
+
+        if (textBox.mouseClicked(event, doubled)) {
             openHistory()
             return true
         }
 
-        // any other click: the screen has already closed the history, this only settles the text
-        val wasFocused = textWidget.isFocused
-        textWidget.isFocused = false
-
-        if (wasFocused && textWidget.value != lastFocusedValue) {
-            if (lastFocusedValue.isNotBlank()) {
-                setting.history.add(lastFocusedValue)
-            }
-            lastFocusedValue = setting.value
-        }
-
-        return super.mouseClicked(mouseButtonEvent, doubled)
-    }
-
-    override fun charTyped(characterEvent: CharacterEvent): Boolean {
-        if (textWidget.isFocused) {
-            return textWidget.charTyped(characterEvent)
+        if (wasFocused && textBox.value != valueBeforeEditing) {
+            if (valueBeforeEditing.isNotBlank()) setting.history.add(valueBeforeEditing)
+            valueBeforeEditing = setting.value
         }
         return false
     }
 
-    override fun keyPressed(keyEvent: KeyEvent): Boolean {
-        if (textWidget.isFocused) {
-            return textWidget.keyPressed(keyEvent)
-        }
-        return false
+    override fun dropFocus() {
+        textBox.isFocused = false
+        super.dropFocus()
     }
 
-    override fun getTotalHeight(): Int = height
+    override fun charTyped(event: CharacterEvent): Boolean = textBox.charTyped(event) || super.charTyped(event)
 
-    /** The previous values, dropped down under the box as rows that apply or remove themselves. */
-    inner class HistoryOverlay : OverlayRenderable, Focusable {
+    override fun keyPressed(event: KeyEvent): Boolean = textBox.keyPressed(event) || super.keyPressed(event)
 
-        var open: Boolean = false
+    inner class HistoryOverlay : OverlayRenderable {
 
-        override var focusedState: Boolean = false
+        var isOpen: Boolean = false
 
-        override val renderPriority: Int = 1
+        override val renderPriority: Int = OverlayRenderable.DROPDOWN_PRIORITY
 
         override var hoveredElement: GuiEventListener? = null
 
         private val rows: MutableList<RemovableRowWidget<String>> = mutableListOf()
 
-        fun rebuild() {
+        fun rebuildRows() {
             rows.clear()
 
-            var currentY = textWidget.y + textWidget.height
+            val filterText = textBox.value.trim()
 
-            setting.history.forEach { value ->
-                val row = RemovableRowWidget(
-                    value = value,
-                    onClick = { applyHistoryValue(value) },
-                    onRemove = { removeHistoryValue(value) }
+            setting.history.filter { it.contains(filterText, ignoreCase = true) }.forEach { value ->
+                rows.add(
+                    RemovableRowWidget(
+                        value = value,
+                        onClick = { applyHistoryValue(value) },
+                        onRemove = { removeHistoryValue(value) }
+                    )
                 )
+            }
+            rows.lastOrNull()?.hasDividerBelow = false
+            placeRows()
+        }
 
-                row.x = textWidget.x
+        fun placeRows() {
+            var currentY = textBox.y + textBox.height
+            rows.forEach { row ->
+                row.x = textBox.x
                 row.y = currentY
-                row.width = textWidget.width
-                row.fitHeight(textWidget.height)
-
+                row.width = textBox.width
+                row.fitHeight(textBox.height)
                 currentY += row.height
-                rows.add(row)
             }
         }
 
-        override val overlayX: Int get() = textWidget.x
-        override val overlayY: Int get() = textWidget.y + textWidget.height
-        override val overlayWidth: Int get() = textWidget.width
-        override val overlayHeight: Int get() = rows.sumOf { it.height }
+        override val overlayX: Int get() = textBox.x
+        override val overlayY: Int get() = textBox.y + textBox.height
+        override val overlayWidth: Int get() = textBox.width
+        override val overlayHeight: Int get() = rows.sumOf { row -> row.height }
 
         override fun renderOverlay(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
+            if (rows.isEmpty()) return
             rows.forEach { it.extractRenderState(graphics, mouseX, mouseY) }
+            graphics.drawBorder(overlayX, overlayY, overlayX + overlayWidth, overlayY + overlayHeight, Common.UI.BORDER_SIZE, Common.UI.BORDER_COLOR)
         }
 
         override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean =
@@ -207,7 +153,11 @@ class TextSettingWidget(
         }
 
         override fun onClosed() {
-            open = false
+            isOpen = false
         }
+    }
+
+    private companion object {
+        const val BOX_HEIGHT: Int = 16
     }
 }

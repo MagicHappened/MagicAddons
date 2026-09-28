@@ -1,0 +1,594 @@
+package org.magic.magicaddons.features.farming.greenhousePresets
+
+import java.time.Duration
+import org.magic.magicaddons.data.config.BooleanSetting
+import org.magic.magicaddons.data.config.IntSetting
+import org.magic.magicaddons.data.config.ParentSetting
+import org.magic.magicaddons.data.config.TextSetting
+import org.magic.magicaddons.data.greenhouse.crops.CropRegistry
+import org.magic.magicaddons.data.greenhouse.crops.Plant
+import org.magic.magicaddons.events.EventBus
+import org.magic.magicaddons.features.Feature
+import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseData
+import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.OtherProfiles
+import org.magic.magicaddons.features.farming.greenhousePresets.lookups.PlantBars
+import org.magic.magicaddons.features.farming.greenhousePresets.lookups.StatsWidget
+import org.magic.magicaddons.features.farming.greenhousePresets.playerActions.BreakProtection
+import org.magic.magicaddons.features.farming.greenhousePresets.playerActions.GreenhouseKey
+import org.magic.magicaddons.features.farming.greenhousePresets.playerActions.GreenhousePlantDischarge
+import org.magic.magicaddons.features.farming.greenhousePresets.playerActions.GreenhouseWatering
+import org.magic.magicaddons.features.farming.greenhousePresets.render.LayoutRenderState
+import org.magic.magicaddons.features.farming.greenhousePresets.render.PlannerMark
+import org.magic.magicaddons.features.farming.greenhousePresets.warnings.ChorusCollision
+import org.magic.magicaddons.features.farming.greenhousePresets.warnings.PlantWarnings
+import tech.thatgravyboat.skyblockapi.api.SkyBlockAPI
+import tech.thatgravyboat.skyblockapi.api.profile.hunting.AttributeAPI
+
+object GreenhousePresets : Feature() {
+
+    private const val KEY_ANYWHERE = "GreenhouseKeyAnywhere"
+    private const val TURN_GRID_KEY = "TurnGridWithPlayer"
+    private const val SCREEN_KEY = "Screen"
+    private const val PLANNER_OPTIONS_KEY = "PlannerOptions"
+    private const val BREAK_PROTECTION_KEY = "BreakProtection"
+    private const val PREDICTION_KEY = "Prediction"
+    private const val PLANT_TRANSPARENCY_KEY = "PlantTransparency"
+    private const val PLANT_HIGHLIGHTS_KEY = "PlantHighlights"
+    private const val HARVEST_HIGHLIGHT_KEY = "HarvestHighlight"
+    private const val PREVENT_BREAKING_NON_HARVESTABLE_KEY = "PreventBreakingNonHarvestable"
+    private const val HARVESTABLE_KEY = "Harvestable"
+    private const val HARVEST_ONLY_TARGETS_KEY = "OnlyPresetTargets"
+    private const val PLANNER_COLORS_KEY = "PlannerColors"
+    private const val WATER_INDICATOR_KEY = "WaterIndicator"
+    private const val WATER_ONLY_WITHOUT_PLANNER_KEY = "OnlyWithoutPlanner"
+    private const val WATER_IGNORE_GROWN_KEY = "IgnoreWillFullyGrow"
+    private const val FLAT_WATER_KEY = "AssumeFlatWaterLoss"
+    private const val HUD_ANYWHERE_KEY = "HudAnywhere"
+
+    private const val WARNINGS_KEY = "Warnings"
+    private const val TYPES_KEY = "Types"
+    private const val REMINDERS_KEY = "Reminders"
+    const val CHORUS_KEY = "ChorusCollisionWarning"
+    private const val CHORUS_TICKS_KEY = "ChorusAbsenceTicks"
+    const val AT_TICK_KEY = "AtTheTick"
+    private const val TEN_MINUTES_KEY = "TenMinutesBefore"
+    private const val FIVE_MINUTES_KEY = "FiveMinutesBefore"
+    private const val ONE_MINUTE_KEY = "OneMinuteBefore"
+
+    init {
+        registerListeners()
+    }
+
+    @Suppress("UNUSED_EXPRESSION")
+    private fun registerListeners() {
+        EventBus.register(GreenhouseData)
+        SkyBlockAPI.eventBus.register(GreenhouseData)
+        EventBus.register(GreenhouseWatering)
+        EventBus.register(GreenhousePlantDischarge)
+        EventBus.register(BreakProtection)
+        SkyBlockAPI.eventBus.register(BreakProtection)
+        SkyBlockAPI.eventBus.register(StatsWidget)
+        EventBus.register(PlantBars)
+        EventBus.register(PlantWarnings)
+        EventBus.register(GreenhouseKey)
+        EventBus.register(GreenhouseHud)
+        EventBus.register(LayoutRenderState)
+        EventBus.register(OtherProfiles)
+        EventBus.register(ChorusCollision)
+        EventBus.register(PlannerNeeds)
+        CropRegistry
+        AttributeAPI
+    }
+
+    private val screenAnywhereSetting = BooleanSetting(
+        key = KEY_ANYWHERE,
+        displayName = "Open Anywhere",
+        description = "Lets the greenhouse screen key (G unless rebound) open the screen " +
+                "outside the garden too.",
+        value = false
+    )
+
+    private val turnGridSetting = BooleanSetting(
+        key = TURN_GRID_KEY,
+        displayName = "Turn Grid With Player",
+        description = "Turns the greenhouse screen's grid so the way you are facing is up. " +
+                "The turns are only visual, plans still go on the same cells",
+        value = false
+    )
+
+    fun keyWorksAnywhere(): Boolean = screenAnywhereSetting.value
+
+    fun turnsGridWithPlayer(): Boolean = turnGridSetting.value
+
+    private val plantTransparencySetting = IntSetting(
+        key = PLANT_TRANSPARENCY_KEY,
+        displayName = "Plant Transparency",
+        description = "How transparent is the plant hologram.",
+        value = 25,
+        range = 0..100,
+        step = 5,
+        mouseScrollEnabled = false
+    )
+
+    @JvmStatic
+    fun plantAlpha(): Int = 255 * (100 - plantTransparencySetting.value) / 100
+
+    private val harvestOnlyTargetsSetting = BooleanSetting(
+        key = HARVEST_ONLY_TARGETS_KEY,
+        displayName = "Only highlight based on Target marking",
+        description = "Makes harvest highlight only show when the fully grown plant is a target in the assigned preset",
+        value = false
+    )
+
+    private val harvestableBaseCropsSetting = BooleanSetting(
+        key = "HarvestableBaseCrops",
+        displayName = "Base Crops",
+        description = "Counts a fully grown base crop as harvestable. " +
+                "Only for harvest highlight and warning messages",
+        value = false
+    )
+
+    private val harvestableIngredientsSetting = BooleanSetting(
+        key = "HarvestableIngredients",
+        displayName = "Layout Ingredients",
+        description = "On: counts a fully grown crop on your preset marked as an ingredient as harvestable, " +
+                "so it appears in harvest highlight and break protection would consider it harvestable.\n\n" +
+                "Off: Isn't highlighted as harvestable, and is never allowed to be broken.",
+        value = false
+    )
+
+
+    fun isHarvestable(plant: Plant): Boolean {
+        if (plant.isPlacedMutation) return false
+
+        val harvestStage = harvestStageFor(plant.cropDef.name)
+        val grown = if (harvestStage != null) (plant.lowestStage ?: 0) >= harvestStage else plant.isFullyGrown
+        if (!grown) return false
+
+        if (GreenhouseData.isPlannedIngredient(plant)) {
+            if (!harvestableIngredientsSetting.value) return false
+        } else if (plant.cropDef.isBaseCrop && !harvestableBaseCropsSetting.value) {
+            return false
+        }
+
+        return plant.cropDef.isMutation || plant.cropDef.isBaseCrop
+    }
+
+    private val jellybeanHarvestStageSetting = IntSetting(
+        key = "MagicJellybeanHarvestStage",
+        displayName = "Magic Jellybean Harvest Stage",
+        description = "Considers Magic Jellybean as harvestable from the selected stage or higher",
+        value = 12,
+        range = 12..120,
+        step = 12,
+        mouseScrollEnabled = false
+    )
+
+    private val aloeHarvestStageSetting = IntSetting(
+        key = "AllInAloeHarvestStage",
+        displayName = "All-in Aloe Harvest Stage",
+        description = "Considers all in aloe as harvestable from the selected stage or higher",
+        value = 12,
+        range = 1..27,
+        mouseScrollEnabled = false
+    )
+
+    private val preventBreakingNonHarvestableSetting = BooleanSetting(
+        key = PREVENT_BREAKING_NON_HARVESTABLE_KEY,
+        displayName = "Non Harvestable",
+        description = "Prevents breaking these while they aren't harvestable:\n" +
+                "- any mutation\n" +
+                "- a crop your preset marks as an ingredient\n\n" +
+                "Everything else in the greenhouse breaks as normal.\n\n" +
+                "§7§oWhat counts as harvestable is set in Harvestable above",
+        value = false
+    )
+
+    fun preventBreakingNonHarvestable(): Boolean = baseSetting.value && preventBreakingNonHarvestableSetting.value
+
+    fun countsIngredientsAsHarvestable(): Boolean = harvestableIngredientsSetting.value
+
+    private fun harvestStageFor(cropName: String): Int? = when (cropName) {
+        "Magic Jellybean" -> jellybeanHarvestStageSetting.value
+        "All-in Aloe" -> aloeHarvestStageSetting.value
+        "Glasscorn" -> GLASSCORN_HARVEST_STAGE
+        else -> null
+    }
+
+    private const val GLASSCORN_HARVEST_STAGE: Int = 7
+
+    private val farmingFortuneThresholdSetting = IntSetting(
+        key = "FarmingFortuneThreshold",
+        displayName = "Farming Fortune Threshold",
+        description = "",
+        value = 1000,
+        range = 0..5000,
+        step = 50,
+        mouseScrollEnabled = false
+    )
+
+    private val preventBreakingUnderFarmingFortuneSetting = BooleanSetting(
+        key = "PreventBreakingUnderFarmingFortune",
+        displayName = "Prevent Breaking Under Farming Fortune",
+        description = "Prevents breaking any mutation while your farming fortune is under the threshold.\n\n" +
+                "§7Your farming fortune is read off the tab list's Stats widget, which has to be on and have Farming Fortune enabled.",
+        value = false,
+        children = listOf(farmingFortuneThresholdSetting)
+    )
+
+    fun preventBreakingUnderFarmingFortune(): Boolean = baseSetting.value && preventBreakingUnderFarmingFortuneSetting.value
+    val farmingFortuneThreshold: Int get() = farmingFortuneThresholdSetting.value
+    val farmingFortuneSettingName: String get() = preventBreakingUnderFarmingFortuneSetting.displayName
+
+    private val miningFortuneThresholdSetting = IntSetting(
+        key = "MiningFortuneThreshold",
+        displayName = "Mining Fortune Threshold",
+        description = "",
+        value = 1000,
+        range = 0..5000,
+        step = 50,
+        mouseScrollEnabled = false
+    )
+
+    private val preventBreakingChloroniteSetting = BooleanSetting(
+        key = "PreventBreakingChloroniteUnderMiningFortune",
+        displayName = "Prevent Breaking Chloronite Under Mining Fortune",
+        description = "Prevents breaking a Chloronite while your mining fortune is under the threshold.\n\n" +
+                "§7Your mining fortune is read off the tab list's Stats widget, which has to be on and have Mining Fortune enabled.",
+        value = false,
+        children = listOf(miningFortuneThresholdSetting)
+    )
+
+    fun preventBreakingChloroniteUnderMiningFortune(): Boolean = baseSetting.value && preventBreakingChloroniteSetting.value
+    val miningFortuneThreshold: Int get() = miningFortuneThresholdSetting.value
+    val miningFortuneSettingName: String get() = preventBreakingChloroniteSetting.displayName
+
+    private val preventBreakingDuringPestDebuffSetting = BooleanSetting(
+        key = "PreventBreakingDuringPestDebuff",
+        displayName = "Prevent Breaking While Pest Debuff Is Active",
+        description = "Prevents breaking any mutation while pests are lowering your farming fortune.",
+        value = false
+    )
+
+    fun preventBreakingDuringPestDebuff(): Boolean = baseSetting.value && preventBreakingDuringPestDebuffSetting.value
+
+    private val harvestHighlightSetting = BooleanSetting(
+        key = HARVEST_HIGHLIGHT_KEY,
+        displayName = "Harvest Highlight",
+        description = "Pulses green on every mutation ready to harvest in the greenhouse you stand in",
+        value = true,
+        children = listOf(harvestOnlyTargetsSetting)
+    )
+
+    fun harvestHighlightOn(): Boolean = baseSetting.value && harvestHighlightSetting.value
+
+    fun harvestHighlightOnlyTargets(): Boolean = harvestOnlyTargetsSetting.value
+
+    private val plannerColorSettings: Map<PlannerMark, TextSetting> = PlannerMark.entries.associateWith { mark ->
+        TextSetting(
+            key = "Color${mark.name}",
+            displayName = mark.displayName,
+            description = "The colour this is marked in, as hex such as FF3333. Left blank, the " +
+                    "default is used",
+            value = ""
+        )
+    }
+
+    private val plannerColorsGroup = ParentSetting(
+        key = PLANNER_COLORS_KEY,
+        displayName = "Planner Colors",
+        description = "The colors the planner marks a greenhouse in",
+        children = plannerColorSettings.values.toList()
+    )
+
+    fun plannerColor(mark: PlannerMark): Int {
+        val typed = plannerColorSettings[mark]?.value?.trim()?.removePrefix("#")?.removePrefix("0x")
+        val rgb = typed?.takeIf { it.length == 6 }?.toIntOrNull(16) ?: return mark.defaultColor
+
+        return rgb or 0xFF000000.toInt()
+    }
+
+    private val waterOnlyWithoutPlannerSetting = BooleanSetting(
+        key = WATER_ONLY_WITHOUT_PLANNER_KEY,
+        displayName = "Only Without Planner",
+        description = "Only render the water indicator when the planner is completed",
+        value = true
+    )
+
+    private val waterIgnoreGrownSetting = BooleanSetting(
+        key = WATER_IGNORE_GROWN_KEY,
+        displayName = "Ignore crops that will fully grow",
+        description = "Ignore crops that have enough water to reach full growth with no negative " +
+                "water values, so your plant doesnt skip a tick.",
+        value = false
+    )
+
+    private val waterIndicatorSetting = BooleanSetting(
+        key = WATER_INDICATOR_KEY,
+        displayName = "Water Highlight",
+        description = "Marks the soil of every plant below full water in the greenhouse you stand in. ",
+        value = true,
+        children = listOf(waterOnlyWithoutPlannerSetting, waterIgnoreGrownSetting)
+    )
+
+    fun waterIndicatorOn(): Boolean = baseSetting.value && waterIndicatorSetting.value
+
+    fun waterIndicatorOnlyWithoutPlanner(): Boolean = waterOnlyWithoutPlannerSetting.value
+
+    fun waterIndicatorIgnoresGrown(): Boolean = waterIgnoreGrownSetting.value
+
+    private val assumeFlatWaterSetting = BooleanSetting(
+        key = FLAT_WATER_KEY,
+        displayName = "Assume No Water Retain Or Drain",
+        description = "Assumes water retain and drain are bugged for prediction logic",
+        value = false
+    )
+
+    fun assumeFlatWater(): Boolean = baseSetting.value && assumeFlatWaterSetting.value
+
+    private val hudAnywhereSetting = BooleanSetting(
+        key = HUD_ANYWHERE_KEY,
+        displayName = "Anywhere In SkyBlock",
+        description = "Shows the panel anywhere in SkyBlock rather than only in your own garden. " +
+                "Outside a greenhouse it shows the next tick only",
+        value = false
+    )
+
+    fun hudAnywhere(): Boolean = hudAnywhereSetting.value
+
+    private fun warningsSetting(): BooleanSetting? = baseSetting.getChild<BooleanSetting>(WARNINGS_KEY)
+    private fun typesSetting(): BooleanSetting? = warningsSetting()?.getChild<BooleanSetting>(TYPES_KEY)
+
+    private fun warnings(): BooleanSetting? = warningsSetting()?.takeIf { it.value }
+    private fun types(): BooleanSetting? = warnings()?.let { typesSetting() }?.takeIf { it.value }
+    private fun reminders(): BooleanSetting? = warnings()?.getChild<BooleanSetting>(REMINDERS_KEY)?.takeIf { it.value }
+
+
+    fun warningsEnabled(): Boolean = warnings() != null
+
+    fun warningTypeEnabled(key: String): Boolean = types()?.getChild<BooleanSetting>(key)?.value == true
+
+
+    fun reminderTimeEnabled(key: String): Boolean = reminders()?.getChild<BooleanSetting>(key)?.value == true
+
+    fun reminderThresholds(): List<Duration> = listOfNotNull(
+        Duration.ofMinutes(10).takeIf { reminderTimeEnabled(TEN_MINUTES_KEY) },
+        Duration.ofMinutes(5).takeIf { reminderTimeEnabled(FIVE_MINUTES_KEY) },
+        Duration.ofMinutes(1).takeIf { reminderTimeEnabled(ONE_MINUTE_KEY) }
+    )
+
+    fun chorusAbsenceTicks(): Int? = typesSetting()
+        ?.getChild<BooleanSetting>(CHORUS_KEY)
+        ?.getChild<IntSetting>(CHORUS_TICKS_KEY)
+        ?.value
+
+    fun negativeWaterWarningEnabled(): Boolean = types()
+        ?.getChild<BooleanSetting>(PlantWarnings.THIRST_KEY)
+        ?.takeIf { it.value }
+        ?.getChild<BooleanSetting>(PlantWarnings.NEGATIVE_WATER_KEY)
+        ?.value == true
+
+    fun fleshtrapMeatThreshold(): Int = typesSetting()
+        ?.getChild<BooleanSetting>(PlantWarnings.FLESHTRAP_KEY)
+        ?.getChild<IntSetting>(PlantWarnings.FLESHTRAP_MEAT_KEY)
+        ?.value ?: 20
+
+    fun thunderlingChargeThreshold(): Int = typesSetting()
+        ?.getChild<BooleanSetting>(PlantWarnings.THUNDERLING_KEY)
+        ?.getChild<IntSetting>(PlantWarnings.THUNDERLING_CHARGE_KEY)
+        ?.value ?: 12_000
+    override val id = "GreenhousePresets"
+    override val displayName = "Greenhouse Presets"
+    override val description = "Enables Greenhouse Presets..."
+    override val category = "farming"
+
+    override val baseSetting = BooleanSetting(
+        displayName = displayName,
+        description = description,
+        value = false,
+        children = listOf(
+            ParentSetting(
+                key = SCREEN_KEY,
+                displayName = "Screen",
+                description = "The greenhouse screen itself",
+                children = listOf(screenAnywhereSetting, turnGridSetting)
+            ),
+            ParentSetting(
+                key = PLANNER_OPTIONS_KEY,
+                displayName = "Planner",
+                description = "How a plan running on a greenhouse is shown",
+                children = listOf(plantTransparencySetting, plannerColorsGroup)
+            ),
+            ParentSetting(
+                key = PLANT_HIGHLIGHTS_KEY,
+                displayName = "Highlights",
+                description = "What is marked on the plants of the greenhouse you are in",
+                children = listOf(harvestHighlightSetting, waterIndicatorSetting)
+            ),
+            ParentSetting(
+                key = HARVESTABLE_KEY,
+                displayName = "Harvestable",
+                description = "Configure what crops count as harvestable for different features",
+                children = listOf(
+                    harvestableBaseCropsSetting,
+                    harvestableIngredientsSetting,
+                    jellybeanHarvestStageSetting,
+                    aloeHarvestStageSetting
+                )
+            ),
+            ParentSetting(
+                key = BREAK_PROTECTION_KEY,
+                displayName = "Break Protection",
+                description = "Prevents breaking plants under several conditions, configure below.",
+                children = listOf(
+                    preventBreakingNonHarvestableSetting,
+                    preventBreakingUnderFarmingFortuneSetting,
+                    preventBreakingChloroniteSetting,
+                    preventBreakingDuringPestDebuffSetting
+                )
+            ),
+            BooleanSetting(
+                key = WARNINGS_KEY,
+                displayName = "Warnings",
+                description = "Chat warnings about the greenhouse.\n" +
+                        "§7Does not send a warning if you are standing in a greenhouse.",
+                value = false,
+                children = listOf(
+                    BooleanSetting(
+                        key = TYPES_KEY,
+                        displayName = "Types",
+                        description = "Which warnings to include in the report",
+                        value = true,
+                        children = listOf(
+                            BooleanSetting(
+                                key = PlantWarnings.HARVEST_KEY,
+                                displayName = "Ready To Harvest",
+                                description = "",
+                                value = true
+                            ),
+                            BooleanSetting(
+                                key = PlantWarnings.THIRST_KEY,
+                                displayName = "Water",
+                                description = "Warns before a growth tick kills a plant that has run out of water",
+                                value = true,
+                                children = listOf(
+                                    BooleanSetting(
+                                        key = PlantWarnings.NEGATIVE_WATER_KEY,
+                                        displayName = "Also On Negative",
+                                        description = "Also sends a warning when a plant entered negative water " +
+                                                "and has a chance to skip the next tick",
+                                        value = true
+                                    )
+                                )
+                            ),
+                            BooleanSetting(
+                                key = PlantWarnings.DECAY_KEY,
+                                displayName = "Decay",
+                                description = "Lists the plants closest to decaying, once one is under a day",
+                                value = true
+                            ),
+                            BooleanSetting(
+                                key = PlantWarnings.SNOOZLING_KEY,
+                                displayName = "Asleep warning",
+                                description = "Warns when a snoozling or jerryflower is \"asleep\"",
+                                value = true
+                            ),
+                            BooleanSetting(
+                                key = PlantWarnings.NOCTILUME_KEY,
+                                displayName = "Noctilume Time",
+                                description = "Warns while a noctilume needs a time of day the garden is not on",
+                                value = true
+                            ),
+                            BooleanSetting(
+                                key = PlantWarnings.FLESHTRAP_KEY,
+                                displayName = "Fleshtrap Meat",
+                                description = "Warns when a fleshtrap's meat has run down to the threshold below",
+                                value = true,
+                                children = listOf(
+                                    IntSetting(
+                                        key = PlantWarnings.FLESHTRAP_MEAT_KEY,
+                                        displayName = "Meat Threshold",
+                                        description = "The meat percentage at or under which a fleshtrap is warned about",
+                                        value = 20,
+                                        range = 0..80,
+                                        step = 20
+                                    )
+                                )
+                            ),
+                            BooleanSetting(
+                                key = PlantWarnings.THUNDERLING_KEY,
+                                displayName = "Thunderling Charge",
+                                description = "Warns when a thunderling's charge has reached the amount below",
+                                value = true,
+                                children = listOf(
+                                    IntSetting(
+                                        key = PlantWarnings.THUNDERLING_CHARGE_KEY,
+                                        displayName = "Charge To Warn About",
+                                        description = "",
+                                        value = 12_000,
+                                        range = 6_000..14_000,
+                                        step = 2_000
+                                    )
+                                )
+                            ),
+                            BooleanSetting(
+                                key = PlantWarnings.GLASSCORN_KEY,
+                                displayName = "Glasscorn Reset",
+                                description = "Warns when a glasscorn is at its last stage",
+                                value = true
+                            ),
+                            BooleanSetting(
+                                key = CHORUS_KEY,
+                                displayName = "Chorus Collision",
+                                description = "Warns before a chorus fruit runs out of tiles to teleport into and starts destroying the plot around it",
+                                value = false,
+                                children = listOf(
+                                    IntSetting(
+                                        key = CHORUS_TICKS_KEY,
+                                        displayName = "Ticks Away",
+                                        description = "How many growth ticks you expect to be away for",
+                                        value = 5,
+                                        range = 1..48,
+                                        detail = { GreenhouseData.absenceForChorusDetail() }
+                                    )
+                                )
+                            ),
+                            BooleanSetting(
+                                key = PlantWarnings.OTHER_PROFILES_KEY,
+                                displayName = "Other Profiles",
+                                description = "Lets the greenhouses of your other profiles warn too",
+                                value = false
+                            )
+                        )
+                    ),
+                    BooleanSetting(
+                        key = REMINDERS_KEY,
+                        displayName = "Reminders",
+                        description = "When the tick line is sent",
+                        value = false,
+                        children = listOf(
+                            BooleanSetting(
+                                key = AT_TICK_KEY,
+                                displayName = "At The Tick",
+                                description = "The moment a growth tick lands",
+                                value = false
+                            ),
+                            BooleanSetting(
+                                key = TEN_MINUTES_KEY,
+                                displayName = "10 Minutes Before",
+                                description = "Ten minutes before the next growth tick",
+                                value = false
+                            ),
+                            BooleanSetting(
+                                key = FIVE_MINUTES_KEY,
+                                displayName = "5 Minutes Before",
+                                description = "Five minutes before the next growth tick",
+                                value = false
+                            ),
+                            BooleanSetting(
+                                key = ONE_MINUTE_KEY,
+                                displayName = "1 Minute Before",
+                                description = "One minute before the next growth tick",
+                                value = false
+                            )
+                        )
+                    )
+                )
+            ),
+            BooleanSetting(
+                key = GreenhouseHud.KEY,
+                displayName = "Greenhouse HUD",
+                description = "A small panel on screen in your garden: the next tick, and in a greenhouse " +
+                        "how many plants are ready, dry, asleep or about to rot",
+                value = false,
+                children = listOf(hudAnywhereSetting)
+            ),
+            ParentSetting(
+                key = PREDICTION_KEY,
+                displayName = "Prediction",
+                description = "What the growth and water model is told to assume",
+                children = listOf(assumeFlatWaterSetting)
+            )
+        )
+    )
+}
