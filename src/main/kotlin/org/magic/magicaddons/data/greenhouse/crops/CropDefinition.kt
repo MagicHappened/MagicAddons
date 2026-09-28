@@ -120,7 +120,9 @@ data class SpawnRule(
     val requiredNeighbourCells: Map<String, Int> = emptyMap(),
     val needsNoNeighbours: Boolean = false,
     val needsAllPositiveEffects: Boolean = false
-)
+) {
+    val isRuleSettled: Boolean get() = !needsAllPositiveEffects
+}
 
 data class ChargeRule(
     val perStage: Int,

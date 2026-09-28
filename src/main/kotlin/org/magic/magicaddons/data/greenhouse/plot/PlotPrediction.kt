@@ -100,7 +100,9 @@ object PlotPrediction {
         layout: PlotLayout,
         plannedCropsBySlot: Map<Pair<Int, Int>, Set<CropDefinition>>
     ): Map<Pair<Int, Int>, List<CropDefinition>> {
-        val spawningCrops = CropRegistry.allCrops.filter { (it.spawnRule?.weight ?: 0) > 0 }
+        val spawningCrops = CropRegistry.allCrops.filter { crop ->
+            crop.spawnRule?.let { it.weight > 0 && it.isRuleSettled } == true
+        }
         val spots = linkedMapOf<Pair<Int, Int>, List<CropDefinition>>()
 
         for (y in 0 until layout.size) {

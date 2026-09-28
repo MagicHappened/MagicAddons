@@ -18,7 +18,6 @@ import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.EntityUtils
 import org.magic.magicaddons.util.PlayerUtils
-import org.magic.magicaddons.util.VersionChecker
 
 object FarmingDebug : AbstractCommand() {
 
@@ -79,8 +78,7 @@ object FarmingDebug : AbstractCommand() {
                     }
             )
 
-        if (VersionChecker.isOnBeta()) farming.then(collect)
-        return farming
+        return farming.then(collect)
     }
 
     private fun cropDataGapsCommand(): LiteralArgumentBuilder<FabricClientCommandSource> =
