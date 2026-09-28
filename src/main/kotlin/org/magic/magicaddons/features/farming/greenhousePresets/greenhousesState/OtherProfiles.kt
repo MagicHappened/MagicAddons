@@ -3,17 +3,12 @@ package org.magic.magicaddons.features.farming.greenhousePresets.greenhousesStat
 import java.time.Instant
 import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.events.greenhouse.GrowthTickEvent
-import org.magic.magicaddons.data.greenhouse.plot.Codecs.GREENHOUSE_GRID_CODEC
-import org.magic.magicaddons.data.greenhouse.plot.Codecs.MISC_GREENHOUSE_INFO_CODEC
 import org.magic.magicaddons.data.greenhouse.plot.GreenhouseGrid
 import org.magic.magicaddons.data.greenhouse.plot.MiscGreenhouseInfo
-import org.magic.magicaddons.data.handlers.CodecStorage
-import org.magic.magicaddons.data.handlers.DataHandler
+import org.magic.magicaddons.Common
+import org.magic.magicaddons.data.handlers.ModFiles.LoadResult
+import org.magic.magicaddons.util.ChatUtils
 
-/**
- * The greenhouses of the profiles not being played, read from their files and moved on by their
- * own clocks, so their plants can still warn. Nothing here is written back.
- */
 object OtherProfiles {
 
     class Profile(val name: String, val misc: MiscGreenhouseInfo, val grids: List<GreenhouseGrid>)
@@ -21,18 +16,23 @@ object OtherProfiles {
     var profiles: List<Profile> = emptyList()
         private set
 
-    /** Reads every profile folder but the active one. */
     fun reload() {
-        val active = DataHandler.activeProfile
-        profiles = DataHandler.profileIds().filter { it != active }.mapNotNull { id ->
-            val file = DataHandler.greenhouseFile(id)
-            val misc = CodecStorage.load(file, MISC_GREENHOUSE_INFO_CODEC, wrapperKey = "misc_info") ?: return@mapNotNull null
-            val grids = CodecStorage.load(file, GREENHOUSE_GRID_CODEC.listOf(), wrapperKey = "greenhouses") ?: return@mapNotNull null
-            Profile(DataHandler.profileFruitName(id) ?: id.toString().take(8), misc, grids)
+        val activeProfileId = GreenhouseProfiles.activeProfileId
+        profiles = GreenhouseProfiles.profileIds().filter { it != activeProfileId }.mapNotNull { profileId ->
+            val name = GreenhouseProfiles.fruitNameOf(profileId) ?: profileId.toString().take(8)
+            val contents = when (val result = GreenhouseProfiles.readGreenhouseFile(profileId)) {
+                is LoadResult.NoFile -> return@mapNotNull null
+                is LoadResult.Loaded -> result.value
+                is LoadResult.Unreadable -> {
+                    Common.LOGGER.error("Greenhouse data for $name could not be read, left out of the other profiles", result.cause)
+                    ChatUtils.sendWithPrefix("Greenhouse data for $name could not be read, so it is left out of your other profiles.")
+                    return@mapNotNull null
+                }
+            }
+            Profile(name, contents.miscInfo ?: return@mapNotNull null, contents.greenhouses ?: return@mapNotNull null)
         }
     }
 
-    /** advances each profile's plants on by however many of its ticks have passed */
     fun advanceTicks() {
         val now = Instant.now()
 

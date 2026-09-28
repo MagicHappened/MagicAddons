@@ -4,18 +4,14 @@ import net.minecraft.world.entity.Entity
 import org.magic.magicaddons.data.EntityInfo
 import org.magic.magicaddons.util.EntityUtils
 
-/** a feature that uses highlights */
 abstract class HighlightFeature : Feature(), EntityUtils.HighlightSource {
 
-    /** returns the entity to outline for the entity info bundle*/
     abstract fun highlightTarget(info: EntityInfo): Entity?
 
     private val targets: MutableMap<Entity, Entity> = mutableMapOf()
 
-    /** what mark to draw if the entity is far away for each entity */
     private val marks: MutableMap<Entity, EntityUtils.HighlightMark> = mutableMapOf()
 
-    /** what should the marker draw for this entity default null */
     open fun markOf(info: EntityInfo): EntityUtils.HighlightMark? = null
 
     final override fun highlightMark(entity: Entity): EntityUtils.HighlightMark? = marks[entity]
@@ -30,7 +26,6 @@ abstract class HighlightFeature : Feature(), EntityUtils.HighlightSource {
         EntityUtils.entityInfoList?.forEach { info -> apply(info) }
     }
 
-    /** Points this entity's highlight at whatever the feature now wants outlined, or at nothing. */
     private fun apply(info: EntityInfo) {
         val wanted = highlightTarget(info)
         val current = targets[info.entity]
@@ -49,7 +44,6 @@ abstract class HighlightFeature : Feature(), EntityUtils.HighlightSource {
         }
     }
 
-    /** Takes the outline off an entity, unless another match of ours is still pointing at it. */
     private fun releaseIfUnused(target: Entity) {
         if (targets.containsValue(target)) return
 

@@ -8,7 +8,6 @@ import org.magic.magicaddons.events.interact.*
 import org.magic.magicaddons.util.ChatUtils
 import tech.thatgravyboat.skyblockapi.utils.extentions.getLore
 
-/** The greenhouse's own numbers, read off the menus that show them. */
 object MenuReadings {
 
     fun updateCropGrowth(realItems: List<ItemStack>) {

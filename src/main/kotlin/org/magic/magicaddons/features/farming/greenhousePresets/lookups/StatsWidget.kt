@@ -11,7 +11,6 @@ object StatsWidget {
     const val FARMING_FORTUNE: String = "Farming Fortune"
     const val MINING_FORTUNE: String = "Mining Fortune"
 
-    // the widget draws an icon between the colon and the number
     private val STAT_LINE = Regex("""^[^A-Za-z]*([A-Za-z][A-Za-z ]*?)\s*:\s*\D*?([\d,]+)""")
 
     var isShown: Boolean? = null

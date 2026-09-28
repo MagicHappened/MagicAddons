@@ -14,7 +14,6 @@ import org.magic.magicaddons.commands.internal.farming.SetTimestalkAttribute
 import org.magic.magicaddons.data.greenhouse.crops.*
 import org.magic.magicaddons.data.greenhouse.crops.definitions.misc.FireElement
 import org.magic.magicaddons.data.greenhouse.plot.*
-import org.magic.magicaddons.data.handlers.DataHandler
 import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.events.EventHandler
 import org.magic.magicaddons.events.chat.SystemChatEvent
@@ -146,7 +145,7 @@ object GreenhouseData : GridCallbacks {
 
     private fun initKnownIds() {
         if (checkGreenhouses) return
-        if (DataHandler.activeProfile == null) return
+        if (GreenhouseProfiles.activeProfileId == null) return
         if (PlotAPI.plots.any { it.data == null }) return
 
         PlotAPI.plots.forEach { plot ->
@@ -173,23 +172,32 @@ object GreenhouseData : GridCallbacks {
         checkGreenhouses = true
     }
 
-    private fun plotReady(plot: Plot): Boolean {
-        if (plotUnloading) return false
+    private enum class PlotReadiness {
+        Settled,
+        Overdue,
+        Waiting
+    }
 
-        val level = Minecraft.getInstance().level ?: return false
+    private fun plotReadiness(plot: Plot): PlotReadiness {
+        if (plotUnloading) return PlotReadiness.Waiting
+
+        val level = Minecraft.getInstance().level ?: return PlotReadiness.Waiting
         val area = plot.getBuildableArea()
 
-        if (!chunksLoadedOver(level, area)) return false
+        if (!chunksLoadedOver(level, area)) return PlotReadiness.Waiting
 
         val now = System.currentTimeMillis()
 
         val quietSince = maxOf(lastEntityChangeAt ?: 0L, plotEnteredAt)
 
-        if (standsStillMoving(level) == 0 && now - quietSince >= ENTITY_QUIET_MS) return true
+        if (standsStillMoving(level) == 0 && now - quietSince >= ENTITY_QUIET_MS) return PlotReadiness.Settled
 
-        return now - (lastChangeAt ?: now) >= MAX_SCAN_DEFER_MS
+        val deferredSince = scanDeferredSince ?: now.also { scanDeferredSince = it }
+
+        return if (now - deferredSince >= MAX_SCAN_DEFER_MS) PlotReadiness.Overdue else PlotReadiness.Waiting
     }
-    
+
+
     private fun chunksLoadedOver(level: Level, area: AABB): Boolean {
         val chunkSource = level.chunkSource
 
@@ -203,17 +211,23 @@ object GreenhouseData : GridCallbacks {
     }
 
     private fun standsStillMoving(level: Level): Int {
+        val now = System.currentTimeMillis()
+
         standTargets.entries.removeIf { (entityId, target) ->
             val standing = level.getEntity(entityId)?.position() ?: return@removeIf true
-            standing.distanceToSqr(target) <= STAND_ARRIVED_WITHIN_SQR
+            now - target.notedAt >= STAND_MOVE_TIMEOUT_MS || standing.distanceToSqr(target.position) <= STAND_ARRIVED_WITHIN_SQR
         }
 
         return standTargets.size
     }
 
-    private val standTargets: MutableMap<Int, Vec3> = HashMap()
+    private class StandTarget(val position: Vec3, val notedAt: Long)
+
+    private val standTargets: MutableMap<Int, StandTarget> = HashMap()
 
     private const val STAND_ARRIVED_WITHIN_SQR: Double = 1.0e-6
+
+    private const val STAND_MOVE_TIMEOUT_MS: Long = 1_000
 
     private var plotUnloading: Boolean = false
 
@@ -221,30 +235,77 @@ object GreenhouseData : GridCallbacks {
 
     private const val ENTITY_QUIET_MS: Long = 250
 
-    /** counted from the plot's last change */
     private const val MAX_SCAN_DEFER_MS: Long = 3_000
+
+    private var scanDeferredSince: Long? = null
 
     private var lastEntityChangeAt: Long? = null
 
-    fun noteEntityChanged(entityId: Int, movingTo: Vec3? = null) {
+    private var lastChangedStandId: Int? = null
+
+    fun noteStandTeleported(entityId: Int, movingTo: Vec3?) {
+        if (movingTo == null) standTargets.remove(entityId)
+        noteStandChanged(entityId, movingTo)
+    }
+
+    fun noteStandChanged(entityId: Int, movingTo: Vec3? = null) {
         if (!greenhousesInitialized) return
 
         val gridArea = PlotAPI.getCurrentPlot()?.getBuildableArea() ?: return
-        val entity = Minecraft.getInstance().level?.getEntity(entityId) ?: return
-        if (!gridArea.contains(entity.position())) return
+        val stand = Minecraft.getInstance().level?.getEntity(entityId) as? ArmorStand ?: return
+        if (!gridArea.contains(stand.position())) return
 
-        lastEntityChangeAt = System.currentTimeMillis()
+        val now = System.currentTimeMillis()
+        lastEntityChangeAt = now
+        lastChangedStandId = entityId
         if (movingTo == null) return
-        standTargets[entityId] = movingTo
+        standTargets[entityId] = StandTarget(movingTo, now)
 
         val grid = getCurrentGrid() ?: return
         if (!grid.isScanned()) return
 
         // a stand moving invalidates every cell, so plants in between are properly scanned
-        val from = BlockPos.containing(entity.position())
+        val from = BlockPos.containing(stand.position())
         val to = BlockPos.containing(movingTo)
 
         markBlocksDirty(BlockPos.betweenClosed(from, to).map { it.immutable() })
+    }
+
+    class MovingStand(val stand: ArmorStand, val distanceToTarget: Double, val movingForMs: Long)
+
+    class ScanStatus(
+        val plotName: String,
+        val isSettled: Boolean,
+        val deferredForMs: Long?,
+        val lastScanAgoMs: Long?,
+        val quietForMs: Long,
+        val lastChangedStand: ArmorStand?,
+        val movingStands: List<MovingStand>
+    ) {
+        val quietNeededMs: Long get() = ENTITY_QUIET_MS
+    }
+
+    fun scanStatus(): ScanStatus? {
+        val grid = getCurrentGrid() ?: return null
+        val level = Minecraft.getInstance().level ?: return null
+        val now = System.currentTimeMillis()
+
+        standsStillMoving(level)
+        val movingStands = standTargets.mapNotNull { (entityId, target) ->
+            val stand = level.getEntity(entityId) as? ArmorStand ?: return@mapNotNull null
+            MovingStand(stand, stand.position().distanceTo(target.position), now - target.notedAt)
+        }
+        val quietForMs = now - maxOf(lastEntityChangeAt ?: 0L, plotEnteredAt)
+
+        return ScanStatus(
+            plotName = grid.layout.displayName(),
+            isSettled = movingStands.isEmpty() && quietForMs >= ENTITY_QUIET_MS,
+            deferredForMs = scanDeferredSince?.let { now - it },
+            lastScanAgoMs = grid.state.lastScanTime?.let { now - it.toEpochMilli() },
+            quietForMs = quietForMs,
+            lastChangedStand = lastChangedStandId?.let { level.getEntity(it) as? ArmorStand },
+            movingStands = movingStands
+        )
     }
 
     private var isPlanTurned: Boolean = false
@@ -261,24 +322,22 @@ object GreenhouseData : GridCallbacks {
             return
         }
 
-        // read again on a later tick, once the rest of the plot has been sent
-        if (!plotReady(plot)) {
+        val readiness = plotReadiness(plot)
+        if (readiness == PlotReadiness.Waiting) {
             shouldRescanCurrentPlot = true
             return
         }
+        scanDeferredSince = null
+        val isPlotSettled = readiness == PlotReadiness.Settled
 
         grid.plot = plot
 
         grid.readSoilBlocks()
 
-        // a merge, so whatever the plot cannot say for a plant that is still there is carried over,
-        // and any stage predicted while away is corrected by what is actually standing
-        if (!grid.rescanPlants()) return
+        if (!grid.rescanPlants(shouldKeepUnmatchedPlants = !isPlotSettled)) return
 
-        // the plan is laid the way the plot agrees with, judged afresh on arriving: what stands now
-        // says which way it was built, and a turn picked on assign may be stale by then
-        if (!isPlanTurned) {
-            grid.state.assignedLayout?.let { plan ->
+        if (isPlotSettled && !isPlanTurned) {
+            grid.state.assignedLayout?.takeUnless { grid.state.noRotateAssignedLayout }?.let { plan ->
                 val turns = grid.compareRotations(plan, grid.state.planTurns)
                 if (turns != grid.state.planTurns) {
                     grid.state.planTurns = turns
@@ -289,9 +348,8 @@ object GreenhouseData : GridCallbacks {
         }
 
         claimPlantedCrop(grid)
-        GreenhouseSpawnLog.noteScan(grid)
+        if (isPlotSettled) GreenhouseSpawnLog.noteScan(grid)
 
-        // the plan on screen is read off the plot, so it is only right until the plot changes
         LayoutRenderState.refresh()
 
         // after grid update
@@ -377,14 +435,16 @@ object GreenhouseData : GridCallbacks {
             return
         }
         val plot = PlotAPI.getCurrentPlot() ?: return
-        if (!plotReady(plot)) {
+        val readiness = plotReadiness(plot)
+        if (readiness == PlotReadiness.Waiting) {
             shouldRescanCurrentPlot = true
             return
         }
+        scanDeferredSince = null
         grid.plot = plot
 
         grid.readSoilBlocks()
-        if (!grid.rescanPlants(region)) return
+        if (!grid.rescanPlants(region, shouldKeepUnmatchedPlants = readiness != PlotReadiness.Settled)) return
         claimPlantedCrop(grid)
         LayoutRenderState.refresh()
     }
@@ -536,8 +596,10 @@ object GreenhouseData : GridCallbacks {
 
     private fun switchProfileIfChanged() {
         if (!ProfileAPI.isLoaded) return
-        val id = runCatching { ProfileAPI.profileId }.getOrNull() ?: return
-        DataHandler.switchProfile(id, ProfileAPI.profileName ?: return)
+        val profileId = runCatching { ProfileAPI.profileId }.getOrNull() ?: return
+        val profileName = ProfileAPI.profileName ?: return
+        if (GreenhouseProfiles.activeProfileId != null && profileId != GreenhouseProfiles.activeProfileId) leaveActiveProfile()
+        GreenhouseProfiles.switchProfile(profileId, profileName)
     }
 
     fun resetForProfile() {
@@ -551,7 +613,7 @@ object GreenhouseData : GridCallbacks {
     }
 
     private fun updateTickTimeAfterJoin() {
-        if (!joiningSkyBlock || !greenhousesInitialized || DataHandler.activeProfile == null) return
+        if (!joiningSkyBlock || !greenhousesInitialized || GreenhouseProfiles.activeProfileId == null) return
 
         checkForGrowthTickUpdate()
         joiningSkyBlock = false
@@ -560,7 +622,7 @@ object GreenhouseData : GridCallbacks {
     @EventHandler
     fun onTick(event: WorldTickEvent) {
         switchProfileIfChanged()
-        if (DataHandler.activeProfile == null) return
+        if (GreenhouseProfiles.activeProfileId == null) return
 
         OtherProfiles.advanceTicks()
         updateTickTimeAfterJoin()
@@ -598,7 +660,7 @@ object GreenhouseData : GridCallbacks {
 
         if (event.new != SkyBlockIsland.GARDEN) {
             gardenArrivedAt = null
-            DataHandler.saveGardenData()
+            GreenhouseProfiles.saveGreenhouseData()
             greenhouseGrids.forEach {
                 it.state.scanned = false
             }
@@ -610,10 +672,14 @@ object GreenhouseData : GridCallbacks {
 
     @Subscription
     fun onGameShutdown(event: ServerDisconnectEvent) {
+        leaveActiveProfile()
+    }
+
+    private fun leaveActiveProfile() {
         scoreboardLines = emptyList()
         pestDebuffActive = false
         GreenhouseSpawnLog.onGameClosing()
-        DataHandler.saveGardenData()
+        GreenhouseProfiles.saveGreenhouseData()
     }
 
 
@@ -702,7 +768,6 @@ object GreenhouseData : GridCallbacks {
     fun onInventory(event: ContainerInitializedEvent) {
         val realItems = event.containerItems.filter { !it.isSkyblockFiller() }
 
-        // the diagnosis reads what the tool was last pointed at, and any container ends that pointing
         val listening = plantDiagnosticListeningElement
         val hit = plantDiagnosticHitBaseBlock
         plantDiagnosticListeningElement = null
@@ -809,6 +874,8 @@ object GreenhouseData : GridCallbacks {
     fun onLevelUnloading(event: LevelUnloadingEvent) {
         plotUnloading = true
         dirtyBlocks.clear()
+        standTargets.clear()
+        scanDeferredSince = null
         lastChangeAt = null
         shouldRescanCurrentPlot = false
     }
@@ -907,7 +974,7 @@ object GreenhouseData : GridCallbacks {
         if (GreenhouseTickTime.speedAttribute() == null) {
             warnings.add(
                 ChatUtils.buildWithCommand(
-                    "Unknown Timestalk attribute, ticks are timed as if it were zero. Click to set it",
+                    "Unknown Timestalk attribute, defaulting to zero. Click to set it",
                     "${MainInternal.PATH} ${SetTimestalkAttribute.NAME}"
                 )
             )

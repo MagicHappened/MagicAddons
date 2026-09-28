@@ -1,9 +1,9 @@
 package org.magic.magicaddons.config
 
+import com.google.gson.JsonObject
 import org.magic.magicaddons.features.FeatureManager
 
 
-@Suppress("UNCHECKED_CAST")
 object OldConfigHandler {
 
     private const val INFO_KEY = "info"
@@ -11,9 +11,9 @@ object OldConfigHandler {
     private const val CONFIG_KEY = "config"
 
     fun updateConfig(
-        raw: MutableMap<String, Any>,
+        raw: JsonObject,
         targetVersion: String
-    ): MutableMap<String, Any> {
+    ): JsonObject {
 
         val version = extractVersion(raw) ?: return handleNoVersion(raw, targetVersion)
 
@@ -22,24 +22,24 @@ object OldConfigHandler {
 
 
     private fun handleNoVersion(
-        oldConfig: MutableMap<String, Any>,
+        oldConfig: JsonObject,
         targetVersion: String
-    ): MutableMap<String, Any> {
+    ): JsonObject {
 
-        val wrapped = mutableMapOf<String, Any>(
-            INFO_KEY to mutableMapOf<String, Any>(VERSION_KEY to "1.0.0"),
-            CONFIG_KEY to oldConfig
-        )
+        val wrapped = JsonObject().apply {
+            add(INFO_KEY, JsonObject().apply { addProperty(VERSION_KEY, "1.0.0") })
+            add(CONFIG_KEY, oldConfig)
+        }
 
         return migrateVersion(wrapped, "1.0.0", targetVersion)
     }
 
 
     private fun migrateVersion(
-        raw: MutableMap<String, Any>,
+        raw: JsonObject,
         oldVersion: String,
         targetVersion: String
-    ): MutableMap<String, Any> {
+    ): JsonObject {
 
         var updated = raw
         var version = oldVersion
@@ -54,56 +54,49 @@ object OldConfigHandler {
             version = "1.0.3"
         }
 
-        val info = mutableMapOf<String, Any>(
-            VERSION_KEY to targetVersion
-        )
-
-        updated[INFO_KEY] = info
+        updated.add(INFO_KEY, JsonObject().apply { addProperty(VERSION_KEY, targetVersion) })
 
         return updated
     }
 
-    private fun extractVersion(raw: Map<String, Any>): String? {
-        val info = raw[INFO_KEY] as? Map<*, *> ?: return null
-        return info[VERSION_KEY] as? String
-    }
+    private fun extractVersion(raw: JsonObject): String? =
+        (raw.get(INFO_KEY) as? JsonObject)?.get(VERSION_KEY)?.asString
 
     // change 1_0_1 -> 1_0_2 the safari mob preset and the safari restricted treasure highlight
     // moved to foraging/SafariHelper "Mob Highlight"
-    fun update_to_1_0_2(raw: MutableMap<String, Any>): MutableMap<String, Any> {
-        val configMap = raw[CONFIG_KEY] as? MutableMap<String, Any> ?: return raw
-        val combat = configMap["combat"] as? MutableMap<String, Any> ?: return raw
-        val highlightMobs = combat["HighlightMobs"] as? MutableMap<String, Any> ?: return raw
+    fun update_to_1_0_2(raw: JsonObject): JsonObject {
+        val configMap = raw.get(CONFIG_KEY) as? JsonObject ?: return raw
+        val combat = configMap.get("combat") as? JsonObject ?: return raw
+        val highlightMobs = combat.get("HighlightMobs") as? JsonObject ?: return raw
 
-        val usedSafariPreset = highlightMobs.remove("SafariPreset") == true
-        val usedSafariTreasure = highlightMobs.remove("ForagingTreasureSafariCondition") == true
+        val usedSafariPreset = highlightMobs.remove("SafariPreset")?.let { it.isJsonPrimitive && it.asBoolean } == true
+        val usedSafariTreasure = highlightMobs.remove("ForagingTreasureSafariCondition")?.let { it.isJsonPrimitive && it.asBoolean } == true
 
         if (!usedSafariPreset && !usedSafariTreasure) return raw
 
-        val foraging = configMap.getOrPut("foraging") { mutableMapOf<String, Any>() }
-                as? MutableMap<String, Any> ?: return raw
+        val foraging = configMap.get("foraging") as? JsonObject ?: JsonObject().also { configMap.add("foraging", it) }
 
-        foraging["SafariHelper"] = mutableMapOf<String, Any>(
-            "enabled" to true,
-            "MobHighlight" to true
-        )
+        foraging.add("SafariHelper", JsonObject().apply {
+            addProperty("enabled", true)
+            addProperty("MobHighlight", true)
+        })
 
         return raw
     }
 
     // change 1_0_2 -> 1_0_3 settings are stored under their nested path "Parent.Child"
-    fun update_to_1_0_3(raw: MutableMap<String, Any>): MutableMap<String, Any> {
-        val configMap = raw[CONFIG_KEY] as? MutableMap<String, Any> ?: return raw
+    fun update_to_1_0_3(raw: JsonObject): JsonObject {
+        val configMap = raw.get(CONFIG_KEY) as? JsonObject ?: return raw
 
         FeatureManager.features.forEach { feature ->
-            val category = configMap[feature.category] as? MutableMap<String, Any> ?: return@forEach
-            val stored = category[feature.id] as? MutableMap<String, Any> ?: return@forEach
+            val category = configMap.get(feature.category) as? JsonObject ?: return@forEach
+            val stored = category.get(feature.id) as? JsonObject ?: return@forEach
 
             feature.settingPaths().forEach { (key, path) ->
                 if (key == path) return@forEach
 
                 val storedValue = stored.remove(key) ?: return@forEach
-                stored[path] = storedValue
+                stored.add(path, storedValue)
             }
         }
 

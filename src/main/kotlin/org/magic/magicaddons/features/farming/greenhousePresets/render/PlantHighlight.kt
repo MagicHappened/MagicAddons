@@ -13,7 +13,6 @@ import org.magic.magicaddons.data.greenhouse.crops.ScannedPlant
 import org.magic.magicaddons.render.WorldRenderer
 import org.magic.magicaddons.util.EntityUtils
 
-/** The plant picked on the greenhouse screen, outlined in the world so it can be found. */
 object PlantHighlight : EntityUtils.HighlightSource {
 
     private val HIGHLIGHT_DURATION: Duration = Duration.ofSeconds(10)

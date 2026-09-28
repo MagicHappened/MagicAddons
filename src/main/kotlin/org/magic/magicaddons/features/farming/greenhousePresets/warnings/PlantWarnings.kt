@@ -43,6 +43,7 @@ object PlantWarnings {
 
     private const val HOVER_LINES: Int = 5
 
+    // todo make this configurable
     private val DECAY_WITHIN: Duration = Duration.ofDays(1)
 
     private val HARVEST_TIER_ORDER: List<CropTier> = listOf(
@@ -200,8 +201,6 @@ object PlantWarnings {
         attentionSection(profile),
         waterSection(profile)
     )
-
-    // ------------------------------------------------------------------------- the sections
 
     private const val WATER_LABEL: String = "Water"
 

@@ -8,10 +8,10 @@ import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.network.chat.Component
 import org.magic.magicaddons.Common
 import org.magic.magicaddons.features.customization.Customization
-import org.magic.magicaddons.ui.background.ConfigBackground
+import org.magic.magicaddons.ui.background.ScreenBackground
 import org.magic.magicaddons.ui.fonts.ModFont
 import org.magic.magicaddons.util.ErrorReporter
-import org.magic.magicaddons.util.ScreenUtil.eased
+import org.magic.magicaddons.util.ScreenUtil.easedProgress
 import org.magic.magicaddons.util.ScreenUtil.withAlpha
 import org.magic.magicaddons.util.compat.McCompat
 
@@ -29,7 +29,7 @@ abstract class MagicAddonsScreen(title: Component, private val errorLocation: St
     private var closingSince: Long = 0L
 
     private fun animationProgress(): Float =
-        if (closingSince != 0L) 1f - eased(closingSince, ANIMATION_MS) else eased(openedAt, ANIMATION_MS)
+        if (closingSince != 0L) 1f - easedProgress(closingSince, ANIMATION_MS) else easedProgress(openedAt, ANIMATION_MS)
 
     final override fun init() = reportErrorsInModFont(Unit) {
         if (openedAt == 0L) openedAt = System.currentTimeMillis()
@@ -73,7 +73,7 @@ abstract class MagicAddonsScreen(title: Component, private val errorLocation: St
         graphics.fill(0, 0, width, height, withAlpha(Common.UI.SCREEN_DIM_COLOR, animationProgress()))
 
         backgroundImageName?.takeIf { Customization.backgroundShowsOn(it) }?.let {
-            ConfigBackground.draw(graphics, 0, 0, width, height)
+            ScreenBackground.drawBackground(graphics, 0, 0, width, height)
         }
 
         McCompat.extractDeferredSubtitles(minecraft)

@@ -4,10 +4,6 @@ import net.minecraft.client.gui.GuiGraphicsExtractor
 import org.magic.magicaddons.Common
 import org.magic.magicaddons.util.ScreenUtil.drawButtonPanel
 
-/**
- * A whole-number slider: a thin track with a small button for a handle, dragged or clicked to a step
- * between [min] and [max]. Nothing is drawn when there is only one step to pick.
- */
 class SliderWidget(val onChange: (Int) -> Unit) {
 
     var x: Int = 0
@@ -25,24 +21,21 @@ class SliderWidget(val onChange: (Int) -> Unit) {
     var value: Int = 0
         private set
 
-    private var dragging: Boolean = false
+    private var isDragging: Boolean = false
 
-    /** Whether there is more than one step, which is the only case the slider is drawn or used in. */
-    val usable: Boolean get() = max > min
+    val isUsable: Boolean get() = max > min
 
-    /** Sets the steps this slider picks between, keeping the value inside them. */
-    fun range(min: Int, max: Int) {
+    fun setRange(min: Int, max: Int) {
         this.min = min
         this.max = max
         value = value.coerceIn(min, maxOf(min, max))
     }
 
-    /** Moves the handle without telling the owner, for a value that changed somewhere else. */
-    fun show(step: Int) {
+    fun setValueWithoutNotifying(step: Int) {
         value = step.coerceIn(min, maxOf(min, max))
     }
 
-    fun set(step: Int) {
+    fun setValue(step: Int) {
         val clamped = step.coerceIn(min, maxOf(min, max))
         if (clamped == value) return
 
@@ -51,20 +44,19 @@ class SliderWidget(val onChange: (Int) -> Unit) {
     }
 
     fun render(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int) {
-        if (!usable) return
+        if (!isUsable) return
 
         val trackY = y + height / 2
         graphics.fill(x, trackY - 1, x + width, trackY + 1, Common.UI.BORDER_COLOR)
 
         val handleX = handleX()
-        val onHandle = mouseX in handleX until handleX + HANDLE_WIDTH && mouseY in y until y + height
+        val isHandleHovered = mouseX in handleX until handleX + HANDLE_WIDTH && mouseY in y until y + height
 
-        // the handle is a small button: washed under the mouse, shaded while it is being dragged
         graphics.drawButtonPanel(
             handleX, y,
             handleX + HANDLE_WIDTH, y + height,
-            hovered = onHandle || dragging,
-            pressed = dragging,
+            hovered = isHandleHovered || isDragging,
+            pressed = isDragging,
             fill = Common.UI.ACCENT_COLOR
         )
     }
@@ -72,42 +64,41 @@ class SliderWidget(val onChange: (Int) -> Unit) {
     private fun handleX(): Int = x + ((value - min) * (width - HANDLE_WIDTH)) / (max - min)
 
     fun mouseClicked(mouseX: Double, mouseY: Double): Boolean {
-        if (!usable) return false
+        if (!isUsable) return false
         if (!isMouseOver(mouseX, mouseY)) return false
 
-        dragging = true
-        dragTo(mouseX)
+        isDragging = true
+        setValueFromMouse(mouseX)
         return true
     }
 
     fun mouseDragged(mouseX: Double): Boolean {
-        if (!dragging) return false
+        if (!isDragging) return false
 
-        dragTo(mouseX)
+        setValueFromMouse(mouseX)
         return true
     }
 
     fun mouseReleased(): Boolean {
-        if (!dragging) return false
+        if (!isDragging) return false
 
-        dragging = false
+        isDragging = false
         return true
     }
 
-    /** A little above and below the track counts as the slider, so the handle is easy to catch. */
     fun isMouseOver(mouseX: Double, mouseY: Double): Boolean =
-        mouseY.toInt() in y - GRAB_SLACK..y + height + GRAB_SLACK && mouseX.toInt() in x..x + width
+        mouseY.toInt() in y - GRAB_MARGIN..y + height + GRAB_MARGIN && mouseX.toInt() in x..x + width
 
-    private fun dragTo(mouseX: Double) {
-        val along = ((mouseX - x) / width).coerceIn(0.0, 1.0)
+    private fun setValueFromMouse(mouseX: Double) {
+        val trackFraction = ((mouseX - x) / width).coerceIn(0.0, 1.0)
 
-        set(min + Math.round(along * (max - min)).toInt())
+        setValue(min + Math.round(trackFraction * (max - min)).toInt())
     }
 
     companion object {
         const val HEIGHT: Int = 10
         const val HANDLE_WIDTH: Int = 8
 
-        private const val GRAB_SLACK: Int = 2
+        private const val GRAB_MARGIN: Int = 2
     }
 }

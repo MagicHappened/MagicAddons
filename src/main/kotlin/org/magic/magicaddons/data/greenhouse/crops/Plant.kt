@@ -63,7 +63,7 @@ data class Plant(
 
     val hunger: Int? get() = readings[StandReader.HUNGER]
 
-    var waterPredictedInDebt: Boolean = false
+    var waterPredictedNegative: Boolean = false
 
     var waterExact: Boolean = false
 
@@ -89,7 +89,7 @@ data class Plant(
 
     fun copyForPrediction(slot: LayoutSlot): Plant =
         copy(slot = slot, readings = readings.toMutableMap(), presetAlternatives = presetAlternatives.toMutableList()).also {
-            it.waterPredictedInDebt = waterPredictedInDebt
+            it.waterPredictedNegative = waterPredictedNegative
             it.waterExact = waterExact
             it.firstSeenStage = firstSeenStage
             it.placed = placed
@@ -106,7 +106,7 @@ data class Plant(
 
         val ticksLeft = PlotPrediction.ticksUntilDeath(water, waterEffectPercent) ?: return true
 
-        val stage = (if (waterPredictedInDebt) highestStage else lowestStage) ?: return null
+        val stage = (if (waterPredictedNegative) highestStage else lowestStage) ?: return null
         if (cropDef.maxStage <= 1) return null
 
         return ticksLeft > cropDef.maxStage - stage

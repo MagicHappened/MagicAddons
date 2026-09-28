@@ -1,6 +1,6 @@
 package org.magic.magicaddons.features.customization
 
-enum class ChatPrefixColour(private val label: String, val rgb: Int) {
+enum class ChatPrefixColor(private val label: String, val rgb: Int) {
     Default("Default", 0xFFAA00),
     FollowAccent("Follow Accent", 0xFFAA00),
     Green("Green", 0x55FF55),

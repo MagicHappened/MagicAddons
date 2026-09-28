@@ -33,10 +33,8 @@ object CustomRendSound : Feature() {
 
     const val REND_COOLDOWN: Int = 500
 
-    /** Which part of a player's display name holds the name itself, after the level tag. */
     private const val NAME_SIBLING_INDEX: Int = 1
 
-    /** The two corners of Kuudra's lair. */
     private val LAIR_CORNER_A: Vec3 = Vec3(-60.0, 40.0, -142.0)
     private val LAIR_CORNER_B: Vec3 = Vec3(-135.0, 1.0, -65.0)
     private val LAIR_BOX: AABB = AABB(LAIR_CORNER_A, LAIR_CORNER_B)
@@ -69,7 +67,7 @@ object CustomRendSound : Feature() {
             if (entity.entity !is Player) {
                 return@forEach
             }
-            if (!entity.informationEntities.isNullOrEmpty()) { // no armor stands = real player
+            if (!entity.informationEntities.isNullOrEmpty()) {
                 return@forEach
             }
             if (entity.entity in wornReaperTuxedoArmorList) {
@@ -148,6 +146,7 @@ object CustomRendSound : Feature() {
 
     fun inKuudraLair(): Boolean{
         val player = Minecraft.getInstance().player ?: return false
+        if (LocationAPI.island != SkyBlockIsland.KUUDRA) return false
         return LAIR_BOX.contains(Vec3(player.x, player.y, player.z))
     }
 }

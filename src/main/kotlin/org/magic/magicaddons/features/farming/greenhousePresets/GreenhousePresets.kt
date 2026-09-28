@@ -84,7 +84,7 @@ object GreenhousePresets : Feature() {
         key = KEY_ANYWHERE,
         displayName = "Open Anywhere",
         description = "Lets the greenhouse screen key (G unless rebound) open the screen " +
-                "outside the garden too. Off, it only works while on the garden",
+                "outside the garden too.",
         value = false
     )
 
@@ -92,7 +92,7 @@ object GreenhousePresets : Feature() {
         key = TURN_GRID_KEY,
         displayName = "Turn Grid With Player",
         description = "Turns the greenhouse screen's grid so the way you are facing is up. " +
-                "Only the picture turns: plans still go on the same tiles",
+                "The turns are only visual, plans still go on the same cells",
         value = false
     )
 
@@ -103,7 +103,7 @@ object GreenhousePresets : Feature() {
     private val plantTransparencySetting = IntSetting(
         key = PLANT_TRANSPARENCY_KEY,
         displayName = "Plant Transparency",
-        description = "How much of the world shows through the planner's ghost blocks and stands",
+        description = "How transparent is the plant hologram.",
         value = 25,
         range = 0..100,
         step = 5,
@@ -115,9 +115,8 @@ object GreenhousePresets : Feature() {
 
     private val harvestOnlyTargetsSetting = BooleanSetting(
         key = HARVEST_ONLY_TARGETS_KEY,
-        displayName = "Only highlight based on the Target marking from the assigned preset",
-        description = "Only the target slots of the assigned preset are watched: green on a target " +
-                "mutation ready to harvest, and red on anything else growing in its slot",
+        displayName = "Only highlight based on Target marking",
+        description = "Makes harvest highlight only show when the fully grown plant is a target in the assigned preset",
         value = false
     )
 
@@ -201,7 +200,7 @@ object GreenhousePresets : Feature() {
     private val farmingFortuneThresholdSetting = IntSetting(
         key = "FarmingFortuneThreshold",
         displayName = "Farming Fortune Threshold",
-        description = "The farming fortune under which a mutation is prevented from being broken",
+        description = "",
         value = 1000,
         range = 0..5000,
         step = 50,
@@ -224,7 +223,7 @@ object GreenhousePresets : Feature() {
     private val miningFortuneThresholdSetting = IntSetting(
         key = "MiningFortuneThreshold",
         displayName = "Mining Fortune Threshold",
-        description = "The mining fortune under which a Chloronite is prevented from being broken",
+        description = "",
         value = 1000,
         range = 0..5000,
         step = 50,
@@ -247,7 +246,7 @@ object GreenhousePresets : Feature() {
     private val preventBreakingDuringPestDebuffSetting = BooleanSetting(
         key = "PreventBreakingDuringPestDebuff",
         displayName = "Prevent Breaking While Pest Debuff Is Active",
-        description = "Prevents breaking any mutation but Chloronite while pests are lowering your farming fortune.",
+        description = "Prevents breaking any mutation while pests are lowering your farming fortune.",
         value = false
     )
 
@@ -277,8 +276,8 @@ object GreenhousePresets : Feature() {
 
     private val plannerColorsGroup = ParentSetting(
         key = PLANNER_COLORS_KEY,
-        displayName = "Planner Colours",
-        description = "The colours the planner marks a greenhouse in",
+        displayName = "Planner Colors",
+        description = "The colors the planner marks a greenhouse in",
         children = plannerColorSettings.values.toList()
     )
 
@@ -292,7 +291,7 @@ object GreenhousePresets : Feature() {
     private val waterOnlyWithoutPlannerSetting = BooleanSetting(
         key = WATER_ONLY_WITHOUT_PLANNER_KEY,
         displayName = "Only Without Planner",
-        description = "Only render the water indicator when the planner has nothing to show",
+        description = "Only render the water indicator when the planner is completed",
         value = true
     )
 
@@ -307,8 +306,7 @@ object GreenhousePresets : Feature() {
     private val waterIndicatorSetting = BooleanSetting(
         key = WATER_INDICATOR_KEY,
         displayName = "Water Highlight",
-        description = "Marks the soil of every plant below full water in the greenhouse you stand in. " +
-                "A plant whose water is unknown is left alone",
+        description = "Marks the soil of every plant below full water in the greenhouse you stand in. ",
         value = true,
         children = listOf(waterOnlyWithoutPlannerSetting, waterIgnoreGrownSetting)
     )
@@ -404,7 +402,7 @@ object GreenhousePresets : Feature() {
             ParentSetting(
                 key = PLANT_HIGHLIGHTS_KEY,
                 displayName = "Highlights",
-                description = "What is marked on the plants of the greenhouse you stand in",
+                description = "What is marked on the plants of the greenhouse you are in",
                 children = listOf(harvestHighlightSetting, waterIndicatorSetting)
             ),
             ParentSetting(
@@ -432,64 +430,60 @@ object GreenhousePresets : Feature() {
             BooleanSetting(
                 key = WARNINGS_KEY,
                 displayName = "Warnings",
-                description = "Chat warnings about the greenhouses: which ones, and how far ahead\n" +
+                description = "Chat warnings about the greenhouse.\n" +
                         "§7Does not send a warning if you are standing in a greenhouse.",
                 value = false,
                 children = listOf(
                     BooleanSetting(
                         key = TYPES_KEY,
                         displayName = "Types",
-                        description = "Which warnings are sent. Off, none are",
-                        value = false,
+                        description = "Which warnings to include in the report",
+                        value = true,
                         children = listOf(
                             BooleanSetting(
                                 key = PlantWarnings.HARVEST_KEY,
                                 displayName = "Ready To Harvest",
-                                description = "Tells you when a mutation you grew has nothing left to grow",
-                                value = false
+                                description = "",
+                                value = true
                             ),
                             BooleanSetting(
                                 key = PlantWarnings.THIRST_KEY,
                                 displayName = "Water",
                                 description = "Warns before a growth tick kills a plant that has run out of water",
-                                value = false,
+                                value = true,
                                 children = listOf(
                                     BooleanSetting(
                                         key = PlantWarnings.NEGATIVE_WATER_KEY,
                                         displayName = "Also On Negative",
                                         description = "Also sends a warning when a plant entered negative water " +
                                                 "and has a chance to skip the next tick",
-                                        value = false
+                                        value = true
                                     )
                                 )
                             ),
                             BooleanSetting(
                                 key = PlantWarnings.DECAY_KEY,
                                 displayName = "Decay",
-                                description = "Lists the plants closest to rotting away, once one is under a day " +
-                                        "from it. Needs a plant diagnostic to have been used on the plant, " +
-                                        "since nothing else says how old it is",
-                                value = false
+                                description = "Lists the plants closest to decaying, once one is under a day",
+                                value = true
                             ),
                             BooleanSetting(
                                 key = PlantWarnings.SNOOZLING_KEY,
-                                displayName = "Snoozling Asleep",
-                                description = "Warns when a snoozling or jerryflower is asleep, which they do on " +
-                                        "reaching certain stages, and grow no further until woken",
-                                value = false
+                                displayName = "Asleep warning",
+                                description = "Warns when a snoozling or jerryflower is \"asleep\"",
+                                value = true
                             ),
                             BooleanSetting(
                                 key = PlantWarnings.NOCTILUME_KEY,
                                 displayName = "Noctilume Time",
-                                description = "Warns while a noctilume craves a time of day the garden is not on, " +
-                                        "since it stalls every tick until the garden time is changed",
-                                value = false
+                                description = "Warns while a noctilume needs a time of day the garden is not on",
+                                value = true
                             ),
                             BooleanSetting(
                                 key = PlantWarnings.FLESHTRAP_KEY,
                                 displayName = "Fleshtrap Meat",
                                 description = "Warns when a fleshtrap's meat has run down to the threshold below",
-                                value = false,
+                                value = true,
                                 children = listOf(
                                     IntSetting(
                                         key = PlantWarnings.FLESHTRAP_MEAT_KEY,
@@ -504,14 +498,13 @@ object GreenhousePresets : Feature() {
                             BooleanSetting(
                                 key = PlantWarnings.THUNDERLING_KEY,
                                 displayName = "Thunderling Charge",
-                                description = "Warns when a thunderling's charge has reached the amount below, " +
-                                        "before it destroys itself at 16,000",
-                                value = false,
+                                description = "Warns when a thunderling's charge has reached the amount below",
+                                value = true,
                                 children = listOf(
                                     IntSetting(
                                         key = PlantWarnings.THUNDERLING_CHARGE_KEY,
                                         displayName = "Charge To Warn About",
-                                        description = "The charge at or over which a thunderling is warned about",
+                                        description = "",
                                         value = 12_000,
                                         range = 6_000..14_000,
                                         step = 2_000
@@ -521,23 +514,19 @@ object GreenhousePresets : Feature() {
                             BooleanSetting(
                                 key = PlantWarnings.GLASSCORN_KEY,
                                 displayName = "Glasscorn Reset",
-                                description = "Warns when a glasscorn stands at its last stage, since the next tick " +
-                                        "rolls it back to the first",
-                                value = false
+                                description = "Warns when a glasscorn is at its last stage",
+                                value = true
                             ),
                             BooleanSetting(
                                 key = CHORUS_KEY,
                                 displayName = "Chorus Collision",
-                                description = "Warns before a chorus fruit runs out of tiles to teleport into and " +
-                                        "starts destroying the plot around it",
+                                description = "Warns before a chorus fruit runs out of tiles to teleport into and starts destroying the plot around it",
                                 value = false,
                                 children = listOf(
                                     IntSetting(
                                         key = CHORUS_TICKS_KEY,
                                         displayName = "Ticks Away",
-                                        description = "How many growth ticks you expect to be away for. The line " +
-                                                "underneath says what that is in real time, counted from the tick " +
-                                                "already running",
+                                        description = "How many growth ticks you expect to be away for",
                                         value = 5,
                                         range = 1..48,
                                         detail = { GreenhouseData.absenceForChorusDetail() }
@@ -547,8 +536,7 @@ object GreenhousePresets : Feature() {
                             BooleanSetting(
                                 key = PlantWarnings.OTHER_PROFILES_KEY,
                                 displayName = "Other Profiles",
-                                description = "Lets the greenhouses of your other profiles warn too, moved on by their " +
-                                        "own clocks as if you were away. Each warning says which profile it is about",
+                                description = "Lets the greenhouses of your other profiles warn too",
                                 value = false
                             )
                         )
@@ -556,7 +544,7 @@ object GreenhousePresets : Feature() {
                     BooleanSetting(
                         key = REMINDERS_KEY,
                         displayName = "Reminders",
-                        description = "When the tick line is sent. Off, none are",
+                        description = "When the tick line is sent",
                         value = false,
                         children = listOf(
                             BooleanSetting(

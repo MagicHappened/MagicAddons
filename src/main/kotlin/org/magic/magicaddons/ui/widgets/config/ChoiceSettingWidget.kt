@@ -8,83 +8,88 @@ import org.magic.magicaddons.data.config.ChoiceSetting
 import org.magic.magicaddons.ui.OverlayContext
 import org.magic.magicaddons.ui.OverlayRenderable
 import org.magic.magicaddons.ui.widgets.ConfirmContext
-import org.magic.magicaddons.ui.widgets.EnumWidget
+import org.magic.magicaddons.ui.widgets.DropdownWidget
 
-/** A value picked from a list that changes while the game runs, such as the files in a folder. */
 class ChoiceSettingWidget(
     private val setting: ChoiceSetting,
     overlays: OverlayContext
 ) : SettingWidget<String>(setting, overlays) {
 
-    private val selector = EnumWidget(
+    private val optionSelector = DropdownWidget(
         values = setting.options(),
         currentValue = setting.value.takeIf { it.isNotBlank() },
         overlayContext = overlays,
-        valueChanged = { picked -> pick(picked) },
-        searchable = true
+        onValueChanged = { picked -> pickOption(picked) },
+        isSearchable = true
     ).apply {
         height = FIELD_HEIGHT
-        fitToValues(MAX_WIDTH)
+        fitToValues(SELECTOR_MAX_WIDTH)
     }
 
-    /** Takes the value, or asks first when the setting says this one needs asking about. */
-    private fun pick(picked: String) {
-        val asked = setting.confirm?.invoke(picked)
+    private fun refreshOptions() {
+        optionSelector.values = setting.options()
+        optionSelector.fitToValues(SELECTOR_MAX_WIDTH)
+    }
 
-        if (asked == null) {
-            take(picked)
+    private fun pickOption(picked: String) {
+        val confirmation = setting.confirm?.invoke(picked)
+
+        if (confirmation == null) {
+            applyOption(picked)
             return
         }
 
-        // the list has already shown the pick, so it is put back until the question is answered
-        selector.currentValue = setting.value.takeIf { it.isNotBlank() }
+        optionSelector.currentValue = setting.value.takeIf { it.isNotBlank() }
 
         val (menuX, menuY) = OverlayRenderable.placeOnScreen(
-            selector.x,
-            selector.y + selector.height,
-            ConfirmContext.widthFor(asked.question, asked.warning),
-            ConfirmContext.heightFor(asked.question, asked.warning)
+            optionSelector.x,
+            optionSelector.y + optionSelector.height,
+            ConfirmContext.widthFor(confirmation.question, confirmation.warning),
+            ConfirmContext.heightFor(confirmation.warning)
         )
-        overlays.addContext(ConfirmContext(menuX, menuY, asked.question, overlays, asked.warning) { take(picked) })
+        overlays.addContext(ConfirmContext(menuX, menuY, confirmation.question, overlays, confirmation.warning) { applyOption(picked) })
     }
 
-    private fun take(picked: String) {
+    private fun applyOption(picked: String) {
         setting.value = picked
-        selector.currentValue = picked
+        optionSelector.currentValue = picked
         setting.onChosen?.invoke(setting)
     }
 
-    override val controlWidth: Int get() = selector.width
+    override val controlWidth: Int get() = optionSelector.width
     override val controlHeight: Int = FIELD_HEIGHT
 
+    override fun onGroupOpened() {
+        refreshOptions()
+    }
+
     override fun layoutControl() {
-        // what the list holds is asked for again every layout, so a file added just now shows up
-        selector.values = setting.options()
-        selector.currentValue = setting.value.takeIf { it.isNotBlank() }
-        selector.fitToValues(MAX_WIDTH)
-        selector.x = controlLeft()
-        selector.y = controlTop()
+        optionSelector.currentValue = setting.value.takeIf { it.isNotBlank() }
+        optionSelector.x = controlLeft()
+        optionSelector.y = controlTop()
     }
 
     override fun renderControl(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
-        selector.extractRenderState(graphics, mouseX, mouseY, delta)
+        optionSelector.extractRenderState(graphics, mouseX, mouseY, delta)
     }
 
-    override fun controlClicked(event: MouseButtonEvent, doubled: Boolean): Boolean =
-        selector.mouseClicked(event, doubled)
+    override fun controlClicked(event: MouseButtonEvent, doubled: Boolean): Boolean {
+        if (optionSelector.isMouseOver(event.x, event.y)) optionSelector.values = setting.options()
+        return optionSelector.mouseClicked(event, doubled)
+    }
 
     override fun mouseMoved(mouseX: Double, mouseY: Double) {
         super.mouseMoved(mouseX, mouseY)
-        selector.mouseMoved(mouseX, mouseY)
+        optionSelector.mouseMoved(mouseX, mouseY)
     }
 
     override fun charTyped(event: CharacterEvent): Boolean =
-        selector.overlay.charTyped(event) || super.charTyped(event)
+        optionSelector.list.charTyped(event) || super.charTyped(event)
 
     override fun keyPressed(event: KeyEvent): Boolean =
-        selector.overlay.keyPressed(event) || super.keyPressed(event)
+        optionSelector.list.keyPressed(event) || super.keyPressed(event)
 
     private companion object {
-        const val MAX_WIDTH: Int = 120
+        const val SELECTOR_MAX_WIDTH: Int = 120
     }
 }

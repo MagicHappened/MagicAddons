@@ -7,11 +7,6 @@ import org.magic.magicaddons.data.config.IntSetting
 import org.magic.magicaddons.features.Feature
 import org.magic.magicaddons.util.EntityUtils
 
-/**
- * Draws real players as the old baby model: body and limbs at half size, the head at three
- * quarters, so the head is big for the body. Only the picture changes: hitboxes, reach and what
- * the server knows are untouched, and NPCs the server dresses up as players are left as they are.
- */
 object SmolPeople : Feature() {
 
     override val id: String = "SmolPeople"
@@ -44,7 +39,6 @@ object SmolPeople : Feature() {
         children = listOf(bodySetting, headSetting)
     )
 
-    /** Whether this entity is drawn small: a real account, not an NPC wearing a player's shape. */
     @JvmStatic
     fun applies(entity: Entity): Boolean =
         baseSetting.value && entity is Player && EntityUtils.isRealPlayer(entity)

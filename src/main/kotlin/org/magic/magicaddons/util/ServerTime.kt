@@ -4,7 +4,7 @@ import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.events.EventHandler
 import org.magic.magicaddons.events.world.SetTimePacketEvent
 
-object ServerClock {
+object ServerTime {
 
     init {
         EventBus.register(this)

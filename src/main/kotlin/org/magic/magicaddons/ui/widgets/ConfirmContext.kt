@@ -17,25 +17,17 @@ class ConfirmContext(
     private val overlayContext: OverlayContext,
     private val warning: String? = null,
     private val onConfirm: () -> Unit
-) : ButtonPairContext(overlayX, overlayY, widthFor(question, warning), heightFor(question, warning), "Yes", "No", BUTTON_WIDTH) {
-
-    constructor(
-        overlayX: Int,
-        overlayY: Int,
-        question: String,
-        overlayContext: OverlayContext,
-        onYes: () -> Unit
-    ) : this(overlayX, overlayY, question, overlayContext, null, onYes)
+) : ButtonPairContext(overlayX, overlayY, widthFor(question, warning), heightFor(warning), "Yes", "No", BUTTON_WIDTH) {
 
     override fun renderOverlay(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
         graphics.drawPanel(overlayX, overlayY, overlayX + overlayWidth, overlayY + overlayHeight)
 
-        graphics.modText(font, Component.literal(question), overlayX + PAD, overlayY + PAD, Common.UI.TEXT_COLOR)
+        graphics.modText(font, Component.literal(question), overlayX + PADDING, overlayY + PADDING, Common.UI.TEXT_COLOR)
 
         warning?.let { text ->
-            var lineY = overlayY + PAD + font.lineHeight + Common.UI.SPACING
+            var lineY = overlayY + PADDING + font.lineHeight + Common.UI.SPACING
             warningLines(text).forEach { line ->
-                graphics.modText(font, line, overlayX + PAD, lineY, Common.UI.DANGER_COLOR)
+                graphics.modText(font, line, overlayX + PADDING, lineY, Common.UI.DANGER_COLOR)
                 lineY += font.lineHeight
             }
         }
@@ -58,32 +50,25 @@ class ConfirmContext(
     companion object {
         private const val BUTTON_WIDTH: Int = 50
 
-        /** A warning wraps at this width rather than stretching the panel across the screen. */
-        private const val WARNING_WIDTH: Int = 220
+        private const val WARNING_WRAP_WIDTH: Int = 220
 
-        /** The question, a gap, the buttons, padded. */
-        val HEIGHT: Int = ButtonPairContext.PAD * 2 + Minecraft.getInstance().font.lineHeight + Common.UI.SPACING_LARGE + ButtonPairContext.BUTTON_HEIGHT
-
-        /** The warning as bold red lines, wrapped to fit. */
         private fun warningLines(warning: String) =
             Minecraft.getInstance().font.split(
                 Component.literal(warning).withStyle(ChatFormatting.RED, ChatFormatting.BOLD),
-                WARNING_WIDTH
+                WARNING_WRAP_WIDTH
             )
 
-        /** [HEIGHT], plus the wrapped warning and a gap when there is one. */
-        fun heightFor(question: String, warning: String?): Int {
-            if (warning == null) return HEIGHT
+        fun heightFor(warning: String? = null): Int {
+            if (warning == null) return ONE_LINE_PANEL_HEIGHT
 
-            return HEIGHT + Common.UI.SPACING + warningLines(warning).size * Minecraft.getInstance().font.lineHeight
+            return ONE_LINE_PANEL_HEIGHT + Common.UI.SPACING + warningLines(warning).size * Minecraft.getInstance().font.lineHeight
         }
 
-        /** Wide enough for the question, the warning, or the two buttons, whichever is widest. */
         fun widthFor(question: String, warning: String? = null): Int {
             val font = Minecraft.getInstance().font
             val warningWidth = warning?.let { text -> warningLines(text).maxOfOrNull { font.width(it) } ?: 0 } ?: 0
 
-            return maxOf(font.width(question), warningWidth, BUTTON_WIDTH * 2 + Common.UI.SPACING_LARGE) + ButtonPairContext.PAD * 2
+            return maxOf(font.width(question), warningWidth, BUTTON_WIDTH * 2 + Common.UI.SPACING_LARGE) + PADDING * 2
         }
     }
 }

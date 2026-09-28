@@ -79,6 +79,7 @@ object BreakProtection {
         }
 
         if (!plant.cropDef.isMutation) return null
+        if (plant.isPlacedMutation) return null
 
         // farming fortune rules shouldnt apply to chloronite drops (maybe it will be needed for the base crop drop of chloronite?)
         // the meta for farming probably will never be chloronite itself for crop drops, if that changes its here to change.

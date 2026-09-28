@@ -1,4 +1,4 @@
-package org.magic.magicaddons.commands.foraging
+package org.magic.magicaddons.commands.features.foraging
 
 import com.mojang.brigadier.builder.LiteralArgumentBuilder
 import com.mojang.brigadier.builder.LiteralArgumentBuilder.literal
@@ -42,7 +42,7 @@ object SafariHelperCommand : AbstractCommand() {
     private fun sendRemainingReport(source: FabricClientCommandSource, zone: SafariZone?) {
         val zones = zone?.let { listOf(it) } ?: SafariZone.entries.toList()
 
-        val zonesRemaining = zones.filter { zone != null || SafariHelper.remainingIn(it).isNotEmpty() }
+        val zonesRemaining = zones.filter { zone != null || SafariHelper.uncaughtMobNamesIn(it).isNotEmpty() }
 
         if (zonesRemaining.isEmpty()) {
             source.sendFeedback(
@@ -63,7 +63,7 @@ object SafariHelperCommand : AbstractCommand() {
     }
 
     private fun biomeReport(biome: SafariZone): Component {
-        val uniquesRemaining = SafariHelper.remainingIn(biome)
+        val uniquesRemaining = SafariHelper.uncaughtMobNamesIn(biome)
 
         val report = Component.literal("${biome.displayName} Biome left:").withStyle(ChatFormatting.GOLD)
 

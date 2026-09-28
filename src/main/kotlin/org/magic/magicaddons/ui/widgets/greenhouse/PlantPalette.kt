@@ -9,18 +9,16 @@ import net.minecraft.client.input.CharacterEvent
 import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.network.chat.Component
-import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.Blocks
 import org.magic.magicaddons.Common
 import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
 import org.magic.magicaddons.data.greenhouse.crops.CropRegistry
 import org.magic.magicaddons.data.greenhouse.crops.CropTier
-import org.magic.magicaddons.data.greenhouse.plot.LayoutSlot
 import org.magic.magicaddons.ui.OverlayContext
-import org.magic.magicaddons.ui.widgets.EnumWidget
+import org.magic.magicaddons.ui.widgets.DropdownWidget
 import org.magic.magicaddons.ui.widgets.TextField
-import org.magic.magicaddons.ui.widgets.config.ClickableButtonWidget
+import org.magic.magicaddons.ui.widgets.ClickableButtonWidget
 import org.magic.magicaddons.util.ScreenUtil
 import org.magic.magicaddons.util.ScreenUtil.drawBorder
 import org.magic.magicaddons.util.ScreenUtil.drawCheckerboard
@@ -30,7 +28,7 @@ import org.magic.magicaddons.util.ScreenUtil.drawTooltipAtCursor
 import org.magic.magicaddons.util.ScreenUtil.drawTooltipLinesAtCursor
 import org.magic.magicaddons.util.ScreenUtil.inRect
 import org.magic.magicaddons.util.ScreenUtil.modText
-import org.magic.magicaddons.util.ScreenUtil.renderFakeItem
+import org.magic.magicaddons.util.ScreenUtil.drawItem
 import org.magic.magicaddons.util.ScreenUtil.splitMod
 import org.magic.magicaddons.util.ScreenUtil.stepScroll
 import org.magic.magicaddons.util.compat.McCompat
@@ -43,45 +41,32 @@ class PlantPalette(
     private val uniqueMissing: (CropDefinition) -> Boolean
 ) {
 
-    /** What a click on a plant does while the selector is on something other than Off. */
-    enum class MarkChoice(private val label: String, val marking: LayoutSlot.Marking?, val applies: Boolean) {
-        Off("Mark off", null, false),
-        Target("Target", LayoutSlot.Marking.Target, true),
-        Ingredient("Ingredient", LayoutSlot.Marking.Ingredient, true),
-        Clear("Clear mark", null, true);
-
-        override fun toString(): String = label
-    }
-
-    private val markSelector = EnumWidget(
+    private val markSelector = DropdownWidget(
         values = MarkChoice.entries,
         currentValue = MarkChoice.Off,
         overlayContext = overlayContext,
-        searchable = false,
-        valueChanged = { picked -> if (picked.applies) clearTools(keepMark = true) }
+        isSearchable = false,
+        onValueChanged = { picked -> if (picked.applies) clearTools(keepMark = true) }
     )
 
     val markChoice: MarkChoice get() = markSelector.currentValue ?: MarkChoice.Off
 
-    /** Whether any tool is picked up: a plant, the Delete or Uniques switch, or a mark. */
-    val holdsTool: Boolean get() = selected != null || deleteMode || uniquesMode || markChoice.applies
+    val isHoldingTool: Boolean get() = selectedItem != null || isDeleteMode || isUniquesMode || markChoice.applies
 
-    /** Picks [item] up, as a middle click on the grid does. */
     fun pickUp(item: PaletteItem) {
         clearTools()
-        selected = item
+        selectedItem = item
     }
 
-    /** Puts every tool down. One tool is held at a time, so picking one up calls this first. Merge is a mode and stays. */
     fun clearTools(keepMark: Boolean = false) {
-        selected = null
-        deleteMode = false
-        uniquesMode = false
+        selectedItem = null
+        isDeleteMode = false
+        isUniquesMode = false
         if (!keepMark) markSelector.currentValue = MarkChoice.Off
     }
 
-    private val undoButton = ClickableButtonWidget(ARROW_WIDTH, ROW, Component.literal("←"))
-    private val redoButton = ClickableButtonWidget(ARROW_WIDTH, ROW, Component.literal("→"))
+    private val undoButton = ClickableButtonWidget(ARROW_WIDTH, ROW_HEIGHT, Component.literal("←"))
+    private val redoButton = ClickableButtonWidget(ARROW_WIDTH, ROW_HEIGHT, Component.literal("→"))
     private var x: Int = 0
     private var y: Int = 0
     private var width: Int = 0
@@ -89,66 +74,57 @@ class PlantPalette(
 
     private val font = Minecraft.getInstance().font
 
-    private val search = TextField(0, ROW, Component.literal(Common.UI.SEARCH_HINT)).apply {
+    private val searchBox = TextField(0, ROW_HEIGHT, Component.literal(Common.UI.SEARCH_HINT)).apply {
         setResponder { scroll = 0 }
     }
 
-    private val clearButton = ClickableButtonWidget(ClickableButtonWidget.widthFor("Clear all"), ROW, Component.literal("Clear all"))
-    private val deleteButton = ClickableButtonWidget(ClickableButtonWidget.widthFor("Delete"), ROW, Component.literal("Delete"))
-    private val uniquesButton = ClickableButtonWidget(ClickableButtonWidget.widthFor("Uniques"), ROW, Component.literal("Uniques"))
-    private val mergeButton = ClickableButtonWidget(ClickableButtonWidget.widthFor("Merge"), ROW, Component.literal("Merge"))
+    private val clearButton = ClickableButtonWidget(ClickableButtonWidget.widthFor("Clear all"), ROW_HEIGHT, Component.literal("Clear all"))
+    private val deleteButton = ClickableButtonWidget(ClickableButtonWidget.widthFor("Delete"), ROW_HEIGHT, Component.literal("Delete"))
+    private val uniquesButton = ClickableButtonWidget(ClickableButtonWidget.widthFor("Uniques"), ROW_HEIGHT, Component.literal("Uniques"))
+    private val mergeButton = ClickableButtonWidget(ClickableButtonWidget.widthFor("Merge"), ROW_HEIGHT, Component.literal("Merge"))
 
-    /** With the switch on, a crop the preset has no unique of yet is marked red on the shelf. */
-    var uniquesMode: Boolean = false
+    private val buttons = listOf(clearButton, deleteButton, uniquesButton, mergeButton, undoButton, redoButton)
 
-    /** with the switch on, a crop dropped on a planted slot joins it instead of replacing it */
-    var mergeMode: Boolean = false
+    var isUniquesMode: Boolean = false
+
+    var isMergeMode: Boolean = false
         private set
 
-    /** While on, clicking a plant on the grid takes it off the preset. */
-    var deleteMode: Boolean = false
+    var isDeleteMode: Boolean = false
         private set
 
-    private var hovered: PaletteItem? = null
+    private var hoveredItem: PaletteItem? = null
 
-    /** Where the mouse last was, so a scroll can work out what is under it now. */
     private var lastMouseX = 0.0
     private var lastMouseY = 0.0
 
-    /** The thing being dragged, and where the mouse has it. */
-    private var dragging: PaletteItem? = null
+    private var draggedItem: PaletteItem? = null
     private var dragX = 0
     private var dragY = 0
 
-    /** The thing picked with a plain click, placed by the next click on a slot. */
-    var selected: PaletteItem? = null
+    var selectedItem: PaletteItem? = null
         private set
 
-    /** The thing under the mouse button since it went down, until it moves enough to be a drag. */
-    private var pressed: PaletteItem? = null
+    private var pressedItem: PaletteItem? = null
     private var pressX = 0.0
     private var pressY = 0.0
 
-    /** Whatever is on the way to the grid, dragged or picked. */
-    val carried: PaletteItem? get() = dragging ?: selected
+    val carriedItem: PaletteItem? get() = draggedItem ?: selectedItem
 
     private var scroll = 0
     private var columns = 1
     private var visibleRows = 1
 
-    /** A cell's width and height: the width shares the shelf, the height shares the room under the buttons. */
-    private var cellWidth = MIN_CELL
-    private var cellHeight = MIN_CELL
+    private var cellWidth = MIN_CELL_SIZE
+    private var cellHeight = MIN_CELL_SIZE
 
-    /** Plants a player can place, by rarity then name, the dead plant right after the base crops. */
     private val crops: List<CropDefinition> = CropRegistry.allCrops
         .filter { it.skyblockId != null }
-        .sortedWith(compareBy({ sortTier(it) }, { it.name.lowercase() }))
+        .sortedWith(compareBy({ paletteSortOrder(it) }, { it.name.lowercase() }))
 
-    private fun sortTier(def: CropDefinition): Double =
+    private fun paletteSortOrder(def: CropDefinition): Double =
         if (def.name == DEAD_PLANT) 0.5 else def.tier.ordinal.toDouble()
 
-    /** Every soil some crop grows on, after the plants, so a plot's ground can be laid by hand. */
     private val soils: List<Block> = CropRegistry.allCrops
         .flatMap { it.requiredSoil }
         .distinct()
@@ -157,44 +133,39 @@ class PlantPalette(
     private val items: List<PaletteItem> =
         crops.map { PaletteItem.Crop(it) } + soils.map { PaletteItem.Soil(it) } + PaletteItem.Soil(Blocks.AIR)
 
-    private fun soilWord(block: Block): String = block.name.string.replace(" ", "").lowercase()
+    private fun soilSearchWord(block: Block): String = block.name.string.replace(" ", "").lowercase()
 
-    /** Plain text finds names; an @ in front finds effects, a # in front finds the soil a crop grows on. */
-    private fun shown(): List<PaletteItem> {
-        val typed = search.value.trim()
+    private fun matchingItems(): List<PaletteItem> {
+        val searchText = searchBox.value.trim()
         return when {
-            typed.startsWith("@") -> {
-                val term = typed.drop(1).trim()
-                items.filter { item -> item is PaletteItem.Crop && item.def.effects.any { it.label.contains(term, ignoreCase = true) } }
+            searchText.startsWith("@") -> {
+                val searchTerm = searchText.drop(1).trim()
+                items.filter { item -> item is PaletteItem.Crop && item.def.effects.any { it.label.contains(searchTerm, ignoreCase = true) } }
             }
-            typed.startsWith("#") -> {
-                // by how the soil's name starts, so "sand" is sand and not soul sand, and written
-                // without its space as well, so "endstone" finds end stone
-                val term = typed.drop(1).trim().replace(" ", "").lowercase()
+            searchText.startsWith("#") -> {
+                val searchTerm = searchText.drop(1).trim().replace(" ", "").lowercase()
                 items.filter { item ->
                     when (item) {
-                        is PaletteItem.Crop -> item.def.requiredSoil.any { soilWord(it).startsWith(term) }
-                        is PaletteItem.Soil -> soilWord(item.block).startsWith(term)
+                        is PaletteItem.Crop -> item.def.requiredSoil.any { soilSearchWord(it).startsWith(searchTerm) }
+                        is PaletteItem.Soil -> soilSearchWord(item.block).startsWith(searchTerm)
                     }
                 }
             }
-            else -> items.filter { it.name.contains(typed, ignoreCase = true) }
+            else -> items.filter { it.name.contains(searchText, ignoreCase = true) }
         }
     }
 
-    /** Whether the mouse is on the little i in the shelf's corner. */
-    private var infoHovered = false
+    private var isSearchHelpHovered = false
 
-    private fun infoCenter(): Pair<Int, Int> = (x + width - EDGE_PAD - INFO_RADIUS - 1) to (y + titleHeight() / 2)
+    private fun searchHelpIconCenter(): Pair<Int, Int> = (x + width - EDGE_PADDING - SEARCH_HELP_ICON_RADIUS - 1) to (y + titleHeight() / 2)
 
-    /** A ring with an i in it, at the shelf's top right, so the two search prefixes can be found. */
-    private fun renderInfo(graphics: GuiGraphicsExtractor) {
-        val (cx, cy) = infoCenter()
-        for (dy in -INFO_RADIUS..INFO_RADIUS) {
-            val half = kotlin.math.sqrt((INFO_RADIUS * INFO_RADIUS - dy * dy).toDouble()).toInt()
-            graphics.fill(cx - half, cy + dy, cx + half + 1, cy + dy + 1, if (infoHovered) Common.UI.ACCENT_COLOR else Common.UI.BORDER_COLOR)
+    private fun renderSearchHelpIcon(graphics: GuiGraphicsExtractor) {
+        val (cx, cy) = searchHelpIconCenter()
+        for (dy in -SEARCH_HELP_ICON_RADIUS..SEARCH_HELP_ICON_RADIUS) {
+            val half = kotlin.math.sqrt((SEARCH_HELP_ICON_RADIUS * SEARCH_HELP_ICON_RADIUS - dy * dy).toDouble()).toInt()
+            graphics.fill(cx - half, cy + dy, cx + half + 1, cy + dy + 1, if (isSearchHelpHovered) Common.UI.ACCENT_COLOR else Common.UI.BORDER_COLOR)
         }
-        val inner = INFO_RADIUS - 1
+        val inner = SEARCH_HELP_ICON_RADIUS - 1
         for (dy in -inner..inner) {
             val half = kotlin.math.sqrt((inner * inner - dy * dy).toDouble()).toInt()
             graphics.fill(cx - half, cy + dy, cx + half + 1, cy + dy + 1, Common.UI.BACKGROUND_COLOR)
@@ -202,30 +173,26 @@ class PlantPalette(
         graphics.modText(font, Component.literal("i"), cx - font.width("i") / 2 + 1, cy - font.lineHeight / 2 + 1, Common.UI.TEXT_COLOR)
     }
 
-    private fun isOverInfo(mouseX: Double, mouseY: Double): Boolean {
-        val (cx, cy) = infoCenter()
-        return mouseX.toInt() in cx - INFO_RADIUS..cx + INFO_RADIUS && mouseY.toInt() in cy - INFO_RADIUS..cy + INFO_RADIUS
+    private fun isOverSearchHelpIcon(mouseX: Double, mouseY: Double): Boolean {
+        val (cx, cy) = searchHelpIconCenter()
+        return mouseX.toInt() in cx - SEARCH_HELP_ICON_RADIUS..cx + SEARCH_HELP_ICON_RADIUS &&
+                mouseY.toInt() in cy - SEARCH_HELP_ICON_RADIUS..cy + SEARCH_HELP_ICON_RADIUS
     }
 
     private fun titleHeight(): Int = font.lineHeight + Common.UI.SPACING * 2
-    /** How many rows the buttons take under the search: one, or two when the shelf is too narrow. */
+
     private var buttonRows: Int = 1
 
-    /** Under the title come the search and the button rows, each a row and a gap. */
-    private fun gridTop(): Int = y + titleHeight() + (ROW + Common.UI.SPACING) * (1 + buttonRows)
-    /** The cells start where the search and the buttons start. */
-    private fun gridLeft(): Int = x + EDGE_PAD
+    private fun cellsTop(): Int = y + titleHeight() + (ROW_HEIGHT + Common.UI.SPACING) * (1 + buttonRows)
+    private fun cellsLeft(): Int = x + EDGE_PADDING
 
-    /** The icon inside a cell: a whole multiple of sixteen, so its pixels land square. */
-    private fun iconSize(): Int = ((minOf(cellWidth, cellHeight) - ICON_PAD * 2) / 16 * 16).coerceAtLeast(16)
+    private fun iconSize(): Int = ((minOf(cellWidth, cellHeight) - ICON_PADDING * 2) / 16 * 16).coerceAtLeast(16)
 
-    /** The ground under an icon: a plant's rarity colour, or the soils' own colour. */
-    private fun colorOf(item: PaletteItem): Int = when (item) {
-        is PaletteItem.Soil -> SOIL_CELL
+    private fun cellColorOf(item: PaletteItem): Int = when (item) {
+        is PaletteItem.Soil -> SOIL_CELL_COLOR
         is PaletteItem.Crop -> rarityColor(item.def)
     }
 
-    /** The ground under an icon, in the colour of the plant's rarity, or its own for base and rare crops. */
     private fun rarityColor(def: CropDefinition): Int = when (def.tier) {
         CropTier.Common -> RARITY_COMMON
         CropTier.Uncommon -> RARITY_UNCOMMON
@@ -233,129 +200,110 @@ class PlantPalette(
         CropTier.Epic -> RARITY_EPIC
         CropTier.Legendary -> RARITY_LEGENDARY
         CropTier.RareCrop -> RARE_CROP
-        // the base crops, and the dead plant that players know from among them
         else -> BASE_CROP
     }
 
-    fun layout(x: Int, y: Int, width: Int, height: Int) {
+    fun layoutIn(x: Int, y: Int, width: Int, height: Int) {
         this.x = x
         this.y = y
         this.width = width
         this.height = height
 
-        search.x = x + EDGE_PAD
-        search.y = y + titleHeight()
-        search.width = width - EDGE_PAD * 2
+        searchBox.x = x + EDGE_PADDING
+        searchBox.y = y + titleHeight()
+        searchBox.width = width - EDGE_PADDING * 2
 
-        // the switches in a row under the search field, wrapping onto the next row as they run out
-        // of shelf, with the mark selector and the arrows after them
-        val right = x + width - EDGE_PAD
-        var rowX = search.x
-        var rowY = search.y + ROW + Common.UI.SPACING
+        val right = x + width - EDGE_PADDING
+        var rowX = searchBox.x
+        var rowY = searchBox.y + ROW_HEIGHT + Common.UI.SPACING
         buttonRows = 1
 
         fun nextRow() {
-            rowX = search.x
-            rowY += ROW + Common.UI.SPACING
+            rowX = searchBox.x
+            rowY += ROW_HEIGHT + Common.UI.SPACING
             buttonRows++
         }
 
         listOf(clearButton, deleteButton, uniquesButton, mergeButton).forEach { button ->
-            if (rowX > search.x && rowX + button.width > right) nextRow()
+            if (rowX > searchBox.x && rowX + button.width > right) nextRow()
 
             button.x = rowX
             button.y = rowY
             rowX += button.width + Common.UI.SPACING
         }
 
-        val arrows = ARROW_WIDTH * 2 + Common.UI.SPACING * 2
-        markSelector.fitToValues(right - search.x - arrows)
-        if (rowX > search.x && rowX + markSelector.width + arrows > right) nextRow()
+        val arrowsWidth = ARROW_WIDTH * 2 + Common.UI.SPACING * 2
+        markSelector.fitToValues(right - searchBox.x - arrowsWidth)
+        if (rowX > searchBox.x && rowX + markSelector.width + arrowsWidth > right) nextRow()
 
         markSelector.x = rowX
         markSelector.y = rowY
-        markSelector.height = ROW
+        markSelector.height = ROW_HEIGHT
         undoButton.x = markSelector.x + markSelector.width + Common.UI.SPACING
         undoButton.y = rowY
         redoButton.x = undoButton.x + ARROW_WIDTH + Common.UI.SPACING
         redoButton.y = rowY
 
-        // the cells fill the room under the buttons exactly: as many rows of about the usual size
-        // as fit, each row then stretched to use the whole height, within sane bounds
-        val inner = width - EDGE_PAD * 2
-        val room = (y + height - EDGE_PAD - gridTop()).coerceAtLeast(MIN_CELL)
-        visibleRows = (room.toFloat() / TARGET_CELL).roundToInt().coerceAtLeast(1)
-        cellHeight = (room / visibleRows).coerceIn(MIN_CELL, MAX_CELL)
-        columns = (inner / cellHeight).coerceAtLeast(1)
-        cellWidth = inner / columns
+        val cellsWidth = width - EDGE_PADDING * 2
+        val cellsHeight = (y + height - EDGE_PADDING - cellsTop()).coerceAtLeast(MIN_CELL_SIZE)
+        visibleRows = (cellsHeight.toFloat() / TARGET_CELL_SIZE).roundToInt().coerceAtLeast(1)
+        cellHeight = (cellsHeight / visibleRows).coerceIn(MIN_CELL_SIZE, MAX_CELL_SIZE)
+        columns = (cellsWidth / cellHeight).coerceAtLeast(1)
+        cellWidth = cellsWidth / columns
     }
 
-    private fun totalRows(): Int = (shown().size + columns - 1) / columns
+    private fun totalRows(): Int = (matchingItems().size + columns - 1) / columns
 
-    /** The plant or soil whose cell is under the mouse, when the mouse is on the grid. */
     private fun itemAt(mouseX: Double, mouseY: Double): PaletteItem? {
         val mx = mouseX.toInt()
         val my = mouseY.toInt()
-        if (mx < gridLeft() || my < gridTop() || my >= gridTop() + visibleRows * cellHeight) return null
+        if (mx < cellsLeft() || my < cellsTop() || my >= cellsTop() + visibleRows * cellHeight) return null
 
-        val column = (mx - gridLeft()) / cellWidth
-        val row = (my - gridTop()) / cellHeight + scroll
+        val column = (mx - cellsLeft()) / cellWidth
+        val row = (my - cellsTop()) / cellHeight + scroll
         if (column >= columns) return null
 
-        return shown().getOrNull(row * columns + column)
-    }
-
-    fun stackFor(item: PaletteItem): ItemStack = when (item) {
-        is PaletteItem.Crop -> ScreenUtil.itemStackFor(item.def)
-        is PaletteItem.Soil -> ItemStack(item.block.asItem())
+        return matchingItems().getOrNull(row * columns + column)
     }
 
     fun render(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
         graphics.drawShelf(x, y, x + width, y + height, TITLE)
-        renderInfo(graphics)
+        renderSearchHelpIcon(graphics)
 
-        search.render(graphics)
-        deleteButton.pressed = deleteMode
-        uniquesButton.pressed = uniquesMode
-        mergeButton.pressed = mergeMode
-        clearButton.extractRenderState(graphics, mouseX, mouseY, delta)
-        deleteButton.extractRenderState(graphics, mouseX, mouseY, delta)
-        uniquesButton.extractRenderState(graphics, mouseX, mouseY, delta)
-        mergeButton.extractRenderState(graphics, mouseX, mouseY, delta)
+        searchBox.render(graphics)
+        deleteButton.isPressed = isDeleteMode
+        uniquesButton.isPressed = isUniquesMode
+        mergeButton.isPressed = isMergeMode
 
-        // the box wears the colour of the mark it would give, and red while set to clear marks
         markSelector.frameColor = when (markChoice) {
             MarkChoice.Clear -> Common.UI.DANGER_COLOR
             else -> markChoice.marking?.color
         }
         markSelector.extractRenderState(graphics, mouseX, mouseY, delta)
-        undoButton.extractRenderState(graphics, mouseX, mouseY, delta)
-        redoButton.extractRenderState(graphics, mouseX, mouseY, delta)
+        buttons.forEach { it.extractRenderState(graphics, mouseX, mouseY, delta) }
 
-        val list = shown()
+        val matching = matchingItems()
         val rows = totalRows()
         scroll = scroll.coerceIn(0, (rows - visibleRows).coerceAtLeast(0))
 
-        list.drop(scroll * columns).take(visibleRows * columns).forEachIndexed { index, item ->
-            val cellX = gridLeft() + index % columns * cellWidth
-            val cellY = gridTop() + index / columns * cellHeight
+        matching.drop(scroll * columns).take(visibleRows * columns).forEachIndexed { index, item ->
+            val cellX = cellsLeft() + index % columns * cellWidth
+            val cellY = cellsTop() + index / columns * cellHeight
             val right = cellX + cellWidth - 1
             val bottom = cellY + cellHeight - 1
 
-            graphics.fill(cellX + 1, cellY + 1, right, bottom, colorOf(item))
-            if (item == hovered || item == selected) graphics.fill(cellX + 1, cellY + 1, right, bottom, Common.UI.HOVER_WASH)
-            // the picked one is lit and framed twice as thick in the bright colour until it is put down
-            if (item == selected) {
+            graphics.fill(cellX + 1, cellY + 1, right, bottom, cellColorOf(item))
+            if (item == hoveredItem || item == selectedItem) graphics.fill(cellX + 1, cellY + 1, right, bottom, Common.UI.HOVER_WASH)
+            if (item == selectedItem) {
                 graphics.drawBorder(cellX + 1, cellY + 1, right, bottom, Common.UI.BORDER_SIZE, Common.UI.SELECTED_FRAME_COLOR)
             } else {
                 graphics.drawBorder(cellX + 1, cellY + 1, right, bottom, 1, Common.UI.BORDER_COLOR)
             }
 
-            val icon = iconSize()
-            drawIcon(graphics, item, cellX + (cellWidth - icon) / 2, cellY + (cellHeight - icon) / 2, icon)
+            val iconSize = iconSize()
+            drawIcon(graphics, item, cellX + (cellWidth - iconSize) / 2, cellY + (cellHeight - iconSize) / 2, iconSize)
 
-            // over the icon, the way a mark sits over a plant on the grid, for a unique still to plant
-            if (uniquesMode && item is PaletteItem.Crop && uniqueMissing(item.def)) {
+            if (isUniquesMode && item is PaletteItem.Crop && uniqueMissing(item.def)) {
                 graphics.fill(cellX + 1, cellY + 1, right, bottom, MISSING_UNIQUE_WASH)
                 graphics.drawBorder(cellX + 1, cellY + 1, right, bottom, Common.UI.BORDER_SIZE, Common.UI.DANGER_COLOR)
             }
@@ -363,8 +311,8 @@ class PlantPalette(
 
         if (rows > visibleRows) {
             graphics.drawScrollBar(
-                x + width - EDGE_PAD - Common.UI.SCROLLBAR_WIDTH,
-                gridTop(),
+                x + width - EDGE_PADDING - Common.UI.SCROLLBAR_WIDTH,
+                cellsTop(),
                 visibleRows * cellHeight,
                 rows,
                 visibleRows,
@@ -373,40 +321,36 @@ class PlantPalette(
         }
     }
 
-    /** The carried plant under the mouse, seen through, so the slot it is over stays visible. */
     fun renderDrag(graphics: GuiGraphicsExtractor) {
-        val item = carried ?: return
-        val icon = iconSize()
-        val (atX, atY) = if (dragging != null) dragX to dragY else lastMouseX.toInt() to lastMouseY.toInt()
-        val left = atX - icon / 2
-        val top = atY - icon / 2
+        val item = carriedItem ?: return
+        val iconSize = iconSize()
+        val (atX, atY) = if (draggedItem != null) dragX to dragY else lastMouseX.toInt() to lastMouseY.toInt()
+        val left = atX - iconSize / 2
+        val top = atY - iconSize / 2
 
-        drawIcon(graphics, item, left, top, icon)
-        graphics.fill(left, top, left + icon, top + icon, DRAG_VEIL)
+        drawIcon(graphics, item, left, top, iconSize)
+        graphics.fill(left, top, left + iconSize, top + iconSize, DRAG_VEIL)
     }
 
-    /** An item's picture, or for air the checkerboard with its name across it. */
-    private fun drawIcon(graphics: GuiGraphicsExtractor, item: PaletteItem, left: Int, top: Int, icon: Int) {
+    private fun drawIcon(graphics: GuiGraphicsExtractor, item: PaletteItem, left: Int, top: Int, iconSize: Int) {
         if (item is PaletteItem.Soil && item.block == Blocks.AIR) {
-            graphics.drawCheckerboard(left, top, left + icon, top + icon)
+            graphics.drawCheckerboard(left, top, left + iconSize, top + iconSize)
             val label = Component.literal(item.name)
-            graphics.text(font, label, left + (icon - font.width(label)) / 2, top + (icon - font.lineHeight) / 2, Common.UI.TEXT_COLOR, true)
+            graphics.text(font, label, left + (iconSize - font.width(label)) / 2, top + (iconSize - font.lineHeight) / 2, Common.UI.TEXT_COLOR, true)
             return
         }
-        graphics.renderFakeItem(stackFor(item), left, top, icon, icon)
+        graphics.drawItem(item.stack, left, top, iconSize, iconSize)
     }
 
     fun renderTooltip(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int) {
-        if (infoHovered) {
-            // wrapped only where the screen itself runs out
-            val room = (McCompat.currentScreen()?.width ?: Int.MAX_VALUE) - (mouseX + ScreenUtil.CURSOR_TOOLTIP_X) - Common.UI.TEXT_X_PAD * 2
-            graphics.drawTooltipAtCursor(SEARCH_HELP, mouseX, mouseY, room)
+        if (isSearchHelpHovered) {
+            val tooltipMaxWidth = (McCompat.currentScreen()?.width ?: Int.MAX_VALUE) - (mouseX + ScreenUtil.CURSOR_TOOLTIP_X) - Common.UI.TEXT_X_PAD * 2
+            graphics.drawTooltipAtCursor(SEARCH_HELP, mouseX, mouseY, tooltipMaxWidth)
             return
         }
-        if (carried != null) return
-        val item = hovered ?: return
+        if (carriedItem != null) return
+        val item = hoveredItem ?: return
 
-        // the name stands out over its effects, so a search for harvest tells the boost from the improved one
         val lines = buildList {
             add(Component.literal(item.name).withStyle(ChatFormatting.GREEN, ChatFormatting.BOLD).visualOrderText)
             (item as? PaletteItem.Crop)?.def?.effects?.forEach { add(Component.literal(it.label).withStyle(ChatFormatting.GRAY).visualOrderText) }
@@ -423,24 +367,14 @@ class PlantPalette(
     fun mouseMoved(mouseX: Double, mouseY: Double) {
         lastMouseX = mouseX
         lastMouseY = mouseY
-        hovered = itemAt(mouseX, mouseY)
-        clearButton.mouseMoved(mouseX, mouseY)
-        deleteButton.mouseMoved(mouseX, mouseY)
-        infoHovered = isOverInfo(mouseX, mouseY)
+        hoveredItem = itemAt(mouseX, mouseY)
+        isSearchHelpHovered = isOverSearchHelpIcon(mouseX, mouseY)
         markSelector.mouseMoved(mouseX, mouseY)
-        undoButton.mouseMoved(mouseX, mouseY)
-        redoButton.mouseMoved(mouseX, mouseY)
-        uniquesButton.mouseMoved(mouseX, mouseY)
-        mergeButton.mouseMoved(mouseX, mouseY)
+        buttons.forEach { it.mouseMoved(mouseX, mouseY) }
     }
 
     fun mouseClicked(event: MouseButtonEvent, doubled: Boolean): Boolean {
-        // a right click puts whatever tool is held down, wherever the mouse is
-        if (event.button() == 1 && holdsTool) {
-            clearTools()
-            return true
-        }
-        if (search.mouseClicked(event, doubled)) return true
+        if (searchBox.mouseClicked(event, doubled)) return true
         if (markSelector.mouseClicked(event, doubled)) return true
         if (!isMouseOver(event.x, event.y)) return false
 
@@ -458,59 +392,53 @@ class PlantPalette(
             return true
         }
         if (deleteButton.mouseClicked(event, doubled)) {
-            val turnOn = !deleteMode
+            val isTurningOn = !isDeleteMode
             clearTools()
-            deleteMode = turnOn
+            isDeleteMode = isTurningOn
             return true
         }
         if (uniquesButton.mouseClicked(event, doubled)) {
-            val turnOn = !uniquesMode
+            val isTurningOn = !isUniquesMode
             clearTools()
-            uniquesMode = turnOn
+            isUniquesMode = isTurningOn
             return true
         }
-        // merge is a mode, not a tool, so it stays on beside one
         if (mergeButton.mouseClicked(event, doubled)) {
-            mergeMode = !mergeMode
+            isMergeMode = !isMergeMode
             return true
         }
 
-        // the button is down on a plant: a move makes it a drag, a release in place makes it a pick
-        pressed = itemAt(event.x, event.y)
+        pressedItem = itemAt(event.x, event.y)
         pressX = event.x
         pressY = event.y
         return true
     }
 
     fun mouseDragged(event: MouseButtonEvent, dragX: Double, dragY: Double): Boolean {
-        val held = pressed ?: dragging ?: return false
+        val heldItem = pressedItem ?: draggedItem ?: return false
 
-        if (dragging == null && (abs(event.x - pressX) > DRAG_SLACK || abs(event.y - pressY) > DRAG_SLACK)) {
-            dragging = held
-            selected = null
+        if (draggedItem == null && (abs(event.x - pressX) > DRAG_THRESHOLD || abs(event.y - pressY) > DRAG_THRESHOLD)) {
+            draggedItem = heldItem
+            selectedItem = null
         }
-        if (dragging == null) return true
+        if (draggedItem == null) return true
 
         this.dragX = event.x.toInt()
         this.dragY = event.y.toInt()
         return true
     }
 
-    /**
-     * Lets go: a dragged plant is handed back for the owner to place, a plain click picks the plant
-     * up (or puts a picked one down again) and hands back nothing.
-     */
     fun mouseReleased(): PaletteItem? {
-        val dragged = dragging
-        val clicked = pressed
-        dragging = null
-        pressed = null
+        val dragged = draggedItem
+        val clicked = pressedItem
+        draggedItem = null
+        pressedItem = null
 
         if (dragged != null) return dragged
         if (clicked != null) {
-            val pickUp = selected != clicked
+            val isPickingUp = selectedItem != clicked
             clearTools()
-            if (pickUp) selected = clicked
+            if (isPickingUp) selectedItem = clicked
         }
         return null
     }
@@ -518,34 +446,30 @@ class PlantPalette(
     fun mouseScrolled(mouseX: Double, mouseY: Double, scrollX: Double, scrollY: Double): Boolean {
         if (!isMouseOver(mouseX, mouseY)) return false
         scroll = stepScroll(scroll, scrollY, totalRows(), visibleRows)
-        hovered = itemAt(lastMouseX, lastMouseY)
+        hoveredItem = itemAt(lastMouseX, lastMouseY)
         return true
     }
 
-    fun charTyped(event: CharacterEvent): Boolean = search.charTyped(event)
+    fun charTyped(event: CharacterEvent): Boolean = searchBox.charTyped(event)
 
-    fun keyPressed(event: KeyEvent): Boolean = search.keyPressed(event)
+    fun keyPressed(event: KeyEvent): Boolean = searchBox.keyPressed(event)
 
     companion object {
         const val TITLE: String = "Plants"
 
-        private const val ROW: Int = 20
+        private const val ROW_HEIGHT: Int = 20
 
-        /** How far the search and the cells sit from the shelf's frame. */
-        private const val EDGE_PAD: Int = 4
+        private const val EDGE_PADDING: Int = 4
 
-        /** How far the mouse may move with the button down before a click becomes a drag. */
-        private const val DRAG_SLACK: Double = 1.0
+        private const val DRAG_THRESHOLD: Double = 1.0
 
         private const val DEAD_PLANT: String = "Dead Plant"
 
-        /** About the cell at 1080p on gui scale 2, and how far from it the fit may stray. */
-        private const val TARGET_CELL: Int = 40
-        private const val MIN_CELL: Int = 36
-        private const val MAX_CELL: Int = 56
-        private const val ICON_PAD: Int = 2
+        private const val TARGET_CELL_SIZE: Int = 40
+        private const val MIN_CELL_SIZE: Int = 36
+        private const val MAX_CELL_SIZE: Int = 56
+        private const val ICON_PADDING: Int = 2
 
-        /** The game's rarity colours, toned down, on the ground under each icon. */
         private const val BASE_CROP: Int = 0xFF6B4A2B.toInt()
         private const val RARE_CROP: Int = 0xFF1F6F6B.toInt()
         private const val RARITY_COMMON: Int = 0xFF5C5C5C.toInt()
@@ -554,10 +478,8 @@ class PlantPalette(
         private const val RARITY_EPIC: Int = 0xFF7B1F8A.toInt()
         private const val RARITY_LEGENDARY: Int = 0xFFB07A14.toInt()
 
-        /** A dusty rose, like no rarity and no soil block. */
-        private const val SOIL_CELL: Int = 0xFF8A4A5E.toInt()
+        private const val SOIL_CELL_COLOR: Int = 0xFF8A4A5E.toInt()
 
-        /** Laid over a crop the preset has no unique of yet, while the Uniques switch is on. */
         private const val MISSING_UNIQUE_WASH: Int = 0x38FF0000
 
         private const val AIR_NOTE: String = "Useful for separating a Devourer from eating your other crops: " +
@@ -565,25 +487,11 @@ class PlantPalette(
         private const val NOTE_WIDTH: Int = 170
         private const val ARROW_WIDTH: Int = 16
 
-        private const val INFO_RADIUS: Int = 5
+        private const val SEARCH_HELP_ICON_RADIUS: Int = 5
         private const val SEARCH_HELP: String = "Search by name\n" +
                 "§b@§r before a word searches §beffects§r, such as §b@harvest§r\n" +
                 "§6#§r before a word searches the §6soil§r a crop grows on, such as §6#sand§r"
 
-        /** Laid over the carried plant so it reads as not yet placed. */
         private const val DRAG_VEIL: Int = 0x70101010
-    }
-}
-
-/** Something the shelf hands out: a plant, or a soil block to lay under one. */
-sealed interface PaletteItem {
-    val name: String
-
-    data class Crop(val def: CropDefinition) : PaletteItem {
-        override val name: String get() = def.name
-    }
-
-    data class Soil(val block: Block) : PaletteItem {
-        override val name: String get() = block.name.string
     }
 }

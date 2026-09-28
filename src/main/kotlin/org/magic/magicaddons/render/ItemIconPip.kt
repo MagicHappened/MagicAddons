@@ -16,17 +16,12 @@ import net.minecraft.client.renderer.state.gui.pip.PictureInPictureRenderState
 import net.minecraft.client.renderer.texture.OverlayTexture
 import org.joml.Matrix3x2f
 
-/**
- * An item drawn at any size into its own texture, so a big icon comes out sharp: the gui's own
- * item path draws every item at sixteen units and stretches the result.
- */
 data class ItemIconRenderState(
     val item: TrackingItemStackRenderState,
     private val bX0: Int,
     private val bY0: Int,
     private val bX1: Int,
     private val bY1: Int,
-    /** How many gui units the item's one model unit takes: the icon's size. */
     private val size: Float,
     private val matrix: Matrix3x2f
 ) : PictureInPictureRenderState {
@@ -39,16 +34,10 @@ data class ItemIconRenderState(
     override fun pose(): Matrix3x2f = matrix
     override fun scissorArea(): ScreenRectangle? = null
 
-    /**
-     * Where the icon lands on the screen. The corners are given in the screen's own units, and a
-     * screen drawing itself smaller carries that in the pose, so the gui is told the corners after
-     * it; judged before it, a lower row would count as off the screen and be dropped.
-     */
     override fun bounds(): ScreenRectangle? =
         ScreenRectangle(bX0, bY0, bX1 - bX0, bY1 - bY0).transformMaxBounds(matrix)
 }
 
-/** Draws an [ItemIconRenderState] the way the gui draws an oversized item: into its own texture. */
 //? if >=26.2 {
 /*class ItemIconRenderer : PictureInPictureRenderer<ItemIconRenderState>() {
 *///?} else {
@@ -61,19 +50,16 @@ class ItemIconRenderer(
 
     override fun getTextureLabel(): String = "magicaddons_item_icon"
 
-    /** What the texture holds now: the item's model identity and the size it was drawn at. */
     private var drawnIdentity: Any? = null
     private var drawnSize: Float = 0f
     private var drawnMatrix: Matrix3x2f? = null
 
-    /** The same item at the same size is already in the texture, so it is blitted rather than drawn again. */
     override fun textureIsReadyToBlit(state: ItemIconRenderState): Boolean =
         drawnIdentity != null &&
                 drawnIdentity == state.item.modelIdentity &&
                 drawnSize == state.scale() &&
                 drawnMatrix == state.pose()
 
-    /** The base class parks the origin at the texture's bottom; the item is centred on its origin. */
     override fun getTranslateY(height: Int, guiScale: Int): Float = height / 2f
 
     //? if >=26.2 {

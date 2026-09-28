@@ -12,13 +12,8 @@ import net.minecraft.network.chat.Component
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.Blocks
 
-/**
- * Everything the game renamed between 26.1.2 and 26.2, behind one door, so callers ask one question
- * that means the same on both. The version directives live here rather than in the features.
- */
 object McCompat {
 
-    /** The screen the player is looking at, or null while they are looking at the world. */
     fun currentScreen(): Screen? {
         //? if >=26.2 {
         /*return Minecraft.getInstance().gui.screen()
@@ -27,7 +22,6 @@ object McCompat {
         //?}
     }
 
-    /** The camera the world is drawn from. */
     fun camera(): Camera {
         //? if >=26.2 {
         /*return Minecraft.getInstance().gameRenderer.mainCamera()
@@ -36,7 +30,6 @@ object McCompat {
         //?}
     }
 
-    /** the chat panel */
     fun chat(): ChatComponent {
         //? if >=26.2 {
         /*return Minecraft.getInstance().gui.hud.chat
@@ -45,7 +38,6 @@ object McCompat {
         //?}
     }
 
-    /** Puts [screen] up, or takes whatever is up down when it is null. */
     fun setScreen(screen: Screen?) {
         //? if >=26.2 {
         /*Minecraft.getInstance().gui.setScreen(screen)
@@ -54,7 +46,6 @@ object McCompat {
         //?}
     }
 
-    /** The subtitle pass a screen has to run itself when it draws its own background. */
     fun extractDeferredSubtitles(minecraft: Minecraft) {
         //? if >=26.2 {
         /*minecraft.gui.hud.extractDeferredSubtitles()
@@ -63,7 +54,6 @@ object McCompat {
         //?}
     }
 
-    /** Puts [title] up in the middle of the screen, fading in and out around [stay] ticks, all in ticks. */
     fun showTitle(title: Component, fadeIn: Int, stay: Int, fadeOut: Int) {
         //? if >=26.2 {
         /*val hud = Minecraft.getInstance().gui.hud
@@ -76,7 +66,6 @@ object McCompat {
         //?}
     }
 
-    /** Whether the player has hidden the hud, which anything drawing over it should respect. */
     fun hudHidden(): Boolean {
         //? if >=26.2 {
         /*return Minecraft.getInstance().gui.hud.isHidden
@@ -85,7 +74,6 @@ object McCompat {
         //?}
     }
 
-    /** A chat colour as a packed rgb int, for comparing against the colour a component carries. */
     fun chatColor(formatting: ChatFormatting): Int {
         //? if >=26.2 {
         /*return TextColor.fromLegacyFormat(formatting)?.value ?: 0xFFFFFF
@@ -94,7 +82,6 @@ object McCompat {
         //?}
     }
 
-    /** The green stained glass block, which a finished chloronite has above it. */
     fun greenStainedGlass(): Block {
         //? if >=26.2 {
         /*return Blocks.STAINED_GLASS.green()

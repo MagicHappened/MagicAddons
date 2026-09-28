@@ -7,67 +7,61 @@ import net.minecraft.client.input.MouseButtonEvent
 import org.magic.magicaddons.data.config.EnumSetting
 import org.magic.magicaddons.data.config.SettingNode
 import org.magic.magicaddons.ui.OverlayContext
-import org.magic.magicaddons.ui.widgets.EnumWidget
+import org.magic.magicaddons.ui.widgets.DropdownWidget
 
-/**
- * A value picked from a fixed set: a selector on the right of the row. The settings under it are
- * its fixed ones and whatever the picked value brings, rebuilt when the value changes.
- */
 class EnumSettingWidget<T : Enum<T>>(
     private val setting: EnumSetting<T>,
     overlays: OverlayContext
 ) : SettingWidget<T>(setting, overlays) {
 
-    private val selector = EnumWidget(
+    private val valueSelector = DropdownWidget(
         values = setting.value.javaClass.enumConstants.toList(),
         currentValue = setting.value,
         overlayContext = overlays,
-        valueChanged = { picked ->
+        onValueChanged = { picked ->
             if (setting.value != picked) {
                 setting.value = picked
-                if (childrenWidgets.isNotEmpty()) buildChildren()
+                if (isExpanded || childWidgets.isNotEmpty()) buildChildWidgets()
                 if (hasChildren()) unfold(true)
             }
         },
-        searchable = setting.value.javaClass.enumConstants.size > SEARCH_FROM
+        isSearchable = setting.value.javaClass.enumConstants.size >= MIN_VALUES_FOR_SEARCH
     ).apply {
         height = FIELD_HEIGHT
-        fitToValues(MAX_WIDTH)
+        fitToValues(SELECTOR_MAX_WIDTH)
     }
 
-    override val controlWidth: Int get() = selector.width
+    override val controlWidth: Int get() = valueSelector.width
     override val controlHeight: Int = FIELD_HEIGHT
 
     override fun childNodes(): List<SettingNode<*>> = setting.availableChildren + setting.providedChildren
 
     override fun layoutControl() {
-        selector.x = controlLeft()
-        selector.y = controlTop()
-        selector.currentValue = setting.value
+        valueSelector.x = controlLeft()
+        valueSelector.y = controlTop()
+        valueSelector.currentValue = setting.value
     }
 
     override fun renderControl(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
-        selector.extractRenderState(graphics, mouseX, mouseY, delta)
+        valueSelector.extractRenderState(graphics, mouseX, mouseY, delta)
     }
 
     override fun controlClicked(event: MouseButtonEvent, doubled: Boolean): Boolean =
-        selector.mouseClicked(event, doubled)
+        valueSelector.mouseClicked(event, doubled)
 
     override fun mouseMoved(mouseX: Double, mouseY: Double) {
         super.mouseMoved(mouseX, mouseY)
-        selector.mouseMoved(mouseX, mouseY)
+        valueSelector.mouseMoved(mouseX, mouseY)
     }
 
     override fun charTyped(event: CharacterEvent): Boolean =
-        selector.overlay.charTyped(event) || super.charTyped(event)
+        valueSelector.list.charTyped(event) || super.charTyped(event)
 
     override fun keyPressed(event: KeyEvent): Boolean =
-        selector.overlay.keyPressed(event) || super.keyPressed(event)
+        valueSelector.list.keyPressed(event) || super.keyPressed(event)
 
     private companion object {
-        const val MAX_WIDTH: Int = 120
-
-        /** A list of fewer values than this has nothing worth searching. */
-        const val SEARCH_FROM: Int = 8
+        const val SELECTOR_MAX_WIDTH: Int = 120
+        const val MIN_VALUES_FOR_SEARCH: Int = 9
     }
 }

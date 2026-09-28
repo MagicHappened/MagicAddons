@@ -14,6 +14,7 @@ import net.minecraft.network.protocol.game.ClientboundSetTimePacket;
 import net.minecraft.network.protocol.game.ClientboundUpdateAttributesPacket;
 import net.minecraft.network.protocol.game.ClientboundSystemChatPacket;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.Vec3;
 import org.magic.magicaddons.events.EventBus;
 import org.magic.magicaddons.events.chat.SystemChatEvent;
 import org.magic.magicaddons.events.interact.BlockDestroyedEvent;
@@ -110,7 +111,7 @@ public class ClientPacketListenerMixin {
     @Inject(method = "handleSetEntityData", at = @At("TAIL"))
     private void onSetEntityData(ClientboundSetEntityDataPacket packet, CallbackInfo ci) {
         EntityUtils.INSTANCE.noteDataChanged(packet.id());
-        GreenhouseData.INSTANCE.noteEntityChanged(packet.id(), null);
+        GreenhouseData.INSTANCE.noteStandChanged(packet.id(), null);
     }
 
     @Inject(method = "handleUpdateAttributes", at = @At("TAIL"))
@@ -120,12 +121,13 @@ public class ClientPacketListenerMixin {
 
     @Inject(method = "handleEntityPositionSync", at = @At("TAIL"))
     private void onEntityPositionSync(ClientboundEntityPositionSyncPacket packet, CallbackInfo ci) {
-        GreenhouseData.INSTANCE.noteEntityChanged(packet.id(), packet.values().position());
+        GreenhouseData.INSTANCE.noteStandChanged(packet.id(), packet.values().position());
     }
 
     @Inject(method = "handleTeleportEntity", at = @At("TAIL"))
     private void onTeleportEntity(ClientboundTeleportEntityPacket packet, CallbackInfo ci) {
-        GreenhouseData.INSTANCE.noteEntityChanged(packet.id(), null);
+        Vec3 movingTo = packet.relatives().isEmpty() ? packet.change().position() : null;
+        GreenhouseData.INSTANCE.noteStandTeleported(packet.id(), movingTo);
     }
 
     @Inject(

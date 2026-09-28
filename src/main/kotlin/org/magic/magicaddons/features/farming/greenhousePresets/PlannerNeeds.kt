@@ -7,7 +7,6 @@ import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen
 import net.minecraft.network.chat.ClickEvent
 import net.minecraft.network.chat.Component
-import net.minecraft.network.chat.Style
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.Blocks
@@ -16,249 +15,215 @@ import org.magic.magicaddons.commands.internal.farming.GetPlannerItemCommand
 import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
 import org.magic.magicaddons.data.greenhouse.crops.CropRegistry
 import org.magic.magicaddons.data.greenhouse.plot.GreenhouseGrid
+import org.magic.magicaddons.data.greenhouse.plot.PlotLayout
 import org.magic.magicaddons.events.EventHandler
 import org.magic.magicaddons.events.chat.SystemChatEvent
+import org.magic.magicaddons.events.greenhouse.PlotChangedEvent
 import org.magic.magicaddons.events.world.WorldTickEvent
-import org.magic.magicaddons.features.farming.greenhousePresets.lookups.StorageBridge
+import org.magic.magicaddons.features.farming.greenhousePresets.lookups.EnhancedStorageBridge
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.compat.McCompat
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockId
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockId.Companion.getSkyBlockId
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
-/**
- * Names what a planner still needs as clickable items. A click runs the command and moves the line
- * to the bottom of chat; the line is recounted once the sacks answer or the opened menu closes.
- */
 object PlannerNeeds {
 
-    /** cooldown for the plants / soils qol message. */
-    private val COOLDOWN: Duration = Duration.ofSeconds(30)
+    private val MESSAGE_COOLDOWN: Duration = Duration.ofSeconds(30)
 
-    /** how long a click waits for an answer */
-    private val ANSWER_WINDOW: Duration = Duration.ofSeconds(30)
+    private val COMMAND_ANSWER_TIMEOUT: Duration = Duration.ofSeconds(30)
 
     private val INVENTORY_RECOUNT_DELAY: Duration = Duration.ofMillis(500)
 
     private const val BUILDER_COMMAND: String = "/call builder"
 
+    private val COMMAND_ON_COOLDOWN_REGEX: Regex = Regex(".*This command is on cooldown.*")
 
-    private val ON_COOLDOWN_REGEX: Regex = Regex(".*This command is on cooldown.*")
-
-    /** response regexes for a gfs command */
     private val SACKS_ANSWER_REGEXES: List<Regex> = listOf(
         Regex("Moved [\\d,]+ .+ from your Sacks to your inventory\\."),
         Regex("You have no .+ in your Sacks!")
     )
 
-    private val NOT_IN_SACKS: Set<Block> = setOf(Blocks.DIRT, Blocks.NETHERRACK, Blocks.SOUL_SAND)
+    private val BLOCKS_NOT_IN_SACKS: Set<Block> = setOf(Blocks.DIRT, Blocks.NETHERRACK, Blocks.SOUL_SAND)
 
-    private val SEEDS: SkyBlockId = SkyBlockItemId.item("SEEDS")
+    private val SEEDS_ID: SkyBlockId = SkyBlockItemId.item("SEEDS")
 
-    /**
-     * A crop put down as a seed rather than as itself: the seed it takes, what the sacks give for
-     * it, how many seeds one of those makes, and the sack's name for it. A pumpkin makes four.
-     */
-    private class Seeding(val seed: SkyBlockId, val source: SkyBlockId, val seedsPerSource: Int, val sackName: String)
+    private class SeedRecipe(val seedId: SkyBlockId, val sackItemId: SkyBlockId, val seedsPerSackItem: Int, val sackName: String)
 
-    private val SEEDINGS: Map<SkyBlockId, Seeding> = mapOf(
-        SkyBlockItemId.item("WHEAT") to Seeding(SEEDS, SEEDS, 1, "seeds"),
-        SkyBlockItemId.item("PUMPKIN") to Seeding(SkyBlockItemId.item("PUMPKIN_SEEDS"), SkyBlockItemId.item("PUMPKIN"), 4, "pumpkin"),
-        SkyBlockItemId.item("MELON") to Seeding(SkyBlockItemId.item("MELON_SEEDS"), SkyBlockItemId.item("MELON"), 1, "melon")
+    private val SEED_RECIPE_BY_CROP_ID: Map<SkyBlockId, SeedRecipe> = mapOf(
+        SkyBlockItemId.item("WHEAT") to SeedRecipe(SEEDS_ID, SEEDS_ID, 1, "seeds"),
+        SkyBlockItemId.item("PUMPKIN") to SeedRecipe(SkyBlockItemId.item("PUMPKIN_SEEDS"), SkyBlockItemId.item("PUMPKIN"), 4, "pumpkin"),
+        SkyBlockItemId.item("MELON") to SeedRecipe(SkyBlockItemId.item("MELON_SEEDS"), SkyBlockItemId.item("MELON"), 1, "melon")
     )
 
-    /** map of each message a greenhouse sent to not repeat them */
-    private val messageMap = mutableMapOf<String, Instant>()
+    private enum class NeedsPhase { Soil, Plants }
 
-    /** the requested item and its properties for the planner */
-    private class RequestedItem(val label: String, val command: String?, val hover: Component)
+    private val sentAtByLineKey = mutableMapOf<String, Instant>()
 
-    /** the line last sent, which greenhouse and phase it is for, and how to count it again */
-    private class LastPlannerMessage(val key: String, var count: () -> List<RequestedItem>, var body: Component, var line: Component)
+    private class RequestedItem(val label: String, val command: String?, val hoverText: Component)
 
-    /** what to wait for before recounting */
-    private enum class Answer { SACKS, MENU }
+    private class SentNeedsLine(val key: String, var recountNeeds: () -> List<RequestedItem>, var body: Component, var line: Component)
 
-    private var lastMessage: LastPlannerMessage? = null
-    private var awaiting: Answer? = null
-    private var awaitingSince: Instant? = null
+    private enum class RecountTrigger { SacksMessage, MenuClosed }
 
-    private var resendMessageAt: Instant? = null
+    private var sentNeedsLine: SentNeedsLine? = null
+    private var pendingRecount: RecountTrigger? = null
+    private var pendingRecountSince: Instant? = null
 
-    private var menuOpenedFromClick: Boolean = false
+    private var resendLineAt: Instant? = null
 
-    private var standingInGreenhouse: String? = null
+    private var isMenuOpenedFromClick: Boolean = false
 
-    fun forgetSentMessage(grid: GreenhouseGrid) {
-        messageMap.keys.removeAll { it.startsWith("${grid.layout.id}|") }
+    private fun lineKeyOf(grid: GreenhouseGrid, phase: NeedsPhase): String = "${grid.layout.id}|$phase"
+
+    fun forgetSentLines(grid: GreenhouseGrid) {
+        sentAtByLineKey.keys.removeAll { it.startsWith("${grid.layout.id}|") }
     }
 
-    fun arriveAt(grid: GreenhouseGrid?) {
-        val id = grid?.layout?.id
-        if (standingInGreenhouse == id) return
-
-        standingInGreenhouse = id
-        if (id == null) return
+    @EventHandler
+    fun onPlotChanged(event: PlotChangedEvent) {
+        val layoutId = event.new?.let { PlotLayout.plotId(it.id) } ?: return
 
         val now = Instant.now()
-        messageMap.keys.removeAll { it.startsWith("$id|") && now.isAfter(messageMap.getValue(it).plus(COOLDOWN)) }
+        sentAtByLineKey.keys.removeAll { it.startsWith("$layoutId|") && now.isAfter(sentAtByLineKey.getValue(it).plus(MESSAGE_COOLDOWN)) }
     }
 
-    /** Names the soil still to place, once per visit to the greenhouse. */
-    fun tellSoil(grid: GreenhouseGrid, blocks: Map<Block, Int>) {
-        val count = { soilNeeds(blocks) }
+    fun sendSoilNeeds(grid: GreenhouseGrid, blocks: Map<Block, Int>) {
+        val recountNeeds = { soilRequests(blocks) }
 
-        if (quiet(grid, "soil")) {
-            if (blocks.isEmpty()) retractLine(grid, "soil") else refreshCount(grid, "soil", count)
+        if (isLineAlreadySent(grid, NeedsPhase.Soil)) {
+            if (blocks.isEmpty()) retractLine(grid, NeedsPhase.Soil) else refreshCount(grid, NeedsPhase.Soil, recountNeeds)
             return
         }
         if (blocks.isEmpty()) return
 
-        send(grid, "soil", count)
+        sendMissingItems(grid, NeedsPhase.Soil, recountNeeds)
     }
 
-    private fun soilNeeds(blocks: Map<Block, Int>): List<RequestedItem> = blocks.mapNotNull { (block, count) ->
-        val asked = if (block == Blocks.FARMLAND) Blocks.DIRT else block
-        val label = asked.name.string
-        val left = count - heldBlocks(asked)
-        val name = label.lowercase()
+    private fun soilRequests(blocks: Map<Block, Int>): List<RequestedItem> = blocks.mapNotNull { (block, neededCount) ->
+        val blockToGet = if (block == Blocks.FARMLAND) Blocks.DIRT else block
+        val label = blockToGet.name.string
+        val missingCount = neededCount - heldBlockCount(blockToGet)
+        val lowercaseName = label.lowercase()
 
         when {
-            left <= 0 -> null
-            else -> fromStorage(label, left) { it.item == asked.asItem() }
-                ?: if (asked in NOT_IN_SACKS) {
-                    RequestedItem(label, BUILDER_COMMAND, Component.literal("Click here to buy $left $name from the Builder!"))
+            missingCount <= 0 -> null
+            else -> storageRequest(label, missingCount) { it.item == blockToGet.asItem() }
+                ?: if (blockToGet in BLOCKS_NOT_IN_SACKS) {
+                    RequestedItem(label, BUILDER_COMMAND, Component.literal("Click here to buy $missingCount $lowercaseName from the Builder!"))
                 } else {
-                    RequestedItem(label, "/gfs $name $left", sackHover(left, name))
+                    RequestedItem(label, "/gfs $lowercaseName $missingCount", sackHover(missingCount, lowercaseName))
                 }
         }
     }
 
-    /** Names the plants still to put down, once per visit to the greenhouse. */
-    fun tellPlants(grid: GreenhouseGrid, crops: Map<CropDefinition, Int>) {
-        val count = { plantNeeds(crops) }
+    fun sendPlantNeeds(grid: GreenhouseGrid, crops: Map<CropDefinition, Int>) {
+        val recountNeeds = { plantRequests(crops) }
 
-        // the soil is all down once plants are asked for, so its line has nothing left to name
-        retractLine(grid, "soil")
+        retractLine(grid, NeedsPhase.Soil)
 
-        if (quiet(grid, "plants")) {
-            if (crops.isEmpty()) retractLine(grid, "plants") else refreshCount(grid, "plants", count)
+        if (isLineAlreadySent(grid, NeedsPhase.Plants)) {
+            if (crops.isEmpty()) retractLine(grid, NeedsPhase.Plants) else refreshCount(grid, NeedsPhase.Plants, recountNeeds)
             return
         }
         if (crops.isEmpty()) return
 
-        send(grid, "plants", count)
+        sendMissingItems(grid, NeedsPhase.Plants, recountNeeds)
     }
 
-    private fun plantNeeds(crops: Map<CropDefinition, Int>): List<RequestedItem> = crops.mapNotNull { (def, count) ->
-        val seeding = def.skyblockId?.let { SEEDINGS[it] }
+    private fun plantRequests(crops: Map<CropDefinition, Int>): List<RequestedItem> = crops.mapNotNull { (crop, neededCount) ->
+        val seedRecipe = crop.skyblockId?.let { SEED_RECIPE_BY_CROP_ID[it] }
 
-        if (seeding != null) return@mapNotNull seedNeed(def, count, seeding)
+        if (seedRecipe != null) return@mapNotNull seedRequest(crop, neededCount, seedRecipe)
 
-        val label = def.name
-        val left = count - heldCrops(def)
-        val name = label.lowercase()
+        val label = crop.name
+        val missingCount = neededCount - heldCropCount(crop)
+        val lowercaseName = label.lowercase()
 
         when {
-            left <= 0 -> null
-            else -> fromStorage(label, left) { cropOfStack(it) == def }
-                ?: if (def.skyblockId == null) {
-                    RequestedItem(label, null, unbuyableHover(label, left))
+            missingCount <= 0 -> null
+            else -> storageRequest(label, missingCount) { cropOfStack(it) == crop }
+                ?: if (crop.skyblockId == null) {
+                    RequestedItem(label, null, unbuyableHover(label, missingCount))
                 } else {
-                    RequestedItem(label, "/gfs $name $left", sackHover(left, name))
+                    RequestedItem(label, "/gfs $lowercaseName $missingCount", sackHover(missingCount, lowercaseName))
                 }
         }
     }
 
-    /**
-     * The need for a crop put down as a seed: what is held as seeds counts as is, what is held as
-     * the thing the seeds are made from counts for as many seeds as it makes, and the sacks are
-     * asked for just enough of that thing to make the rest.
-     */
-    private fun seedNeed(def: CropDefinition, count: Int, seeding: Seeding): RequestedItem? {
-        val held = heldItems(seeding.seed) + heldItems(seeding.source) * seeding.seedsPerSource
-        val left = count - held
-        if (left <= 0) return null
+    private fun seedRequest(crop: CropDefinition, neededCount: Int, seedRecipe: SeedRecipe): RequestedItem? {
+        val heldSeedCount = heldItemCount(seedRecipe.seedId) + heldItemCount(seedRecipe.sackItemId) * seedRecipe.seedsPerSackItem
+        val missingCount = neededCount - heldSeedCount
+        if (missingCount <= 0) return null
 
-        val label = if (seeding.seed == seeding.source) "Seeds" else "${def.name} Seeds"
-        val sources = (left + seeding.seedsPerSource - 1) / seeding.seedsPerSource
+        val label = if (seedRecipe.seedId == seedRecipe.sackItemId) "Seeds" else "${crop.name} Seeds"
+        val sackItemsNeeded = (missingCount + seedRecipe.seedsPerSackItem - 1) / seedRecipe.seedsPerSackItem
 
-        return fromStorage(label, left) { it.getSkyBlockId() == seeding.seed || it.getSkyBlockId() == seeding.source }
-            ?: RequestedItem(label, "/gfs ${seeding.sackName} $sources", seedSackHover(left, sources, seeding))
+        return storageRequest(label, missingCount) { it.getSkyBlockId() == seedRecipe.seedId || it.getSkyBlockId() == seedRecipe.sackItemId }
+            ?: RequestedItem(label, "/gfs ${seedRecipe.sackName} $sackItemsNeeded", seedSackHover(missingCount, sackItemsNeeded, seedRecipe))
     }
 
-    /** The sack hover for a seed need, saying what the sacks give and what that makes when they differ. */
-    private fun seedSackHover(seeds: Int, sources: Int, seeding: Seeding): Component =
-        if (seeding.seedsPerSource == 1 && seeding.seed == seeding.source) sackHover(seeds, seeding.sackName)
-        else Component.literal("Click here to get $sources ${seeding.sackName} from sacks, for $seeds seeds!")
+    private fun seedSackHover(seeds: Int, sackItemsNeeded: Int, seedRecipe: SeedRecipe): Component =
+        if (seedRecipe.seedsPerSackItem == 1 && seedRecipe.seedId == seedRecipe.sackItemId) sackHover(seeds, seedRecipe.sackName)
+        else Component.literal("Click here to get $sackItemsNeeded ${seedRecipe.sackName} from sacks, for $seeds seeds!")
 
-    /** the need pointed at storage, when its pages hold enough */
-    private fun fromStorage(label: String, left: Int, matches: (ItemStack) -> Boolean): RequestedItem? {
-        val pages = StorageBridge.pagesHolding(matches)
-        if (pages.sumOf { it.count } < left) return null
+    private fun storageRequest(label: String, missingCount: Int, isWantedItem: (ItemStack) -> Boolean): RequestedItem? {
+        val pages = EnhancedStorageBridge.pagesHolding(isWantedItem)
+        if (pages.sumOf { it.count } < missingCount) return null
 
-        val hover = Component.literal("Click here to open your storage for $left ${label.lowercase()}!")
-        pages.forEach { hover.append(Component.literal("\n - ${it.page}: ${it.count}").withStyle(ChatFormatting.GRAY)) }
+        val hoverText = Component.literal("Click here to open your storage for $missingCount ${label.lowercase()}!")
+        pages.forEach { hoverText.append(Component.literal("\n - ${it.pageName}: ${it.count}").withStyle(ChatFormatting.GRAY)) }
 
-        return RequestedItem(label, StorageBridge.openStorageCommand(label), hover)
+        return RequestedItem(label, EnhancedStorageBridge.storageSearchCommand(label), hoverText)
     }
 
-    /** Whether this greenhouse has already named this phase since the player walked into it. */
-    private fun quiet(grid: GreenhouseGrid, phase: String): Boolean =
-        messageMap.containsKey("${grid.layout.id}|$phase")
+    private fun isLineAlreadySent(grid: GreenhouseGrid, phase: NeedsPhase): Boolean =
+        sentAtByLineKey.containsKey(lineKeyOf(grid, phase))
 
-    private fun send(grid: GreenhouseGrid, phase: String, count: () -> List<RequestedItem>) {
-        val needs = count()
+    private fun sendMissingItems(grid: GreenhouseGrid, phase: NeedsPhase, recountNeeds: () -> List<RequestedItem>) {
+        val needs = recountNeeds()
         if (needs.isEmpty()) return
 
-        val key = "${grid.layout.id}|$phase"
-        messageMap[key] = Instant.now()
+        val key = lineKeyOf(grid, phase)
+        sentAtByLineKey[key] = Instant.now()
         val body = requestedItemsLine(needs)
-        lastMessage = LastPlannerMessage(key, count, body, ChatUtils.sendWithPrefix(body))
+        sentNeedsLine = SentNeedsLine(key, recountNeeds, body, ChatUtils.sendWithPrefix(body))
     }
 
-    /**
-     * The plot changed under a line that is up: the next recount, which only a click brings, counts
-     * against what stands now rather than what stood when the line was sent. Nothing is redrawn
-     * here, so the line does not move on every plant put down.
-     */
-    /** Takes the line out of chat once nothing it names is left to get. */
-    private fun retractLine(grid: GreenhouseGrid, phase: String) {
-        val sent = lastMessage ?: return
-        if (sent.key != "${grid.layout.id}|$phase") return
+    private fun retractLine(grid: GreenhouseGrid, phase: NeedsPhase) {
+        val sent = sentNeedsLine ?: return
+        if (sent.key != lineKeyOf(grid, phase)) return
 
         ChatUtils.retract(sent.line)
-        lastMessage = null
+        sentNeedsLine = null
     }
 
-    private fun refreshCount(grid: GreenhouseGrid, phase: String, count: () -> List<RequestedItem>) {
-        val sent = lastMessage ?: return
-        if (sent.key != "${grid.layout.id}|$phase") return
+    private fun refreshCount(grid: GreenhouseGrid, phase: NeedsPhase, recountNeeds: () -> List<RequestedItem>) {
+        val sent = sentNeedsLine ?: return
+        if (sent.key != lineKeyOf(grid, phase)) return
 
-        sent.count = count
+        sent.recountNeeds = recountNeeds
     }
 
-    /** Runs the command behind a clicked item and takes the line out of chat until the game has answered. */
-    fun clicked(command: String) {
+    fun onRequestClicked(command: String) {
         ChatUtils.sendCommand(command.removePrefix("/"))
 
-        lastMessage?.let { ChatUtils.retract(it.line) }
+        sentNeedsLine?.let { ChatUtils.retract(it.line) }
 
-        awaiting = if (command.startsWith("/gfs")) Answer.SACKS else Answer.MENU
-        awaitingSince = Instant.now()
-        resendMessageAt = null
-        menuOpenedFromClick = false
+        pendingRecount = if (command.startsWith("/gfs")) RecountTrigger.SacksMessage else RecountTrigger.MenuClosed
+        pendingRecountSince = Instant.now()
+        resendLineAt = null
+        isMenuOpenedFromClick = false
     }
 
-    /** sends the last line again at the bottom, recounted when asked */
-    private fun resend(recount: Boolean) {
-        val sent = lastMessage ?: return
+    private fun resendLine(recount: Boolean) {
+        val sent = sentNeedsLine ?: return
         ChatUtils.retract(sent.line)
 
         if (recount) {
-            val needs = sent.count()
+            val needs = sent.recountNeeds()
             if (needs.isEmpty()) {
-                lastMessage = null
+                sentNeedsLine = null
                 return
             }
             sent.body = requestedItemsLine(needs)
@@ -267,66 +232,62 @@ object PlannerNeeds {
         sent.line = ChatUtils.sendWithPrefix(sent.body)
     }
 
-    /** The game has answered, so the line goes back up once the inventory has caught up. */
-    private fun answered() {
-        awaiting = null
-        awaitingSince = null
-        resendMessageAt = Instant.now().plus(INVENTORY_RECOUNT_DELAY)
+    private fun onCommandAnswered() {
+        pendingRecount = null
+        pendingRecountSince = null
+        resendLineAt = Instant.now().plus(INVENTORY_RECOUNT_DELAY)
     }
 
     @EventHandler
     fun onSystemChat(event: SystemChatEvent) {
-        if (awaiting == null || event.overlay) return
+        if (pendingRecount == null || event.overlay) return
 
         val text = event.text.trim()
 
-        // the command never ran, so the line goes straight back up for another try
-        if (ON_COOLDOWN_REGEX.matches(text)) {
-            answered()
+        if (COMMAND_ON_COOLDOWN_REGEX.matches(text)) {
+            onCommandAnswered()
             return
         }
 
-        if (awaiting != Answer.SACKS) return
+        if (pendingRecount != RecountTrigger.SacksMessage) return
         if (SACKS_ANSWER_REGEXES.none { it.matches(text) }) return
 
-        answered()
+        onCommandAnswered()
     }
 
-    /** recounts once the sacks have answered, or the Builder or storage menu closes */
     @EventHandler
     fun onWorldTick(event: WorldTickEvent) {
         val now = Instant.now()
 
-        resendMessageAt?.let { at ->
+        resendLineAt?.let { at ->
             if (now.isAfter(at)) {
-                resendMessageAt = null
-                resend(recount = true)
+                resendLineAt = null
+                resendLine(recount = true)
             }
             return
         }
 
-        val since = awaitingSince ?: return
+        val since = pendingRecountSince ?: return
 
-        // nothing answered, so the line goes back up as it was rather than staying gone
-        if (now.isAfter(since.plus(ANSWER_WINDOW))) {
-            answered()
+        if (now.isAfter(since.plus(COMMAND_ANSWER_TIMEOUT))) {
+            onCommandAnswered()
             return
         }
-        if (awaiting != Answer.MENU) return
+        if (pendingRecount != RecountTrigger.MenuClosed) return
 
-        val menuOpen = McCompat.currentScreen() is AbstractContainerScreen<*>
-        if (menuOpen) {
-            menuOpenedFromClick = true
-        } else if (menuOpenedFromClick) {
-            answered()
+        val isMenuOpen = McCompat.currentScreen() is AbstractContainerScreen<*>
+        if (isMenuOpen) {
+            isMenuOpenedFromClick = true
+        } else if (isMenuOpenedFromClick) {
+            onCommandAnswered()
         }
     }
 
     private fun requestedItemsLine(requestedItems: List<RequestedItem>): Component {
         val line = Component.literal("Click to get: ").withStyle(ChatFormatting.GRAY)
-        requestedItems.forEachIndexed { index, need ->
+        requestedItems.forEachIndexed { index, requestedItem ->
             if (index > 0) line.append(Component.literal(" "))
-            line.append(requestedItemButton(need))
+            line.append(requestedItemButton(requestedItem))
         }
         return line
     }
@@ -334,12 +295,12 @@ object PlannerNeeds {
     private fun requestedItemButton(requestedItem: RequestedItem): Component {
         val label = "[${requestedItem.label}]"
         val command = requestedItem.command
-            ?: return ChatUtils.buildStyled(label, ChatFormatting.GRAY, requestedItem.hover)
+            ?: return ChatUtils.buildStyled(label, ChatFormatting.GRAY, requestedItem.hoverText)
 
         return ChatUtils.buildStyled(
             label,
             ChatFormatting.AQUA,
-            requestedItem.hover,
+            requestedItem.hoverText,
             ClickEvent.RunCommand("${MainInternal.COMMAND} ${GetPlannerItemCommand.NAME} $command"),
         )
     }
@@ -347,7 +308,6 @@ object PlannerNeeds {
     private fun sackHover(amount: Int, name: String): Component =
         Component.literal("Click here to get $amount $name from sacks!")
 
-    /** The hover on something with nowhere to get it: how many are wanted, and why there is no click. */
     private fun unbuyableHover(label: String, amount: Int): Component = Component.literal("$label x$amount")
         .append(Component.literal("\n"))
         .append(
@@ -355,24 +315,23 @@ object PlannerNeeds {
                 .withStyle(ChatFormatting.GRAY, ChatFormatting.ITALIC)
         )
 
-    private fun inventory(): List<ItemStack> {
+    private fun inventoryStacks(): List<ItemStack> {
         val player = Minecraft.getInstance().player ?: return emptyList()
         val inventory = player.inventory
         return (0 until inventory.containerSize).map { inventory.getItem(it) }
     }
 
-    private fun heldBlocks(block: Block): Int {
+    private fun heldBlockCount(block: Block): Int {
         val item = block.asItem()
-        return inventory().filter { it.item == item }.sumOf { it.count }
+        return inventoryStacks().filter { it.item == item }.sumOf { it.count }
     }
 
-    private fun heldItems(id: SkyBlockId): Int =
-        inventory().filter { !it.isEmpty && it.getSkyBlockId() == id }.sumOf { it.count }
+    private fun heldItemCount(id: SkyBlockId): Int =
+        inventoryStacks().filter { !it.isEmpty && it.getSkyBlockId() == id }.sumOf { it.count }
 
-    /** the crop an item stands for, under any of the ids its definition records */
     private fun cropOfStack(stack: ItemStack): CropDefinition? =
         if (stack.isEmpty) null else stack.getSkyBlockId()?.id?.let { CropRegistry.findByIdOrName(it) }
 
-    private fun heldCrops(crop: CropDefinition): Int =
-        inventory().filter { cropOfStack(it) == crop }.sumOf { it.count }
+    private fun heldCropCount(crop: CropDefinition): Int =
+        inventoryStacks().filter { cropOfStack(it) == crop }.sumOf { it.count }
 }

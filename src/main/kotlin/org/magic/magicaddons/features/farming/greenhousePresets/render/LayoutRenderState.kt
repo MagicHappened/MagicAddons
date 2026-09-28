@@ -131,7 +131,8 @@ object LayoutRenderState {
     val ghostStands: List<ArmorStand> get() = if (GreenhouseData.inOwnGarden()) plannerLayout.ghostStands else emptyList()
 
     val hasSomethingToShow: Boolean
-        get() = plannerLayout.marks.isNotEmpty() || plannerLayout.ghosts.isNotEmpty() || plannerLayout.badStands.isNotEmpty() || plannerLayout.obstructedSoils.isNotEmpty()
+        get() = plannerLayout.marks.isNotEmpty() || plannerLayout.ghosts.isNotEmpty() || plannerLayout.ghostStands.isNotEmpty() ||
+                plannerLayout.badStands.isNotEmpty() || plannerLayout.obstructedSoils.isNotEmpty()
 
     private var lastFinished: Boolean = false
 
@@ -178,8 +179,6 @@ object LayoutRenderState {
         }
 
         val grid = GreenhouseData.getCurrentGrid()
-
-        PlannerNeeds.arriveAt(grid)
 
         if (grid == null) return
 
@@ -290,8 +289,8 @@ object LayoutRenderState {
 
         val next = PlannerLayout(phase, marks, ghosts, badStands, obstructedSoils, ghostStandsByPlant, watchMarks, watchStands, ghostCrops, standCrops)
 
-        if (soilComplete) PlannerNeeds.tellPlants(grid, cropsNeeded)
-        else PlannerNeeds.tellSoil(grid, soilNeeded)
+        if (soilComplete) PlannerNeeds.sendPlantNeeds(grid, cropsNeeded)
+        else PlannerNeeds.sendSoilNeeds(grid, soilNeeded)
 
         if (next.comparisonKey == plannerLayout.comparisonKey) return
 

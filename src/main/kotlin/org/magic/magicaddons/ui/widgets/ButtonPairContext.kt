@@ -5,9 +5,7 @@ import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.components.events.GuiEventListener
 import net.minecraft.network.chat.Component
 import org.magic.magicaddons.Common
-import org.magic.magicaddons.ui.widgets.config.ClickableButtonWidget
 
-/** A panel with one button in its bottom left corner and one in its bottom right. */
 abstract class ButtonPairContext(
     override val overlayX: Int,
     override val overlayY: Int,
@@ -16,23 +14,23 @@ abstract class ButtonPairContext(
     leftLabel: String,
     rightLabel: String,
     buttonWidth: Int
-) : AbstractContextMenu() {
+) : ContextMenu() {
 
     override var hoveredElement: GuiEventListener? = null
 
     protected val font = Minecraft.getInstance().font
 
     protected val leftButton = ClickableButtonWidget(
-        overlayX + PAD,
-        overlayY + overlayHeight - PAD - BUTTON_HEIGHT,
+        overlayX + PADDING,
+        overlayY + overlayHeight - PADDING - BUTTON_HEIGHT,
         buttonWidth,
         BUTTON_HEIGHT,
         Component.literal(leftLabel)
     )
 
     protected val rightButton = ClickableButtonWidget(
-        overlayX + overlayWidth - PAD - buttonWidth,
-        overlayY + overlayHeight - PAD - BUTTON_HEIGHT,
+        overlayX + overlayWidth - PADDING - buttonWidth,
+        overlayY + overlayHeight - PADDING - BUTTON_HEIGHT,
         buttonWidth,
         BUTTON_HEIGHT,
         Component.literal(rightLabel)
@@ -55,8 +53,9 @@ abstract class ButtonPairContext(
     }
 
     companion object {
-        /** Room between the panel's frame and what it holds. */
-        const val PAD: Int = Common.UI.SPACING_LARGE
+        const val PADDING: Int = Common.UI.SPACING_LARGE
         const val BUTTON_HEIGHT: Int = 20
+
+        val ONE_LINE_PANEL_HEIGHT: Int = PADDING * 2 + Minecraft.getInstance().font.lineHeight + Common.UI.SPACING_LARGE + BUTTON_HEIGHT
     }
 }

@@ -8,16 +8,10 @@ import net.minecraft.client.renderer.rendertype.RenderTypes
 import net.minecraft.util.Mth
 import net.minecraft.world.phys.shapes.VoxelShape
 
-/**
- * The one piece of drawing the two versions disagree about: 26.2 asks the collector to outline a
- * shape, 26.1.2 has no such call and the edges are written out here instead.
- */
 object RenderCompat {
 
-    /** How thick a mark's edges are drawn. */
     private const val OUTLINE_WIDTH: Float = 3f
 
-    /** Draws the edges of [shape], already positioned by [poseStack], in [color]. */
     fun outline(
         collector: SubmitNodeCollector,
         poseStack: PoseStack,
@@ -33,10 +27,8 @@ object RenderCompat {
         //?}
     }
 
-    /** One outlined shape of many: where it sits from the pose's origin, the shape, and its colour. */
     class OutlineItem(val offset: Vec3, val shape: VoxelShape, val color: Int)
 
-    /** Every outline of a frame in one go, so the lines are one batch rather than one a shape. */
     fun outlineAll(collector: SubmitNodeCollector, poseStack: PoseStack, items: List<OutlineItem>) {
         //? if >=26.2 {
         /*items.forEach { item ->
@@ -55,10 +47,6 @@ object RenderCompat {
     }
 
     //? if <26.2 {
-    /**
-     * A line per edge, the line's own direction as its normal, as vanilla writes them. The line
-     * format carries a width per vertex, and a vertex without one is rejected.
-     */
     private fun VertexConsumer.edges(pose: PoseStack.Pose, shape: VoxelShape, color: Int) {
         shape.forAllEdges { x0, y0, z0, x1, y1, z1 ->
             var nx = (x1 - x0).toFloat()

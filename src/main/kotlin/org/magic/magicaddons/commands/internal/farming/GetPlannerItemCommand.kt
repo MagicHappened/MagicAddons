@@ -20,7 +20,7 @@ object GetPlannerItemCommand : AbstractCommand() {
                     "command",
                     StringArgumentType.greedyString()
                 ).executes {
-                    PlannerNeeds.clicked(StringArgumentType.getString(it, "command"))
+                    PlannerNeeds.onRequestClicked(StringArgumentType.getString(it, "command"))
                     return@executes 1
                 }
             )

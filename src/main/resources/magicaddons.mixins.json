@@ -18,8 +18,6 @@
     "LevelExtractorMixin",
     "GuiMixin",
     "KeyboardHandlerMixin",
-    "ChatComponentAccessor",
-    "TextDisplayAccessor",
     "FontMixin"
   ],
   "injectors": {

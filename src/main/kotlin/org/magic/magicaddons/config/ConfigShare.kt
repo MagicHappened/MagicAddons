@@ -1,7 +1,8 @@
 package org.magic.magicaddons.config
 
-import com.google.common.reflect.TypeToken
 import com.google.gson.Gson
+import com.google.gson.JsonObject
+import com.google.gson.JsonParser
 import net.minecraft.client.Minecraft
 import org.magic.magicaddons.data.greenhouse.transfer.RawDeflate
 import org.magic.magicaddons.features.FeatureManager
@@ -23,16 +24,11 @@ object ConfigShare {
 
     private val gson = Gson()
 
-    private val sectionType = object : TypeToken<
-            MutableMap<String,
-                    MutableMap<String,
-                            MutableMap<String, Any>>>>() {}.type
-
     fun exportConfig(configType: ConfigType): String? {
         FeatureManager.syncToConfigJson()
 
         val section = exportConfigType(configType)
-        if (section.isEmpty()) return null
+        if (section.size() == 0) return null
 
         val code = listOf(
             configType.prefix,
@@ -58,20 +54,24 @@ object ConfigShare {
 
         val bytes = RawDeflate.decode(parts.last()) ?: return Pasted.Failed("That code is damaged")
 
-        val section: MutableMap<String, MutableMap<String, MutableMap<String, Any>>> =
-            runCatching { gson.fromJson<MutableMap<String, MutableMap<String, MutableMap<String, Any>>>>(String(bytes), sectionType) }
-                .getOrNull() ?: return Pasted.Failed("That code is damaged")
+        val section = runCatching { JsonParser.parseString(String(bytes)).asJsonObject }
+            .getOrNull() ?: return Pasted.Failed("That code is damaged")
 
-        if (section.keys.any { (it == Customization.CATEGORY) != (configType == ConfigType.Ui) }) {
+        if (section.keySet().any { (it == Customization.CATEGORY) != (configType == ConfigType.Ui) }) {
             return Pasted.Failed("That code holds the other half of the config")
         }
 
+        val settingsByCategory = MagicAddonsConfigJsonHandler.settingsByCategory
         var written = 0
-        section.forEach { (category, features) ->
-            val stored = MagicAddonsConfigJsonHandler.configMap.getOrPut(category) { mutableMapOf() }
-            features.forEach { (feature, settings) ->
-                stored.getOrPut(feature) { mutableMapOf() }.putAll(settings)
-                written += settings.size
+        section.entrySet().forEach { (category, featuresJson) ->
+            val storedCategory = settingsByCategory.get(category) as? JsonObject
+                ?: JsonObject().also { settingsByCategory.add(category, it) }
+            (featuresJson as? JsonObject)?.entrySet()?.forEach { (featureId, settingsJson) ->
+                val pastedSettings = settingsJson as? JsonObject ?: return@forEach
+                val storedSettings = storedCategory.get(featureId) as? JsonObject
+                    ?: JsonObject().also { storedCategory.add(featureId, it) }
+                pastedSettings.entrySet().forEach { (settingKey, value) -> storedSettings.add(settingKey, value) }
+                written += pastedSettings.size()
             }
         }
 
@@ -82,10 +82,11 @@ object ConfigShare {
         return Pasted.Applied(parts[1], written)
     }
 
-    private fun exportConfigType(configType: ConfigType): Map<String, MutableMap<String, MutableMap<String, Any>>> =
-        MagicAddonsConfigJsonHandler.configMap.filter {
-            (it.key == Customization.CATEGORY) == (configType == ConfigType.Ui)
-        }
+    private fun exportConfigType(configType: ConfigType): JsonObject = JsonObject().also { section ->
+        MagicAddonsConfigJsonHandler.settingsByCategory.entrySet()
+            .filter { (category, _) -> (category == Customization.CATEGORY) == (configType == ConfigType.Ui) }
+            .forEach { (category, featuresJson) -> section.add(category, featuresJson) }
+    }
 
     private fun playerName(): String =
         Minecraft.getInstance().user.name.replace(SEPARATOR, ' ').takeIf { it.isNotBlank() } ?: "Unknown"

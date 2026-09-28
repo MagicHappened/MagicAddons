@@ -1,41 +1,32 @@
 package org.magic.magicaddons.data.greenhouse.transfer
 
-import org.magic.magicaddons.data.greenhouse.crops.*
 import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
 import org.magic.magicaddons.data.greenhouse.crops.CropRegistry
-import org.magic.magicaddons.data.greenhouse.crops.Plant
 import org.magic.magicaddons.data.greenhouse.plot.GREENHOUSE_SIZE
 import org.magic.magicaddons.data.greenhouse.plot.LayoutSlot
 import org.magic.magicaddons.data.greenhouse.plot.PlotLayout
 
-/**
- * Layouts as greenhouse.skyshards.com shares them: `inputs|targets|grid`, raw-deflated and written
- * in url-safe base64. The palettes are base36 crop indices; the grid is one letter a cell, lower
- * case for inputs and upper for targets, and two letters once a palette passes twenty six crops.
- */
+/** greenhouse.skyshards.com links: `inputs|targets|grid`, raw-deflated in url-safe base64 */
 object SkyShardsFormat : LayoutFormat {
 
     override val displayName: String = "SkyShards"
 
-    private const val URL: String = "https://greenhouse.skyshards.com/designer?layout="
+    private const val SHARE_URL: String = "https://greenhouse.skyshards.com/designer?layout="
 
-    private const val GRID: Int = GREENHOUSE_SIZE
-    private const val CELLS: Int = GRID * GRID
+    private const val GRID_SIZE: Int = GREENHOUSE_SIZE
+    private const val CELL_COUNT: Int = GRID_SIZE * GRID_SIZE
 
     private const val ALPHABET: String = "abcdefghijklmnopqrstuvwxyz"
 
-    /** Past this many crops in a palette the site writes two letters a cell instead of one. */
-    private const val SINGLE_LETTER_MAX: Int = 26
+    private const val MAX_SINGLE_LETTER_CROP_TYPES: Int = 26
 
-    /** The base crops, indexed from zero. */
-    private val BASE: List<String> = listOf(
+    private val BASE_CROP_IDS: List<String> = listOf(
         "wheat", "potato", "carrot", "pumpkin", "melon", "cocoa_beans", "sugar_cane", "cactus",
         "nether_wart", "red_mushroom", "brown_mushroom", "moonflower", "sunflower", "wild_rose",
         "fire", "dead_plant", "fermento"
     )
 
-    /** The mutations, indexed from where the base crops leave off. */
-    private val MUTATIONS: List<String> = listOf(
+    private val MUTATION_IDS: List<String> = listOf(
         "ashwreath", "choconut", "dustgrain", "gloomgourd", "lonelily", "scourroot", "shadevine",
         "veilshroom", "witherbloom", "chocoberry", "cindershade", "coalroot", "creambloom",
         "duskbloom", "thornshade", "blastberry", "cheesebite", "chloronite", "do_not_eat_shroom",
@@ -45,36 +36,31 @@ object SkyShardsFormat : LayoutFormat {
         "jerryflower", "phantomleaf", "timestalk"
     )
 
-    private val idOf: Map<CropDefinition, String> by lazy {
+    private val siteIdOf: Map<CropDefinition, String> by lazy {
         buildMap {
-            (BASE + MUTATIONS).forEach { id -> CropRegistry.findByLooseName(id)?.let { putIfAbsent(it, id) } }
+            (BASE_CROP_IDS + MUTATION_IDS).forEach { id -> CropRegistry.findByLooseName(id)?.let { putIfAbsent(it, id) } }
         }
     }
 
-    private fun definitionFor(id: String): CropDefinition? = CropRegistry.findByLooseName(id)
-
-    private fun cropAt(index: Int): String? = when {
+    private fun siteIdAt(index: Int): String? = when {
         index < 0 -> null
-        index < BASE.size -> BASE[index]
-        else -> MUTATIONS.getOrNull(index - BASE.size)
+        index < BASE_CROP_IDS.size -> BASE_CROP_IDS[index]
+        else -> MUTATION_IDS.getOrNull(index - BASE_CROP_IDS.size)
     }
 
-    private fun indexOf(id: String): Int {
-        val base = BASE.indexOf(id)
+    private fun siteIndexOf(id: String): Int {
+        val base = BASE_CROP_IDS.indexOf(id)
         if (base >= 0) return base
 
-        val mutation = MUTATIONS.indexOf(id)
-        return if (mutation >= 0) BASE.size + mutation else -1
+        val mutation = MUTATION_IDS.indexOf(id)
+        return if (mutation >= 0) BASE_CROP_IDS.size + mutation else -1
     }
-
-    // ------------------------------------------------------------------ the wrapping
 
     private fun decode(share: String): String? = RawDeflate.decode(share)?.toString(Charsets.UTF_8)
 
     private fun encode(text: String): String = RawDeflate.encode(text.toByteArray(Charsets.UTF_8))
 
-    /** The share string out of whatever the player copied: either link shape, or the string bare. */
-    private fun payloadOf(text: String): String = text.trim().let {
+    private fun linkCodeOf(text: String): String = text.trim().let {
         when {
             "layout=" in it -> it.substringAfter("layout=").substringBefore('&')
             "/share/" in it -> it.substringAfter("/share/").substringBefore('?')
@@ -82,15 +68,13 @@ object SkyShardsFormat : LayoutFormat {
         }
     }
 
-    // ------------------------------------------------------------------ reading
-
     override fun canImport(text: String): Boolean {
-        val decoded = decode(payloadOf(text)) ?: return false
+        val decoded = decode(linkCodeOf(text)) ?: return false
         return decoded.count { it == '|' } == 2
     }
 
     override fun import(text: String, layoutId: String): LayoutTransferResult {
-        val decoded = decode(payloadOf(text))
+        val decoded = decode(linkCodeOf(text))
             ?: return LayoutTransferResult.Failure("Failed to decode SkyShards layout.")
 
         val fields = decoded.split('|')
@@ -100,42 +84,41 @@ object SkyShardsFormat : LayoutFormat {
 
         val (inputField, targetField, grid) = fields
 
-        if (grid.length != CELLS && grid.length != CELLS * 2) {
-            return LayoutTransferResult.Failure("SkyShards grid covered ${grid.length} cells, not $CELLS.")
+        if (grid.length != CELL_COUNT && grid.length != CELL_COUNT * 2) {
+            return LayoutTransferResult.Failure("SkyShards grid covered ${grid.length} cells, not $CELL_COUNT.")
         }
 
-        val width = grid.length / CELLS
+        val lettersPerCell = grid.length / CELL_COUNT
         val notes = mutableListOf<String>()
 
         fun palette(field: String): List<String?> =
             if (field.isBlank()) emptyList()
-            else field.split(',').map { cropAt(it.trim().toIntOrNull(36) ?: -1) }
+            else field.split(',').map { siteIdAt(it.trim().toIntOrNull(36) ?: -1) }
 
         val inputs = palette(inputField)
         val targets = palette(targetField)
 
         val layout = PlotLayout(id = layoutId)
-        val claimed = Array(GRID) { BooleanArray(GRID) }
-        val unknown = mutableSetOf<String>()
+        val unknownCropIds = mutableSetOf<String>()
 
-        for (cell in 0 until CELLS) {
-            val row = cell / GRID
-            val column = cell % GRID
+        for (cell in 0 until CELL_COUNT) {
+            val row = cell / GRID_SIZE
+            val column = cell % GRID_SIZE
 
-            if (claimed[row][column]) continue
+            if (layout.plantCovering(column, row) != null) continue
 
-            val token = grid.substring(cell * width, (cell + 1) * width)
-            if (token.all { it == '.' }) continue
+            val cellLetters = grid.substring(cell * lettersPerCell, (cell + 1) * lettersPerCell)
+            if (cellLetters.all { it == '.' }) continue
 
-            val index = if (width == 1) {
-                ALPHABET.indexOf(token[0].lowercaseChar())
+            val index = if (lettersPerCell == 1) {
+                ALPHABET.indexOf(cellLetters[0].lowercaseChar())
             } else {
-                val high = ALPHABET.indexOf(token[0].lowercaseChar())
-                val low = ALPHABET.indexOf(token[1].lowercaseChar())
+                val high = ALPHABET.indexOf(cellLetters[0].lowercaseChar())
+                val low = ALPHABET.indexOf(cellLetters[1].lowercaseChar())
                 if (high < 0 || low < 0) -1 else high * ALPHABET.length + low
             }
 
-            val isTarget = token[0].isUpperCase()
+            val isTarget = cellLetters[0].isUpperCase()
             val id = (if (isTarget) targets else inputs).getOrNull(index)
 
             if (id == null) {
@@ -143,120 +126,96 @@ object SkyShardsFormat : LayoutFormat {
                 continue
             }
 
-            val definition = definitionFor(id)
+            val definition = CropRegistry.findByLooseName(id)
             if (definition == null) {
-                unknown.add(id)
+                unknownCropIds.add(id)
                 continue
             }
 
             val footprint = definition.footprint
-
-            // a crop hanging off the edge is one broken plant rather than one per cell it covers
-            if (row + footprint.height > GRID || column + footprint.width > GRID) {
+            if (row + footprint.height > GRID_SIZE || column + footprint.width > GRID_SIZE) {
                 notes.add("$id did not fit where SkyShards put it")
                 continue
             }
 
             val marking = if (isTarget) LayoutSlot.Marking.Target else LayoutSlot.Marking.Ingredient
-            var anchor: LayoutSlot? = null
-
-            for (offsetX in 0 until footprint.width) {
-                for (offsetY in 0 until footprint.height) {
-                    claimed[row + offsetY][column + offsetX] = true
-
-                    val slot = layout.getSlot(column + offsetX, row + offsetY)
-                    slot?.soil = definition.requiredSoil.firstOrNull()
-                    slot?.mark = marking
-
-                    if (offsetX == 0 && offsetY == 0) anchor = slot
-                }
-            }
-
-            layout.plants.add(
-                Plant(definition.elementId, anchor ?: continue, cropDef = definition)
-            )
+            layout.placeImportedPlant(definition, column, row, marking)
         }
 
-        if (unknown.isNotEmpty()) {
-            notes.add("No crop described here for ${unknown.joinToString(", ")}")
+        if (unknownCropIds.isNotEmpty()) {
+            notes.add("No crop described here for ${unknownCropIds.joinToString(", ")}")
         }
 
         return LayoutTransferResult.Imported(layout, notes)
     }
 
-    // ------------------------------------------------------------------ writing
-
     override fun export(layout: PlotLayout): LayoutTransferResult {
         val notes = mutableListOf<String>()
-        val unsupported = mutableSetOf<String>()
+        val unknownCropNames = mutableSetOf<String>()
 
-        // the palettes in the order they are first met, since a cell names a crop by where it sits
-        // in its own palette rather than by the crop's number
-        val inputOrder = LinkedHashMap<String, MutableList<Int>>()
-        val targetOrder = LinkedHashMap<String, MutableList<Int>>()
+        val inputCellsById = LinkedHashMap<String, MutableList<Int>>()
+        val targetCellsById = LinkedHashMap<String, MutableList<Int>>()
 
-        layout.plants.forEach { instance ->
-            val definition = instance.cropDef
-            val id = idOf[definition]
+        layout.plants.forEach { plant ->
+            val definition = plant.cropDef
+            val id = siteIdOf[definition]
 
             if (id == null) {
-                unsupported.add(definition.name)
+                unknownCropNames.add(definition.name)
                 return@forEach
             }
 
-            val isTarget = instance.slot.mark == LayoutSlot.Marking.Target
+            val isTarget = plant.slot.mark == LayoutSlot.Marking.Target
 
-            // a target is the plant being grown towards, which is always a mutation. A base crop
-            // marked as one has nowhere to go in the share, so it travels as an input instead
-            if (isTarget && indexOf(id) < BASE.size) {
+            if (isTarget && siteIndexOf(id) < BASE_CROP_IDS.size) {
                 notes.add("${definition.name} is marked as a target, which SkyShards keeps for mutations")
             }
 
-            val into = if (isTarget && indexOf(id) >= BASE.size) targetOrder else inputOrder
-            val cells = into.getOrPut(id) { mutableListOf() }
+            val palette = if (isTarget && siteIndexOf(id) >= BASE_CROP_IDS.size) targetCellsById else inputCellsById
+            val cells = palette.getOrPut(id) { mutableListOf() }
 
             for (offsetY in 0 until definition.footprint.height) {
                 for (offsetX in 0 until definition.footprint.width) {
-                    val x = instance.slot.x + offsetX
-                    val y = instance.slot.y + offsetY
+                    val x = plant.slot.x + offsetX
+                    val y = plant.slot.y + offsetY
 
-                    if (x in 0 until GRID && y in 0 until GRID) cells.add(y * GRID + x)
+                    if (x in 0 until GRID_SIZE && y in 0 until GRID_SIZE) cells.add(y * GRID_SIZE + x)
                 }
             }
         }
 
-        val inputs = inputOrder.keys.toList()
-        val targets = targetOrder.keys.toList()
+        val inputs = inputCellsById.keys.toList()
+        val targets = targetCellsById.keys.toList()
 
         if (inputs.size > ALPHABET.length * ALPHABET.length || targets.size > ALPHABET.length * ALPHABET.length) {
             return LayoutTransferResult.Failure("Too many different crops for a SkyShards link.")
         }
 
-        val twoLetter = inputs.size > SINGLE_LETTER_MAX || targets.size > SINGLE_LETTER_MAX
-        val empty = if (twoLetter) ".." else "."
-        val grid = MutableList(CELLS) { empty }
+        val isTwoLetter = inputs.size > MAX_SINGLE_LETTER_CROP_TYPES || targets.size > MAX_SINGLE_LETTER_CROP_TYPES
+        val emptyCell = if (isTwoLetter) ".." else "."
+        val grid = MutableList(CELL_COUNT) { emptyCell }
 
         fun letters(index: Int): String =
-            if (twoLetter) "${ALPHABET[index / ALPHABET.length]}${ALPHABET[index % ALPHABET.length]}"
+            if (isTwoLetter) "${ALPHABET[index / ALPHABET.length]}${ALPHABET[index % ALPHABET.length]}"
             else "${ALPHABET[index]}"
 
         inputs.forEachIndexed { index, id ->
-            inputOrder[id]?.forEach { grid[it] = letters(index) }
+            inputCellsById[id]?.forEach { grid[it] = letters(index) }
         }
         targets.forEachIndexed { index, id ->
-            targetOrder[id]?.forEach { grid[it] = letters(index).uppercase() }
+            targetCellsById[id]?.forEach { grid[it] = letters(index).uppercase() }
         }
 
         val text = listOf(
-            inputs.joinToString(",") { indexOf(it).toString(36) },
-            targets.joinToString(",") { indexOf(it).toString(36) },
+            inputs.joinToString(",") { siteIndexOf(it).toString(36) },
+            targets.joinToString(",") { siteIndexOf(it).toString(36) },
             grid.joinToString("")
         ).joinToString("|")
 
-        if (unsupported.isNotEmpty()) {
-            notes.add("Left out of the link, SkyShards has no ${unsupported.joinToString(", ")}")
+        if (unknownCropNames.isNotEmpty()) {
+            notes.add("Left out of the link, SkyShards has no ${unknownCropNames.joinToString(", ")}")
         }
 
-        return LayoutTransferResult.Exported(URL + encode(text), notes)
+        return LayoutTransferResult.Exported(SHARE_URL + encode(text), notes)
     }
 }

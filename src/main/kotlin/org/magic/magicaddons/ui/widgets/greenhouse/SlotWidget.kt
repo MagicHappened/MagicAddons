@@ -10,31 +10,24 @@ import org.magic.magicaddons.data.greenhouse.plot.LayoutSlot
 import org.magic.magicaddons.util.ScreenUtil
 import org.magic.magicaddons.util.ScreenUtil.drawCheckerboard
 
-/** One slot of a grid: the soil asked for, or the checkerboard when a preset asks for air. */
 class SlotWidget(
     val slot: LayoutSlot,
-    private val inPreset: Boolean
+    isInPreset: Boolean
 ) : Renderable {
-
-    private var sprite: TextureAtlasSprite? = null
 
     var x: Int = 0
     var y: Int = 0
     var width: Int = 0
     var height: Int = 0
 
-    /** Whether the checkerboard is drawn: a preset asking for air. A real plot draws nothing there. */
-    private var air: Boolean = false
+    private val isDrawnAsAir: Boolean = isInPreset && slot.soil == Blocks.AIR
 
-    fun init() {
-        val block = slot.soil
-        val isAir = block == Blocks.AIR
-        air = isAir && inPreset
-        sprite = if (block == null || isAir) null else ScreenUtil.getSpriteForState(block.defaultBlockState(), Direction.UP)
-    }
+    private val sprite: TextureAtlasSprite? = slot.soil
+        ?.takeIf { it != Blocks.AIR }
+        ?.let { ScreenUtil.spriteFor(it.defaultBlockState(), Direction.UP) }
 
     override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
-        if (air) {
+        if (isDrawnAsAir) {
             graphics.drawCheckerboard(x, y, x + width, y + height)
             return
         }

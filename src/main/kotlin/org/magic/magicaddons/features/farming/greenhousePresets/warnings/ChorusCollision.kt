@@ -9,10 +9,9 @@ import org.magic.magicaddons.data.greenhouse.plot.GreenhouseGrid
 import org.magic.magicaddons.data.greenhouse.plot.PlotLayout
 import org.magic.magicaddons.data.greenhouse.plot.PlotPrediction
 
-/** whether a greenhouse's chorus will run out of tiles and start breaking the other crops in it */
+//todo see if warning works correctly.
 object ChorusCollision {
 
-    /** a lost jellybean costs far more than a chorus given up */
     const val PLANNED_FOR_DEVIATIONS: Double = 2.33
 
     data class Report(
@@ -29,7 +28,6 @@ object ChorusCollision {
         val needsWarning: Boolean get() = chorusToBreak > 0
     }
 
-    /** null when the greenhouse holds no chorus */
     fun reportFor(grid: GreenhouseGrid, ticks: Int, weightMultiplier: Double): Report? =
         reportFor(grid.layout, ticks, weightMultiplier)
 
@@ -41,10 +39,8 @@ object ChorusCollision {
 
         val maxStage = ChorusFruit.definition.maxStage
 
-        // the lowest possible stage, so a maybe-grown chorus still counts as moving
         val movingChorus = chorusPlants.filter { (it.lowestStage ?: 1) < maxStage }
 
-        // a chorus this close to the end stops moving inside the window, handing its tile back
         val ripeningChorus = movingChorus.count { (it.lowestStage ?: 1) >= maxStage - ticks }
 
         val occupied = occupiedTiles(layout)
@@ -59,12 +55,10 @@ object ChorusCollision {
         val expectedBirths = spawnChances.sum() * ticks
         val birthDeviation = sqrt(spawnChances.sumOf { it * (1 - it) } * ticks)
 
-        // a birth costs two tiles: it fills one and adds a chorus to teleport into one
         val tilesNeeded = 2 * ceil(expectedBirths + PLANNED_FOR_DEVIATIONS * birthDeviation).toInt()
         val tilesSpare = freeTiles - movingChorus.size
         val spareWithRipening = tilesSpare + ripeningChorus
 
-        // breaking a moving chorus frees two tiles, harvesting a ripe one frees one
         val chorusToBreak = if (spareWithRipening < tilesNeeded) ceil((tilesNeeded - spareWithRipening) / 2.0).toInt() else 0
 
         return Report(
@@ -75,7 +69,6 @@ object ChorusCollision {
             tilesSpare = tilesSpare,
             tilesNeeded = tilesNeeded,
             chorusToBreak = chorusToBreak,
-            // only jellybeans this plot grew itself
             growingJellybeansAtRisk = layout.plants.count {
                 it.cropDef == MagicJellybean.definition &&
                         it.grewInPlace &&
@@ -85,7 +78,6 @@ object ChorusCollision {
         )
     }
 
-    /** a big crop fills every tile it covers */
     private fun occupiedTiles(layout: PlotLayout): BooleanArray {
         val occupied = BooleanArray(GREENHOUSE_SIZE * GREENHOUSE_SIZE)
 

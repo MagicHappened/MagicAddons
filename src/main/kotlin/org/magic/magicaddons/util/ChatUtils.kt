@@ -10,7 +10,6 @@ import net.minecraft.network.chat.HoverEvent
 import net.minecraft.network.chat.Style
 import org.magic.magicaddons.features.customization.Customization
 import org.magic.magicaddons.util.compat.McCompat
-import org.magic.mixins.ChatComponentAccessor
 import java.time.Instant
 
 object ChatUtils {
@@ -37,29 +36,26 @@ object ChatUtils {
         return buildWithPrefix(Component.literal(body).withStyle(ChatFormatting.WHITE))
     }
 
-    /** sends the prefixed line and returns it, for [retract] */
     fun sendWithPrefix(message: Component): Component {
         val prefixed = buildWithPrefix(message)
         Minecraft.getInstance().player?.sendSystemMessage(prefixed)
         return prefixed
     }
 
-    /** removes the newest copy of a line this mod sent from chat */
     fun retract(message: Component) {
-        val chat = McCompat.chat() as ChatComponentAccessor
-        val messages = chat.`magicaddons$allMessages`()
+        val chat = McCompat.chat()
+        val messages = chat.allMessages
         val wanted = message.string
 
         val newest = messages.filter { it.content().string == wanted }.maxByOrNull { it.addedTime() } ?: return
         messages.remove(newest)
-        chat.`magicaddons$refreshTrimmedMessages`()
+        chat.refreshTrimmedMessages()
     }
 
     fun sendCommand(command: String) {
         Minecraft.getInstance().player?.connection?.sendCommand(command)
     }
 
-    /** a length of time as the mod writes it in chat: "2m 18s", or "45s" under a minute */
     fun shortDuration(ms: Long): String {
         val seconds = (ms / 1000).coerceAtLeast(0)
 
@@ -67,7 +63,7 @@ object ChatUtils {
     }
 
     fun buildWithPrefix(message: Component?): MutableComponent {
-        val prefix = Component.literal("[MA] ").withColor(Customization.prefixColour)
+        val prefix = Component.literal("[MA] ").withColor(Customization.prefixColor)
 
         return if (message != null && message != Component.empty()) prefix.append(message) else prefix
     }
@@ -124,7 +120,6 @@ object ChatUtils {
             ?: true
     }
 
-    /** Sends the warnings, at most once a minute. */
     fun sendWarningsComponents(messages: List<Component>) {
         if (cooldownReady()) {
             lastWarningTime = Instant.now()

@@ -96,17 +96,15 @@ object PlantDiagnostics {
 
         if (nextStage?.contains(Regex("\\d")) ?: false) {
             if (GreenhouseData.inOwnGreenhouse()) {
-                val was = GreenhouseData.miscInfo.nextTickTime
+                val lastTickTime = GreenhouseData.miscInfo.nextTickTime
 
                 GreenhouseData.miscInfo.nextTickTime = Instant.now().plusMillis(nextStage.parseDurationToMs())
                 GreenhouseData.lastCheckTime = Instant.now()
 
-                // how far the countdown had drifted by the moment the game stated it, for reading
-                // a session back later
-                was?.let {
-                    val movedS = Duration.between(it, GreenhouseData.miscInfo.nextTickTime).toSeconds()
+                lastTickTime?.let {
+                    val movedSeconds = Duration.between(it, GreenhouseData.miscInfo.nextTickTime).toSeconds()
 
-                    Common.LOGGER.info("[tick] resynced from the game: countdown moved ${movedS}s")
+                    Common.LOGGER.info("[tick] resynced from the game: countdown moved ${movedSeconds}s")
                 }
 
                 GreenhouseData.realignWithGameTime()
@@ -133,7 +131,7 @@ object PlantDiagnostics {
             waterLevel?.let {
                 element.plant.waterLevel = it
                 element.plant.waterBestCase = null
-                element.plant.waterPredictedInDebt = false
+                element.plant.waterPredictedNegative = false
                 element.plant.waterExact = true
             }
         }
@@ -164,7 +162,6 @@ object PlantDiagnostics {
             }
 
         if (hit == null) {
-            ChatUtils.sendWithPrefix("Nothing was pointed at, so there is no plant to correct.")
             return
         }
         

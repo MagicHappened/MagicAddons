@@ -9,12 +9,10 @@ import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.plot.GREENHOUSE_SIZE
 import tech.thatgravyboat.skyblockapi.api.profile.garden.Plot
 
-/** Where a garden plot keeps its greenhouse, offset from the corner of the plot itself. */
 private const val BUILD_OFFSET = 43
 
 fun BlockPos.center(): Vec3 = Vec3(x + 0.5, y + 0.5, z + 0.5)
 
-/** Reads a duration the game wrote, such as "1d 4h 30m", as milliseconds. */
 fun String.parseDurationToMs(): Long {
     var totalMs = 0L
 
@@ -33,7 +31,6 @@ fun String.parseDurationToMs(): Long {
     return totalMs
 }
 
-/** A length of time in two units at most: "2d 3h", "9h 40m", "54m", "30s". */
 fun Long.toShortDuration(): String {
     val seconds = (this / 1000).coerceAtLeast(0)
     val minutes = seconds / 60
@@ -48,7 +45,24 @@ fun Long.toShortDuration(): String {
     }
 }
 
-/** The gap between this instant and [from], worded the way the game words its own timers. */
+fun Long.toCoarseDuration(): String {
+    val seconds = this / 1000
+
+    val days = seconds / 86400
+    val hours = seconds % 86400 / 3600
+    val minutes = seconds % 3600 / 60
+
+    return when {
+        days > 0 -> "${days}d ${hours}h"
+        seconds >= HOURS_ONLY_AFTER_SECONDS -> "${hours}h"
+        hours > 0 -> "${hours}h ${minutes}m"
+        minutes > 0 -> "${minutes}m"
+        else -> "${seconds}s"
+    }
+}
+
+private const val HOURS_ONLY_AFTER_SECONDS: Long = 6 * 60 * 60
+
 fun Instant.toReadableDuration(from: Instant = Instant.now()): String {
     var seconds = abs(Duration.between(this, from).seconds)
 
@@ -71,7 +85,6 @@ fun Instant.toReadableDuration(from: Instant = Instant.now()): String {
     return parts.joinToString(" ")
 }
 
-/** The ten by ten the greenhouse occupies, rather than the whole plot around it. */
 fun Plot.getBuildableArea(): AABB {
     val box = this.aabb
     val minX = box.minX + BUILD_OFFSET

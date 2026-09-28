@@ -16,13 +16,13 @@ object VersionCommand : AbstractCommand() {
         command.executes {
             ChatUtils.sendWithPrefix("Checking for a newer version…")
 
-            VersionChecker.check { found ->
+            VersionChecker.check(forceRefresh = true) { update ->
                 val player = Minecraft.getInstance().player ?: return@check
 
-                if (found.outdated) {
-                    player.sendSystemMessage(VersionChecker.updateMessage(found))
-                } else {
-                    ChatUtils.sendWithPrefix("Up to date (${found.current})")
+                when {
+                    update == null -> ChatUtils.sendWithPrefix("Could not check for a newer version right now.")
+                    update.isOutdated -> player.sendSystemMessage(VersionChecker.updateChatMessage(update))
+                    else -> ChatUtils.sendWithPrefix("Up to date (${update.current})")
                 }
             }
 

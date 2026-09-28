@@ -8,17 +8,23 @@ import net.minecraft.ChatFormatting
 import net.minecraft.client.Minecraft
 import net.minecraft.network.chat.ClickEvent
 import net.minecraft.network.chat.Component
+import net.minecraft.world.entity.decoration.ArmorStand
 import org.magic.magicaddons.commands.AbstractCommand
 import org.magic.magicaddons.commands.CropWords
 import org.magic.magicaddons.data.greenhouse.crops.MissingCropData
 import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseSpawnLog
+import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseData
 import org.magic.magicaddons.util.ChatUtils
+import org.magic.magicaddons.util.EntityUtils
+import org.magic.magicaddons.util.PlayerUtils
 import org.magic.magicaddons.util.VersionChecker
 
 object FarmingDebug : AbstractCommand() {
 
     private const val MISSING_WORD: String = "missing"
+
+    private const val SKULL_HASH_SHOWN_LENGTH: Int = 8
 
     override val argument: String = "farming"
 
@@ -65,12 +71,18 @@ object FarmingDebug : AbstractCommand() {
                         return@executes 1
                     }
             )
+            .then(
+                LiteralArgumentBuilder.literal<FabricClientCommandSource>("scanStatus")
+                    .executes {
+                        sendScanStatus()
+                        return@executes 1
+                    }
+            )
 
-        if (VersionChecker.onBeta()) farming.then(collect)
+        if (VersionChecker.isOnBeta()) farming.then(collect)
         return farming
     }
 
-    /** The dex, and under it "missing" then every crop as a command word. */
     private fun cropDataGapsCommand(): LiteralArgumentBuilder<FabricClientCommandSource> =
         LiteralArgumentBuilder.literal<FabricClientCommandSource>("plantDex")
             .executes {
@@ -96,7 +108,53 @@ object FarmingDebug : AbstractCommand() {
                 }
             )
 
-    /** Every crop still missing something, one line per tier with the crops in its hover. */
+    private fun sendScanStatus() {
+        val status = GreenhouseData.scanStatus()
+
+        if (status == null) {
+            ChatUtils.sendWithPrefix("Not standing in a greenhouse.")
+            return
+        }
+
+        val lastScan = status.lastScanAgoMs?.let { "last full scan ${seconds(it)} ago" } ?: "never scanned"
+        val waiting = status.deferredForMs?.let { "waiting for ${seconds(it)}" } ?: if (status.isSettled) "settled" else "not settled"
+
+        ChatUtils.sendWithPrefix(
+            Component.literal("Scan on ${status.plotName}: $waiting, $lastScan").withStyle(ChatFormatting.GOLD)
+        )
+
+        val lastChanged = status.lastChangedStand?.let { ". Last stand to change: ${describeStand(it)}" } ?: ""
+        ChatUtils.send(
+            Component.literal("  Quiet for ${status.quietForMs}ms of ${status.quietNeededMs}ms$lastChanged").withStyle(ChatFormatting.GRAY)
+        )
+
+        if (status.movingStands.isEmpty()) {
+            ChatUtils.send(Component.literal("  No stand is moving").withStyle(ChatFormatting.GRAY))
+            return
+        }
+
+        ChatUtils.send(Component.literal("  Stands still moving: ${status.movingStands.size}").withStyle(ChatFormatting.YELLOW))
+        status.movingStands.forEach { moving ->
+            val distance = "%.3f".format(moving.distanceToTarget)
+            ChatUtils.send(
+                Component.literal("   ${describeStand(moving.stand)}, $distance blocks from its target, for ${seconds(moving.movingForMs)}")
+                    .withStyle(ChatFormatting.GRAY)
+            )
+        }
+    }
+
+    private fun seconds(milliseconds: Long): String = "%.1fs".format(milliseconds / 1000.0)
+
+    private fun describeStand(stand: ArmorStand): String {
+        val carried = stand.customName?.string?.let { "\"$it\"" }
+            ?: PlayerUtils.getSkullHash(stand)?.let { "skull ${it.take(SKULL_HASH_SHOWN_LENGTH)}" }
+            ?: EntityUtils.heldItem(stand)?.second
+            ?: "empty stand"
+        val position = stand.blockPosition()
+
+        return "$carried at ${position.x} ${position.y} ${position.z}"
+    }
+
     private fun dumpMissingPlants() {
         val gaps = MissingCropData.gapsByTier()
 

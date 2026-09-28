@@ -9,7 +9,6 @@ import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState
 import org.magic.magicaddons.features.farming.greenhousePresets.playerActions.GreenhouseWatering
 import org.magic.magicaddons.util.getBuildableArea
 
-/** Reads other information about plants that isn't directly tied to stage. */
 object PlantBars {
 
     private const val READ_PLANT_BARS_DELAY: Int = 20

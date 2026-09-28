@@ -74,18 +74,12 @@ object PlayerUtils {
         return skinData.hash
     }
 
-    /** The skull an entity carries in any slot, the first one found. Some crops hold theirs in the main hand. */
     fun getSkullHash(entity: LivingEntity): String? =
         EquipmentSlot.entries.firstNotNullOfOrNull { getSkinHash(entity.getItemBySlot(it)) }
 
-    /** The skull texture hash of the helmet an entity wears, or null without one. */
     fun getHelmetHash(entity: LivingEntity): String? =
         getSkinHash(entity.getItemBySlot(EquipmentSlot.HEAD))
 
-    /**
-     * The skulls built here, one per texture hash. A new profile means a new texture to resolve,
-     * which shows as a head flickering blank for a moment every time one is rebuilt.
-     */
     private val skullCache = mutableMapOf<String, ItemStack>()
 
     fun getItemFromHash(hash: String): ItemStack = skullCache.getOrPut(hash) {
@@ -105,7 +99,6 @@ object PlayerUtils {
             .encodeToString(texturesJson.toByteArray(Charsets.UTF_8))
 
         val profile = GameProfile(
-            // the same id for the same texture, so the resolved skin is reused rather than fetched again
             uuid = UUID.nameUUIDFromBytes(hash.toByteArray(Charsets.UTF_8)),
             name = "",
             map = PropertyMap {

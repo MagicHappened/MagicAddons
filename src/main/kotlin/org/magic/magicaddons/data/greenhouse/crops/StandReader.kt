@@ -32,18 +32,18 @@ class StandReader(
         private val MULTIPLIER_REGEX = Regex("""(\d+)\s*x""", RegexOption.IGNORE_CASE)
 
         private val FILLED = McCompat.chatColor(ChatFormatting.BLUE)
-        private val DEBT = McCompat.chatColor(ChatFormatting.RED)
+        private val NEGATIVE = McCompat.chatColor(ChatFormatting.RED)
         private val EMPTY = setOf(
             McCompat.chatColor(ChatFormatting.WHITE), McCompat.chatColor(ChatFormatting.GRAY), McCompat.chatColor(ChatFormatting.DARK_GRAY)
         )
 
         private const val SHORTEST_GLYPH_BAR: Int = 3
 
-        class BarNotches(val filled: Int, val debt: Int, val otherColoured: Int, val total: Int)
+        class BarNotches(val filled: Int, val negative: Int, val otherColoured: Int, val total: Int)
 
         fun barNotches(name: Component): BarNotches? {
             var filled = 0
-            var debt = 0
+            var negative = 0
             var otherColoured = 0
             var total = 0
 
@@ -53,7 +53,7 @@ class StandReader(
                 if (notches > 0) {
                     when (style.color?.value) {
                         FILLED -> filled += notches
-                        DEBT -> debt += notches
+                        NEGATIVE -> negative += notches
                         in EMPTY -> Unit
                         else -> otherColoured += notches
                     }
@@ -66,7 +66,7 @@ class StandReader(
 
             if (total == 0) return null
 
-            return BarNotches(filled, debt, otherColoured, total)
+            return BarNotches(filled, negative, otherColoured, total)
         }
 
         private fun notchesIn(text: String): Int {
@@ -77,7 +77,7 @@ class StandReader(
         }
 
         fun barPercent(name: Component): Int? = barNotches(name)?.let {
-            (it.filled + it.debt + it.otherColoured) * 100 / it.total
+            (it.filled + it.negative + it.otherColoured) * 100 / it.total
         }
 
         fun nonWaterBar(key: String): StandReader = StandReader(
@@ -87,12 +87,12 @@ class StandReader(
         )
 
         fun nonWaterBarPercent(name: Component): Int? = barNotches(name)
-            ?.takeIf { it.filled == 0 && it.debt + it.otherColoured > 0 }
-            ?.let { (it.debt + it.otherColoured) * 100 / it.total }
+            ?.takeIf { it.filled == 0 && it.negative + it.otherColoured > 0 }
+            ?.let { (it.negative + it.otherColoured) * 100 / it.total }
 
         fun chargeBarPercent(name: Component): Int? = barNotches(name)
             ?.takeIf { it.filled == 0 }
-            ?.let { (it.debt + it.otherColoured) * 100 / it.total }
+            ?.let { (it.negative + it.otherColoured) * 100 / it.total }
 
         fun looksLikeWaterBar(name: Component): Boolean = barNotches(name)?.let { it.otherColoured == 0 } == true
 

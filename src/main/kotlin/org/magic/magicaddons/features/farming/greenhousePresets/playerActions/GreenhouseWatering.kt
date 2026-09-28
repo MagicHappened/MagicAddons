@@ -22,11 +22,8 @@ object GreenhouseWatering {
         "AQUAMASTER_X",
         "AQUAMASTER_HYDROMAX"
     )
+    private val WATERING_WINDOW: Duration = Duration.ofSeconds(5)
 
-    /** How long after a watering the bars are worth looking for before they take themselves away. */
-    private val WATERING_WINDOW: Duration = Duration.ofSeconds(10)
-
-    /** When the stands spawned by the last watering stop being expected. */
     private var wateringUntil: Instant? = null
 
     private fun isWateringCan(id: SkyBlockId): Boolean =
@@ -34,7 +31,6 @@ object GreenhouseWatering {
 
     fun wateringWindowOpen(): Boolean = wateringUntil?.isAfter(Instant.now()) == true
 
-    /** Opens the window if the held item is a watering can, and says whether it did. */
     fun startWateringWindow(heldId: SkyBlockId): Boolean {
         if (!isWateringCan(heldId)) return false
 
@@ -69,23 +65,18 @@ object GreenhouseWatering {
             if (!plant.cropDef.needsWater || plant.isPlacedMutation) return@forEach
 
             plant.waterLevel = barPercent.toDouble()
-            // a bar is only good to a notch, so the level it gives is exact only when it reads full
+
             plant.waterExact = barPercent >= PlotPrediction.WATER_FULL_LEVEL
             plant.waterBestCase = null
-            plant.waterPredictedInDebt = false
+            plant.waterPredictedNegative = false
         }
     }
 
-    /**
-     * A water bar as a level between -100 and 100: blue notches are water held, red notches debt.
-     * Any other colour is somebody else's bar, refused.
-     */
     private fun waterBarPercent(name: Component): Int? {
         val counted = StandReader.barNotches(name) ?: return null
         if (counted.otherColoured > 0) return null
 
-        // a bar cannot show both at once, and a negative level is the one worth reporting
-        if (counted.debt > 0) return -(counted.debt * 100 / counted.total)
+        if (counted.negative > 0) return -(counted.negative * 100 / counted.total)
 
         return counted.filled * 100 / counted.total
     }

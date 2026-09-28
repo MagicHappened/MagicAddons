@@ -12,10 +12,9 @@ import org.magic.magicaddons.util.ScreenUtil
 import org.magic.magicaddons.util.compat.McCompat
 import org.magic.magicaddons.Common
 
-/** The key that opens the hud editor, unbound until set in the controls menu. */
 object HudEditorKey {
 
-    private val key = KeyMappingHelper.registerKeyMapping(
+    private val hudEditorKeyMapping = KeyMappingHelper.registerKeyMapping(
         KeyMapping("key.magicaddons.hud_editor", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_UNKNOWN, Common.KEY_CATEGORY)
     )
 
@@ -24,8 +23,8 @@ object HudEditorKey {
     }
 
     @EventHandler
-    fun onTick(event: WorldTickEvent) {
-        while (key.consumeClick()) {
+    fun openEditorOnKeyPress(event: WorldTickEvent) {
+        while (hudEditorKeyMapping.consumeClick()) {
             if (McCompat.currentScreen() == null) ScreenUtil.setScreen(HudEditorScreen())
         }
     }

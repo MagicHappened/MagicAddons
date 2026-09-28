@@ -18,7 +18,6 @@ import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.Vec3
 import org.joml.Quaternionf
 
-/** One armor stand of a previewed plant, extracted for drawing, and where it sits in the scene. */
 data class StandInScene(
     val state: EntityRenderState,
     val x: Double,
@@ -26,10 +25,6 @@ data class StandInScene(
     val z: Double
 )
 
-/**
- * A whole plant handed to the gui to draw: its blocks, its stands, and how the viewer has it turned.
- * Each goes into its own texture with a real depth buffer, so a head can hide behind its own cane.
- */
 data class CropPreviewRenderState(
     val blocks: Map<BlockPos, BlockState>,
     val stands: List<StandInScene>,
@@ -55,14 +50,6 @@ data class CropPreviewRenderState(
         PictureInPictureRenderState.getBounds(bX0, bY0, bX1, bY1, scissor)
 }
 
-/**
- * Draws a [CropPreviewRenderState] the way the gui draws the player in the inventory: into its own
- * texture, submitted by the crop preview screen each frame.
- *
- * The scene is built from the same pieces the in-world holograms use: blocks go through
- * [WorldRenderer.submitSolidBlock] and stands through the entity render dispatcher, both against the scene's
- * centre so the plant turns about its own middle.
- */
 //? if >=26.2 {
 /*class CropPreviewRenderer : PictureInPictureRenderer<CropPreviewRenderState>() {
 *///?} else {
@@ -76,7 +63,6 @@ class CropPreviewRenderer(
 
     override fun getTextureLabel(): String = "magicaddons_crop_preview"
 
-    /** The base class parks the origin at the texture's bottom, which sinks a centre-based scene. */
     override fun getTranslateY(height: Int, guiScale: Int): Float = height / 2f
 
     //? if >=26.2 {
@@ -101,8 +87,6 @@ class CropPreviewRenderer(
         val collector = features.submitNodeStorage
     //?}
 
-        // the gui's y runs down, so the scene is flipped the way the inventory flips its player,
-        // then tilted and turned by however the viewer has dragged it
         poseStack.mulPose(
             Quaternionf()
                 .rotationZ(Math.PI.toFloat())

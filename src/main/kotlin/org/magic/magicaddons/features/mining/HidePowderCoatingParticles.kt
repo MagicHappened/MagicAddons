@@ -26,7 +26,6 @@ object HidePowderCoatingParticles : Feature() {
     var armorDirty = true
     var equippedDivan = false
 
-    /** How close a dust particle has to be to the player to be hidden. */
     private const val HIDE_RADIUS: Double = 4.0
 
     @EventHandler

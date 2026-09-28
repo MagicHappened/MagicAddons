@@ -2,44 +2,45 @@ package org.magic.magicaddons.ui.widgets
 
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import org.magic.magicaddons.Common
-import org.magic.magicaddons.util.ScreenUtil.eased
+import org.magic.magicaddons.util.ScreenUtil.easedProgress
 import org.magic.magicaddons.util.ScreenUtil.fillPill
 import org.magic.magicaddons.util.ScreenUtil.inRect
 
-/** A pill switch: an amber track with the knob on the right when on, a dark one with it on the left when off. */
-class SwitchWidget(var on: Boolean, val width: Int = WIDTH, val height: Int = HEIGHT) {
+class SwitchWidget(isOn: Boolean, val width: Int = WIDTH, val height: Int = HEIGHT) {
 
     var x: Int = 0
     var y: Int = 0
 
-    var hovered: Boolean = false
+    var isOn: Boolean = isOn
+        private set
 
-    /** When the switch last flipped, so the knob slides over rather than jumps. */
+    var isHovered: Boolean = false
+
     private var flippedAt: Long = 0
 
     fun set(value: Boolean) {
-        if (value == on) return
-        on = value
+        if (value == isOn) return
+        isOn = value
         flippedAt = System.currentTimeMillis()
     }
 
     fun render(graphics: GuiGraphicsExtractor) {
-        graphics.fillPill(x, y, x + width, y + height, if (on) Common.UI.ACCENT_COLOR else Common.UI.SWITCH_OFF_COLOR)
-        if (hovered) graphics.fillPill(x, y, x + width, y + height, Common.UI.HOVER_WASH)
+        graphics.fillPill(x, y, x + width, y + height, if (isOn) Common.UI.ACCENT_COLOR else Common.UI.SWITCH_OFF_COLOR)
+        if (isHovered) graphics.fillPill(x, y, x + width, y + height, Common.UI.HOVER_WASH)
 
-        val knob = height - KNOB_INSET * 2
-        val travel = width - KNOB_INSET * 2 - knob
-        val along = eased(flippedAt, SLIDE_MS)
-        val fraction = if (on) along else 1f - along
-        val knobX = x + KNOB_INSET + kotlin.math.round(travel * fraction).toInt()
+        val knobSize = height - KNOB_INSET * 2
+        val knobTravel = width - KNOB_INSET * 2 - knobSize
+        val slideProgress = easedProgress(flippedAt, SLIDE_MS)
+        val fraction = if (isOn) slideProgress else 1f - slideProgress
+        val knobX = x + KNOB_INSET + kotlin.math.round(knobTravel * fraction).toInt()
 
-        graphics.fillPill(knobX, y + KNOB_INSET, knobX + knob, y + KNOB_INSET + knob, if (on) Common.UI.TEXT_COLOR else Common.UI.DISABLED_TEXT_COLOR)
+        graphics.fillPill(knobX, y + KNOB_INSET, knobX + knobSize, y + KNOB_INSET + knobSize, if (isOn) Common.UI.TEXT_COLOR else Common.UI.DISABLED_TEXT_COLOR)
     }
 
     fun isMouseOver(mouseX: Double, mouseY: Double): Boolean = inRect(mouseX, mouseY, x, y, width, height)
 
     fun mouseMoved(mouseX: Double, mouseY: Double) {
-        hovered = isMouseOver(mouseX, mouseY)
+        isHovered = isMouseOver(mouseX, mouseY)
     }
 
     companion object {

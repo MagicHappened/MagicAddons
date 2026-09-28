@@ -88,7 +88,7 @@ object Godseed {
                         isSmall = false
                     )
                 ),
-                5..7
+                5..8
             ),
             CropStage(
                 blocks = StageBlock.atPositions(
@@ -122,7 +122,7 @@ object Godseed {
                         isSmall = false
                     )
                 ),
-                9..11
+                9..12
             ),
             CropStage(
                 blocks = StageBlock.atPositions(
@@ -463,7 +463,7 @@ object Godseed {
                         isSmall = false
                     )
                 ),
-                34..39
+                33..39
             ),
             CropStage(
                 blocks = StageBlock.atPositions(

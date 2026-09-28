@@ -32,7 +32,6 @@ import tech.thatgravyboat.skyblockapi.api.location.SkyBlockIsland
 object HighlightMobs : HighlightFeature() {
     override val highlightPriority: Int = 0
 
-    /** A corpse is outlined in the colour of its own armour; everything else is outlined white. */
     override fun highlightColor(entity: Entity): Int =
         corpseColor(entity) ?: 0xFFFFFFFF.toInt()
 
@@ -95,9 +94,8 @@ object HighlightMobs : HighlightFeature() {
                     BooleanSetting(
                         key = "PresetsShaftCorpses",
                         displayName = "Shaft Corpses",
-                        // each corpse named in the colour it is outlined in, as near as chat colours get
                         description = "§fHighlights the §9lapis§f, §6umber§f and §btungsten§f corpses in mineshafts.\n" +
-                                "§fEach is outlined in its own colour.",
+                                "§fEach is outlined in its own color.",
                         value = false,
                         children = listOf(
                             BooleanSetting(
@@ -127,7 +125,7 @@ object HighlightMobs : HighlightFeature() {
                     BooleanSetting(
                         key = "VanillaMobsEnabled",
                         displayName = "Vanilla Mobs",
-                        description = "§fEvery kind of living thing in the game itself, players included.",
+                        description = "§fEvery mob in vanilla Minecraft, players included.",
                         value = false,
                         children = listOf(vanillaMobsList)
                     )
@@ -138,7 +136,7 @@ object HighlightMobs : HighlightFeature() {
                 displayName = "Mob Name",
                 description = "§fHighlights mobs whose name contains this text.\n" +
                         "\n" +
-                        "§cNames usually sit on a separate armor stand above the mob,\n" +
+                        "§cNames are usually a separate armor stand above the mob,\n" +
                         "§cso the highlight is often shorter range than with the\n" +
                         "§cother highlight options.",
                 value = false,

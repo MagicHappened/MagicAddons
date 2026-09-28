@@ -3,52 +3,72 @@ package org.magic.magicaddons.util
 import com.google.gson.JsonParser
 import net.fabricmc.loader.api.FabricLoader
 import net.minecraft.ChatFormatting
+import net.minecraft.client.Minecraft
 import net.minecraft.network.chat.ClickEvent
 import net.minecraft.network.chat.Component
 import org.magic.magicaddons.Common
+import org.magic.magicaddons.events.EventBus
+import org.magic.magicaddons.events.EventHandler
+import org.magic.magicaddons.events.world.WorldTickEvent
+import tech.thatgravyboat.skyblockapi.api.SkyBlockAPI
+import tech.thatgravyboat.skyblockapi.api.events.base.Subscription
+import tech.thatgravyboat.skyblockapi.api.events.location.IslandChangeEvent
 import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 import java.time.Duration
+import java.time.Instant
 import java.util.concurrent.CompletableFuture
 
 object VersionChecker {
 
-    private const val REPO = "MagicHappened/MagicAddons"
-    private const val RELEASES_URL = "https://api.github.com/repos/$REPO/releases"
-    private const val BETA_COMPARE_URL = "https://api.github.com/repos/$REPO/compare/%s...beta"
+    init {
+        EventBus.register(this)
+        SkyBlockAPI.eventBus.register(this)
+    }
 
-    const val RELEASES_PAGE = "https://github.com/$REPO/releases/latest"
-    const val BETA_PAGE = "https://github.com/$REPO/actions?query=branch%3Abeta"
+    private const val GITHUB_REPO = "MagicHappened/MagicAddons"
+    private const val RELEASES_URL = "https://api.github.com/repos/$GITHUB_REPO/releases"
+    private const val BETA_COMPARE_URL = "https://api.github.com/repos/$GITHUB_REPO/compare/%s...beta"
+
+    const val RELEASES_PAGE = "https://github.com/$GITHUB_REPO/releases/latest"
+    const val BETA_PAGE = "https://github.com/$GITHUB_REPO/actions?query=branch%3Abeta"
+
+    private val ANNOUNCE_DELAY: Duration = Duration.ofSeconds(10)
 
     private val client: HttpClient by lazy {
         HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build()
     }
 
-    var result: Result? = null
+    var lastCheck: UpdateCheck? = null
         private set
 
-    private var checking = false
+    private var isChecking = false
 
-    data class Result(
+    private val pendingCallbacks = mutableListOf<(UpdateCheck?) -> Unit>()
+
+    private var announceAt: Instant? = null
+    private var isAnnounced = false
+
+    data class UpdateCheck(
         val current: String,
         val latest: String,
         val versionsBehind: Int,
-        val beta: Boolean
+        val isBeta: Boolean
     ) {
-        val outdated: Boolean get() = current != latest
+        val isOutdated: Boolean get() = current != latest
 
-        fun span(): String = when {
-            beta && versionsBehind > 1 -> "($current -> $latest - $versionsBehind commits behind)"
-            beta || versionsBehind <= 1 -> "($current -> $latest)"
+        fun versionGapText(): String = when {
+            isBeta && versionsBehind > 1 -> "($current -> $latest - $versionsBehind commits behind)"
+            isBeta || versionsBehind <= 1 -> "($current -> $latest)"
             else -> "($current -> $latest - $versionsBehind version changes)"
         }
 
-        fun headline(): String =
-            if (beta) "New beta version available! ${span()}" else "New version available! ${span()}"
+        fun updateHeadline(): String =
+            if (isBeta) "New beta version available! ${versionGapText()}" else "New version available! ${versionGapText()}"
 
-        fun page(): String = if (beta) BETA_PAGE else RELEASES_PAGE
+        fun downloadPage(): String = if (isBeta) BETA_PAGE else RELEASES_PAGE
     }
 
     fun currentVersion(): String =
@@ -57,74 +77,78 @@ object VersionChecker {
             .map { it.metadata.version.friendlyString }
             .orElse("unknown")
 
-    fun onBeta(): Boolean = currentVersion().contains(".beta.")
+    fun isOnBeta(): Boolean = currentVersion().contains(".beta.")
 
-    private fun releaseNumber(version: String): String = version.substringBefore('+')
+    private fun releaseNumberOf(version: String): String = version.substringBefore('+')
 
-    private fun betaCommit(version: String): String = version.substringAfter(".beta.", "").removeSuffix("-dirty")
+    private fun betaCommitOf(version: String): String = version.substringAfter(".beta.", "").removeSuffix("-dirty")
 
-    fun check(onDone: (Result) -> Unit = {}) {
-        if (checking) return
-        result?.let {
-            onDone(it)
+    fun check(forceRefresh: Boolean = false, onDone: (UpdateCheck?) -> Unit = {}) {
+        val cached = lastCheck
+        if (cached != null && !forceRefresh) {
+            onDone(cached)
             return
         }
 
-        checking = true
+        pendingCallbacks += onDone
+        if (isChecking) return
+        isChecking = true
 
-        CompletableFuture.supplyAsync { fetch() }
-            .thenAccept { found ->
-                checking = false
-                found ?: return@thenAccept
-
-                result = found
-                onDone(found)
-            }
+        CompletableFuture.supplyAsync { fetchLatest() }
             .exceptionally {
-                checking = false
                 Common.LOGGER.warn("Version check failed", it)
                 null
             }
+            .thenAccept { update -> Minecraft.getInstance().execute { finishCheck(update) } }
     }
 
-    private fun fetch(): Result? = if (onBeta()) fetchBeta() else fetchRelease()
+    private fun finishCheck(update: UpdateCheck?) {
+        isChecking = false
+        if (update != null) lastCheck = update
 
-    private fun fetchRelease(): Result? {
-        val body = get(RELEASES_URL) ?: return null
+        val callbacks = pendingCallbacks.toList()
+        pendingCallbacks.clear()
+        callbacks.forEach { it(update) }
+    }
+
+    private fun fetchLatest(): UpdateCheck? = if (isOnBeta()) fetchBeta() else fetchRelease()
+
+    private fun fetchRelease(): UpdateCheck? {
+        val body = fetchText(RELEASES_URL) ?: return null
         val tags = JsonParser.parseString(body).asJsonArray
             .mapNotNull { it.asJsonObject.get("tag_name")?.asString?.removePrefix("v") }
 
         if (tags.isEmpty()) return null
 
-        val current = releaseNumber(currentVersion())
+        val current = releaseNumberOf(currentVersion())
         val latest = tags.first()
 
-        val behind = tags.indexOf(current).let { if (it < 0) 1 else it }
+        val releasesBehind = tags.indexOf(current).let { if (it < 0) 1 else it }
 
-        return Result(current, latest, behind, beta = false)
+        return UpdateCheck(current, latest, releasesBehind, isBeta = false)
     }
 
-    private fun fetchBeta(): Result? {
+    private fun fetchBeta(): UpdateCheck? {
         val current = currentVersion()
-        val running = betaCommit(current)
-        if (running.isEmpty()) return null
+        val runningCommit = betaCommitOf(current)
+        if (runningCommit.isEmpty()) return null
 
-        val body = get(BETA_COMPARE_URL.format(running)) ?: return null
-        val compared = JsonParser.parseString(body).asJsonObject
-        val commits = compared.getAsJsonArray("commits")
-        val behind = compared.get("status")?.asString == "ahead" && commits != null && commits.size() > 0
+        val body = fetchText(BETA_COMPARE_URL.format(runningCommit)) ?: return null
+        val comparison = JsonParser.parseString(body).asJsonObject
+        val commits = comparison.getAsJsonArray("commits")
+        val isBehind = comparison.get("status")?.asString == "ahead" && commits != null && commits.size() > 0
 
-        val latest = if (behind) commits.last().asJsonObject.get("sha").asString.take(running.length) else running
+        val latest = if (isBehind) commits.last().asJsonObject.get("sha").asString.take(runningCommit.length) else runningCommit
 
-        return Result(
-            current = "${releaseNumber(current)}.$running",
-            latest = "${releaseNumber(current)}.$latest",
-            versionsBehind = if (behind) compared.get("ahead_by")?.asInt ?: 1 else 0,
-            beta = true
+        return UpdateCheck(
+            current = "${releaseNumberOf(current)}.$runningCommit",
+            latest = "${releaseNumberOf(current)}.$latest",
+            versionsBehind = if (isBehind) comparison.get("ahead_by")?.asInt ?: 1 else 0,
+            isBeta = true
         )
     }
 
-    private fun get(url: String): String? {
+    private fun fetchText(url: String): String? {
         val request = HttpRequest.newBuilder(URI(url))
             .header("Accept", "application/vnd.github+json")
             .header("User-Agent", Common.MOD_NAME)
@@ -136,13 +160,37 @@ object VersionChecker {
         return response.body().takeIf { response.statusCode() == 200 }
     }
 
-    fun updateMessage(found: Result): Component =
+    fun updateChatMessage(update: UpdateCheck): Component =
         ChatUtils.buildWithPrefix(
             ChatUtils.buildStyled(
-                found.headline(),
+                update.updateHeadline(),
                 ChatFormatting.WHITE,
-                Component.literal(found.page()),
-                ClickEvent.OpenUrl(URI(found.page())),
+                Component.literal(update.downloadPage()),
+                ClickEvent.OpenUrl(URI(update.downloadPage())),
             )
         )
+
+    @Subscription
+    fun onIslandChange(event: IslandChangeEvent) {
+        if (isAnnounced) return
+
+        announceAt = Instant.now().plus(ANNOUNCE_DELAY)
+        check()
+    }
+
+    @EventHandler
+    fun onWorldTick(event: WorldTickEvent) {
+        val due = announceAt ?: return
+        if (Instant.now().isBefore(due)) return
+
+        val player = Minecraft.getInstance().player ?: return
+        val update = lastCheck ?: return
+
+        announceAt = null
+        isAnnounced = true
+
+        if (!update.isOutdated) return
+
+        player.sendSystemMessage(updateChatMessage(update))
+    }
 }

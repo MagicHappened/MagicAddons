@@ -13,13 +13,13 @@ class PickWithOptionContext<T>(
     title: String,
     values: List<T>,
     private val optionLabel: String,
-    optionChecked: Boolean,
+    isOptionChecked: Boolean,
     private val optionTooltip: String?,
     private val context: OverlayContext,
     private val onPick: (T, Boolean) -> Unit
-) : AbstractSelectorContextMenu<T>(x, y, values, title, withSearch = false) {
+) : ListContextMenu<T>(x, y, values, title) {
 
-    private val checkbox = CheckboxWidget(CHECKBOX_SIZE, optionChecked)
+    private val optionCheckbox = CheckboxWidget(CHECKBOX_SIZE, isOptionChecked)
 
     override val footerHeight: Int get() = rowHeight
 
@@ -35,26 +35,26 @@ class PickWithOptionContext<T>(
             Common.UI.TEXT_COLOR,
             false
         )
-        checkbox.x = overlayX + overlayWidth - CHECKBOX_SIZE - Common.UI.TEXT_X_PAD
-        checkbox.y = footerTop + (footerHeight - CHECKBOX_SIZE) / 2
-        checkbox.render(graphics)
+        optionCheckbox.x = overlayX + overlayWidth - CHECKBOX_SIZE - Common.UI.TEXT_X_PAD
+        optionCheckbox.y = footerTop + (footerHeight - CHECKBOX_SIZE) / 2
+        optionCheckbox.render(graphics)
     }
 
     override fun renderOverlay(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
         super.renderOverlay(graphics, mouseX, mouseY, delta)
 
         val footerTop = overlayY + overlayHeight - footerHeight
-        val onFooter = mouseX in overlayX until overlayX + overlayWidth && mouseY in footerTop until footerTop + footerHeight
-        if (onFooter && optionTooltip != null) graphics.drawTooltipAtCursor(optionTooltip, mouseX, mouseY)
+        val isOverFooter = mouseX in overlayX until overlayX + overlayWidth && mouseY in footerTop until footerTop + footerHeight
+        if (isOverFooter && optionTooltip != null) graphics.drawTooltipAtCursor(optionTooltip, mouseX, mouseY)
     }
 
-    override fun footerClicked() {
-        checkbox.checked = !checkbox.checked
+    override fun onFooterClicked() {
+        optionCheckbox.isChecked = !optionCheckbox.isChecked
     }
 
     override fun onValueSelected(value: T) {
         context.removeOverlay(this)
-        onPick(value, checkbox.checked)
+        onPick(value, optionCheckbox.isChecked)
     }
 
     private companion object {

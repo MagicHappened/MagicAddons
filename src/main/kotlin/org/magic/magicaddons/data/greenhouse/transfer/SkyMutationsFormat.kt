@@ -3,9 +3,7 @@ package org.magic.magicaddons.data.greenhouse.transfer
 import blazing.chain.LZSEncoding
 import com.google.gson.JsonArray
 import com.google.gson.JsonParser
-import org.magic.magicaddons.data.greenhouse.crops.*
 import org.magic.magicaddons.data.greenhouse.crops.CropRegistry
-import org.magic.magicaddons.data.greenhouse.crops.Plant
 import org.magic.magicaddons.data.greenhouse.crops.definitions.basecrops.Melon
 import org.magic.magicaddons.data.greenhouse.crops.definitions.basecrops.Pumpkin
 import org.magic.magicaddons.data.greenhouse.crops.definitions.basecrops.Wheat
@@ -16,27 +14,21 @@ import org.magic.magicaddons.data.greenhouse.crops.definitions.rarecrops.Squash
 import org.magic.magicaddons.data.greenhouse.plot.LayoutSlot
 import org.magic.magicaddons.data.greenhouse.plot.PlotLayout
 
-/**
- * Layouts as skymutations.eu shares them: a link whose `layout` parameter is an LZString compressed
- * json array of `[row, column, name, marking]`, a big crop repeated over every cell it covers.
- */
+/** skymutations.eu links: `layout=` an LZString compressed json array of `[row, column, name, marking]` */
 object SkyMutationsFormat : LayoutFormat {
 
     override val displayName: String = "SkyMutations"
 
-    /** Where a shared layout lives, the encoded layout is appended to it. */
-    private const val URL: String = "https://skymutations.eu/greenhouse?layout="
+    private const val SHARE_URL: String = "https://skymutations.eu/greenhouse?layout="
 
-    /** Crops we name differently: skymutations names the vanilla three after their seeds. */
-    private val NAMES: Map<String, String> = mapOf(
+    private val SITE_NAME_BY_CROP_NAME: Map<String, String> = mapOf(
         "Wheat" to "Wheat Seeds",
         "Melon" to "Melon Seeds",
         "Pumpkin" to "Pumpkin Seeds",
         "Dead Plant" to "Dead Plants"
     )
 
-    /** Crops the site has no entry for. Its condensed helianthus is a different item from ours. */
-    private val NOT_ON_SITE: Set<String> = setOf(
+    private val CROPS_NOT_ON_SITE: Set<String> = setOf(
         "Cropie",
         "Squash",
         "Helianthus",
@@ -46,37 +38,35 @@ object SkyMutationsFormat : LayoutFormat {
     override fun canImport(text: String): Boolean = text.contains("layout=")
 
     override fun import(text: String, layoutId: String): LayoutTransferResult {
-        val encoded = text.substringAfter("layout=", "").substringBefore("&")
+        val layoutParameter = text.substringAfter("layout=", "").substringBefore("&")
 
-        if (encoded.isBlank()) {
+        if (layoutParameter.isBlank()) {
             return LayoutTransferResult.Failure("Invalid skymutations link.")
         }
 
-        val decoded = LZSEncoding.decompressFromEncodedURIComponent(encoded)
+        val layoutJson = LZSEncoding.decompressFromEncodedURIComponent(layoutParameter)
             ?: return LayoutTransferResult.Failure("Failed to decode SkyMutations layout.")
 
-        val entries = runCatching { JsonParser.parseString(decoded).asJsonArray }.getOrNull()
+        val cellEntries = runCatching { JsonParser.parseString(layoutJson).asJsonArray }.getOrNull()
             ?: return LayoutTransferResult.Failure("SkyMutations layout was not a list of plants.")
 
         val layout = PlotLayout(id = layoutId)
-        val occupied = Array(layout.size) { BooleanArray(layout.size) }
         val notes = mutableListOf<String>()
 
-        entries.forEach { element ->
-            val entry = runCatching { element.asJsonArray }.getOrNull() ?: return@forEach
-            if (entry.size() < 4) return@forEach
+        cellEntries.forEach { element ->
+            val cellEntry = runCatching { element.asJsonArray }.getOrNull() ?: return@forEach
+            if (cellEntry.size() < 4) return@forEach
 
-            val row = entry[0].asInt
-            val column = entry[1].asInt
+            val row = cellEntry[0].asInt
+            val column = cellEntry[1].asInt
 
             if (row !in 0 until layout.size || column !in 0 until layout.size) return@forEach
-            if (occupied[row][column]) return@forEach
+            if (layout.plantCovering(column, row) != null) return@forEach
 
-            // the site names three crops after their seeds
-            val siteName = entry[2].asString
-            val cropName = NAMES.entries.firstOrNull { it.value == siteName }?.key ?: siteName
+            val siteName = cellEntry[2].asString
+            val cropName = SITE_NAME_BY_CROP_NAME.entries.firstOrNull { it.value == siteName }?.key ?: siteName
 
-            val marking = LayoutSlot.Marking.entries.getOrNull(entry[3].asInt)
+            val marking = LayoutSlot.Marking.entries.getOrNull(cellEntry[3].asInt)
             if (marking == null) {
                 notes.add("Unknown marking on $cropName")
                 return@forEach
@@ -89,76 +79,53 @@ object SkyMutationsFormat : LayoutFormat {
             }
 
             val footprint = definition.footprint
-
-            // a crop hanging off the edge is one broken entry, not one broken entry per cell, so the
-            // whole crop is dropped on the first cell that would miss
             if (row + footprint.height > layout.size || column + footprint.width > layout.size) {
                 notes.add("Malformed data for plant $cropName")
                 return@forEach
             }
 
-            var topLeftSlot: LayoutSlot? = null
-
-            for (offsetX in 0 until footprint.width) {
-                for (offsetY in 0 until footprint.height) {
-                    occupied[row + offsetY][column + offsetX] = true
-
-                    val slot = layout.getSlot(column + offsetX, row + offsetY)
-                    slot?.soil = definition.requiredSoil.firstOrNull()
-                    slot?.mark = marking
-
-                    if (offsetX == 0 && offsetY == 0) topLeftSlot = slot
-                }
-            }
-
-            val anchor = topLeftSlot ?: return@forEach
-
-            layout.plants.add(
-                Plant(definition.elementId, anchor, cropDef = definition)
-            )
+            layout.placeImportedPlant(definition, column, row, marking)
         }
 
         return LayoutTransferResult.Imported(layout, notes)
     }
 
     override fun export(layout: PlotLayout): LayoutTransferResult {
-        val entries = JsonArray()
-        val unsupported = mutableSetOf<String>()
+        val cellEntries = JsonArray()
+        val unknownCropNames = mutableSetOf<String>()
 
-        layout.plants.forEach { instance ->
-            val definition = instance.cropDef
+        layout.plants.forEach { plant ->
+            val definition = plant.cropDef
 
-            // the site drops names it does not know, so a crop it never lists is left out of the
-            // link instead of turning into a silently missing plant
-            if (definition.name in NOT_ON_SITE) {
-                unsupported.add(definition.name)
+            if (definition.name in CROPS_NOT_ON_SITE) {
+                unknownCropNames.add(definition.name)
                 return@forEach
             }
 
-            val exportName = NAMES[definition.name] ?: definition.name
-            val slot = instance.slot
+            val siteName = SITE_NAME_BY_CROP_NAME[definition.name] ?: definition.name
+            val slot = plant.slot
             val marking = slot.mark ?: LayoutSlot.Marking.Ingredient
 
             for (offsetY in 0 until definition.footprint.height) {
                 for (offsetX in 0 until definition.footprint.width) {
-                    entries.add(JsonArray().apply {
+                    cellEntries.add(JsonArray().apply {
                         add(slot.y + offsetY)
                         add(slot.x + offsetX)
-                        add(exportName)
+                        add(siteName)
                         add(marking.ordinal)
                     })
                 }
             }
         }
 
-        val notes = if (unsupported.isEmpty()) {
+        val notes = if (unknownCropNames.isEmpty()) {
             emptyList()
         } else {
-            listOf("Left out of the link, skymutations has no ${unsupported.joinToString(", ")}")
+            listOf("Left out of the link, skymutations has no ${unknownCropNames.joinToString(", ")}")
         }
 
         return LayoutTransferResult.Exported(
-            URL + LZSEncoding.compressToEncodedURIComponent(entries.toString()),
+            SHARE_URL + LZSEncoding.compressToEncodedURIComponent(cellEntries.toString()),
             notes
         )
     }

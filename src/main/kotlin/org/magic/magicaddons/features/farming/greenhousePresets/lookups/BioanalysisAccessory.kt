@@ -2,12 +2,16 @@ package org.magic.magicaddons.features.farming.greenhousePresets.lookups
 
 import net.minecraft.client.Minecraft
 import net.minecraft.world.item.ItemStack
+import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseData
 import tech.thatgravyboat.skyblockapi.api.profile.items.accessory.AccessoryBagAPI
+import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockId.Companion.getSkyBlockId
 import tech.thatgravyboat.skyblockapi.utils.extentions.getLore
 
 object BioanalysisAccessory {
 
-    // the lore wraps mid-sentence, so the percent and the word it belongs to sit on separate lines
+    private const val BIOANALYSIS_ID_PREFIX: String = "item:bioanalysis_"
+
+    // the lore wraps mid-sentence, so the percent and the word sit on separate lines
     private val MUTATE_THEN_PERCENT: Regex = Regex("""mutat\w*[^%]{0,40}?(\d+(?:\.\d+)?)\s*%""", RegexOption.IGNORE_CASE)
     private val PERCENT_THEN_MUTATE: Regex = Regex("""(\d+(?:\.\d+)?)\s*%[^%]{0,40}?mutat""", RegexOption.IGNORE_CASE)
 
@@ -17,8 +21,13 @@ object BioanalysisAccessory {
         }.orEmpty()
         val accessoryBagItems = AccessoryBagAPI.getItems().map { it.item }
 
-        val bestMutationPercent = (accessoryBagItems + inventoryItems).maxOfOrNull { mutationChanceOf(it) } ?: 0.0
-        return 1.0 + bestMutationPercent / 100.0
+        val seenMutationPercent = (accessoryBagItems + inventoryItems)
+            .filter { it.getSkyBlockId()?.id?.startsWith(BIOANALYSIS_ID_PREFIX) == true }
+            .maxOfOrNull { mutationChanceOf(it) }
+        if (seenMutationPercent != null) GreenhouseData.miscInfo.lastSeenMutationChancePercent = seenMutationPercent
+
+        val mutationPercent = seenMutationPercent ?: GreenhouseData.miscInfo.lastSeenMutationChancePercent ?: 0.0
+        return 1.0 + mutationPercent / 100.0
     }
 
     private fun mutationChanceOf(item: ItemStack): Double {

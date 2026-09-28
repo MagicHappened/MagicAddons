@@ -46,20 +46,20 @@ object SafariHelper : HighlightFeature() {
     val hud: HudElement = object : HudElement("safari", "Safari Uniques") {
         override val defaultX: Int = 20
         override val defaultY: Int = 20
-        override val shadow: Boolean = true
+        override val hasTextShadow: Boolean = true
         override val situations: Set<HudSituation> = setOf(HudSituation.SAFARI)
 
         override val configTarget: ConfigTarget
-            get() = ConfigTarget(SafariHelper, listOf(baseSetting, uniqueTracking))
+            get() = ConfigTarget(SafariHelper, listOf(baseSetting, uniqueTrackingSetting))
 
-        override fun content(): HudContent? {
-            if (!baseSetting.value || !uniqueTracking.value) return null
+        override fun currentContent(): HudContent? {
+            if (!baseSetting.value || !uniqueTrackingSetting.value) return null
             if (LocationAPI.island != SkyBlockIsland.SAFARI) return null
 
             return HudContent(hudLines().map { HudLine.Text(it) })
         }
 
-        override fun sample(): HudContent = HudContent(buildList {
+        override fun sampleContent(): HudContent = HudContent(buildList {
             fun zone(name: String, player: String?, mobs: List<String>) {
                 val heading = Component.literal(name).withStyle(ChatFormatting.GOLD)
                 player?.let { heading.append(Component.literal(" ($it)").withStyle(ChatFormatting.AQUA)) }
@@ -91,15 +91,13 @@ object SafariHelper : HighlightFeature() {
     private val SPARKLING_PLING_PITCHES: List<Float> = listOf(1.0f, 1.0f, 1.0f)
     private const val SPARKLING_PLING_GAP: Int = 4
 
-    private const val MACAW: String = "Macaw"
+    private const val MACAW_NAME: String = "Macaw"
 
-    private val catchPatterns = listOf(
-        // "§a§lCAPTURE! §7You caught a §aTreefrog§7 and gained 2x §aTreefrog Shard§7!", with
-        // sparklings saying "received" and rewards after the shards
+    private val CATCH_MESSAGE_REGEXES = listOf(
+        // "§a§lCAPTURE! §7You caught a §aTreefrog§7 and gained 2x §aTreefrog Shard§7!"
         Regex("You caught an? (.+?) and (?:gained|received)"),
         // "§e§lLOOT SHARE! §7You received a §aPolaris Shard§7 from §bAceMech§7 catching a §aPolaris§7!"
         Regex("catching an? (.+?)!"),
-        // hideyho is a little different
         // "§a§lCAPTURE! §7You found the §9Hideyho§7, and as a reward it gave you 3x §9Hideyho Shard§7!"
         Regex("You found the (.+?), and as a reward"),
         // "§e§lLOOT SHARE! §7You received 3x §9Hideyho Shard§7 from §bMeowMeowLynn§7 finding the §9Hideyho§7!"
@@ -113,7 +111,7 @@ object SafariHelper : HighlightFeature() {
 
     override val highlightPriority: Int = 1
 
-    private val onlyUncaught = BooleanSetting(
+    private val onlyUncaughtSetting = BooleanSetting(
         key = "OnlyUncaught",
         displayName = "Only Uncaught",
         description = "Only highlights the uniques that have not been caught yet during this safari visit.",
@@ -131,7 +129,7 @@ object SafariHelper : HighlightFeature() {
 
     override val throughWalls: Boolean get() = throughWallsSetting.value
 
-    private val sparklingWarning = BooleanSetting(
+    private val sparklingWarningSetting = BooleanSetting(
         key = "SparklingWarning",
         displayName = "Sparkling Warning",
         description = "Puts a title on screen, sends a chat message and plays a few plings the first " +
@@ -139,62 +137,62 @@ object SafariHelper : HighlightFeature() {
         value = false
     )
 
-    private val mobHighlight = BooleanSetting(
+    private val mobHighlightSetting = BooleanSetting(
         key = "MobHighlight",
         displayName = "Mob Highlight",
         description = "Highlights the mobs and the grass treasure belonging to the safari zone you are in.",
         value = false,
         children = listOf(
             throughWallsSetting,
-            onlyUncaught,
-            sparklingWarning
+            onlyUncaughtSetting,
+            sparklingWarningSetting
         )
     )
 
-    private val sendToPartyChat = BooleanSetting(
+    private val sendToPartyChatSetting = BooleanSetting(
         key = "SendToPartyChat",
         displayName = "Send To Party Chat",
         description = "Sends the done message to the party chat instead of only to yourself.",
         value = false
     )
 
-    private val ignoreMacaw = BooleanSetting(
+    private val ignoreMacawSetting = BooleanSetting(
         key = "IgnoreMacaw",
         displayName = "Ignore Macaw",
-        description = "Adds a second done message for having caught everything except the macaw.",
+        description = "Adds a second done message for having caught everything except macaw.",
         value = false
     )
 
-    private val ownZoneOnly = BooleanSetting(
+    private val ownZoneOnlySetting = BooleanSetting(
         key = "OwnZoneOnly",
         displayName = "Only Own Zone",
         description = "Only sends the zone done message for your own zone",
         value = false
     )
 
-    private val zoneMessages = BooleanSetting(
+    private val zoneMessagesSetting = BooleanSetting(
         key = "ZoneMessages",
         displayName = "Zone Specific Messages",
         description = "Adds a done message for every safari zone that is finished before the last one.",
         value = false,
         children = listOf(
-            ownZoneOnly
+            ownZoneOnlySetting
         )
     )
 
-    private val doneMessage = BooleanSetting(
+    private val doneMessageSetting = BooleanSetting(
         key = "DoneMessage",
         displayName = "Done Message",
         description = "Sends a message when all unique critters have been caught.",
         value = false,
         children = listOf(
-            sendToPartyChat,
-            ignoreMacaw,
-            zoneMessages
+            sendToPartyChatSetting,
+            ignoreMacawSetting,
+            zoneMessagesSetting
         )
     )
 
-    private val shortenOtherZones = BooleanSetting(
+    private val onlyListOwnZoneSetting = BooleanSetting(
         key = "ShortenOtherZones",
         displayName = "Only List My Zone",
         description = "Writes out the mobs left in your own zone only. Every other zone is one line " +
@@ -202,14 +200,14 @@ object SafariHelper : HighlightFeature() {
         value = false
     )
 
-    private val uniqueTracking = BooleanSetting(
+    private val uniqueTrackingSetting = BooleanSetting(
         key = "UniqueTracking",
         displayName = "Unique Tracking",
         description = "Shows which unique mobs are still left to catch in the safari zone you are in.",
         value = false,
         children = listOf(
-            doneMessage,
-            shortenOtherZones
+            doneMessageSetting,
+            onlyListOwnZoneSetting
         )
     )
 
@@ -218,66 +216,63 @@ object SafariHelper : HighlightFeature() {
         description = description,
         value = false,
         children = listOf(
-            mobHighlight,
-            uniqueTracking
+            mobHighlightSetting,
+            uniqueTrackingSetting
         )
     )
 
     var currentZone: SafariZone? = null
         private set
 
-    private val caughtUniques = mutableSetOf<String>()
+    private val caughtUniqueNames = mutableSetOf<String>()
 
-    /** when the island was arrived on, which every done message counts from */
-    private var arrivedOnIslandAt: Instant? = null
+    private var arrivedOnSafariAt: Instant? = null
 
-    private val catchesByPlayer = mutableMapOf<String, MutableList<SafariZone>>()
+    private val catchZonesByPlayer = mutableMapOf<String, MutableList<SafariZone>>()
 
-    /** each players assigned zone */
-    private val playerZones = mutableMapOf<String, SafariZone>()
+    private val zoneByPlayer = mutableMapOf<String, SafariZone>()
 
-    private val zoneOfMob: Map<String, SafariZone> by lazy {
+    private val zoneByMobName: Map<String, SafariZone> by lazy {
         SafariZone.entries
             .flatMap { zone -> zone.uniqueMobs.map { it.displayName.lowercase() to zone } }
             .toMap()
     }
 
-    private const val CATCHES_BEFORE_PLAYER_GUESS: Int = 2
+    private const val CATCHES_BEFORE_ZONE_GUESS: Int = 2
 
-    private val CATCHER_REGEX = Regex("""from (\S+) (?:catching|finding)""")
+    private val LOOT_SHARE_CATCHER_REGEX = Regex("""from (\S+) (?:catching|finding)""")
 
-    private class DoneMessages(val done: String, val doneWithoutMacaw: String) {
-        var doneSent: Boolean = false
-        var doneWithoutMacawSent: Boolean = false
+    private const val ISLAND_DONE_MESSAGE: String = "All unique critters caught"
+    private const val ISLAND_DONE_WITHOUT_MACAW_MESSAGE: String = "All unique critters caught (no macaw)"
+
+    private enum class DoneMessage { AllCaught, AllButMacaw }
+
+    private class DoneMessageState {
+        var isAllCaughtSent: Boolean = false
+        var isAllButMacawSent: Boolean = false
 
         fun reset() {
-            doneSent = false
-            doneWithoutMacawSent = false
+            isAllCaughtSent = false
+            isAllButMacawSent = false
         }
     }
 
-    private val safariDoneMessages = DoneMessages(
-        done = "All unique critters caught",
-        doneWithoutMacaw = "All unique critters caught (no macaw)"
-    )
+    private val islandDoneState = DoneMessageState()
 
-    private val zoneDoneMessageMap: Map<SafariZone, DoneMessages> = SafariZone.entries.associateWith { zone ->
-        DoneMessages(
-            done = "All uniques caught in ${zone.displayName}",
-            doneWithoutMacaw = "All uniques caught in ${zone.displayName} (no macaw)"
-        )
-    }
+    private val doneStateByZone: Map<SafariZone, DoneMessageState> = SafariZone.entries.associateWith { DoneMessageState() }
 
-    private val designatedZone: SafariZone? get() = localPlayerName()?.let { playerZones[it] }
+    private val ownZone: SafariZone? get() = localPlayerName()?.let { zoneByPlayer[it] }
 
     private val sparklingEntities = mutableSetOf<Entity>()
 
-    private val warnedSparklings = mutableSetOf<UUID>()
+    private val warnedSparklingIds = mutableSetOf<UUID>()
 
-    private val pendingPlings = ArrayDeque<Pair<Int, Float>>()
+    private class QueuedPling(var ticksLeft: Int, val pitch: Float)
 
-    private fun warnOfSparkling(entity: Entity, mobName: String) {
-        if (!sparklingWarning.value || !warnedSparklings.add(entity.uuid)) return
+    private val plingQueue = ArrayDeque<QueuedPling>()
+
+    private fun warnSparklingSeen(entity: Entity, mobName: String) {
+        if (!sparklingWarningSetting.value || !warnedSparklingIds.add(entity.uuid)) return
 
         McCompat.showTitle(
             Component.literal("Sparkling $mobName Detected!").withStyle(ChatFormatting.YELLOW),
@@ -285,19 +280,18 @@ object SafariHelper : HighlightFeature() {
         )
         ChatUtils.sendWithPrefix("Sparkling $mobName detected!")
 
-        SPARKLING_PLING_PITCHES.forEachIndexed { index, pitch -> pendingPlings.addLast(index * SPARKLING_PLING_GAP to pitch) }
+        SPARKLING_PLING_PITCHES.forEachIndexed { index, pitch -> plingQueue.addLast(QueuedPling(index * SPARKLING_PLING_GAP, pitch)) }
     }
 
-    /** Plays whatever pling is due this tick and counts the rest down. */
     private fun playDuePlings() {
-        if (pendingPlings.isEmpty()) return
+        if (plingQueue.isEmpty()) return
 
-        val player = Minecraft.getInstance().player ?: run { pendingPlings.clear(); return }
-        val due = pendingPlings.filter { it.first <= 0 }
-        due.forEach { (_, pitch) -> player.playSound(SoundEvents.NOTE_BLOCK_PLING.value(), 1f, pitch) }
-        pendingPlings.removeAll(due)
+        val player = Minecraft.getInstance().player ?: run { plingQueue.clear(); return }
+        val duePlings = plingQueue.filter { it.ticksLeft <= 0 }
+        duePlings.forEach { player.playSound(SoundEvents.NOTE_BLOCK_PLING.value(), 1f, it.pitch) }
+        plingQueue.removeAll(duePlings)
 
-        for (index in pendingPlings.indices) pendingPlings[index] = pendingPlings[index].let { (ticks, pitch) -> (ticks - 1) to pitch }
+        plingQueue.forEach { it.ticksLeft-- }
     }
 
     override fun highlightColor(entity: Entity): Int = when {
@@ -346,12 +340,12 @@ object SafariHelper : HighlightFeature() {
     @Subscription
     fun onIslandChange(event: IslandChangeEvent) {
         if (event.new == SkyBlockIsland.SAFARI || event.old == SkyBlockIsland.SAFARI) {
-            caughtUniques.clear()
-            safariDoneMessages.reset()
-            zoneDoneMessageMap.values.forEach { it.reset() }
-            catchesByPlayer.clear()
-            playerZones.clear()
-            arrivedOnIslandAt = if (event.new == SkyBlockIsland.SAFARI) Instant.now() else null
+            caughtUniqueNames.clear()
+            islandDoneState.reset()
+            doneStateByZone.values.forEach { it.reset() }
+            catchZonesByPlayer.clear()
+            zoneByPlayer.clear()
+            arrivedOnSafariAt = if (event.new == SkyBlockIsland.SAFARI) Instant.now() else null
         }
     }
 
@@ -360,15 +354,15 @@ object SafariHelper : HighlightFeature() {
         if (!baseSetting.value) return
         if (currentZone == null) return
 
-        val caught = catchPatterns.firstNotNullOfOrNull { pattern ->
+        val caught = CATCH_MESSAGE_REGEXES.firstNotNullOfOrNull { pattern ->
             pattern.find(event.text)?.groupValues?.get(1)
         } ?: return
 
-        noteCatcher(event.text, caught)
+        guessCatcherZone(event.text, caught)
 
-        if (!caughtUniques.add(normalizeCaughtName(caught))) return
+        if (!caughtUniqueNames.add(caughtNameKey(caught))) return
 
-        if (mobHighlight.value && onlyUncaught.value) {
+        if (mobHighlightSetting.value && onlyUncaughtSetting.value) {
             invalidateHighlights()
         }
 
@@ -376,79 +370,74 @@ object SafariHelper : HighlightFeature() {
     }
 
     private fun sendDoneMessages() {
-        if (!uniqueTracking.value || !doneMessage.value) return
+        if (!uniqueTrackingSetting.value || !doneMessageSetting.value) return
 
-        val safariMessage = claim(safariDoneMessages, SafariZone.entries.flatMap { remainingIn(it) })
-        safariMessage?.let { announceDone(it) }
+        val islandMessage = claimDoneMessage(islandDoneState, SafariZone.entries.flatMap { uncaughtMobNamesIn(it) })
+        islandMessage?.let { postDoneMessage(if (it == DoneMessage.AllCaught) ISLAND_DONE_MESSAGE else ISLAND_DONE_WITHOUT_MACAW_MESSAGE) }
 
         SafariZone.entries.forEach { zone ->
-            val messages = zoneDoneMessageMap.getValue(zone)
-            val message = claim(messages, remainingIn(zone)) ?: return@forEach
+            val message = claimDoneMessage(doneStateByZone.getValue(zone), uncaughtMobNamesIn(zone)) ?: return@forEach
 
-            if (safariMessage != null || !zoneMessages.value) return@forEach
-            if (ownZoneOnly.value && zone != designatedZone) return@forEach
+            if (islandMessage != null || !zoneMessagesSetting.value) return@forEach
+            if (ownZoneOnlySetting.value && zone != ownZone) return@forEach
 
-            announceDone(zoneDoneText(zone, withoutMacaw = message == messages.doneWithoutMacaw))
+            postDoneMessage(zoneDoneMessage(zone, withoutMacaw = message == DoneMessage.AllButMacaw))
         }
     }
 
-    /** saves the person catching so can attribute them to a zone. */
-    private fun noteCatcher(text: String, caught: String) {
-        val zone = zoneOfMob[normalizeCaughtName(caught)] ?: return
-        val player = CATCHER_REGEX.find(text)?.groupValues?.get(1) ?: localPlayerName() ?: return
+    private fun guessCatcherZone(text: String, caught: String) {
+        val zone = zoneByMobName[caughtNameKey(caught)] ?: return
+        val player = LOOT_SHARE_CATCHER_REGEX.find(text)?.groupValues?.get(1) ?: localPlayerName() ?: return
 
-        if (player in playerZones) return
+        if (player in zoneByPlayer) return
 
-        val zones = catchesByPlayer.getOrPut(player) { mutableListOf() }
-        zones.add(zone)
+        val catchZones = catchZonesByPlayer.getOrPut(player) { mutableListOf() }
+        catchZones.add(zone)
 
-        if (zones.size < CATCHES_BEFORE_PLAYER_GUESS) return
+        if (catchZones.size < CATCHES_BEFORE_ZONE_GUESS) return
 
-        val counts = zones.groupingBy { it }.eachCount()
-        val most = counts.values.max()
+        val catchCountByZone = catchZones.groupingBy { it }.eachCount()
+        val highestCatchCount = catchCountByZone.values.max()
 
-        counts.filterValues { it == most }.keys.singleOrNull()?.let { playerZones[player] = it }
+        catchCountByZone.filterValues { it == highestCatchCount }.keys.singleOrNull()?.let { zoneByPlayer[player] = it }
     }
 
     private fun localPlayerName(): String? =
         Minecraft.getInstance().user.name.takeIf { it.isNotBlank() }
 
-    /** the players in a zone, shouldn't be more than 1 realistically */
     private fun playersIn(zone: SafariZone): List<String> =
-        playerZones.filterValues { it == zone }.keys.sorted()
+        zoneByPlayer.filterValues { it == zone }.keys.sorted()
 
-    private fun claim(messages: DoneMessages, remaining: List<String>): String? {
-        if (remaining.isEmpty()) {
-            // catching everything says more than having caught everything but the macaw
-            messages.doneWithoutMacawSent = true
+    private fun claimDoneMessage(state: DoneMessageState, uncaughtMobNames: List<String>): DoneMessage? {
+        if (uncaughtMobNames.isEmpty()) {
+            state.isAllButMacawSent = true
 
-            if (messages.doneSent) return null
+            if (state.isAllCaughtSent) return null
 
-            messages.doneSent = true
-            return messages.done
+            state.isAllCaughtSent = true
+            return DoneMessage.AllCaught
         }
 
-        if (!ignoreMacaw.value || messages.doneWithoutMacawSent) return null
-        if (remaining.any { !it.equals(MACAW, ignoreCase = true) }) return null
+        if (!ignoreMacawSetting.value || state.isAllButMacawSent) return null
+        if (uncaughtMobNames.any { !it.equals(MACAW_NAME, ignoreCase = true) }) return null
 
-        messages.doneWithoutMacawSent = true
-        return messages.doneWithoutMacaw
+        state.isAllButMacawSent = true
+        return DoneMessage.AllButMacaw
     }
 
-    /** A finished zone, naming whoever was placed in it, or said plainly when nobody was. */
-    private fun zoneDoneText(zone: SafariZone, withoutMacaw: Boolean): String {
+    private fun zoneDoneMessage(zone: SafariZone, withoutMacaw: Boolean): String {
         val players = playersIn(zone)
-        val tail = if (withoutMacaw) " (no macaw)" else ""
+        val macawSuffix = if (withoutMacaw) " (no macaw)" else ""
 
-        if (players.isEmpty()) return "All uniques caught in ${zone.displayName}$tail"
+        if (players.isEmpty()) return "All uniques caught in ${zone.displayName}$macawSuffix"
 
-        return "${players.joinToString(", ")} finished ${zone.displayName}$tail"
+        return "${players.joinToString(", ")} finished ${zone.displayName}$macawSuffix"
     }
 
-    private fun announceDone(message: String) {
-        val timed = message + timeOnIsland()
+    private fun postDoneMessage(message: String) {
+        val timed = message + timeOnIslandSuffix()
 
-        if (sendToPartyChat.value) {
+        if (sendToPartyChatSetting.value) {
             ChatUtils.sendCommand("pc $timed")
             return
         }
@@ -456,41 +445,35 @@ object SafariHelper : HighlightFeature() {
         ChatUtils.sendWithPrefix(Component.literal(timed).withStyle(ChatFormatting.GREEN))
     }
 
-    /** how long the visit has run, or nothing when the arrival was never seen */
-    private fun timeOnIsland(): String {
-        val arrived = arrivedOnIslandAt ?: return ""
+    private fun timeOnIslandSuffix(): String {
+        val arrived = arrivedOnSafariAt ?: return ""
 
         return " (${ChatUtils.shortDuration(Duration.between(arrived, Instant.now()).toMillis())})"
     }
 
-    /** remaining uniques for the safari zone (for hud) */
-    fun remainingIn(zone: SafariZone): List<String> =
+    fun uncaughtMobNamesIn(zone: SafariZone): List<String> =
         zone.uniqueMobs.map { it.displayName }.filterNot { isCaught(it) }
 
-    private fun isCaught(mobName: String): Boolean = mobName.lowercase() in caughtUniques
+    private fun isCaught(mobName: String): Boolean = mobName.lowercase() in caughtUniqueNames
 
-    private fun normalizeCaughtName(mobName: String): String =
+    private fun caughtNameKey(mobName: String): String =
         mobName.lowercase().removePrefix("$SPARKLING_TAG ")
 
-    /** returns the hud lines needed */
     private fun hudLines(): List<Component> {
-        if (SafariZone.entries.all { remainingIn(it).isEmpty() }) {
+        if (SafariZone.entries.all { uncaughtMobNamesIn(it).isEmpty() }) {
             return listOf(Component.literal("All safari uniques caught").withStyle(ChatFormatting.GREEN))
         }
-        // first the other players if collapsed, then self
-        val localPlayerZone = designatedZone.takeIf { shortenOtherZones.value }
+        val localPlayerZone = ownZone.takeIf { onlyListOwnZoneSetting.value }
 
+        val zoneOrder = SafariZone.entries.sortedBy { it == localPlayerZone }
 
-        val order = SafariZone.entries.sortedBy { it == localPlayerZone }
-
-        return order.flatMap { zone ->
+        return zoneOrder.flatMap { zone ->
             if (localPlayerZone != null && zone != localPlayerZone) shortZoneLine(zone) else fullZoneLines(zone)
         }
     }
 
-    /** all components for a safari zone */
     private fun fullZoneLines(zone: SafariZone): List<Component> {
-        val remaining = remainingIn(zone)
+        val remaining = uncaughtMobNamesIn(zone)
         val heading = Component.literal(zone.displayName).withStyle(ChatFormatting.GOLD)
             .append(playerSuffix(zone))
 
@@ -505,23 +488,21 @@ object SafariHelper : HighlightFeature() {
                 }
     }
 
-    /** for shortened option */
     private fun shortZoneLine(zone: SafariZone): List<Component> {
-        val remaining = remainingIn(zone)
+        val remaining = uncaughtMobNamesIn(zone)
         val heading = Component.literal(zone.displayName).withStyle(ChatFormatting.GOLD)
             .append(playerSuffix(zone))
 
-        val tail = if (remaining.isEmpty()) {
+        val doneSuffix = if (remaining.isEmpty()) {
             Component.literal(": done").withStyle(ChatFormatting.GREEN)
         } else {
             Component.literal(": ").withStyle(ChatFormatting.GRAY)
                 .append(Component.literal("${remaining.size} left").withStyle(ChatFormatting.YELLOW))
         }
 
-        return listOf(heading.append(tail))
+        return listOf(heading.append(doneSuffix))
     }
 
-    /** players suffix for a zone or none if unassigned */
     private fun playerSuffix(zone: SafariZone): Component {
         val players = playersIn(zone)
         if (players.isEmpty()) return Component.empty()
@@ -536,7 +517,7 @@ object SafariHelper : HighlightFeature() {
 
         if (highlight && sparkling) {
             sparklingEntities.add(target)
-            currentZone?.mobMatching(info)?.let { warnOfSparkling(info.entity, it.displayName) }
+            currentZone?.mobMatching(info)?.let { warnSparklingSeen(info.entity, it.displayName) }
         } else {
             sparklingEntities.remove(target)
             sparklingEntities.remove(info.entity)
@@ -547,22 +528,20 @@ object SafariHelper : HighlightFeature() {
 
     private fun matchesHighlight(info: EntityInfo, sparkling: Boolean): Boolean {
         if (!baseSetting.value) return false
-        if (!mobHighlight.value) return false
+        if (!mobHighlightSetting.value) return false
 
         val zone = currentZone ?: return false
         val entity = info.entity
 
-        // treasure is placed all over the island, only the grass of the current zone is worth showing
         if (isTreasureDisplay(entity)) {
             return SafariZone.at(entity.position()) == zone
         }
 
         val mob = zone.mobMatching(info) ?: return false
 
-        // a sparkling stays worth catching after its unique is done, it is far rarer than the unique
-        return sparkling || !onlyUncaught.value || !isCaught(mob.displayName)
+        return sparkling || !onlyUncaughtSetting.value || !isCaught(mob.displayName)
     }
-    
+
     override fun markOf(info: EntityInfo): EntityUtils.HighlightMark? {
         if (isTreasureDisplay(info.entity)) return null
 
@@ -575,8 +554,6 @@ object SafariHelper : HighlightFeature() {
         info.informationEntities?.any {
             it.customName?.string?.contains(SPARKLING_TAG, ignoreCase = true) == true
         } == true
-
-
 
     private fun visiblePartOf(info: EntityInfo): Entity {
         val entity = info.entity

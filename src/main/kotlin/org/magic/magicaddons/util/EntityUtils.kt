@@ -11,6 +11,7 @@ import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.EquipmentSlot
 import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.decoration.ArmorStand
+import net.minecraft.client.player.LocalPlayer
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.item.ItemStack
 import net.minecraft.core.BlockPos
@@ -48,13 +49,10 @@ object EntityUtils {
     interface HighlightSource {
         val highlightPriority: Int
 
-        /** the outline color for this entity, as ARGB */
         fun highlightColor(entity: Entity): Int
 
-        /** whether to be funny or not */
         val throughWalls: Boolean get() = true
 
-        /** which marking should be applied to this entity, defaulting to null */
         fun highlightMark(entity: Entity): HighlightMark? = null
     }
 
@@ -101,6 +99,7 @@ object EntityUtils {
     val resolvedMap: MutableMap<Entity, HighlightSource> = mutableMapOf()
 
     fun add(entity: Entity, source: HighlightSource) {
+        if (entity is LocalPlayer) return
         val set = highlightMap.computeIfAbsent(entity) { mutableSetOf() }
         set.add(source)
 
@@ -152,10 +151,8 @@ object EntityUtils {
         update()
     }
 
-    /** Entities the server has sent new data for since the last scan, by network id. */
     private val entitiesWithNewData: MutableSet<Int> = ConcurrentHashMap.newKeySet()
 
-    /** Called from the packet mixins when the server sends an entity's data or attributes. */
     fun noteDataChanged(entityId: Int) {
         entitiesWithNewData += entityId
     }
@@ -210,15 +207,11 @@ object EntityUtils {
         newMap.forEach { (uuid, newInfo) ->
             val oldInfo = entityMapCurr[uuid] ?: return@forEach
 
-            // a frog's variant and a mob's scale show in no name tag, so the packet that carries
-            // them is what says the entity changed
             if (newInfo.entity.id in entitiesWithNewData) {
                 updatedEntities += newInfo
                 return@forEach
             }
 
-            // by name as well as by identity: skyblock reuses a name tag it already hung rather
-            // than replacing it, so a tag whose text changed is the same entity in both sets
             if (oldInfo.tagSignature() != newInfo.tagSignature()) {
                 updatedEntities += newInfo
             }
@@ -317,21 +310,16 @@ object EntityUtils {
         return entity.uuid.version() == PLAYER_UUID_VERSION
     }
 
-    /** The entity type's description id, "entity.minecraft.pig" for a pig. */
     fun Entity.typeId(): String = type.toString()
 
-    /** The last part of the type id, "pig" for a pig. */
     fun Entity.typePath(): String = typeId().substringAfterLast('.')
 
-    /** The skull texture an item display holds or an armor stand wears on its head, or null. */
     fun carriedSkullHash(entity: Entity): String? = when (entity) {
         is Display.ItemDisplay -> PlayerUtils.getSkinHash(entity.itemStack)
         is ArmorStand -> PlayerUtils.getHelmetHash(entity)
         else -> null
     }
 
-    /** returns the entity that we actually want to highlight (eg item display for rat instead of zombie)
-     */
     fun skullCarrier(info: EntityInfo, hash: String): Entity? {
         val entity = info.entity
 
@@ -361,15 +349,10 @@ object EntityUtils {
         val helmet = entity.getItemBySlot(EquipmentSlot.HEAD)
         return hasArmorId(helmet, id, "HELMET")
     }
-    /** The slots a stand can carry a crop's parts in, head first since nearly all of them do. */
+
     private val CARRY_SLOTS: List<EquipmentSlot> =
         listOf(EquipmentSlot.HEAD, EquipmentSlot.MAINHAND, EquipmentSlot.OFFHAND)
 
-    /**
-     * The plain item the entity carries, as the slot it is in and "minecraft:gold_block", or null
-     * when it carries only a skull or nothing.
-     */
-    /** Whether the entity carries anything at all. A plant's stands always do, a nameplate never does. */
     fun carriesAnything(entity: LivingEntity): Boolean =
         CARRY_SLOTS.any { !entity.getItemBySlot(it).isEmpty }
 

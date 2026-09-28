@@ -15,12 +15,9 @@ object Common {
     }
 
     object UI {
-        // the colours a palette decides are read from the one picked in the Customization category;
-        // the rest are the same whichever palette that is
         val BACKGROUND_COLOR: Int get() = Customization.fadedPanel(Customization.palette.background)
         val BORDER_SIZE: Int get() = Customization.borderSize
 
-        /** The frame of a small control such as a text field or selector, whatever the panel frame is. */
         const val CONTROL_BORDER_SIZE: Int = 1
 
         val BORDER_COLOR: Int get() = Customization.fadedBorder(Customization.palette.border)
@@ -35,6 +32,8 @@ object Common {
         const val SPACING_LARGE: Int = 10
 
         const val SCREEN_DIM_COLOR: Int = 0xB4101010.toInt()
+
+        const val OPAQUE_ALPHA: Int = 0xFF000000.toInt()
 
         const val OVERLAY_TEXT_COLOR: Int = 0xFFFFFFFF.toInt()
         const val OVERLAY_BACKGROUND_COLOR: Int = 0xB0000000.toInt()
@@ -80,7 +79,8 @@ object Common {
         const val DANGER_COLOR: Int = 0xFFFF0000.toInt()
 
         const val WATER_FULL_COLOR: Int = 0xFF3F7FDF.toInt()
-        const val WATER_DEBT_COLOR: Int = 0xFFCC3333.toInt()
+        const val WATER_NEGATIVE_COLOR: Int = 0xFFCC3333.toInt()
+        const val DECAY_TIME_COLOR: Int = 0xFFCC3333.toInt()
         const val WATER_TRACK_COLOR: Int = 0xB0202020.toInt()
         const val MEAT_FULL_COLOR: Int = 0xFF8B5A2B.toInt()
         const val CHARGE_FULL_COLOR: Int = 0xFFF5D142.toInt()

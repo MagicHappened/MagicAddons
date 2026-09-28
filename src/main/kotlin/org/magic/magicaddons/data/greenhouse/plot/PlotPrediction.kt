@@ -23,12 +23,12 @@ object PlotPrediction {
         weightMultiplier: Double,
         ignoredPlant: Plant? = null
     ): List<MutationChance> {
-        val weights = CropRegistry.allCrops
+        val weightByCrop = CropRegistry.allCrops
             .filter { crop -> (crop.spawnRule?.weight ?: 0) > 0 && missingSpawnConditions(layout, crop, x, y, ignoredPlant).isEmpty() }
             .associateWith { it.spawnRule!!.weight * weightMultiplier }
-        val rollTotal = max(MIN_ROLL_WEIGHT_TOTAL, weights.values.sum())
+        val rollTotal = max(MIN_ROLL_WEIGHT_TOTAL, weightByCrop.values.sum())
 
-        return weights.map { (crop, weight) -> MutationChance(crop, weight / rollTotal) }.sortedByDescending { it.chance }
+        return weightByCrop.map { (crop, weight) -> MutationChance(crop, weight / rollTotal) }.sortedByDescending { it.chance }
     }
 
     fun missingSpawnConditions(
@@ -43,33 +43,17 @@ object PlotPrediction {
         val height = crop.footprint.height
         if (x < 0 || y < 0 || x + width > layout.size || y + height > layout.size) return listOf("does not fit here")
 
-        fun plantOn(cellX: Int, cellY: Int): Plant? =
-            layout.getSlot(cellX, cellY)?.let { layout.plantCovering(it) }?.takeUnless {
-                it === ignoredPlant || (it.slot.mark == LayoutSlot.Marking.Target && it.growthStage == null)
-            }
-
-        val footprintCells = (x until x + width).flatMap { cellX -> (y until y + height).map { cellY -> cellX to cellY } }
+        val footprintCells = crop.footprint.cellsFrom(x, y)
         val missing = mutableListOf<String>()
 
-        if (footprintCells.any { (cellX, cellY) -> plantOn(cellX, cellY) != null }) missing += "no room"
+        if (footprintCells.any { (cellX, cellY) -> standingPlantAtPos(layout, cellX, cellY, ignoredPlant) != null }) missing += "no room"
 
         val footprintSoils = footprintCells.map { (cellX, cellY) -> layout.getSlot(cellX, cellY)?.soil }
         if (footprintSoils.any { it == null || it !in crop.requiredSoil }) {
             missing += "needs ${crop.requiredSoil.joinToString(" or ") { it.name.string }}"
         }
 
-        val surroundingCells = ((x - 1)..(x + width)).flatMap { cellX -> ((y - 1)..(y + height)).map { cellY -> cellX to cellY } }
-            .filter { (cellX, cellY) -> (cellX to cellY) !in footprintCells && cellX in 0 until layout.size && cellY in 0 until layout.size }
-        val surroundingCellsByCrop = surroundingCells.mapNotNull { (cellX, cellY) -> plantOn(cellX, cellY) }
-            .groupingBy { it.cropDef.name }
-            .eachCount()
-
-        if (rule.needsNoNeighbours && surroundingCellsByCrop.isNotEmpty()) missing += "needs no crop around it"
-
-        rule.requiredNeighbourCells.forEach { (neighbourCrop, requiredCells) ->
-            val missingCount = requiredCells - (surroundingCellsByCrop[neighbourCrop] ?: 0)
-            if (missingCount > 0) missing += "$missingCount more $neighbourCrop"
-        }
+        missing += missingNeighbourConditions(layout, crop, x, y, ignoredPlant)
 
         if (rule.needsAllPositiveEffects) {
             val effectsReceived = footprintCells.flatMap { (cellX, cellY) -> layout.getSlot(cellX, cellY)?.let { layout.effectsAt(it) }.orEmpty() }
@@ -82,14 +66,41 @@ object PlotPrediction {
         return missing
     }
 
-    fun missingConditionsForTarget(layout: PlotLayout, target: Plant): List<String> =
-        missingSpawnConditions(layout, target.cropDef, target.slot.x, target.slot.y, ignoredPlant = target)
+    fun missingNeighbourConditions(
+        layout: PlotLayout,
+        crop: CropDefinition,
+        x: Int,
+        y: Int,
+        ignoredPlant: Plant? = null
+    ): List<String> {
+        val rule = crop.spawnRule ?: return emptyList()
+        val footprintCells = crop.footprint.cellsFrom(x, y)
+        val surroundingCells = ((x - 1)..(x + crop.footprint.width)).flatMap { cellX -> ((y - 1)..(y + crop.footprint.height)).map { cellY -> cellX to cellY } }
+            .filter { (cellX, cellY) -> (cellX to cellY) !in footprintCells && cellX in 0 until layout.size && cellY in 0 until layout.size }
+        val surroundingCellsByCrop = surroundingCells.mapNotNull { (cellX, cellY) -> standingPlantAtPos(layout, cellX, cellY, ignoredPlant) }
+            .groupingBy { it.cropDef.name }
+            .eachCount()
+
+        val missing = mutableListOf<String>()
+        if (rule.needsNoNeighbours && surroundingCellsByCrop.isNotEmpty()) missing += "needs no crop around it"
+
+        rule.requiredNeighbourCells.forEach { (neighbourCrop, requiredCells) ->
+            val missingCount = requiredCells - (surroundingCellsByCrop[neighbourCrop] ?: 0)
+            if (missingCount > 0) missing += "$missingCount more $neighbourCrop"
+        }
+        return missing
+    }
+
+    private fun standingPlantAtPos(layout: PlotLayout, cellX: Int, cellY: Int, ignoredPlant: Plant?): Plant? =
+        layout.plantCovering(cellX, cellY)?.takeUnless {
+            it === ignoredPlant || (it.slot.mark == LayoutSlot.Marking.Target && it.growthStage == null)
+        }
 
     fun unplannedMutationSpots(
         layout: PlotLayout,
         plannedCropsBySlot: Map<Pair<Int, Int>, Set<CropDefinition>>
     ): Map<Pair<Int, Int>, List<CropDefinition>> {
-        val mutations = CropRegistry.allCrops.filter { (it.spawnRule?.weight ?: 0) > 0 }
+        val spawningCrops = CropRegistry.allCrops.filter { (it.spawnRule?.weight ?: 0) > 0 }
         val spots = linkedMapOf<Pair<Int, Int>, List<CropDefinition>>()
 
         for (y in 0 until layout.size) {
@@ -104,7 +115,7 @@ object PlotPrediction {
 
                 val targetStartingHere = coveringTarget?.takeIf { it.slot === slot }
                 val plannedCrops = plannedCropsBySlot[x to y].orEmpty() + targetStartingHere?.acceptedCrops.orEmpty()
-                val spawnableMutations = mutations.filter { crop ->
+                val spawnableMutations = spawningCrops.filter { crop ->
                     crop !in plannedCrops && missingSpawnConditions(layout, crop, x, y, ignoredPlant = coveringTarget).isEmpty()
                 }
                 if (spawnableMutations.isNotEmpty()) spots[x to y] = spawnableMutations
@@ -141,13 +152,13 @@ object PlotPrediction {
     fun waterLevelAfter(water: Double, ticks: Int, waterEffectPercent: Int): Double =
         water - waterLossPerTick(waterEffectPercent) * ticks
 
-    fun lowestWaterLevelStillAlive(predicted: Double, waterEffectPercent: Int): Double {
+    fun lowestWaterLevelStillAlive(predictedWater: Double, waterEffectPercent: Int): Double {
         val loss = waterLossPerTick(waterEffectPercent)
-        if (loss <= 0.0 || predicted > WATER_DEATH_LEVEL) return predicted
+        if (loss <= 0.0 || predictedWater > WATER_DEATH_LEVEL) return predictedWater
 
-        val ticksSkipped = floor((WATER_DEATH_LEVEL - predicted) / loss) + 1
+        val fewestTicksSkipped = floor((WATER_DEATH_LEVEL - predictedWater) / loss) + 1
 
-        return predicted + ticksSkipped * loss
+        return predictedWater + fewestTicksSkipped * loss
     }
 
     fun ticksUntilDeath(water: Double, waterEffectPercent: Int): Int? {
@@ -160,13 +171,13 @@ object PlotPrediction {
     fun formatWaterLevel(water: Double): String =
         if (water == floor(water)) water.toInt().toString() else "%.1f".format(water)
 
-    /** what remains of the current tick plus whole ticks after it; the killing tick is not waited out */
     fun timeUntilDeath(water: Double, waterEffectPercent: Int, remainingMs: Long, tickMs: Long): Long? {
         val ticks = ticksUntilDeath(water, waterEffectPercent) ?: return null
 
         return remainingMs + (ticks - 1) * tickMs
     }
 
+    // TODO: code isnt accurate with some spawning rules, to be implemented properly, currently unused
     class Result(
         val targetSpotsByCrop: Map<String, Int>,
         val harvestedPerVisit: Double,
@@ -181,14 +192,10 @@ object PlotPrediction {
     private const val WARM_UP_TICKS: Int = 30
     private const val MEASURED_TICKS: Int = 100
 
-    // TODO: figure out if this is true or is it more for mutations that newly spawned with water retain so they could in theory progress past stage 5
     private const val OFFLINE_GRACE_TICKS: Int = 5
 
     private class TargetSpot(val x: Int, val y: Int, val crop: CropDefinition, val targetChance: Double, val unplannedChance: Double)
 
-    // TODO: figure out how mutations spawned inside the simulation consider their age and decay
-    //  time, probably with the visit ticks but until we get conclusive data on spawning logic,
-    //  this will remain unused
     fun simulateVisits(plan: PlotLayout, awayTicks: Int, weightMultiplier: Double, random: Random = Random.Default): Result {
         val targets = plan.plants.filter { it.slot.mark == LayoutSlot.Marking.Target && it.cropDef.spawnRule != null }
         val spots = targets.map { target -> targetSpotOf(plan, target, weightMultiplier) }
@@ -249,7 +256,6 @@ object PlotPrediction {
                 val spawn = entry.value ?: return@forEach
                 if ((spawn.waterLevel ?: 0.0) > PlotPrediction.WATER_DEATH_LEVEL) return@forEach
 
-                // a dead spawn blocks the spot until the next visit
                 layout.plants.remove(spawn)
                 graceTicksLeftBySpawn.remove(spawn)
                 entry.setValue(null)
@@ -267,7 +273,6 @@ object PlotPrediction {
                         occupiedSpots[spot] = spawnedTarget
                         graceTicksLeftBySpawn[spawnedTarget] = OFFLINE_GRACE_TICKS
                     }
-                    // an unplanned spawn blocks the spot until the next visit
                     roll < spot.targetChance + spot.unplannedChance -> occupiedSpots[spot] = null
                 }
             }
@@ -322,7 +327,7 @@ object PlotPrediction {
         if (!plant.cropDef.needsWater) return
         plant.waterLevel = WATER_FULL_LEVEL.toDouble()
         plant.waterBestCase = null
-        plant.waterPredictedInDebt = false
+        plant.waterPredictedNegative = false
     }
 
     private fun ticksUntilFirstPlantDries(plan: PlotLayout, targets: List<Plant>): Int? {

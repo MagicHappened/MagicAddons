@@ -21,20 +21,20 @@ import net.minecraft.resources.Identifier
 import org.magic.magicaddons.ui.widgets.config.SettingDetail
 import kotlin.math.roundToInt
 import kotlin.math.sqrt
-import org.magic.magicaddons.ui.background.ConfigBackground
+import org.magic.magicaddons.ui.background.ScreenBackground
 
 object Customization : Feature() {
 
     override val id: String = "Customization"
     override val displayName: String = "Appearance"
-    override val description: String = "The colours the mod's screens are drawn in"
+    override val description: String = "The colors the mod's screens are drawn in"
     override val category: String = CATEGORY
 
     private class CustomColorField(key: String, displayName: String, val slot: (PaletteColors) -> Int) {
         val setting = TextSetting(
             key = key,
             displayName = displayName,
-            description = "A colour as hex, such as 1F3330.",
+            description = "A color as hex, such as 1F3330.",
             value = ""
         )
 
@@ -60,8 +60,8 @@ object Customization : Feature() {
 
     private val paletteSetting = EnumSetting(
         key = "ColorPalette",
-        displayName = "Colour Palette",
-        description = "The colours of the mod's panels, frames, text and highlights",
+        displayName = "Color Palette",
+        description = "The colors of the mod's panels, frames and text",
         value = ColorPalette.PineAmber,
         childrenProvider = { picked ->
             if (picked == ColorPalette.Custom) {
@@ -116,7 +116,7 @@ object Customization : Feature() {
     private val hoverStrengthSetting = IntSetting(
         key = "HoverStrength",
         displayName = "Hover Strength",
-        description = "How brightly a control lights up under the mouse",
+        description = "How bright a control is when hovered",
         value = 16,
         range = 0..60,
         step = 2,
@@ -134,7 +134,7 @@ object Customization : Feature() {
     private val textTransparencySetting = IntSetting(
         key = "TextTransparency",
         displayName = "Text Transparency",
-        description = "How much of what is behind it shows through the mod's text",
+        description = "",
         value = 0,
         range = 0..100,
         step = 5,
@@ -144,7 +144,7 @@ object Customization : Feature() {
     private val panelTransparencySetting = IntSetting(
         key = "PanelTransparency",
         displayName = "Panel Transparency",
-        description = "How much of what is behind them shows through the mod's panels",
+        description = "",
         value = 0,
         range = 0..100,
         step = 5,
@@ -154,7 +154,7 @@ object Customization : Feature() {
     private val borderTransparencySetting = IntSetting(
         key = "BorderTransparency",
         displayName = "Border Transparency",
-        description = "How much of what is behind them shows through the mod's frames and dividers",
+        description = "",
         value = 0,
         range = 0..100,
         step = 5,
@@ -179,36 +179,23 @@ object Customization : Feature() {
     }
 
     fun restoreDefaults() {
-        paletteSetting.value = ColorPalette.PineAmber
-        backgroundSetting.value = BackgroundSource.None
-        backgroundFitSetting.value = BackgroundFit.Cover
-        textTransparencySetting.value = 0
-        panelTransparencySetting.value = 0
-        borderTransparencySetting.value = 0
-        borderThicknessSetting.value = 2
-        hoverStrengthSetting.value = 16
-        uiScaleSetting.value = 100
-        fontSetting.value = SystemFonts.defaultName
-        textShadowSetting.value = false
-        prefixColourSetting.value = ChatPrefixColour.Default
-        prefixHexSetting.value = ""
-        customColorFields.forEach { it.setting.value = "" }
-        ConfigBackground.forgetLoadedPicture()
+        presetSetting.applyPreset(presetSetting.defaultName)
+        ScreenBackground.forgetLoadedPicture()
     }
 
     fun applyImportedAppearance() {
         val font = fontSetting.value
-        if (!SystemFonts.isBuiltIn(font)) SystemFonts.install(font)
+        if (!SystemFonts.isBuiltInFont(font)) SystemFonts.installSystemFont(font)
 
-        ConfigBackground.forgetLoadedPicture()
+        ScreenBackground.forgetLoadedPicture()
     }
 
     private val savedPictureSetting = ChoiceSetting(
         key = "SavedBackground",
         displayName = "Saved Image",
         description = "One of the pictures already in the mod's backgrounds folder",
-        options = { ConfigBackground.savedPictureFiles() },
-        onChosen = { ConfigBackground.forgetLoadedPicture() }
+        options = { ScreenBackground.savedPictureFiles() },
+        onChosen = { ScreenBackground.forgetLoadedPicture() }
     )
 
     private val localFileSetting = ActionSetting(
@@ -216,18 +203,18 @@ object Customization : Feature() {
         displayName = "Add An Image",
         description = "Copies a picture from this computer into the mod's backgrounds folder",
         buttonLabel = "Choose…",
-        onPressed = { ConfigBackground.choosePictureFile(it) }
+        onPressed = { ScreenBackground.choosePictureFile(it) }
     )
 
     private val urlSetting = TextSetting(
         key = "BackgroundUrl",
         displayName = "Image Link",
-        description = "A link the picture is read from, followed again as it changes",
+        description = "A link the picture is read from, updates if the picture changes",
         value = "",
         detail = {
             SettingDetail.Text(
                 "Only follow links you trust. Whoever owns it can change the picture at any time, " +
-                        "and the mod re-reads it while this screen is open.",
+                        "and the mod re-reads it every 2 minutes while a screen renders it.",
                 Common.UI.DANGER_COLOR
             )
         }
@@ -236,15 +223,15 @@ object Customization : Feature() {
     private val saveLinkSetting = ActionSetting(
         key = "SaveLinkBackground",
         displayName = "Keep A Copy",
-        description = "Writes what the link last gave into the backgrounds folder",
+        description = "Writes the image from the url into the backgrounds folder",
         buttonLabel = "Save to config",
-        onPressed = { ConfigBackground.saveLinkPicture() }
+        onPressed = { ScreenBackground.saveLinkPicture() }
     )
 
     private val backgroundFitSetting = EnumSetting(
         key = "BackgroundFit",
-        displayName = "Fit",
-        description = "How the picture is fitted when it is not the same shape as the space",
+        displayName = "Background Image Fit",
+        description = "How the picture is fitted when it is not the same shape as the free space",
         value = BackgroundFit.Cover
     )
 
@@ -253,7 +240,7 @@ object Customization : Feature() {
     private val backgroundDimSetting = IntSetting(
         key = "BackgroundDim",
         displayName = "Dim",
-        description = "How much black is laid over the picture, so writing on it stays readable",
+        description = "How much black is drawn over the picture, so writing on it stays readable",
         value = 40,
         range = 0..100,
         step = 5,
@@ -270,17 +257,17 @@ object Customization : Feature() {
     private val deletePictureSetting = ActionSetting(
         key = "DeleteBackground",
         displayName = "Remove An Image",
-        description = "Deletes the picture picked above from the mod's backgrounds folder",
+        description = "Deletes the picture selected above from the mod's backgrounds folder",
         buttonLabel = "Delete",
-        onPressed = { ConfigBackground.deletePictureFile(savedPictureSetting.value) }
+        onPressed = { ScreenBackground.deletePictureFile(savedPictureSetting.value) }
     )
 
     private val openFolderSetting = ActionSetting(
         key = "OpenBackgroundFolder",
         displayName = "Backgrounds Folder",
-        description = "Opens the folder the pictures are kept in",
+        description = "Opens the folder the pictures are stored",
         buttonLabel = "Open",
-        onPressed = { ConfigBackground.openPictureFolder() }
+        onPressed = { ScreenBackground.openPictureFolder() }
     )
 
     private val backgroundScreensSetting = ToggleListSetting(
@@ -298,7 +285,7 @@ object Customization : Feature() {
     private val backgroundSetting = EnumSetting(
         key = "Background",
         displayName = "Image Background",
-        description = "A picture behind the settings, from this computer or from a link",
+        description = "A picture behind the mod's screens, from this computer or from a link",
         value = BackgroundSource.None,
         childrenProvider = { source ->
             when (source) {
@@ -352,8 +339,8 @@ object Customization : Feature() {
     )
 
     private val coloursGroup = ParentSetting(
-        key = "Colours",
-        displayName = "Colours",
+        key = "Colors",
+        displayName = "Colors",
         description = "The palette the mod draws in, and how solid its panels and frames are",
         children = listOf(
             paletteSetting,
@@ -366,47 +353,47 @@ object Customization : Feature() {
 
     private val prefixHexSetting = TextSetting(
         key = "PrefixHex",
-        displayName = "Prefix Colour",
-        description = "The chat prefix colour as hex, such as FFAA00. Unreadable falls back to gold",
+        displayName = "Prefix Color",
+        description = "The chat prefix color as hex, such as FFAA00. Unreadable falls back to gold",
         value = ""
     )
 
-    private val prefixColourSetting = EnumSetting(
-        key = "PrefixColour",
+    private val prefixColorSetting = EnumSetting(
+        key = "PrefixColor",
         displayName = "Chat Prefix",
-        description = "The colour of the [MA] tag the mod puts before its chat messages",
-        value = ChatPrefixColour.Default,
+        description = "The color of the [MA] tag the mod puts before its chat messages",
+        value = ChatPrefixColor.Default,
         childrenProvider = { picked ->
-            if (picked == ChatPrefixColour.Custom) listOf(prefixHexSetting) else emptyList()
+            if (picked == ChatPrefixColor.Custom) listOf(prefixHexSetting) else emptyList()
         }
     )
 
-    val prefixColour: Int
+    val prefixColor: Int
         get() {
-            if (!baseSetting.value) return ChatPrefixColour.Default.rgb
+            if (!baseSetting.value) return ChatPrefixColor.Default.rgb
 
-            val picked = prefixColourSetting.value
-            if (picked == ChatPrefixColour.FollowAccent) return palette.accent and 0xFFFFFF
-            if (picked != ChatPrefixColour.Custom) return picked.rgb
+            val picked = prefixColorSetting.value
+            if (picked == ChatPrefixColor.FollowAccent) return palette.accent and 0xFFFFFF
+            if (picked != ChatPrefixColor.Custom) return picked.rgb
 
             val typed = prefixHexSetting.value.trim().removePrefix("#").removePrefix("0x")
 
-            return typed.takeIf { it.length == 6 }?.toIntOrNull(16) ?: ChatPrefixColour.Default.rgb
+            return typed.takeIf { it.length == 6 }?.toIntOrNull(16) ?: ChatPrefixColor.Default.rgb
         }
 
     private val fontSetting = ChoiceSetting(
         key = "Font",
         displayName = "Font",
         description = "What the mod's screens write in: the game's fonts, or one installed on this computer",
-        value = SystemFonts.defaultName,
-        options = { SystemFonts.choices() },
+        value = SystemFonts.DEFAULT_FONT_NAME,
+        options = { SystemFonts.fontChoices() },
         confirm = { pickedFont ->
-            if (SystemFonts.isBuiltIn(pickedFont)) {
+            if (SystemFonts.isBuiltInFont(pickedFont)) {
                 null
             } else {
                 ChoiceSetting.Confirmation(
                     question = "Use this font? The game will reload its resources.",
-                    warning = if (SystemFonts.coverage(pickedFont) < SystemFonts.WARN_BELOW) {
+                    warning = if (SystemFonts.sampleCoverageOf(pickedFont) < SystemFonts.LOW_COVERAGE_THRESHOLD) {
                         "Most of the characters in this font will not render correctly. " +
                                 "Are you sure you want to continue?"
                     } else {
@@ -415,7 +402,7 @@ object Customization : Feature() {
                 )
             }
         },
-        onChosen = { picked -> if (!SystemFonts.isBuiltIn(picked.value)) SystemFonts.install(picked.value) }
+        onChosen = { picked -> if (!SystemFonts.isBuiltInFont(picked.value)) SystemFonts.installSystemFont(picked.value) }
     )
 
     val fontId: Identifier?
@@ -424,7 +411,7 @@ object Customization : Feature() {
     private val textShadowSetting = BooleanSetting(
         key = "TextShadow",
         displayName = "Text Shadow",
-        description = "Draws a shadow under the mod's writing, which helps over a busy background",
+        description = "Draws a shadow under the mod's text",
         value = false
     )
 
@@ -434,13 +421,13 @@ object Customization : Feature() {
         key = "Text",
         displayName = "Text",
         description = "How the mod's writing is drawn, on screen and in chat",
-        children = listOf(fontSetting, textTransparencySetting, textShadowSetting, prefixColourSetting)
+        children = listOf(fontSetting, textTransparencySetting, textShadowSetting, prefixColorSetting)
     )
 
     private val backgroundGroup = ParentSetting(
         key = "Background",
         displayName = "Background",
-        description = "A background image behind the settings, from this computer or from a link",
+        description = "A background image behind the mod's screens, from this computer or from a link",
         children = listOf(backgroundSetting, backgroundScreensSetting)
     )
 
@@ -455,7 +442,7 @@ object Customization : Feature() {
         key = "UiPresets",
         displayName = "UI Presets",
         description = "Change how the mod looks, with an option to save as a preset so you can quickly change between variations",
-        settingUnder = { appearanceGroup },
+        settingUnder = appearanceGroup,
         defaultName = "Default"
     )
 

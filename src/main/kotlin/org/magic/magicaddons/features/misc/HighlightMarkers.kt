@@ -26,31 +26,28 @@ object HighlightMarkers : Feature() {
     val iconSetting = BooleanSetting(
         key = "MarkerIcon",
         displayName = "Mob Icon",
-        description = "§fDraws what a highlighted mob is over it once it is far enough away,\n" +
-                "§fsince an outline that far off is only a dot.",
+        description = "§fDraws what a highlighted mob is over it once it is far enough away",
         value = false
     )
 
     val arrowsSetting = BooleanSetting(
         key = "MarkerArrows",
         displayName = "Screen Edge Arrows",
-        description = "§fMarks a mob that is off screen on the edge nearest it,\n" +
-                "§fpointing the way to turn.",
+        description = "§fMarks a mob that is off screen on the edge nearest it",
         value = false
     )
 
     val alwaysNameSetting = BooleanSetting(
         key = "MarkerAlwaysName",
         displayName = "Always Show Name",
-        description = "§fWrites every marked mob's name beside it.\n" +
-                "§fOff, a name is only written when two marked mobs look alike.",
+        description = "§fWrites every marked mob's name next to it",
         value = false
     )
 
     val tracerSetting = BooleanSetting(
         key = "MarkerTracer",
         displayName = "Tracer To Nearest",
-        description = "§fDraws a line from the middle of the screen to the closest marked mob.",
+        description = "",
         value = false
     )
 

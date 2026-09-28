@@ -30,22 +30,18 @@ object WorldRenderer {
 
     private const val PULSE_MS: Long = 1600
 
-    /** alpha between low and high for a pulsating render */
     fun pulsedAlpha(low: Int, high: Int): Int {
         val range = (kotlin.math.sin(System.currentTimeMillis() % PULSE_MS / PULSE_MS.toDouble() * Math.PI * 2) + 1) / 2
 
         return low + ((high - low) * range).toInt()
     }
 
-    /** margin added for block outlines to not render inside each other */
     private const val OUTLINE_INSET: Double = 0.012
 
-    /** margin added for the render to not z fight with the block itself */
     private const val FILL_EXPAND: Double = 0.002
 
     private const val MIN_BOX: Double = 0.08
 
-    /** A world-space box filled and outlined, for entities. A box too thin to see is widened to MIN_BOX. */
     fun markBox(
         poseStack: PoseStack,
         collector: SubmitNodeCollector,
@@ -126,7 +122,6 @@ object WorldRenderer {
         }
     }
 
-    /** The block's tint for one tint index as opaque ARGB. Stems and grass are only coloured through this. */
     private fun tintColor(colors: BlockColors, level: ClientLevel?, state: BlockState, pos: BlockPos, tintIndex: Int): Int {
         val source = colors.getTintSource(state, tintIndex)
         val rgb = when {
@@ -138,7 +133,6 @@ object WorldRenderer {
         return ARGB.color(0xFF, rgb)
     }
 
-    /** Runs [action] with the pose stack sitting at [pos], as the game sets up its own outline. */
     private inline fun atBlock(
         poseStack: PoseStack,
         cameraPos: Vec3,
@@ -164,7 +158,6 @@ object WorldRenderer {
         maxX + by, maxY + by, maxZ + by
     )
 
-    /** The six faces of a box, wound both ways so the face survives whichever winding is culled. */
     private fun VertexConsumer.fillBox(pose: PoseStack.Pose, box: AABB, color: Int) {
         val x1 = box.minX.toFloat()
         val y1 = box.minY.toFloat()
@@ -173,15 +166,15 @@ object WorldRenderer {
         val y2 = box.maxY.toFloat()
         val z2 = box.maxZ.toFloat()
 
-        bothWays(pose, color, x1, y1, z1, x1, y2, z1, x2, y2, z1, x2, y1, z1)
-        bothWays(pose, color, x2, y1, z2, x2, y2, z2, x1, y2, z2, x1, y1, z2)
-        bothWays(pose, color, x1, y1, z2, x1, y2, z2, x1, y2, z1, x1, y1, z1)
-        bothWays(pose, color, x2, y1, z1, x2, y2, z1, x2, y2, z2, x2, y1, z2)
-        bothWays(pose, color, x1, y1, z2, x1, y1, z1, x2, y1, z1, x2, y1, z2)
-        bothWays(pose, color, x1, y2, z1, x1, y2, z2, x2, y2, z2, x2, y2, z1)
+        doubleSidedQuad(pose, color, x1, y1, z1, x1, y2, z1, x2, y2, z1, x2, y1, z1)
+        doubleSidedQuad(pose, color, x2, y1, z2, x2, y2, z2, x1, y2, z2, x1, y1, z2)
+        doubleSidedQuad(pose, color, x1, y1, z2, x1, y2, z2, x1, y2, z1, x1, y1, z1)
+        doubleSidedQuad(pose, color, x2, y1, z1, x2, y2, z1, x2, y2, z2, x2, y1, z2)
+        doubleSidedQuad(pose, color, x1, y1, z2, x1, y1, z1, x2, y1, z1, x2, y1, z2)
+        doubleSidedQuad(pose, color, x1, y2, z1, x1, y2, z2, x2, y2, z2, x2, y2, z1)
     }
 
-    private fun VertexConsumer.bothWays(
+    private fun VertexConsumer.doubleSidedQuad(
         pose: PoseStack.Pose,
         color: Int,
         ax: Float, ay: Float, az: Float,
@@ -189,11 +182,11 @@ object WorldRenderer {
         cx: Float, cy: Float, cz: Float,
         dx: Float, dy: Float, dz: Float
     ) {
-        face(pose, color, ax, ay, az, bx, by, bz, cx, cy, cz, dx, dy, dz)
-        face(pose, color, dx, dy, dz, cx, cy, cz, bx, by, bz, ax, ay, az)
+        quad(pose, color, ax, ay, az, bx, by, bz, cx, cy, cz, dx, dy, dz)
+        quad(pose, color, dx, dy, dz, cx, cy, cz, bx, by, bz, ax, ay, az)
     }
 
-    private fun VertexConsumer.face(
+    private fun VertexConsumer.quad(
         pose: PoseStack.Pose,
         color: Int,
         ax: Float, ay: Float, az: Float,
@@ -207,10 +200,6 @@ object WorldRenderer {
         addVertex(pose, dx, dy, dz).setColor(color)
     }
 
-
-    /**
-     * a batch of blocks to pass to the renderer.
-     */
     class BlockRenderBatch(private val cameraPos: Vec3) {
         private class Fill(val pos: BlockPos, val boxes: List<AABB>, val color: Int)
         private class GhostBlock(val pos: BlockPos, val state: BlockState, val color: Int)
@@ -232,7 +221,6 @@ object WorldRenderer {
             outlines.add(Outline(pos, shape, color))
         }
 
-        /** A block as it would look if it were there, tinted and see through, boxed as a plan. */
         fun ghostBlockWithOutline(pos: BlockPos, state: BlockState, tint: Int, outlineColor: Int, alpha: Int) {
             ghostBlocks.add(GhostBlock(pos, state, ARGB.color(alpha, tint)))
             val level = Minecraft.getInstance().level ?: return

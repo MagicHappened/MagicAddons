@@ -3,24 +3,19 @@ package org.magic.magicaddons.ui.widgets
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.input.MouseButtonEvent
 import org.magic.magicaddons.Common
-import org.magic.magicaddons.ui.widgets.config.ClickableButtonWidget
 import org.magic.magicaddons.util.ScreenUtil.drawLine
 
-/** A row with a delete cross at its right edge, when it is given something to do on removal. */
 open class RemovableRowWidget<T>(
     value: T,
-    onClick: (RemovableRowWidget<T>) -> Unit,
-    val onRemove: ((RemovableRowWidget<T>) -> Unit)? = null
-) : ClickableRowWidget<T>(
-    value,
-    { onClick.invoke(it as RemovableRowWidget<T>) }
-) {
+    onClick: (T) -> Unit,
+    val onRemove: ((T) -> Unit)? = null
+) : RowWidget<T>(value, onClick) {
 
     private val removeButton = ClickableButtonWidget(
-        width = REMOVE_WIDTH,
+        width = REMOVE_BUTTON_WIDTH,
         height = 0,
         { graphics ->
-            val size = minOf(width, height) - CROSS_PAD * 2
+            val size = minOf(width, height) - CROSS_INSET * 2
 
             val startX = x + (width - size) / 2
             val startY = y + (height - size) / 2
@@ -32,15 +27,13 @@ open class RemovableRowWidget<T>(
         }
     )
 
-    override fun getRightReservedWidth(): Int {
-        return super.getRightReservedWidth() + if (onRemove != null) REMOVE_WIDTH else 0
-    }
+    override fun rightReservedWidth(): Int = super.rightReservedWidth() + if (onRemove != null) REMOVE_BUTTON_WIDTH else 0
 
     override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int) {
         super.extractRenderState(graphics, mouseX, mouseY)
 
         if (onRemove != null) {
-            removeButton.x = x + width - REMOVE_WIDTH
+            removeButton.x = x + width - REMOVE_BUTTON_WIDTH
             removeButton.y = y
             removeButton.height = height
 
@@ -48,13 +41,13 @@ open class RemovableRowWidget<T>(
         }
     }
 
-    override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, double: Boolean): Boolean {
-        if (onRemove != null && removeButton.mouseClicked(mouseButtonEvent, double)) {
-            onRemove.invoke(this)
+    override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
+        if (onRemove != null && removeButton.mouseClicked(mouseButtonEvent, doubled)) {
+            onRemove.invoke(value)
             return true
         }
 
-        return super.mouseClicked(mouseButtonEvent, double)
+        return super.mouseClicked(mouseButtonEvent, doubled)
     }
 
     override fun mouseMoved(mouseX: Double, mouseY: Double) {
@@ -63,10 +56,7 @@ open class RemovableRowWidget<T>(
     }
 
     private companion object {
-        /** The width of the cross button at the row's right edge. */
-        const val REMOVE_WIDTH: Int = 20
-
-        /** How far the cross sits inside its button. */
-        const val CROSS_PAD: Int = 4
+        const val REMOVE_BUTTON_WIDTH: Int = 20
+        const val CROSS_INSET: Int = 4
     }
 }

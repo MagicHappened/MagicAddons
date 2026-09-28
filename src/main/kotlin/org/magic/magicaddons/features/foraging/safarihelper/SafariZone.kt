@@ -12,10 +12,6 @@ import org.magic.magicaddons.util.EntityUtils
 import org.magic.magicaddons.util.EntityUtils.typePath
 import org.magic.magicaddons.util.PlayerUtils
 
-/**
- * One unique mob of a safari zone. Matching gets the whole EntityInfo, since a mob's visual is
- * often an item display or armor stand rather than the entity itself.
- */
 class SafariMob(
     val displayName: String,
     private val matcher: (EntityInfo) -> Boolean
@@ -23,10 +19,6 @@ class SafariMob(
     fun matches(info: EntityInfo): Boolean = matcher(info)
 }
 
-/**
- * The safari island split into four quadrants around x = -47 / z = 0, each with its own uniques:
- * haunted -z +x, icy -z -x, cavern +z -x, forest +z +x.
- */
 enum class SafariZone(val displayName: String, val uniqueMobs: List<SafariMob>) {
     FOREST(
         "Forest",
@@ -34,7 +26,6 @@ enum class SafariZone(val displayName: String, val uniqueMobs: List<SafariMob>) 
             SafariMob("Bluebird") { isParrot(it, Parrot.Variant.BLUE) },
             SafariMob("Fluffling") { isType(it, "panda") },
             SafariMob("Foxtrot") { isType(it, "fox") },
-            // a shulker until a capture on it fails, a silverfish wearing the shulker's look after
             SafariMob("Hideonfloor") { isType(it, "shulker") || isType(it, "silverfish") },
             SafariMob("Honeybug") { isType(it, "bee") },
             SafariMob("Macaw") { isParrot(it, Parrot.Variant.RED_BLUE) },
@@ -75,13 +66,11 @@ enum class SafariZone(val displayName: String, val uniqueMobs: List<SafariMob>) 
     CAVE(
         "Cave",
         listOf(
-            // a tropical fish anywhere else in the cave is a different mob that is not identified yet
             SafariMob("Cavernfish") { isType(it, "tropical_fish") && CAVERNFISH_AREA.contains(it.entity.position()) },
             SafariMob("Chuckwalla") { hasSkull(it, "fc63cd0d480971a7beae5fd503e5d51658cd906330843cbad92018f5b98b4fe5") },
             SafariMob("Driftling") { hasSkull(it, "f4c4f8e5fce1ec2d299cb8a395792ecddc497a1d8af86faaa5e20373016c7225") },
             SafariMob("Flitter") { hasSkull(it, "a89a76deedd42b410344100df2fa79b6eeac7e6f287745d656179368340ffade") },
             SafariMob("Gemzie") { isType(it, "vex") },
-            // an item display while it is still in stage one, a silverfish once it hatches
             SafariMob("Rockmite") {
                 hasSkull(it, "5dbaab74d1acd0abe9d04abe9928725de5d4495fcb63b647228caf6944c20800") || isType(it, "silverfish")
             },
@@ -91,7 +80,6 @@ enum class SafariZone(val displayName: String, val uniqueMobs: List<SafariMob>) 
         )
     );
 
-    /** The unique this entity belongs to, or null when it is not one of the zone's uniques. */
     fun mobMatching(info: EntityInfo): SafariMob? = uniqueMobs.firstOrNull { it.matches(info) }
 
     companion object {
@@ -109,7 +97,6 @@ enum class SafariZone(val displayName: String, val uniqueMobs: List<SafariMob>) 
     }
 }
 
-/** The only part of the cave where a tropical fish counts as a cavernfish. */
 private val CAVERNFISH_AREA = AABB(-105.0, 55.0, 68.0, -75.0, 72.0, 105.0)
 
 private fun isType(info: EntityInfo, path: String): Boolean =
@@ -132,7 +119,6 @@ private fun hasSkull(info: EntityInfo, vararg hashes: String): Boolean =
         hash != null && hash in hashes
     }
 
-/** Mobs that disguise themselves show up as an item display holding a plain full block. */
 private fun isBlockDisplay(info: EntityInfo): Boolean =
     visualsOf(info).any { entity ->
         entity is Display.ItemDisplay &&

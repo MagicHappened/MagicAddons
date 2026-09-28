@@ -7,14 +7,16 @@ import net.minecraft.client.gui.components.Renderable
 import net.minecraft.client.gui.components.events.GuiEventListener
 import net.minecraft.client.input.MouseButtonEvent
 import org.magic.magicaddons.Common
+import org.magic.magicaddons.data.greenhouse.transfer.LayoutFormat
+import org.magic.magicaddons.data.greenhouse.transfer.LayoutTransferResult
 import org.magic.magicaddons.ui.HoverableContainer
-import org.magic.magicaddons.ui.widgets.config.ClickableButtonWidget
+import org.magic.magicaddons.ui.OverlayContext
+import org.magic.magicaddons.ui.widgets.ClickableButtonWidget
+import org.magic.magicaddons.ui.widgets.PickContext
+import org.magic.magicaddons.ui.widgets.PickWithOptionContext
+import org.magic.magicaddons.util.ChatUtils
 
-/**
- * A row of buttons belonging to one half of the greenhouse screen. A panel is told where it may sit
- * and fits its buttons into that, rather than measuring the grid or the window itself.
- */
-abstract class ActionPanel : Renderable, HoverableContainer {
+abstract class ActionPanel(protected val overlayContext: OverlayContext) : Renderable, HoverableContainer {
 
     override var hoveredElement: GuiEventListener? = null
 
@@ -24,56 +26,44 @@ abstract class ActionPanel : Renderable, HoverableContainer {
     var y: Int = 0
         private set
 
-    /** What the screen has offered, which is the most this panel may take rather than what it takes. */
-    var width: Int = 0
+    var availableWidth: Int = 0
         private set
 
-    /** Every button the panel has; only the ones [isShown] allows are placed, drawn and clicked. */
     protected abstract val buttons: List<ClickableButtonWidget>
 
-    /** Whether [button] is worth showing right now. Everything is, unless a panel says otherwise. */
     protected open fun isShown(button: ClickableButtonWidget): Boolean = true
 
-    /** Room kept above the buttons for whatever a panel draws there. */
     protected open fun headerHeight(): Int = 0
 
-    /** What each button does, asked in the same order the buttons are laid out. */
     protected abstract fun onPressed(button: ClickableButtonWidget, event: MouseButtonEvent): Boolean
 
-    /** Which group [button] is laid out in; each group starts its own row. Everything is in the first unless a panel says otherwise. */
     protected open fun groupOf(button: ClickableButtonWidget): Int = 0
 
-    /** A small label written above a group's row, null for none. */
     protected open fun groupLabel(group: Int): String? = null
 
-    /** Where each group's label was put, for drawing. */
-    private val labelAt = mutableMapOf<Int, Pair<Int, Int>>()
+    private val groupLabelPositions = mutableMapOf<Int, Pair<Int, Int>>()
 
     private val font get() = Minecraft.getInstance().font
 
-    /**
-     * Puts the panel in the given box: each group of buttons on its own row under its label, a row
-     * wrapping when room runs out.
-     */
-    fun layoutIn(x: Int, y: Int, width: Int) {
+    fun layoutIn(x: Int, y: Int, availableWidth: Int) {
         this.x = x
         this.y = y
-        this.width = width
-        labelAt.clear()
+        this.availableWidth = availableWidth
+        groupLabelPositions.clear()
 
         var rowY = y + PADDING + headerHeight()
 
-        buttons.filter { isShown(it) }.groupBy { groupOf(it) }.toSortedMap().forEach { (group, shown) ->
+        buttons.filter { isShown(it) }.groupBy { groupOf(it) }.toSortedMap().forEach { (group, shownButtons) ->
             groupLabel(group)?.let {
-                labelAt[group] = (x + PADDING) to rowY
+                groupLabelPositions[group] = (x + PADDING) to rowY
                 rowY += font.lineHeight + Common.UI.SPACING
             }
 
             var rowX = x + PADDING
             var rowHeight = 0
 
-            shown.forEach { button ->
-                if (rowX + button.width > x + width - PADDING && rowX > x + PADDING) {
+            shownButtons.forEach { button ->
+                if (rowX + button.width > x + availableWidth - PADDING && rowX > x + PADDING) {
                     rowX = x + PADDING
                     rowY += rowHeight + Common.UI.SPACING
                     rowHeight = 0
@@ -90,10 +80,8 @@ abstract class ActionPanel : Renderable, HoverableContainer {
         }
     }
 
-    /** Whether anything is on show, so an empty panel can be left out of the layout entirely. */
-    fun hasShown(): Boolean = buttons.any { isShown(it) }
+    fun hasShownButtons(): Boolean = buttons.any { isShown(it) }
 
-    /** How tall the panel's buttons actually came out, which a caller may want to lay out below. */
     val contentHeight: Int
         get() {
             val bottom = buttons.filter { isShown(it) }.maxOfOrNull { it.y + it.height } ?: return 0
@@ -102,14 +90,14 @@ abstract class ActionPanel : Renderable, HoverableContainer {
         }
 
     override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
-        labelAt.forEach { (group, at) ->
+        groupLabelPositions.forEach { (group, at) ->
             groupLabel(group)?.let { graphics.modText(font, it, at.first, at.second, Common.UI.TEXT_DIM_COLOR) }
         }
         buttons.filter { isShown(it) }
             .forEach { it.extractRenderState(graphics, mouseX, mouseY, delta) }
     }
 
-    fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
+    open fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
         buttons.filter { isShown(it) }.forEach { button ->
             if (button.mouseClicked(mouseButtonEvent, doubled)) {
                 return onPressed(button, mouseButtonEvent)
@@ -119,13 +107,51 @@ abstract class ActionPanel : Renderable, HoverableContainer {
         return false
     }
 
-    fun mouseMoved(mouseX: Double, mouseY: Double) {
+    open fun mouseMoved(mouseX: Double, mouseY: Double) {
         buttons.forEach { it.mouseMoved(mouseX, mouseY) }
         hoveredElement = buttons.firstOrNull { isShown(it) && it.isMouseOver(mouseX, mouseY) }
     }
 
+    protected fun <T> openMenu(event: MouseButtonEvent, title: String, values: List<T>, onPick: (T) -> Unit) {
+        val menu = PickContext(event.x.toInt(), event.y.toInt(), title, values, overlayContext, onPick)
+        menu.init()
+        overlayContext.addContext(menu)
+    }
+
+    protected fun <T> openMenuWithOption(
+        event: MouseButtonEvent,
+        title: String,
+        values: List<T>,
+        optionLabel: String,
+        isOptionChecked: Boolean,
+        optionTooltip: String,
+        onPick: (T, Boolean) -> Unit
+    ) {
+        val menu = PickWithOptionContext(
+            event.x.toInt(), event.y.toInt(), title, values,
+            optionLabel, isOptionChecked, optionTooltip, overlayContext, onPick
+        )
+        menu.init()
+        overlayContext.addContext(menu)
+    }
+
+    protected fun copyExportToClipboard(result: LayoutTransferResult, format: LayoutFormat, layoutName: String) {
+        result.notes.forEach { ChatUtils.sendWithPrefix(it) }
+
+        when (result) {
+            is LayoutTransferResult.Failure -> ChatUtils.sendWithPrefix(result.reason)
+            is LayoutTransferResult.Exported -> {
+                Minecraft.getInstance().keyboardHandler.clipboard = result.text
+                ChatUtils.sendWithPrefix("Copied a ${format.displayName} layout for $layoutName to your clipboard")
+            }
+            is LayoutTransferResult.Imported -> Unit
+        }
+    }
+
     companion object {
-        /** How far the buttons sit inside the room the panel was given. */
         const val PADDING: Int = 6
+
+        const val NO_ROTATE_LABEL: String = "No Rotate"
+        const val NO_ROTATE_TOOLTIP: String = "Disables automatic rotation for the least amount of effort when building a preset"
     }
 }

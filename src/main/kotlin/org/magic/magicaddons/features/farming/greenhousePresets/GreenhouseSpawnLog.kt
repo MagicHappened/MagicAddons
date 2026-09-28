@@ -11,7 +11,6 @@ import java.time.temporal.ChronoUnit
 import kotlin.io.path.exists
 import kotlin.io.path.readLines
 import kotlin.io.path.readText
-import kotlin.io.path.writeText
 import kotlin.math.pow
 import org.magic.magicaddons.data.greenhouse.crops.Plant
 import org.magic.magicaddons.data.greenhouse.crops.PlantStage
@@ -19,10 +18,11 @@ import org.magic.magicaddons.data.greenhouse.plot.GreenhouseGrid
 import org.magic.magicaddons.data.greenhouse.plot.LayoutSlot
 import org.magic.magicaddons.data.greenhouse.plot.PlotLayout
 import org.magic.magicaddons.data.greenhouse.plot.PlotPrediction
-import org.magic.magicaddons.data.handlers.DataHandler
+import org.magic.magicaddons.Common
+import org.magic.magicaddons.data.handlers.ModFiles
 import org.magic.magicaddons.features.farming.greenhousePresets.lookups.BioanalysisAccessory
 import org.magic.magicaddons.util.ChatUtils
-
+// for tracking how hypixel mutations spawns work.
 object GreenhouseSpawnLog {
 
     private class RecordedPlant(val x: Int, val y: Int, val cropName: String, var stages: String, var water: Double?) {
@@ -50,8 +50,8 @@ object GreenhouseSpawnLog {
         var plantsAfter: List<RecordedPlant>? = null
     }
 
-    private val SETTINGS_FILE: Path = DataHandler.modDir.resolve("spawn-log.json")
-    private val LOG_DIR: Path = DataHandler.modDir.resolve("collected")
+    private val SETTINGS_FILE: Path = ModFiles.modDir.resolve("spawn-log.json")
+    private val LOG_DIR: Path = ModFiles.modDir.resolve("collected")
     private val FILE_NAME_TIME: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm")
 
     private const val HEADER: String = "time,plot,ticks,left_garden,weight_multiplier,empty_target_spots," +
@@ -219,36 +219,32 @@ object GreenhouseSpawnLog {
 
     private fun startFile() {
         val newFileName = "spawn-log-${LocalDateTime.now().format(FILE_NAME_TIME)}.csv"
-        Files.createDirectories(LOG_DIR)
-        LOG_DIR.resolve(newFileName).writeText(HEADER + "\n")
+        ModFiles.writeTextAtomically(LOG_DIR.resolve(newFileName), HEADER + "\n")
         activeFileName = newFileName
         writeSettings()
         ChatUtils.sendWithPrefix("Spawn log on, writing to collected/$newFileName")
     }
 
     private fun readActiveFileName(): String? = runCatching {
-        if (!SETTINGS_FILE.exists()) return null
-        val fileName = JsonParser.parseString(SETTINGS_FILE.readText()).asJsonObject.get("activeFile")?.asString ?: return null
+        val settings = ModFiles.loadTextWithBackup(SETTINGS_FILE) { JsonParser.parseString(it).asJsonObject.get("activeFile")?.asString }
+        val fileName = (settings as? ModFiles.LoadResult.Loaded)?.value ?: return null
         val file = LOG_DIR.resolve(fileName)
         if (!file.exists()) {
-            Files.createDirectories(LOG_DIR)
-            file.writeText(HEADER + "\n")
+            ModFiles.writeTextAtomically(file, HEADER + "\n")
             return fileName
         }
         if (file.readLines().firstOrNull() == HEADER) return fileName
 
         val replacementFileName = "spawn-log-${LocalDateTime.now().format(FILE_NAME_TIME)}.csv"
-        LOG_DIR.resolve(replacementFileName).writeText(HEADER + "\n")
+        ModFiles.writeTextAtomically(LOG_DIR.resolve(replacementFileName), HEADER + "\n")
         writeSettings(replacementFileName)
         replacementFileName
     }.getOrNull()
 
     private fun writeSettings(fileName: String? = activeFileName) {
-        SETTINGS_FILE.writeText(
-            JsonObject().apply {
-                fileName?.let { addProperty("activeFile", it) }
-            }.toString()
-        )
+        val settingsJson = JsonObject().apply { fileName?.let { addProperty("activeFile", it) } }.toString()
+        runCatching { ModFiles.saveTextWithBackup(SETTINGS_FILE, settingsJson) { JsonParser.parseString(it).asJsonObject } }
+            .onFailure { Common.LOGGER.warn("Could not save the spawn log settings", it) }
     }
 
     private fun csvField(text: String): String =

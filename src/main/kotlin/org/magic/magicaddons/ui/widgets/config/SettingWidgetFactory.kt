@@ -14,17 +14,15 @@ import org.magic.magicaddons.ui.OverlayContext
 
 object SettingWidgetFactory {
 
-    fun create(node: SettingNode<*>, overlays: OverlayContext): SettingWidget<*> {
-        return when (node) {
-            is BooleanSetting -> BooleanSettingWidget(node, overlays)
-            is TextSetting -> TextSettingWidget(node, overlays)
-            is IntSetting -> IntSettingWidget(node, overlays)
-            is EnumSetting<*> -> EnumSettingWidget(node, overlays)
-            is ToggleListSetting -> ChoiceListSettingWidget(node, overlays)
-            is ActionSetting -> ActionSettingWidget(node, overlays)
-            is ChoiceSetting -> ChoiceSettingWidget(node, overlays)
-            is ParentSetting -> ParentSettingWidget(node, overlays)
-            is PresetLibrarySetting -> PresetLibraryWidget(node, overlays)
-        }
+    fun create(node: SettingNode<*>, overlays: OverlayContext): SettingWidget<*> = when (node) {
+        is BooleanSetting -> BooleanSettingWidget(node, overlays)
+        is TextSetting -> TextSettingWidget(node, overlays)
+        is IntSetting -> IntSettingWidget(node, overlays)
+        is EnumSetting<*> -> EnumSettingWidget(node, overlays)
+        is ToggleListSetting -> ToggleListSettingWidget(node, overlays)
+        is ActionSetting -> ActionSettingWidget(node, overlays)
+        is ChoiceSetting -> ChoiceSettingWidget(node, overlays)
+        is ParentSetting -> ParentSettingWidget(node, overlays)
+        is PresetLibrarySetting -> PresetLibrarySettingWidget(node, overlays)
     }
 }

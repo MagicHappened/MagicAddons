@@ -17,29 +17,21 @@ import org.magic.magicaddons.events.render.HudRenderEvent
 import org.magic.magicaddons.features.misc.HighlightMarkers
 import org.magic.magicaddons.util.ScreenUtil.drawLine
 import org.magic.magicaddons.util.EntityUtils
-import org.magic.magicaddons.util.ScreenUtil.renderFakeItem
+import org.magic.magicaddons.util.ScreenUtil.drawItem
 import org.magic.magicaddons.util.compat.McCompat
 import kotlin.math.roundToInt
 import kotlin.math.sqrt
 
-/**
- * What a highlight far enough away to be only a dot is drawn as: the mob itself over it, and an
- * arrow on the edge of the screen for one that is behind the player. What is drawn, and for which
- * features, is [HighlightMarkers].
- */
 object MarkerRenderer {
 
     init {
         EventBus.register(this)
     }
 
-    /** Small enough to sit inside the ring drawn around it, and even so it centres on a whole pixel. */
     private const val ICON_SIZE: Int = 14
 
-    /** How far the name sits under an icon, clear of the ring around it. */
     private const val NAME_GAP: Int = 6
 
-    /** One highlight worth drawing this frame, as everything the drawing needs. */
     private class Marker(
         val entity: Entity,
         val mark: EntityUtils.HighlightMark,
@@ -48,8 +40,7 @@ object MarkerRenderer {
         val distance: Double,
         val named: Boolean
     ) {
-        /** Two markers sharing this look alike, and are the case a name has to tell apart. */
-        val look: String = mark.icon?.item?.toString() ?: entity.type.toString()
+        val iconString: String = mark.icon?.item?.toString() ?: entity.type.toString()
     }
 
     @EventHandler
@@ -62,15 +53,9 @@ object MarkerRenderer {
 
         drawTracer(event.graphics)
 
-        // the furthest first, so the nearest marker ends up on top of the pile
         markers.forEach { draw(event.graphics, it) }
     }
 
-    /**
-     * A line from the crosshair to the nearest highlighted mob, drawn under the markers. It leads to
-     * the nearest mob rather than the nearest marker: one close enough to be worth walking to is
-     * usually too close to have been marked at all.
-     */
     private fun drawTracer(graphics: GuiGraphicsExtractor) {
         if (!HighlightMarkers.tracerSetting.value || !HighlightMarkers.baseSetting.value) return
 
@@ -83,7 +68,7 @@ object MarkerRenderer {
             }
             .minByOrNull { (entity, _) -> entity.distanceToSqr(player) } ?: return
 
-        val at = WorldToScreen.of(nearest.key.position().add(0.0, nearest.key.bbHeight / 2.0, 0.0))
+        val at = WorldToScreen.screenPointOf(nearest.key.position().add(0.0, nearest.key.bbHeight / 2.0, 0.0))
 
         graphics.drawLine(
             window.guiScaledWidth / 2,
@@ -110,10 +95,10 @@ object MarkerRenderer {
             if (distance < HighlightMarkers.distanceSetting.value) return@forEach
 
             val mark = source.highlightMark(entity) ?: return@forEach
-            val at = WorldToScreen.of(entity.position().add(0.0, entity.bbHeight / 2.0, 0.0))
+            val at = WorldToScreen.screenPointOf(entity.position().add(0.0, entity.bbHeight / 2.0, 0.0))
 
-            if (at.onScreen && !HighlightMarkers.iconSetting.value) return@forEach
-            if (!at.onScreen && !HighlightMarkers.arrowsSetting.value) return@forEach
+            if (at.isOnScreen && !HighlightMarkers.iconSetting.value) return@forEach
+            if (!at.isOnScreen && !HighlightMarkers.arrowsSetting.value) return@forEach
 
             found.add(
                 Marker(entity, mark, source.highlightColor(entity), at, distance, HighlightMarkers.alwaysNameSetting.value)
@@ -123,26 +108,24 @@ object MarkerRenderer {
         return named(found)
     }
 
-    /** Names the markers the player could not otherwise tell apart, and any the settings always name. */
     private fun named(markers: List<Marker>): List<Marker> {
-        val alike = markers.groupBy { it.look }.filterValues { it.size > 1 }.keys
+        val alike = markers.groupBy { it.iconString }.filterValues { it.size > 1 }.keys
 
         return markers.map { marker ->
-            if (marker.named || marker.look in alike) marker.withName() else marker
+            if (marker.named || marker.iconString in alike) marker.withName() else marker
         }
     }
 
     private fun Marker.withName(): Marker = Marker(entity, mark, color, at, distance, named = true)
 
     private fun draw(graphics: GuiGraphicsExtractor, marker: Marker) {
-        // the icon is laid out from the same whole pixel the plate is drawn around, since a box half
-        // a pixel out lands the mob off the middle of its own marker
+
         val centerX = marker.at.x.roundToInt()
         val centerY = marker.at.y.roundToInt()
         val left = centerX - ICON_SIZE / 2
         val top = centerY - ICON_SIZE / 2
 
-        if (marker.at.onScreen) {
+        if (marker.at.isOnScreen) {
             MarkerBadge.drawRing(graphics, centerX.toFloat(), centerY.toFloat())
         } else {
             MarkerBadge.drawArrow(graphics, marker.at)
@@ -150,13 +133,12 @@ object MarkerRenderer {
 
         val icon = marker.mark.icon
         if (icon != null) {
-            graphics.renderFakeItem(icon, left, top, ICON_SIZE, ICON_SIZE)
+            graphics.drawItem(icon, left, top, ICON_SIZE, ICON_SIZE)
         } else {
             drawEntityIcon(graphics, marker, left, top, ICON_SIZE)
         }
 
-        // a name on the edge of the screen would be written off it, so an arrow carries none
-        if (!marker.named || !marker.at.onScreen) return
+        if (!marker.named || !marker.at.isOnScreen) return
 
         val font = Minecraft.getInstance().font
         val nameWidth = font.width(marker.mark.name)
@@ -170,10 +152,6 @@ object MarkerRenderer {
         )
     }
 
-    /**
-     * The mob itself drawn into the marker, which is the only picture that exists for a mob with no
-     * item to stand for it, and the only one that tells two shulkers of different colours apart.
-     */
     private fun drawEntityIcon(graphics: GuiGraphicsExtractor, marker: Marker, left: Int, top: Int, size: Int) {
         val entity = marker.entity
 
@@ -183,7 +161,6 @@ object MarkerRenderer {
         val state = typed.createRenderState(entity, 1f)
         typed.extractRenderState(entity, state, 1f)
 
-        // faced at the player rather than wherever the mob happens to be looking
         (state as? LivingEntityRenderState)?.let { living ->
             living.bodyRot = 180f
             living.yRot = 180f
@@ -208,7 +185,6 @@ object MarkerRenderer {
 
         val icon = bakedIcons.getOrPut(marker.iconKey) { BakedEntityIcon() }
 
-        // drawing a cold icon is a whole model render, so a frame warms one and hands the gui the rest
         if (!icon.isBaked && bakedAnIconThisFrame) {
             graphics.guiRenderState.addPicturesInPictureState(drawn)
             return
@@ -218,14 +194,9 @@ object MarkerRenderer {
         icon.submit(drawn, graphics.guiRenderState)
     }
 
-    /**
-     * Mobs sharing this look alike in a marker, so they share the icon drawn for them. The mark's
-     * name already separates the variants the rules pick out, a brown shulker from a yellow one.
-     */
     private val Marker.iconKey: String
         get() = mark.name + if ((entity as? LivingEntity)?.isBaby == true) " baby" else ""
 
-    /** Keyed by [iconKey]; the least recently drawn is dropped, and its texture goes with it. */
     private val bakedIcons: MutableMap<String, BakedEntityIcon> =
         object : LinkedHashMap<String, BakedEntityIcon>(16, 0.75f, true) {
             override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, BakedEntityIcon>): Boolean {
@@ -239,9 +210,7 @@ object MarkerRenderer {
 
     private var bakedAnIconThisFrame: Boolean = false
 
-    /** A model this small or smaller is scaled as if it were this big, so nothing divides by nothing. */
     private const val MIN_MODEL_SIZE: Float = 0.1f
 
-    /** How much of the marker the model fills, leaving a little room around it. */
     private const val MODEL_MARGIN: Float = 0.9f
 }

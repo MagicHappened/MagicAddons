@@ -13,50 +13,42 @@ import org.magic.magicaddons.ui.widgets.RemovableRowWidget
 import org.magic.magicaddons.ui.widgets.TextField
 import org.magic.magicaddons.util.ScreenUtil.drawBorder
 
-/**
- * A text box under the description, with its history dropping down under it. The history is an
- * overlay, so it draws over whatever sits below and takes clicks before it.
- */
 class TextSettingWidget(
     private val setting: TextSetting,
     overlays: OverlayContext
 ) : SettingWidget<String>(setting, overlays) {
 
-    override val controlWidth: Int = 0
-    override val controlHeight: Int = 0
-
-    private var lastFocusedValue: String = setting.value
+    private var valueBeforeEditing: String = setting.value
 
     private val textBox = TextField(0, BOX_HEIGHT).also {
         it.value = setting.value
         it.setResponder { typed ->
             setting.value = typed
-            // what is typed doubles as the search through the old values
-            if (history.open) history.rebuild()
+            if (historyOverlay.isOpen) historyOverlay.rebuildRows()
         }
     }
 
-    private val history = HistoryOverlay()
+    private val historyOverlay = HistoryOverlay()
 
-    override fun extraHeight(): Int = BOX_HEIGHT
+    override fun belowTextHeight(): Int = BOX_HEIGHT
 
     override fun layoutControl() {
-        textBox.x = extraLeft()
-        textBox.y = extraTop()
-        textBox.width = extraWidth()
-        if (!textBox.focused) textBox.value = setting.value
-        if (history.open) history.rebuild()
+        textBox.x = belowTextLeft()
+        textBox.y = belowTextTop()
+        textBox.width = belowTextWidth()
+        if (!textBox.isFocused && textBox.value != setting.value) textBox.value = setting.value
+        if (historyOverlay.isOpen) historyOverlay.placeRows()
     }
 
     private fun openHistory() {
-        history.rebuild()
-        history.open = true
-        overlays.addOverlay(history)
+        historyOverlay.rebuildRows()
+        historyOverlay.isOpen = true
+        overlays.addOverlay(historyOverlay)
     }
 
     private fun closeHistory() {
-        history.open = false
-        overlays.removeOverlay(history)
+        historyOverlay.isOpen = false
+        overlays.removeOverlay(historyOverlay)
     }
 
     private fun applyHistoryValue(value: String) {
@@ -65,39 +57,37 @@ class TextSettingWidget(
         textBox.value = value
         setting.history.remove(value)
         setting.history.add(previousValue)
-        textBox.focused = false
+        valueBeforeEditing = value
+        textBox.isFocused = false
         closeHistory()
     }
 
     private fun removeHistoryValue(value: String) {
         setting.history.remove(value)
-        history.rebuild()
+        historyOverlay.rebuildRows()
     }
 
-    override fun renderControl(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {}
-
-    override fun renderExtra(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
+    override fun renderBelowText(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
         textBox.render(graphics)
     }
 
     override fun controlClicked(event: MouseButtonEvent, doubled: Boolean): Boolean {
-        val wasFocused = textBox.focused
+        val wasFocused = textBox.isFocused
 
         if (textBox.mouseClicked(event, doubled)) {
             openHistory()
             return true
         }
 
-        // any other click: the screen has already closed the history, this only settles the text
-        if (wasFocused && textBox.value != lastFocusedValue) {
-            if (lastFocusedValue.isNotBlank()) setting.history.add(lastFocusedValue)
-            lastFocusedValue = setting.value
+        if (wasFocused && textBox.value != valueBeforeEditing) {
+            if (valueBeforeEditing.isNotBlank()) setting.history.add(valueBeforeEditing)
+            valueBeforeEditing = setting.value
         }
         return false
     }
 
     override fun dropFocus() {
-        textBox.focused = false
+        textBox.isFocused = false
         super.dropFocus()
     }
 
@@ -105,10 +95,9 @@ class TextSettingWidget(
 
     override fun keyPressed(event: KeyEvent): Boolean = textBox.keyPressed(event) || super.keyPressed(event)
 
-    /** The previous values, dropped down under the box as rows that apply or remove themselves. */
     inner class HistoryOverlay : OverlayRenderable {
 
-        var open: Boolean = false
+        var isOpen: Boolean = false
 
         override val renderPriority: Int = OverlayRenderable.DROPDOWN_PRIORITY
 
@@ -116,27 +105,33 @@ class TextSettingWidget(
 
         private val rows: MutableList<RemovableRowWidget<String>> = mutableListOf()
 
-        fun rebuild() {
+        fun rebuildRows() {
             rows.clear()
 
-            var currentY = textBox.y + textBox.height
-            val typed = textBox.value.trim()
+            val filterText = textBox.value.trim()
 
-            setting.history.filter { it.contains(typed, ignoreCase = true) }.forEach { value ->
-                val row = RemovableRowWidget(
-                    value = value,
-                    onClick = { applyHistoryValue(value) },
-                    onRemove = { removeHistoryValue(value) }
+            setting.history.filter { it.contains(filterText, ignoreCase = true) }.forEach { value ->
+                rows.add(
+                    RemovableRowWidget(
+                        value = value,
+                        onClick = { applyHistoryValue(value) },
+                        onRemove = { removeHistoryValue(value) }
+                    )
                 )
+            }
+            rows.lastOrNull()?.hasDividerBelow = false
+            placeRows()
+        }
+
+        fun placeRows() {
+            var currentY = textBox.y + textBox.height
+            rows.forEach { row ->
                 row.x = textBox.x
                 row.y = currentY
                 row.width = textBox.width
                 row.fitHeight(textBox.height)
-
                 currentY += row.height
-                rows.add(row)
             }
-            rows.lastOrNull()?.dividerBelow = false
         }
 
         override val overlayX: Int get() = textBox.x
@@ -158,7 +153,7 @@ class TextSettingWidget(
         }
 
         override fun onClosed() {
-            open = false
+            isOpen = false
         }
     }
 

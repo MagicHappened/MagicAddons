@@ -1,53 +1,46 @@
 package org.magic.magicaddons.ui.fonts
 
+import net.fabricmc.fabric.api.resource.v1.ResourceLoader
 import net.minecraft.SharedConstants
 import net.minecraft.client.Minecraft
 import net.minecraft.resources.Identifier
 import net.minecraft.server.packs.PackType
+import net.minecraft.server.packs.resources.ResourceManagerReloadListener
 import org.magic.magicaddons.Common
+import org.magic.magicaddons.data.handlers.ModFiles
 import org.magic.magicaddons.util.ChatUtils
-import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.io.path.exists
 import kotlin.io.path.extension
 import kotlin.io.path.isRegularFile
-import kotlin.io.path.listDirectoryEntries
 import kotlin.io.path.nameWithoutExtension
 
-/**
- * The fonts the mod's screens can write in: the game's own, and any TrueType font installed on this
- * computer. A system font reaches the game through a small resource pack holding just that one file.
- */
 object SystemFonts {
 
-    /** The game's fonts by the name the picker shows, the first being what the mod ships with. */
-    private val builtIn: Map<String, Identifier> = linkedMapOf(
+    private val BUILT_IN_FONT_ID_BY_NAME: Map<String, Identifier> = linkedMapOf(
         "Minecraft" to Identifier.withDefaultNamespace("default"),
         "Uniform" to Identifier.withDefaultNamespace("uniform"),
         "Enchanting" to Identifier.withDefaultNamespace("alt"),
         "Illager" to Identifier.withDefaultNamespace("illageralt")
     )
 
-    val defaultName: String = builtIn.keys.first()
+    val DEFAULT_FONT_NAME: String = BUILT_IN_FONT_ID_BY_NAME.keys.first()
 
-    /** The one font id the pack ever defines; whichever file is picked is written under it. */
-    private val systemFontId: Identifier = Identifier.fromNamespaceAndPath(Common.MOD_ID, "system")
+    private val SYSTEM_FONT_ID: Identifier = Identifier.fromNamespaceAndPath(Common.MOD_ID, "system")
 
-    private const val PACK_NAME: String = "magicaddons-fonts"
+    private const val FONT_PACK_NAME: String = "magicaddons-fonts"
 
-    /** The writing a font is tried against: letters, digits and the punctuation the screens use. */
-    private const val SAMPLE: String =
+    private const val FONT_PACK_ID: String = "file/$FONT_PACK_NAME"
+
+    private const val COVERAGE_SAMPLE_TEXT: String =
         "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 .,:;!?%/()[]-+…"
 
-    /** Below this share of [SAMPLE] a font is warned about before it is used. */
-    const val WARN_BELOW: Float = 0.2f
+    const val LOW_COVERAGE_THRESHOLD: Float = 0.2f
 
-    /** How the game names a folder pack in the options, so it can be turned on by name. */
-    private const val PACK_ID: String = "file/$PACK_NAME"
+    private const val FONT_FOLDER_SCAN_DEPTH: Int = 4
 
-    /** Where each system puts its fonts. Folders that do not exist are skipped. */
-    private val fontFolders: List<Path> = listOf(
+    private val SYSTEM_FONT_FOLDERS: List<Path> = listOf(
         System.getenv("WINDIR")?.let { Path.of(it, "Fonts") },
         System.getenv("LOCALAPPDATA")?.let { Path.of(it, "Microsoft", "Windows", "Fonts") },
         Path.of("/usr/share/fonts"),
@@ -59,96 +52,88 @@ object SystemFonts {
         Path.of(System.getProperty("user.home"), "Library", "Fonts")
     ).mapNotNull { it }
 
-    /**
-     * Every TrueType file found, by the name the font calls itself rather than its file name, so
-     * "comicbd.ttf" is listed as Comic Sans MS Bold. Read once on the first look.
-     */
-    private val installed: Map<String, Path> by lazy {
-        val found = sortedMapOf<String, Path>(String.CASE_INSENSITIVE_ORDER)
+    private val installedFontPathByName: Map<String, Path> by lazy {
+        val fontPathByName = sortedMapOf<String, Path>(String.CASE_INSENSITIVE_ORDER)
 
-        fontFolders.filter { it.exists() }.forEach { folder ->
+        SYSTEM_FONT_FOLDERS.filter { it.exists() }.forEach { folder ->
             runCatching {
-                Files.walk(folder, 2).use { paths ->
+                Files.walk(folder, FONT_FOLDER_SCAN_DEPTH).use { paths ->
                     paths.filter { it.isRegularFile() && it.extension.lowercase() == "ttf" }
-                        .forEach { path -> found.putIfAbsent(nameOf(path), path) }
+                        .forEach { path -> fontPathByName.putIfAbsent(fontNameInFile(path), path) }
                 }
             }.onFailure { Common.LOGGER.warn("Could not read the fonts in $folder", it) }
         }
 
-        found
+        fontPathByName.keys.removeAll { it in BUILT_IN_FONT_ID_BY_NAME }
+        fontPathByName
     }
 
-    /** The name written inside the font file, or the file's own name when that cannot be read. */
-    private fun nameOf(path: Path): String =
+    private var cachedIsPackWritten: Boolean? = null
+
+    private var cachedIsPackSelected: Boolean? = null
+
+    fun init() {
+        ResourceLoader.get(PackType.CLIENT_RESOURCES).registerReloadListener(
+            Identifier.fromNamespaceAndPath(Common.MOD_ID, "system_font_pack"),
+            ResourceManagerReloadListener { forgetPackState() }
+        )
+    }
+
+    private fun forgetPackState() {
+        cachedIsPackWritten = null
+        cachedIsPackSelected = null
+    }
+
+    private fun fontNameInFile(path: Path): String =
         runCatching { java.awt.Font.createFont(java.awt.Font.TRUETYPE_FONT, path.toFile()).fontName }
             .getOrNull()
             ?.takeIf { it.isNotBlank() }
             ?: path.nameWithoutExtension
 
-    /**
-     * How much of ordinary writing a font can draw, from none to all. A symbol font such as Wingdings
-     * has pictures where the letters should be and comes out as boxes in the game.
-     */
-    fun coverage(name: String): Float {
-        val file = installed[name] ?: return 1f
-        val font = runCatching { java.awt.Font.createFont(java.awt.Font.TRUETYPE_FONT, file.toFile()) }
+    fun sampleCoverageOf(name: String): Float {
+        val fontFile = installedFontPathByName[name] ?: return 1f
+        val font = runCatching { java.awt.Font.createFont(java.awt.Font.TRUETYPE_FONT, fontFile.toFile()) }
             .getOrNull() ?: return 0f
 
-        val drawable = SAMPLE.count { font.canDisplay(it) }
+        val drawableCount = COVERAGE_SAMPLE_TEXT.count { font.canDisplay(it) }
 
-        return drawable.toFloat() / SAMPLE.length
+        return drawableCount.toFloat() / COVERAGE_SAMPLE_TEXT.length
     }
 
-    /** What the picker offers: the game's fonts first, then everything installed. */
-    fun choices(): List<String> = builtIn.keys.toList() + installed.keys
+    fun fontChoices(): List<String> = BUILT_IN_FONT_ID_BY_NAME.keys.toList() + installedFontPathByName.keys
 
-    fun isBuiltIn(name: String): Boolean = name in builtIn
+    fun isBuiltInFont(name: String): Boolean = name in BUILT_IN_FONT_ID_BY_NAME
 
-    /** Read once rather than every time the pack is asked about, since it is a look at the disk. */
-    private var packFileExists: Boolean? = null
+    private fun isFontPackActive(): Boolean {
+        val isPackWritten = cachedIsPackWritten
+            ?: fontPackFolder().resolve("pack.mcmeta").exists().also { cachedIsPackWritten = it }
+        val isPackSelected = cachedIsPackSelected
+            ?: (FONT_PACK_ID in Minecraft.getInstance().resourcePackRepository.selectedIds).also { cachedIsPackSelected = it }
 
-    /** Read once as well: the repository builds a fresh set of ids on every ask, and a HUD frame asks. */
-    private var packSelected: Boolean? = null
-
-    /** Whether the pack for a system font is in place and switched on, so its id resolves. */
-    private fun packReady(): Boolean {
-        val exists = packFileExists ?: packFolder().resolve("pack.mcmeta").exists().also { packFileExists = it }
-        val selected = packSelected
-            ?: (PACK_ID in Minecraft.getInstance().resourcePackRepository.selectedIds).also { packSelected = it }
-
-        return exists && selected
+        return isPackWritten && isPackSelected
     }
 
-    /** The font id to write in, or null for the game's own default, which needs no style at all. */
     fun fontIdFor(name: String): Identifier? {
-        builtIn[name]?.let { return if (name == defaultName) null else it }
-        return if (name in installed && packReady()) systemFontId else null
+        BUILT_IN_FONT_ID_BY_NAME[name]?.let { return if (name == DEFAULT_FONT_NAME) null else it }
+        return if (isFontPackActive()) SYSTEM_FONT_ID else null
     }
 
-    private fun packFolder(): Path =
-        Minecraft.getInstance().resourcePackDirectory.resolve(PACK_NAME)
+    private fun fontPackFolder(): Path =
+        Minecraft.getInstance().resourcePackDirectory.resolve(FONT_PACK_NAME)
 
-    /**
-     * Copies the chosen file into the mod's pack, turns the pack on, and reloads so the game reads
-     * it. A font that is the game's own needs none of this.
-     */
-    fun install(name: String) {
-        val file = installed[name] ?: return
+    fun installSystemFont(name: String) {
+        val fontFile = installedFontPathByName[name] ?: return
         val minecraft = Minecraft.getInstance()
 
-        packFileExists = null
-        packSelected = null
+        forgetPackState()
 
         runCatching {
-            writePack(file)
+            writeFontPack(fontFile)
 
-            // the repository decides what a reload loads and rewrites the options from itself, so the
-            // pack is turned on there: rescanned first, since the folder may have just been made
             val repository = minecraft.resourcePackRepository
             repository.reload()
-            if (repository.getPack(PACK_ID) == null) error("The game did not find the pack $PACK_ID")
-            // false when the pack is already on, which is every switch after the first
-            repository.addPack(PACK_ID)
+            if (repository.getPack(FONT_PACK_ID) == null) error("The game did not find the pack $FONT_PACK_ID")
+            repository.addPack(FONT_PACK_ID)
             minecraft.options.updateResourcePacks(repository)
         }.onFailure {
             Common.LOGGER.warn("Could not set up the font pack for $name", it)
@@ -159,12 +144,10 @@ object SystemFonts {
         minecraft.reloadResourcePacks()
     }
 
-    private fun writePack(font: Path) {
-        val fontFolder = packFolder().resolve("assets").resolve(Common.MOD_ID).resolve("font")
-        Files.createDirectories(fontFolder)
-
+    private fun writeFontPack(fontFile: Path) {
+        val fontFolder = fontPackFolder().resolve("assets").resolve(Common.MOD_ID).resolve("font")
         val format = SharedConstants.getCurrentVersion().packVersion(PackType.CLIENT_RESOURCES)
-        packFolder().resolve("pack.mcmeta").toFile().writeText(
+        ModFiles.writeTextAtomically(fontPackFolder().resolve("pack.mcmeta"), 
             """
             {
               "pack": {
@@ -177,9 +160,9 @@ object SystemFonts {
             """.trimIndent()
         )
 
-        Files.copy(font, fontFolder.resolve("system.ttf"), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+        ModFiles.copyAtomically(fontFile, fontFolder.resolve("system.ttf"))
 
-        fontFolder.resolve("system.json").toFile().writeText(
+        ModFiles.writeTextAtomically(fontFolder.resolve("system.json"), 
             """
             {
               "providers": [
@@ -196,7 +179,4 @@ object SystemFonts {
             """.trimIndent()
         )
     }
-
-    /** Whether a name the picker holds still has a file behind it, for one deleted since. */
-    fun exists(name: String): Boolean = isBuiltIn(name) || installed[name]?.toFile()?.let(File::isFile) == true
 }

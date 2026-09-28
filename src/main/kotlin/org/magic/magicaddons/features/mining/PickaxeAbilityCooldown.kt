@@ -16,7 +16,7 @@ import org.magic.magicaddons.ui.hud.ConfigTarget
 import org.magic.magicaddons.ui.hud.HudContent
 import org.magic.magicaddons.ui.hud.HudElement
 import org.magic.magicaddons.ui.hud.HudLine
-import org.magic.magicaddons.util.ServerClock
+import org.magic.magicaddons.util.ServerTime
 import org.magic.magicaddons.util.compat.McCompat
 import tech.thatgravyboat.skyblockapi.api.SkyBlockAPI
 import tech.thatgravyboat.skyblockapi.api.data.SkyBlockCategory
@@ -85,7 +85,6 @@ object PickaxeAbilityCooldown : Feature() {
 
     private val PICKAXE_CATEGORIES: Set<SkyBlockCategory> = setOf(SkyBlockCategory.PICKAXE, SkyBlockCategory.DRILL, SkyBlockCategory.GAUNTLET)
 
-    /** How long after a click its chat line may still arrive; a click with nothing after it was not a use. */
     private const val CHAT_WINDOW_MS: Long = 3_000
 
     private const val READY_TITLE_FADE: Int = 3
@@ -93,26 +92,22 @@ object PickaxeAbilityCooldown : Feature() {
 
     private class UseMoment(val realMs: Long, val serverMs: Long) {
         fun msSince(onServerTime: Boolean): Long =
-            if (onServerTime) ServerClock.nowMs() - serverMs else System.currentTimeMillis() - realMs
+            if (onServerTime) ServerTime.nowMs() - serverMs else System.currentTimeMillis() - realMs
     }
 
-    private fun useMomentNow(): UseMoment = UseMoment(System.currentTimeMillis(), ServerClock.nowMs())
+    private fun useMomentNow(): UseMoment = UseMoment(System.currentTimeMillis(), ServerTime.nowMs())
 
-    /** A click with a pickaxe, and what its cooldown will be cut by once the chat names the ability. */
     private class PendingUse(val clickedAt: UseMoment, val itemFactor: Double, val hasBlueCheese: Boolean) {
         fun stillAwaitingChatLine(): Boolean = clickedAt.msSince(onServerTime = false) <= CHAT_WINDOW_MS
     }
 
     private var pendingUse: PendingUse? = null
 
-    /** Whether the next "New buff:" line is Sky Mall's. */
     private var skyMallBuffNext: Boolean = false
 
-    /** When Sky Mall last announced the pickaxe cooldown buff, null once it announced another. */
     private var skyMallCooldownSince: Long? = null
 
-    /** Whether Mineshaft Mayhem picked the cooldown buff in the mineshaft the player is in. */
-    private var mayhemCooldown: Boolean = false
+    private var mayhemCooldownActive: Boolean = false
 
     private var abilityName: String? = null
     private var abilityUsedAt: UseMoment? = null
@@ -164,7 +159,6 @@ object PickaxeAbilityCooldown : Feature() {
         warnedReady = false
     }
 
-    /** Follows Sky Mall's daily buff and Mineshaft Mayhem's pick, whether or not the feature is on. */
     private fun trackBuffs(text: String) {
         when {
             text.startsWith(SKY_MALL_DAY) -> skyMallBuffNext = true
@@ -173,20 +167,15 @@ object PickaxeAbilityCooldown : Feature() {
                 skyMallBuffNext = false
                 skyMallCooldownSince = if (text.contains(SKY_MALL_COOLDOWN_BUFF)) System.currentTimeMillis() else null
             }
-            text.startsWith(MAYHEM_COOLDOWN_LINE) -> mayhemCooldown = true
+            text.startsWith(MAYHEM_COOLDOWN_LINE) -> mayhemCooldownActive = true
         }
     }
 
-    /**
-     * A mineshaft's Mayhem pick is gone once the player leaves it. Only leaving clears it, since the
-     * pick may be announced before the arrival in the mineshaft is.
-     */
     @Subscription
     fun onIslandChange(event: IslandChangeEvent) {
-        if (event.old == SkyBlockIsland.MINESHAFT) mayhemCooldown = false
+        if (event.old == SkyBlockIsland.MINESHAFT) mayhemCooldownActive = false
     }
 
-    /** The reductions that belong to the player rather than the item, multiplied together. */
     private fun playerFactor(): Double = attributeFactor() * skyMallFactor() * mayhemFactor()
 
     private fun skyMallFactor(): Double {
@@ -196,7 +185,7 @@ object PickaxeAbilityCooldown : Feature() {
     }
 
     private fun mayhemFactor(): Double =
-        if (mayhemCooldown && LocationAPI.island == SkyBlockIsland.MINESHAFT) 1.0 - MAYHEM_REDUCTION else 1.0
+        if (mayhemCooldownActive && LocationAPI.island == SkyBlockIsland.MINESHAFT) 1.0 - MAYHEM_REDUCTION else 1.0
 
     private fun attributeLevel(): Int? =
         AttributeAPI.attributeMap.entries.firstOrNull { it.key.id == COOLDOWN_ATTRIBUTE_ID }?.value?.level
@@ -224,7 +213,7 @@ object PickaxeAbilityCooldown : Feature() {
                 "Sky Mall: cooldown buff " + (skyMallCooldownSince?.let { "seen ${seconds(now - it)} ago" } ?: "not seen") +
                         ", expecting its buff line: $skyMallBuffNext -> -${percent(skyMallFactor())}"
             )
-            add("Mineshaft Mayhem: cooldown picked: $mayhemCooldown -> -${percent(mayhemFactor())}")
+            add("Mineshaft Mayhem: cooldown picked: $mayhemCooldownActive -> -${percent(mayhemFactor())}")
             add("Player factor ${"%.4f".format(playerFactor())}, with held item ${"%.4f".format(total)}")
             baseCooldownSeconds(hasBlueCheese(held)).forEach { (name, base) -> add("  $name: ${base}s -> ${seconds((base * 1000 * total).toLong())}") }
             add("Pending click: " + (pendingUse?.let { "${seconds(now - it.clickedAt.realMs)} ago, item factor ${"%.4f".format(it.itemFactor)}, blue cheese ${it.hasBlueCheese}" } ?: "none"))
@@ -264,12 +253,12 @@ object PickaxeAbilityCooldown : Feature() {
     val hud: HudElement = object : HudElement("pickaxe_ability", "Pickaxe Ability") {
         override val defaultX: Int = 20
         override val defaultY: Int = 60
-        override val shadow: Boolean = true
+        override val hasTextShadow: Boolean = true
 
         override val configTarget: ConfigTarget
             get() = ConfigTarget(PickaxeAbilityCooldown, listOf(baseSetting))
 
-        override fun content(): HudContent? {
+        override fun currentContent(): HudContent? {
             if (!baseSetting.value) return null
             if (miningIslandsOnly.value && LocationAPI.island !in MINING_ISLANDS) return null
 
@@ -281,12 +270,12 @@ object PickaxeAbilityCooldown : Feature() {
                 secondsLeft != null -> Component.literal("${secondsLeft}s").withStyle(ChatFormatting.YELLOW)
                 else -> Component.literal("Ready").withStyle(ChatFormatting.GREEN)
             }
-            return HudContent(listOf(HudLine.Pair(Component.literal(label).withStyle(ChatFormatting.GOLD), value)))
+            return HudContent(listOf(HudLine.LabelValue(Component.literal(label).withStyle(ChatFormatting.GOLD), value)))
         }
 
-        override fun sample(): HudContent = HudContent(
+        override fun sampleContent(): HudContent = HudContent(
             listOf(
-                HudLine.Pair(
+                HudLine.LabelValue(
                     Component.literal("Pickobulus").withStyle(ChatFormatting.GOLD),
                     Component.literal("32s").withStyle(ChatFormatting.YELLOW)
                 )
@@ -311,9 +300,7 @@ object PickaxeAbilityCooldown : Feature() {
     private val useServerTime = BooleanSetting(
         key = "UseServerTime",
         displayName = "Use Server Time",
-        description = "Counts the cooldown down by the server's ticks instead of real time, so a lagging " +
-                "server slows the timer the way it slows the cooldown. Time away from a server, such as " +
-                "switching lobbies, still counts as real time",
+        description = "Counts the cooldown down by the server's ticks instead of real time",
         value = false
     )
 

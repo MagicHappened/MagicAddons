@@ -13,7 +13,6 @@ import org.magic.magicaddons.features.farming.greenhousePresets.GreenhousePreset
 import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseData
 import org.magic.magicaddons.render.WorldRenderer
 
-/** Marks the soil of every plant below full water in the greenhouse the player stands in. */
 object WaterIndicator {
 
     private const val CYAN: Int = 0xFF33E6FF.toInt()
@@ -34,10 +33,9 @@ object WaterIndicator {
             val plant = scannedPlant.plant
             val water = plant.waterLevel
 
-            // fully grown plant doesnt need water, but if a soggybud is next to it keep the water highlight
+            // todo add always show water highlight if a suggybud could spawn nearby
             val feedsDrainer = plant.cropDef.needsWater && grid.layout.plantsSurrounding(plant).any { it.cropDef.drainsNeighbours && !it.isFullyGrown }
 
-            // a water level nobody has read yet is marked as well, rather than passed over
             (plant.consumesWater || feedsDrainer) && !plant.cropDef.drainsNeighbours &&
                     (water == null || water < PlotPrediction.WATER_FULL_LEVEL) &&
                     !(ignoreGrown && !feedsDrainer && fullGrowthNoNegativeWater(grid, scannedPlant))
@@ -56,11 +54,6 @@ object WaterIndicator {
         presetBatch.submitBatch(poseStack, collector)
     }
 
-    /**
-     * Whether the plant has the water to reach its last stage without ever falling below zero, which
-     * is the plant that never skips a tick for want of water and so is worth leaving alone. A stage
-     * only estimated is taken at its lowest, since that is the most growing it may still have to do.
-     */
     private fun fullGrowthNoNegativeWater(grid: GreenhouseGrid, scannedPlant: ScannedPlant): Boolean {
         val plant = scannedPlant.plant
         val water = plant.waterLevel ?: return false

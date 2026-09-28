@@ -37,7 +37,7 @@ object MobHitDebugInfo : Feature() {
 
     override val id: String = "MobHitDebug"
     override val displayName: String = "Mob Hit Debug"
-    override val description: String = "Hit a mob to print what it is made of, for asking a dev to add it to Hypixel Mobs"
+    override val description: String = "Hit a mob to get debug information, for asking a dev to add it to Hypixel Mobs"
     override val category: String = "debug"
 
     private val letHitThroughSetting = BooleanSetting(
@@ -118,7 +118,6 @@ object MobHitDebugInfo : Feature() {
         ChatUtils.sendWithPrefix(summary)
     }
 
-    /** Name, type, whether it can be seen, what it wears and how much is standing in it. */
     private fun summaryText(subject: EntityLine, neighbours: Int): String = buildString {
         append(subject.name ?: subject.type)
         append(" · ").append(subject.type)
@@ -128,7 +127,6 @@ object MobHitDebugInfo : Feature() {
         append(" ")
     }
 
-    /** The hover: the hit entity in full, then a line for each thing standing in it. */
     private fun detailText(subject: EntityLine, neighbours: List<EntityLine>): Component {
         val text = Component.literal("")
 
@@ -253,9 +251,6 @@ object MobHitDebugInfo : Feature() {
         return obj
     }
 
-    /**
-     * all the unique components such as shulker color parrot varient etc...
-     */
     private fun componentsJson(entity: Entity): JsonObject {
         val obj = JsonObject()
 

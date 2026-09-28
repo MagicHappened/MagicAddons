@@ -4,34 +4,27 @@ import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.input.MouseButtonEvent
 import org.magic.magicaddons.Common
-import org.magic.magicaddons.ui.widgets.config.ClickableButtonWidget
-import org.magic.magicaddons.util.ScreenUtil.ellipsised
+import org.magic.magicaddons.data.greenhouse.plot.PlotLayout
+import org.magic.magicaddons.data.greenhouse.transfer.LayoutFormatType
+import org.magic.magicaddons.ui.OverlayContext
+import org.magic.magicaddons.ui.widgets.CheckboxWidget
+import org.magic.magicaddons.ui.widgets.ClickableButtonWidget
+import org.magic.magicaddons.ui.widgets.DropdownWidget
+import org.magic.magicaddons.util.ScreenUtil.drawTooltipAtCursor
 import org.magic.magicaddons.util.ScreenUtil.modText
 
-/**
- * What the player can do to the greenhouse they are looking at: which preset plot it is running,
- * and the button that takes it off.
- */
 class GreenhousePanel(
-    private val onUnplan: () -> Unit,
-    /** Picks the preset plot this greenhouse runs, whether or not it runs one already. */
-    private val onPickPreset: (MouseButtonEvent) -> Unit,
-    /** Lays the plan on this greenhouse a quarter turn further round. */
+    overlayContext: OverlayContext,
+    private val onPlanPicked: (PlotLayout?) -> Unit,
+    private val onNoRotateChanged: (Boolean) -> Unit,
     private val onTurnPlan: () -> Unit,
-    /** Shows the assigned plot in preset mode, ready to edit. */
     private val onEditPreset: () -> Unit,
-    /** Keeps what is built here as a preset of its own. */
     private val onSaveAsPreset: () -> Unit,
-    /** Forgets every plant of this greenhouse and reads it again, after asking. */
     private val onRescan: (MouseButtonEvent) -> Unit,
-    /** Writes this greenhouse out as a preset would be, in a format picked at the mouse. */
-    private val onExport: (MouseButtonEvent) -> Unit
-) : ActionPanel() {
+    private val layoutToExport: () -> PlotLayout?
+) : ActionPanel(overlayContext) {
 
-    private val unplanButton = ClickableButtonWidget("Remove")
-    private val assignButton = ClickableButtonWidget("Assign preset")
-    private val changeButton = ClickableButtonWidget("Change")
-    private val turnButton = ClickableButtonWidget("\u21bb")
+    private val turnButton = ClickableButtonWidget("↻")
     private val editButton = ClickableButtonWidget("Edit")
     private val saveButton = ClickableButtonWidget("Save as preset")
     private val rescanButton = ClickableButtonWidget("Rescan")
@@ -39,35 +32,52 @@ class GreenhousePanel(
 
     private val font = Minecraft.getInstance().font
 
-    /** The preset plot this greenhouse runs, null for one running nothing. */
-    var assigned: String? = null
-        set(value) {
-            if (field == value) return
+    class PlanChoice(val plot: PlotLayout?, private val label: String) {
+        override fun toString(): String = label
+        override fun equals(other: Any?): Boolean = other is PlanChoice && other.plot === plot
+        override fun hashCode(): Int = System.identityHashCode(plot)
+    }
 
-            // the name sits above the button, so the row moves as it comes and goes
-            field = value
-            layoutIn(x, y, width)
+    private val planSelector = DropdownWidget(
+        values = emptyList<PlanChoice>(),
+        currentValue = null as PlanChoice?,
+        overlayContext = overlayContext,
+        onValueChanged = { onPlanPicked(it.plot) }
+    )
+
+    private val noRotateCheckbox = CheckboxWidget(CHECKBOX_SIZE)
+    private var isNoRotateHovered: Boolean = false
+
+    val isNoRotateChecked: Boolean get() = noRotateCheckbox.isChecked
+
+    private var assignedPlan: PlotLayout? = null
+
+    fun showPlans(planChoices: List<PlanChoice>, assignedChoice: PlanChoice?, isAssignedNoRotate: Boolean) {
+        val choices = listOf(PlanChoice(null, NO_PLAN_LABEL)) + planChoices
+        if (choices.map { it.plot } != planSelector.values.map { it.plot }) planSelector.values = choices
+        planSelector.currentValue = assignedChoice ?: choices.first()
+        if (assignedPlan !== assignedChoice?.plot) {
+            assignedPlan = assignedChoice?.plot
+            noRotateCheckbox.isChecked = assignedChoice != null && isAssignedNoRotate
         }
+    }
 
-    /** Whether a greenhouse is on screen at all, since the buttons are all about the one that is. */
-    var showButtons: Boolean = false
+    var isGreenhouseShown: Boolean = false
         set(value) {
             if (field == value) return
 
             field = value
-            layoutIn(x, y, width)
+            layoutIn(x, y, availableWidth)
         }
 
     override val buttons: List<ClickableButtonWidget> =
-        listOf(assignButton, changeButton, turnButton, editButton, saveButton, exportButton, unplanButton, rescanButton)
+        listOf(turnButton, editButton, saveButton, exportButton, rescanButton)
 
     override fun isShown(button: ClickableButtonWidget): Boolean = when (button) {
-        assignButton -> showButtons && assigned == null
-        saveButton, exportButton, rescanButton -> showButtons
-        else -> showButtons && assigned != null
+        saveButton, exportButton, rescanButton -> isGreenhouseShown
+        else -> isGreenhouseShown && assignedPlan != null
     }
 
-    /** The plan's buttons under the plan's name, the greenhouse's own under a label of their own. */
     override fun groupOf(button: ClickableButtonWidget): Int = when (button) {
         saveButton, exportButton, rescanButton -> 1
         else -> 0
@@ -75,29 +85,83 @@ class GreenhousePanel(
 
     override fun groupLabel(group: Int): String? = if (group == 1) "This greenhouse" else null
 
-    override fun headerHeight(): Int = if (assigned == null) 0 else font.lineHeight + Common.UI.SPACING
+    override fun headerHeight(): Int = if (isGreenhouseShown) ClickableButtonWidget.DEFAULT_HEIGHT + Common.UI.SPACING else 0
+
+    private fun layoutPlanRow() {
+        val labelWidth = font.width(NO_ROTATE_LABEL)
+        val noRotateWidth = CHECKBOX_SIZE + Common.UI.SPACING + labelWidth
+
+        planSelector.x = x + PADDING
+        planSelector.y = y + PADDING
+        planSelector.height = ClickableButtonWidget.DEFAULT_HEIGHT
+        planSelector.width = availableWidth - PADDING * 2 - Common.UI.SPACING_LARGE - noRotateWidth
+
+        noRotateCheckbox.x = planSelector.x + planSelector.width + Common.UI.SPACING_LARGE
+        noRotateCheckbox.y = planSelector.y + (planSelector.height - CHECKBOX_SIZE) / 2
+    }
 
     override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
-        assigned?.let { name ->
-            val room = width - PADDING * 2
-            graphics.modText(font, ellipsised(font, name, room), x + PADDING, y + PADDING, Common.UI.TEXT_DIM_COLOR)
+        if (isGreenhouseShown) {
+            layoutPlanRow()
+            planSelector.extractRenderState(graphics, mouseX, mouseY, delta)
+            noRotateCheckbox.render(graphics)
+            val labelX = noRotateCheckbox.x + CHECKBOX_SIZE + Common.UI.SPACING
+            graphics.modText(font, NO_ROTATE_LABEL, labelX, planSelector.y + (planSelector.height - font.lineHeight) / 2 + 1, Common.UI.TEXT_COLOR)
         }
 
         super.extractRenderState(graphics, mouseX, mouseY, delta)
+
+        if (isGreenhouseShown && isNoRotateHovered) graphics.drawTooltipAtCursor(NO_ROTATE_TOOLTIP, mouseX, mouseY)
+    }
+
+    fun planSelectorClicked(event: MouseButtonEvent, doubled: Boolean): Boolean =
+        isGreenhouseShown && planSelector.mouseClicked(event, doubled)
+
+    override fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
+        if (isGreenhouseShown && isOverNoRotate(mouseButtonEvent.x, mouseButtonEvent.y)) {
+            noRotateCheckbox.isChecked = !noRotateCheckbox.isChecked
+            onNoRotateChanged(noRotateCheckbox.isChecked)
+            return true
+        }
+        return super.mouseClicked(mouseButtonEvent, doubled)
+    }
+
+    override fun mouseMoved(mouseX: Double, mouseY: Double) {
+        planSelector.mouseMoved(mouseX, mouseY)
+        isNoRotateHovered = isGreenhouseShown && isOverNoRotate(mouseX, mouseY)
+        super.mouseMoved(mouseX, mouseY)
+    }
+
+    private fun isOverNoRotate(mouseX: Double, mouseY: Double): Boolean {
+        val right = noRotateCheckbox.x + CHECKBOX_SIZE + Common.UI.SPACING + font.width(NO_ROTATE_LABEL)
+        return mouseX >= noRotateCheckbox.x && mouseX <= right &&
+                mouseY >= planSelector.y && mouseY <= planSelector.y + planSelector.height
+    }
+
+    fun closePlanList() = planSelector.closeList()
+
+    private fun openExportMenu(event: MouseButtonEvent) {
+        openMenu(event, "Format:", LayoutFormatType.entries) { type ->
+            val layout = layoutToExport() ?: return@openMenu
+            copyExportToClipboard(type.format.export(layout), type.format, layout.displayName())
+        }
     }
 
     override fun onPressed(button: ClickableButtonWidget, event: MouseButtonEvent): Boolean {
         when (button) {
-            unplanButton -> onUnplan()
-            assignButton, changeButton -> onPickPreset(event)
             turnButton -> onTurnPlan()
             editButton -> onEditPreset()
             saveButton -> onSaveAsPreset()
             rescanButton -> onRescan(event)
-            exportButton -> onExport(event)
+            exportButton -> openExportMenu(event)
             else -> return false
         }
 
         return true
+    }
+
+    private companion object {
+        const val CHECKBOX_SIZE: Int = 10
+        const val NO_PLAN_LABEL: String = "None"
     }
 }

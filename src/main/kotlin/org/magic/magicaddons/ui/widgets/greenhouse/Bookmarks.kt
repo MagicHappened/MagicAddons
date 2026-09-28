@@ -5,45 +5,43 @@ import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.network.chat.Component
 import org.magic.magicaddons.Common
-import org.magic.magicaddons.util.ScreenUtil.component4
+import org.magic.magicaddons.ui.ScreenRect
 import org.magic.magicaddons.util.ScreenUtil.drawBorder
 import org.magic.magicaddons.util.ScreenUtil.drawTooltipAtCursor
 import org.magic.magicaddons.util.ScreenUtil.ellipsised
 import org.magic.magicaddons.util.ScreenUtil.inRect
 import kotlin.math.roundToInt
 
-/**
- * Tabs hanging off one edge of a frame like bookmarks out of a book. The picked one stands out a
- * little further and slides there; the rest sit shaded and tucked under the frame's line.
- * Draw them before the frame, so the frame covers where they tuck in.
- */
 class Bookmarks<T>(
     private val side: Side,
-    private val label: (T) -> String,
-    private val fill: (T) -> Int = { Common.UI.BACKGROUND_COLOR },
-    private val tooltip: (T) -> String? = { null },
+    private val labelOf: (T) -> String,
+    private val fillColorOf: (T) -> Int = { Common.UI.BACKGROUND_COLOR },
+    private val tooltipOf: (T) -> String? = { null },
     private val onPick: (T, MouseButtonEvent) -> Unit
 ) {
     enum class Side { Top, Right, Bottom }
 
     var items: List<T> = emptyList()
-    var selected: T? = null
+        set(value) {
+            field = value
+            liftByItem.keys.retainAll(value.toSet())
+            if (hoveredItem !in value) hoveredItem = null
+        }
 
-    var hovered: T? = null
+    var selectedItem: T? = null
+
+    var hoveredItem: T? = null
         private set
 
     private val font = Minecraft.getInstance().font
 
-    /** The frame's corner the strip starts from, and how far it runs along that edge. */
     private var edgeX = 0
     private var edgeY = 0
     private var length = 0
 
-    /** How far out each tab stands now, moving towards where it belongs. */
-    private val lifts = mutableMapOf<T, Float>()
-    private var lastNanos = 0L
+    private val liftByItem = mutableMapOf<T, Float>()
+    private var lastAnimatedNanos = 0L
 
-    /** The frame's corner the strip starts from: top left for the top, top right for the right, bottom left for the bottom. */
     fun layoutAlong(edgeX: Int, edgeY: Int, length: Int) {
         this.edgeX = edgeX
         this.edgeY = edgeY
@@ -56,45 +54,28 @@ class Bookmarks<T>(
         return if (side == Side.Top) share.coerceAtMost(MAX_TAB_WIDTH) else share
     }
 
-    /** Left, top, right, bottom of the tab for [item] at [index], lift included. */
-    private fun rect(index: Int, item: T): IntArray {
+    private fun tabRect(index: Int, item: T): ScreenRect {
         val size = tabSize()
-        val lift = (lifts[item] ?: 0f).roundToInt()
+        val lift = (liftByItem[item] ?: 0f).roundToInt()
 
         return when (side) {
-            Side.Top -> intArrayOf(
-                edgeX + index * size,
-                edgeY - THICKNESS - lift,
-                edgeX + (index + 1) * size,
-                edgeY + TUCK
-            )
-            Side.Right -> intArrayOf(
-                edgeX - TUCK,
-                edgeY + index * size,
-                edgeX + THICKNESS + lift,
-                edgeY + (index + 1) * size
-            )
-            Side.Bottom -> intArrayOf(
-                edgeX + index * size,
-                edgeY - TUCK,
-                edgeX + (index + 1) * size,
-                edgeY + THICKNESS + lift
-            )
+            Side.Top -> ScreenRect(edgeX + index * size, edgeY - TAB_THICKNESS - lift, size, TAB_THICKNESS + lift + TUCK_UNDER_FRAME)
+            Side.Right -> ScreenRect(edgeX - TUCK_UNDER_FRAME, edgeY + index * size, TUCK_UNDER_FRAME + TAB_THICKNESS + lift, size)
+            Side.Bottom -> ScreenRect(edgeX + index * size, edgeY - TUCK_UNDER_FRAME, size, TUCK_UNDER_FRAME + TAB_THICKNESS + lift)
         }
     }
 
-    /** Moves every tab a step towards its place, a full lift taking [ANIM_MS]. */
-    private fun animate() {
+    private fun stepTabLifts() {
         val now = System.nanoTime()
-        val elapsedMs = if (lastNanos == 0L) 0f else (now - lastNanos) / 1_000_000f
-        lastNanos = now
+        val elapsedMs = if (lastAnimatedNanos == 0L) 0f else (now - lastAnimatedNanos) / 1_000_000f
+        lastAnimatedNanos = now
 
-        val step = LIFT * elapsedMs / ANIM_MS
+        val step = SELECTED_LIFT * elapsedMs / LIFT_ANIMATION_MS
 
         items.forEach { item ->
-            val target = if (item == selected) LIFT.toFloat() else 0f
-            val current = lifts[item] ?: target
-            lifts[item] = when {
+            val target = if (item == selectedItem) SELECTED_LIFT.toFloat() else 0f
+            val current = liftByItem[item] ?: target
+            liftByItem[item] = when {
                 current < target -> (current + step).coerceAtMost(target)
                 current > target -> (current - step).coerceAtLeast(target)
                 else -> target
@@ -103,27 +84,28 @@ class Bookmarks<T>(
     }
 
     fun render(graphics: GuiGraphicsExtractor) {
-        animate()
+        stepTabLifts()
 
         items.forEachIndexed { index, item ->
-            val (x1, y1, x2, y2) = rect(index, item)
-            val picked = item == selected
+            val (left, top, width, height) = tabRect(index, item)
+            val right = left + width
+            val bottom = top + height
+            val isSelected = item == selectedItem
 
-            graphics.fill(x1, y1, x2, y2, fill(item))
-            if (!picked) graphics.fill(x1, y1, x2, y2, Common.UI.PRESSED_SHADE)
-            if (item == hovered && !picked) graphics.fill(x1, y1, x2, y2, Common.UI.HOVER_WASH)
-            graphics.drawBorder(x1, y1, x2, y2, Common.UI.BORDER_SIZE, Common.UI.BORDER_COLOR)
+            graphics.fill(left, top, right, bottom, fillColorOf(item))
+            if (!isSelected) graphics.fill(left, top, right, bottom, Common.UI.PRESSED_SHADE)
+            if (item == hoveredItem && !isSelected) graphics.fill(left, top, right, bottom, Common.UI.HOVER_WASH)
+            graphics.drawBorder(left, top, right, bottom, Common.UI.BORDER_SIZE, Common.UI.BORDER_COLOR)
 
             if (side != Side.Right) {
-                val room = x2 - x1 - Common.UI.TEXT_X_PAD * 2
-                val shown = ellipsised(font, label(item), room)
-                // the text sits in the part that shows: above the frame for the top, under it for the bottom
-                val textTop = if (side == Side.Top) y1 + (THICKNESS - font.lineHeight) / 2 + Common.UI.BORDER_SIZE / 2
-                else y1 + TUCK + (THICKNESS - font.lineHeight) / 2 + Common.UI.BORDER_SIZE / 2
+                val labelRoomWidth = width - Common.UI.TEXT_X_PAD * 2
+                val shownLabel = ellipsised(font, labelOf(item), labelRoomWidth)
+                val textTop = if (side == Side.Top) top + (TAB_THICKNESS - font.lineHeight) / 2 + Common.UI.BORDER_SIZE / 2
+                else top + TUCK_UNDER_FRAME + (TAB_THICKNESS - font.lineHeight) / 2 + Common.UI.BORDER_SIZE / 2
                 graphics.text(
                     font,
-                    Component.literal(shown),
-                    x1 + (x2 - x1 - font.width(shown)) / 2,
+                    Component.literal(shownLabel),
+                    left + (width - font.width(shownLabel)) / 2,
                     textTop,
                     Common.UI.TEXT_COLOR,
                     false
@@ -132,11 +114,10 @@ class Bookmarks<T>(
         }
     }
 
-    /** The name of the tab under the mouse, when the tab has one or could not show all of its own. */
     fun renderTooltip(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int) {
-        val item = hovered ?: return
-        val text = tooltip(item)
-            ?: label(item).takeIf { side != Side.Right && ellipsised(font, it, tabSize() - Common.UI.TEXT_X_PAD * 2) != it }
+        val item = hoveredItem ?: return
+        val text = tooltipOf(item)
+            ?: labelOf(item).takeIf { side != Side.Right && ellipsised(font, it, tabSize() - Common.UI.TEXT_X_PAD * 2) != it }
             ?: return
 
         graphics.drawTooltipAtCursor(text, mouseX, mouseY)
@@ -144,14 +125,14 @@ class Bookmarks<T>(
 
     private fun tabAt(mouseX: Double, mouseY: Double): T? =
         items.withIndex().firstOrNull { (index, item) ->
-            val (x1, y1, x2, y2) = rect(index, item)
-            inRect(mouseX, mouseY, x1, y1, x2 - x1, y2 - y1)
+            val (left, top, width, height) = tabRect(index, item)
+            inRect(mouseX, mouseY, left, top, width, height)
         }?.value
 
     fun isMouseOver(mouseX: Double, mouseY: Double): Boolean = tabAt(mouseX, mouseY) != null
 
     fun mouseMoved(mouseX: Double, mouseY: Double) {
-        hovered = tabAt(mouseX, mouseY)
+        hoveredItem = tabAt(mouseX, mouseY)
     }
 
     fun mouseClicked(event: MouseButtonEvent): Boolean {
@@ -161,17 +142,14 @@ class Bookmarks<T>(
     }
 
     companion object {
-        /** How far a tab stands out of the frame, and how much further the picked one goes. */
-        const val THICKNESS: Int = 16
-        const val LIFT: Int = 4
+        const val TAB_THICKNESS: Int = 16
+        const val SELECTED_LIFT: Int = 4
 
-        /** The room a strip needs outside the frame. */
-        const val REACH: Int = THICKNESS + LIFT
+        const val TOTAL_REACH: Int = TAB_THICKNESS + SELECTED_LIFT
 
-        /** How far a tab reaches under the frame's line, so the two read as one piece. */
-        private val TUCK: Int get() = Common.UI.BORDER_SIZE
+        private val TUCK_UNDER_FRAME: Int get() = Common.UI.BORDER_SIZE
 
         private const val MAX_TAB_WIDTH: Int = 100
-        private const val ANIM_MS: Float = 150f
+        private const val LIFT_ANIMATION_MS: Float = 150f
     }
 }

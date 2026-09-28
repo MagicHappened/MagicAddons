@@ -17,7 +17,6 @@ import org.magic.magicaddons.util.toReadableDuration
 import org.magic.magicaddons.util.toShortDuration
 import tech.thatgravyboat.skyblockapi.api.location.LocationAPI
 
-/** A small panel on screen in the player's own garden: the next tick, and in a greenhouse what the plants need. */
 object GreenhouseHud : HudElement("greenhouse", "Greenhouse") {
 
     const val KEY: String = "GreenhouseHud"
@@ -27,7 +26,6 @@ object GreenhouseHud : HudElement("greenhouse", "Greenhouse") {
 
     override val situations: Set<HudSituation> = setOf(HudSituation.GARDEN, HudSituation.GREENHOUSE)
 
-    /** Under this much time left, a countdown is shown in the danger colour. */
     private val URGENT_MS: Long = Duration.ofHours(1).toMillis()
 
     private fun setting(): BooleanSetting? = GreenhousePresets.baseSetting.getChild<BooleanSetting>(KEY)
@@ -37,13 +35,12 @@ object GreenhouseHud : HudElement("greenhouse", "Greenhouse") {
     override val configTarget: ConfigTarget?
         get() = setting()?.let { ConfigTarget(GreenhousePresets, listOf(GreenhousePresets.baseSetting, it)) }
 
-    /** One line of the panel: a label and its value, each in its own colour. */
     private class Line(val label: String, val value: String, val valueColor: Int = Common.UI.TEXT_COLOR)
 
-    override fun content(): HudContent? {
+    override fun currentContent(): HudContent? {
         if (!enabled()) return null
 
-        // own garden only, unless the anywhere switch is on
+        // own garden only, unless the anywhere config is on
         val ownGarden = GreenhouseData.inOwnGarden()
         if (!ownGarden && !(GreenhousePresets.hudAnywhere() && LocationAPI.isOnSkyBlock)) return null
 
@@ -51,7 +48,7 @@ object GreenhouseHud : HudElement("greenhouse", "Greenhouse") {
         return content(grid?.layout?.displayName() ?: "Greenhouse", lines(grid))
     }
 
-    override fun sample(): HudContent = content(
+    override fun sampleContent(): HudContent = content(
         "Greenhouse 1",
         listOf(
             Line("Next tick", "12m 30s"),
@@ -65,14 +62,13 @@ object GreenhouseHud : HudElement("greenhouse", "Greenhouse") {
     private fun content(title: String, lines: List<Line>): HudContent = HudContent(buildList {
         add(HudLine.Text(Component.literal(title).withColor(rgb(Common.UI.ACCENT_COLOR))))
         lines.forEach { line ->
-            add(HudLine.Pair(
+            add(HudLine.LabelValue(
                 Component.literal(line.label).withColor(rgb(Common.UI.TEXT_DIM_COLOR)),
                 Component.literal(line.value).withColor(rgb(line.valueColor))
             ))
         }
     })
 
-    /** A text colour carries no alpha. */
     private fun rgb(color: Int): Int = color and 0xFFFFFF
 
     private fun lines(grid: GreenhouseGrid?): List<Line> = buildList {
@@ -83,7 +79,7 @@ object GreenhouseHud : HudElement("greenhouse", "Greenhouse") {
 
         val gardenTime = GreenhouseGrid.dayOrNightNow()
         val ready = plants.count { GreenhousePresets.isHarvestable(it) }
-        // the soonest a plant here dies of thirst, by the same clock the warnings use
+
         val tickMs = GreenhouseTickTime.tickMs
         val remainingMs = GreenhouseTickTime.remainingTickMs()
         val thirst = if (tickMs == null || remainingMs == null) null else plants
@@ -92,7 +88,6 @@ object GreenhouseHud : HudElement("greenhouse", "Greenhouse") {
                 val water = plant.waterLevel ?: return@mapNotNull null
                 val effect = GreenhouseGrid.waterEffectAt(grid.layout, plant.slot)
 
-                // a plant that reaches its last stage on the water it holds is not dying of thirst
                 if (plant.waterLastsUntilGrown(effect) == true) return@mapNotNull null
                 if (water <= PlotPrediction.WATER_DEATH_LEVEL) 0L
                 else PlotPrediction.timeUntilDeath(water, effect, remainingMs, tickMs)

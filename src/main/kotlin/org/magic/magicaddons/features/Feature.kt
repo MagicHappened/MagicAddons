@@ -1,6 +1,7 @@
 package org.magic.magicaddons.features
 
 
+import com.google.gson.JsonObject
 import org.magic.magicaddons.data.config.BooleanSetting
 import org.magic.magicaddons.data.config.SettingNode
 
@@ -14,10 +15,10 @@ abstract class Feature {
 
     val isAvailable: Boolean get() = baseSetting.isAvailable
 
-    fun serializeSettings(): MutableMap<String, Any> = baseSetting.serializeAsFeatureRoot()
+    fun settingsJson(): JsonObject = JsonObject().also { baseSetting.writeAsFeatureRoot(it) }
 
-    fun deserializeSettings(settings: Map<String, Any>) {
-        baseSetting.updateAsFeatureRoot(settings)
+    fun readSettingsJson(settingsJson: JsonObject) {
+        baseSetting.readAsFeatureRoot(settingsJson)
     }
 
 

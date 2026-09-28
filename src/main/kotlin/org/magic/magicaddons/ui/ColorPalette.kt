@@ -1,8 +1,5 @@
 package org.magic.magicaddons.ui
 
-/**
- * The colours the mod's panels are drawn in.
- */
 class PaletteColors(
     val background: Int,
     val border: Int,
@@ -50,7 +47,6 @@ enum class ColorPalette(private val label: String, val colors: PaletteColors) {
             accent = 0xFFE07AA8.toInt()
         )
     ),
-    // the entry keeps its old name so a saved config still finds it
     EmberAsh(
         "Crimson & Ash",
         PaletteColors(
@@ -89,6 +85,5 @@ enum class ColorPalette(private val label: String, val colors: PaletteColors) {
         )
     );
 
-    /** The picker shows this, so it reads as a name rather than as the constant. */
     override fun toString(): String = label
 }

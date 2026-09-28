@@ -1,6 +1,6 @@
 package org.magic.magicaddons.util
 
-import org.magic.magicaddons.data.handlers.DataHandler
+import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseProfiles
 import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.events.EventHandler
 import org.magic.magicaddons.events.world.SetTimePacketEvent
@@ -29,7 +29,7 @@ object ServerUtils {
         lastGameTime = null
 
         if (event.new != SkyBlockIsland.GARDEN) {
-            DataHandler.saveGardenData()
+            GreenhouseProfiles.saveGreenhouseData()
             greenhouseGrids.forEach {
                 it.state.scanned = false
             }

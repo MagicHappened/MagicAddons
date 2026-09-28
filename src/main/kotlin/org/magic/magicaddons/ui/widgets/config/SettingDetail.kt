@@ -1,12 +1,11 @@
 package org.magic.magicaddons.ui.widgets.config
 
-import org.magic.magicaddons.Common
 import net.minecraft.client.gui.Font
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.network.chat.Component
+import org.magic.magicaddons.Common
 import org.magic.magicaddons.util.ScreenUtil.drawWrappedText
 import org.magic.magicaddons.util.ScreenUtil.wrappedHeight
-
 
 sealed interface SettingDetail {
 

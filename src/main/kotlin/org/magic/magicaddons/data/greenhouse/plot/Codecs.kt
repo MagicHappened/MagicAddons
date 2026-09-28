@@ -160,11 +160,13 @@ object Codecs {
                 Codec.STRING.optionalFieldOf("assigned_layout_id").forGetter {
                     Optional.ofNullable(it.assignedLayout?.id)
                 },
-                Codec.INT.optionalFieldOf("plan_turns", 0).forGetter { it.planTurns }
-            ).apply(instance) { lastUpdate, assignedLayout, planTurns ->
+                Codec.INT.optionalFieldOf("plan_turns", 0).forGetter { it.planTurns },
+                Codec.BOOL.optionalFieldOf("no_rotate_assigned_layout", false).forGetter { it.noRotateAssignedLayout }
+            ).apply(instance) { lastUpdate, assignedLayout, planTurns, noRotateAssignedLayout ->
                 GridState(
                     lastScanTime = lastUpdate.orElse(null)?.let { Instant.ofEpochMilli(it) },
-                    planTurns = planTurns
+                    planTurns = planTurns,
+                    noRotateAssignedLayout = noRotateAssignedLayout
                 ).also { it.assignedLayoutId = assignedLayout.orElse(null) }
             }
         }
@@ -223,14 +225,17 @@ object Codecs {
                 Codec.INT.optionalFieldOf("greenhouse_speed_attribute")
                         .forGetter { Optional.ofNullable(it.greenhouseSpeedAttribute) },
                 Codec.STRING.listOf().optionalFieldOf("crops_without_info", emptyList())
-                        .forGetter { it.cropsWithoutInfo.sorted() }
-            ).apply(instance) { tick, cropGrowth, cropSpeed, cropYield, speedAttribute, cropsWithoutInfo ->
+                        .forGetter { it.cropsWithoutInfo.sorted() },
+                Codec.DOUBLE.optionalFieldOf("last_seen_mutation_chance_percent")
+                        .forGetter { Optional.ofNullable(it.lastSeenMutationChancePercent) }
+            ).apply(instance) { tick, cropGrowth, cropSpeed, cropYield, speedAttribute, cropsWithoutInfo, mutationChancePercent ->
                 MiscGreenhouseInfo(
                     nextTickTime = tick.orElse(null)?.let { Instant.ofEpochMilli(it) } ,
                     cropGrowthValue = cropGrowth.orElse(null),
                     cropSpeedUpgradeValue = cropSpeed.orElse(null),
                     cropYieldUpgradeValue = cropYield.orElse(null),
                     greenhouseSpeedAttribute = speedAttribute.orElse(null),
+                    lastSeenMutationChancePercent = mutationChancePercent.orElse(null),
                     cropsWithoutInfo = cropsWithoutInfo.toMutableSet()
                     )
             }

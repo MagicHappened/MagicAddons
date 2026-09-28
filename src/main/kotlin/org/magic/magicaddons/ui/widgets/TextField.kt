@@ -13,10 +13,6 @@ import org.magic.magicaddons.util.ScreenUtil.drawBorder
 import org.magic.magicaddons.util.ScreenUtil.drawField
 import org.magic.magicaddons.util.ScreenUtil.inRect
 
-/**
- * A one line text field drawn in this mod's own look. A vanilla EditBox holds the text and the
- * caret and takes the typing; only the drawing is done here.
- */
 class TextField(
     var width: Int,
     var height: Int,
@@ -39,10 +35,9 @@ class TextField(
             box.value = text
         }
 
-    /** Thinly framed in the panel colour while it does not have the keyboard, for a field standing alone. */
-    var framed: Boolean = false
+    var isFramed: Boolean = false
 
-    var focused: Boolean
+    var isFocused: Boolean
         get() = box.isFocused
         set(on) {
             box.isFocused = on
@@ -52,44 +47,38 @@ class TextField(
 
     fun setMaxLength(length: Int) = box.setMaxLength(length)
 
-    /** Space between the frame and the text. */
-    private val inset = Common.UI.FIELD_INSET + Common.UI.BORDER_SIZE
-
-    private fun textLeft(): Int = x + inset
+    private fun textLeft(): Int = x + TEXT_INSET
     private fun textTop(): Int = y + (height - font.lineHeight) / 2
-    private fun room(): Int = (width - inset * 2).coerceAtLeast(1)
+    private fun textAreaWidth(): Int = (width - TEXT_INSET * 2).coerceAtLeast(1)
 
-    /** Puts the box over the text so a click lands the caret where it was aimed. */
-    private fun place() {
+    private fun placeEditBox() {
         box.x = textLeft()
         box.y = textTop()
-        box.width = room()
+        box.width = textAreaWidth()
         box.height = font.lineHeight
     }
 
     fun render(graphics: GuiGraphicsExtractor) {
-        place()
-        val frameSize = if (framed) Common.UI.CONTROL_BORDER_SIZE else Common.UI.BORDER_SIZE
-        graphics.drawField(x, y, x + width, y + height, focused, frameSize)
-        if (framed && !focused) graphics.drawBorder(x, y, x + width, y + height, frameSize, Common.UI.BORDER_COLOR)
+        placeEditBox()
+        val frameSize = if (isFramed) Common.UI.CONTROL_BORDER_SIZE else Common.UI.BORDER_SIZE
+        graphics.drawField(x, y, x + width, y + height, isFocused, frameSize)
+        if (isFramed && !isFocused) graphics.drawBorder(x, y, x + width, y + height, frameSize, Common.UI.BORDER_COLOR)
 
         val text = value
         val caretX = font.width(text.substring(0, box.cursorPosition.coerceIn(0, text.length)))
 
-        // while typing the text slides left only as far as it must for the caret to stay in view;
-        // at rest it shows its start
-        val shift = if (focused) (caretX - room() + 1).coerceAtLeast(0) else 0
-        val left = textLeft() - shift
+        val scrollOffset = if (isFocused) (caretX - textAreaWidth() + 1).coerceAtLeast(0) else 0
+        val left = textLeft() - scrollOffset
 
-        graphics.enableScissor(textLeft(), y, textLeft() + room(), y + height)
+        graphics.enableScissor(textLeft(), y, textLeft() + textAreaWidth(), y + height)
 
-        if (text.isEmpty() && !focused) {
+        if (text.isEmpty() && !isFocused) {
             hint?.let { graphics.modText(font, it, left, textTop(), Common.UI.DISABLED_TEXT_COLOR) }
         } else {
             graphics.modText(font, Component.literal(text), left, textTop(), Common.UI.TEXT_COLOR)
         }
 
-        if (focused && System.currentTimeMillis() / CARET_BLINK_MS % 2 == 0L) {
+        if (isFocused && System.currentTimeMillis() / CARET_BLINK_MS % 2 == 0L) {
             graphics.fill(left + caretX, textTop() - 1, left + caretX + 1, textTop() + font.lineHeight, Common.UI.TEXT_COLOR)
         }
 
@@ -98,23 +87,24 @@ class TextField(
 
     fun isMouseOver(mouseX: Double, mouseY: Double): Boolean = inRect(mouseX, mouseY, x, y, width, height)
 
-    /** Focuses the field when the click is on it and drops focus otherwise; true when it was on it. */
     fun mouseClicked(event: MouseButtonEvent, doubled: Boolean): Boolean {
-        val inside = isMouseOver(event.x, event.y)
-        focused = inside
+        val isInside = isMouseOver(event.x, event.y)
+        isFocused = isInside
 
-        if (inside) {
-            place()
+        if (isInside) {
+            placeEditBox()
             box.mouseClicked(event, doubled)
         }
-        return inside
+        return isInside
     }
 
-    fun charTyped(event: CharacterEvent): Boolean = focused && box.charTyped(event)
+    fun charTyped(event: CharacterEvent): Boolean = isFocused && box.charTyped(event)
 
-    fun keyPressed(event: KeyEvent): Boolean = focused && box.keyPressed(event)
+    fun keyPressed(event: KeyEvent): Boolean = isFocused && box.keyPressed(event)
 
     private companion object {
         const val CARET_BLINK_MS: Long = 500
+
+        val TEXT_INSET: Int get() = Common.UI.FIELD_INSET + Common.UI.BORDER_SIZE
     }
 }

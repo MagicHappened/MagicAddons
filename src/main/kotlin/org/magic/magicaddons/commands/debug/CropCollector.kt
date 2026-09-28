@@ -25,7 +25,6 @@ import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.commands.internal.MainInternal
-import org.magic.magicaddons.commands.internal.farming.CollectToggle
 import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
 import org.magic.magicaddons.data.greenhouse.crops.CropRegistry
 import org.magic.magicaddons.data.greenhouse.crops.StandReader
@@ -35,7 +34,7 @@ import org.magic.magicaddons.data.greenhouse.plot.GREENHOUSE_SOIL_Y
 import org.magic.magicaddons.data.greenhouse.plot.GreenhouseGrid
 import org.magic.magicaddons.data.greenhouse.plot.LayoutSlot
 import org.magic.magicaddons.data.greenhouse.plot.PlotPrediction
-import org.magic.magicaddons.data.handlers.DataHandler
+import org.magic.magicaddons.data.handlers.ModFiles
 import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseData
 import org.magic.magicaddons.render.WorldRenderer
 import org.magic.magicaddons.util.ChatUtils
@@ -281,19 +280,7 @@ object CropCollector : EntityUtils.HighlightSource {
         val mark = if (entry.confirmed) "[✔] " else ""
         val body = "$mark[${entry.id}] ${rowLabel(entry)}"
 
-        val style = when (entry.status) {
-            Status.Unknown -> Style.EMPTY.withColor(ChatFormatting.WHITE)
-            else -> Style.EMPTY
-                .withColor(TextColor.fromRgb(entry.color and 0xFFFFFF))
-                .withClickEvent(ClickEvent.RunCommand("${MainInternal.COMMAND} ${CollectToggle.NAME} ${entry.id}"))
-                .withHoverEvent(
-                    HoverEvent.ShowText(
-                        Component.literal(if (entry.confirmed) "Click to drop from the file" else "Click to confirm")
-                    )
-                )
-        }
-
-        ChatUtils.send(Component.literal("  ").append(Component.literal(body).withStyle(style)))
+        ChatUtils.send(Component.literal("  ").append(Component.literal(body)))
     }
 
     private const val GUIDE_COMMAND: String = "/ma debug farming collect guide"
@@ -495,7 +482,7 @@ object CropCollector : EntityUtils.HighlightSource {
         val label: String,
         val color: Int,
         val confirmed: Boolean,
-        val collectable: Boolean
+        val isCollectable: Boolean
     )
 
     fun rows(): List<ChecklistRow> = session?.entries?.map { entry ->
@@ -504,7 +491,7 @@ object CropCollector : EntityUtils.HighlightSource {
             label = (if (entry.confirmed) "✔ " else "") + rowLabel(entry),
             color = entry.color,
             confirmed = entry.confirmed,
-            collectable = entry.status != Status.Unknown
+            isCollectable = entry.status != Status.Unknown
         )
     } ?: emptyList()
 
@@ -700,8 +687,7 @@ object CropCollector : EntityUtils.HighlightSource {
             }
         }
 
-        val dir = DataHandler.modDir.resolve("collected").toFile()
-        dir.mkdirs()
+        val dir = ModFiles.modDir.resolve("collected").toFile()
         val crops = confirmed.mapNotNull { it.def?.name }.toSet()
         val stamp = System.currentTimeMillis()
         val file = if (crops.size == 1) {
@@ -709,7 +695,7 @@ object CropCollector : EntityUtils.HighlightSource {
         } else {
             File(dir, "collect-$stamp.txt")
         }
-        file.writeText(text)
+        ModFiles.writeTextAtomically(file.toPath(), text)
 
         s.finishedAt = Instant.now()
 
