@@ -34,6 +34,7 @@ import org.magic.magicaddons.events.world.LevelUnloadingEvent
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhousePresets
 import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseData
 import org.magic.magicaddons.util.PlayerUtils
+import org.magic.magicaddons.util.SBLocation
 import org.magic.magicaddons.util.compat.RenderCompat
 
 object ShorterCaneCrops {
@@ -92,7 +93,7 @@ object ShorterCaneCrops {
 
     fun isStandHidden(entityId: Int): Boolean = hiddenStandIds.contains(entityId)
 
-    private fun shouldShrinkCaneCrops(): Boolean = GreenhousePresets.shorterCaneCropsOn() && GreenhouseData.inOwnGreenhouse()
+    private fun shouldShrinkCaneCrops(): Boolean = GreenhousePresets.shorterCaneCropsOn() && SBLocation.OwnGreenhouse.inside()
 
     fun updateHiddenPlantParts() {
         applyHiddenPlantParts(if (shouldShrinkCaneCrops()) hiddenPartsInCurrentGreenhouse() else emptyList())

@@ -16,6 +16,7 @@ import org.magic.magicaddons.ui.hud.ConfigTarget
 import org.magic.magicaddons.ui.hud.HudContent
 import org.magic.magicaddons.ui.hud.HudElement
 import org.magic.magicaddons.ui.hud.HudLine
+import org.magic.magicaddons.util.SBLocation
 import org.magic.magicaddons.util.ServerTime
 import org.magic.magicaddons.util.compat.McCompat
 import tech.thatgravyboat.skyblockapi.api.SkyBlockAPI
@@ -80,8 +81,6 @@ object PickaxeAbilityCooldown : Feature() {
 
     private const val MAYHEM_COOLDOWN_LINE: String = "MAYHEM! Your Pickaxe Ability cooldown was reduced from your Mineshaft Mayhem perk!"
     private const val MAYHEM_REDUCTION: Double = 0.25
-
-    private val MINING_ISLANDS: Set<SkyBlockIsland> = setOf(SkyBlockIsland.DWARVEN_MINES, SkyBlockIsland.CRYSTAL_HOLLOWS, SkyBlockIsland.MINESHAFT)
 
     private val PICKAXE_CATEGORIES: Set<SkyBlockCategory> = setOf(SkyBlockCategory.PICKAXE, SkyBlockCategory.DRILL, SkyBlockCategory.GAUNTLET)
 
@@ -180,12 +179,12 @@ object PickaxeAbilityCooldown : Feature() {
 
     private fun skyMallFactor(): Double {
         val since = skyMallCooldownSince ?: return 1.0
-        val active = System.currentTimeMillis() - since < SKY_MALL_BUFF_MS && LocationAPI.island in MINING_ISLANDS
+        val active = System.currentTimeMillis() - since < SKY_MALL_BUFF_MS && SBLocation.MiningIslands.inside()
         return if (active) 1.0 - SKY_MALL_REDUCTION else 1.0
     }
 
     private fun mayhemFactor(): Double =
-        if (mayhemCooldownActive && LocationAPI.island == SkyBlockIsland.MINESHAFT) 1.0 - MAYHEM_REDUCTION else 1.0
+        if (mayhemCooldownActive && SBLocation.Mineshaft.inside()) 1.0 - MAYHEM_REDUCTION else 1.0
 
     private fun attributeLevel(): Int? =
         AttributeAPI.attributeMap.entries.firstOrNull { it.key.id == COOLDOWN_ATTRIBUTE_ID }?.value?.level
@@ -203,7 +202,7 @@ object PickaxeAbilityCooldown : Feature() {
 
         return buildList {
             add("Feature on: ${baseSetting.value}, ready warning: ${readyWarning.value}")
-            add("Island: ${LocationAPI.island ?: "none"}, mining island: ${LocationAPI.island in MINING_ISLANDS}")
+            add("Island: ${LocationAPI.island ?: "none"}, mining island: ${SBLocation.MiningIslands.inside()}")
             add("Held: ${held.hoverName.string}")
             add("  category: ${held.getData(DataTypes.CATEGORY)?.name ?: "none"}, breaking power line: ${held.getLore().any { it.string.contains("Breaking Power") }}, counts as pickaxe: ${isPickaxe(held)}")
             add("  fuel tank: ${tank ?: "none"} -> -${percent(itemFactor)}")
@@ -260,7 +259,7 @@ object PickaxeAbilityCooldown : Feature() {
 
         override fun currentContent(): HudContent? {
             if (!baseSetting.value) return null
-            if (miningIslandsOnly.value && LocationAPI.island !in MINING_ISLANDS) return null
+            if (miningIslandsOnly.value && !SBLocation.MiningIslands.inside()) return null
 
             val secondsLeft = cooldownSecondsLeft()
             val waitingOnChat = secondsLeft == null && pendingUse?.stillAwaitingChatLine() == true

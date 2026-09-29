@@ -19,8 +19,7 @@ import org.magic.magicaddons.features.Feature
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.EntityUtils
 import org.magic.magicaddons.util.EntityUtils.isEntityWearingArmorId
-import tech.thatgravyboat.skyblockapi.api.location.LocationAPI
-import tech.thatgravyboat.skyblockapi.api.location.SkyBlockIsland
+import org.magic.magicaddons.util.SBLocation
 
 object CustomRendSound : Feature() {
     init {
@@ -43,24 +42,24 @@ object CustomRendSound : Feature() {
     override val displayName: String = "Custom Rend Sound"
     override val description: String = "Plays a custom selected sound when a rend pull is detected"
     override val category: String = "kuudra"
+    private val soundPathSetting = TextSetting(
+        key = "RendPullSoundPath",
+        displayName = "Sound Path",
+        description = "The sound path for the rend sound",
+        value = "minecraft:entity.goat.screaming.death"
+    )
+
     override val baseSetting: BooleanSetting = BooleanSetting(
         displayName = displayName,
         description = description,
         value = false,
-        children = listOf(
-            TextSetting(
-                key = "RendPullSoundPath",
-                displayName = "Sound Path",
-                description = "The sound path for the rend sound",
-                value = "minecraft:entity.goat.screaming.death"
-            )
-        )
+        children = listOf(soundPathSetting)
     )
 
     @EventHandler
     fun onWorldTick(event: WorldTickEvent) {
         if (!baseSetting.value) return
-        val inKuudra = LocationAPI.island == SkyBlockIsland.KUUDRA
+        val inKuudra = SBLocation.Kuudra.inside()
         if (!inKuudra) return
         if (!inKuudraLair()) return
         EntityUtils.entityInfoList?.forEach { entity ->
@@ -88,7 +87,7 @@ object CustomRendSound : Feature() {
     @EventHandler
     fun onAnySwing(event: AnyPlayerSwingEvent) {
         if (!baseSetting.value) return
-        val inKuudra = LocationAPI.island == SkyBlockIsland.KUUDRA
+        val inKuudra = SBLocation.Kuudra.inside()
         if (!inKuudra) return
         val now = System.currentTimeMillis()
         if (lastPullTimeMs != null && now - lastPullTimeMs!! < REND_COOLDOWN) return
@@ -121,10 +120,7 @@ object CustomRendSound : Feature() {
         wornReaperArmorList.remove(event.player)
         wornReaperTuxedoArmorList.remove(event.player)
         ChatUtils.sendWithPrefix("${event.player.displayName.siblings[NAME_SIBLING_INDEX].string} Pulled!")
-        val soundId = Identifier.parse(
-            baseSetting.getChild<TextSetting>("RendPullSoundPath")?.value
-                ?: "minecraft:entity.goat.screaming.death"
-        )
+        val soundId = Identifier.parse(soundPathSetting.value)
 
         val goatSound = SimpleSoundInstance(
             soundId,
@@ -146,7 +142,7 @@ object CustomRendSound : Feature() {
 
     fun inKuudraLair(): Boolean{
         val player = Minecraft.getInstance().player ?: return false
-        if (LocationAPI.island != SkyBlockIsland.KUUDRA) return false
+        if (!SBLocation.Kuudra.inside()) return false
         return LAIR_BOX.contains(Vec3(player.x, player.y, player.z))
     }
 }

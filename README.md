@@ -11,6 +11,7 @@ Made for Minecraft 26.1.2 and 26.2, with plans to update to newer versions as Hy
 - **Greenhouse Prediction**: lets you visually see what your greenhouse will look like up to 10 ticks ahead of time (doesn't include spawned mutations since they are chance based).
 - **Water Model**: predicts each plant's water tick by tick, including retain and drain effects, and how long a plant has until it fully grows or dies (assumes no player interaction).
 - **Highlights**: water and harvest highlights in the world.
+- **Shorter Cane Crops**: visually shrinks Sugar Cane and Magic Jellybean to their bottom block, with the growth stage shown above while they are growing. Hitboxes stay the same, so they can still be hit on all of their blocks.
 - **Reminders**: ready to harvest, needs water, decay, snoozling asleep, noctilume time switch, chorus collision, with reminders before and at the growth tick (with support for multiple profiles).
   Some reminders might not behave correctly, as I did not have the crops to test them myself; please open an issue if something is off.
 
@@ -27,6 +28,7 @@ Made for Minecraft 26.1.2 and 26.2, with plans to update to newer versions as Hy
 
 - **Pickaxe Ability Cooldown**: shows the cooldown of your pickaxe ability as a HUD element, with an optional warning when it is ready.
 - **Powder Coating Hider**: hides powder coating particles while wearing Divan armor.
+- **XP Orb Hider**: hides experience orbs on the ground, optionally only on mining islands.
 
 ## Misc
 

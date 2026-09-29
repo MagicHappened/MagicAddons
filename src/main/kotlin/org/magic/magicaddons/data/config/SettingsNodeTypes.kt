@@ -18,6 +18,27 @@ sealed class SettingNode<T>(
 ) {
     open val children: List<SettingNode<*>>? = null
 
+    var parent: SettingNode<*>? = null
+        private set
+
+    protected fun setAsParentOf(childSettings: List<SettingNode<*>>?) {
+        childSettings?.forEach { it.parent = this }
+    }
+
+    protected open val isSwitchedOn: Boolean get() = true
+
+    protected open fun isShowingChild(child: SettingNode<*>): Boolean = true
+
+    val isEnabled: Boolean
+        get() {
+            if (!isAvailable || !isSwitchedOn) return false
+
+            val settingAbove = parent ?: return true
+            return settingAbove.isShowingChild(this) && settingAbove.isEnabled
+        }
+
+    val valueIfEnabled: T? get() = value.takeIf { isEnabled }
+
     val isAvailable: Boolean get() = !needsExtensionPack || ExtensionPack.isInstalled
 
     val availableChildren: List<SettingNode<*>> get() = children.orEmpty().filter { it.isAvailable }
@@ -72,14 +93,14 @@ class ToggleListSetting(
             val entryValue = entry.get("value")?.asString ?: return@mapNotNull null
             val enabledJson = entry.get("enabled") as? JsonPrimitive
 
-            val isEnabled = when {
+            val isEntryEnabled = when {
                 enabledJson == null -> true
                 enabledJson.isBoolean -> enabledJson.asBoolean
                 enabledJson.isNumber -> enabledJson.asInt != 0
                 else -> enabledJson.asString.toBoolean()
             }
 
-            ListEntry(name = entry.get("name")?.asString ?: "", value = entryValue, enabled = isEnabled)
+            ListEntry(name = entry.get("name")?.asString ?: "", value = entryValue, enabled = isEntryEnabled)
         }.toMutableList()
 
     override fun valueToJson(): JsonElement = JsonArray().also { array ->
@@ -98,12 +119,18 @@ class BooleanSetting(
     displayName: String,
     description: String,
     value: Boolean,
-    override var children: List<SettingNode<*>>? = null,
+    override val children: List<SettingNode<*>>? = null,
     detail: (() -> SettingDetail?)? = null,
     needsExtensionPack: Boolean = false
 ) : SettingNode<Boolean>(key, displayName, description, value, detail, needsExtensionPack) {
 
+    init {
+        setAsParentOf(children)
+    }
+
     private var storedValue: Boolean = value
+
+    override val isSwitchedOn: Boolean get() = value
 
     override var value: Boolean
         get() = storedValue && isAvailable
@@ -264,6 +291,10 @@ class ParentSetting(
     needsExtensionPack: Boolean = false
 ) : SettingNode<Unit>(key, displayName, description, Unit, needsExtensionPack = needsExtensionPack) {
 
+    init {
+        setAsParentOf(children)
+    }
+
     override fun valueToJson(): JsonElement? = null
 
     override fun valueFromJson(json: JsonElement) = Unit
@@ -302,6 +333,14 @@ class EnumSetting<T : Enum<T>>(
     private var activeChildren: List<SettingNode<*>>? =
         childrenProvider?.invoke(value)
 
+    init {
+        setAsParentOf(children)
+        setAsParentOf(activeChildren)
+    }
+
+    override fun isShowingChild(child: SettingNode<*>): Boolean =
+        children.orEmpty().any { it === child } || activeChildren.orEmpty().any { it === child }
+
     val providedChildren: List<SettingNode<*>>
         get() = activeChildren.orEmpty().filter { it.isAvailable }
 
@@ -310,6 +349,7 @@ class EnumSetting<T : Enum<T>>(
             if (field == newValue) {return}
             field = newValue
             activeChildren = childrenProvider?.invoke(newValue)
+            setAsParentOf(activeChildren)
         }
 
     override val savedChildren: List<SettingNode<*>> get() = children.orEmpty() + providedChildren

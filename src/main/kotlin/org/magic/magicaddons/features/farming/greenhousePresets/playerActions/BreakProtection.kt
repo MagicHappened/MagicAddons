@@ -14,6 +14,7 @@ import org.magic.magicaddons.features.farming.greenhousePresets.GreenhousePreset
 import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseData
 import org.magic.magicaddons.features.farming.greenhousePresets.lookups.StatsWidget
 import org.magic.magicaddons.util.ChatUtils
+import org.magic.magicaddons.util.SBLocation
 import tech.thatgravyboat.skyblockapi.api.events.base.Subscription
 import tech.thatgravyboat.skyblockapi.api.events.location.ServerDisconnectEvent
 
@@ -132,7 +133,7 @@ object BreakProtection {
 
     @EventHandler
     fun onTick(event: WorldTickEvent) {
-        if (!GreenhouseData.inOwnGarden()) {
+        if (!SBLocation.OwnGarden.inside()) {
             hintDueAt = null
             return
         }

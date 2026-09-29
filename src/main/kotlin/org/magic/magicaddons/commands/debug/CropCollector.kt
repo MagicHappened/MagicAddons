@@ -40,6 +40,7 @@ import org.magic.magicaddons.render.WorldRenderer
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.EntityUtils
 import org.magic.magicaddons.util.PlayerUtils
+import org.magic.magicaddons.util.SBLocation
 import org.magic.magicaddons.util.getBuildableArea
 import tech.thatgravyboat.skyblockapi.api.location.LocationAPI
 import tech.thatgravyboat.skyblockapi.api.profile.garden.PlotAPI
@@ -383,7 +384,7 @@ object CropCollector : EntityUtils.HighlightSource {
     }
 
     private fun getPlotOrigin(): BlockPos? {
-        if (!GreenhouseData.inGarden()) return null
+        if (!SBLocation.Garden.inside()) return null
 
         val plot = PlotAPI.getCurrentPlot() ?: return null
         val collectable = if (LocationAPI.isGuest) !plot.isBarn else plot.data?.isGreenhouse == true

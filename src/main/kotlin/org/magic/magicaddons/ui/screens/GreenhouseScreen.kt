@@ -61,6 +61,7 @@ import org.magic.magicaddons.ui.widgets.greenhouse.ScrollHint
 import org.magic.magicaddons.commands.internal.MainInternal
 import org.magic.magicaddons.commands.internal.farming.SetTimestalkAttribute
 import org.magic.magicaddons.util.ChatUtils
+import org.magic.magicaddons.util.SBLocation
 import org.magic.magicaddons.util.ScreenUtil
 import org.magic.magicaddons.util.ScreenUtil.at
 import org.magic.magicaddons.util.ScreenUtil.textBoxHeight
@@ -79,7 +80,6 @@ import org.magic.magicaddons.util.ScreenUtil.drawItem
 import org.magic.magicaddons.util.ScreenUtil.itemStackFor
 import org.magic.magicaddons.util.toReadableDuration
 import org.magic.magicaddons.util.toShortDuration
-import tech.thatgravyboat.skyblockapi.api.location.LocationAPI
 import tech.thatgravyboat.skyblockapi.api.profile.garden.PlotAPI
 
 class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"), "the greenhouse screen"), HoverableContainer, OverlayContext {
@@ -385,7 +385,7 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
         greenhouseGridWidgets.clear()
         val scannedGreenhouseCount = GreenhouseData.greenhouseGrids.count { it.state.lastScanTime != null }
         if (PlotAPI.plots.any { it.data == null }) {
-            if (!LocationAPI.isOnSkyBlock) {
+            if (!SBLocation.SkyBlock.inside()) {
                 ChatUtils.sendWithPrefix("Plot data is null, please join skyblock.")
             } else {
                 ChatUtils.sendWithCommand(

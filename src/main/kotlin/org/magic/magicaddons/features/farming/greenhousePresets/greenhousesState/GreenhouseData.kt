@@ -34,6 +34,7 @@ import org.magic.magicaddons.features.farming.greenhousePresets.shrunkPlants.Sho
 import org.magic.magicaddons.features.farming.greenhousePresets.warnings.PlantWarnings
 import org.magic.magicaddons.ui.widgets.config.SettingDetail
 import org.magic.magicaddons.util.ChatUtils
+import org.magic.magicaddons.util.SBLocation
 import org.magic.magicaddons.util.ServerUtils
 import org.magic.magicaddons.util.center
 import org.magic.magicaddons.util.getBuildableArea
@@ -50,7 +51,6 @@ import tech.thatgravyboat.skyblockapi.api.events.info.ScoreboardUpdateEvent
 import tech.thatgravyboat.skyblockapi.api.events.location.IslandChangeEvent
 import tech.thatgravyboat.skyblockapi.api.events.location.ServerDisconnectEvent
 import tech.thatgravyboat.skyblockapi.api.events.screen.ContainerInitializedEvent
-import tech.thatgravyboat.skyblockapi.api.location.LocationAPI
 import tech.thatgravyboat.skyblockapi.api.location.SkyBlockIsland
 import tech.thatgravyboat.skyblockapi.api.profile.garden.Plot
 import tech.thatgravyboat.skyblockapi.api.profile.garden.PlotAPI
@@ -456,7 +456,7 @@ object GreenhouseData : GridCallbacks {
     private const val MISSING_COLOR: Int = 0xFFFF8855.toInt()
 
     fun absenceForChorusDetail(): SettingDetail? {
-        val ticks = GreenhousePresets.chorusAbsenceTicks() ?: return null
+        val ticks = GreenhousePresets.chorusAbsenceTicks()
 
         val tickMs = GreenhouseTickTime.tickMs
         val remaining = GreenhouseTickTime.remainingTickMs()
@@ -478,15 +478,8 @@ object GreenhouseData : GridCallbacks {
 
 
 
-    fun inGarden(): Boolean = LocationAPI.island == SkyBlockIsland.GARDEN
-
-    fun inOwnGarden(): Boolean = inGarden() && !LocationAPI.isGuest
-
-    // cant detect someone elses greenhouse plot without some like weird block detection so its left out
-    fun inOwnGreenhouse(): Boolean = inOwnGarden() && PlotAPI.getCurrentPlot()?.data?.isGreenhouse == true
-
     fun getCurrentGrid(): GreenhouseGrid? {
-        if (!inOwnGarden()) return null
+        if (!SBLocation.OwnGarden.inside()) return null
 
         val plotId = PlotAPI.getCurrentPlot()?.id ?: return null
         return greenhouseGrids.find { it.layout.id == PlotLayout.plotId(plotId) }
@@ -528,9 +521,7 @@ object GreenhouseData : GridCallbacks {
         val now = Instant.now()
 
         val onlineTickTracking =
-            LocationAPI.island == SkyBlockIsland.GARDEN &&
-                    !LocationAPI.isGuest &&
-                    lastCheckTime != null
+            SBLocation.OwnGarden.inside() && lastCheckTime != null
 
         val overdueMs = if (onlineTickTracking) {
             val currentTick = ServerUtils.totalServerTicks
@@ -633,7 +624,7 @@ object GreenhouseData : GridCallbacks {
         checkForTickTimeUpdate()
         PlantWarnings.onTick()
 
-        if (!inOwnGarden()) return
+        if (!SBLocation.OwnGarden.inside()) return
 
         noteGardenArrival()
         checkPlotChange()
@@ -709,13 +700,13 @@ object GreenhouseData : GridCallbacks {
     @OnlyNonGuest
     @OnlyIn(SkyBlockIsland.GARDEN)
     fun onScoreboardUpdate(event: ScoreboardUpdateEvent) {
-        if (!inOwnGreenhouse()) return
+        if (!SBLocation.OwnGreenhouse.inside()) return
         scoreboardLines = event.newComponents
         readPestDebuff()
     }
 
     private fun checkPlotChange() {
-        if (!inOwnGarden()) return
+        if (!SBLocation.OwnGarden.inside()) return
 
         val plot = PlotAPI.getCurrentPlot()
         if (lastPlot == plot) return

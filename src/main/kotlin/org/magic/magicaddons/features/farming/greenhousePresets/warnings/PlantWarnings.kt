@@ -24,6 +24,7 @@ import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState
 import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.OtherProfiles
 import org.magic.magicaddons.features.farming.greenhousePresets.lookups.BioanalysisAccessory
 import org.magic.magicaddons.util.ChatUtils
+import org.magic.magicaddons.util.SBLocation
 import org.magic.magicaddons.util.toShortDuration
 
 object PlantWarnings {
@@ -118,7 +119,7 @@ object PlantWarnings {
     }
 
     private fun sendTickLine(profile: ProfileGreenhouses, ticksPassed: Int, nextTickIn: Duration?) {
-        if (profile.name == null && GreenhouseData.inOwnGreenhouse()) return
+        if (profile.name == null && SBLocation.OwnGreenhouse.inside()) return
 
         val sections = sections(profile)
         val inProfile = profile.name?.let { " in profile $it" } ?: ""
@@ -308,7 +309,7 @@ object PlantWarnings {
     private fun chorusCollisions(profile: ProfileGreenhouses): Int {
         if (!warningEnabled(GreenhousePresets.CHORUS_KEY)) return 0
 
-        val ticks = GreenhousePresets.chorusAbsenceTicks() ?: return 0
+        val ticks = GreenhousePresets.chorusAbsenceTicks()
 
         return profile.grids.count { grid ->
             ChorusCollision.reportFor(grid, ticks, BioanalysisAccessory.mutationWeightMultiplier())?.needsWarning == true

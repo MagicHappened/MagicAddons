@@ -3,7 +3,6 @@ package org.magic.magicaddons.features.farming.greenhousePresets
 import java.time.Duration
 import net.minecraft.network.chat.Component
 import org.magic.magicaddons.Common
-import org.magic.magicaddons.data.config.BooleanSetting
 import org.magic.magicaddons.data.greenhouse.plot.GreenhouseGrid
 import org.magic.magicaddons.data.greenhouse.plot.PlotPrediction
 import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseData
@@ -13,9 +12,9 @@ import org.magic.magicaddons.ui.hud.HudContent
 import org.magic.magicaddons.ui.hud.HudElement
 import org.magic.magicaddons.ui.hud.HudLine
 import org.magic.magicaddons.ui.hud.HudSituation
+import org.magic.magicaddons.util.SBLocation
 import org.magic.magicaddons.util.toReadableDuration
 import org.magic.magicaddons.util.toShortDuration
-import tech.thatgravyboat.skyblockapi.api.location.LocationAPI
 
 object GreenhouseHud : HudElement("greenhouse", "Greenhouse") {
 
@@ -28,23 +27,19 @@ object GreenhouseHud : HudElement("greenhouse", "Greenhouse") {
 
     private val URGENT_MS: Long = Duration.ofHours(1).toMillis()
 
-    private fun setting(): BooleanSetting? = GreenhousePresets.baseSetting.getChild<BooleanSetting>(KEY)
-
-    private fun enabled(): Boolean = GreenhousePresets.baseSetting.value && setting()?.value == true
-
-    override val configTarget: ConfigTarget?
-        get() = setting()?.let { ConfigTarget(GreenhousePresets, listOf(GreenhousePresets.baseSetting, it)) }
+    override val configTarget: ConfigTarget
+        get() = ConfigTarget(GreenhousePresets, listOf(GreenhousePresets.baseSetting, GreenhousePresets.greenhouseHudSetting))
 
     private class Line(val label: String, val value: String, val valueColor: Int = Common.UI.TEXT_COLOR)
 
     override fun currentContent(): HudContent? {
-        if (!enabled()) return null
+        if (!GreenhousePresets.greenhouseHudSetting.isEnabled) return null
 
         // own garden only, unless the anywhere config is on
-        val ownGarden = GreenhouseData.inOwnGarden()
-        if (!ownGarden && !(GreenhousePresets.hudAnywhere() && LocationAPI.isOnSkyBlock)) return null
+        val ownGarden = SBLocation.OwnGarden.inside()
+        if (!ownGarden && !(GreenhousePresets.hudAnywhere() && SBLocation.SkyBlock.inside())) return null
 
-        val grid = if (GreenhouseData.inOwnGreenhouse()) GreenhouseData.getCurrentGrid() else null
+        val grid = if (SBLocation.OwnGreenhouse.inside()) GreenhouseData.getCurrentGrid() else null
         return content(grid?.layout?.displayName() ?: "Greenhouse", lines(grid))
     }
 

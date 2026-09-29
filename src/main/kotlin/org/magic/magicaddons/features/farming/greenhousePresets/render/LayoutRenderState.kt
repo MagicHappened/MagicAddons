@@ -33,6 +33,7 @@ import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState
 import org.magic.magicaddons.render.WorldRenderer
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.EntityUtils
+import org.magic.magicaddons.util.SBLocation
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockId.Companion.getSkyBlockId
 
 object LayoutRenderState {
@@ -118,7 +119,7 @@ object LayoutRenderState {
     private var plannerLayout: PlannerLayout = PlannerLayout.NOTHING
 
     fun standTint(stand: UUID): Int {
-        if (!GreenhouseData.inOwnGarden()) return 0
+        if (!SBLocation.OwnGarden.inside()) return 0
 
         val current = plannerLayout
 
@@ -128,7 +129,7 @@ object LayoutRenderState {
         }
     }
 
-    val ghostStands: List<ArmorStand> get() = if (GreenhouseData.inOwnGarden()) plannerLayout.ghostStands else emptyList()
+    val ghostStands: List<ArmorStand> get() = if (SBLocation.OwnGarden.inside()) plannerLayout.ghostStands else emptyList()
 
     val hasSomethingToShow: Boolean
         get() = plannerLayout.marks.isNotEmpty() || plannerLayout.ghosts.isNotEmpty() || plannerLayout.ghostStands.isNotEmpty() ||
@@ -143,7 +144,7 @@ object LayoutRenderState {
     private val reportedMissingStage = mutableSetOf<String>()
 
     fun submitPlan(poseStack: PoseStack, collector: SubmitNodeCollector, cameraPos: Vec3) {
-        if (!GreenhouseData.inOwnGarden()) return
+        if (!SBLocation.OwnGarden.inside()) return
 
         val plan = this.plannerLayout
         if (plan.marks.isEmpty() && plan.ghosts.isEmpty() && plan.watchMarks.isEmpty()) return
@@ -173,7 +174,7 @@ object LayoutRenderState {
     }
 
     fun refresh() {
-        if (!GreenhouseData.inOwnGarden()) {
+        if (!SBLocation.OwnGarden.inside()) {
             plannerLayout = PlannerLayout.NOTHING
             return
         }

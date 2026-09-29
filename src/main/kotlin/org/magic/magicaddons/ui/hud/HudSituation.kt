@@ -1,8 +1,6 @@
 package org.magic.magicaddons.ui.hud
 
-import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseData
-import tech.thatgravyboat.skyblockapi.api.location.LocationAPI
-import tech.thatgravyboat.skyblockapi.api.location.SkyBlockIsland
+import org.magic.magicaddons.util.SBLocation
 
 enum class HudSituation(val label: String) {
     EVERYTHING("Everything"),
@@ -12,9 +10,9 @@ enum class HudSituation(val label: String) {
 
     companion object {
         fun currentSituation(): HudSituation = when {
-            GreenhouseData.inOwnGreenhouse() -> GREENHOUSE
-            GreenhouseData.inGarden() -> GARDEN
-            LocationAPI.island == SkyBlockIsland.SAFARI -> SAFARI
+            SBLocation.OwnGreenhouse.inside() -> GREENHOUSE
+            SBLocation.Garden.inside() -> GARDEN
+            SBLocation.Safari.inside() -> SAFARI
             else -> EVERYTHING
         }
 

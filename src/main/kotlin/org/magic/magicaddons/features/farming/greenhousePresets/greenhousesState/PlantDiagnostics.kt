@@ -11,6 +11,7 @@ import org.magic.magicaddons.commands.debug.CropCollector
 import org.magic.magicaddons.data.greenhouse.crops.*
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhousePresets.baseSetting
 import org.magic.magicaddons.util.ChatUtils
+import org.magic.magicaddons.util.SBLocation
 import org.magic.magicaddons.util.parseDurationToMs
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockId.Companion.getSkyBlockId
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
@@ -95,7 +96,7 @@ object PlantDiagnostics {
         val nextStage = saplingLore.valueFor("Next Stage")
 
         if (nextStage?.contains(Regex("\\d")) ?: false) {
-            if (GreenhouseData.inOwnGreenhouse()) {
+            if (SBLocation.OwnGreenhouse.inside()) {
                 val lastTickTime = GreenhouseData.miscInfo.nextTickTime
 
                 GreenhouseData.miscInfo.nextTickTime = Instant.now().plusMillis(nextStage.parseDurationToMs())
@@ -111,7 +112,7 @@ object PlantDiagnostics {
             }
         }
 
-        val target = listening?.takeIf { GreenhouseData.inOwnGarden() }?.let { disputeRecordWith(it, def, statusPage) }
+        val target = listening?.takeIf { SBLocation.OwnGarden.inside() }?.let { disputeRecordWith(it, def, statusPage) }
 
         target?.let { element ->
             age?.parseDurationToMs()?.let { element.plant.appearedAt = System.currentTimeMillis() - it }

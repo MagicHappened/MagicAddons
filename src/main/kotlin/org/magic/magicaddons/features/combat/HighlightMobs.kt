@@ -22,11 +22,10 @@ import org.magic.magicaddons.events.world.EntityUpdatedEvent
 import org.magic.magicaddons.features.HighlightFeature
 import org.magic.magicaddons.features.misc.HighlightMarkers
 import org.magic.magicaddons.util.EntityUtils
+import org.magic.magicaddons.util.SBLocation
 import tech.thatgravyboat.skyblockapi.api.SkyBlockAPI
 import tech.thatgravyboat.skyblockapi.api.events.base.Subscription
 import tech.thatgravyboat.skyblockapi.api.events.location.IslandChangeEvent
-import tech.thatgravyboat.skyblockapi.api.location.LocationAPI
-import tech.thatgravyboat.skyblockapi.api.location.SkyBlockIsland
 
 
 object HighlightMobs : HighlightFeature() {
@@ -73,83 +72,86 @@ object HighlightMobs : HighlightFeature() {
 
     override val throughWalls: Boolean get() = throughWallsSetting.value
 
+    private val foragingTreasureSetting = BooleanSetting(
+        key = "PresetsForagingTreasure",
+        displayName = "Foraging Treasure",
+        description = "§fHighlights the grass hiding treasure or shards\n§fon the foraging islands.",
+        value = false
+    )
+
+    private val hideLootedCorpsesSetting = BooleanSetting(
+        key = "HideLootedCorpses",
+        displayName = "Hide Looted",
+        description = "§fStops highlighting a corpse once you have looted it.",
+        value = false
+    )
+
+    private val shaftCorpsesSetting = BooleanSetting(
+        key = "PresetsShaftCorpses",
+        displayName = "Shaft Corpses",
+        description = "§fHighlights the §9lapis§f, §6umber§f and §btungsten§f corpses in mineshafts.\n" +
+                "§fEach is outlined in its own color.",
+        value = false,
+        children = listOf(hideLootedCorpsesSetting)
+    )
+
+    private val mobPresetsSetting = BooleanSetting(
+        key = "PresetsEnabled",
+        displayName = "Mob Presets",
+        description = "§fPreselect highlight options for different areas of the game.",
+        value = false,
+        children = listOf(foragingTreasureSetting, shaftCorpsesSetting)
+    )
+
+    private val hypixelMobsSetting = BooleanSetting(
+        key = "HypixelMobsEnabled",
+        displayName = "Hypixel Mobs",
+        description = "§fMobs specifically for hypixel\n" +
+                "§bIf a mob you want isn't added here, suggest it to a dev for implementation.",
+        value = false,
+        children = listOf(hypixelMobsList)
+    )
+
+    private val vanillaMobsSetting = BooleanSetting(
+        key = "VanillaMobsEnabled",
+        displayName = "Vanilla Mobs",
+        description = "§fEvery mob in vanilla Minecraft, players included.",
+        value = false,
+        children = listOf(vanillaMobsList)
+    )
+
+    private val singleMobsSetting = BooleanSetting(
+        key = "SingleMobsEnabled",
+        displayName = "Single Mobs",
+        description = "§fHighlight specific mobs.",
+        value = false,
+        children = listOf(hypixelMobsSetting, vanillaMobsSetting)
+    )
+
+    private val mobNameContainsSetting = TextSetting(
+        key = "MobInfoContains",
+        displayName = "Mob Name Contains",
+        description = "§fThe text to look for in a mob's name.",
+        value = "Littlefoot"
+    )
+
+    private val mobNameSetting = BooleanSetting(
+        key = "MobInfoEnabled",
+        displayName = "Mob Name",
+        description = "§fHighlights mobs whose name contains this text.\n" +
+                "\n" +
+                "§cNames are usually a separate armor stand above the mob,\n" +
+                "§cso the highlight is often shorter range than with the\n" +
+                "§cother highlight options.",
+        value = false,
+        children = listOf(mobNameContainsSetting)
+    )
+
     override val baseSetting: BooleanSetting = BooleanSetting(
         displayName = displayName,
         description = description,
         value = false,
-        children = listOf(
-            throughWallsSetting,
-            BooleanSetting(
-                key = "PresetsEnabled",
-                displayName = "Mob Presets",
-                description = "§fPreselect highlight options for different areas of the game.",
-                value = false,
-                children = listOf(
-                    BooleanSetting(
-                        key = "PresetsForagingTreasure",
-                        displayName = "Foraging Treasure",
-                        description = "§fHighlights the grass hiding treasure or shards\n§fon the foraging islands.",
-                        value = false
-                    ),
-                    BooleanSetting(
-                        key = "PresetsShaftCorpses",
-                        displayName = "Shaft Corpses",
-                        description = "§fHighlights the §9lapis§f, §6umber§f and §btungsten§f corpses in mineshafts.\n" +
-                                "§fEach is outlined in its own color.",
-                        value = false,
-                        children = listOf(
-                            BooleanSetting(
-                                key = "HideLootedCorpses",
-                                displayName = "Hide Looted",
-                                description = "§fStops highlighting a corpse once you have looted it.",
-                                value = false
-                            )
-                        )
-                    )
-                )
-            ),
-            BooleanSetting(
-                key = "SingleMobsEnabled",
-                displayName = "Single Mobs",
-                description = "§fHighlight specific mobs.",
-                value = false,
-                children = listOf(
-                    BooleanSetting(
-                        key = "HypixelMobsEnabled",
-                        displayName = "Hypixel Mobs",
-                        description = "§fMobs specifically for hypixel\n" +
-                                "§bIf a mob you want isn't added here, suggest it to a dev for implementation.",
-                        value = false,
-                        children = listOf(hypixelMobsList)
-                    ),
-                    BooleanSetting(
-                        key = "VanillaMobsEnabled",
-                        displayName = "Vanilla Mobs",
-                        description = "§fEvery mob in vanilla Minecraft, players included.",
-                        value = false,
-                        children = listOf(vanillaMobsList)
-                    )
-                )
-            ),
-            BooleanSetting(
-                key = "MobInfoEnabled",
-                displayName = "Mob Name",
-                description = "§fHighlights mobs whose name contains this text.\n" +
-                        "\n" +
-                        "§cNames are usually a separate armor stand above the mob,\n" +
-                        "§cso the highlight is often shorter range than with the\n" +
-                        "§cother highlight options.",
-                value = false,
-                children = listOf(
-                    TextSetting(
-                        key = "MobInfoContains",
-                        displayName = "Mob Name Contains",
-                        description = "§fThe text to look for in a mob's name.",
-                        value = "Littlefoot"
-                    )
-                )
-            )
-        )
+        children = listOf(throughWallsSetting, mobPresetsSetting, singleMobsSetting, mobNameSetting)
     )
 
     @EventHandler
@@ -197,7 +199,7 @@ object HighlightMobs : HighlightFeature() {
 
     @EventHandler
     fun onInteractEntity(event: InteractEntityEvent) {
-        if (!hideLootedEnabled()) return
+        if (!hideLootedCorpsesSetting.isEnabled) return
         if (corpseColor(event.target) == null) return
 
         pendingCorpse = event.target
@@ -224,25 +226,15 @@ object HighlightMobs : HighlightFeature() {
         pendingCorpse = null
     }
 
-    private fun hideLootedEnabled(): Boolean =
-        baseSetting.getChild<BooleanSetting>("PresetsEnabled")
-            ?.getChild<BooleanSetting>("PresetsShaftCorpses")
-            ?.getChild<BooleanSetting>("HideLootedCorpses")
-            ?.value == true
-
-
     private fun presetTarget(info: EntityInfo): Entity? {
-        val presets = baseSetting.getChild<BooleanSetting>("PresetsEnabled") ?: return null
-        if (!presets.value) return null
-
-        if (presets.getChild<BooleanSetting>("PresetsForagingTreasure")?.value == true) {
+        if (foragingTreasureSetting.isEnabled) {
             if (info.entity is Display.ItemDisplay && info.entity.itemStack.item == Items.STRING) {
                 return info.entity
             }
         }
 
-        if (presets.getChild<BooleanSetting>("PresetsShaftCorpses")?.value == true &&
-            LocationAPI.island == SkyBlockIsland.MINESHAFT &&
+        if (shaftCorpsesSetting.isEnabled &&
+            SBLocation.Mineshaft.inside() &&
             corpseColor(info.entity) != null &&
             info.entity.id !in lootedCorpses
         ) {
@@ -257,14 +249,13 @@ object HighlightMobs : HighlightFeature() {
     private fun singleMobTarget(info: EntityInfo): Entity? = singleMobMatch(info)?.target
 
     private fun singleMobMatch(info: EntityInfo): SingleMobsMatch? {
-        val singleMobs = baseSetting.getChild<BooleanSetting>("SingleMobsEnabled") ?: return null
-        if (!singleMobs.value) return null
+        if (!singleMobsSetting.isEnabled) return null
 
-        return hypixelMobMatch(singleMobs, info) ?: vanillaMobMatch(singleMobs, info)
+        return hypixelMobMatch(info) ?: vanillaMobMatch(info)
     }
 
-    private fun hypixelMobMatch(singleMobs: BooleanSetting, info: EntityInfo): SingleMobsMatch? {
-        if (singleMobs.getChild<BooleanSetting>("HypixelMobsEnabled")?.value != true) return null
+    private fun hypixelMobMatch(info: EntityInfo): SingleMobsMatch? {
+        if (!hypixelMobsSetting.isEnabled) return null
 
         return hypixelMobsList.value
             .asSequence()
@@ -274,8 +265,8 @@ object HighlightMobs : HighlightFeature() {
             .firstOrNull()
     }
 
-    private fun vanillaMobMatch(singleMobs: BooleanSetting, info: EntityInfo): SingleMobsMatch? {
-        if (singleMobs.getChild<BooleanSetting>("VanillaMobsEnabled")?.value != true) return null
+    private fun vanillaMobMatch(info: EntityInfo): SingleMobsMatch? {
+        if (!vanillaMobsSetting.isEnabled) return null
 
         return vanillaMobsList.value
             .asSequence()
@@ -287,10 +278,7 @@ object HighlightMobs : HighlightFeature() {
 
     // for names above the mobs
     private fun nameTarget(info: EntityInfo): Entity? {
-        val nameSetting = baseSetting.getChild<BooleanSetting>("MobInfoEnabled") ?: return null
-        if (!nameSetting.value) return null
-
-        val filter = nameSetting.getChild<TextSetting>("MobInfoContains")?.value ?: return null
+        val filter = mobNameContainsSetting.valueIfEnabled ?: return null
         if (filter.isBlank()) return null
 
         val entity = info.entity

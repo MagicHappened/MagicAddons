@@ -12,6 +12,7 @@ import org.magic.magicaddons.data.greenhouse.plot.PlotPrediction
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhousePresets
 import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseData
 import org.magic.magicaddons.render.WorldRenderer
+import org.magic.magicaddons.util.SBLocation
 
 object WaterIndicator {
 
@@ -24,7 +25,7 @@ object WaterIndicator {
         if (!GreenhousePresets.waterIndicatorOn()) return
         if (GreenhousePresets.waterIndicatorOnlyWithoutPlanner() && LayoutRenderState.hasSomethingToShow) return
 
-        if (!GreenhouseData.inOwnGreenhouse()) return
+        if (!SBLocation.OwnGreenhouse.inside()) return
         val grid = GreenhouseData.getCurrentGrid() ?: return
 
         val ignoreGrown = GreenhousePresets.waterIndicatorIgnoresGrown()
