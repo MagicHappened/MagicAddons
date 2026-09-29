@@ -30,6 +30,7 @@ import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseSpawnL
 import org.magic.magicaddons.features.farming.greenhousePresets.playerActions.GreenhousePlantDischarge
 import org.magic.magicaddons.features.farming.greenhousePresets.playerActions.GreenhouseWatering
 import org.magic.magicaddons.features.farming.greenhousePresets.render.LayoutRenderState
+import org.magic.magicaddons.features.farming.greenhousePresets.shrunkPlants.ShorterCaneCrops
 import org.magic.magicaddons.features.farming.greenhousePresets.warnings.PlantWarnings
 import org.magic.magicaddons.ui.widgets.config.SettingDetail
 import org.magic.magicaddons.util.ChatUtils
@@ -357,6 +358,8 @@ object GreenhouseData : GridCallbacks {
         grid.state.needsRescan = false
         grid.state.lastScanTime = Instant.now()
         grid.state.ticksSinceLastScan = 0
+
+        ShorterCaneCrops.updateHiddenPlantParts()
     }
     private const val MAX_TICK_ADJUSTMENT_MS: Long = 5_000
 
@@ -447,6 +450,7 @@ object GreenhouseData : GridCallbacks {
         if (!grid.rescanPlants(region, shouldKeepUnmatchedPlants = readiness != PlotReadiness.Settled)) return
         claimPlantedCrop(grid)
         LayoutRenderState.refresh()
+        ShorterCaneCrops.updateHiddenPlantParts()
     }
 
     private const val MISSING_COLOR: Int = 0xFFFF8855.toInt()

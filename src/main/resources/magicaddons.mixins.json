@@ -12,6 +12,7 @@
     "ClientLevelMixin",
     "ScreenMixin",
     "EntityRenderStateMixin",
+    "EntityRendererMixin",
     "AvatarRendererMixin",
     "PlayerModelMixin",
     "CustomHeadLayerMixin",

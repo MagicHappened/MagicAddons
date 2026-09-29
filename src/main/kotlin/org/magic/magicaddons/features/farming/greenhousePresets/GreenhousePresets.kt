@@ -32,6 +32,7 @@ object GreenhousePresets : Feature() {
     private const val PLANNER_OPTIONS_KEY = "PlannerOptions"
     private const val BREAK_PROTECTION_KEY = "BreakProtection"
     private const val PREDICTION_KEY = "Prediction"
+    private const val SHORTER_CANE_CROPS_KEY = "ShorterCaneCrops"
     private const val PLANT_TRANSPARENCY_KEY = "PlantTransparency"
     private const val PLANT_HIGHLIGHTS_KEY = "PlantHighlights"
     private const val HARVEST_HIGHLIGHT_KEY = "HarvestHighlight"
@@ -326,6 +327,16 @@ object GreenhousePresets : Feature() {
 
     fun assumeFlatWater(): Boolean = baseSetting.value && assumeFlatWaterSetting.value
 
+    private val shorterCaneCropsSetting = BooleanSetting(
+        key = SHORTER_CANE_CROPS_KEY,
+        displayName = "Shorter Cane Crops",
+        description = "Visually only see the bottom block of a sugar cane or magic jellybean, " +
+                "hitboxes remain the same so you can still hit it on all of its blocks.",
+        value = false
+    )
+
+    fun shorterCaneCropsOn(): Boolean = baseSetting.value && shorterCaneCropsSetting.value
+
     private val hudAnywhereSetting = BooleanSetting(
         key = HUD_ANYWHERE_KEY,
         displayName = "Anywhere In SkyBlock",
@@ -588,7 +599,8 @@ object GreenhousePresets : Feature() {
                 displayName = "Prediction",
                 description = "What the growth and water model is told to assume",
                 children = listOf(assumeFlatWaterSetting)
-            )
+            ),
+            shorterCaneCropsSetting
         )
     )
 }

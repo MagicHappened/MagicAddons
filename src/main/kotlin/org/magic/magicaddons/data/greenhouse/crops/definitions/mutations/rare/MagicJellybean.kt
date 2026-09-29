@@ -20,7 +20,7 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
 object MagicJellybean {
 
-    private const val CANE_HASH = "c526a56b80f56a6870f891d1d46fa7f8c71494cad24e94326da84b3829417b81"
+    const val CANE_HASH = "c526a56b80f56a6870f891d1d46fa7f8c71494cad24e94326da84b3829417b81"
 
     private const val MELON_HASH = "e3f23b34867472673a484f4baea5f51fbf93abe4d11e2808b6634970150bde24"
 
