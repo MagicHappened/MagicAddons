@@ -75,7 +75,7 @@ data class ServerGreenhouseData(
                 ?: return null
             val nextTickInMs = GreenhouseTickTime.remainingTickMs() ?: return null
             val tickMs = GreenhouseTickTime.tickMs ?: return null
-            val plots = GreenhouseData.greenhouseGrids.filter { it.isScanned() }.map { plotOf(it) }
+            val plots = GreenhouseData.greenhouseGrids.filter { it.state.lastScanTime != null }.map { plotOf(it) }
             if (plots.isEmpty()) return null
 
             return ServerGreenhouseData(

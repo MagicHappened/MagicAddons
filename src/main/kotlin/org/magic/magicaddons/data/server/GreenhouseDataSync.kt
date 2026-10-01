@@ -1,6 +1,7 @@
 package org.magic.magicaddons.data.server
 
 import com.google.gson.Gson
+import com.google.gson.JsonParser
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents
 import org.magic.magicaddons.Common
@@ -23,6 +24,8 @@ object GreenhouseDataSync {
 
     private val gson = Gson()
 
+    private const val MAX_LOGGED_BODY_LENGTH: Int = 200
+
     private var lastManualSyncAtMs: Long = 0
 
     @Volatile
@@ -38,7 +41,7 @@ object GreenhouseDataSync {
         data object NoGreenhouseData : SyncOutcome
         data object OnAlpha : SyncOutcome
         data class CoolingDown(val waitMs: Long) : SyncOutcome
-        data class Failed(val status: Int?) : SyncOutcome
+        data class Failed(val status: Int?, val reason: String? = null) : SyncOutcome
     }
 
     fun init() {
@@ -96,7 +99,13 @@ object GreenhouseDataSync {
         response == null -> SyncOutcome.Failed(null)
         response.statusCode() == ServerSession.HTTP_OK -> SyncOutcome.Sent
         response.body().contains("notLinked") -> SyncOutcome.NotLinked
-        else -> SyncOutcome.Failed(response.statusCode())
+        else -> SyncOutcome.Failed(response.statusCode(), refusalReasonOf(response.body()))
+    }
+
+    private fun refusalReasonOf(body: String): String {
+        val refusal = runCatching { JsonParser.parseString(body).asJsonObject }.getOrNull() ?: return body.take(MAX_LOGGED_BODY_LENGTH)
+        val error = refusal.get("error")?.asString ?: return body.take(MAX_LOGGED_BODY_LENGTH)
+        return refusal.get("field")?.asString?.let { "$error at $it" } ?: error
     }
 
     private fun uploadBeforeGameCloses() {

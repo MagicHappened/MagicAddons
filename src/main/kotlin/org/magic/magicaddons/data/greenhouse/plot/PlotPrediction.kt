@@ -3,6 +3,7 @@ package org.magic.magicaddons.data.greenhouse.plot
 import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.max
+import kotlin.math.min
 import kotlin.random.Random
 import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
 import org.magic.magicaddons.data.greenhouse.crops.CropEffect
@@ -16,6 +17,8 @@ object PlotPrediction {
 
     private const val MIN_ROLL_WEIGHT_TOTAL: Double = 100.0
 
+    private const val FULL_CHANCE_RING_SHARE: Double = 0.5
+
     fun mutationChancesAtSlot(
         layout: PlotLayout,
         x: Int,
@@ -23,12 +26,95 @@ object PlotPrediction {
         weightMultiplier: Double,
         ignoredPlant: Plant? = null
     ): List<MutationChance> {
-        val weightByCrop = CropRegistry.allCrops
-            .filter { crop -> (crop.spawnRule?.weight ?: 0) > 0 && missingSpawnConditions(layout, crop, x, y, ignoredPlant).isEmpty() }
-            .associateWith { it.spawnRule!!.weight * weightMultiplier }
+        val eligibleCrops = spawningCrops.filter { missingSpawnConditions(layout, it, x, y, ignoredPlant).isEmpty() }
+        return chancesAmong(eligibleCrops, layout, x, y, weightMultiplier, ignoredPlant)
+    }
+
+    private val spawningCrops: List<CropDefinition> get() = CropRegistry.allCrops.filter { (it.spawnRule?.weight ?: 0) > 0 }
+
+    private fun chancesAmong(
+        eligibleCrops: List<CropDefinition>,
+        layout: PlotLayout,
+        x: Int,
+        y: Int,
+        weightMultiplier: Double,
+        ignoredPlant: Plant?
+    ): List<MutationChance> {
+        val weightByCrop = eligibleCrops.associateWith { it.spawnRule!!.weight * weightMultiplier }
         val rollTotal = max(MIN_ROLL_WEIGHT_TOTAL, weightByCrop.values.sum())
 
-        return weightByCrop.map { (crop, weight) -> MutationChance(crop, weight / rollTotal) }.sortedByDescending { it.chance }
+        return weightByCrop
+            .map { (crop, weight) -> MutationChance(crop, weight / rollTotal * ringFillFactor(layout, crop, x, y, ignoredPlant)) }
+            .sortedByDescending { it.chance }
+    }
+
+    class AbsenceSpawns(val onTargets: Double, val otherOnTargets: Double)
+
+    private const val ABSENCE_SIMULATION_RUNS: Int = 100
+
+    private const val SURROUNDINGS_REACH: Int = 3
+
+    private data class Surroundings(val x: Int, val y: Int, val cropNames: List<String?>)
+
+    fun expectedSpawnsDuringAbsence(
+        layoutBefore: PlotLayout,
+        targets: List<Plant>,
+        ticks: Int,
+        weightMultiplier: Double,
+        random: Random = Random.Default
+    ): AbsenceSpawns {
+        val targetsByOrigin = targets.associateBy { it.slot.x to it.slot.y }
+        val (effectRuledCrops, neighbourRuledCrops) = spawningCrops.partition { it.spawnRule!!.needsOwnEffectsAround }
+        val neighbourRuledCropsBySurroundings = HashMap<Surroundings, List<CropDefinition>>()
+        var spawnsOnTargets = 0
+        var otherSpawnsOnTargets = 0
+
+        repeat(ABSENCE_SIMULATION_RUNS) {
+            val layout = layoutBefore.freshCopy()
+            repeat(ticks) {
+                val spawnsThisTick = layout.slots.filter { layout.plantCovering(it) == null }.mapNotNull { slot ->
+                    val eligibleCrops = neighbourRuledCropsBySurroundings.getOrPut(surroundingsOf(layout, slot.x, slot.y)) {
+                        neighbourRuledCrops.filter { missingSpawnConditions(layout, it, slot.x, slot.y).isEmpty() }
+                    } + effectRuledCrops.filter {
+                        missingFootprintConditions(layout, it, slot.x, slot.y, null).isEmpty() &&
+                                missingSpawnConditions(layout, it, slot.x, slot.y).isEmpty()
+                    }
+                    rolledCrop(chancesAmong(eligibleCrops, layout, slot.x, slot.y, weightMultiplier, null), random)?.let { it to slot }
+                }
+
+                spawnsThisTick.forEach { (crop, slot) ->
+                    if (crop.footprint.cellsFrom(slot.x, slot.y).any { (cellX, cellY) -> layout.plantCovering(cellX, cellY) != null }) return@forEach
+                    layout.plants.add(Plant(elementId = crop.elementId, slot = slot, growthStage = PlantStage.Known(1), cropDef = crop))
+
+                    val target = targetsByOrigin[slot.x to slot.y] ?: return@forEach
+                    if (target.acceptsCrop(crop)) spawnsOnTargets++ else otherSpawnsOnTargets++
+                }
+            }
+        }
+        return AbsenceSpawns(spawnsOnTargets.toDouble() / ABSENCE_SIMULATION_RUNS, otherSpawnsOnTargets.toDouble() / ABSENCE_SIMULATION_RUNS)
+    }
+
+    private fun surroundingsOf(layout: PlotLayout, x: Int, y: Int): Surroundings =
+        Surroundings(x, y, ((y - 1)..(y + SURROUNDINGS_REACH)).flatMap { cellY ->
+            ((x - 1)..(x + SURROUNDINGS_REACH)).map { cellX -> layout.plantCovering(cellX, cellY)?.cropDef?.name }
+        })
+
+    private fun rolledCrop(chances: List<MutationChance>, random: Random): CropDefinition? {
+        var roll = random.nextDouble()
+        chances.forEach { chance ->
+            roll -= chance.chance
+            if (roll < 0) return chance.crop
+        }
+        return null
+    }
+
+    // hypixel multiplies mutation chances by the amount of crops around the spawn cell, reaching the actual chance at 4 (25% per crop)
+    private fun ringFillFactor(layout: PlotLayout, crop: CropDefinition, x: Int, y: Int, ignoredPlant: Plant?): Double {
+        if (crop.spawnRule?.requiredNeighbourCells.isNullOrEmpty()) return 1.0
+
+        val fullRingSize = (crop.footprint.width + 2) * (crop.footprint.height + 2) - crop.footprint.width * crop.footprint.height
+        val plantedRingCells = cellsSurrounding(layout, crop, x, y).count { (cellX, cellY) -> standingPlantAtPos(layout, cellX, cellY, ignoredPlant) != null }
+        return min(1.0, plantedRingCells / (fullRingSize * FULL_CHANCE_RING_SHARE))
     }
 
     fun missingSpawnConditions(
@@ -39,21 +125,9 @@ object PlotPrediction {
         ignoredPlant: Plant? = null
     ): List<String> {
         val rule = crop.spawnRule ?: return listOf("never appears on its own")
-        val width = crop.footprint.width
-        val height = crop.footprint.height
-        if (x < 0 || y < 0 || x + width > layout.size || y + height > layout.size) return listOf("does not fit here")
+        if (!fitsInPlot(layout, crop, x, y)) return listOf(DOES_NOT_FIT)
 
-        val footprintCells = crop.footprint.cellsFrom(x, y)
-        val missing = mutableListOf<String>()
-
-        if (rule.staysOffPlotEdge && (x == 0 || y == 0 || x + width == layout.size || y + height == layout.size)) missing += "touches the plot edge"
-
-        if (footprintCells.any { (cellX, cellY) -> standingPlantAtPos(layout, cellX, cellY, ignoredPlant) != null }) missing += "no room"
-
-        val footprintSoils = footprintCells.map { (cellX, cellY) -> layout.getSlot(cellX, cellY)?.soil }
-        if (footprintSoils.any { it == null || it !in crop.requiredSoil }) {
-            missing += "needs ${crop.requiredSoil.joinToString(" or ") { it.name.string }}"
-        }
+        val missing = missingFootprintConditions(layout, crop, x, y, ignoredPlant).toMutableList()
 
         missing += missingNeighbourConditions(layout, crop, x, y, ignoredPlant)
 
@@ -62,6 +136,32 @@ object PlotPrediction {
             if (missingEffects.isNotEmpty()) missing += "no ${missingEffects.joinToString(", ") { it.label }} around it"
         }
 
+        return missing
+    }
+
+    private const val DOES_NOT_FIT: String = "does not fit here"
+
+    private fun fitsInPlot(layout: PlotLayout, crop: CropDefinition, x: Int, y: Int): Boolean =
+        x >= 0 && y >= 0 && x + crop.footprint.width <= layout.size && y + crop.footprint.height <= layout.size
+
+    private fun missingFootprintConditions(layout: PlotLayout, crop: CropDefinition, x: Int, y: Int, ignoredPlant: Plant?): List<String> {
+        if (!fitsInPlot(layout, crop, x, y)) return listOf(DOES_NOT_FIT)
+
+        val footprintCells = crop.footprint.cellsFrom(x, y)
+        val missing = mutableListOf<String>()
+
+        if (crop.spawnRule?.staysOffPlotEdge == true &&
+            (x == 0 || y == 0 || x + crop.footprint.width == layout.size || y + crop.footprint.height == layout.size)
+        ) {
+            missing += "touches the plot edge"
+        }
+
+        if (footprintCells.any { (cellX, cellY) -> standingPlantAtPos(layout, cellX, cellY, ignoredPlant) != null }) missing += "no room"
+
+        val footprintSoils = footprintCells.map { (cellX, cellY) -> layout.getSlot(cellX, cellY)?.soil }
+        if (footprintSoils.any { it == null || it !in crop.requiredSoil }) {
+            missing += "needs ${crop.requiredSoil.joinToString(" or ") { it.name.string }}"
+        }
         return missing
     }
 
@@ -117,9 +217,6 @@ object PlotPrediction {
         layout: PlotLayout,
         plannedCropsBySlot: Map<Pair<Int, Int>, Set<CropDefinition>>
     ): Map<Pair<Int, Int>, List<CropDefinition>> {
-        val spawningCrops = CropRegistry.allCrops.filter { crop ->
-            (crop.spawnRule?.weight ?: 0) > 0
-        }
         val spots = linkedMapOf<Pair<Int, Int>, List<CropDefinition>>()
 
         for (y in 0 until layout.size) {

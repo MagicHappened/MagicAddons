@@ -86,6 +86,9 @@ object GreenhouseScreenCommand : AbstractCommand() {
         SyncOutcome.OnAlpha -> Component.literal("Greenhouse data from the Alpha Network is never sent to the server.")
         SyncOutcome.NoGreenhouseData -> Component.literal("No scanned greenhouse or your tick time is unknown")
         is SyncOutcome.CoolingDown -> Component.literal("You can sync again in ${(outcome.waitMs / 60_000) + 1} minutes.")
-        is SyncOutcome.Failed -> Component.literal("The server did not accept the data (${outcome.status ?: "unreachable"}). See the log.")
+        is SyncOutcome.Failed -> ChatUtils.buildStyled(
+            "The server did not accept the data (${outcome.status ?: "unreachable"}). See the log.",
+            hover = outcome.reason?.let { Component.literal(it) }
+        )
     }
 }

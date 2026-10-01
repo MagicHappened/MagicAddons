@@ -1038,7 +1038,6 @@ object GreenhouseData : GridCallbacks {
         plant.waterBestCase = null
         plant.appearedAt = (gardenArrivedAt ?: now).toEpochMilli()
         plant.firstSeenStage = 1
-        GreenhouseSpawnLog.recordSpawn(plant, layout)
     }
 
     private val PLACE_REFUSALS: List<Regex> = listOf(
