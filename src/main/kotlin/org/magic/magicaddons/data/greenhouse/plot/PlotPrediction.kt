@@ -46,6 +46,8 @@ object PlotPrediction {
         val footprintCells = crop.footprint.cellsFrom(x, y)
         val missing = mutableListOf<String>()
 
+        if (rule.staysOffPlotEdge && (x == 0 || y == 0 || x + width == layout.size || y + height == layout.size)) missing += "touches the plot edge"
+
         if (footprintCells.any { (cellX, cellY) -> standingPlantAtPos(layout, cellX, cellY, ignoredPlant) != null }) missing += "no room"
 
         val footprintSoils = footprintCells.map { (cellX, cellY) -> layout.getSlot(cellX, cellY)?.soil }
@@ -55,12 +57,9 @@ object PlotPrediction {
 
         missing += missingNeighbourConditions(layout, crop, x, y, ignoredPlant)
 
-        if (rule.needsAllPositiveEffects) {
-            val effectsReceived = footprintCells.flatMap { (cellX, cellY) -> layout.getSlot(cellX, cellY)?.let { layout.effectsAt(it) }.orEmpty() }
-            val missingEffects = CropEffect.EffectKind.entries
-                .filter { kind -> effectsReceived.none { it.kind == kind && it.percent >= 0 } }
-                .map { it.positiveLabel }
-            if (missingEffects.isNotEmpty()) missing += "no ${missingEffects.joinToString(", ")}"
+        if (rule.needsOwnEffectsAround) {
+            val missingEffects = crop.effects - effectsReceivedAround(layout, crop, x, y, ignoredPlant)
+            if (missingEffects.isNotEmpty()) missing += "no ${missingEffects.joinToString(", ") { it.label }} around it"
         }
 
         return missing
@@ -74,10 +73,7 @@ object PlotPrediction {
         ignoredPlant: Plant? = null
     ): List<String> {
         val rule = crop.spawnRule ?: return emptyList()
-        val footprintCells = crop.footprint.cellsFrom(x, y)
-        val surroundingCells = ((x - 1)..(x + crop.footprint.width)).flatMap { cellX -> ((y - 1)..(y + crop.footprint.height)).map { cellY -> cellX to cellY } }
-            .filter { (cellX, cellY) -> (cellX to cellY) !in footprintCells && cellX in 0 until layout.size && cellY in 0 until layout.size }
-        val surroundingCellsByCrop = surroundingCells.mapNotNull { (cellX, cellY) -> standingPlantAtPos(layout, cellX, cellY, ignoredPlant) }
+        val surroundingCellsByCrop = cellsSurrounding(layout, crop, x, y).mapNotNull { (cellX, cellY) -> standingPlantAtPos(layout, cellX, cellY, ignoredPlant) }
             .groupingBy { it.cropDef.name }
             .eachCount()
 
@@ -91,17 +87,38 @@ object PlotPrediction {
         return missing
     }
 
+    private fun cellsSurrounding(layout: PlotLayout, crop: CropDefinition, x: Int, y: Int): List<Pair<Int, Int>> {
+        val footprintCells = crop.footprint.cellsFrom(x, y)
+        return ((x - 1)..(x + crop.footprint.width)).flatMap { cellX -> ((y - 1)..(y + crop.footprint.height)).map { cellY -> cellX to cellY } }
+            .filter { (cellX, cellY) -> (cellX to cellY) !in footprintCells && cellX in 0 until layout.size && cellY in 0 until layout.size }
+    }
+
+    private fun effectsReceivedAround(layout: PlotLayout, crop: CropDefinition, x: Int, y: Int, ignoredPlant: Plant?): Set<CropEffect> {
+        val standingLayout = layoutOfStandingPlants(layout, ignoredPlant)
+        return cellsSurrounding(layout, crop, x, y)
+            .mapNotNull { (cellX, cellY) -> standingLayout.plantCovering(cellX, cellY) }
+            .distinct()
+            .flatMapTo(mutableSetOf()) { standingLayout.effectsReceivedBy(it) }
+    }
+
+    private fun layoutOfStandingPlants(layout: PlotLayout, ignoredPlant: Plant?): PlotLayout {
+        val absentPlantSlots = layout.plants.filterNot { isStanding(it, ignoredPlant) }.map { it.slot.x to it.slot.y }
+        if (absentPlantSlots.isEmpty()) return layout
+        return layout.freshCopy().also { copy -> copy.plants.removeAll { (it.slot.x to it.slot.y) in absentPlantSlots } }
+    }
+
     private fun standingPlantAtPos(layout: PlotLayout, cellX: Int, cellY: Int, ignoredPlant: Plant?): Plant? =
-        layout.plantCovering(cellX, cellY)?.takeUnless {
-            it === ignoredPlant || (it.slot.mark == LayoutSlot.Marking.Target && it.growthStage == null)
-        }
+        layout.plantCovering(cellX, cellY)?.takeIf { isStanding(it, ignoredPlant) }
+
+    private fun isStanding(plant: Plant, ignoredPlant: Plant?): Boolean =
+        plant !== ignoredPlant && !(plant.slot.mark == LayoutSlot.Marking.Target && plant.growthStage == null)
 
     fun unplannedMutationSpots(
         layout: PlotLayout,
         plannedCropsBySlot: Map<Pair<Int, Int>, Set<CropDefinition>>
     ): Map<Pair<Int, Int>, List<CropDefinition>> {
         val spawningCrops = CropRegistry.allCrops.filter { crop ->
-            crop.spawnRule?.let { it.weight > 0 && it.isRuleSettled } == true
+            (crop.spawnRule?.weight ?: 0) > 0
         }
         val spots = linkedMapOf<Pair<Int, Int>, List<CropDefinition>>()
 

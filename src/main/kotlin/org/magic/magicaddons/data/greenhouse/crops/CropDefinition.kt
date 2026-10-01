@@ -97,13 +97,13 @@ enum class CropEffect(val kind: EffectKind, val percent: Int, val label: String)
 
     EffectSpread(EffectKind.Spread, 0, "Effect Spread");
 
-    enum class EffectKind(val positiveLabel: String) {
-        Yield("Harvest Boost"),
-        Xp("XP Boost"),
-        Water("Water Retain"),
-        Drops("Bonus Drops"),
-        Immunity("Immunity"),
-        Spread("Effect Spread")
+    enum class EffectKind {
+        Yield,
+        Xp,
+        Water,
+        Drops,
+        Immunity,
+        Spread
     }
 
 
@@ -123,10 +123,9 @@ data class SpawnRule(
     val weight: Int,
     val requiredNeighbourCells: Map<String, Int> = emptyMap(),
     val needsNoNeighbours: Boolean = false,
-    val needsAllPositiveEffects: Boolean = false
-) {
-    val isRuleSettled: Boolean get() = !needsAllPositiveEffects
-}
+    val needsOwnEffectsAround: Boolean = false,
+    val staysOffPlotEdge: Boolean = false
+)
 
 data class ChargeRule(
     val perStage: Int,

@@ -2,11 +2,16 @@ package org.magic.magicaddons.ui.widgets.config
 
 import org.magic.magicaddons.util.ScreenUtil.splitMod
 import org.magic.magicaddons.util.ScreenUtil.modText
+import com.mojang.blaze3d.platform.cursor.CursorTypes
+import java.net.URI
+import kotlin.math.floor
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
+import net.minecraft.client.gui.screens.ConfirmLinkScreen
 import net.minecraft.client.input.CharacterEvent
 import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
+import net.minecraft.network.chat.ClickEvent
 import net.minecraft.network.chat.Component
 import net.minecraft.util.FormattedCharSequence
 import org.magic.magicaddons.Common
@@ -19,6 +24,7 @@ import org.magic.magicaddons.util.ScreenUtil.drawBorder
 import org.magic.magicaddons.util.ScreenUtil.drawLine
 import org.magic.magicaddons.util.ScreenUtil.easedProgress
 import org.magic.magicaddons.util.ScreenUtil.inRect
+import org.magic.magicaddons.util.compat.McCompat
 
 abstract class SettingWidget<T>(
     val node: SettingNode<T>,
@@ -64,6 +70,8 @@ abstract class SettingWidget<T>(
     private var descriptionLines: List<FormattedCharSequence> = emptyList()
     private var iconLeftByDescriptionLine: Map<Int, Int> = emptyMap()
 
+    private var descriptionLinks: List<LinkSpan> = emptyList()
+
     private var chevronLeft = 0
     private var chevronTop = 0
     private var chevronWidth = 0
@@ -108,6 +116,43 @@ abstract class SettingWidget<T>(
         return modFontWidth(text.substring(0, gapStart)) + (modFontWidth(gap) - ServerCableIcon.SIZE) / 2
     }
 
+    private fun withLinksStyled(text: String): Component {
+        val styled = Component.empty()
+        var plainStart = 0
+        LINK_PATTERN.findAll(text).forEach { link ->
+            styled.append(text.substring(plainStart, link.range.first))
+            styled.append(Component.literal(link.value).withStyle { it.withColor(LINK_COLOR).withUnderlined(true).withClickEvent(ClickEvent.OpenUrl(URI(link.value))) })
+            plainStart = link.range.last + 1
+        }
+        return styled.append(text.substring(plainStart))
+    }
+
+    private fun linkSpansIn(line: FormattedCharSequence, lineIndex: Int): List<LinkSpan> {
+        val spans = mutableListOf<LinkSpan>()
+        var charLeft = 0
+        line.accept { _, style, codePoint ->
+            val charWidth = font.width(FormattedCharSequence.forward(Character.toString(codePoint), style))
+            val uri = (style.clickEvent as? ClickEvent.OpenUrl)?.uri
+            val previous = spans.lastOrNull()
+            if (uri != null && previous != null && previous.right == charLeft && previous.uri == uri) {
+                spans[spans.lastIndex] = previous.copy(right = charLeft + charWidth)
+            } else if (uri != null) {
+                spans += LinkSpan(lineIndex, charLeft, charLeft + charWidth, uri)
+            }
+            charLeft += charWidth
+            true
+        }
+        return spans
+    }
+
+    private fun descriptionTop(): Int = y + ROW_PADDING + nameLines.size * font.lineHeight + Common.UI.SPACING_SMALL
+
+    private fun linkAt(mouseX: Double, mouseY: Double): URI? {
+        val lineIndex = floor((mouseY - descriptionTop()) / font.lineHeight).toInt()
+        val offsetX = mouseX - textLeft()
+        return descriptionLinks.firstOrNull { it.lineIndex == lineIndex && offsetX >= it.left && offsetX < it.right }?.uri
+    }
+
     protected fun controlLeft(): Int = x + width - ROW_PADDING - controlWidth
     protected fun controlTop(): Int = y + ROW_PADDING
 
@@ -149,8 +194,9 @@ abstract class SettingWidget<T>(
         descriptionLines = plainDescription().takeIf { it.isNotBlank() }
             ?.replace(SettingNode.SERVER_ICON_TOKEN, iconGap)
             ?.lines()
-            ?.flatMap { font.splitMod(Component.literal(it), textWidth().coerceAtLeast(font.width("W"))) }
+            ?.flatMap { font.splitMod(withLinksStyled(it), textWidth().coerceAtLeast(font.width("W"))) }
             ?: emptyList()
+        descriptionLinks = descriptionLines.flatMapIndexed { index, line -> linkSpansIn(line, index) }
         iconLeftByDescriptionLine = descriptionLines
             .mapIndexedNotNull { index, line -> iconLeftIn(line, iconGap)?.let { index to it } }
             .toMap()
@@ -220,6 +266,7 @@ abstract class SettingWidget<T>(
             iconLeftByDescriptionLine[index]?.let { iconLeft -> ServerCableIcon.draw(graphics, textLeft() + iconLeft, textY + ICON_RISE, mouseX, mouseY) }
             textY += font.lineHeight
         }
+        if (linkAt(mouseX.toDouble(), mouseY.toDouble()) != null) graphics.requestCursor(CursorTypes.POINTING_HAND)
 
         renderControl(graphics, mouseX, mouseY, delta)
         if (hasChildren()) renderChevron(graphics, mouseX, mouseY)
@@ -307,6 +354,12 @@ abstract class SettingWidget<T>(
         if (isExpanded) childWidgets.forEach { if (it.mouseClicked(event, doubled)) handled = true }
         if (handled) return true
 
+        val clickedLink = if (event.button() == 0) linkAt(event.x, event.y) else null
+        if (clickedLink != null) {
+            McCompat.currentScreen()?.let { ConfirmLinkScreen.confirmLinkNow(it, clickedLink) }
+            return true
+        }
+
         if (hasChildren() && (isOverChevron(event.x, event.y) || (event.button() == 1 && isMouseOver(event.x, event.y)))) {
             unfold(!isExpanded)
             return true
@@ -343,6 +396,8 @@ abstract class SettingWidget<T>(
 
     override fun toString(): String = "${node.displayName}: ${node.value}"
 
+    private data class LinkSpan(val lineIndex: Int, val left: Int, val right: Int, val uri: URI)
+
     companion object {
         const val ROW_PADDING: Int = 6
         const val GROUP_INDENT: Int = 10
@@ -361,6 +416,9 @@ abstract class SettingWidget<T>(
         private const val MAX_ICON_GAP_CHARACTERS: Int = 8
         private const val ICON_MARGIN: Int = 2
         private const val ICON_RISE: Int = -1
+
+        private val LINK_PATTERN = Regex("https?://\\S+")
+        private const val LINK_COLOR: Int = 0x55AAFF
 
         const val FOLD_MS: Long = 180
     }

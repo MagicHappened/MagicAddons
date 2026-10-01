@@ -519,6 +519,6 @@ object Godseed {
         decayTimeMs = TEN_DAY_DECAY_TIME_MS,
         maxStage = 40,
         isMutation = true,
-        spawnRule = SpawnRule(weight = 5, needsAllPositiveEffects = true)
+        spawnRule = SpawnRule(weight = 5, needsOwnEffectsAround = true, staysOffPlotEdge = true)
     )
 }

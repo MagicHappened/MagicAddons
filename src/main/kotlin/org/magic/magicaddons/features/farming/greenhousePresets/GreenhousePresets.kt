@@ -491,7 +491,9 @@ object GreenhousePresets : Feature() {
     private val discordIntegrationSetting = BooleanSetting(
         key = DISCORD_INTEGRATION_KEY,
         displayName = "Discord integration",
-        description = "Enables discord commands for your linked minecraft accounts to preview data",
+        description = "Enables discord commands for your linked minecraft accounts to view greenhouse data\n" +
+                "Use this link to add the discord app to your discord account\n" +
+                "https://discord.com/oauth2/authorize?client_id=1554839668313427968",
         value = false,
         requiresServer = true
     )

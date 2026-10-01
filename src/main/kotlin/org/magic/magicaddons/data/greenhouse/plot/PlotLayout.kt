@@ -145,6 +145,9 @@ data class PlotLayout(
             }
         }
 
+    fun effectsReceivedBy(plant: Plant): Set<CropEffect> =
+        plant.coveredCells.mapNotNull { (cellX, cellY) -> getSlot(cellX, cellY) }.flatMapTo(mutableSetOf()) { effectsAt(it) }
+
     fun waterEffectAt(slot: LayoutSlot): Int = CropEffect.appliedEffect(effectsAt(slot), CropEffect.EffectKind.Water)
 
     fun plantCovering(slot: LayoutSlot): Plant? =

@@ -201,7 +201,7 @@ class GridWidget(
             val widget = PlantWidget(plant)
             val targetRegion = targetRegions.firstOrNull { it.first() === plant }
 
-            if (plant.slot.mark == LayoutSlot.Marking.Target && plant.cropDef.spawnRule?.isRuleSettled == true) {
+            if (plant.slot.mark == LayoutSlot.Marking.Target && plant.cropDef.spawnRule != null) {
                 widget.missingSpawnConditions = (targetRegion ?: listOf(plant))
                     .map { PlotPrediction.missingSpawnConditions(layout, it.cropDef, it.slot.x, it.slot.y, ignoredPlant = it) }
                     .minBy { it.size }
