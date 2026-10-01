@@ -13,6 +13,7 @@ import org.magic.magicaddons.commands.CropWords
 import org.magic.magicaddons.commands.misc.LinkCommand
 import org.magic.magicaddons.data.server.GreenhouseDataSync
 import org.magic.magicaddons.data.server.GreenhouseDataSync.SyncOutcome
+import org.magic.magicaddons.data.server.ServerGreenhouseData.MissingData
 import org.magic.magicaddons.data.server.ServerRequirements
 import org.magic.magicaddons.ui.screens.CropPreviewScreen
 import org.magic.magicaddons.ui.screens.GreenhouseScreen
@@ -84,8 +85,21 @@ object GreenhouseScreenCommand : AbstractCommand() {
         SyncOutcome.FeatureOff -> ServerRequirements.missingRequirementMessage(needsDiscordIntegration = true)
             ?: Component.literal("Discord integration is off.")
         SyncOutcome.OnAlpha -> Component.literal("Greenhouse data from the Alpha Network is never sent to the server.")
-        SyncOutcome.NoGreenhouseData -> Component.literal("No scanned greenhouse or your tick time is unknown")
+        is SyncOutcome.NoGreenhouseData -> Component.literal("Nothing to send yet:").also { message ->
+            outcome.missing.forEach { message.append(Component.literal("\n - ")).append(lineFor(it)) }
+        }
         is SyncOutcome.CoolingDown -> Component.literal("You can sync again in ${(outcome.waitMs / 60_000) + 1} minutes.")
         is SyncOutcome.Failed -> Component.literal("The server did not accept the data (${outcome.status ?: "unreachable"}). See the log.")
     }
+
+    private fun lineFor(missing: MissingData): Component = when (missing) {
+        MissingData.CropGrowth -> runnableLine("Unknown Crop Growth value. Click here to open desk", "/desk")
+        MissingData.CropSpeedUpgrade -> runnableLine("Unknown Crop Speed or Yield upgrade. Click here to open desk", "/greenhouseupgrades")
+        MissingData.TickTime -> Component.literal("Unknown tick time, right click a non fully grown plant")
+        MissingData.ProfileName -> Component.literal("Unknown profile name, rejoin SkyBlock")
+        MissingData.ScannedGreenhouse -> Component.literal("No greenhouse scanned yet, walk into one")
+    }
+
+    private fun runnableLine(text: String, command: String): Component =
+        ChatUtils.buildStyled(text, ChatFormatting.WHITE, Component.literal("Running: $command"), ClickEvent.RunCommand(command))
 }

@@ -52,6 +52,7 @@ import org.magic.magicaddons.ui.widgets.greenhouse.PlantWidget
 import org.magic.magicaddons.ui.widgets.greenhouse.GreenhousePanel
 import org.magic.magicaddons.ui.widgets.greenhouse.GridWidget
 import org.magic.magicaddons.ui.widgets.greenhouse.MarkChoice
+import org.magic.magicaddons.ui.widgets.greenhouse.PlacedChoice
 import org.magic.magicaddons.ui.widgets.greenhouse.PaletteItem
 import org.magic.magicaddons.ui.widgets.greenhouse.PlantLabelTabs
 import org.magic.magicaddons.ui.widgets.greenhouse.PlantPalette
@@ -649,6 +650,26 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
         if (acted) lastPaintedCell = cell
 
         return acted
+    }
+
+    private fun paintPlacedUnderMouse(event: MouseButtonEvent): Boolean {
+        val placed = greenhousePanel.placedChoice.placed ?: return false
+        val grid = displayedGrid() ?: return false
+        val cell = displayedGridWidget?.slotAt(event.x, event.y) ?: return false
+        if (cell == lastPaintedCell) return true
+
+        val isFirstCellOfStroke = lastPaintedCell == null
+        lastPaintedCell = cell
+        val plant = grid.layout.plantCovering(cell.first, cell.second) ?: return true
+
+        if (placed) {
+            GreenhouseData.markPlacedByHand(plant)
+        } else if (!GreenhouseData.unmarkPlacedByHand(grid, plant)) {
+            if (isFirstCellOfStroke) ChatUtils.sendWithPrefix(UNMARK_PLACED_AWAY)
+            return true
+        }
+        displayedGridWidget?.rebuildWidgets()
+        return true
     }
 
     private fun placePaletteItem(item: PaletteItem, mouseX: Double, mouseY: Double) {
@@ -1505,6 +1526,12 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
     }
 
     private fun handleGreenhouseClick(event: MouseButtonEvent, doubled: Boolean): Boolean {
+        if (event.button() == 1 && greenhousePanel.placedChoice != PlacedChoice.Off) {
+            greenhousePanel.dropPlacedTool()
+            return true
+        }
+        if (event.button() == 0 && greenhousePanel.placedChoice != PlacedChoice.Off && paintPlacedUnderMouse(event)) return true
+
         if (event.button() == 0) {
             val clicked = displayedGridWidget?.elementAtPos(event.x, event.y)
             if (clicked != null && highlightPlant(clicked)) return true
@@ -1620,6 +1647,7 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
             if (plantPalette.mouseDragged(inLayoutUnits(event), dragX, dragY)) return true
             if (event.button() == 0 && paintUnderMouse(inLayoutUnits(event))) return true
         }
+        if (currentDisplay == DisplayMode.Greenhouses && event.button() == 0 && paintPlacedUnderMouse(inLayoutUnits(event))) return true
         return super.onMouseDragged(event, dragX, dragY)
     }
 
@@ -1845,8 +1873,8 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
     }
 
     private fun showGreenhouse(layout: PlotLayout) {
-        dropPrediction()
         val widget = greenhouseGridWidgets.find { it.layout == layout } ?: return
+        gridWidgetBeforePrediction = null
 
         GreenhouseData.greenhouseGrids
             .indexOfFirst { it.layout === widget.layout }
@@ -1857,6 +1885,7 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
         plotTabs.selectedItem = widget.layout
         isPresetCleared = false
         displayedName = widget.layout.displayName()
+        showPrediction(predictSlider.value)
 
         layoutNameBox()
     }
@@ -2034,6 +2063,7 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
         private const val TOGGLE_PLOTS: String = "Plots"
         private const val TOGGLE_PRESETS: String = "Presets"
         private const val TELEPORT_LABEL: String = "Teleport to Plot"
+        private const val UNMARK_PLACED_AWAY: String = "Stand in that greenhouse to unmark placed crops"
         private const val SHELF_VIEW: String = "View"
         private const val SHELF_PREDICT: String = "Prediction"
         private const val SHELF_GREENHOUSE: String = "Greenhouse"

@@ -35,7 +35,7 @@ object GreenhouseDataSync {
         data object Sent : SyncOutcome
         data object NotLinked : SyncOutcome
         data object FeatureOff : SyncOutcome
-        data object NoGreenhouseData : SyncOutcome
+        data class NoGreenhouseData(val missing: List<ServerGreenhouseData.MissingData>) : SyncOutcome
         data object OnAlpha : SyncOutcome
         data class CoolingDown(val waitMs: Long) : SyncOutcome
         data class Failed(val status: Int?) : SyncOutcome
@@ -71,7 +71,8 @@ object GreenhouseDataSync {
         if (!GreenhousePresets.discordIntegrationEnabled() || !ServerSession.isConnected) {
             return skippedUpload(reason, SyncOutcome.FeatureOff)
         }
-        val data = ServerGreenhouseData.ofActiveProfile() ?: return skippedUpload(reason, SyncOutcome.NoGreenhouseData)
+        val data = ServerGreenhouseData.ofActiveProfile()
+            ?: return skippedUpload(reason, SyncOutcome.NoGreenhouseData(ServerGreenhouseData.missingDataOfActiveProfile()))
         val body = gson.toJson(data)
 
         val upload = ServerSession.sendAuthorized("/greenhouse") {

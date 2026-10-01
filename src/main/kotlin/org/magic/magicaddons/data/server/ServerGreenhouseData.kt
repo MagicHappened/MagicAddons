@@ -61,6 +61,8 @@ data class ServerGreenhouseData(
 
     data class PlannedSlot(val x: Int, val y: Int, val mark: String, val crops: List<String>)
 
+    enum class MissingData { CropGrowth, CropSpeedUpgrade, TickTime, ProfileName, ScannedGreenhouse }
+
     companion object {
 
         private val DEFAULT_SOIL = Blocks.FARMLAND
@@ -69,13 +71,24 @@ data class ServerGreenhouseData(
 
         private const val MS_PER_MINUTE: Long = 60_000
 
+        fun missingDataOfActiveProfile(): List<MissingData> = buildList {
+            if (GreenhouseData.miscInfo.cropGrowthValue == null) add(MissingData.CropGrowth)
+            if (GreenhouseData.miscInfo.cropSpeedUpgradeValue == null) add(MissingData.CropSpeedUpgrade)
+            if (GreenhouseData.miscInfo.nextTickTime == null) add(MissingData.TickTime)
+            if (activeProfileName() == null) add(MissingData.ProfileName)
+            if (scannedGrids().isEmpty()) add(MissingData.ScannedGreenhouse)
+        }
+
+        private fun activeProfileName(): String? =
+            ProfileAPI.profileName ?: GreenhouseProfiles.activeProfileId?.let { GreenhouseProfiles.fruitNameOf(it) }
+
+        private fun scannedGrids(): List<GreenhouseGrid> = GreenhouseData.greenhouseGrids.filter { it.state.lastScanTime != null }
+
         fun ofActiveProfile(): ServerGreenhouseData? {
-            val profile = ProfileAPI.profileName
-                ?: GreenhouseProfiles.activeProfileId?.let { GreenhouseProfiles.fruitNameOf(it) }
-                ?: return null
+            val profile = activeProfileName() ?: return null
             val nextTickInMs = GreenhouseTickTime.remainingTickMs() ?: return null
             val tickMs = GreenhouseTickTime.tickMs ?: return null
-            val plots = GreenhouseData.greenhouseGrids.filter { it.state.lastScanTime != null }.map { plotOf(it) }
+            val plots = scannedGrids().map { plotOf(it) }
             if (plots.isEmpty()) return null
 
             return ServerGreenhouseData(

@@ -1019,6 +1019,26 @@ object GreenhouseData : GridCallbacks {
     }
 
 
+    fun markPlacedByHand(plant: Plant) {
+        if (!plant.cropDef.isMutation || plant.placed) return
+
+        plant.placed = true
+        plant.waterLevel = null
+        plant.waterExact = false
+        plant.waterBestCase = null
+        LayoutRenderState.refresh()
+    }
+
+    fun unmarkPlacedByHand(grid: GreenhouseGrid, plant: Plant): Boolean {
+        if (getCurrentGrid() !== grid) return false
+        if (!plant.isPlacedMutation) return true
+
+        plant.placed = false
+        grid.rescanPlants(onlySlots = plant.coveredCells.toSet())
+        LayoutRenderState.refresh()
+        return true
+    }
+
     override fun claimSpawnedMutation(plant: Plant, layout: PlotLayout) {
         val grown = ((plant.lowestStage ?: 1) - 1).coerceAtLeast(0)
         val now = Instant.now()
