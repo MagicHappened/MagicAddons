@@ -552,7 +552,7 @@ object GreenhouseData : GridCallbacks {
         miscInfo.nextTickTime = current.plusMillis(nextTickAdvance)
 
         greenhouseGrids.forEach { grid ->
-            if (onlineTickTracking && !grid.isScanned()) return@forEach
+            if (grid.state.lastScanTime == null) return@forEach
 
             GreenhouseSpawnLog.noteGrowthTicks(grid, elapsedTicks, leftGarden = !onlineTickTracking)
             grid.state.ticksSinceLastScan += elapsedTicks
