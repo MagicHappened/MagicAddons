@@ -46,4 +46,3 @@ Made for Minecraft 26.1.2 and 26.2, with plans to update to newer versions as Hy
 
 Some features are only available with the extension jar (`magicaddons-extension-<version>.jar`) in your mods folder next to the main one.
 These features are used at your own risk, which is why they are gated this way.
-Currently the extra features are Through Walls in both Mob Highlight and Safari Helper, and Highlight Markers.
