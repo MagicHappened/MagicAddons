@@ -19,6 +19,7 @@ import org.magic.magicaddons.data.greenhouse.crops.Plant as GreenhousePlant
 data class ServerGreenhouseData(
     val cropTableVersion: Int,
     val profile: String,
+    val profileId: String?,
     val nextTickInMs: Long,
     val tickMs: Long,
     val gardenDayTime: Long?,
@@ -94,6 +95,7 @@ data class ServerGreenhouseData(
             return ServerGreenhouseData(
                 cropTableVersion = CropTableExport.TABLE_VERSION,
                 profile = profile,
+                profileId = (ProfileAPI.profileId ?: GreenhouseProfiles.activeProfileId)?.toString(),
                 nextTickInMs = nextTickInMs,
                 tickMs = tickMs,
                 gardenDayTime = Minecraft.getInstance().level?.overworldClockTime,
