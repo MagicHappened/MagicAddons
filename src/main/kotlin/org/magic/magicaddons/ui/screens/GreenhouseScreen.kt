@@ -53,6 +53,7 @@ import org.magic.magicaddons.ui.widgets.greenhouse.GreenhousePanel
 import org.magic.magicaddons.ui.widgets.greenhouse.GridWidget
 import org.magic.magicaddons.ui.widgets.greenhouse.MarkChoice
 import org.magic.magicaddons.ui.widgets.greenhouse.PlacedChoice
+import org.magic.magicaddons.features.farming.greenhousePresets.lookups.CropSupply
 import org.magic.magicaddons.ui.widgets.greenhouse.PaletteItem
 import org.magic.magicaddons.ui.widgets.greenhouse.PlantLabelTabs
 import org.magic.magicaddons.ui.widgets.greenhouse.PlantPalette
@@ -69,6 +70,7 @@ import org.magic.magicaddons.util.ScreenUtil.textBoxHeight
 import org.magic.magicaddons.util.ScreenUtil.drawButtonPanel
 import org.magic.magicaddons.util.ScreenUtil.drawCenteredTextBox
 import org.magic.magicaddons.util.ScreenUtil.drawPanel
+import org.magic.magicaddons.util.ScreenUtil.drawScrollBar
 import org.magic.magicaddons.util.ScreenUtil.drawShelf
 import org.magic.magicaddons.util.ScreenUtil.drawSimpleTooltip
 import org.magic.magicaddons.util.ScreenUtil.drawTooltipAtCursor
@@ -1168,6 +1170,14 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
 
     private class CropCountRow(val def: CropDefinition, val x: Int, val y: Int, val width: Int)
 
+    private data class CropCountEntry(val def: CropDefinition, val mark: LayoutSlot.Marking?, val count: Int)
+
+    private var contentsScroll: Int = 0
+
+    private var contentsScrollArea: ScreenRect? = null
+
+    private var contentsRowCounts: Pair<Int, Int> = 0 to 0
+
     private var cropCountRows: List<CropCountRow> = emptyList()
 
     private var contentsTabTitleBoxes: Map<ContentsTab, ScreenRect> = emptyMap()
@@ -1179,6 +1189,7 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
 
     private fun renderContentsShelf(graphics: GuiGraphicsExtractor, left: Int, top: Int, width: Int, mouseX: Int, mouseY: Int) {
         cropCountRows = emptyList()
+        contentsScrollArea = null
         contentsTabTitleBoxes = emptyMap()
         contentsShelfBottom = top
         contentsShelfLeft = left
@@ -1230,27 +1241,46 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
         mouseY: Int,
         draw: Boolean
     ): Int? {
-        val plantCountsByCrop = layout.plants
-            .groupingBy { it.cropDef }
+        val entries = layout.plants
+            .groupingBy { it.cropDef to it.slot.mark }
             .eachCount()
-            .entries
-            .sortedWith(compareByDescending<Map.Entry<CropDefinition, Int>> { it.value }.thenBy { it.key.name })
-        if (plantCountsByCrop.isEmpty()) return null
+            .map { (key, count) -> CropCountEntry(key.first, key.second, count) }
+            .sortedWith(
+                compareBy<CropCountEntry> { it.mark == LayoutSlot.Marking.Target }
+                    .thenByDescending { it.count }
+                    .thenBy { it.def.name }
+            )
+        if (entries.isEmpty()) return null
 
         val withChecklist = currentDisplay == DisplayMode.Greenhouses
         val frameBottom = gridTop + gridSpan + BORDER_PADDING
         val rowsThatFit = ((frameBottom - rowsTop - ActionPanel.PADDING) / CONTENTS_ROW_HEIGHT).coerceAtLeast(1)
-        val columns = if (plantCountsByCrop.size > rowsThatFit) 2 else 1
-        val rowsPerColumn = (plantCountsByCrop.size + columns - 1) / columns
-        val columnWidth = (width - ActionPanel.PADDING * 2 - Common.UI.SPACING * (columns - 1)) / columns
+        val visibleRows = minOf(entries.size, rowsThatFit)
+        val isScrollable = entries.size > visibleRows
+        contentsScroll = contentsScroll.coerceIn(0, entries.size - visibleRows)
+        val scrollBarSpace = if (isScrollable) Common.UI.SCROLLBAR_WIDTH + Common.UI.SPACING else 0
+        val columnWidth = width - ActionPanel.PADDING * 2 - scrollBarSpace
 
-        val rowsBottom = rowsTop + rowsPerColumn * CONTENTS_ROW_HEIGHT + ActionPanel.PADDING
+        val rowsBottom = rowsTop + visibleRows * CONTENTS_ROW_HEIGHT + ActionPanel.PADDING
+        contentsScrollArea = if (isScrollable) ScreenRect(left, rowsTop, width, visibleRows * CONTENTS_ROW_HEIGHT) else null
+        contentsRowCounts = entries.size to visibleRows
         if (!draw) return rowsBottom
 
+        if (isScrollable) {
+            graphics.drawScrollBar(
+                left + width - ActionPanel.PADDING - Common.UI.SCROLLBAR_WIDTH,
+                rowsTop,
+                visibleRows * CONTENTS_ROW_HEIGHT,
+                entries.size,
+                visibleRows,
+                contentsScroll
+            )
+        }
+
         val cropIdsWithoutLabel = GreenhouseData.miscInfo.cropsWithoutInfo
-        cropCountRows = plantCountsByCrop.mapIndexed { index, (def, count) ->
-            val rowX = left + ActionPanel.PADDING + (index / rowsPerColumn) * (columnWidth + Common.UI.SPACING)
-            val rowY = rowsTop + (index % rowsPerColumn) * CONTENTS_ROW_HEIGHT
+        cropCountRows = entries.drop(contentsScroll).take(visibleRows).mapIndexed { index, (def, mark, count) ->
+            val rowX = left + ActionPanel.PADDING
+            val rowY = rowsTop + index * CONTENTS_ROW_HEIGHT
             val isLabelShown = !withChecklist || def.elementId !in cropIdsWithoutLabel
 
             if (withChecklist && inRect(mouseX, mouseY, rowX, rowY, columnWidth, CONTENTS_ROW_HEIGHT)) {
@@ -1269,17 +1299,25 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
             }
 
             val textX = rowX + CONTENTS_ICON_SIZE + Common.UI.SPACING
-            val countText = " x$count"
-            val nameWidthLeft = textRight - Common.UI.SPACING - textX - font.width(countText)
-            val nameColor = if (isLabelShown) markColorFor(layout, def) else Common.UI.DISABLED_TEXT_COLOR
+            val countLabel = countLabelFor(def, count, isTarget = mark == LayoutSlot.Marking.Target)
+            val nameWidthLeft = textRight - Common.UI.SPACING - textX - font.width(countLabel)
+            val nameColor = if (isLabelShown) mark?.color ?: Common.UI.TEXT_COLOR else Common.UI.DISABLED_TEXT_COLOR
             val label = Component.literal(font.plainSubstrByWidth(def.name, nameWidthLeft.coerceAtLeast(0))).withColor(rgb(nameColor))
-                .append(Component.literal(countText).withStyle(ChatFormatting.GRAY))
+                .append(countLabel)
             graphics.modText(font, label, textX, rowY + (CONTENTS_ROW_HEIGHT - font.lineHeight) / 2 + 1, Common.UI.TEXT_COLOR)
 
             CropCountRow(def, rowX, rowY, columnWidth)
         }.takeIf { withChecklist }.orEmpty()
 
         return rowsBottom
+    }
+
+    private fun countLabelFor(def: CropDefinition, needed: Int, isTarget: Boolean): Component {
+        val owned = if (currentDisplay == DisplayMode.Presets && !isTarget) CropSupply.ownedCount(def) else null
+        if (owned == null) return Component.literal(" x$needed").withStyle(ChatFormatting.GRAY)
+
+        val color = if (owned >= needed) ChatFormatting.GREEN else ChatFormatting.RED
+        return Component.literal(" (${owned.coerceAtMost(needed)}/$needed)").withStyle(color)
     }
 
     private fun targetPlanOfDisplayedGrid(): PlotLayout? = displayedGridWidget?.targetPlan?.invoke()
@@ -1388,16 +1426,6 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
         val cropIdsWithoutLabel = GreenhouseData.miscInfo.cropsWithoutInfo
         if (!cropIdsWithoutLabel.remove(row.def.elementId)) cropIdsWithoutLabel.add(row.def.elementId)
         return true
-    }
-
-    private fun markColorFor(layout: PlotLayout, def: CropDefinition): Int {
-        val marks = layout.plants.filter { it.cropDef == def }.mapNotNull { it.slot.mark }
-
-        return when {
-            LayoutSlot.Marking.Target in marks -> LayoutSlot.Marking.Target.color
-            LayoutSlot.Marking.Ingredient in marks -> LayoutSlot.Marking.Ingredient.color
-            else -> Common.UI.TEXT_COLOR
-        }
     }
 
     private fun rgb(color: Int): Int = color and 0xFFFFFF
@@ -1667,6 +1695,11 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
 
         if (scrollY == 0.0) return super.onMouseScrolled(layoutX, layoutY, scrollX, scrollY)
         if (currentDisplay == DisplayMode.Presets && plantPalette.mouseScrolled(layoutX, layoutY, scrollX, scrollY)) return true
+        contentsScrollArea?.takeIf { inRect(layoutX, layoutY, it.x, it.y, it.width, it.height) }?.let {
+            val (totalRows, visibleRows) = contentsRowCounts
+            contentsScroll = ScreenUtil.stepScroll(contentsScroll, scrollY, totalRows, visibleRows)
+            return true
+        }
 
         when (currentDisplay) {
             DisplayMode.Greenhouses -> plantLabelTabs.cycleSelectedLabel(down = scrollY < 0)

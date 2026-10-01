@@ -8,24 +8,24 @@ import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen
 import net.minecraft.network.chat.ClickEvent
 import net.minecraft.network.chat.Component
 import net.minecraft.world.item.ItemStack
+import net.minecraft.world.item.Items
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.Blocks
 import org.magic.magicaddons.commands.internal.MainInternal
 import org.magic.magicaddons.commands.internal.farming.GetPlannerItemCommand
 import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
-import org.magic.magicaddons.data.greenhouse.crops.CropRegistry
+import org.magic.magicaddons.data.greenhouse.crops.definitions.misc.FireElement
 import org.magic.magicaddons.data.greenhouse.plot.GreenhouseGrid
 import org.magic.magicaddons.data.greenhouse.plot.PlotLayout
 import org.magic.magicaddons.events.EventHandler
 import org.magic.magicaddons.events.chat.SystemChatEvent
 import org.magic.magicaddons.events.greenhouse.PlotChangedEvent
 import org.magic.magicaddons.events.world.WorldTickEvent
+import org.magic.magicaddons.features.farming.greenhousePresets.lookups.CropSupply
 import org.magic.magicaddons.features.farming.greenhousePresets.lookups.EnhancedStorageBridge
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.compat.McCompat
-import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockId
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockId.Companion.getSkyBlockId
-import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
 object PlannerNeeds {
 
@@ -37,6 +37,8 @@ object PlannerNeeds {
 
     private const val BUILDER_COMMAND: String = "/call builder"
 
+    private const val FLINT_AND_STEEL_LABEL: String = "Flint and Steel"
+
     private val COMMAND_ON_COOLDOWN_REGEX: Regex = Regex(".*This command is on cooldown.*")
 
     private val SACKS_ANSWER_REGEXES: List<Regex> = listOf(
@@ -45,16 +47,6 @@ object PlannerNeeds {
     )
 
     private val BLOCKS_NOT_IN_SACKS: Set<Block> = setOf(Blocks.DIRT, Blocks.NETHERRACK, Blocks.SOUL_SAND)
-
-    private val SEEDS_ID: SkyBlockId = SkyBlockItemId.item("SEEDS")
-
-    private class SeedRecipe(val seedId: SkyBlockId, val sackItemId: SkyBlockId, val seedsPerSackItem: Int, val sackName: String)
-
-    private val SEED_RECIPE_BY_CROP_ID: Map<SkyBlockId, SeedRecipe> = mapOf(
-        SkyBlockItemId.item("WHEAT") to SeedRecipe(SEEDS_ID, SEEDS_ID, 1, "seeds"),
-        SkyBlockItemId.item("PUMPKIN") to SeedRecipe(SkyBlockItemId.item("PUMPKIN_SEEDS"), SkyBlockItemId.item("PUMPKIN"), 4, "pumpkin"),
-        SkyBlockItemId.item("MELON") to SeedRecipe(SkyBlockItemId.item("MELON_SEEDS"), SkyBlockItemId.item("MELON"), 1, "melon")
-    )
 
     private enum class NeedsPhase { Soil, Plants }
 
@@ -88,7 +80,20 @@ object PlannerNeeds {
         sentAtByLineKey.keys.removeAll { it.startsWith("$layoutId|") && now.isAfter(sentAtByLineKey.getValue(it).plus(MESSAGE_COOLDOWN)) }
     }
 
+    @Volatile
+    private var isNeededItem: (ItemStack) -> Boolean = { false }
+
+    fun isNeededByPlanner(stack: ItemStack): Boolean = !stack.isEmpty && isNeededItem(stack)
+
+    fun clearNeededItems() {
+        isNeededItem = { false }
+    }
+
+    fun blockToPlaceFor(soil: Block): Block = if (soil == Blocks.FARMLAND) Blocks.DIRT else soil
+
     fun sendSoilNeeds(grid: GreenhouseGrid, blocks: Map<Block, Int>) {
+        val neededItems = blocks.keys.mapTo(mutableSetOf()) { blockToPlaceFor(it).asItem() }
+        isNeededItem = { it.item in neededItems }
         val recountNeeds = { soilRequests(blocks) }
 
         if (isLineAlreadySent(grid, NeedsPhase.Soil)) {
@@ -101,7 +106,7 @@ object PlannerNeeds {
     }
 
     private fun soilRequests(blocks: Map<Block, Int>): List<RequestedItem> = blocks.mapNotNull { (block, neededCount) ->
-        val blockToGet = if (block == Blocks.FARMLAND) Blocks.DIRT else block
+        val blockToGet = blockToPlaceFor(block)
         val label = blockToGet.name.string
         val missingCount = neededCount - heldBlockCount(blockToGet)
         val lowercaseName = label.lowercase()
@@ -118,6 +123,13 @@ object PlannerNeeds {
     }
 
     fun sendPlantNeeds(grid: GreenhouseGrid, crops: Map<CropDefinition, Int>) {
+        val neededCrops = crops.keys.toSet()
+        val neededSeedIds = neededCrops.mapNotNull { CropSupply.seedRecipeOf(it) }.flatMapTo(mutableSetOf()) { listOf(it.seedId, it.sackItemId) }
+        val needsFire = FireElement.definition in neededCrops
+        isNeededItem = { stack ->
+            CropSupply.cropOfStack(stack) in neededCrops || stack.getSkyBlockId() in neededSeedIds ||
+                    (needsFire && stack.item == Items.FLINT_AND_STEEL)
+        }
         val recountNeeds = { plantRequests(crops) }
 
         retractLine(grid, NeedsPhase.Soil)
@@ -132,17 +144,18 @@ object PlannerNeeds {
     }
 
     private fun plantRequests(crops: Map<CropDefinition, Int>): List<RequestedItem> = crops.mapNotNull { (crop, neededCount) ->
-        val seedRecipe = crop.skyblockId?.let { SEED_RECIPE_BY_CROP_ID[it] }
+        val seedRecipe = CropSupply.seedRecipeOf(crop)
 
         if (seedRecipe != null) return@mapNotNull seedRequest(crop, neededCount, seedRecipe)
+        if (crop === FireElement.definition) return@mapNotNull flintAndSteelRequest()
 
         val label = crop.name
-        val missingCount = neededCount - heldCropCount(crop)
+        val missingCount = neededCount - CropSupply.heldCropCount(crop)
         val lowercaseName = label.lowercase()
 
         when {
             missingCount <= 0 -> null
-            else -> storageRequest(label, missingCount) { cropOfStack(it) == crop }
+            else -> storageRequest(label, missingCount) { CropSupply.cropOfStack(it) == crop }
                 ?: if (crop.skyblockId == null) {
                     RequestedItem(label, null, unbuyableHover(label, missingCount))
                 } else {
@@ -151,9 +164,16 @@ object PlannerNeeds {
         }
     }
 
-    private fun seedRequest(crop: CropDefinition, neededCount: Int, seedRecipe: SeedRecipe): RequestedItem? {
-        val heldSeedCount = heldItemCount(seedRecipe.seedId) + heldItemCount(seedRecipe.sackItemId) * seedRecipe.seedsPerSackItem
-        val missingCount = neededCount - heldSeedCount
+    private fun flintAndSteelRequest(): RequestedItem? {
+        val isFlintAndSteel = { stack: ItemStack -> stack.item == Items.FLINT_AND_STEEL }
+        if (CropSupply.inventoryStacks().any(isFlintAndSteel)) return null
+
+        return storageRequest(FLINT_AND_STEEL_LABEL, 1, isFlintAndSteel)
+            ?: RequestedItem(FLINT_AND_STEEL_LABEL, null, Component.literal("Missing flint and steel"))
+    }
+
+    private fun seedRequest(crop: CropDefinition, neededCount: Int, seedRecipe: CropSupply.SeedRecipe): RequestedItem? {
+        val missingCount = neededCount - CropSupply.heldSeedCount(seedRecipe)
         if (missingCount <= 0) return null
 
         val label = if (seedRecipe.seedId == seedRecipe.sackItemId) "Seeds" else "${crop.name} Seeds"
@@ -163,7 +183,7 @@ object PlannerNeeds {
             ?: RequestedItem(label, "/gfs ${seedRecipe.sackName} $sackItemsNeeded", seedSackHover(missingCount, sackItemsNeeded, seedRecipe))
     }
 
-    private fun seedSackHover(seeds: Int, sackItemsNeeded: Int, seedRecipe: SeedRecipe): Component =
+    private fun seedSackHover(seeds: Int, sackItemsNeeded: Int, seedRecipe: CropSupply.SeedRecipe): Component =
         if (seedRecipe.seedsPerSackItem == 1 && seedRecipe.seedId == seedRecipe.sackItemId) sackHover(seeds, seedRecipe.sackName)
         else Component.literal("Click here to get $sackItemsNeeded ${seedRecipe.sackName} from sacks, for $seeds seeds!")
 
@@ -315,23 +335,8 @@ object PlannerNeeds {
                 .withStyle(ChatFormatting.GRAY, ChatFormatting.ITALIC)
         )
 
-    private fun inventoryStacks(): List<ItemStack> {
-        val player = Minecraft.getInstance().player ?: return emptyList()
-        val inventory = player.inventory
-        return (0 until inventory.containerSize).map { inventory.getItem(it) }
-    }
-
     private fun heldBlockCount(block: Block): Int {
         val item = block.asItem()
-        return inventoryStacks().filter { it.item == item }.sumOf { it.count }
+        return CropSupply.inventoryStacks().filter { it.item == item }.sumOf { it.count }
     }
-
-    private fun heldItemCount(id: SkyBlockId): Int =
-        inventoryStacks().filter { !it.isEmpty && it.getSkyBlockId() == id }.sumOf { it.count }
-
-    private fun cropOfStack(stack: ItemStack): CropDefinition? =
-        if (stack.isEmpty) null else stack.getSkyBlockId()?.id?.let { CropRegistry.findByIdOrName(it) }
-
-    private fun heldCropCount(crop: CropDefinition): Int =
-        inventoryStacks().filter { cropOfStack(it) == crop }.sumOf { it.count }
 }

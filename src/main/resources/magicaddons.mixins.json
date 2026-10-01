@@ -11,6 +11,7 @@
     "LevelRendererMixin",
     "ClientLevelMixin",
     "ScreenMixin",
+    "AbstractContainerScreenMixin",
     "EntityRenderStateMixin",
     "EntityRendererMixin",
     "AvatarRendererMixin",

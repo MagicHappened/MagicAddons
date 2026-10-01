@@ -8,6 +8,7 @@ import net.minecraft.client.Minecraft
 import net.minecraft.client.renderer.SubmitNodeCollector
 import net.minecraft.core.BlockPos
 import net.minecraft.world.entity.decoration.ArmorStand
+import net.minecraft.world.item.BlockItem
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.Blocks
@@ -58,6 +59,8 @@ object LayoutRenderState {
 
     private fun heldCrop(): String? =
         Minecraft.getInstance().player?.mainHandItem?.getSkyBlockId()?.id?.let { CropRegistry.findByIdOrName(it)?.elementId }
+
+    private fun heldBlock(): Block? = (Minecraft.getInstance().player?.mainHandItem?.item as? BlockItem)?.block
 
     private val TILLABLE: Set<Block> = setOf(
         Blocks.DIRT,
@@ -155,8 +158,11 @@ object LayoutRenderState {
         plan.marks.forEach { (pos, mark) -> presetBatch.fillWithOutline(pos, mark.first, mark.second.color, FILL_ALPHA) }
         plan.watchMarks.forEach { (pos, mark) -> presetBatch.fillWithOutline(pos, mark.first, mark.second.color, pulse) }
         val held = heldCrop()
+        val heldBlock = heldBlock()
         plan.ghosts.forEach { (pos, state) ->
-            val mark = if (held != null && plan.ghostCrops[pos] == held) PlannerMark.InHand else PlannerMark.Missing
+            val ghostCrop = plan.ghostCrops[pos]
+            val isInHand = if (ghostCrop != null) held == ghostCrop else heldBlock == PlannerNeeds.blockToPlaceFor(state.block)
+            val mark = if (isInHand) PlannerMark.InHand else PlannerMark.Missing
             presetBatch.ghostBlockWithOutline(pos, state, GHOST_TINT, mark.color, ghostAlpha())
         }
         presetBatch.submitBatch(poseStack, collector)
@@ -176,6 +182,7 @@ object LayoutRenderState {
     fun refresh() {
         if (!SBLocation.OwnGarden.inside()) {
             plannerLayout = PlannerLayout.NOTHING
+            PlannerNeeds.clearNeededItems()
             return
         }
 
@@ -189,6 +196,7 @@ object LayoutRenderState {
 
         if (assigned == null) {
             reportedMissingStage.clear()
+            PlannerNeeds.clearNeededItems()
 
             val watchMarks = mutableMapOf<BlockPos, Pair<VoxelShape, PlannerMark>>()
             val watchStands = mutableMapOf<UUID, Int>()
