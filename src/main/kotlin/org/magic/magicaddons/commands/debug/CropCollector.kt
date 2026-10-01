@@ -44,6 +44,7 @@ import org.magic.magicaddons.util.SBLocation
 import org.magic.magicaddons.util.getBuildableArea
 import tech.thatgravyboat.skyblockapi.api.location.LocationAPI
 import tech.thatgravyboat.skyblockapi.api.profile.garden.PlotAPI
+import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseProfiles
 
 object CropCollector : EntityUtils.HighlightSource {
 
@@ -114,6 +115,11 @@ object CropCollector : EntityUtils.HighlightSource {
     private val cropColors: MutableMap<String, Int> = mutableMapOf()
 
     fun scanGreenhouse() {
+        if (GreenhouseProfiles.holdsAlphaData) {
+            ChatUtils.sendWithPrefix("Crop collection is off on the Alpha Network, its crops may not match the main server.")
+            return
+        }
+
         val client = Minecraft.getInstance()
         val level = client.level ?: return
 

@@ -106,7 +106,10 @@ object ServerSession {
             scheduleRetryAfter(outcome)
             isLoggingIn = false
             when (outcome) {
-                LoginOutcome.LoggedIn -> Common.LOGGER.info("successfully authenticated to magic-addons server")
+                LoginOutcome.LoggedIn -> {
+                    Common.LOGGER.info("successfully authenticated to magic-addons server")
+                    GreenhouseDataSync.reportOnlineOnMainNetwork()
+                }
                 else -> Common.LOGGER.warn("could not authenticate to magic-addons server: {}", outcome)
             }
         }

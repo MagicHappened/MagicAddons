@@ -5,6 +5,8 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents
 import org.magic.magicaddons.Common
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhousePresets
+import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseProfiles
+import tech.thatgravyboat.skyblockapi.api.location.LocationAPI
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 import java.time.Duration
@@ -34,6 +36,7 @@ object GreenhouseDataSync {
         data object NotLinked : SyncOutcome
         data object FeatureOff : SyncOutcome
         data object NoGreenhouseData : SyncOutcome
+        data object OnAlpha : SyncOutcome
         data class CoolingDown(val waitMs: Long) : SyncOutcome
         data class Failed(val status: Int?) : SyncOutcome
     }
@@ -41,6 +44,14 @@ object GreenhouseDataSync {
     fun init() {
         ClientPlayConnectionEvents.DISCONNECT.register { _, _ -> uploadActiveProfile("disconnect") }
         ClientLifecycleEvents.CLIENT_STOPPING.register { uploadBeforeGameCloses() }
+    }
+
+    fun reportOnlineOnMainNetwork() {
+        if (!LocationAPI.onHypixel || GreenhouseProfiles.holdsAlphaData || !ServerSession.isConnected) return
+
+        ServerSession.sendAuthorized("/online") { POST(HttpRequest.BodyPublishers.noBody()) }.thenAccept { response ->
+            if (response?.statusCode() != ServerSession.HTTP_OK) Common.LOGGER.warn("could not tell the magic-addons server you are online: {}", response?.statusCode())
+        }
     }
 
     fun syncByCommand(): CompletableFuture<SyncOutcome> {
@@ -56,6 +67,7 @@ object GreenhouseDataSync {
     private fun uploadActiveProfile(reason: String): CompletableFuture<SyncOutcome> {
         lastUploadStartedAtMs = System.currentTimeMillis()
 
+        if (GreenhouseProfiles.holdsAlphaData) return skippedUpload(reason, SyncOutcome.OnAlpha)
         if (!GreenhousePresets.discordIntegrationEnabled() || !ServerSession.isConnected) {
             return skippedUpload(reason, SyncOutcome.FeatureOff)
         }

@@ -16,6 +16,7 @@ import org.magic.magicaddons.data.greenhouse.plot.Codecs.MISC_GREENHOUSE_INFO_CO
 import org.magic.magicaddons.data.greenhouse.plot.GreenhouseGrid
 import org.magic.magicaddons.data.greenhouse.plot.GreenhouseLayout
 import org.magic.magicaddons.data.greenhouse.plot.MiscGreenhouseInfo
+import org.magic.magicaddons.data.greenhouse.plot.PlotLayout
 import org.magic.magicaddons.data.handlers.CodecStorage
 import org.magic.magicaddons.data.handlers.ModFiles
 import org.magic.magicaddons.data.handlers.ModFiles.LoadResult
@@ -34,6 +35,9 @@ object GreenhouseProfiles {
         private set
 
     private var isSavingBlocked: Boolean = false
+
+    var holdsAlphaData: Boolean = false
+        private set
 
     class GreenhouseFileContents(
         val miscInfo: MiscGreenhouseInfo?,
@@ -74,12 +78,12 @@ object GreenhouseProfiles {
 
     fun switchProfile(profileId: UUID, name: String) {
         if (profileId == activeProfileId) {
-            if (fruitNameOf(profileId) != name) writeFruitName(profileId, name)
+            if (!holdsAlphaData && fruitNameOf(profileId) != name) writeFruitName(profileId, name)
             return
         }
 
         activeProfileId = profileId
-        writeFruitName(profileId, name)
+        if (!holdsAlphaData) writeFruitName(profileId, name)
         loadGreenhouseData(profileId, name)
         GreenhouseData.resetForProfile()
         OtherProfiles.reload()
@@ -113,15 +117,6 @@ object GreenhouseProfiles {
             MiscGreenhouseInfo()
         }
 
-        GreenhouseData.presetGrids = contents?.presets?.toMutableList() ?: run {
-            Common.LOGGER.error("Failed to load preset data")
-            mutableListOf()
-        }
-
-        GreenhouseData.presetGrids.forEach { preset ->
-            if (preset.repairPlotIds()) Common.LOGGER.warn("Preset ${preset.displayName()} had plots sharing an id, renumbered")
-        }
-
         val greenhouses = contents?.greenhouses
         GreenhouseData.greenhousesInitialized = greenhouses != null
         GreenhouseData.greenhouseGrids = greenhouses?.toMutableList() ?: run {
@@ -132,18 +127,50 @@ object GreenhouseProfiles {
         GreenhouseData.resolveAssignedLayoutIds()
     }
 
+    fun enterAlpha() {
+        holdsAlphaData = true
+    }
+
+    fun leaveAlpha() {
+        if (!holdsAlphaData) return
+        holdsAlphaData = false
+
+        val profileId = activeProfileId ?: return
+        loadGreenhouseData(profileId, fruitNameOf(profileId) ?: profileId.toString())
+        GreenhouseData.resetForProfile()
+        OtherProfiles.reload()
+    }
+
     fun saveGreenhouseData() {
         val profileId = activeProfileId ?: return
-        if (isSavingBlocked) return
+        writeGreenhouseFile(profileId, GreenhouseData.miscInfo, GreenhouseData.greenhouseGrids)
+    }
+
+    fun removePresetsFromProfileFile(
+        profileId: UUID,
+        contents: GreenhouseFileContents,
+        renamedPlotIds: Map<String, String>,
+        presetPlots: List<PlotLayout>
+    ) {
+        val greenhouses = contents.greenhouses ?: return
+        greenhouses.forEach { grid ->
+            val assignedId = grid.state.assignedLayoutId?.let { renamedPlotIds[it] ?: it }
+            grid.state.assignedLayoutId = assignedId
+            grid.state.assignedLayout = presetPlots.find { it.id == assignedId }
+        }
+        writeGreenhouseFile(profileId, contents.miscInfo, greenhouses)
+    }
+
+    private fun writeGreenhouseFile(profileId: UUID, miscInfo: MiscGreenhouseInfo?, greenhouses: List<GreenhouseGrid>) {
+        if (isSavingBlocked && profileId == activeProfileId) return
 
         val file = greenhouseFileOf(profileId)
         runCatching {
             CodecStorage.save(
                 file,
-                listOf(
-                    CodecStorage.RootEntry(MISC_INFO_KEY, MISC_GREENHOUSE_INFO_CODEC, GreenhouseData.miscInfo),
-                    CodecStorage.RootEntry(PRESETS_KEY, MASTER_LAYOUT_CODEC.listOf(), GreenhouseData.presetGrids),
-                    CodecStorage.RootEntry(GREENHOUSES_KEY, GREENHOUSE_GRID_CODEC.listOf(), GreenhouseData.greenhouseGrids)
+                listOfNotNull(
+                    miscInfo?.let { CodecStorage.RootEntry(MISC_INFO_KEY, MISC_GREENHOUSE_INFO_CODEC, it) },
+                    CodecStorage.RootEntry(GREENHOUSES_KEY, GREENHOUSE_GRID_CODEC.listOf(), greenhouses)
                 ),
                 ::decodeGreenhouseFile
             )

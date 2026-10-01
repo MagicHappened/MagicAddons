@@ -9,6 +9,7 @@ import net.minecraft.world.entity.decoration.ArmorStand
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.phys.Vec3
+import org.magic.magicaddons.data.server.GreenhouseDataSync
 import org.magic.magicaddons.commands.internal.MainInternal
 import org.magic.magicaddons.commands.internal.farming.SetTimestalkAttribute
 import org.magic.magicaddons.data.greenhouse.crops.*
@@ -45,6 +46,7 @@ import net.minecraft.ChatFormatting
 import net.minecraft.world.phys.AABB
 import net.minecraft.network.chat.Style
 import org.magic.magicaddons.util.compat.McCompat
+import tech.thatgravyboat.skyblockapi.api.events.hypixel.HypixelJoinEvent
 import tech.thatgravyboat.skyblockapi.api.events.info.ScoreboardUpdateEvent
 import tech.thatgravyboat.skyblockapi.api.events.location.IslandChangeEvent
 import tech.thatgravyboat.skyblockapi.api.events.location.ServerDisconnectEvent
@@ -628,7 +630,7 @@ object GreenhouseData : GridCallbacks {
 
         if (event.new != SkyBlockIsland.GARDEN) {
             gardenArrivedAt = null
-            GreenhouseProfiles.saveGreenhouseData()
+            saveForThisNetwork()
             greenhouseGrids.forEach {
                 it.state.scanned = false
             }
@@ -647,7 +649,23 @@ object GreenhouseData : GridCallbacks {
         scoreboardLines = emptyList()
         pestDebuffActive = false
         GreenhouseSpawnLog.onGameClosing()
-        GreenhouseProfiles.saveGreenhouseData()
+        saveForThisNetwork()
+    }
+
+    fun saveForThisNetwork() {
+        PresetStorage.savePresets()
+        if (!GreenhouseProfiles.holdsAlphaData) GreenhouseProfiles.saveGreenhouseData()
+    }
+
+    @Subscription
+    fun onHypixelJoin(event: HypixelJoinEvent) {
+        if (event.onAlpha) {
+            GreenhouseProfiles.enterAlpha()
+        } else {
+            GreenhouseSpawnLog.discardOpenRecords()
+            GreenhouseProfiles.leaveAlpha()
+            GreenhouseDataSync.reportOnlineOnMainNetwork()
+        }
     }
 
 
