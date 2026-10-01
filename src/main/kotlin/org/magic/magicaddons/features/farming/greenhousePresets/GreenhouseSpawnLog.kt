@@ -20,6 +20,7 @@ import org.magic.magicaddons.data.greenhouse.plot.PlotLayout
 import org.magic.magicaddons.data.greenhouse.plot.PlotPrediction
 import org.magic.magicaddons.Common
 import org.magic.magicaddons.data.handlers.ModFiles
+import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseProfiles
 import org.magic.magicaddons.features.farming.greenhousePresets.lookups.BioanalysisAccessory
 import org.magic.magicaddons.util.ChatUtils
 // for tracking how hypixel mutations spawns work.
@@ -87,8 +88,12 @@ object GreenhouseSpawnLog {
         )
     }
 
+    fun discardOpenRecords() {
+        openRecordByGrid.clear()
+    }
+
     fun noteGrowthTicks(grid: GreenhouseGrid, ticks: Int, leftGarden: Boolean) {
-        if (!isEnabled) return
+        if (!isEnabled || GreenhouseProfiles.holdsAlphaData) return
 
         val openRecord = openRecordByGrid[grid]
         if (openRecord != null && openRecord.plantsAfter == null) {
@@ -110,7 +115,7 @@ object GreenhouseSpawnLog {
     }
 
     fun recordSpawn(spawn: Plant, layout: PlotLayout) {
-        if (!isEnabled) return
+        if (!isEnabled || GreenhouseProfiles.holdsAlphaData) return
         val record = openRecordByGrid.entries.firstOrNull { it.key.layout === layout }?.value ?: return
         val recorded = recordedPlant(spawn)
         if (record.spawns.any { it.x == recorded.x && it.y == recorded.y && it.cropName == recorded.cropName }) return
@@ -118,7 +123,7 @@ object GreenhouseSpawnLog {
     }
 
     fun noteScan(grid: GreenhouseGrid) {
-        if (!isEnabled) return
+        if (!isEnabled || GreenhouseProfiles.holdsAlphaData) return
         val record = openRecordByGrid[grid] ?: return
         if (record.plantsAfter == null) record.plantsAfter = recordedPlants(grid.layout)
     }

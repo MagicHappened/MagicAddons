@@ -45,6 +45,7 @@ import net.minecraft.ChatFormatting
 import net.minecraft.world.phys.AABB
 import net.minecraft.network.chat.Style
 import org.magic.magicaddons.util.compat.McCompat
+import tech.thatgravyboat.skyblockapi.api.events.hypixel.HypixelJoinEvent
 import tech.thatgravyboat.skyblockapi.api.events.info.ScoreboardUpdateEvent
 import tech.thatgravyboat.skyblockapi.api.events.location.IslandChangeEvent
 import tech.thatgravyboat.skyblockapi.api.events.location.ServerDisconnectEvent
@@ -660,7 +661,7 @@ object GreenhouseData : GridCallbacks {
 
         if (event.new != SkyBlockIsland.GARDEN) {
             gardenArrivedAt = null
-            GreenhouseProfiles.saveGreenhouseData()
+            saveForThisNetwork()
             greenhouseGrids.forEach {
                 it.state.scanned = false
             }
@@ -679,7 +680,22 @@ object GreenhouseData : GridCallbacks {
         scoreboardLines = emptyList()
         pestDebuffActive = false
         GreenhouseSpawnLog.onGameClosing()
-        GreenhouseProfiles.saveGreenhouseData()
+        saveForThisNetwork()
+    }
+
+    fun saveForThisNetwork() {
+        PresetStorage.savePresets()
+        if (!GreenhouseProfiles.holdsAlphaData) GreenhouseProfiles.saveGreenhouseData()
+    }
+
+    @Subscription
+    fun onHypixelJoin(event: HypixelJoinEvent) {
+        if (event.onAlpha) {
+            GreenhouseProfiles.enterAlpha()
+        } else {
+            GreenhouseSpawnLog.discardOpenRecords()
+            GreenhouseProfiles.leaveAlpha()
+        }
     }
 
 
