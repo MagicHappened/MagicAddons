@@ -2,6 +2,7 @@ package org.magic.magicaddons.features
 
 import com.google.gson.JsonObject
 import org.magic.magicaddons.config.MagicAddonsConfigJsonHandler
+import org.magic.magicaddons.features.account.ServerConnection
 import org.magic.magicaddons.features.combat.HighlightMobs
 import org.magic.magicaddons.features.customization.Customization
 import org.magic.magicaddons.features.debug.MobHitDebugInfo
@@ -25,6 +26,7 @@ object FeatureManager {
         CustomRendSound,
         SmolPeople,
         HighlightMarkers,
+        ServerConnection,
         Customization,
         MobHitDebugInfo
     )
@@ -33,7 +35,7 @@ object FeatureManager {
 
     private val CATEGORY_ORDER = listOf("farming", "mining", "foraging", "combat", "kuudra")
 
-    private val BELOW_DIVIDER = setOf(Customization.CATEGORY, "debug")
+    private val BELOW_DIVIDER = setOf(ServerConnection.CATEGORY, Customization.CATEGORY, "debug")
 
     fun categories(): List<Category> = availableFeatures
         .groupBy { it.category }

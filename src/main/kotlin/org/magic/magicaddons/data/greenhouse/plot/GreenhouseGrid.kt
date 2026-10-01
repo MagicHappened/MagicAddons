@@ -393,6 +393,7 @@ class GreenhouseGrid(
 
     fun predictedLayout(ticks: Int): PlotLayout {
         val layoutCopy = layout.freshCopy()
+        layoutCopy.plants.filter { it.cropDef.resetPercentByStage.isNotEmpty() }.forEach { it.chanceToReachStage = 1.0 }
 
         simulateLayout(layoutCopy, ticks)
 
@@ -554,6 +555,8 @@ class GreenhouseGrid(
                     else PlantStage.Estimated(lowestStageAfter..highestStageAfter)
 
                 if (plant.cropDef.resetsToFirstStage && lowestStageAfter < stageRange.first) losses.glasscornsReset++
+
+                plant.chanceToReachStage = plant.chanceToReachStage?.let { it * plant.cropDef.chanceToGrow(stageRange.first, lowestStageAfter) }
 
                 if (cravesTimeOfDay && lowestStageAfter > stageRange.first) {
                     plant.readings[StandReader.NEEDS_TIME] =

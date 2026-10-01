@@ -45,6 +45,7 @@ data class CropDefinition(
 
     val drainsNeighbours: Boolean = false,
     val resetsToFirstStage: Boolean = false,
+    val resetPercentByStage: Map<Int, Int> = emptyMap(),
     val sleepStages: Set<Int> = emptySet(),
     val stallExplanation: String? = null,
     val chargeRule: ChargeRule? = null,
@@ -54,6 +55,9 @@ data class CropDefinition(
         stand.headRotation ?: standPoses[stand.hashString]?.headAt(x, z, stand.offset)
 
     val stagePlacedAt: Int get() = if (isMutation) maxStage else 1
+
+    fun chanceToGrow(fromStage: Int, toStage: Int): Double =
+        (fromStage + 1..toStage).fold(1.0) { chance, stage -> chance * (1 - (resetPercentByStage[stage] ?: 0) / 100.0) }
     val elementId: String get() = skyblockId?.id ?: name
     val hasHungerBar: Boolean get() = stages.any { stage -> stage.readers.any { it.key == StandReader.HUNGER } }
 

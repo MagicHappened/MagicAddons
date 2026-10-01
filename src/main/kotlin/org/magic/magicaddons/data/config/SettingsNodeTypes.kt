@@ -14,7 +14,8 @@ sealed class SettingNode<T>(
     val description: String,
     open var value: T,
     val detail: (() -> SettingDetail?)? = null,
-    val needsExtensionPack: Boolean = false
+    val needsExtensionPack: Boolean = false,
+    val requiresServer: Boolean = false
 ) {
     open val children: List<SettingNode<*>>? = null
 
@@ -73,6 +74,10 @@ sealed class SettingNode<T>(
         return getChild<R>(key) ?: throw IllegalStateException("No child with key '$key' of type ${R::class.java.name}")
     }
 
+    companion object {
+        const val SERVER_ICON_TOKEN: String = "{icon}"
+    }
+
 }
 
 class ToggleListSetting(
@@ -121,8 +126,10 @@ class BooleanSetting(
     value: Boolean,
     override val children: List<SettingNode<*>>? = null,
     detail: (() -> SettingDetail?)? = null,
-    needsExtensionPack: Boolean = false
-) : SettingNode<Boolean>(key, displayName, description, value, detail, needsExtensionPack) {
+    needsExtensionPack: Boolean = false,
+    requiresServer: Boolean = false,
+    val valueChanged: ((Boolean) -> Unit)? = null
+) : SettingNode<Boolean>(key, displayName, description, value, detail, needsExtensionPack, requiresServer) {
 
     init {
         setAsParentOf(children)

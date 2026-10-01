@@ -22,6 +22,16 @@ abstract class Feature {
     }
 
 
+    fun pathToSetting(key: String): List<SettingNode<*>>? {
+        fun search(node: SettingNode<*>, pathAbove: List<SettingNode<*>>): List<SettingNode<*>>? {
+            val path = pathAbove + node
+            if (node.key == key) return path
+            return node.children?.firstNotNullOfOrNull { search(it, path) }
+        }
+
+        return search(baseSetting, emptyList())
+    }
+
     fun settingPaths(): Map<String, String> {
         val paths = mutableMapOf<String, String>()
 

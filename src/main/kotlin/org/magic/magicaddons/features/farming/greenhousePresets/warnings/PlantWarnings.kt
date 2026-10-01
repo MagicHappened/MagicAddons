@@ -31,6 +31,7 @@ object PlantWarnings {
 
     const val HARVEST_KEY: String = "ReadyToHarvestWarning"
     const val DECAY_KEY: String = "DecayWarning"
+    const val DECAY_THRESHOLD_KEY: String = "DecayThresholdHours"
     const val SNOOZLING_KEY: String = "SnoozlingAsleepWarning"
     const val NOCTILUME_KEY: String = "NoctilumeTimeWarning"
     const val FLESHTRAP_KEY: String = "FleshtrapMeatWarning"
@@ -44,8 +45,7 @@ object PlantWarnings {
 
     private const val HOVER_LINES: Int = 5
 
-    // todo make this configurable
-    private val DECAY_WITHIN: Duration = Duration.ofDays(1)
+    private const val CHORUS_TICKS_AHEAD: Int = 1
 
     private val HARVEST_TIER_ORDER: List<CropTier> = listOf(
         CropTier.Legendary, CropTier.Epic, CropTier.Rare, CropTier.Uncommon, CropTier.Common,
@@ -210,14 +210,14 @@ object PlantWarnings {
     private fun decaySection(profile: ProfileGreenhouses): Section? {
         if (!warningEnabled(DECAY_KEY)) return null
 
+        val thresholdMs = Duration.ofHours(GreenhousePresets.decayThresholdHours().toLong()).toMillis()
         val decaying = profile.grids.flatMap { grid ->
             grid.layout.plants.mapNotNull { plant ->
                 plant.decayRemainingMs?.let { DecayingPlant(grid.layout.displayName(), plant.cropDef.name, it) }
             }
-        }.sortedBy { it.remainingMs }
+        }.filter { it.remainingMs <= thresholdMs }.sortedBy { it.remainingMs }
 
-        val soonest = decaying.firstOrNull() ?: return null
-        if (soonest.remainingMs > DECAY_WITHIN.toMillis()) return null
+        if (decaying.isEmpty()) return null
 
         val lines = decaying.map { decayingPlant ->
             Component.literal(decayingPlant.plant).withStyle(ChatFormatting.YELLOW)
@@ -309,10 +309,8 @@ object PlantWarnings {
     private fun chorusCollisions(profile: ProfileGreenhouses): Int {
         if (!warningEnabled(GreenhousePresets.CHORUS_KEY)) return 0
 
-        val ticks = GreenhousePresets.chorusAbsenceTicks()
-
         return profile.grids.count { grid ->
-            ChorusCollision.reportFor(grid, ticks, BioanalysisAccessory.mutationWeightMultiplier())?.needsWarning == true
+            ChorusCollision.reportFor(grid, CHORUS_TICKS_AHEAD, BioanalysisAccessory.mutationWeightMultiplier())?.needsWarning == true
         }
     }
 

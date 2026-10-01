@@ -201,6 +201,11 @@ class PlantWidget(val plant: Plant) : Renderable, GuiEventListener {
                 return
             }
 
+            plant.chanceToReachStage?.let {
+                renderChanceToReachStage(graphics, it)
+                return
+            }
+
             if (!plant.cropDef.needsWater || (!plant.consumesWater && drainingSoggybuds == 0)) return
 
             plant.waterLevel?.let {
@@ -222,6 +227,25 @@ class PlantWidget(val plant: Plant) : Renderable, GuiEventListener {
 
         hintTooltip = plant.cropDef.stallExplanation
         hintMarkBox = drawScaledLabel(graphics, STALLED_LABEL, y + height - textHeight - 1f, Common.UI.DANGER_COLOR)
+    }
+
+    private fun renderChanceToReachStage(graphics: GuiGraphicsExtractor, chance: Double) {
+        val font = Minecraft.getInstance().font
+        val textHeight = font.lineHeight * LABEL_TEXT_SCALE
+        val color = if (chance >= LIKELY_CHANCE) Common.UI.SUCCESS_COLOR else Common.UI.DANGER_COLOR
+
+        hintTooltip = CHANCE_TO_REACH_STAGE
+        hintMarkBox = drawScaledLabel(graphics, formatChance(chance) + HINT_MARK, y + height - textHeight - 1f, color)
+    }
+
+    private fun formatChance(chance: Double): String {
+        val percent = chance * 100
+
+        return when {
+            percent >= 10 -> "%.0f%%".format(percent)
+            percent >= 1 -> "%.1f%%".format(percent)
+            else -> "%.2f%%".format(percent)
+        }
     }
 
     private fun drawScaledLabel(graphics: GuiGraphicsExtractor, text: String, top: Float, color: Int): ScreenRect {
@@ -474,6 +498,11 @@ class PlantWidget(val plant: Plant) : Renderable, GuiEventListener {
 
     companion object {
         private const val LABEL_TEXT_SCALE: Float = 0.75f
+
+        private const val LIKELY_CHANCE: Double = 0.5
+
+        private const val CHANCE_TO_REACH_STAGE: String =
+            "Chance this plant reaches this stage without resetting"
 
         private const val BLOCKED_LABEL: String = "Blocked"
 

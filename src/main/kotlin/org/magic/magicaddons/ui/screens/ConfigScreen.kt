@@ -29,6 +29,7 @@ import org.magic.magicaddons.util.ScreenUtil.drawLine
 import org.magic.magicaddons.ui.background.ScreenBackground
 import org.magic.magicaddons.util.ScreenUtil.drawPanel
 import org.magic.magicaddons.util.ScreenUtil.drawScrollBar
+import org.magic.magicaddons.ui.widgets.ServerCableIcon
 import org.magic.magicaddons.util.ScreenUtil.drawSimpleTooltip
 import org.magic.magicaddons.util.ScreenUtil.drawTooltipAtCursor
 import org.magic.magicaddons.util.ScreenUtil.easedProgress
@@ -482,6 +483,9 @@ class ConfigScreen(val parent: Screen?) : MagicAddonsScreen(Component.literal("M
 
         graphics.pose().popMatrix()
         graphics.disableScissor()
+
+        val isMouseInsidePanel = mouseX in clipLeft until clipRight && mouseY in clipTop until clipBottom
+        ServerCableIcon.drawTooltipIfHovered(graphics, mouseX, mouseY, isMouseInsidePanel)
 
         graphics.drawScrollBar(clipRight - Common.UI.SCROLLBAR_WIDTH - 1, clipTop, viewHeight, contentHeight, viewHeight, contentScroll)
     }

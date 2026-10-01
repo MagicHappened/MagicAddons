@@ -13,6 +13,8 @@ import org.magic.magicaddons.Common
 import org.magic.magicaddons.data.config.EnumSetting
 import org.magic.magicaddons.data.config.SettingNode
 import org.magic.magicaddons.ui.OverlayContext
+import org.magic.magicaddons.ui.widgets.ServerCableIcon
+import org.magic.magicaddons.util.ScreenUtil.inModFont
 import org.magic.magicaddons.util.ScreenUtil.drawBorder
 import org.magic.magicaddons.util.ScreenUtil.drawLine
 import org.magic.magicaddons.util.ScreenUtil.easedProgress
@@ -60,6 +62,7 @@ abstract class SettingWidget<T>(
 
     private var nameLines: List<FormattedCharSequence> = emptyList()
     private var descriptionLines: List<FormattedCharSequence> = emptyList()
+    private var iconLeftByDescriptionLine: Map<Int, Int> = emptyMap()
 
     private var chevronLeft = 0
     private var chevronTop = 0
@@ -79,6 +82,31 @@ abstract class SettingWidget<T>(
     protected fun textWidth(): Int = width - ROW_PADDING * 2 - rightColumnWidth().let { if (it > 0) it + ROW_PADDING else 0 }
 
     private fun plainDescription(): String = node.description.replace("§f", "").replace("§r", "")
+
+    private fun modFontWidth(text: String): Int = font.width(inModFont(Component.literal(text)))
+
+    private fun iconGapText(): String {
+        var gap = ICON_GAP_CHARACTER
+        while (modFontWidth(gap) < ServerCableIcon.SIZE + ICON_MARGIN * 2 && gap.length < MAX_ICON_GAP_CHARACTERS) gap += ICON_GAP_CHARACTER
+        return gap
+    }
+
+    private fun plainTextOf(line: FormattedCharSequence): String {
+        val text = StringBuilder()
+        line.accept { _, _, codePoint ->
+            text.appendCodePoint(codePoint)
+            true
+        }
+        return text.toString()
+    }
+
+    private fun iconLeftIn(line: FormattedCharSequence, gap: String): Int? {
+        val text = plainTextOf(line)
+        val gapStart = text.indexOf(gap)
+        if (gapStart < 0) return null
+
+        return modFontWidth(text.substring(0, gapStart)) + (modFontWidth(gap) - ServerCableIcon.SIZE) / 2
+    }
 
     protected fun controlLeft(): Int = x + width - ROW_PADDING - controlWidth
     protected fun controlTop(): Int = y + ROW_PADDING
@@ -114,11 +142,18 @@ abstract class SettingWidget<T>(
         this.y = y
         this.width = width
 
-        nameLines = font.splitMod(Component.literal(node.displayName), textWidth().coerceAtLeast(font.width("W")))
+        val nameIconWidth = if (node.requiresServer) ServerCableIcon.SIZE + ICON_MARGIN else 0
+        val iconGap = iconGapText()
+
+        nameLines = font.splitMod(Component.literal(node.displayName), (textWidth() - nameIconWidth).coerceAtLeast(font.width("W")))
         descriptionLines = plainDescription().takeIf { it.isNotBlank() }
+            ?.replace(SettingNode.SERVER_ICON_TOKEN, iconGap)
             ?.lines()
             ?.flatMap { font.splitMod(Component.literal(it), textWidth().coerceAtLeast(font.width("W"))) }
             ?: emptyList()
+        iconLeftByDescriptionLine = descriptionLines
+            .mapIndexedNotNull { index, line -> iconLeftIn(line, iconGap)?.let { index to it } }
+            .toMap()
 
         val textHeight = nameLines.size * font.lineHeight +
                 if (descriptionLines.isEmpty()) 0 else Common.UI.SPACING_SMALL + descriptionLines.size * font.lineHeight
@@ -176,9 +211,13 @@ abstract class SettingWidget<T>(
             graphics.modText(font, it, textLeft(), textY, Common.UI.TEXT_COLOR)
             textY += font.lineHeight
         }
+        if (node.requiresServer && nameLines.isNotEmpty()) {
+            ServerCableIcon.draw(graphics, textLeft() + font.width(nameLines.last()) + ICON_MARGIN, textY - font.lineHeight + ICON_RISE, mouseX, mouseY)
+        }
         textY += Common.UI.SPACING_SMALL
-        descriptionLines.forEach {
-            graphics.modText(font, it, textLeft(), textY, Common.UI.TEXT_DIM_COLOR)
+        descriptionLines.forEachIndexed { index, line ->
+            graphics.modText(font, line, textLeft(), textY, Common.UI.TEXT_DIM_COLOR)
+            iconLeftByDescriptionLine[index]?.let { iconLeft -> ServerCableIcon.draw(graphics, textLeft() + iconLeft, textY + ICON_RISE, mouseX, mouseY) }
             textY += font.lineHeight
         }
 
@@ -317,6 +356,11 @@ abstract class SettingWidget<T>(
         private const val COUNT_GAP: Int = 3
 
         const val FIELD_HEIGHT: Int = 14
+
+        private const val ICON_GAP_CHARACTER: String = "\u00A0"
+        private const val MAX_ICON_GAP_CHARACTERS: Int = 8
+        private const val ICON_MARGIN: Int = 2
+        private const val ICON_RISE: Int = -1
 
         const val FOLD_MS: Long = 180
     }

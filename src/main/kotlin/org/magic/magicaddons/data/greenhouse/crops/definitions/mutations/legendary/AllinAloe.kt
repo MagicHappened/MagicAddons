@@ -20,6 +20,10 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockId
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
 object AllinAloe {
+    private const val FIRST_RESET_STAGE: Int = 4
+    private const val RESET_PERCENT_STEP: Int = 3
+    private const val MAX_STAGE: Int = 27
+
     private val fragmentSkyblockId: SkyBlockId = SkyBlockItemId.item("ALL_IN_ALOE_FRAGMENT")
 
     val definition = CropDefinition(
@@ -345,7 +349,8 @@ object AllinAloe {
             )
         ),
         decayTimeMs = NEVER_DECAYS,
-        maxStage = 27,
+        maxStage = MAX_STAGE,
+        resetPercentByStage = (FIRST_RESET_STAGE..MAX_STAGE).associateWith { (it - FIRST_RESET_STAGE + 1) * RESET_PERCENT_STEP },
         requiredSoil = setOf(Blocks.SAND, Blocks.RED_SAND),
         needsWater = false,
         isMutation = true,

@@ -32,13 +32,11 @@ import org.magic.magicaddons.features.farming.greenhousePresets.playerActions.Gr
 import org.magic.magicaddons.features.farming.greenhousePresets.render.LayoutRenderState
 import org.magic.magicaddons.features.farming.greenhousePresets.shrunkPlants.ShorterCaneCrops
 import org.magic.magicaddons.features.farming.greenhousePresets.warnings.PlantWarnings
-import org.magic.magicaddons.ui.widgets.config.SettingDetail
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.SBLocation
 import org.magic.magicaddons.util.ServerUtils
 import org.magic.magicaddons.util.center
 import org.magic.magicaddons.util.getBuildableArea
-import org.magic.magicaddons.util.toShortDuration
 import tech.thatgravyboat.skyblockapi.api.events.base.Subscription
 import tech.thatgravyboat.skyblockapi.api.events.base.predicates.OnlyIn
 import tech.thatgravyboat.skyblockapi.api.events.base.predicates.OnlyNonGuest
@@ -452,31 +450,6 @@ object GreenhouseData : GridCallbacks {
         LayoutRenderState.refresh()
         ShorterCaneCrops.updateHiddenPlantParts()
     }
-
-    private const val MISSING_COLOR: Int = 0xFFFF8855.toInt()
-
-    fun absenceForChorusDetail(): SettingDetail? {
-        val ticks = GreenhousePresets.chorusAbsenceTicks()
-
-        val tickMs = GreenhouseTickTime.tickMs
-        val remaining = GreenhouseTickTime.remainingTickMs()
-
-        if (tickMs == null || remaining == null) {
-            return SettingDetail.Text(
-                "(Missing variables, Cannot resolve tick time.)",
-                MISSING_COLOR
-            )
-        }
-
-        val shortest = remaining + (ticks - 1) * tickMs
-        val longest = remaining + ticks * tickMs
-
-        return SettingDetail.Text(
-            "(absent for between ${shortest.toShortDuration()} - ${longest.toShortDuration()})"
-        )
-    }
-
-
 
     fun getCurrentGrid(): GreenhouseGrid? {
         if (!SBLocation.OwnGarden.inside()) return null

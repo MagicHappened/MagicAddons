@@ -30,6 +30,7 @@ class BooleanSettingWidget(
         if (event.button() != 0 || !isMouseOver(event.x, event.y)) return false
         setting.value = !setting.value
         valueSwitch.set(setting.value)
+        setting.valueChanged?.invoke(setting.value)
         return true
     }
 

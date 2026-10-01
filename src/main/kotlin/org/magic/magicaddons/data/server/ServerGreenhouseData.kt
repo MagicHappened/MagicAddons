@@ -1,0 +1,137 @@
+package org.magic.magicaddons.data.server
+
+import com.google.gson.annotations.SerializedName
+import net.minecraft.client.Minecraft
+import net.minecraft.core.registries.BuiltInRegistries
+import net.minecraft.world.level.block.Blocks
+import org.magic.magicaddons.data.greenhouse.crops.CropTableExport
+import org.magic.magicaddons.data.greenhouse.crops.PlantStage
+import org.magic.magicaddons.data.greenhouse.plot.GREENHOUSE_SIZE
+import org.magic.magicaddons.data.greenhouse.plot.GreenhouseGrid
+import org.magic.magicaddons.features.farming.greenhousePresets.GreenhousePresets
+import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseData
+import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseProfiles
+import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseTickTime
+import org.magic.magicaddons.features.farming.greenhousePresets.lookups.BioanalysisAccessory
+import tech.thatgravyboat.skyblockapi.api.profile.profile.ProfileAPI
+import org.magic.magicaddons.data.greenhouse.crops.Plant as GreenhousePlant
+
+data class ServerGreenhouseData(
+    val cropTableVersion: Int,
+    val profile: String,
+    val nextTickInMs: Long,
+    val tickMs: Long,
+    val gardenDayTime: Long?,
+    val mutationWeightMultiplier: Double,
+    val settings: Settings,
+    val plots: List<Plot>
+) {
+
+    data class Settings(
+        val aloeHarvestStage: Int,
+        val jellybeanHarvestStage: Int,
+        val enabledWarnings: List<String>,
+        val onlyPresetTargets: Boolean,
+        val harvestableBaseCrops: Boolean,
+        val harvestableIngredients: Boolean,
+        val assumeFlatWater: Boolean,
+        val warnOnNegativeWater: Boolean
+    )
+
+    data class Plot(
+        val name: String,
+        val ticksSinceLastScan: Int,
+        val slotsBySoil: Map<String, List<Int>>,
+        val plants: List<Plant>,
+        val plan: List<PlannedSlot>?
+    )
+
+    data class Plant(
+        @SerializedName("c") val crop: String,
+        @SerializedName("x") val x: Int,
+        @SerializedName("y") val y: Int,
+        @SerializedName("s") val stage: Int?,
+        @SerializedName("sm") val stageMax: Int?,
+        @SerializedName("w") val water: Double?,
+        @SerializedName("a") val ageMinutes: Long?,
+        @SerializedName("p") val placed: Boolean?,
+        @SerializedName("ch") val charge: Int?,
+        @SerializedName("r") val readings: Map<String, Int>?
+    )
+
+    data class PlannedSlot(val x: Int, val y: Int, val mark: String, val crops: List<String>)
+
+    companion object {
+
+        private val DEFAULT_SOIL = Blocks.FARMLAND
+
+        private const val NO_SOIL: String = "none"
+
+        private const val MS_PER_MINUTE: Long = 60_000
+
+        fun ofActiveProfile(): ServerGreenhouseData? {
+            val profile = ProfileAPI.profileName
+                ?: GreenhouseProfiles.activeProfileId?.let { GreenhouseProfiles.fruitNameOf(it) }
+                ?: return null
+            val nextTickInMs = GreenhouseTickTime.remainingTickMs() ?: return null
+            val tickMs = GreenhouseTickTime.tickMs ?: return null
+            val plots = GreenhouseData.greenhouseGrids.filter { it.isScanned() }.map { plotOf(it) }
+            if (plots.isEmpty()) return null
+
+            return ServerGreenhouseData(
+                cropTableVersion = CropTableExport.TABLE_VERSION,
+                profile = profile,
+                nextTickInMs = nextTickInMs,
+                tickMs = tickMs,
+                gardenDayTime = Minecraft.getInstance().level?.overworldClockTime,
+                mutationWeightMultiplier = BioanalysisAccessory.mutationWeightMultiplier(),
+                settings = Settings(
+                    aloeHarvestStage = GreenhousePresets.aloeHarvestStage(),
+                    jellybeanHarvestStage = GreenhousePresets.jellybeanHarvestStage(),
+                    enabledWarnings = GreenhousePresets.enabledWarningTypes(),
+                    onlyPresetTargets = GreenhousePresets.harvestHighlightOnlyTargets(),
+                    harvestableBaseCrops = GreenhousePresets.countsBaseCropsAsHarvestable(),
+                    harvestableIngredients = GreenhousePresets.countsIngredientsAsHarvestable(),
+                    assumeFlatWater = GreenhousePresets.assumeFlatWater(),
+                    warnOnNegativeWater = GreenhousePresets.negativeWaterWarningEnabled()
+                ),
+                plots = plots
+            )
+        }
+
+        private fun plotOf(grid: GreenhouseGrid): Plot = Plot(
+            name = grid.layout.displayName(),
+            ticksSinceLastScan = grid.state.ticksSinceLastScan,
+            slotsBySoil = grid.layout.slots
+                .filter { it.soil != DEFAULT_SOIL }
+                .groupBy({ slot -> slot.soil?.let { BuiltInRegistries.BLOCK.getKey(it).path } ?: NO_SOIL }, { it.y * GREENHOUSE_SIZE + it.x }),
+            plants = grid.layout.plants.map { plantOf(it) },
+            plan = grid.assignedPlanAfterTurn()?.let { plan ->
+                plan.plants
+                    .filter { it.slot.mark != null }
+                    .map { planned -> PlannedSlot(planned.slot.x, planned.slot.y, planned.slot.mark!!.name, planned.acceptedCrops.map { it.name }) }
+            }
+        )
+
+        private fun plantOf(plant: GreenhousePlant): Plant {
+            val stage = plant.growthStage
+
+            return Plant(
+                crop = plant.cropDef.name,
+                x = plant.slot.x,
+                y = plant.slot.y,
+                stage = when (stage) {
+                    is PlantStage.Known -> stage.stage
+                    is PlantStage.Estimated -> stage.range.first
+                    null -> null
+                },
+                stageMax = (stage as? PlantStage.Estimated)?.range?.last,
+                water = plant.waterLevel,
+                ageMinutes = plant.age?.let { it / MS_PER_MINUTE },
+                placed = plant.placed.takeIf { it },
+                charge = plant.charge.takeIf { it != 0 },
+                readings = plant.readings.takeIf { it.isNotEmpty() }
+            )
+        }
+    }
+}

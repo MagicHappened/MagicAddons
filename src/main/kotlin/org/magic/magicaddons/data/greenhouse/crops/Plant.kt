@@ -75,6 +75,8 @@ data class Plant(
 
     var chargeKnown: Boolean = false
 
+    var chanceToReachStage: Double? = null
+
     var waterBestCase: Double? = null
 
     val isPlacedMutation: Boolean get() = placed && cropDef.isMutation
@@ -96,6 +98,7 @@ data class Plant(
             it.waterBestCase = waterBestCase
             it.charge = charge
             it.chargeKnown = chargeKnown
+            it.chanceToReachStage = chanceToReachStage
         }
 
     fun waterLastsUntilGrown(waterEffectPercent: Int): Boolean? {

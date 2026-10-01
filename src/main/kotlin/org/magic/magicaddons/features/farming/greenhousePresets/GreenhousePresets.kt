@@ -49,8 +49,8 @@ object GreenhousePresets : Feature() {
     private const val WARNINGS_KEY = "Warnings"
     private const val TYPES_KEY = "Types"
     private const val REMINDERS_KEY = "Reminders"
+    const val DISCORD_INTEGRATION_KEY = "DiscordIntegration"
     const val CHORUS_KEY = "ChorusCollisionWarning"
-    private const val CHORUS_TICKS_KEY = "ChorusAbsenceTicks"
     const val AT_TICK_KEY = "AtTheTick"
     private const val TEN_MINUTES_KEY = "TenMinutesBefore"
     private const val FIVE_MINUTES_KEY = "FiveMinutesBefore"
@@ -364,6 +364,15 @@ object GreenhousePresets : Feature() {
         step = 20
     )
 
+    private val decayThresholdHoursSetting = IntSetting(
+        key = PlantWarnings.DECAY_THRESHOLD_KEY,
+        displayName = "Decay threshold",
+        description = "When to include plants in the decay warning, in hours",
+        value = 6,
+        range = 2..24,
+        step = 1
+    )
+
     private val thunderlingChargeThresholdSetting = IntSetting(
         key = PlantWarnings.THUNDERLING_CHARGE_KEY,
         displayName = "Charge To Warn About",
@@ -371,15 +380,6 @@ object GreenhousePresets : Feature() {
         value = 12_000,
         range = 6_000..14_000,
         step = 2_000
-    )
-
-    private val chorusAbsenceTicksSetting = IntSetting(
-        key = CHORUS_TICKS_KEY,
-        displayName = "Ticks Away",
-        description = "How many growth ticks you expect to be away for",
-        value = 5,
-        range = 1..48,
-        detail = { GreenhouseData.absenceForChorusDetail() }
     )
 
     private val warningTypesSetting = BooleanSetting(
@@ -404,8 +404,9 @@ object GreenhousePresets : Feature() {
             BooleanSetting(
                 key = PlantWarnings.DECAY_KEY,
                 displayName = "Decay",
-                description = "Lists the plants closest to decaying, once one is under a day",
-                value = true
+                description = "Lists the plants that decay within the threshold below",
+                value = true,
+                children = listOf(decayThresholdHoursSetting)
             ),
             BooleanSetting(
                 key = PlantWarnings.SNOOZLING_KEY,
@@ -443,8 +444,7 @@ object GreenhousePresets : Feature() {
                 key = CHORUS_KEY,
                 displayName = "Chorus Collision",
                 description = "Warns before a chorus fruit runs out of tiles to teleport into and starts destroying the plot around it",
-                value = false,
-                children = listOf(chorusAbsenceTicksSetting)
+                value = false
             ),
             BooleanSetting(
                 key = PlantWarnings.OTHER_PROFILES_KEY,
@@ -488,13 +488,21 @@ object GreenhousePresets : Feature() {
         )
     )
 
+    private val discordIntegrationSetting = BooleanSetting(
+        key = DISCORD_INTEGRATION_KEY,
+        displayName = "Discord integration",
+        description = "Enables discord commands for your linked minecraft accounts to preview data",
+        value = false,
+        requiresServer = true
+    )
+
     private val warningsSetting = BooleanSetting(
         key = WARNINGS_KEY,
         displayName = "Warnings",
         description = "Chat warnings about the greenhouse.\n" +
                 "§7Does not send a warning if you are standing in a greenhouse.",
         value = false,
-        children = listOf(warningTypesSetting, remindersSetting)
+        children = listOf(warningTypesSetting, remindersSetting, discordIntegrationSetting)
     )
 
     val greenhouseHudSetting = BooleanSetting(
@@ -510,6 +518,17 @@ object GreenhousePresets : Feature() {
 
     fun warningTypeEnabled(key: String): Boolean = warningTypesSetting.getChild<BooleanSetting>(key)?.isEnabled == true
 
+    fun enabledWarningTypes(): List<String> =
+        warningTypesSetting.availableChildren.filterIsInstance<BooleanSetting>().filter { it.isEnabled }.map { it.key }
+
+    fun discordIntegrationEnabled(): Boolean = discordIntegrationSetting.isEnabled
+
+    fun aloeHarvestStage(): Int = aloeHarvestStageSetting.value
+
+    fun jellybeanHarvestStage(): Int = jellybeanHarvestStageSetting.value
+
+    fun countsBaseCropsAsHarvestable(): Boolean = harvestableBaseCropsSetting.value
+
     fun reminderTimeEnabled(key: String): Boolean = remindersSetting.getChild<BooleanSetting>(key)?.isEnabled == true
 
     fun reminderThresholds(): List<Duration> = listOfNotNull(
@@ -518,11 +537,12 @@ object GreenhousePresets : Feature() {
         Duration.ofMinutes(1).takeIf { reminderTimeEnabled(ONE_MINUTE_KEY) }
     )
 
-    fun chorusAbsenceTicks(): Int = chorusAbsenceTicksSetting.value
 
     fun negativeWaterWarningEnabled(): Boolean = negativeWaterWarningSetting.isEnabled
 
     fun fleshtrapMeatThreshold(): Int = fleshtrapMeatThresholdSetting.value
+
+    fun decayThresholdHours(): Int = decayThresholdHoursSetting.value
 
     fun thunderlingChargeThreshold(): Int = thunderlingChargeThresholdSetting.value
     override val id = "GreenhousePresets"
