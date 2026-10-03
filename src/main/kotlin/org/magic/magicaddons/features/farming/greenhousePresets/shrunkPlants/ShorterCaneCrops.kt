@@ -73,13 +73,15 @@ object ShorterCaneCrops {
     }
 
     @EventHandler
-    fun onPlotChanged(event: PlotChangedEvent) = updateHiddenPlantParts()
+    fun onPlotChanged(event: PlotChangedEvent) = onRenderThread { updateHiddenPlantParts() }
 
     @EventHandler
-    fun onConfigChanged(event: ConfigChangedEvent) = updateHiddenPlantParts()
+    fun onConfigChanged(event: ConfigChangedEvent) = onRenderThread { updateHiddenPlantParts() }
 
     @EventHandler
-    fun onLevelUnloading(event: LevelUnloadingEvent) = applyHiddenPlantParts(emptyList())
+    fun onLevelUnloading(event: LevelUnloadingEvent) = onRenderThread { applyHiddenPlantParts(emptyList()) }
+
+    private fun onRenderThread(action: () -> Unit) = Minecraft.getInstance().execute(action)
 
     fun hiddenBlockAt(pos: BlockPos): BlockState? {
         val replacementStates = replacementStateByBlock

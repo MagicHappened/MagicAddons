@@ -4,6 +4,7 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource
 import org.magic.magicaddons.Common
 import org.magic.magicaddons.commands.AbstractCommand
+import org.magic.magicaddons.commands.internal.farming.ChorusExplanation
 import org.magic.magicaddons.commands.internal.farming.GetPlannerItemCommand
 import org.magic.magicaddons.commands.internal.farming.UnplanGreenhouse
 import org.magic.magicaddons.commands.internal.farming.SetTimestalkAttribute
@@ -21,7 +22,8 @@ object MainInternal : AbstractCommand() {
         UnplanGreenhouse,
         SetTimestalkAttribute,
         GetPlannerItemCommand,
-        TickReport
+        TickReport,
+        ChorusExplanation
     )
 
     override fun build(): LiteralArgumentBuilder<FabricClientCommandSource> {

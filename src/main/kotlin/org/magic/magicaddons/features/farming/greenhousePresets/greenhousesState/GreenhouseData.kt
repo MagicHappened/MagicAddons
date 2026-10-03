@@ -32,6 +32,9 @@ import org.magic.magicaddons.features.farming.greenhousePresets.playerActions.Gr
 import org.magic.magicaddons.features.farming.greenhousePresets.playerActions.GreenhouseWatering
 import org.magic.magicaddons.features.farming.greenhousePresets.render.LayoutRenderState
 import org.magic.magicaddons.features.farming.greenhousePresets.shrunkPlants.ShorterCaneCrops
+import org.magic.magicaddons.Common
+import org.magic.magicaddons.features.farming.greenhousePresets.lookups.BioanalysisAccessory
+import org.magic.magicaddons.features.farming.greenhousePresets.warnings.ChorusCollision
 import org.magic.magicaddons.features.farming.greenhousePresets.warnings.PlantWarnings
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.SBLocation
@@ -349,7 +352,10 @@ object GreenhouseData : GridCallbacks {
         }
 
         claimPlantedCrop(grid)
-        if (isPlotSettled) GreenhouseSpawnLog.noteScan(grid)
+        if (isPlotSettled) {
+            GreenhouseSpawnLog.noteScan(grid)
+            refreshChorusRisk(grid)
+        }
 
         LayoutRenderState.refresh()
 
@@ -357,7 +363,6 @@ object GreenhouseData : GridCallbacks {
         grid.state.scanned = true
         grid.state.needsRescan = false
         grid.state.lastScanTime = Instant.now()
-        grid.state.ticksSinceLastScan = 0
 
         ShorterCaneCrops.updateHiddenPlantParts()
     }
@@ -449,8 +454,32 @@ object GreenhouseData : GridCallbacks {
         grid.readSoilBlocks()
         if (!grid.rescanPlants(region, shouldKeepUnmatchedPlants = readiness != PlotReadiness.Settled)) return
         claimPlantedCrop(grid)
+        if (readiness == PlotReadiness.Settled) refreshChorusRisk(grid)
         LayoutRenderState.refresh()
         ShorterCaneCrops.updateHiddenPlantParts()
+    }
+
+    private fun refreshChorusRisk(grid: GreenhouseGrid) {
+        grid.state.ticksSinceLastScan = 0
+        val risk = ChorusCollision.riskOf(grid.layout, BioanalysisAccessory.mutationWeightMultiplier())
+        if (risk != null && risk.fingerprint == grid.state.chorusRiskCalculation?.fingerprint) return
+
+        grid.state.chorusRiskCalculation?.cancel()
+        grid.state.chorusLossChanceByTick = null
+        val calculation = risk?.calculate()
+        grid.state.chorusRiskCalculation = calculation
+        calculation ?: return
+
+        calculation.lossChanceByTick
+            .thenAccept { chances ->
+                Minecraft.getInstance().execute {
+                    if (chances != null && grid.state.chorusRiskCalculation === calculation) grid.state.chorusLossChanceByTick = chances
+                }
+            }
+            .exceptionally { failure ->
+                Common.LOGGER.warn("Could not work out the chorus collision risk for ${grid.layout.displayName()}", failure)
+                null
+            }
     }
 
     fun getCurrentGrid(): GreenhouseGrid? {

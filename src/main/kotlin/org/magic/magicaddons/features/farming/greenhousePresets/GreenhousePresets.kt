@@ -1,6 +1,7 @@
 package org.magic.magicaddons.features.farming.greenhousePresets
 
 import java.time.Duration
+import kotlin.math.roundToInt
 import org.magic.magicaddons.data.config.BooleanSetting
 import org.magic.magicaddons.data.config.IntSetting
 import org.magic.magicaddons.data.config.ParentSetting
@@ -19,7 +20,6 @@ import org.magic.magicaddons.features.farming.greenhousePresets.playerActions.Gr
 import org.magic.magicaddons.features.farming.greenhousePresets.playerActions.GreenhouseWatering
 import org.magic.magicaddons.features.farming.greenhousePresets.render.LayoutRenderState
 import org.magic.magicaddons.features.farming.greenhousePresets.render.PlannerMark
-import org.magic.magicaddons.features.farming.greenhousePresets.warnings.ChorusCollision
 import org.magic.magicaddons.features.farming.greenhousePresets.warnings.PlantWarnings
 import tech.thatgravyboat.skyblockapi.api.SkyBlockAPI
 import tech.thatgravyboat.skyblockapi.api.profile.hunting.AttributeAPI
@@ -51,6 +51,7 @@ object GreenhousePresets : Feature() {
     private const val REMINDERS_KEY = "Reminders"
     const val DISCORD_INTEGRATION_KEY = "DiscordIntegration"
     const val CHORUS_KEY = "ChorusCollisionWarning"
+    const val CHORUS_TOLERANCE_KEY = "ChorusLossTolerance"
     const val AT_TICK_KEY = "AtTheTick"
     private const val TEN_MINUTES_KEY = "TenMinutesBefore"
     private const val FIVE_MINUTES_KEY = "FiveMinutesBefore"
@@ -75,7 +76,6 @@ object GreenhousePresets : Feature() {
         EventBus.register(GreenhouseHud)
         EventBus.register(LayoutRenderState)
         EventBus.register(OtherProfiles)
-        EventBus.register(ChorusCollision)
         EventBus.register(PlannerNeeds)
         CropRegistry
         AttributeAPI
@@ -382,6 +382,17 @@ object GreenhousePresets : Feature() {
         step = 2_000
     )
 
+    private val chorusLossToleranceSetting = IntSetting(
+        key = CHORUS_TOLERANCE_KEY,
+        displayName = "Loss tolerance",
+        description = "The chance of losing a plant to teleporting chorus that you are willing to accept",
+        value = 2,
+        range = 0..50,
+        step = 2,
+        valueText = { "${it / 10}.${it % 10}%" },
+        valueFromText = { typed -> typed.trim().removeSuffix("%").trim().toDoubleOrNull()?.let { (it * 10).roundToInt() } }
+    )
+
     private val warningTypesSetting = BooleanSetting(
         key = TYPES_KEY,
         displayName = "Types",
@@ -444,7 +455,8 @@ object GreenhousePresets : Feature() {
                 key = CHORUS_KEY,
                 displayName = "Chorus Collision",
                 description = "Warns before a chorus fruit runs out of tiles to teleport into and starts destroying the plot around it",
-                value = false
+                value = false,
+                children = listOf(chorusLossToleranceSetting)
             ),
             BooleanSetting(
                 key = PlantWarnings.OTHER_PROFILES_KEY,
@@ -545,6 +557,8 @@ object GreenhousePresets : Feature() {
     fun fleshtrapMeatThreshold(): Int = fleshtrapMeatThresholdSetting.value
 
     fun decayThresholdHours(): Int = decayThresholdHoursSetting.value
+
+    fun chorusLossTolerance(): Double = chorusLossToleranceSetting.value / 1000.0
 
     fun thunderlingChargeThreshold(): Int = thunderlingChargeThresholdSetting.value
     override val id = "GreenhousePresets"

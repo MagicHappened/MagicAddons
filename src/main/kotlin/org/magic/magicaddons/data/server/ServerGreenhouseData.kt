@@ -20,6 +20,7 @@ data class ServerGreenhouseData(
     val cropTableVersion: Int,
     val profile: String,
     val profileId: String?,
+    val isStillOnline: Boolean? = null,
     val nextTickInMs: Long,
     val tickMs: Long,
     val gardenDayTime: Long?,
@@ -36,7 +37,8 @@ data class ServerGreenhouseData(
         val harvestableBaseCrops: Boolean,
         val harvestableIngredients: Boolean,
         val assumeFlatWater: Boolean,
-        val warnOnNegativeWater: Boolean
+        val warnOnNegativeWater: Boolean,
+        val chorusLossTolerance: Double
     )
 
     data class Plot(
@@ -44,7 +46,8 @@ data class ServerGreenhouseData(
         val ticksSinceLastScan: Int,
         val slotsBySoil: Map<String, List<Int>>,
         val plants: List<Plant>,
-        val plan: List<PlannedSlot>?
+        val plan: List<PlannedSlot>?,
+        val chorusLossChanceByTick: List<Double>?
     )
 
     data class Plant(
@@ -108,7 +111,8 @@ data class ServerGreenhouseData(
                     harvestableBaseCrops = GreenhousePresets.countsBaseCropsAsHarvestable(),
                     harvestableIngredients = GreenhousePresets.countsIngredientsAsHarvestable(),
                     assumeFlatWater = GreenhousePresets.assumeFlatWater(),
-                    warnOnNegativeWater = GreenhousePresets.negativeWaterWarningEnabled()
+                    warnOnNegativeWater = GreenhousePresets.negativeWaterWarningEnabled(),
+                    chorusLossTolerance = GreenhousePresets.chorusLossTolerance()
                 ),
                 plots = plots
             )
@@ -125,7 +129,9 @@ data class ServerGreenhouseData(
                 plan.plants
                     .filter { it.slot.mark != null }
                     .map { planned -> PlannedSlot(planned.slot.x, planned.slot.y, planned.slot.mark!!.name, planned.acceptedCrops.map { it.name }) }
-            }
+            },
+            chorusLossChanceByTick = (grid.state.chorusLossChanceByTick
+                ?: grid.state.chorusRiskCalculation?.takeIf { grid.state.isChorusRiskCalculating }?.immediateLossChanceByTick())?.toList()
         )
 
         private fun plantOf(plant: GreenhousePlant): Plant {

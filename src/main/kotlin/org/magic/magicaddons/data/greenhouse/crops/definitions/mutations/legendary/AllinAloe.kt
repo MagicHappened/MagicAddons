@@ -340,7 +340,7 @@ object AllinAloe {
                         isSmall = false
                     )
                 ),
-                13..14,
+                13..23,
                 readers = listOf(
                     StandReader.stageNumberLabel(),
                     StandReader.percentLabel(StandReader.REWARDS_RESET, "reset"),

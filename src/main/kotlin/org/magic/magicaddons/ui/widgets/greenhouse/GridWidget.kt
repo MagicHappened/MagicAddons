@@ -11,12 +11,15 @@ import org.magic.magicaddons.Common
 import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
 import org.magic.magicaddons.data.greenhouse.crops.Footprint
 import org.magic.magicaddons.data.greenhouse.crops.Plant
+import org.magic.magicaddons.data.greenhouse.crops.definitions.mutations.epic.ChorusFruit
 import org.magic.magicaddons.data.greenhouse.plot.GreenhouseGrid
 import org.magic.magicaddons.data.greenhouse.plot.LayoutSlot
 import org.magic.magicaddons.data.greenhouse.plot.PlotLayout
 import org.magic.magicaddons.data.greenhouse.plot.PlotPrediction
 import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseData
 import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseTickTime
+import org.magic.magicaddons.features.farming.greenhousePresets.warnings.ChorusCollision
+import org.magic.magicaddons.features.farming.greenhousePresets.warnings.PlantWarnings
 import org.magic.magicaddons.ui.HoverableContainer
 import org.magic.magicaddons.ui.ScreenRect
 import org.magic.magicaddons.ui.widgets.greenhouse.CropRegions.claimedCells
@@ -52,6 +55,10 @@ class GridWidget(
     var targetPlan: () -> PlotLayout? = { null }
 
     var isShowingUnplannedMutations: Boolean = false
+
+    var chorusMarks: ChorusMarks? = null
+
+    class ChorusMarks(val breaks: List<ChorusCollision.Break>, val ripeCells: List<Pair<Int, Int>>, val isNextTick: Boolean)
 
     private var unplannedSpotsKey: Int? = null
     private var unplannedSpotsCache: Map<Pair<Int, Int>, List<CropDefinition>> = emptyMap()
@@ -296,6 +303,43 @@ class GridWidget(
                 .filter { it.plant.cropDef.elementId !in cropIdsWithoutLabel }
                 .forEach { it.renderLabel(graphics, label) }
         }
+        chorusMarks?.let { renderChorusMarks(graphics, it) }
+    }
+
+    private fun renderChorusMarks(graphics: GuiGraphicsExtractor, marks: ChorusMarks) {
+        val font = Minecraft.getInstance().font
+        val footprint = ChorusFruit.definition.footprint
+
+        marks.ripeCells.forEach { (cellX, cellY) ->
+            val rect = footprintRect(cellX, cellY, footprint)
+            graphics.drawBorder(rect.x, rect.y, rect.right, rect.bottom, CHORUS_MARK_BORDER_SIZE, RIPE_CHORUS_COLOR)
+        }
+        marks.breaks.forEachIndexed { index, chorusBreak ->
+            val rect = footprintRect(chorusBreak.x, chorusBreak.y, footprint)
+            graphics.drawBorder(rect.x, rect.y, rect.right, rect.bottom, CHORUS_MARK_BORDER_SIZE, BREAK_CHORUS_COLOR)
+            graphics.text(font, Component.literal("${index + 1}"), rect.x + CHORUS_MARK_BORDER_SIZE + 1, rect.y + CHORUS_MARK_BORDER_SIZE + 1, BREAK_CHORUS_COLOR, true)
+        }
+    }
+
+    fun chorusMarkTooltipAt(mouseX: Double, mouseY: Double): List<Component>? {
+        val marks = chorusMarks ?: return null
+        val cell = slotAt(mouseX, mouseY) ?: return null
+        val footprint = ChorusFruit.definition.footprint
+        fun covers(cornerX: Int, cornerY: Int) = cell.first in cornerX until cornerX + footprint.width && cell.second in cornerY until cornerY + footprint.height
+
+        if (marks.ripeCells.any { (cornerX, cornerY) -> covers(cornerX, cornerY) }) {
+            return listOf(Component.literal("Ripe chorus").withColor(RIPE_CHORUS_COLOR and 0xFFFFFF), Component.literal("Harvest it first, then the break order is worked out"))
+        }
+        val index = marks.breaks.indexOfFirst { covers(it.x, it.y) }
+        if (index < 0) return null
+        val chorusBreak = marks.breaks[index]
+        val timing = if (marks.isNextTick) "at the next tick" else "by then"
+
+        return listOf(
+            Component.literal("Break #${index + 1} of ${marks.breaks.size}").withColor(BREAK_CHORUS_COLOR and 0xFFFFFF),
+            Component.literal("Chorus stage ${chorusBreak.stage}${if (chorusBreak.isOnSpawnTile) " on a spawn tile" else ""}"),
+            Component.literal("After this: ${PlantWarnings.chorusRiskText(chorusBreak.chanceAfter)} $timing")
+        )
     }
 
     private fun renderUnplannedMutations(graphics: GuiGraphicsExtractor) {
@@ -399,6 +443,10 @@ class GridWidget(
         )
 
         private const val CROP_BORDER_SIZE: Int = 1
+
+        private const val CHORUS_MARK_BORDER_SIZE: Int = 2
+        private const val BREAK_CHORUS_COLOR: Int = 0xFFFF4040.toInt()
+        private const val RIPE_CHORUS_COLOR: Int = 0xFF40E040.toInt()
 
         private const val VANISH_MS: Long = 150
 

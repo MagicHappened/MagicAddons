@@ -11,6 +11,7 @@ import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.crops.*
 import org.magic.magicaddons.data.greenhouse.crops.definitions.misc.DeadPlant
 import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseTickTime
+import org.magic.magicaddons.features.farming.greenhousePresets.warnings.ChorusCollision
 import org.magic.magicaddons.util.getBuildableArea
 import tech.thatgravyboat.skyblockapi.api.profile.garden.Plot
 import tech.thatgravyboat.skyblockapi.api.profile.garden.PlotAPI
@@ -763,6 +764,20 @@ class GreenhouseGrid(
 
         var thunderlingsDestroyed: Int = 0
         var glasscornsReset: Int = 0
+
+        var chorusLossChanceByTick: DoubleArray? = null
+
+        var chorusRiskCalculation: ChorusCollision.Calculation? = null
+
+        val isChorusRiskCalculating: Boolean
+            get() = chorusLossChanceByTick == null && chorusRiskCalculation?.isRunning == true
+
+        val chorusLossChanceNextTick: Double?
+            get() = chorusLossChanceByTicksAhead(0)
+
+        fun chorusLossChanceByTicksAhead(ticksAhead: Int): Double? = chorusLossChanceByTick?.let { chances ->
+            chances.getOrNull(ticksSinceLastScan + maxOf(ticksAhead, 1) - 1) ?: chances.lastOrNull()
+        }
     }
 
     override fun toString(): String = layout.displayName()

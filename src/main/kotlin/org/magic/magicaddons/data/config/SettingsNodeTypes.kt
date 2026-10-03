@@ -169,7 +169,9 @@ class IntSetting(
     val step: Int = 1,
     val mouseScrollEnabled: Boolean = true,
     detail: (() -> SettingDetail?)? = null,
-    needsExtensionPack: Boolean = false
+    needsExtensionPack: Boolean = false,
+    val valueText: (Int) -> String = { it.toString() },
+    val valueFromText: (String) -> Int? = { it.trim().toIntOrNull() }
 ) : SettingNode<Int>(key, displayName, description, value, detail, needsExtensionPack) {
 
     override fun valueToJson(): JsonElement = JsonPrimitive(value)

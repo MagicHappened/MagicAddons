@@ -36,6 +36,7 @@ import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState
 import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseTickTime
 import org.magic.magicaddons.features.farming.greenhousePresets.lookups.BioanalysisAccessory
 import org.magic.magicaddons.features.farming.greenhousePresets.render.PlantHighlight
+import org.magic.magicaddons.features.farming.greenhousePresets.warnings.PlantWarnings
 import org.magic.magicaddons.ui.HoverableContainer
 import org.magic.magicaddons.ui.OverlayContext
 import org.magic.magicaddons.ui.OverlayRenderable
@@ -142,6 +143,10 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
     private var viewShelfHeight: Int = 0
     private var predictShelfY: Int = 0
     private var predictShelfHeight: Int = 0
+    private var predictShelfChorusLines: Int = 0
+    private var chorusLineBox: ScreenRect? = null
+    private var chorusPlanLineBox: ScreenRect? = null
+    private var chorusPlan: ChorusPlanView? = null
     private var actionShelfY: Int = 0
 
     private var gridWidgetBeforePrediction: GridWidget? = null
@@ -322,8 +327,10 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
         viewShelfHeight = shelfTitleHeight() + ActionPanel.PADDING * 2 + plotsButton.height
 
         predictShelfY = viewShelfY + viewShelfHeight + Common.UI.SPACING_LARGE
+        predictShelfChorusLines = chorusLineCount()
         predictShelfHeight = if (currentDisplay == DisplayMode.Greenhouses) {
-            shelfTitleHeight() + ActionPanel.PADDING * 2 + SliderWidget.HEIGHT + Common.UI.SPACING + font.lineHeight * 2
+            shelfTitleHeight() + ActionPanel.PADDING * 2 + SliderWidget.HEIGHT + Common.UI.SPACING +
+                    font.lineHeight * (2 + predictShelfChorusLines)
         } else {
             0
         }
@@ -1005,6 +1012,8 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
         drawNameBox(graphics)
         drawTickTimeBox(graphics, mouseX, mouseY)
 
+        chorusPlan = chorusPlanView()
+        displayedGridWidget?.chorusMarks = chorusPlan?.marks
         displayedGridWidget?.extractRenderState(graphics, mouseX, mouseY, delta)
         if (displayedGridWidget == null && currentDisplay == DisplayMode.Presets) {
             emptyGridWidget?.extractRenderState(graphics, mouseX, mouseY, delta)
@@ -1012,6 +1021,9 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
 
         graphics.drawShelf(shelfLeft, viewShelfY, shelfLeft + shelfWidth, viewShelfY + viewShelfHeight, SHELF_VIEW)
 
+        if (chorusLineCount() != predictShelfChorusLines) relayoutShelves()
+        chorusLineBox = null
+        chorusPlanLineBox = null
         if (predictShelfHeight > 0) {
             graphics.drawShelf(
                 shelfLeft,
@@ -1045,6 +1057,9 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
                 Common.UI.TEXT_COLOR,
                 false
             )
+            val chorusLineY = predictSlider.y + SliderWidget.HEIGHT + Common.UI.SPACING + font.lineHeight * 2
+            if (predictShelfChorusLines >= 1) drawChorusLine(graphics, chorusLineY)
+            if (predictShelfChorusLines >= 2) chorusPlan?.let { drawChorusPlanLine(graphics, it, chorusLineY + font.lineHeight) }
         }
 
         val panel = if (currentDisplay == DisplayMode.Greenhouses) greenhousePanel else presetPanel
@@ -1116,6 +1131,25 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
                 graphics.drawTooltipAtCursor(WATER_LASTS_TOOLTIP, mouseX, mouseY)
                 return
             }
+        }
+
+        chorusLineBox?.let { (lineX, lineTop, lineWidth, lineHeight) ->
+            if (mouseX in lineX until lineX + lineWidth && mouseY in lineTop until lineTop + lineHeight) {
+                graphics.drawTooltipAtCursor(PlantWarnings.chorusExplanation(predictSlider.value), mouseX, mouseY)
+                return
+            }
+        }
+
+        chorusPlanLineBox?.let { (lineX, lineTop, lineWidth, lineHeight) ->
+            if (mouseX in lineX until lineX + lineWidth && mouseY in lineTop until lineTop + lineHeight) {
+                graphics.drawTooltipAtCursor(CHORUS_PLAN_TOOLTIP, mouseX, mouseY)
+                return
+            }
+        }
+
+        displayedGridWidget?.chorusMarkTooltipAt(mouseX.toDouble(), mouseY.toDouble())?.let { lines ->
+            graphics.drawTooltipLinesAtCursor(lines.map { it.visualOrderText }, mouseX, mouseY)
+            return
         }
 
         displayedGridWidget?.unplannedTooltipAt(mouseX.toDouble(), mouseY.toDouble())?.let { lines ->
@@ -1875,6 +1909,75 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
     private fun predictLabel(): String =
         if (predictSlider.value == 0) PREDICT_NOW else "+${predictSlider.value}"
 
+    private fun gridBehindPrediction(): GreenhouseGrid? {
+        val layout = (gridWidgetBeforePrediction ?: displayedGridWidget)?.layout ?: return null
+
+        return GreenhouseData.greenhouseGrids.firstOrNull { it.layout === layout }
+    }
+
+    private fun isChorusLineShown(): Boolean {
+        if (currentDisplay != DisplayMode.Greenhouses || !GreenhousePresets.warningTypeEnabled(GreenhousePresets.CHORUS_KEY)) return false
+        val state = gridBehindPrediction()?.state ?: return false
+
+        return state.chorusLossChanceByTick != null || state.isChorusRiskCalculating
+    }
+
+    private class ChorusPlanView(val line: String, val marks: GridWidget.ChorusMarks?, val isBreakOrder: Boolean)
+
+    private fun chorusLineCount(): Int = when {
+        !isChorusLineShown() -> 0
+        chorusPlan == null -> 1
+        else -> 2
+    }
+
+    private fun chorusPlanView(): ChorusPlanView? {
+        if (!isChorusLineShown()) return null
+        val state = gridBehindPrediction()?.state ?: return null
+        if (state.isChorusRiskCalculating) return null
+        val tolerance = GreenhousePresets.chorusLossTolerance()
+        val chance = state.chorusLossChanceByTicksAhead(predictSlider.value) ?: return null
+        if (chance <= tolerance) return null
+
+        val calculation = state.chorusRiskCalculation
+        if (state.ticksSinceLastScan > 0 || calculation == null) return ChorusPlanView(CHORUS_PLAN_ENTER, null, false)
+        val isNextTick = predictSlider.value <= 1
+
+        val ripeCells = calculation.ripeCells
+        if (ripeCells.isNotEmpty()) {
+            return ChorusPlanView("Harvest ${ripeCells.size} ripe chorus first", GridWidget.ChorusMarks(emptyList(), ripeCells, isNextTick), false)
+        }
+
+        val breakOrder = calculation.breakOrder(maxOf(predictSlider.value, 1), tolerance)
+        if (breakOrder.isCompletedExceptionally) return null
+        val order = breakOrder.getNow(null) ?: return ChorusPlanView(CHORUS_PLAN_WORKING, null, false)
+        val line = "Break ${order.breaks.size} chorus to reach ${PlantWarnings.chorusRiskText(order.finalChance)}"
+
+        return ChorusPlanView(line, GridWidget.ChorusMarks(order.breaks, emptyList(), isNextTick), true)
+    }
+
+    private fun drawChorusPlanLine(graphics: GuiGraphicsExtractor, plan: ChorusPlanView, lineY: Int) {
+        val text = Component.literal(plan.line)
+        val color = if (plan.marks == null) Common.UI.TEXT_DIM_COLOR else Common.UI.TEXT_COLOR
+
+        if (plan.isBreakOrder) chorusPlanLineBox = ScreenRect(predictSlider.x, lineY, font.width(text), font.lineHeight)
+        graphics.text(font, text, predictSlider.x, lineY, color, false)
+    }
+
+    private fun drawChorusLine(graphics: GuiGraphicsExtractor, lineY: Int) {
+        if (gridBehindPrediction()?.state?.isChorusRiskCalculating == true) {
+            graphics.text(font, Component.literal(CHORUS_LINE_CALCULATING), predictSlider.x, lineY, Common.UI.TEXT_DIM_COLOR, false)
+            return
+        }
+        val ticksAhead = predictSlider.value
+        val chance = gridBehindPrediction()?.state?.chorusLossChanceByTicksAhead(ticksAhead) ?: return
+        val label = if (ticksAhead >= 2) CHORUS_LINE_BY_THEN else CHORUS_LINE
+        val text = Component.literal(label + PlantWarnings.chorusRiskText(chance))
+        val color = if (chance > GreenhousePresets.chorusLossTolerance()) Common.UI.DANGER_COLOR else Common.UI.SUCCESS_COLOR
+
+        chorusLineBox = ScreenRect(predictSlider.x, lineY, font.width(text), font.lineHeight)
+        graphics.text(font, text, predictSlider.x, lineY, color, false)
+    }
+
     private fun predictWindowMs(): LongRange? {
         val ticks = predictSlider.value
         val tickMs = GreenhouseTickTime.tickMs ?: return null
@@ -2103,6 +2206,13 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
         private const val SHELF_PRESET: String = "Preset"
         private const val PREDICT_NOW: String = "Now"
         private const val PREDICT_WINDOW_UNKNOWN: String = "tick time unknown"
+        private const val CHORUS_LINE: String = "Chorus collision: "
+        private const val CHORUS_LINE_BY_THEN: String = "Chorus collision by then: "
+        private const val CHORUS_LINE_CALCULATING: String = "Calculating chorus break percentage..."
+        private const val CHORUS_PLAN_WORKING: String = "Working out the break order..."
+        private const val CHORUS_PLAN_ENTER: String = "Enter this greenhouse for the break order"
+        private const val CHORUS_PLAN_TOOLTIP: String =
+            "Chorus on a spawn tile are broken first: they would leave that tile empty for a new chorus to spawn in"
         private val CLOCK_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("h:mma", Locale.ENGLISH)
         private val DAY_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("EEE", Locale.ENGLISH)
         private const val UNPLANNED_NONE: String = "Nothing can grow unplanned"

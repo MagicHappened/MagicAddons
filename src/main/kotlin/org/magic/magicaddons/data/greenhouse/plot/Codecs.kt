@@ -161,13 +161,21 @@ object Codecs {
                     Optional.ofNullable(it.assignedLayout?.id)
                 },
                 Codec.INT.optionalFieldOf("plan_turns", 0).forGetter { it.planTurns },
-                Codec.BOOL.optionalFieldOf("no_rotate_assigned_layout", false).forGetter { it.noRotateAssignedLayout }
-            ).apply(instance) { lastUpdate, assignedLayout, planTurns, noRotateAssignedLayout ->
+                Codec.BOOL.optionalFieldOf("no_rotate_assigned_layout", false).forGetter { it.noRotateAssignedLayout },
+                Codec.INT.optionalFieldOf("ticks_since_last_scan", 0).forGetter { it.ticksSinceLastScan },
+                Codec.DOUBLE.listOf().optionalFieldOf("chorus_loss_chance_by_tick").forGetter {
+                    Optional.ofNullable(it.chorusLossChanceByTick?.toList())
+                }
+            ).apply(instance) { lastUpdate, assignedLayout, planTurns, noRotateAssignedLayout, ticksSinceLastScan, chorusLossChances ->
                 GridState(
                     lastScanTime = lastUpdate.orElse(null)?.let { Instant.ofEpochMilli(it) },
                     planTurns = planTurns,
-                    noRotateAssignedLayout = noRotateAssignedLayout
-                ).also { it.assignedLayoutId = assignedLayout.orElse(null) }
+                    noRotateAssignedLayout = noRotateAssignedLayout,
+                    ticksSinceLastScan = ticksSinceLastScan
+                ).also {
+                    it.assignedLayoutId = assignedLayout.orElse(null)
+                    it.chorusLossChanceByTick = chorusLossChances.orElse(null)?.toDoubleArray()
+                }
             }
         }
     }

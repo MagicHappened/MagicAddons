@@ -36,7 +36,6 @@ import org.magic.magicaddons.data.greenhouse.plot.LayoutSlot
 import org.magic.magicaddons.data.greenhouse.plot.PlotPrediction
 import org.magic.magicaddons.data.handlers.ModFiles
 import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseData
-import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseProfiles
 import org.magic.magicaddons.render.WorldRenderer
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.EntityUtils
@@ -115,11 +114,6 @@ object CropCollector : EntityUtils.HighlightSource {
     private val cropColors: MutableMap<String, Int> = mutableMapOf()
 
     fun scanGreenhouse() {
-        if (GreenhouseProfiles.holdsAlphaData) {
-            ChatUtils.sendWithPrefix("Crop collection is off on the Alpha Network, its crops may not match the main server.")
-            return
-        }
-
         val client = Minecraft.getInstance()
         val level = client.level ?: return
 

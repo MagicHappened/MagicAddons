@@ -58,20 +58,20 @@ object GreenhouseDataSync {
         val waitMs = lastManualSyncAtMs + SYNC_COOLDOWN.toMillis() - System.currentTimeMillis()
         if (waitMs > 0) return CompletableFuture.completedFuture(SyncOutcome.CoolingDown(waitMs))
 
-        return uploadActiveProfile("command").thenApply { outcome ->
+        return uploadActiveProfile("command", isStillOnline = true).thenApply { outcome ->
             if (outcome == SyncOutcome.Sent) lastManualSyncAtMs = System.currentTimeMillis()
             outcome
         }
     }
 
-    private fun uploadActiveProfile(reason: String): CompletableFuture<SyncOutcome> {
+    private fun uploadActiveProfile(reason: String, isStillOnline: Boolean = false): CompletableFuture<SyncOutcome> {
         lastUploadStartedAtMs = System.currentTimeMillis()
 
         if (GreenhouseProfiles.holdsAlphaData) return skippedUpload(reason, SyncOutcome.OnAlpha)
         if (!GreenhousePresets.discordIntegrationEnabled() || !ServerSession.isConnected) {
             return skippedUpload(reason, SyncOutcome.FeatureOff)
         }
-        val data = ServerGreenhouseData.ofActiveProfile()
+        val data = ServerGreenhouseData.ofActiveProfile()?.copy(isStillOnline = isStillOnline.takeIf { it })
             ?: return skippedUpload(reason, SyncOutcome.NoGreenhouseData(ServerGreenhouseData.missingDataOfActiveProfile()))
         val body = gson.toJson(data)
 
