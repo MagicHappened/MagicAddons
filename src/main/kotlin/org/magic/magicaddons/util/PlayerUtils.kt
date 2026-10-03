@@ -66,12 +66,15 @@ object PlayerUtils {
         return getSkinDataFromValue(value)?.hash
     }
 
-    fun getSkinHash(stack: ItemStack): String? {
+    fun getSkinHash(stack: ItemStack): String? = skinDataOf(stack)?.hash
+
+    fun getSkinUrl(stack: ItemStack): String? = skinDataOf(stack)?.url
+
+    private fun skinDataOf(stack: ItemStack): SkinData? {
         val profile = stack.get(DataComponents.PROFILE) ?: return null
         val textures = profile.properties.get("textures").firstOrNull() ?: return null
-        val skinData = getSkinDataFromValue(textures.value) ?: return null
 
-        return skinData.hash
+        return getSkinDataFromValue(textures.value)
     }
 
     fun getSkullHash(entity: LivingEntity): String? =

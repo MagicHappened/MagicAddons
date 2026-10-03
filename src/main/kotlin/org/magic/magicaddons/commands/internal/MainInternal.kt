@@ -9,6 +9,8 @@ import org.magic.magicaddons.commands.internal.farming.GetPlannerItemCommand
 import org.magic.magicaddons.commands.internal.farming.UnplanGreenhouse
 import org.magic.magicaddons.commands.internal.farming.SetTimestalkAttribute
 import org.magic.magicaddons.commands.internal.farming.TickReport
+import org.magic.magicaddons.commands.internal.icons.ExportCropIcons
+import org.magic.magicaddons.commands.internal.icons.ExportSkins
 import org.magic.magicaddons.util.ChatUtils
 
 object MainInternal : AbstractCommand() {
@@ -23,7 +25,9 @@ object MainInternal : AbstractCommand() {
         SetTimestalkAttribute,
         GetPlannerItemCommand,
         TickReport,
-        ChorusExplanation
+        ChorusExplanation,
+        ExportSkins,
+        ExportCropIcons
     )
 
     override fun build(): LiteralArgumentBuilder<FabricClientCommandSource> {
