@@ -5,6 +5,7 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 import kotlin.math.sqrt
 import kotlin.random.Random
+import org.magic.magicaddons.data.greenhouse.crops.definitions.misc.DeadPlant
 import org.magic.magicaddons.data.greenhouse.crops.definitions.mutations.epic.ChorusFruit
 import org.magic.magicaddons.data.greenhouse.plot.GREENHOUSE_SIZE
 import org.magic.magicaddons.data.greenhouse.plot.PlotLayout
@@ -21,6 +22,10 @@ object ChorusCollision {
 
     private const val PLAN_RUN_COUNT: Int = 100_000
 
+    private const val LONG_PLAN_CHECK_RUN_COUNT: Int = 400_000
+
+    private const val LAST_FULL_CHECK_HORIZON: Int = 5
+
     private const val SWAP_SEED_STEP: Int = 1_000
 
     private const val PREFIX_SEED_STEP: Int = 2_000
@@ -32,6 +37,9 @@ object ChorusCollision {
     private const val EMPTY: Int = -1
     private const val RIPE: Int = -2
     private const val PLANT: Int = -3
+    private const val DEAD: Int = -4
+
+    private const val NEVER: Int = Int.MAX_VALUE
 
     private val workers = Executors.newFixedThreadPool((Runtime.getRuntime().availableProcessors() / 2).coerceIn(1, MAX_THREADS)) { task ->
         Thread(task, "MagicAddons chorus risk").apply {
@@ -51,12 +59,23 @@ object ChorusCollision {
 
     class BreakOrder(val breaks: List<Break>, val finalChance: Double)
 
+    internal class Decays(val tiles: IntArray, val ticks: IntArray)
+
     class Risk internal constructor(
         private val stageOrKind: IntArray,
         private val spawnTiles: IntArray,
+        private val spawnTileLastTicks: IntArray,
+        private val decays: Decays,
         private val spawnChance: Double
     ) {
-        val fingerprint: Int = 31 * (31 * stageOrKind.contentHashCode() + spawnTiles.contentHashCode()) + spawnChance.hashCode()
+        val fingerprint: Int = listOf(
+            stageOrKind.contentHashCode(),
+            spawnTiles.contentHashCode(),
+            spawnTileLastTicks.contentHashCode(),
+            decays.tiles.contentHashCode(),
+            decays.ticks.contentHashCode(),
+            spawnChance.hashCode()
+        ).fold(0) { hash, part -> 31 * hash + part }
 
         val ripeCells: List<Pair<Int, Int>> = stageOrKind.indices.filter { stageOrKind[it] == RIPE }.map { cellOf(it) }
 
@@ -68,7 +87,7 @@ object ChorusCollision {
 
         internal fun lossesBy(horizon: Int, tiles: IntArray, seed: Long): Int {
             val random = Random(seed)
-            val run = Run(spawnTiles, spawnChance)
+            val run = Run(spawnTiles, spawnTileLastTicks, decays, spawnChance)
             var losses = 0
             repeat(BATCH_RUN_COUNT) {
                 if (run.firstLossTick(tiles.copyOf(), random, horizon) >= 0) losses++
@@ -79,7 +98,7 @@ object ChorusCollision {
         internal fun lossesByTick(batch: Int): IntArray {
             val random = Random(fingerprint.toLong() * (RUN_COUNT / BATCH_RUN_COUNT) + batch)
             val lossesByTick = IntArray(RISK_HORIZON_TICKS)
-            val run = Run(spawnTiles, spawnChance)
+            val run = Run(spawnTiles, spawnTileLastTicks, decays, spawnChance)
             repeat(BATCH_RUN_COUNT) {
                 val lostAt = run.firstLossTick(stageOrKind.copyOf(), random)
                 if (lostAt >= 0) lossesByTick[lostAt]++
@@ -135,7 +154,7 @@ object ChorusCollision {
                     .filter { chances[it] <= tolerance }
                     .sortedWith(compareBy({ tiles[candidates[it]] }, { !risk.isSpawnTile(candidates[it]) }, { chances[it] }))
                     .firstOrNull { index ->
-                        val checked = lossChanceBy(horizon, withoutTiles(tiles, listOf(candidates[index])), RUN_COUNT, step).join() ?: return null
+                        val checked = lossChanceBy(horizon, withoutTiles(tiles, listOf(candidates[index])), checkRunCountFor(horizon), step).join() ?: return null
                         checkedChances[index] = checked
                         checked <= tolerance
                     }
@@ -177,7 +196,7 @@ object ChorusCollision {
                     .filter { estimates[it] <= tolerance }
                     .sortedWith(compareBy({ start[younger[it]] }, { !risk.isSpawnTile(younger[it]) }, { estimates[it] }))
                     .firstNotNullOfOrNull { index ->
-                        val checked = lossChanceBy(horizon, withoutTiles(start, swapped(younger[index])), RUN_COUNT, SWAP_SEED_STEP).join() ?: return null
+                        val checked = lossChanceBy(horizon, withoutTiles(start, swapped(younger[index])), checkRunCountFor(horizon), SWAP_SEED_STEP).join() ?: return null
                         if (checked <= tolerance) younger[index] to checked else null
                     }
                 if (accepted != null) {
@@ -189,6 +208,8 @@ object ChorusCollision {
         }
 
         private fun withoutTiles(tiles: IntArray, broken: List<Int>): IntArray = tiles.copyOf().also { copy -> broken.forEach { copy[it] = EMPTY } }
+
+        private fun checkRunCountFor(horizon: Int): Int = if (horizon <= LAST_FULL_CHECK_HORIZON) RUN_COUNT else LONG_PLAN_CHECK_RUN_COUNT
 
         private fun lossChanceBy(horizon: Int, tiles: IntArray, runs: Int, step: Int): CompletableFuture<Double?> {
             val batches = List(runs / BATCH_RUN_COUNT) { batch ->
@@ -215,22 +236,27 @@ object ChorusCollision {
 
     private fun cellOf(tile: Int): Pair<Int, Int> = tile % GREENHOUSE_SIZE to tile / GREENHOUSE_SIZE
 
-    fun riskOf(layout: PlotLayout, weightMultiplier: Double): Risk? {
+    fun riskOf(layout: PlotLayout, weightMultiplier: Double, nextTickInMs: Long?, tickMs: Long?): Risk? {
         val chorus = ChorusFruit.definition
         val stageOrKind = IntArray(TILE_COUNT) { EMPTY }
         val cropNames = arrayOfNulls<String>(TILE_COUNT)
+        val decayTicks = IntArray(TILE_COUNT) { NEVER }
         var hasChorus = false
 
         layout.plants.forEach { plant ->
             val isChorus = plant.cropDef == chorus
             if (isChorus) hasChorus = true
             val stage = plant.lowestStage ?: 1
+            val isDead = plant.cropDef == DeadPlant.definition
+            val decayTick = if (isChorus || isDead) NEVER else ticksUntil(plant.decayRemainingMs, nextTickInMs, tickMs)
 
             plant.coveredCells.forEach { (x, y) ->
                 if (x !in 0 until GREENHOUSE_SIZE || y !in 0 until GREENHOUSE_SIZE) return@forEach
                 val tile = y * GREENHOUSE_SIZE + x
                 cropNames[tile] = plant.cropDef.name
+                decayTicks[tile] = decayTick
                 stageOrKind[tile] = when {
+                    isDead -> DEAD
                     !isChorus -> PLANT
                     stage >= chorus.maxStage -> RIPE
                     else -> stage
@@ -240,10 +266,24 @@ object ChorusCollision {
         if (!hasChorus) return null
 
         val spawnRecipe = chorus.spawnRule?.requiredNeighbourCells.orEmpty()
+        fun namesAliveAt(tick: Int) = Array(TILE_COUNT) { tile -> cropNames[tile].takeIf { decayTicks[tile] > tick } }
         val spawnTiles = (0 until TILE_COUNT).filter { tile -> ringHolds(cropNames, tile, spawnRecipe) }.toIntArray()
+        val spawnTileLastTicks = IntArray(spawnTiles.size) { index ->
+            val ringBreaksAt = (0 until RISK_HORIZON_TICKS).firstOrNull { tick -> !ringHolds(namesAliveAt(tick), spawnTiles[index], spawnRecipe) }
+            (ringBreaksAt ?: RISK_HORIZON_TICKS) - 1
+        }
+        val decaying = (0 until TILE_COUNT).filter { stageOrKind[it] == PLANT && decayTicks[it] < RISK_HORIZON_TICKS }
+        val decays = Decays(decaying.toIntArray(), decaying.map { decayTicks[it] }.toIntArray())
         val spawnChance = (chorus.spawnRule?.weight ?: 0) * weightMultiplier / 100.0
 
-        return Risk(stageOrKind, spawnTiles, spawnChance)
+        return Risk(stageOrKind, spawnTiles, spawnTileLastTicks, decays, spawnChance)
+    }
+
+    private fun ticksUntil(remainingMs: Long?, nextTickInMs: Long?, tickMs: Long?): Int {
+        if (remainingMs == null || nextTickInMs == null || tickMs == null || tickMs <= 0) return NEVER
+        if (remainingMs <= nextTickInMs) return 0
+
+        return ((remainingMs - nextTickInMs + tickMs - 1) / tickMs).coerceAtMost(NEVER.toLong()).toInt()
     }
 
     private fun ringHolds(cropNames: Array<String?>, tile: Int, recipe: Map<String, Int>): Boolean {
@@ -266,7 +306,12 @@ object ChorusCollision {
         return true
     }
 
-    private class Run(private val spawnTiles: IntArray, private val spawnChance: Double) {
+    private class Run(
+        private val spawnTiles: IntArray,
+        private val spawnTileLastTicks: IntArray,
+        private val decays: Decays,
+        private val spawnChance: Double
+    ) {
         private val maxStage = ChorusFruit.definition.maxStage
         private val free = IntArray(TILE_COUNT)
         private val movers = IntArray(TILE_COUNT)
@@ -276,6 +321,11 @@ object ChorusCollision {
 
         fun firstLossTick(tiles: IntArray, random: Random, horizon: Int = RISK_HORIZON_TICKS): Int {
             for (tick in 0 until horizon) {
+                for (index in decays.tiles.indices) {
+                    val tile = decays.tiles[index]
+                    if (decays.ticks[index] == tick && tiles[tile] == PLANT) tiles[tile] = DEAD
+                }
+
                 var freeCount = 0
                 var moverCount = 0
                 var occupiedCount = 0
@@ -312,8 +362,9 @@ object ChorusCollision {
                     tiles[landed[index]] = if (stage >= maxStage) RIPE else stage
                 }
 
-                for (tile in spawnTiles) {
-                    if (tiles[tile] == EMPTY && random.nextDouble() < spawnChance) tiles[tile] = 1
+                for (index in spawnTiles.indices) {
+                    val tile = spawnTiles[index]
+                    if (tick <= spawnTileLastTicks[index] && tiles[tile] == EMPTY && random.nextDouble() < spawnChance) tiles[tile] = 1
                 }
             }
             return -1

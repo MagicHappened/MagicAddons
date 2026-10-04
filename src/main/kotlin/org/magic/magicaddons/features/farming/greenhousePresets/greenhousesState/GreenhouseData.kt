@@ -461,7 +461,12 @@ object GreenhouseData : GridCallbacks {
 
     private fun refreshChorusRisk(grid: GreenhouseGrid) {
         grid.state.ticksSinceLastScan = 0
-        val risk = ChorusCollision.riskOf(grid.layout, BioanalysisAccessory.mutationWeightMultiplier())
+        val risk = ChorusCollision.riskOf(
+            grid.layout,
+            BioanalysisAccessory.mutationWeightMultiplier(),
+            GreenhouseTickTime.remainingTickMs(),
+            GreenhouseTickTime.tickMs
+        )
         if (risk != null && risk.fingerprint == grid.state.chorusRiskCalculation?.fingerprint) return
 
         grid.state.chorusRiskCalculation?.cancel()

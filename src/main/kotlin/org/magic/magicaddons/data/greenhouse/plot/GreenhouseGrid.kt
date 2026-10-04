@@ -396,9 +396,34 @@ class GreenhouseGrid(
         val layoutCopy = layout.freshCopy()
         layoutCopy.plants.filter { it.cropDef.resetPercentByStage.isNotEmpty() }.forEach { it.chanceToReachStage = 1.0 }
 
-        simulateLayout(layoutCopy, ticks)
+        val nextTickInMs = GreenhouseTickTime.remainingTickMs()
+        val tickMs = GreenhouseTickTime.tickMs
+        if (nextTickInMs == null || tickMs == null) {
+            simulateLayout(layoutCopy, ticks)
+            return layoutCopy
+        }
 
+        for (tick in 1..ticks) {
+            leaveDeadPlantsForDecayedBy(layoutCopy, nextTickInMs + (tick - 1) * tickMs)
+            simulateLayout(layoutCopy, 1)
+        }
         return layoutCopy
+    }
+
+    private fun leaveDeadPlantsForDecayedBy(layout: PlotLayout, msFromNow: Long) {
+        val decayed = layout.plants.filter { plant ->
+            plant.cropDef != DeadPlant.definition && (plant.decayRemainingMs ?: return@filter false) <= msFromNow
+        }
+        layout.plants.removeAll(decayed)
+        decayed.flatMap { it.coveredCells }.forEach { (x, y) ->
+            val slot = layout.getSlot(x, y) ?: return@forEach
+            layout.plants += Plant(
+                elementId = DeadPlant.definition.elementId,
+                slot = slot,
+                growthStage = PlantStage.Known(DeadPlant.definition.maxStage),
+                cropDef = DeadPlant.definition
+            )
+        }
     }
 
     // null if predicted to not grow
