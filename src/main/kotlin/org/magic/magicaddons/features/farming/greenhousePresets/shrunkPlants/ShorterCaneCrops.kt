@@ -146,6 +146,7 @@ object ShorterCaneCrops {
     }
 
     private fun labelForPlant(plant: Plant, bottomBlock: BlockPos, visibleBlockCount: Int): StageLabel? {
+        if (!GreenhousePresets.caneStageLabelsOn()) return null
         val lowestStage = plant.lowestStage ?: return null
         val highestStage = plant.highestStage ?: return null
         val maxStage = plant.cropDef.maxStage

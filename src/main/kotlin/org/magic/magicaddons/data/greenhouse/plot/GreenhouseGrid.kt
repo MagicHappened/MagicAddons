@@ -311,8 +311,7 @@ class GreenhouseGrid(
     }
 
     private fun capStageToTicksSinceScan(plant: Plant) {
-        val ticks = state.ticksSinceLastScan
-        if (ticks <= 0) return
+        val ticks = state.ticksSinceLastScan.coerceAtLeast(1)
 
         val stageRange = (plant.growthStage as? PlantStage.Estimated)?.range ?: return
         val highestStage = stageRange.last.coerceAtMost(ticks)
@@ -381,6 +380,13 @@ class GreenhouseGrid(
             previousStage.stage in scannedStage.range
         ) {
             scannedPlant.growthStage = previousStage
+        }
+        if (previousStage is PlantStage.Estimated && scannedStage is PlantStage.Estimated) {
+            val lowest = maxOf(previousStage.range.first, scannedStage.range.first)
+            val highest = minOf(previousStage.range.last, scannedStage.range.last)
+            if (lowest <= highest) {
+                scannedPlant.growthStage = if (lowest == highest) PlantStage.Known(lowest) else PlantStage.Estimated(lowest..highest)
+            }
         }
 
         return plantAfter
