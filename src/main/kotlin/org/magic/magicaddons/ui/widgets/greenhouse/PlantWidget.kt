@@ -86,6 +86,8 @@ class PlantWidget(val plant: Plant) : Renderable, GuiEventListener {
 
     private var cornerMarkTooltip: String? = null
 
+    private var mutationCountBox: ScreenRect? = null
+
     var decayOutlook: DecayOutlook? = null
 
     override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, deltaTick: Float) {
@@ -94,6 +96,7 @@ class PlantWidget(val plant: Plant) : Renderable, GuiEventListener {
         chargeMarkBox = null
         cornerMarkBox = null
         cornerMarkTooltip = null
+        mutationCountBox = null
 
         if (isPlanMuted && plant.slot.mark == LayoutSlot.Marking.Target && plant.growthStage == null) return
 
@@ -215,11 +218,27 @@ class PlantWidget(val plant: Plant) : Renderable, GuiEventListener {
             return
         }
 
+        if (label == PlantLabel.DecayTime) renderMutationCount(graphics, label.colorFor(plant))
+
         val text = label.valueFor(plant, decayOutlook) ?: return
         val font = Minecraft.getInstance().font
         val textHeight = font.lineHeight * LABEL_TEXT_SCALE
 
         drawScaledLabel(graphics, text, y + height - textHeight - 1f, label.colorFor(plant))
+    }
+
+    private fun renderMutationCount(graphics: GuiGraphicsExtractor, color: Int) {
+        if (plant.cropDef === FireElement.definition || plant.cropDef.minMutationsBeforeDecay == null) return
+
+        val text = (if (plant.mutationsSpawnedIsMinimum) "≥" else "") + plant.mutationsSpawned
+        mutationCountBox = drawScaledLabel(graphics, text, y + 1f, color, left = x + 1f)
+    }
+
+    fun mutationCountTooltipAt(mouseX: Int, mouseY: Int): String? {
+        val box = mutationCountBox ?: return null
+        if (!inRect(mouseX, mouseY, box.x, box.y, box.width, box.height)) return null
+
+        return if (plant.mutationsSpawnedIsMinimum) MUTATION_COUNT_MINIMUM else MUTATION_COUNT_EXACT
     }
 
     private fun renderStalledLabel(graphics: GuiGraphicsExtractor) {
@@ -249,12 +268,12 @@ class PlantWidget(val plant: Plant) : Renderable, GuiEventListener {
         }
     }
 
-    private fun drawScaledLabel(graphics: GuiGraphicsExtractor, text: String, top: Float, color: Int): ScreenRect {
+    private fun drawScaledLabel(graphics: GuiGraphicsExtractor, text: String, top: Float, color: Int, left: Float? = null): ScreenRect {
         val font = Minecraft.getInstance().font
 
         val textWidth = font.width(text) * LABEL_TEXT_SCALE
         val textHeight = font.lineHeight * LABEL_TEXT_SCALE
-        val textX = x + (width - textWidth) / 2f
+        val textX = left ?: (x + (width - textWidth) / 2f)
 
         graphics.fill(
             (textX - 1f).toInt(),
@@ -451,10 +470,7 @@ class PlantWidget(val plant: Plant) : Renderable, GuiEventListener {
                 } else {
                     labelled("Decays in", "≥$time, needs to contribute to $mutationsLeft")
                 }
-            DecayOutlook.Kind.Never -> {
-                val spots = if (outlook.spotsThatCanSpawn == 0) "none can" else "only ${outlook.spotsThatCanSpawn} can"
-                labelled("Won't decay", "needs to contribute to $mutationsLeft, $spots spawn next to it")
-            }
+            DecayOutlook.Kind.Never -> labelled("Won't decay", "needs to contribute to $mutationsLeft, none can spawn next to it")
         }
     }
 
@@ -523,7 +539,12 @@ class PlantWidget(val plant: Plant) : Renderable, GuiEventListener {
                     if (!plant.chargeKnown) add(Component.literal(CHARGE_ESTIMATED).withStyle(ChatFormatting.GRAY))
                 }
 
-                plant.decayRemainingMs?.let { remainingMs -> decayOutlook?.let { add(decayTooltipLine(remainingMs, it)) } }
+                plant.decayRemainingMs?.let { remainingMs ->
+                    decayOutlook?.let { outlook ->
+                        add(decayTooltipLine(remainingMs, outlook))
+                        if (outlook.kind == DecayOutlook.Kind.Never) add(labelled("Decay attempt in", remainingMs.toCoarseDuration()))
+                    }
+                }
             }
 
             val footprint = cropDefinition.footprint
@@ -584,6 +605,10 @@ class PlantWidget(val plant: Plant) : Renderable, GuiEventListener {
             In the worst case this plant is halted at -100% water.
             Water it to continue growing.
         """.trimIndent()
+
+        private const val MUTATION_COUNT_EXACT: String = "How many times this plant has mutated"
+
+        private const val MUTATION_COUNT_MINIMUM: String = "The minimum amount of times this plant has mutated"
 
         private const val MAY_HAVE_DECAYED_UNCOUNTED: String =
             "Decay timer ran out. It helps spawn Chorus Fruit, which teleport away and free the spot for another, " +

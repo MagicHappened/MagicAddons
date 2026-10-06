@@ -16,6 +16,7 @@ import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseSpawnLog
 import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseData
 import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseTickTime
+import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.PlantDiagnostics
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.EntityUtils
 import org.magic.magicaddons.util.PlayerUtils
@@ -75,6 +76,38 @@ object FarmingDebug : AbstractCommand() {
                 LiteralArgumentBuilder.literal<FabricClientCommandSource>("scanStatus")
                     .executes {
                         sendScanStatus()
+                        return@executes 1
+                    }
+            )
+            .then(
+                LiteralArgumentBuilder.literal<FabricClientCommandSource>("exportGreenhouseData")
+                    .executes {
+                        GreenhouseDataExport.copyServerUpload()
+                        return@executes 1
+                    }
+                    .then(
+                        LiteralArgumentBuilder.literal<FabricClientCommandSource>("serverUpload").executes {
+                            GreenhouseDataExport.copyServerUpload()
+                            return@executes 1
+                        }
+                    )
+                    .then(
+                        LiteralArgumentBuilder.literal<FabricClientCommandSource>("current").executes {
+                            GreenhouseDataExport.copyCurrentGreenhouse()
+                            return@executes 1
+                        }
+                    )
+                    .then(
+                        LiteralArgumentBuilder.literal<FabricClientCommandSource>("all").executes {
+                            GreenhouseDataExport.copyAllGreenhouses()
+                            return@executes 1
+                        }
+                    )
+            )
+            .then(
+                LiteralArgumentBuilder.literal<FabricClientCommandSource>("combinedMutationOutput")
+                    .executes {
+                        PlantDiagnostics.toggleCombinedMutationOutput()
                         return@executes 1
                     }
             )

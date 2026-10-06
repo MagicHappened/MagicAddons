@@ -468,8 +468,9 @@ object GreenhouseData : GridCallbacks {
     private fun updateDecayTracking(grid: GreenhouseGrid) {
         val layout = grid.layout
         if (grid.state.ticksSinceLastScan >= UNWATCHED_TICKS_LOSING_TELEPORTER_SPAWNS) {
-            layout.plants.filter { layout.helpsTeleportingMutationSpawn(it) }.forEach { it.mutationsSpawnedIsMinimum = true }
+            MutationCounting.noteUnwatchedTicks(layout, grid.state.blindSpawns)
         }
+        recountMutations(grid)
 
         val now = System.currentTimeMillis()
         val arrivedAt = gardenArrivedAt?.toEpochMilli() ?: now
@@ -481,6 +482,11 @@ object GreenhouseData : GridCallbacks {
             while (nextAttemptAt <= now) nextAttemptAt += DECAY_EXTENSION_MS
             plant.decayAttemptAt = nextAttemptAt
         }
+    }
+
+    fun recountMutations(grid: GreenhouseGrid) {
+        val contributorsByBlind = MutationCounting.recountPlot(grid.layout, grid.state.blindSpawns)
+        grid.state.plantsToDiagnose = DiagnosticPlanner.plantsToDiagnose(grid.layout, contributorsByBlind)
     }
 
     private fun refreshChorusRisk(grid: GreenhouseGrid) {
@@ -950,7 +956,7 @@ object GreenhouseData : GridCallbacks {
         if (mainHandId.id == DIAGNOSTICS_TOOL_ID) listenAtStand(standTarget, grid)
     }
 
-    private const val DIAGNOSTICS_TOOL_ID: String = "item:plant_diagnostics_tool"
+    const val DIAGNOSTICS_TOOL_ID: String = "item:plant_diagnostics_tool"
 
 
     @EventHandler
@@ -1060,6 +1066,7 @@ object GreenhouseData : GridCallbacks {
     override fun markAsPlaced(plant: Plant) {
         plant.placed = true
         plant.appearedAt = System.currentTimeMillis()
+        MutationCounting.startCountingFromZero(plant)
 
         val stage = plant.growthStage
         if (stage is PlantStage.Estimated && plant.cropDef.stagePlacedAt in stage.range) {
@@ -1114,6 +1121,7 @@ object GreenhouseData : GridCallbacks {
 
         plant.waterBestCase = null
         plant.appearedAt = (gardenArrivedAt ?: now).toEpochMilli()
+        MutationCounting.startCountingFromZero(plant)
         plant.firstSeenStage = 1
     }
 

@@ -131,15 +131,9 @@ object Codecs {
                 Codec.STRING.listOf().optionalFieldOf("alternatives", emptyList())
                     .forGetter { plant -> plant.presetAlternatives.map { it.elementId } },
 
-                Codec.INT.optionalFieldOf("mutations_spawned", 0)
-                    .forGetter { it.mutationsSpawned },
-
-                Codec.BOOL.optionalFieldOf("mutations_spawned_is_minimum", false)
-                    .forGetter { it.mutationsSpawnedIsMinimum },
-
-                Codec.LONG.optionalFieldOf("decay_attempt_at")
-                    .forGetter { Optional.ofNullable(it.decayAttemptAt) }
-            ).apply(instance) { id, slot, waterOpt, growthOpt, appearedAtOpt, readingsOpt, firstSeenOpt, placed, waterExact, charge, chargeKnown, alternativeIds, mutationsSpawned, mutationsSpawnedIsMinimum, decayAttemptAt ->
+                MUTATION_TRACKING_CODEC.optionalFieldOf("mutation_tracking")
+                    .forGetter { Optional.of(MutationTrackingRecord.of(it)) }
+            ).apply(instance) { id, slot, waterOpt, growthOpt, appearedAtOpt, readingsOpt, firstSeenOpt, placed, waterExact, charge, chargeKnown, alternativeIds, mutationTracking ->
                 Plant(
                     elementId = id,
                     slot = slot.orElse(null),
@@ -155,11 +149,94 @@ object Codecs {
                     plant.waterExact = waterExact
                     plant.charge = charge
                     plant.chargeKnown = chargeKnown
-                    plant.mutationsSpawned = mutationsSpawned
-                    plant.mutationsSpawnedIsMinimum = mutationsSpawnedIsMinimum
-                    plant.decayAttemptAt = decayAttemptAt.orElse(null)
+                    mutationTracking.ifPresent { it.applyTo(plant) }
                 }
             }
+        }
+    }
+
+    private val DIAGNOSIS_READING_CODEC: Codec<DiagnosisReading> = RecordCodecBuilder.create { instance ->
+        instance.group(
+            Codec.INT.fieldOf("times_mutated").forGetter { it.timesMutated },
+            Codec.INT.optionalFieldOf("combined").forGetter { Optional.ofNullable(it.combinedRemaining) },
+            Codec.LONG.fieldOf("read_at").forGetter { it.readAt },
+            Codec.INT.optionalFieldOf("seen_since", 0).forGetter { it.spawnsSeenSince },
+            Codec.BOOL.optionalFieldOf("exact", false).forGetter { it.isStillExact }
+        ).apply(instance) { timesMutated, combined, readAt, seenSince, isStillExact ->
+            DiagnosisReading(timesMutated, combined.orElse(null), readAt, seenSince, isStillExact)
+        }
+    }
+
+    class MutationTrackingRecord(
+        val spawned: Int,
+        val isMinimum: Boolean,
+        val seenSpawned: Int,
+        val isTracked: Boolean,
+        val isCountedFromStart: Boolean,
+        val hasUncertainCredit: Boolean,
+        val decayAttemptAt: Long?,
+        val lastReading: DiagnosisReading?
+    ) {
+        fun applyTo(plant: Plant) {
+            plant.mutationsSpawned = spawned
+            plant.mutationsSpawnedIsMinimum = isMinimum
+            plant.seenSpawnsHelped = seenSpawned
+            plant.isMutationCountTracked = isTracked
+            plant.isCountedFromStart = isCountedFromStart
+            plant.hasUncertainCredit = hasUncertainCredit
+            plant.decayAttemptAt = decayAttemptAt
+            plant.lastDiagnosisReading = lastReading
+        }
+
+        companion object {
+            fun of(plant: Plant): MutationTrackingRecord = MutationTrackingRecord(
+                plant.mutationsSpawned,
+                plant.mutationsSpawnedIsMinimum,
+                plant.seenSpawnsHelped,
+                plant.isMutationCountTracked,
+                plant.isCountedFromStart,
+                plant.hasUncertainCredit,
+                plant.decayAttemptAt,
+                plant.lastDiagnosisReading
+            )
+        }
+    }
+
+    private val MUTATION_TRACKING_CODEC: Codec<MutationTrackingRecord> = RecordCodecBuilder.create { instance ->
+        instance.group(
+            Codec.INT.optionalFieldOf("spawned", 0).forGetter { it.spawned },
+            Codec.BOOL.optionalFieldOf("is_minimum", true).forGetter { it.isMinimum },
+            Codec.INT.optionalFieldOf("seen_spawned").forGetter { Optional.of(it.seenSpawned) },
+            Codec.INT.optionalFieldOf("stationary_spawned").forGetter { Optional.empty() },
+            Codec.BOOL.optionalFieldOf("tracked", false).forGetter { it.isTracked },
+            Codec.BOOL.optionalFieldOf("counted_from_start", false).forGetter { it.isCountedFromStart },
+            Codec.BOOL.optionalFieldOf("uncertain_credit", false).forGetter { it.hasUncertainCredit },
+            Codec.LONG.optionalFieldOf("decay_attempt_at").forGetter { Optional.ofNullable(it.decayAttemptAt) },
+            DIAGNOSIS_READING_CODEC.optionalFieldOf("last_reading").forGetter { Optional.ofNullable(it.lastReading) }
+        ).apply(instance) { spawned, isMinimum, seenSpawned, stationarySpawned, isTracked, isCountedFromStart, hasUncertainCredit, decayAttemptAt, lastReading ->
+            MutationTrackingRecord(spawned, isMinimum, seenSpawned.or { stationarySpawned }.orElse(0), isTracked, isCountedFromStart, hasUncertainCredit, decayAttemptAt.orElse(null), lastReading.orElse(null))
+        }
+    }
+
+    private fun slotKeyOf(slot: Pair<Int, Int>): String = "${slot.first},${slot.second}"
+
+    private fun slotOf(key: String): Pair<Int, Int>? {
+        val (x, y) = key.split(',').mapNotNull { it.toIntOrNull() }.takeIf { it.size == 2 } ?: return null
+        return x to y
+    }
+
+    private val BLIND_SPAWNS_CODEC: Codec<BlindSpawns> = RecordCodecBuilder.create { instance ->
+        instance.group(
+            Codec.INT.fieldOf("x").forGetter { it.x },
+            Codec.INT.fieldOf("y").forGetter { it.y },
+            Codec.STRING.fieldOf("crop").forGetter { it.cropId },
+            Codec.STRING.listOf().fieldOf("contributors").forGetter { blind -> blind.contributorSlots.map(::slotKeyOf) },
+            Codec.LONG.fieldOf("created_at").forGetter { it.createdAt },
+            Codec.BOOL.optionalFieldOf("before_tracking", false).forGetter { it.isBeforeTracking },
+            Codec.INT.optionalFieldOf("at_least", 0).forGetter { it.atLeast },
+            Codec.BOOL.optionalFieldOf("exact", false).forGetter { it.isExact }
+        ).apply(instance) { x, y, crop, contributors, createdAt, isBeforeTracking, atLeast, isExact ->
+            BlindSpawns(x, y, crop, contributors.mapNotNull(::slotOf).toSet(), createdAt, isBeforeTracking, atLeast, isExact)
         }
     }
 
@@ -177,8 +254,9 @@ object Codecs {
                 Codec.INT.optionalFieldOf("ticks_since_last_scan", 0).forGetter { it.ticksSinceLastScan },
                 Codec.DOUBLE.listOf().optionalFieldOf("chorus_loss_chance_by_tick").forGetter {
                     Optional.ofNullable(it.chorusLossChanceByTick?.toList())
-                }
-            ).apply(instance) { lastUpdate, assignedLayout, planTurns, noRotateAssignedLayout, ticksSinceLastScan, chorusLossChances ->
+                },
+                BLIND_SPAWNS_CODEC.listOf().optionalFieldOf("blind_spawns", emptyList()).forGetter { it.blindSpawns }
+            ).apply(instance) { lastUpdate, assignedLayout, planTurns, noRotateAssignedLayout, ticksSinceLastScan, chorusLossChances, blindSpawns ->
                 GridState(
                     lastScanTime = lastUpdate.orElse(null)?.let { Instant.ofEpochMilli(it) },
                     planTurns = planTurns,
@@ -187,6 +265,7 @@ object Codecs {
                 ).also {
                     it.assignedLayoutId = assignedLayout.orElse(null)
                     it.chorusLossChanceByTick = chorusLossChances.orElse(null)?.toDoubleArray()
+                    it.blindSpawns += blindSpawns
                 }
             }
         }

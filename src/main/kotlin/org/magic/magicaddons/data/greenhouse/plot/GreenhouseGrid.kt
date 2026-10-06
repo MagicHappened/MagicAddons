@@ -309,21 +309,11 @@ class GreenhouseGrid(
 
         layout.plants.clear()
         layout.plants.addAll(merged.map { it.plant })
-        spawnedMutations.forEach { countSpawnForContributors(it) }
+        spawnedMutations.forEach { MutationCounting.countSpawn(layout, it) }
 
         return true
     }
 
-    private fun countSpawnForContributors(spawn: Plant) {
-        val crop = spawn.cropDef
-        val spawnX = spawn.slot.x
-        val spawnY = spawn.slot.y
-        val isStillOnSpawnSpot = !crop.teleportsWhileGrowing ||
-                (spawn.highestStage == 1 && PlotPrediction.missingNeighbourConditions(layout, crop, spawnX, spawnY, ignoredPlant = spawn).isEmpty())
-        if (!isStillOnSpawnSpot) return
-
-        PlotPrediction.plantsContributingTo(layout, crop, spawnX, spawnY, ignoredPlant = spawn).forEach { it.mutationsSpawned++ }
-    }
 
     private fun capStageToTicksSinceScan(plant: Plant) {
         val ticks = state.ticksSinceLastScan.coerceAtLeast(1)
@@ -368,6 +358,11 @@ class GreenhouseGrid(
         scannedPlant.placed = plantBefore.placed
         scannedPlant.mutationsSpawned = plantBefore.mutationsSpawned
         scannedPlant.mutationsSpawnedIsMinimum = plantBefore.mutationsSpawnedIsMinimum
+        scannedPlant.seenSpawnsHelped = plantBefore.seenSpawnsHelped
+        scannedPlant.isMutationCountTracked = plantBefore.isMutationCountTracked
+        scannedPlant.isCountedFromStart = plantBefore.isCountedFromStart
+        scannedPlant.hasUncertainCredit = plantBefore.hasUncertainCredit
+        scannedPlant.lastDiagnosisReading = plantBefore.lastDiagnosisReading
         scannedPlant.decayAttemptAt = plantBefore.decayAttemptAt
 
         val readerKeys = scannedPlant.cropDef.stages.flatMapTo(mutableSetOf()) { stage -> stage.readers.map { it.key } } -
@@ -804,6 +799,10 @@ class GreenhouseGrid(
         var glasscornsReset: Int = 0
 
         var chorusLossChanceByTick: DoubleArray? = null
+
+        val blindSpawns: MutableList<BlindSpawns> = mutableListOf()
+
+        var plantsToDiagnose: Set<Plant> = emptySet()
 
         var chorusRiskCalculation: ChorusCollision.Calculation? = null
 

@@ -9,6 +9,9 @@ import net.minecraft.world.item.Items
 import org.magic.magicaddons.Common
 import org.magic.magicaddons.commands.debug.CropCollector
 import org.magic.magicaddons.data.greenhouse.crops.*
+import org.magic.magicaddons.data.greenhouse.plot.DiagnosisReading
+import org.magic.magicaddons.data.greenhouse.plot.GREENHOUSE_SOIL_Y
+import org.magic.magicaddons.data.greenhouse.plot.MutationCounting
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhousePresets.baseSetting
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.SBLocation
@@ -20,6 +23,30 @@ import tech.thatgravyboat.skyblockapi.utils.extentions.getLore
 object PlantDiagnostics {
 
     private const val WATER_LABEL: String = "Water"
+
+    private var isCombinedMutationOutputOn: Boolean = false
+
+    fun toggleCombinedMutationOutput() {
+        isCombinedMutationOutputOn = !isCombinedMutationOutputOn
+        ChatUtils.sendWithPrefix("Combined mutation output ${if (isCombinedMutationOutputOn) "on" else "off"}.")
+    }
+
+    private fun sendCombinedMutationLine(toolCrop: CropDefinition?, listening: ScannedPlant?, hit: BlockPos?, saplingLore: List<Component>) {
+        val grid = GreenhouseData.getCurrentGrid()
+        val slot = listening?.plant?.slot
+            ?: hit?.let { grid?.getSlotAt(BlockPos(it.x, GREENHOUSE_SOIL_Y, it.z), false) }
+        val storedPlant = listening?.plant ?: slot?.let { grid?.elementCoveringSlot(it)?.plant }
+
+        val combinedRemaining = saplingLore.valueFor("Combined Mutates Remaining")
+        val remaining = combinedRemaining ?: saplingLore.valueFor("Mutates Remaining")
+        val position = slot?.let { "${it.x},${it.y}" } ?: "?"
+
+        ChatUtils.sendWithPrefix(
+            "${toolCrop?.name ?: "unknown"} : ${storedPlant?.cropDef?.name ?: "unknown"} $position, " +
+                    "contributed to: ${saplingLore.valueFor("Times Mutated") ?: "?"}, " +
+                    "remaining mutations ${remaining ?: "?"}, combined: ${combinedRemaining != null}"
+        )
+    }
 
     fun readDiagnosticTool(realItems: List<ItemStack>, listening: ScannedPlant?, hit: BlockPos?) {
         if (!baseSetting.value) return
@@ -76,6 +103,8 @@ object PlantDiagnostics {
             sendLoreOnHover("Could not read the status, hover to see details", beaconLore)
         }
 
+        if (isCombinedMutationOutputOn) sendCombinedMutationLine(def, listening, hit, saplingLore)
+
         val age = saplingLore.valueFor("Age")
         val timesMutated = saplingLore.valueFor("Times Mutated")?.toIntOrNull()
         val decayAttemptInMs = saplingLore.valueFor("Decay attempt in")?.parseDurationToMs()
@@ -121,9 +150,13 @@ object PlantDiagnostics {
             stageRaw?.let { element.plant.growthStage = PlantStage.Known(it) }
 
             val plant = element.plant
-            timesMutated?.let {
-                plant.mutationsSpawned = it
-                plant.mutationsSpawnedIsMinimum = false
+            timesMutated?.let { timesMutated ->
+                val combinedRemaining = saplingLore.valueFor("Combined Mutates Remaining")?.toIntOrNull()
+                GreenhouseData.getCurrentGrid()?.let { grid ->
+                    val reading = DiagnosisReading(timesMutated, combinedRemaining, System.currentTimeMillis())
+                    MutationCounting.noteDiagnosis(grid.layout, plant, reading, grid.state.blindSpawns)
+                    GreenhouseData.recountMutations(grid)
+                }
             }
             decayAttemptInMs?.let { plant.decayAttemptAt = System.currentTimeMillis() + it }
             if (plant.cropDef.isMutation) {

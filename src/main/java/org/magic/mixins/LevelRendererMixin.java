@@ -34,6 +34,7 @@ import org.magic.magicaddons.features.farming.greenhousePresets.render.LayoutRen
 import org.magic.magicaddons.features.farming.greenhousePresets.shrunkPlants.ShorterCaneCrops;
 import org.magic.magicaddons.features.misc.HighlightMarkers;
 import org.magic.magicaddons.features.farming.greenhousePresets.render.PlantHighlight;
+import org.magic.magicaddons.features.farming.greenhousePresets.render.DiagnosticHighlight;
 import org.magic.magicaddons.features.farming.greenhousePresets.render.WaterIndicator;
 import org.magic.magicaddons.util.EntityUtils;
 import org.magic.misc.EntityRenderModifier;
@@ -136,6 +137,12 @@ public abstract class LevelRendererMixin {
             );
 
             WaterIndicator.INSTANCE.submitDryPlants(
+                    poseStack,
+                    submitNodeCollector,
+                    levelRenderState.cameraRenderState.pos
+            );
+
+            DiagnosticHighlight.INSTANCE.submitPlantsToDiagnose(
                     poseStack,
                     submitNodeCollector,
                     levelRenderState.cameraRenderState.pos

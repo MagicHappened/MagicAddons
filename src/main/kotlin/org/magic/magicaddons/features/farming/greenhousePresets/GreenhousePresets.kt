@@ -42,6 +42,7 @@ object GreenhousePresets : Feature() {
     private const val HARVEST_ONLY_TARGETS_KEY = "OnlyPresetTargets"
     private const val PLANNER_COLORS_KEY = "PlannerColors"
     private const val WATER_INDICATOR_KEY = "WaterIndicator"
+    private const val DIAGNOSTIC_HIGHLIGHT_KEY = "DiagnosticHighlight"
     private const val WATER_ONLY_WITHOUT_PLANNER_KEY = "OnlyWithoutPlanner"
     private const val WATER_IGNORE_GROWN_KEY = "IgnoreWillFullyGrow"
     private const val FLAT_WATER_KEY = "AssumeFlatWaterLoss"
@@ -314,6 +315,19 @@ object GreenhousePresets : Feature() {
     )
 
     fun waterIndicatorOn(): Boolean = waterIndicatorSetting.isEnabled
+
+    private val diagnosticHighlightSetting = BooleanSetting(
+        key = DIAGNOSTIC_HIGHLIGHT_KEY,
+        displayName = "Diagnostic Highlight",
+        description = "Outlines every plant to use the Plant Diagnostics Tool on, to work out each plant's " +
+                "times mutated and whether it can decay.\n" +
+                "Off: only outlines while you pin the \"Diagnose N plants\" line in the greenhouse " +
+                "screen's Greenhouse shelf (click it to pin).\n\n" +
+                "Outlines show only while holding the tool.",
+        value = true
+    )
+
+    fun diagnosticHighlightAlways(): Boolean = diagnosticHighlightSetting.isEnabled
 
     fun waterIndicatorOnlyWithoutPlanner(): Boolean = waterOnlyWithoutPlannerSetting.value
 
@@ -598,7 +612,7 @@ object GreenhousePresets : Feature() {
                 key = PLANT_HIGHLIGHTS_KEY,
                 displayName = "Highlights",
                 description = "What is marked on the plants of the greenhouse you are in",
-                children = listOf(harvestHighlightSetting, waterIndicatorSetting)
+                children = listOf(harvestHighlightSetting, waterIndicatorSetting, diagnosticHighlightSetting)
             ),
             ParentSetting(
                 key = HARVESTABLE_KEY,

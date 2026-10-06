@@ -21,6 +21,7 @@ import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
 import org.magic.magicaddons.data.greenhouse.crops.CropRegistry
 import org.magic.magicaddons.data.greenhouse.crops.Footprint
 import org.magic.magicaddons.data.greenhouse.crops.Plant
+import org.magic.magicaddons.data.greenhouse.plot.DiagnosticPlanner
 import org.magic.magicaddons.data.greenhouse.plot.GREENHOUSE_SIZE
 import org.magic.magicaddons.data.greenhouse.plot.GreenhouseGrid
 import org.magic.magicaddons.data.greenhouse.plot.GreenhouseLayout
@@ -35,6 +36,7 @@ import org.magic.magicaddons.features.farming.greenhousePresets.PlannerNeeds
 import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseData
 import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseTickTime
 import org.magic.magicaddons.features.farming.greenhousePresets.lookups.BioanalysisAccessory
+import org.magic.magicaddons.features.farming.greenhousePresets.render.DiagnosticHighlight
 import org.magic.magicaddons.features.farming.greenhousePresets.render.PlantHighlight
 import org.magic.magicaddons.features.farming.greenhousePresets.warnings.PlantWarnings
 import org.magic.magicaddons.ui.HoverableContainer
@@ -505,18 +507,19 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
         val lines = tickTimeTooltip().split('\n').map { Component.literal(it).visualOrderText }
         pinnedTickTimeBox = graphics.drawTooltipLines(lines, TICK_TIME_LEFT, tickTimeBox.bottom + Common.UI.SPACING)
 
-        if (isOverTickTimeLine(mouseX, mouseY, UNIQUE_LINE)) {
+        if (isOverTickTimeLine(mouseX, mouseY, UNIQUE_CROPS_LABEL)) {
             drawMissingUniques(graphics, mouseX, mouseY)
         }
 
-        if (isOverTickTimeLine(mouseX, mouseY, ATTRIBUTE_LINE)) {
+        if (isOverTickTimeLine(mouseX, mouseY, SPEED_ATTRIBUTE_LABEL)) {
             graphics.drawTooltipAtCursor(SET_ATTRIBUTE_HINT, mouseX, mouseY)
         }
     }
 
     private var pinnedTickTimeBox: ScreenRect = ScreenRect(0, 0, 0, 0)
 
-    private fun isOverTickTimeLine(mouseX: Int, mouseY: Int, line: Int): Boolean {
+    private fun isOverTickTimeLine(mouseX: Int, mouseY: Int, label: String): Boolean {
+        val line = tickTimeTooltip().split('\n').indexOfFirst { it.startsWith(label) }.takeIf { it >= 0 } ?: return false
         val box = pinnedTickTimeBox
         val lineTop = box.y + ScreenUtil.TOOLTIP_PADDING + line * font.lineHeight
 
@@ -566,15 +569,18 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
             "§f%dh %dm %ds".format(seconds / 3600, seconds % 3600 / 60, seconds % 60)
         } ?: "§8?"
 
-        return listOf(
+        val uniqueCropsNeeded = GreenhouseTickTime.uniqueCropsNeeded()
+        val uniqueCropsLine = UNIQUE_CROPS_LABEL + coloredOutOf(
+            GreenhouseData.getCurrentUniques().size.coerceAtMost(uniqueCropsNeeded),
+            uniqueCropsNeeded
+        )
+
+        return listOfNotNull(
             "§7Your tick time: $tickTime",
-            "§7Unique crops: " + coloredOutOf(
-                GreenhouseData.getCurrentUniques().size.coerceAtMost(GreenhouseTickTime.uniqueCropsNeeded()),
-                GreenhouseTickTime.uniqueCropsNeeded()
-            ),
+            uniqueCropsLine.takeIf { uniqueCropsNeeded > 0 },
             "§7Flora attribute: " + coloredOutOf(GreenhouseTickTime.floraAttribute(), MAX_ATTRIBUTE),
             "§7Greenhouse speed upgrade: " + coloredOutOf(misc.cropSpeedUpgradeValue, MAX_SPEED_UPGRADE),
-            "§7Greenhouse attribute: " + coloredOutOf(GreenhouseTickTime.speedAttribute(), MAX_ATTRIBUTE),
+            SPEED_ATTRIBUTE_LABEL + coloredOutOf(GreenhouseTickTime.speedAttribute(), MAX_ATTRIBUTE),
             "§7Crop growth: §f" + (misc.cropGrowthValue?.toString() ?: "§8?")
         ).joinToString("\n")
     }
@@ -1069,14 +1075,19 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
 
         val panel = if (currentDisplay == DisplayMode.Greenhouses) greenhousePanel else presetPanel
         unplannedLineBox = null
+        diagnoseLineBox = null
         waterLastsLineBox = null
+        displayedGridWidget?.diagnoseCorners = emptySet()
         if (panel.hasShownButtons()) {
             val title = if (currentDisplay == DisplayMode.Greenhouses) SHELF_GREENHOUSE else SHELF_PRESET
             val lineTop = actionShelfY + shelfTitleHeight() + panel.contentHeight
             val hasPlan = displayedGridWidget?.targetPlan?.invoke() != null
-            val bottom = lineTop + if (hasPlan) UNPLANNED_LINE_HEIGHT else 0
+            val diagnoseLineTop = lineTop + if (hasPlan) UNPLANNED_LINE_HEIGHT else 0
+            val diagnosedGrid = gridBehindPrediction()?.takeIf { currentDisplay == DisplayMode.Greenhouses }
+            val bottom = diagnoseLineTop + if (diagnosedGrid != null) UNPLANNED_LINE_HEIGHT else 0
             graphics.drawShelf(shelfLeft, actionShelfY, shelfLeft + shelfWidth, bottom, title)
             if (hasPlan) renderUnplannedMutationsLine(graphics, lineTop, mouseX, mouseY)
+            diagnosedGrid?.let { renderDiagnoseLine(graphics, it, diagnoseLineTop, mouseX, mouseY) }
         }
 
         val rightShelfLeft = if (currentDisplay == DisplayMode.Greenhouses) {
@@ -1164,7 +1175,7 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
 
         val hovered = hoveredElement as? PlantWidget ?: return
 
-        (hovered.cornerMarkTooltipAt(mouseX, mouseY)
+        (hovered.cornerMarkTooltipAt(mouseX, mouseY) ?: hovered.mutationCountTooltipAt(mouseX, mouseY)
             ?: hovered.hintTooltipAt(mouseX, mouseY)
             ?: hovered.chargeTooltipAt(mouseX, mouseY))?.let {
             graphics.drawTooltipAtCursor(it, mouseX, mouseY)
@@ -1196,6 +1207,36 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
         if (hovered || unplannedMutationsPinned) graphics.fill(lineX, lineTop, lineX + lineWidth, lineTop + UNPLANNED_LINE_HEIGHT, Common.UI.HOVER_WASH)
         graphics.modText(font, Component.literal(text), lineX, lineTop + (UNPLANNED_LINE_HEIGHT - font.lineHeight) / 2 + 1, color)
         unplannedLineBox = ScreenRect(lineX, lineTop, lineWidth, UNPLANNED_LINE_HEIGHT)
+    }
+
+    private var diagnoseLineBox: ScreenRect? = null
+
+    private fun renderDiagnoseLine(graphics: GuiGraphicsExtractor, grid: GreenhouseGrid, lineTop: Int, mouseX: Int, mouseY: Int) {
+        val plantsToDiagnose = grid.state.plantsToDiagnose
+        val count = plantsToDiagnose.size
+        val lineX = shelfLeft + ActionPanel.PADDING
+        val lineWidth = shelfWidth - ActionPanel.PADDING * 2
+
+        val (text, color) = when (count) {
+            0 -> DIAGNOSE_NONE to Common.UI.TEXT_DIM_COLOR
+            1 -> "Diagnose 1 plant to know its decay" to DiagnosticHighlight.COLOR
+            else -> "Diagnose $count plants to know their decay" to DiagnosticHighlight.COLOR
+        }
+        val isMarking = count > 0 && (DiagnosticPlanner.isLinePinned || inRect(mouseX, mouseY, lineX, lineTop, lineWidth, UNPLANNED_LINE_HEIGHT))
+        if (isMarking) {
+            displayedGridWidget?.diagnoseCorners = plantsToDiagnose.map { it.slot.x to it.slot.y }.toSet()
+            graphics.fill(lineX, lineTop, lineX + lineWidth, lineTop + UNPLANNED_LINE_HEIGHT, Common.UI.HOVER_WASH)
+        }
+        graphics.modText(font, Component.literal(text), lineX, lineTop + (UNPLANNED_LINE_HEIGHT - font.lineHeight) / 2 + 1, color)
+        diagnoseLineBox = ScreenRect(lineX, lineTop, lineWidth, UNPLANNED_LINE_HEIGHT)
+    }
+
+    private fun toggleDiagnosePinOnClick(event: MouseButtonEvent): Boolean {
+        val line = diagnoseLineBox ?: return false
+        if (event.button() != 0 || !inRect(event.x, event.y, line.x, line.y, line.width, line.height)) return false
+
+        DiagnosticPlanner.isLinePinned = !DiagnosticPlanner.isLinePinned
+        return true
     }
 
     private fun toggleUnplannedPinOnClick(event: MouseButtonEvent): Boolean {
@@ -1531,12 +1572,13 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
             return true
         }
 
-        if (tickTimePinned && isOverTickTimeLine(layoutEvent.x.toInt(), layoutEvent.y.toInt(), ATTRIBUTE_LINE)) {
+        if (tickTimePinned && isOverTickTimeLine(layoutEvent.x.toInt(), layoutEvent.y.toInt(), SPEED_ATTRIBUTE_LABEL)) {
             ScreenUtil.openChatThenReturn("${MainInternal.COMMAND} ${SetTimestalkAttribute.NAME} ", this)
             return true
         }
 
         if (toggleUnplannedPinOnClick(layoutEvent)) return true
+        if (toggleDiagnosePinOnClick(layoutEvent)) return true
         if (selectContentsTabOnClick(layoutEvent)) return true
         if (contentsTab == ContentsTab.Report && awayTicksSlider.mouseClicked(layoutEvent.x, layoutEvent.y)) return true
 
@@ -2186,8 +2228,8 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
         private const val CONTENTS_ICON_SIZE: Int = 12
         private const val CONTENTS_ROW_HEIGHT: Int = CONTENTS_ICON_SIZE + 2
         private const val CONTENTS_CHECKBOX_SIZE: Int = 9
-        private const val UNIQUE_LINE: Int = 1
-        private const val ATTRIBUTE_LINE: Int = 4
+        private const val UNIQUE_CROPS_LABEL: String = "§7Unique crops: "
+        private const val SPEED_ATTRIBUTE_LABEL: String = "§7Greenhouse attribute: "
         private const val OFF_SCREEN: Double = -1.0
 
         private const val MAX_PREDICT_TICKS: Int = 10
@@ -2220,6 +2262,8 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
         private val CLOCK_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("h:mma", Locale.ENGLISH)
         private val DAY_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("EEE", Locale.ENGLISH)
         private const val UNPLANNED_NONE: String = "Nothing can grow unplanned"
+
+        private const val DIAGNOSE_NONE: String = "Every plant's decay is known"
         private const val WATER_LASTS_TOOLTIP: String =
             "How many ticks one full watering lasts before the first plant runs out. " +
                     "A plant out of water can skip growth ticks, and halts at -100% until it is watered."

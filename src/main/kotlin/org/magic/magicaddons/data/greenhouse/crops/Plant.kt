@@ -4,6 +4,7 @@ import net.minecraft.core.BlockPos
 import net.minecraft.world.entity.Entity
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.state.BlockState
+import org.magic.magicaddons.data.greenhouse.plot.DiagnosisReading
 import org.magic.magicaddons.data.greenhouse.plot.LayoutSlot
 import org.magic.magicaddons.data.greenhouse.plot.PlotPrediction
 import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseTickTime
@@ -81,7 +82,17 @@ data class Plant(
 
     var mutationsSpawned: Int = 0
 
-    var mutationsSpawnedIsMinimum: Boolean = false
+    var seenSpawnsHelped: Int = 0
+
+    var isMutationCountTracked: Boolean = false
+
+    var isCountedFromStart: Boolean = false
+
+    var hasUncertainCredit: Boolean = false
+
+    var lastDiagnosisReading: DiagnosisReading? = null
+
+    var mutationsSpawnedIsMinimum: Boolean = true
 
     var decayAttemptAt: Long? = null
 
@@ -116,6 +127,11 @@ data class Plant(
             it.chargeKnown = chargeKnown
             it.chanceToReachStage = chanceToReachStage
             it.mutationsSpawned = mutationsSpawned
+            it.seenSpawnsHelped = seenSpawnsHelped
+            it.isMutationCountTracked = isMutationCountTracked
+            it.isCountedFromStart = isCountedFromStart
+            it.hasUncertainCredit = hasUncertainCredit
+            it.lastDiagnosisReading = lastDiagnosisReading
             it.mutationsSpawnedIsMinimum = mutationsSpawnedIsMinimum
             it.decayAttemptAt = decayAttemptAt
         }

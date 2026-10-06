@@ -5,6 +5,7 @@ import net.minecraft.client.Minecraft
 import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.world.level.block.Blocks
 import org.magic.magicaddons.data.greenhouse.crops.CropTableExport
+import org.magic.magicaddons.data.greenhouse.crops.DecayOutlook
 import org.magic.magicaddons.data.greenhouse.crops.PlantStage
 import org.magic.magicaddons.data.greenhouse.plot.GREENHOUSE_SIZE
 import org.magic.magicaddons.data.greenhouse.plot.GreenhouseGrid
@@ -137,6 +138,9 @@ data class ServerGreenhouseData(
                 ?: grid.state.chorusRiskCalculation?.takeIf { grid.state.isChorusRiskCalculating }?.immediateLossChanceByTick())?.toList()
         )
 
+        private fun isDecayReachable(outlook: DecayOutlook): Boolean =
+            outlook.kind != DecayOutlook.Kind.AfterSpawns || outlook.mutationsLeft <= outlook.spotsThatCanSpawn
+
         private fun plantOf(layout: PlotLayout, plant: GreenhousePlant): Plant {
             val stage = plant.growthStage
             val decayOutlook = layout.decayOutlookOf(plant)
@@ -152,7 +156,7 @@ data class ServerGreenhouseData(
                 },
                 stageMax = (stage as? PlantStage.Estimated)?.range?.last,
                 water = plant.waterLevel,
-                decayInMinutes = plant.decayRemainingMs?.takeIf { decayOutlook.canDecay }?.let { it / MS_PER_MINUTE },
+                decayInMinutes = plant.decayRemainingMs?.takeIf { decayOutlook.canDecay && isDecayReachable(decayOutlook) }?.let { it / MS_PER_MINUTE },
                 isDecayUncertain = (!decayOutlook.isCertain).takeIf { it },
                 placed = plant.placed.takeIf { it },
                 charge = plant.charge.takeIf { it != 0 },

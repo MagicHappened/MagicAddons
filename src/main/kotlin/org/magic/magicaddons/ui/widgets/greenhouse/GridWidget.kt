@@ -18,6 +18,7 @@ import org.magic.magicaddons.data.greenhouse.plot.PlotLayout
 import org.magic.magicaddons.data.greenhouse.plot.PlotPrediction
 import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseData
 import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseTickTime
+import org.magic.magicaddons.features.farming.greenhousePresets.render.DiagnosticHighlight
 import org.magic.magicaddons.features.farming.greenhousePresets.warnings.ChorusCollision
 import org.magic.magicaddons.features.farming.greenhousePresets.warnings.PlantWarnings
 import org.magic.magicaddons.ui.HoverableContainer
@@ -57,6 +58,8 @@ class GridWidget(
     var isShowingUnplannedMutations: Boolean = false
 
     var chorusMarks: ChorusMarks? = null
+
+    var diagnoseCorners: Set<Pair<Int, Int>> = emptySet()
 
     class ChorusMarks(val breaks: List<ChorusCollision.Break>, val ripeCells: List<Pair<Int, Int>>, val isNextTick: Boolean)
 
@@ -305,6 +308,14 @@ class GridWidget(
                 .forEach { it.renderLabel(graphics, label) }
         }
         chorusMarks?.let { renderChorusMarks(graphics, it) }
+        renderDiagnoseMarks(graphics)
+    }
+
+    private fun renderDiagnoseMarks(graphics: GuiGraphicsExtractor) {
+        layout.plants.filter { (it.slot.x to it.slot.y) in diagnoseCorners }.forEach { plant ->
+            val rect = footprintRect(plant.slot.x, plant.slot.y, plant.cropDef.footprint)
+            graphics.drawBorder(rect.x, rect.y, rect.right, rect.bottom, CHORUS_MARK_BORDER_SIZE, DiagnosticHighlight.COLOR)
+        }
     }
 
     private fun renderChorusMarks(graphics: GuiGraphicsExtractor, marks: ChorusMarks) {

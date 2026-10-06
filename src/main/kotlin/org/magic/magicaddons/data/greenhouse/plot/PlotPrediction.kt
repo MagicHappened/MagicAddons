@@ -222,6 +222,20 @@ object PlotPrediction {
             .filterTo(mutableSetOf()) { recipe.isEmpty() || it.cropDef.name in recipe }
     }
 
+    class SpawnCredit(val certain: Set<Plant>, val uncertain: Set<Plant>)
+
+    fun spawnCreditOf(layout: PlotLayout, crop: CropDefinition, x: Int, y: Int, ignoredPlant: Plant? = null): SpawnCredit {
+        val recipe = crop.spawnRule?.requiredNeighbourCells.orEmpty()
+        val contributingCells = cellsSurrounding(layout, crop, x, y).mapNotNull { (cellX, cellY) -> contributingPlantAtPos(layout, cellX, cellY, ignoredPlant) }
+        if (recipe.isEmpty()) return SpawnCredit(contributingCells.toSet(), emptySet())
+
+        val (exactlyNeeded, moreThanNeeded) = contributingCells
+            .filter { it.cropDef.name in recipe }
+            .groupBy { it.cropDef.name }
+            .entries.partition { (cropName, cells) -> cells.size <= recipe.getValue(cropName) }
+        return SpawnCredit(exactlyNeeded.flatMap { it.value }.toSet(), moreThanNeeded.flatMap { it.value }.toSet())
+    }
+
     class HelpedSpawnSpots(val count: Int, val hasTeleportingMutation: Boolean)
 
     fun spawnSpotsHelpedByPlant(layout: PlotLayout): Map<Plant, HelpedSpawnSpots> {
@@ -254,7 +268,7 @@ object PlotPrediction {
         val kind = when {
             mutationsLeft == 0 -> DecayOutlook.Kind.OnTime
             plant.mutationsSpawnedIsMinimum || helpedSpots?.hasTeleportingMutation == true -> DecayOutlook.Kind.AfterUncountedSpawns
-            mutationsLeft <= spotCount -> DecayOutlook.Kind.AfterSpawns
+            spotCount > 0 -> DecayOutlook.Kind.AfterSpawns
             else -> DecayOutlook.Kind.Never
         }
         return DecayOutlook(kind, mutationsLeft, spotCount)
