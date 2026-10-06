@@ -21,6 +21,7 @@ data class ServerGreenhouseData(
     val profile: String,
     val profileId: String?,
     val isStillOnline: Boolean? = null,
+    val visitedGreenhouse: Boolean? = null,
     val nextTickInMs: Long,
     val tickMs: Long,
     val gardenDayTime: Long?,

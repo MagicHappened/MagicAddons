@@ -1950,6 +1950,7 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
         val breakOrder = calculation.breakOrder(maxOf(predictSlider.value, 1), tolerance)
         if (breakOrder.isCompletedExceptionally) return null
         val order = breakOrder.getNow(null) ?: return ChorusPlanView(CHORUS_PLAN_WORKING, null, false)
+        if (order.breaks.isEmpty()) return null
         val line = "Break ${order.breaks.size} chorus to reach ${PlantWarnings.chorusRiskText(order.finalChance)}"
 
         return ChorusPlanView(line, GridWidget.ChorusMarks(order.breaks, emptyList(), isNextTick), true)

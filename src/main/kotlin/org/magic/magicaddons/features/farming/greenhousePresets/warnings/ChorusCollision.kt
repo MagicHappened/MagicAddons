@@ -263,8 +263,6 @@ object ChorusCollision {
                 }
             }
         }
-        if (!hasChorus) return null
-
         val spawnRecipe = chorus.spawnRule?.requiredNeighbourCells.orEmpty()
         fun namesAliveAt(tick: Int) = Array(TILE_COUNT) { tile -> cropNames[tile].takeIf { decayTicks[tile] > tick } }
         val spawnTiles = (0 until TILE_COUNT).filter { tile -> ringHolds(cropNames, tile, spawnRecipe) }.toIntArray()
@@ -272,6 +270,7 @@ object ChorusCollision {
             val ringBreaksAt = (0 until RISK_HORIZON_TICKS).firstOrNull { tick -> !ringHolds(namesAliveAt(tick), spawnTiles[index], spawnRecipe) }
             (ringBreaksAt ?: RISK_HORIZON_TICKS) - 1
         }
+        if (!hasChorus && spawnTiles.none { stageOrKind[it] == EMPTY }) return null
         val decaying = (0 until TILE_COUNT).filter { stageOrKind[it] == PLANT && decayTicks[it] < RISK_HORIZON_TICKS }
         val decays = Decays(decaying.toIntArray(), decaying.map { decayTicks[it] }.toIntArray())
         val spawnChance = (chorus.spawnRule?.weight ?: 0) * weightMultiplier / 100.0
@@ -337,7 +336,7 @@ object ChorusCollision {
                         else -> occupied[occupiedCount++] = tile
                     }
                 }
-                if (moverCount == 0) return -1
+                if (moverCount == 0 && spawnTileLastTicks.all { it < tick }) return -1
 
                 shuffle(free, freeCount, random)
                 for (index in 0 until moverCount) {

@@ -5,11 +5,13 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents
 import org.magic.magicaddons.Common
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhousePresets
+import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseData
 import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseProfiles
 import tech.thatgravyboat.skyblockapi.api.location.LocationAPI
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 import java.time.Duration
+import java.time.Instant
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
 
@@ -31,6 +33,9 @@ object GreenhouseDataSync {
     @Volatile
     private var lastUploadStartedAtMs: Long = 0
 
+    @Volatile
+    private var onlineSince: Instant? = null
+
     sealed interface SyncOutcome {
         data object Sent : SyncOutcome
         data object NotLinked : SyncOutcome
@@ -48,6 +53,7 @@ object GreenhouseDataSync {
 
     fun reportOnlineOnMainNetwork() {
         if (!LocationAPI.onHypixel || GreenhouseProfiles.holdsAlphaData || !ServerSession.isConnected) return
+        if (onlineSince == null) onlineSince = Instant.now()
 
         ServerSession.sendAuthorized("/online") { POST(HttpRequest.BodyPublishers.noBody()) }.thenAccept { response ->
             if (response?.statusCode() != ServerSession.HTTP_OK) Common.LOGGER.warn("could not tell the magic-addons server you are online: {}", response?.statusCode())
@@ -71,7 +77,10 @@ object GreenhouseDataSync {
         if (!GreenhousePresets.discordIntegrationEnabled() || !ServerSession.isConnected) {
             return skippedUpload(reason, SyncOutcome.FeatureOff)
         }
-        val data = ServerGreenhouseData.ofActiveProfile()?.copy(isStillOnline = isStillOnline.takeIf { it })
+        val data = ServerGreenhouseData.ofActiveProfile()?.copy(
+            isStillOnline = isStillOnline.takeIf { it },
+            visitedGreenhouse = if (isStillOnline) null else visitedGreenhouseThisSession()
+        )
             ?: return skippedUpload(reason, SyncOutcome.NoGreenhouseData(ServerGreenhouseData.missingDataOfActiveProfile()))
         val body = gson.toJson(data)
 
@@ -86,6 +95,13 @@ object GreenhouseDataSync {
         pendingUpload = upload
 
         return upload
+    }
+
+    private fun visitedGreenhouseThisSession(): Boolean? {
+        val since = onlineSince ?: return null
+        onlineSince = null
+
+        return GreenhouseData.greenhouseGrids.any { grid -> grid.state.lastScanTime?.isAfter(since) == true }
     }
 
     private fun skippedUpload(reason: String, outcome: SyncOutcome): CompletableFuture<SyncOutcome> {
