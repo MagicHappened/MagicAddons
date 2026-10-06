@@ -20,6 +20,7 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Zombud {
     val definition = CropDefinition(
         name = "Zombud",
+        minMutationsBeforeDecay = 6,
         tier = CropTier.Epic,
         dropMultiplier = 4.5,
         effects = setOf(

@@ -8,6 +8,7 @@ import kotlin.random.Random
 import org.magic.magicaddons.data.greenhouse.crops.definitions.misc.DeadPlant
 import org.magic.magicaddons.data.greenhouse.crops.definitions.mutations.epic.ChorusFruit
 import org.magic.magicaddons.data.greenhouse.plot.GREENHOUSE_SIZE
+import org.magic.magicaddons.data.greenhouse.plot.GreenhouseGrid
 import org.magic.magicaddons.data.greenhouse.plot.PlotLayout
 
 object ChorusCollision {
@@ -241,6 +242,7 @@ object ChorusCollision {
         val stageOrKind = IntArray(TILE_COUNT) { EMPTY }
         val cropNames = arrayOfNulls<String>(TILE_COUNT)
         val decayTicks = IntArray(TILE_COUNT) { NEVER }
+        val ringLeavingTicks = IntArray(TILE_COUNT) { NEVER }
         var hasChorus = false
 
         layout.plants.forEach { plant ->
@@ -248,13 +250,18 @@ object ChorusCollision {
             if (isChorus) hasChorus = true
             val stage = plant.lowestStage ?: 1
             val isDead = plant.cropDef == DeadPlant.definition
-            val decayTick = if (isChorus || isDead) NEVER else ticksUntil(plant.decayRemainingMs, nextTickInMs, tickMs)
+            val decayTick = if (isChorus || !layout.decayOutlookOf(plant).canDecay) NEVER else ticksUntil(plant.decayRemainingMs, nextTickInMs, tickMs)
+            val haltTick = when {
+                plant.isHalted -> 0
+                else -> plant.ticksUntilWaterHalt(GreenhouseGrid.waterEffectAt(layout, plant.slot))?.let { (it - 1).coerceAtLeast(0) } ?: NEVER
+            }
 
             plant.coveredCells.forEach { (x, y) ->
                 if (x !in 0 until GREENHOUSE_SIZE || y !in 0 until GREENHOUSE_SIZE) return@forEach
                 val tile = y * GREENHOUSE_SIZE + x
                 cropNames[tile] = plant.cropDef.name
                 decayTicks[tile] = decayTick
+                ringLeavingTicks[tile] = minOf(decayTick, haltTick)
                 stageOrKind[tile] = when {
                     isDead -> DEAD
                     !isChorus -> PLANT
@@ -264,14 +271,14 @@ object ChorusCollision {
             }
         }
         val spawnRecipe = chorus.spawnRule?.requiredNeighbourCells.orEmpty()
-        fun namesAliveAt(tick: Int) = Array(TILE_COUNT) { tile -> cropNames[tile].takeIf { decayTicks[tile] > tick } }
+        fun namesInRingsAt(tick: Int) = Array(TILE_COUNT) { tile -> cropNames[tile].takeIf { ringLeavingTicks[tile] > tick } }
         val spawnTiles = (0 until TILE_COUNT).filter { tile -> ringHolds(cropNames, tile, spawnRecipe) }.toIntArray()
         val spawnTileLastTicks = IntArray(spawnTiles.size) { index ->
-            val ringBreaksAt = (0 until RISK_HORIZON_TICKS).firstOrNull { tick -> !ringHolds(namesAliveAt(tick), spawnTiles[index], spawnRecipe) }
+            val ringBreaksAt = (0 until RISK_HORIZON_TICKS).firstOrNull { tick -> !ringHolds(namesInRingsAt(tick), spawnTiles[index], spawnRecipe) }
             (ringBreaksAt ?: RISK_HORIZON_TICKS) - 1
         }
         if (!hasChorus && spawnTiles.none { stageOrKind[it] == EMPTY }) return null
-        val decaying = (0 until TILE_COUNT).filter { stageOrKind[it] == PLANT && decayTicks[it] < RISK_HORIZON_TICKS }
+        val decaying = (0 until TILE_COUNT).filter { stageOrKind[it] in DEAD..PLANT && decayTicks[it] < RISK_HORIZON_TICKS }
         val decays = Decays(decaying.toIntArray(), decaying.map { decayTicks[it] }.toIntArray())
         val spawnChance = (chorus.spawnRule?.weight ?: 0) * weightMultiplier / 100.0
 
@@ -322,7 +329,11 @@ object ChorusCollision {
             for (tick in 0 until horizon) {
                 for (index in decays.tiles.indices) {
                     val tile = decays.tiles[index]
-                    if (decays.ticks[index] == tick && tiles[tile] == PLANT) tiles[tile] = DEAD
+                    if (decays.ticks[index] != tick) continue
+                    when (tiles[tile]) {
+                        PLANT -> tiles[tile] = DEAD
+                        DEAD -> tiles[tile] = EMPTY
+                    }
                 }
 
                 var freeCount = 0

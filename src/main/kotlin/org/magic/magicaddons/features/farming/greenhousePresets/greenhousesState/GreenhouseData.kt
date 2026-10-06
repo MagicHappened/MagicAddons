@@ -354,6 +354,7 @@ object GreenhouseData : GridCallbacks {
         claimPlantedCrop(grid)
         if (isPlotSettled) {
             GreenhouseSpawnLog.noteScan(grid)
+            updateDecayTracking(grid)
             refreshChorusRisk(grid)
         }
 
@@ -454,9 +455,32 @@ object GreenhouseData : GridCallbacks {
         grid.readSoilBlocks()
         if (!grid.rescanPlants(region, shouldKeepUnmatchedPlants = readiness != PlotReadiness.Settled)) return
         claimPlantedCrop(grid)
-        if (readiness == PlotReadiness.Settled) refreshChorusRisk(grid)
+        if (readiness == PlotReadiness.Settled) {
+            updateDecayTracking(grid)
+            refreshChorusRisk(grid)
+        }
         LayoutRenderState.refresh()
         ShorterCaneCrops.updateHiddenPlantParts()
+    }
+
+    private const val UNWATCHED_TICKS_LOSING_TELEPORTER_SPAWNS: Int = 2
+
+    private fun updateDecayTracking(grid: GreenhouseGrid) {
+        val layout = grid.layout
+        if (grid.state.ticksSinceLastScan >= UNWATCHED_TICKS_LOSING_TELEPORTER_SPAWNS) {
+            layout.plants.filter { layout.helpsTeleportingMutationSpawn(it) }.forEach { it.mutationsSpawnedIsMinimum = true }
+        }
+
+        val now = System.currentTimeMillis()
+        val arrivedAt = gardenArrivedAt?.toEpochMilli() ?: now
+        layout.plants.forEach { plant ->
+            if (plant.cropDef.minMutationsBeforeDecay == null) return@forEach
+            val timerEndedAt = plant.decayTimerEndsAt?.takeIf { it <= now } ?: return@forEach
+
+            var nextAttemptAt = maxOf(timerEndedAt, arrivedAt) + DECAY_EXTENSION_MS
+            while (nextAttemptAt <= now) nextAttemptAt += DECAY_EXTENSION_MS
+            plant.decayAttemptAt = nextAttemptAt
+        }
     }
 
     private fun refreshChorusRisk(grid: GreenhouseGrid) {
@@ -522,7 +546,8 @@ object GreenhouseData : GridCallbacks {
             getCurrentUniques().size,
             cropGrowth,
             speedUpgrade,
-            GreenhouseTickTime.speedAttribute() ?: 0
+            GreenhouseTickTime.speedAttribute() ?: 0,
+            GreenhouseTickTime.floraAttribute() ?: 0
         )
 
         var current = nextTick
@@ -1083,10 +1108,8 @@ object GreenhouseData : GridCallbacks {
             plant.waterExact = false
         } else if (plant.cropDef.needsWater) {
             val waterEffect = GreenhouseGrid.waterEffectAt(layout, plant.slot)
-            val predictedWater = PlotPrediction.waterLevelAfter(0.0, grown, waterEffect)
-            // a spawn still standing is alive
-            plant.waterLevel = PlotPrediction.lowestWaterLevelStillAlive(predictedWater, waterEffect)
-            plant.waterExact = predictedWater > PlotPrediction.WATER_DEATH_LEVEL
+            plant.waterLevel = PlotPrediction.waterLevelAfter(0.0, grown, waterEffect)
+            plant.waterExact = !plant.isHaltedByWater
         }
 
         plant.waterBestCase = null
@@ -1145,7 +1168,7 @@ object GreenhouseData : GridCallbacks {
 
         greenhouseGrids.forEach { grid ->
             grid.layout.plants.forEach { instance ->
-                if (!instance.cropDef.isBaseCrop) return@forEach
+                if (!instance.cropDef.isBaseCrop || instance.isHalted) return@forEach
                 foundUniques.add(UniqueCropKey.from(instance.cropDef))
             }
         }

@@ -19,6 +19,7 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Blastberry {
     val definition = CropDefinition(
         name = "Blastberry",
+        minMutationsBeforeDecay = 8,
         tier = CropTier.Rare,
         dropMultiplier = 2.0,
         effects = setOf(

@@ -18,6 +18,7 @@ object Witherbloom {
 
     val definition = CropDefinition(
         name = "Witherbloom",
+        minMutationsBeforeDecay = 10,
         tier = CropTier.Common,
         dropMultiplier = 0.23,
         effects = setOf(

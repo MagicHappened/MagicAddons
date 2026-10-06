@@ -98,6 +98,24 @@ data class PlotLayout(
         return effectsCache.getOrPut(slot.x * SLOT_KEY_STRIDE + slot.y) { computeEffectsAt(slot) }
     }
 
+    fun decayOutlookOf(plant: Plant): DecayOutlook = PlotPrediction.decayOutlookOf(plant, spawnSpotsHelpedBy(plant))
+
+    fun helpsTeleportingMutationSpawn(plant: Plant): Boolean = spawnSpotsHelpedBy(plant)?.hasTeleportingMutation == true
+
+    private fun spawnSpotsHelpedBy(plant: Plant): PlotPrediction.HelpedSpawnSpots? {
+        val hashNow = plantsHash()
+        val helpedSpotsBySlot = helpedSpawnSpotsBySlot?.takeIf { hashNow == helpedSpawnSpotsHash }
+            ?: PlotPrediction.spawnSpotsHelpedByPlant(this).mapKeys { slotKeyOf(it.key) }.also {
+                helpedSpawnSpotsBySlot = it
+                helpedSpawnSpotsHash = hashNow
+            }
+        return helpedSpotsBySlot[slotKeyOf(plant)]
+    }
+
+    private var helpedSpawnSpotsBySlot: Map<Int, PlotPrediction.HelpedSpawnSpots>? = null
+
+    private var helpedSpawnSpotsHash: Int = 0
+
     private val effectsCache = HashMap<Int, Set<CropEffect>>()
 
     private var appliedEffectsBySlot: Map<Int, Set<CropEffect>>? = null
@@ -106,7 +124,11 @@ data class PlotLayout(
 
     private fun plantsHash(): Int {
         var hash = plants.size
-        plants.forEach { hash = hash * 31 + (it.slot.x * SLOT_KEY_STRIDE + it.slot.y) * 31 + it.cropDef.name.hashCode() }
+        plants.forEach {
+            hash = hash * 31 + (it.slot.x * SLOT_KEY_STRIDE + it.slot.y) * 31 + it.cropDef.name.hashCode()
+            if (it.isHalted) hash = hash * 31 + 1
+            if (it.isFullyGrown) hash = hash * 31 + 2
+        }
         return hash
     }
 
@@ -114,7 +136,7 @@ data class PlotLayout(
         val appliedBySlot = appliedEffectsBySlot ?: computeAppliedEffects().also { appliedEffectsBySlot = it }
 
         return plants
-            .filter { !it.covers(slot) && it.isOrthogonallyBeside(slot) }
+            .filter { !it.covers(slot) && it.isOrthogonallyBeside(slot) && !it.isHalted }
             .flatMapTo(mutableSetOf()) { appliedBySlot.getValue(slotKeyOf(it)) }
     }
 
@@ -126,7 +148,7 @@ data class PlotLayout(
         plants
             .sortedWith(compareByDescending<Plant> { it.slot.x }.thenBy { it.slot.y })
             .forEach { plant ->
-                val received = plantsOrthogonallyBeside(plant).flatMapTo(mutableSetOf()) { appliedBySlot.getValue(slotKeyOf(it)) }
+                val received = plantsOrthogonallyBeside(plant).filterNot { it.isHalted }.flatMapTo(mutableSetOf()) { appliedBySlot.getValue(slotKeyOf(it)) }
 
                 if (CropEffect.EffectSpread in received) {
                     appliedBySlot[slotKeyOf(plant)] = plant.cropDef.effects + (received - CropEffect.EffectSpread)

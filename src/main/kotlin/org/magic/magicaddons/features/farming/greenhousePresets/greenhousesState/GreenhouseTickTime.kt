@@ -5,13 +5,29 @@ import tech.thatgravyboat.skyblockapi.api.profile.hunting.AttributeAPI
 
 object GreenhouseTickTime {
 
+    const val MAX_UNIQUE_CROPS: Int = 10
+
+    private const val BONUS_PER_UNIQUE_CROP: Double = 0.025
+
+    private val FLORA_ATTRIBUTE_ID: String? = "attribute:l52"
+
+    val isFloraAttributeIdKnown: Boolean get() = FLORA_ATTRIBUTE_ID != null
+
+    fun shardLevelOf(attributeId: String): Int? =
+        AttributeAPI.attributeMap.entries.firstOrNull { it.key.id == attributeId }?.value?.level
+
     fun speedAttribute(): Int? =
         GreenhouseData.miscInfo.greenhouseSpeedAttribute
-            ?: AttributeAPI.attributeMap.entries
-                .firstOrNull { it.key.id == GreenhouseData.GREENHOUSE_SPEED_ATTRIBUTE_ID }
-                ?.value
-                ?.level
-                ?.takeIf { it > 0 }
+            ?: shardLevelOf(GreenhouseData.GREENHOUSE_SPEED_ATTRIBUTE_ID)?.takeIf { it > 0 }
+
+    fun floraShardLevel(): Int? = FLORA_ATTRIBUTE_ID?.let { shardLevelOf(it) }
+
+    fun floraAttribute(): Int? = FLORA_ATTRIBUTE_ID?.let { floraShardLevel() ?: 0 }
+
+    fun uniqueCropsNeeded(): Int = (MAX_UNIQUE_CROPS - (floraAttribute() ?: 0)).coerceAtLeast(0)
+
+    fun uniqueCropBonus(uniqueCrops: Int, floraAttribute: Int): Double =
+        BONUS_PER_UNIQUE_CROP * (uniqueCrops + floraAttribute).coerceAtMost(MAX_UNIQUE_CROPS)
 
     val tickMs: Long?
         get() {
@@ -22,7 +38,8 @@ object GreenhouseTickTime {
                 GreenhouseData.getCurrentUniques().size,
                 cropGrowth,
                 upgrade,
-                speedAttribute() ?: 0
+                speedAttribute() ?: 0,
+                floraAttribute() ?: 0
             )
         }
 
@@ -44,10 +61,11 @@ object GreenhouseTickTime {
         uniqueCrops: Int,
         cropGrowthStat: Int,
         greenhouseUpgrade: Int,
-        speedAttribute: Int = 0
+        speedAttribute: Int = 0,
+        floraAttribute: Int = 0
     ): Long {
 
-        val uniqueCropBonus = 0.025 * uniqueCrops
+        val uniqueCropBonus = uniqueCropBonus(uniqueCrops, floraAttribute)
         val cropGrowthBonus = 0.0025 * cropGrowthStat
         val attributeBonus = 0.001 * speedAttribute
 

@@ -16,6 +16,7 @@ import net.minecraft.world.item.Items
 import net.minecraft.world.level.block.Blocks
 import org.magic.magicaddons.Common
 import org.magic.magicaddons.data.greenhouse.crops.ChargeRule
+import org.magic.magicaddons.data.greenhouse.crops.DecayOutlook
 import org.magic.magicaddons.data.greenhouse.crops.Plant
 import org.magic.magicaddons.data.greenhouse.crops.PlantStage
 import org.magic.magicaddons.data.greenhouse.crops.definitions.misc.FireElement
@@ -81,13 +82,18 @@ class PlantWidget(val plant: Plant) : Renderable, GuiEventListener {
 
     private var hintTooltip: String? = null
 
-    private var deadMarkBox: ScreenRect? = null
+    private var cornerMarkBox: ScreenRect? = null
+
+    private var cornerMarkTooltip: String? = null
+
+    var decayOutlook: DecayOutlook? = null
 
     override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, deltaTick: Float) {
         hintMarkBox = null
         hintTooltip = null
         chargeMarkBox = null
-        deadMarkBox = null
+        cornerMarkBox = null
+        cornerMarkTooltip = null
 
         if (isPlanMuted && plant.slot.mark == LayoutSlot.Marking.Target && plant.growthStage == null) return
 
@@ -123,15 +129,10 @@ class PlantWidget(val plant: Plant) : Renderable, GuiEventListener {
         renderCropIcons(graphics)
         graphics.pose().popMatrix()
 
-        if (plant.consumesWater && (plant.waterLevel ?: 0.0) <= PlotPrediction.WATER_DEATH_LEVEL) {
-            val footprint = plant.cropDef.footprint
-            val deadMarkSize = (if (footprint.width > 1) width / footprint.width / 2 else width / 3).coerceAtLeast(8)
-            val markX = x + width - deadMarkSize
-            val markY = y
-
-            graphics.fill(markX, markY, markX + deadMarkSize, markY + deadMarkSize, DEAD_MARK_BACKGROUND)
-            graphics.drawItem(DEAD_MARK, markX, markY, deadMarkSize, deadMarkSize)
-            deadMarkBox = ScreenRect(markX, markY, deadMarkSize, deadMarkSize)
+        val decayDoubt = plant.predictedDecayDoubt
+        when {
+            decayDoubt != null -> renderCornerMark(graphics, MAY_HAVE_DECAYED_MARK, decayDoubtExplanation(decayDoubt))
+            plant.isHaltedByWater -> renderCornerMark(graphics, HALTED_MARK, HALTED_EXPLANATION)
         }
 
         if (missingSpawnConditions.isNotEmpty()) {
@@ -209,12 +210,12 @@ class PlantWidget(val plant: Plant) : Renderable, GuiEventListener {
             if (!plant.cropDef.needsWater || (!plant.consumesWater && drainingSoggybuds == 0)) return
 
             plant.waterLevel?.let {
-                renderWaterMeter(graphics, it.coerceAtLeast(PlotPrediction.WATER_DEATH_LEVEL.toDouble()))
+                renderWaterMeter(graphics, it.coerceAtLeast(PlotPrediction.WATER_HALT_LEVEL.toDouble()))
             }
             return
         }
 
-        val text = label.valueFor(plant) ?: return
+        val text = label.valueFor(plant, decayOutlook) ?: return
         val font = Minecraft.getInstance().font
         val textHeight = font.lineHeight * LABEL_TEXT_SCALE
 
@@ -315,7 +316,7 @@ class PlantWidget(val plant: Plant) : Renderable, GuiEventListener {
     private fun renderChargeMeter(graphics: GuiGraphicsExtractor, chargeRule: ChargeRule) {
         val meter = meterRect() ?: return
 
-        renderOverloadTime(graphics, chargeRule, meter.y)
+        renderFullChargeTime(graphics, chargeRule, meter.y)
 
         graphics.fillRounded(meter.x, meter.y, meter.right, meter.bottom, METER_RADIUS, Common.UI.WATER_TRACK_COLOR)
 
@@ -323,16 +324,16 @@ class PlantWidget(val plant: Plant) : Renderable, GuiEventListener {
         if (filled > 0) graphics.fillRounded(meter.x, meter.y, meter.x + filled, meter.bottom, METER_RADIUS, Common.UI.CHARGE_FULL_COLOR)
     }
 
-    private fun renderOverloadTime(graphics: GuiGraphicsExtractor, chargeRule: ChargeRule, meterTop: Int) {
+    private fun renderFullChargeTime(graphics: GuiGraphicsExtractor, chargeRule: ChargeRule, meterTop: Int) {
         if (plant.isFullyGrown) return
 
         val remainingMs = GreenhouseTickTime.remainingTickMs()
         val tickMs = GreenhouseTickTime.tickMs
         val stagesToGrow = (plant.cropDef.maxStage - (plant.lowestStage ?: 1)).coerceAtLeast(0)
-        val willOverload = plant.charge + chargeRule.perStage * stagesToGrow >= chargeRule.limit
+        val willReachFullCharge = plant.charge + chargeRule.perStage * stagesToGrow >= chargeRule.limit
 
-        val stagesCounted = if (willOverload) chargeRule.stagesUntilOverload(plant.charge) else stagesToGrow
-        val color = if (willOverload) Common.UI.DANGER_COLOR else Common.UI.SUCCESS_COLOR
+        val stagesCounted = if (willReachFullCharge) chargeRule.stagesUntilFullCharge(plant.charge) else stagesToGrow
+        val color = if (willReachFullCharge) Common.UI.DANGER_COLOR else Common.UI.SUCCESS_COLOR
 
         val text = if (remainingMs == null || tickMs == null || stagesCounted <= 0) {
             "?"
@@ -353,7 +354,7 @@ class PlantWidget(val plant: Plant) : Renderable, GuiEventListener {
     }
 
     private fun renderWaterTime(graphics: GuiGraphicsExtractor, waterLevel: Double, meterTop: Int) {
-        if (waterLevel <= PlotPrediction.WATER_DEATH_LEVEL) return
+        if (waterLevel <= PlotPrediction.WATER_HALT_LEVEL) return
 
         val remainingMs = GreenhouseTickTime.remainingTickMs()
         val tickMs = GreenhouseTickTime.tickMs
@@ -385,14 +386,14 @@ class PlantWidget(val plant: Plant) : Renderable, GuiEventListener {
             val stagesLeft = (plant.cropDef.maxStage - stage).coerceAtLeast(1)
 
             val waterLossPerTick = PlotPrediction.waterLossPerTick(waterEffect) + PlotPrediction.DRAIN_PER_DONOR * drainingSoggybuds
-            val ticksToDeath = if (waterLossPerTick <= 0.0) null else ceil((waterLevel - PlotPrediction.WATER_DEATH_LEVEL) / waterLossPerTick).toInt()
+            val ticksToHalt = if (waterLossPerTick <= 0.0) null else ceil((waterLevel - PlotPrediction.WATER_HALT_LEVEL) / waterLossPerTick).toInt()
 
             fun timeOf(ticks: Int): String = (remainingMs + (ticks - 1) * tickMs).toCoarseDuration()
 
-            if (ticksToDeath != null && ticksToDeath <= stagesLeft) {
-                text = (if (isWaterNegative) "≤" else "") + timeOf(ticksToDeath) + (if (isWaterNegative) HINT_MARK else "")
+            if (ticksToHalt != null && ticksToHalt <= stagesLeft) {
+                text = (if (isWaterNegative) "≤" else "") + timeOf(ticksToHalt) + (if (isWaterNegative) HINT_MARK else "")
                 color = Common.UI.DANGER_COLOR
-                if (isWaterNegative) hintTooltip = NEGATIVE_WATER_MAY_DIE
+                if (isWaterNegative) hintTooltip = NEGATIVE_WATER_MAY_HALT
             } else {
                 val mayStall = isWaterNegative || waterLevel - waterLossPerTick * stagesLeft < 0
                 text = (if (mayStall) "≥" else "") + timeOf(stagesLeft) + (if (mayStall) HINT_MARK else "")
@@ -416,10 +417,51 @@ class PlantWidget(val plant: Plant) : Renderable, GuiEventListener {
 
     override fun setFocused(focused: Boolean) {}
 
-    fun deadTooltipAt(mouseX: Int, mouseY: Int): String? {
-        val box = deadMarkBox ?: return null
+    private fun renderCornerMark(graphics: GuiGraphicsExtractor, mark: ItemStack, explanation: String) {
+        val footprint = plant.cropDef.footprint
+        val markSize = (if (footprint.width > 1) width / footprint.width / 2 else width / 3).coerceAtLeast(8)
+        val markX = x + width - markSize
 
-        return DEAD_EXPLANATION.takeIf { inRect(mouseX, mouseY, box.x, box.y, box.width, box.height) }
+        graphics.fill(markX, y, markX + markSize, y + markSize, CORNER_MARK_BACKGROUND)
+        graphics.drawItem(mark, markX, y, markSize, markSize)
+        cornerMarkBox = ScreenRect(markX, y, markSize, markSize)
+        cornerMarkTooltip = explanation
+    }
+
+    private fun decayDoubtExplanation(outlook: DecayOutlook): String {
+        if (outlook.kind == DecayOutlook.Kind.AfterUncountedSpawns) return MAY_HAVE_DECAYED_UNCOUNTED
+
+        val spots = if (outlook.spotsThatCanSpawn == 1) "1 spot next to it can" else "${outlook.spotsThatCanSpawn} spots next to it can"
+        return "Decay timer ran out. It decays once it has contributed to ${outlook.mutationsLeft} more ${spawnedMutations(outlook.mutationsLeft)}, " +
+                "and $spots still spawn one. Whether it is a Dead Plant by now depends on those spawns."
+    }
+
+    private fun spawnedMutations(count: Int): String = if (count == 1) "spawned mutation" else "spawned mutations"
+
+    private fun decayTooltipLine(remainingMs: Long, outlook: DecayOutlook): Component {
+        val time = remainingMs.toCoarseDuration()
+        val mutationsLeft = "${outlook.mutationsLeft} ${spawnedMutations(outlook.mutationsLeft)}"
+
+        return when (outlook.kind) {
+            DecayOutlook.Kind.OnTime -> labelled("Decays in", time)
+            DecayOutlook.Kind.AfterSpawns -> labelled("Decays in", "≥$time, needs to contribute to $mutationsLeft")
+            DecayOutlook.Kind.AfterUncountedSpawns ->
+                if (plant.mutationsSpawnedIsMinimum) {
+                    labelled("Decays in", "≥$time, contributed to at least ${plant.mutationsSpawned} of ${plant.cropDef.minMutationsBeforeDecay} spawned mutations")
+                } else {
+                    labelled("Decays in", "≥$time, needs to contribute to $mutationsLeft")
+                }
+            DecayOutlook.Kind.Never -> {
+                val spots = if (outlook.spotsThatCanSpawn == 0) "none can" else "only ${outlook.spotsThatCanSpawn} can"
+                labelled("Won't decay", "needs to contribute to $mutationsLeft, $spots spawn next to it")
+            }
+        }
+    }
+
+    fun cornerMarkTooltipAt(mouseX: Int, mouseY: Int): String? {
+        val box = cornerMarkBox ?: return null
+
+        return cornerMarkTooltip?.takeIf { inRect(mouseX, mouseY, box.x, box.y, box.width, box.height) }
     }
 
     fun hintTooltipAt(mouseX: Int, mouseY: Int): String? {
@@ -481,7 +523,7 @@ class PlantWidget(val plant: Plant) : Renderable, GuiEventListener {
                     if (!plant.chargeKnown) add(Component.literal(CHARGE_ESTIMATED).withStyle(ChatFormatting.GRAY))
                 }
 
-                plant.decayRemainingMs?.let { add(labelled("Decays in", it.toCoarseDuration())) }
+                plant.decayRemainingMs?.let { remainingMs -> decayOutlook?.let { add(decayTooltipLine(remainingMs, it)) } }
             }
 
             val footprint = cropDefinition.footprint
@@ -520,26 +562,32 @@ class PlantWidget(val plant: Plant) : Renderable, GuiEventListener {
         private const val SOGGYBUD_STALL: String =
             "This soggybud will not have enough neighbours with water in the current situation to reach full growth without decaying first."
 
-        private val NEGATIVE_WATER_MAY_DIE: String = """
+        private val NEGATIVE_WATER_MAY_HALT: String = """
             With negative water the plant may skip ticks, and a skipped tick costs no water.
-            This is the soonest this plant could die, only if every tick wasn't skipped which may not be the case.
-            It stops needing water once fully grown, so it cannot die after that.
+            This is the soonest this plant could halt, only if no tick was skipped.
+            It stops needing water once fully grown, so it cannot halt after that.
         """.trimIndent()
 
         private val NEGATIVE_WATER_MAY_STALL: String = """
             With negative water the plant may skip ticks, and a skipped tick costs no water.
-            This plant has enough water regardless, so it will not die of thirst.
+            This plant has enough water regardless, so it will not halt.
             The time is with no tick skipped; it grows on the ticks it doesn't skip, which may be the next one or many away.
         """.trimIndent()
 
-        private val DEAD_MARK: ItemStack = ItemStack(Items.DEAD_BUSH)
+        private val MAY_HAVE_DECAYED_MARK: ItemStack = ItemStack(Items.DEAD_BUSH)
 
-        private const val DEAD_MARK_BACKGROUND: Int = 0xC0201010.toInt()
+        private val HALTED_MARK: ItemStack = ItemStack(Items.BUCKET)
 
-        private val DEAD_EXPLANATION: String = """
-            In the worst case scenario this plant is dead.
-            Enter the greenhouse to verify.
+        private const val CORNER_MARK_BACKGROUND: Int = 0xC0201010.toInt()
+
+        private val HALTED_EXPLANATION: String = """
+            In the worst case this plant is halted at -100% water.
+            Water it to continue growing.
         """.trimIndent()
+
+        private const val MAY_HAVE_DECAYED_UNCOUNTED: String =
+            "Decay timer ran out. It helps spawn Chorus Fruit, which teleport away and free the spot for another, " +
+                    "so the mod can't count how many it contributed to. It may be a Dead Plant by now."
 
         private const val SPLIT_ICON_SHARE: Float = 0.62f
 

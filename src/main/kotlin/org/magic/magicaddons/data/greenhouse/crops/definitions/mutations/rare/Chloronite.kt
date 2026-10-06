@@ -20,6 +20,7 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Chloronite {
     val definition = CropDefinition(
         name = "Chloronite",
+        minMutationsBeforeDecay = 8,
         tier = CropTier.Rare,
         dropMultiplier = 2.7,
         effects = setOf(

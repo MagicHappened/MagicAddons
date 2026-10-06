@@ -8,6 +8,7 @@ import org.magic.magicaddons.data.greenhouse.crops.CropTableExport
 import org.magic.magicaddons.data.greenhouse.crops.PlantStage
 import org.magic.magicaddons.data.greenhouse.plot.GREENHOUSE_SIZE
 import org.magic.magicaddons.data.greenhouse.plot.GreenhouseGrid
+import org.magic.magicaddons.data.greenhouse.plot.PlotLayout
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhousePresets
 import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseData
 import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseProfiles
@@ -58,7 +59,8 @@ data class ServerGreenhouseData(
         @SerializedName("s") val stage: Int?,
         @SerializedName("sm") val stageMax: Int?,
         @SerializedName("w") val water: Double?,
-        @SerializedName("a") val ageMinutes: Long?,
+        @SerializedName("d") val decayInMinutes: Long?,
+        @SerializedName("du") val isDecayUncertain: Boolean?,
         @SerializedName("p") val placed: Boolean?,
         @SerializedName("ch") val charge: Int?,
         @SerializedName("r") val readings: Map<String, Int>?
@@ -125,7 +127,7 @@ data class ServerGreenhouseData(
             slotsBySoil = grid.layout.slots
                 .filter { it.soil != DEFAULT_SOIL }
                 .groupBy({ slot -> slot.soil?.let { BuiltInRegistries.BLOCK.getKey(it).path } ?: NO_SOIL }, { it.y * GREENHOUSE_SIZE + it.x }),
-            plants = grid.layout.plants.map { plantOf(it) },
+            plants = grid.layout.plants.map { plantOf(grid.layout, it) },
             plan = grid.assignedPlanAfterTurn()?.let { plan ->
                 plan.plants
                     .filter { it.slot.mark != null }
@@ -135,8 +137,9 @@ data class ServerGreenhouseData(
                 ?: grid.state.chorusRiskCalculation?.takeIf { grid.state.isChorusRiskCalculating }?.immediateLossChanceByTick())?.toList()
         )
 
-        private fun plantOf(plant: GreenhousePlant): Plant {
+        private fun plantOf(layout: PlotLayout, plant: GreenhousePlant): Plant {
             val stage = plant.growthStage
+            val decayOutlook = layout.decayOutlookOf(plant)
 
             return Plant(
                 crop = plant.cropDef.name,
@@ -149,7 +152,8 @@ data class ServerGreenhouseData(
                 },
                 stageMax = (stage as? PlantStage.Estimated)?.range?.last,
                 water = plant.waterLevel,
-                ageMinutes = plant.age?.let { it / MS_PER_MINUTE },
+                decayInMinutes = plant.decayRemainingMs?.takeIf { decayOutlook.canDecay }?.let { it / MS_PER_MINUTE },
+                isDecayUncertain = (!decayOutlook.isCertain).takeIf { it },
                 placed = plant.placed.takeIf { it },
                 charge = plant.charge.takeIf { it != 0 },
                 readings = plant.readings.takeIf { it.isNotEmpty() }

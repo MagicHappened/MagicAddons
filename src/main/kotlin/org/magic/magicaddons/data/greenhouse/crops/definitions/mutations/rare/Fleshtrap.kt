@@ -21,6 +21,7 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Fleshtrap {
     val definition = CropDefinition(
         name = "Fleshtrap",
+        minMutationsBeforeDecay = 6,
         tier = CropTier.Rare,
         dropMultiplier = 1.7,
         effects = setOf(

@@ -14,6 +14,7 @@ object Veilshroom {
 
     val definition = CropDefinition(
         name = "Veilshroom",
+        minMutationsBeforeDecay = 10,
         tier = CropTier.Common,
         dropMultiplier = 0.15,
         effects = setOf(

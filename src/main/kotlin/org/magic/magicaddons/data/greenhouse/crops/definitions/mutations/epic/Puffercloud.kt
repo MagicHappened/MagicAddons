@@ -18,6 +18,7 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Puffercloud {
     val definition = CropDefinition(
         name = "Puffercloud",
+        minMutationsBeforeDecay = 6,
         tier = CropTier.Epic,
         dropMultiplier = 6.0,
         effects = setOf(

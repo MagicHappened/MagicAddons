@@ -32,6 +32,7 @@ object Snoozling {
 
     val definition = CropDefinition(
         name = "Snoozling",
+        minMutationsBeforeDecay = 8,
         tier = CropTier.Rare,
         dropMultiplier = 21.0,
         effects = setOf(

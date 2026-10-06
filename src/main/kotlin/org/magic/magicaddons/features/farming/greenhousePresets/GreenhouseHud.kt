@@ -49,7 +49,7 @@ object GreenhouseHud : HudElement("greenhouse", "Greenhouse") {
             Line("Next tick", "12m 30s"),
             Line("Plants", "24"),
             Line("Ready to harvest", "2", Common.UI.SUCCESS_COLOR),
-            Line("Dying from water in", "3h 10m", Common.UI.WARNING_COLOR),
+            Line("Halting from water in", "3h 10m", Common.UI.WARNING_COLOR),
             Line("Next decay", "1d 4h")
         )
     )
@@ -84,18 +84,25 @@ object GreenhouseHud : HudElement("greenhouse", "Greenhouse") {
                 val effect = GreenhouseGrid.waterEffectAt(grid.layout, plant.slot)
 
                 if (plant.waterLastsUntilGrown(effect) == true) return@mapNotNull null
-                if (water <= PlotPrediction.WATER_DEATH_LEVEL) 0L
-                else PlotPrediction.timeUntilDeath(water, effect, remainingMs, tickMs)
+                if (water <= PlotPrediction.WATER_HALT_LEVEL) 0L
+                else PlotPrediction.timeUntilHalt(water, effect, remainingMs, tickMs)
             }
             .minOrNull()
         val asleep = plants.count { it.isAsleep }
         val craving = plants.count { it.needsOtherTimeOfDay(gardenTime) }
-        val decaying = plants.mapNotNull { it.decayRemainingMs }.minOrNull()
+        val nextDecay = plants
+            .mapNotNull { plant -> plant.decayRemainingMs?.let { it to grid.layout.decayOutlookOf(plant) } }
+            .filter { (_, outlook) -> outlook.canDecay }
+            .minByOrNull { (remainingMs, _) -> remainingMs }
 
         if (ready > 0) add(Line("Ready to harvest", ready.toString(), Common.UI.SUCCESS_COLOR))
-        if (thirst != null) add(Line("Dying from water in", if (thirst == 0L) "now" else thirst.toShortDuration(), if (thirst < URGENT_MS) Common.UI.DANGER_COLOR else Common.UI.WARNING_COLOR))
+        if (thirst != null) add(Line("Halting from water in", if (thirst == 0L) "now" else thirst.toShortDuration(), if (thirst < URGENT_MS) Common.UI.DANGER_COLOR else Common.UI.WARNING_COLOR))
         if (asleep > 0) add(Line("Asleep", asleep.toString(), Common.UI.WARNING_COLOR))
         if (craving > 0) add(Line("Wrong time of day", craving.toString(), Common.UI.WARNING_COLOR))
-        if (decaying != null) add(Line("Next decay", decaying.toShortDuration(), if (decaying < URGENT_MS) Common.UI.DANGER_COLOR else Common.UI.TEXT_COLOR))
+        if (nextDecay != null) {
+            val (remainingMs, outlook) = nextDecay
+            val time = (if (outlook.isCertain) "" else "≥") + remainingMs.toShortDuration()
+            add(Line("Next decay", time, if (remainingMs < URGENT_MS) Common.UI.DANGER_COLOR else Common.UI.TEXT_COLOR))
+        }
     }
 }

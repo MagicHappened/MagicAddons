@@ -1,6 +1,7 @@
 package org.magic.magicaddons.ui.widgets.greenhouse
 
 import org.magic.magicaddons.Common
+import org.magic.magicaddons.data.greenhouse.crops.DecayOutlook
 import org.magic.magicaddons.data.greenhouse.crops.Plant
 import org.magic.magicaddons.data.greenhouse.crops.PlantStage
 import org.magic.magicaddons.data.greenhouse.plot.PlotPrediction
@@ -11,7 +12,7 @@ enum class PlantLabel(val color: Int, val tabName: String) {
     WaterLevel(Common.UI.WATER_FULL_COLOR, "Water level"),
     DecayTime(Common.UI.DECAY_TIME_COLOR, "Decay time");
 
-    fun valueFor(plant: Plant): String? = when (this) {
+    fun valueFor(plant: Plant, decayOutlook: DecayOutlook?): String? = when (this) {
         GrowthStage -> when {
             plant.isPlacedMutation -> "Placed"
             plant.cropDef.maxStage <= 1 && !plant.readyToHarvest -> null
@@ -22,7 +23,7 @@ enum class PlantLabel(val color: Int, val tabName: String) {
             }
         }
         WaterLevel -> if (!plant.cropDef.needsWater || plant.isPlacedMutation) null else waterText(plant)
-        DecayTime -> plant.decayRemainingMs?.toCoarseDuration()
+        DecayTime -> plant.decayRemainingMs?.let { remainingMs -> decayOutlook?.let { decayTimeText(remainingMs, it) { ms -> ms.toCoarseDuration() } } }
     }
 
     fun colorFor(plant: Plant): Int = when {
@@ -31,6 +32,12 @@ enum class PlantLabel(val color: Int, val tabName: String) {
         plant.isPlacedMutation && !plant.isCollectable -> Common.UI.DANGER_COLOR
         else -> Common.UI.OVERLAY_TEXT_COLOR
     }
+}
+
+internal fun decayTimeText(remainingMs: Long, outlook: DecayOutlook, durationText: (Long) -> String): String? = when {
+    !outlook.canDecay -> null
+    outlook.isCertain -> durationText(remainingMs)
+    else -> "≥" + durationText(remainingMs)
 }
 
 internal fun waterText(plant: Plant): String? = plant.waterLevel?.let { worst ->

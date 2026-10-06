@@ -77,6 +77,8 @@ object PlantDiagnostics {
         }
 
         val age = saplingLore.valueFor("Age")
+        val timesMutated = saplingLore.valueFor("Times Mutated")?.toIntOrNull()
+        val decayAttemptInMs = saplingLore.valueFor("Decay attempt in")?.parseDurationToMs()
 
         // "Stage: 1/15"
         val stageRaw = saplingLore.valueFor("Stage")?.substringBefore('/')?.trim()
@@ -119,6 +121,11 @@ object PlantDiagnostics {
             stageRaw?.let { element.plant.growthStage = PlantStage.Known(it) }
 
             val plant = element.plant
+            timesMutated?.let {
+                plant.mutationsSpawned = it
+                plant.mutationsSpawnedIsMinimum = false
+            }
+            decayAttemptInMs?.let { plant.decayAttemptAt = System.currentTimeMillis() + it }
             if (plant.cropDef.isMutation) {
                 val stage = stageRaw ?: plant.highestStage
                 val grown = stage != null && stage >= plant.cropDef.maxStage

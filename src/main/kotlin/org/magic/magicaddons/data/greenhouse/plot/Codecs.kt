@@ -129,8 +129,17 @@ object Codecs {
                     .forGetter { it.chargeKnown },
 
                 Codec.STRING.listOf().optionalFieldOf("alternatives", emptyList())
-                    .forGetter { plant -> plant.presetAlternatives.map { it.elementId } }
-            ).apply(instance) { id, slot, waterOpt, growthOpt, appearedAtOpt, readingsOpt, firstSeenOpt, placed, waterExact, charge, chargeKnown, alternativeIds ->
+                    .forGetter { plant -> plant.presetAlternatives.map { it.elementId } },
+
+                Codec.INT.optionalFieldOf("mutations_spawned", 0)
+                    .forGetter { it.mutationsSpawned },
+
+                Codec.BOOL.optionalFieldOf("mutations_spawned_is_minimum", false)
+                    .forGetter { it.mutationsSpawnedIsMinimum },
+
+                Codec.LONG.optionalFieldOf("decay_attempt_at")
+                    .forGetter { Optional.ofNullable(it.decayAttemptAt) }
+            ).apply(instance) { id, slot, waterOpt, growthOpt, appearedAtOpt, readingsOpt, firstSeenOpt, placed, waterExact, charge, chargeKnown, alternativeIds, mutationsSpawned, mutationsSpawnedIsMinimum, decayAttemptAt ->
                 Plant(
                     elementId = id,
                     slot = slot.orElse(null),
@@ -146,6 +155,9 @@ object Codecs {
                     plant.waterExact = waterExact
                     plant.charge = charge
                     plant.chargeKnown = chargeKnown
+                    plant.mutationsSpawned = mutationsSpawned
+                    plant.mutationsSpawnedIsMinimum = mutationsSpawnedIsMinimum
+                    plant.decayAttemptAt = decayAttemptAt.orElse(null)
                 }
             }
         }

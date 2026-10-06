@@ -79,6 +79,14 @@ data class Plant(
 
     var waterBestCase: Double? = null
 
+    var mutationsSpawned: Int = 0
+
+    var mutationsSpawnedIsMinimum: Boolean = false
+
+    var decayAttemptAt: Long? = null
+
+    var predictedDecayDoubt: DecayOutlook? = null
+
     val isPlacedMutation: Boolean get() = placed && cropDef.isMutation
 
     val isCollectable: Boolean
@@ -88,6 +96,14 @@ data class Plant(
         get() = (cropDef.isMutation || cropDef.isBaseCrop) && !isPlacedMutation && (highestStage ?: 0) >= cropDef.maxStage
 
     val consumesWater: Boolean get() = cropDef.needsWater && !isPlacedMutation && !isFullyGrown
+
+    val isHaltedByWater: Boolean get() = consumesWater && (waterLevel ?: 0.0) <= PlotPrediction.WATER_HALT_LEVEL
+
+    val isHaltedByCharge: Boolean get() = !isPlacedMutation && cropDef.chargeRule?.let { charge >= it.limit } == true
+
+    val isHalted: Boolean get() = isHaltedByWater || isHaltedByCharge
+
+    val mutationsLeftToSpawn: Int get() = ((cropDef.minMutationsBeforeDecay ?: 0) - mutationsSpawned).coerceAtLeast(0)
 
     fun copyForPrediction(slot: LayoutSlot): Plant =
         copy(slot = slot, readings = readings.toMutableMap(), presetAlternatives = presetAlternatives.toMutableList()).also {
@@ -99,20 +115,30 @@ data class Plant(
             it.charge = charge
             it.chargeKnown = chargeKnown
             it.chanceToReachStage = chanceToReachStage
+            it.mutationsSpawned = mutationsSpawned
+            it.mutationsSpawnedIsMinimum = mutationsSpawnedIsMinimum
+            it.decayAttemptAt = decayAttemptAt
         }
 
     fun waterLastsUntilGrown(waterEffectPercent: Int): Boolean? {
         if (!consumesWater || cropDef.drainsNeighbours) return true
 
         val water = waterLevel ?: return null
-        if (water <= PlotPrediction.WATER_DEATH_LEVEL) return false
+        if (water <= PlotPrediction.WATER_HALT_LEVEL) return false
 
-        val ticksLeft = PlotPrediction.ticksUntilDeath(water, waterEffectPercent) ?: return true
+        val ticksLeft = PlotPrediction.ticksUntilHalt(water, waterEffectPercent) ?: return true
 
         val stage = (if (waterPredictedNegative) highestStage else lowestStage) ?: return null
         if (cropDef.maxStage <= 1) return null
 
         return ticksLeft > cropDef.maxStage - stage
+    }
+
+    fun ticksUntilWaterHalt(waterEffectPercent: Int): Int? {
+        if (isHaltedByWater) return 0
+        if (waterLastsUntilGrown(waterEffectPercent) != false) return null
+
+        return waterLevel?.let { PlotPrediction.ticksUntilHalt(it, waterEffectPercent) }
     }
 
     val isFullyGrown: Boolean get() = (lowestStage ?: 0) >= cropDef.maxStage
@@ -149,11 +175,12 @@ data class Plant(
     val age: Long?
         get() = appearedAt?.let { (System.currentTimeMillis() - it).coerceAtLeast(0L) }
 
-    val decayRemainingMs: Long?
+    val decayTimerEndsAt: Long?
         get() {
-            val decayTime = cropDef.decayTimeMs
-            if (decayTime == NEVER_DECAYS) return null
-            val age = age ?: return null
-            return (decayTime - age).coerceAtLeast(0L)
+            if (cropDef.decayTimeMs == NEVER_DECAYS) return null
+            return decayAttemptAt ?: appearedAt?.plus(cropDef.decayTimeMs)
         }
+
+    val decayRemainingMs: Long?
+        get() = decayTimerEndsAt?.let { (it - System.currentTimeMillis()).coerceAtLeast(0L) }
 }

@@ -8,6 +8,7 @@ import kotlin.random.Random
 import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
 import org.magic.magicaddons.data.greenhouse.crops.CropEffect
 import org.magic.magicaddons.data.greenhouse.crops.CropRegistry
+import org.magic.magicaddons.data.greenhouse.crops.DecayOutlook
 import org.magic.magicaddons.data.greenhouse.crops.Plant
 import org.magic.magicaddons.data.greenhouse.crops.PlantStage
 
@@ -113,7 +114,7 @@ object PlotPrediction {
         if (crop.spawnRule?.requiredNeighbourCells.isNullOrEmpty()) return 1.0
 
         val fullRingSize = (crop.footprint.width + 2) * (crop.footprint.height + 2) - crop.footprint.width * crop.footprint.height
-        val plantedRingCells = cellsSurrounding(layout, crop, x, y).count { (cellX, cellY) -> standingPlantAtPos(layout, cellX, cellY, ignoredPlant) != null }
+        val plantedRingCells = cellsSurrounding(layout, crop, x, y).count { (cellX, cellY) -> contributingPlantAtPos(layout, cellX, cellY, ignoredPlant) != null }
         return min(1.0, plantedRingCells / (fullRingSize * FULL_CHANCE_RING_SHARE))
     }
 
@@ -173,7 +174,7 @@ object PlotPrediction {
         ignoredPlant: Plant? = null
     ): List<String> {
         val rule = crop.spawnRule ?: return emptyList()
-        val surroundingCellsByCrop = cellsSurrounding(layout, crop, x, y).mapNotNull { (cellX, cellY) -> standingPlantAtPos(layout, cellX, cellY, ignoredPlant) }
+        val surroundingCellsByCrop = cellsSurrounding(layout, crop, x, y).mapNotNull { (cellX, cellY) -> contributingPlantAtPos(layout, cellX, cellY, ignoredPlant) }
             .groupingBy { it.cropDef.name }
             .eachCount()
 
@@ -196,7 +197,7 @@ object PlotPrediction {
     private fun effectsReceivedAround(layout: PlotLayout, crop: CropDefinition, x: Int, y: Int, ignoredPlant: Plant?): Set<CropEffect> {
         val standingLayout = layoutOfStandingPlants(layout, ignoredPlant)
         return cellsSurrounding(layout, crop, x, y)
-            .mapNotNull { (cellX, cellY) -> standingLayout.plantCovering(cellX, cellY) }
+            .mapNotNull { (cellX, cellY) -> standingLayout.plantCovering(cellX, cellY)?.takeUnless { it.isHalted } }
             .distinct()
             .flatMapTo(mutableSetOf()) { standingLayout.effectsReceivedBy(it) }
     }
@@ -209,6 +210,55 @@ object PlotPrediction {
 
     private fun standingPlantAtPos(layout: PlotLayout, cellX: Int, cellY: Int, ignoredPlant: Plant?): Plant? =
         layout.plantCovering(cellX, cellY)?.takeIf { isStanding(it, ignoredPlant) }
+
+    private fun contributingPlantAtPos(layout: PlotLayout, cellX: Int, cellY: Int, ignoredPlant: Plant?): Plant? =
+        standingPlantAtPos(layout, cellX, cellY, ignoredPlant)?.takeUnless { it.isHalted }
+
+    fun plantsContributingTo(layout: PlotLayout, crop: CropDefinition, x: Int, y: Int, ignoredPlant: Plant? = null): Set<Plant> {
+        val recipe = crop.spawnRule?.requiredNeighbourCells.orEmpty()
+
+        return cellsSurrounding(layout, crop, x, y)
+            .mapNotNull { (cellX, cellY) -> contributingPlantAtPos(layout, cellX, cellY, ignoredPlant) }
+            .filterTo(mutableSetOf()) { recipe.isEmpty() || it.cropDef.name in recipe }
+    }
+
+    class HelpedSpawnSpots(val count: Int, val hasTeleportingMutation: Boolean)
+
+    fun spawnSpotsHelpedByPlant(layout: PlotLayout): Map<Plant, HelpedSpawnSpots> {
+        val spotCountByPlant = HashMap<Plant, Int>()
+        val plantsHelpingTeleporters = HashSet<Plant>()
+
+        for (y in 0 until layout.size) {
+            for (x in 0 until layout.size) {
+                val plantOnCell = layout.plantCovering(x, y)
+                val plantsHelpingHere = HashSet<Plant>()
+
+                spawningCrops.forEach { crop ->
+                    val growingTeleporter = plantOnCell?.takeIf { crop.teleportsWhileGrowing && it.cropDef == crop && !it.isFullyGrown }
+                    if (plantOnCell != null && growingTeleporter == null) return@forEach
+                    if (missingSpawnConditions(layout, crop, x, y, ignoredPlant = growingTeleporter).isNotEmpty()) return@forEach
+
+                    val contributors = plantsContributingTo(layout, crop, x, y, growingTeleporter)
+                    if (crop.teleportsWhileGrowing) plantsHelpingTeleporters += contributors else plantsHelpingHere += contributors
+                }
+                plantsHelpingHere.forEach { spotCountByPlant.merge(it, 1, Int::plus) }
+            }
+        }
+        return layout.plants.associateWith { HelpedSpawnSpots(spotCountByPlant[it] ?: 0, it in plantsHelpingTeleporters) }
+    }
+
+    fun decayOutlookOf(plant: Plant, helpedSpots: HelpedSpawnSpots?): DecayOutlook {
+        val mutationsLeft = plant.mutationsLeftToSpawn
+        val spotCount = helpedSpots?.count ?: 0
+
+        val kind = when {
+            mutationsLeft == 0 -> DecayOutlook.Kind.OnTime
+            plant.mutationsSpawnedIsMinimum || helpedSpots?.hasTeleportingMutation == true -> DecayOutlook.Kind.AfterUncountedSpawns
+            mutationsLeft <= spotCount -> DecayOutlook.Kind.AfterSpawns
+            else -> DecayOutlook.Kind.Never
+        }
+        return DecayOutlook(kind, mutationsLeft, spotCount)
+    }
 
     private fun isStanding(plant: Plant, ignoredPlant: Plant?): Boolean =
         plant !== ignoredPlant && !(plant.slot.mark == LayoutSlot.Marking.Target && plant.growthStage == null)
@@ -248,7 +298,7 @@ object PlotPrediction {
 
     private const val WATER_LOSS_PER_TICK: Int = 20
 
-    const val WATER_DEATH_LEVEL: Int = -100
+    const val WATER_HALT_LEVEL: Int = -100
 
     const val WATER_FULL_LEVEL: Int = 100
 
@@ -266,29 +316,20 @@ object PlotPrediction {
         (WATER_LOSS_PER_TICK * (1.0 - waterEffectPercent / 200.0)).coerceAtLeast(0.0)
 
     fun waterLevelAfter(water: Double, ticks: Int, waterEffectPercent: Int): Double =
-        water - waterLossPerTick(waterEffectPercent) * ticks
+        (water - waterLossPerTick(waterEffectPercent) * ticks).coerceAtLeast(WATER_HALT_LEVEL.toDouble())
 
-    fun lowestWaterLevelStillAlive(predictedWater: Double, waterEffectPercent: Int): Double {
-        val loss = waterLossPerTick(waterEffectPercent)
-        if (loss <= 0.0 || predictedWater > WATER_DEATH_LEVEL) return predictedWater
-
-        val fewestTicksSkipped = floor((WATER_DEATH_LEVEL - predictedWater) / loss) + 1
-
-        return predictedWater + fewestTicksSkipped * loss
-    }
-
-    fun ticksUntilDeath(water: Double, waterEffectPercent: Int): Int? {
+    fun ticksUntilHalt(water: Double, waterEffectPercent: Int): Int? {
         val loss = waterLossPerTick(waterEffectPercent)
         if (loss <= 0.0) return null
 
-        return ceil((water - WATER_DEATH_LEVEL) / loss).toInt()
+        return ceil((water - WATER_HALT_LEVEL) / loss).toInt()
     }
 
     fun formatWaterLevel(water: Double): String =
         if (water == floor(water)) water.toInt().toString() else "%.1f".format(water)
 
-    fun timeUntilDeath(water: Double, waterEffectPercent: Int, remainingMs: Long, tickMs: Long): Long? {
-        val ticks = ticksUntilDeath(water, waterEffectPercent) ?: return null
+    fun timeUntilHalt(water: Double, waterEffectPercent: Int, remainingMs: Long, tickMs: Long): Long? {
+        val ticks = ticksUntilHalt(water, waterEffectPercent) ?: return null
 
         return remainingMs + (ticks - 1) * tickMs
     }
@@ -360,22 +401,13 @@ object PlotPrediction {
 
         for (tick in 1..warmUpTicks + measuredTicks) {
             val frozenSpawns = graceTicksLeftBySpawn.filter { (spawn, graceTicksLeft) ->
-                graceTicksLeft > 0 && wouldDieNextTick(layout, spawn)
+                graceTicksLeft > 0 && wouldHaltNextTick(layout, spawn)
             }.keys
             frozenSpawns.forEach { graceTicksLeftBySpawn[it] = graceTicksLeftBySpawn.getValue(it) - 1 }
 
             val frozenStates = frozenSpawns.map { FrozenState(it) }
             GreenhouseGrid.simulateLayout(layout, 1)
             frozenStates.forEach { it.restore() }
-
-            occupiedSpots.entries.forEach { entry ->
-                val spawn = entry.value ?: return@forEach
-                if ((spawn.waterLevel ?: 0.0) > PlotPrediction.WATER_DEATH_LEVEL) return@forEach
-
-                layout.plants.remove(spawn)
-                graceTicksLeftBySpawn.remove(spawn)
-                entry.setValue(null)
-            }
 
             spots.filter { it !in occupiedSpots }.forEach { spot ->
                 val roll = random.nextDouble()
@@ -413,9 +445,9 @@ object PlotPrediction {
         return harvested
     }
 
-    private fun wouldDieNextTick(layout: PlotLayout, plant: Plant): Boolean {
+    private fun wouldHaltNextTick(layout: PlotLayout, plant: Plant): Boolean {
         val water = plant.waterLevel ?: return false
-        return waterLevelAfter(water, 1, GreenhouseGrid.waterEffectAt(layout, plant.slot)) <= PlotPrediction.WATER_DEATH_LEVEL
+        return waterLevelAfter(water, 1, GreenhouseGrid.waterEffectAt(layout, plant.slot)) <= PlotPrediction.WATER_HALT_LEVEL
     }
 
     private class FrozenState(val plant: Plant) {

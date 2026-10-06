@@ -13,6 +13,7 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Netherwart {
     val definition = CropDefinition(
         name = "Nether Wart",
+        minMutationsBeforeDecay = 12,
         tier = CropTier.BaseCrop,
         dropMultiplier = 0.09,
         effects = setOf(

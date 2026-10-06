@@ -17,6 +17,7 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Soggybud {
     val definition = CropDefinition(
         name = "Soggybud",
+        minMutationsBeforeDecay = 8,
         tier = CropTier.Rare,
         dropMultiplier = 1.2,
         effects = setOf(

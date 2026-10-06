@@ -14,6 +14,7 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object DoNotEatShroom {
     val definition = CropDefinition(
         name = "Do-not-eat-shroom",
+        minMutationsBeforeDecay = 8,
         tier = CropTier.Rare,
         dropMultiplier = 2.1,
         effects = setOf(

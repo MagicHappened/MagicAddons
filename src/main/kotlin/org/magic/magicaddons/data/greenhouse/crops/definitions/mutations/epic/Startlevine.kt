@@ -20,6 +20,7 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Startlevine {
     val definition = CropDefinition(
         name = "Startlevine",
+        minMutationsBeforeDecay = 6,
         tier = CropTier.Epic,
         dropMultiplier = 7.5,
         effects = setOf(

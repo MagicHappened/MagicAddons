@@ -12,6 +12,7 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Wheat {
     val definition = CropDefinition(
         name = "Wheat",
+        minMutationsBeforeDecay = 12,
         tier = CropTier.BaseCrop,
         dropMultiplier = 0.18,
         effects = setOf(

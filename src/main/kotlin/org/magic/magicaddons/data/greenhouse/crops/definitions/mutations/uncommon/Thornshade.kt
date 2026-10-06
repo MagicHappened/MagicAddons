@@ -16,6 +16,7 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Thornshade {
     val definition = CropDefinition(
         name = "Thornshade",
+        minMutationsBeforeDecay = 8,
         tier = CropTier.Uncommon,
         dropMultiplier = 2.0,
         effects = setOf(

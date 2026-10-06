@@ -46,7 +46,7 @@ object OtherProfiles {
 
             val uniques = profile.grids
                 .flatMap { it.layout.plants }
-                .filter { it.cropDef.isBaseCrop }
+                .filter { it.cropDef.isBaseCrop && !it.isHalted }
                 .map { GreenhouseData.UniqueCropKey.from(it.cropDef) }
                 .toSet()
             val tickMs = GreenhouseTickTime.stageTimeMs(uniques.size, cropGrowth, upgrade, misc.greenhouseSpeedAttribute ?: 0)

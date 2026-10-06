@@ -19,6 +19,7 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Thunderling {
     val definition = CropDefinition(
         name = "Thunderling",
+        minMutationsBeforeDecay = 6,
         tier = CropTier.Epic,
         dropMultiplier = 11.0,
         effects = setOf(

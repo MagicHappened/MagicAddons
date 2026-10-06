@@ -12,6 +12,7 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Potato {
     val definition = CropDefinition(
         name = "Potato",
+        minMutationsBeforeDecay = 12,
         tier = CropTier.BaseCrop,
         dropMultiplier = 0.125,
         effects = setOf(

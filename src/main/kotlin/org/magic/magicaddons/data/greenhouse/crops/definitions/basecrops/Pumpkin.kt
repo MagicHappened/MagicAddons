@@ -15,6 +15,7 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Pumpkin {
     val definition = CropDefinition(
         name = "Pumpkin",
+        minMutationsBeforeDecay = 12,
         tier = CropTier.BaseCrop,
         dropMultiplier = 0.2,
         effects = setOf(

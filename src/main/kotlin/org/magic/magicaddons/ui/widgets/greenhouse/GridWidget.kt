@@ -243,6 +243,7 @@ class GridWidget(
             widget.width = rect.width
             widget.height = rect.height
             widget.waterEffect = GreenhouseGrid.waterEffectAt(layout, plant.slot)
+            widget.decayOutlook = layout.decayOutlookOf(plant)
 
             widget.drainingSoggybuds = layout.plantsSurrounding(plant).count { it.cropDef.drainsNeighbours && !it.isFullyGrown }
 

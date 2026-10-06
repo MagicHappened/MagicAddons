@@ -31,6 +31,7 @@ data class CropDefinition(
     val isBaseCrop: Boolean = false,
     val isMutation: Boolean = false,
     val decayTimeMs: Long = THREE_DAY_DECAY_TIME_MS,
+    val minMutationsBeforeDecay: Int? = null,
     val footprint: Footprint = Footprint(1,1),
     val requiredSoil: Set<Block> = setOf(Blocks.FARMLAND),
     val needsWater: Boolean = true,
@@ -49,7 +50,8 @@ data class CropDefinition(
     val sleepStages: Set<Int> = emptySet(),
     val stallExplanation: String? = null,
     val chargeRule: ChargeRule? = null,
-    val stemAgeVaries: Boolean = false
+    val stemAgeVaries: Boolean = false,
+    val teleportsWhileGrowing: Boolean = false
 ){
     fun headPoseFor(stand: StageStand, x: Int, z: Int): Rotations? =
         stand.headRotation ?: standPoses[stand.hashString]?.headAt(x, z, stand.offset)
@@ -131,7 +133,7 @@ data class ChargeRule(
     val perStage: Int,
     val limit: Int
 ) {
-    fun stagesUntilOverload(charge: Int): Int = (limit - charge) / perStage
+    fun stagesUntilFullCharge(charge: Int): Int = (limit - charge) / perStage
 
     fun chargeByStageNum(stage: Int): Int = perStage * (stage - 1).coerceAtLeast(0)
 
@@ -144,3 +146,5 @@ const val THREE_DAY_DECAY_TIME_MS: Long = 3L * 24 * 60 * 60 * 1000
 const val FIVE_DAY_DECAY_TIME_MS: Long = 5L * 24 * 60 * 60 * 1000
 const val SIX_DAY_DECAY_TIME_MS: Long = 6L * 24 * 60 * 60 * 1000
 const val TEN_DAY_DECAY_TIME_MS: Long = 10L * 24 * 60 * 60 * 1000
+
+const val DECAY_EXTENSION_MS: Long = 24L * 60 * 60 * 1000

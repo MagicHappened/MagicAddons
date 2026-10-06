@@ -537,8 +537,9 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
     }.sortedBy { it.text }
 
     private fun drawMissingUniques(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int) {
-        val lines = missingUniques()
-        val heading = if (lines.isEmpty()) "§aEvery unique crop is growing" else "§7Missing unique crops:"
+        val isBonusMaxed = GreenhouseData.getCurrentUniques().size >= GreenhouseTickTime.uniqueCropsNeeded()
+        val lines = if (isBonusMaxed) emptyList() else missingUniques()
+        val heading = if (lines.isEmpty()) "§aUnique crop bonus is at its maximum" else "§7Unique crops you can still add:"
         val texts = (listOf(heading) + lines.map { it.text }).map { Component.literal(it).visualOrderText }
 
         graphics.drawTooltipLinesAtCursor(texts, mouseX, mouseY) { index ->
@@ -567,7 +568,11 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
 
         return listOf(
             "§7Your tick time: $tickTime",
-            "§7Unique crops: " + coloredOutOf(GreenhouseData.getCurrentUniques().size, MAX_UNIQUE_CROPS),
+            "§7Unique crops: " + coloredOutOf(
+                GreenhouseData.getCurrentUniques().size.coerceAtMost(GreenhouseTickTime.uniqueCropsNeeded()),
+                GreenhouseTickTime.uniqueCropsNeeded()
+            ),
+            "§7Flora attribute: " + coloredOutOf(GreenhouseTickTime.floraAttribute(), MAX_ATTRIBUTE),
             "§7Greenhouse speed upgrade: " + coloredOutOf(misc.cropSpeedUpgradeValue, MAX_SPEED_UPGRADE),
             "§7Greenhouse attribute: " + coloredOutOf(GreenhouseTickTime.speedAttribute(), MAX_ATTRIBUTE),
             "§7Crop growth: §f" + (misc.cropGrowthValue?.toString() ?: "§8?")
@@ -1159,7 +1164,7 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
 
         val hovered = hoveredElement as? PlantWidget ?: return
 
-        (hovered.deadTooltipAt(mouseX, mouseY)
+        (hovered.cornerMarkTooltipAt(mouseX, mouseY)
             ?: hovered.hintTooltipAt(mouseX, mouseY)
             ?: hovered.chargeTooltipAt(mouseX, mouseY))?.let {
             graphics.drawTooltipAtCursor(it, mouseX, mouseY)
@@ -2182,14 +2187,12 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
         private const val CONTENTS_ROW_HEIGHT: Int = CONTENTS_ICON_SIZE + 2
         private const val CONTENTS_CHECKBOX_SIZE: Int = 9
         private const val UNIQUE_LINE: Int = 1
-        private const val ATTRIBUTE_LINE: Int = 3
+        private const val ATTRIBUTE_LINE: Int = 4
         private const val OFF_SCREEN: Double = -1.0
 
         private const val MAX_PREDICT_TICKS: Int = 10
         private const val MAX_AWAY_TICKS: Int = 20
         private const val HISTORY_LIMIT: Int = 50
-
-        private const val MAX_UNIQUE_CROPS: Int = 12
         private const val MAX_SPEED_UPGRADE: Int = 9
         private const val MAX_ATTRIBUTE: Int = 10
 
@@ -2219,7 +2222,7 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
         private const val UNPLANNED_NONE: String = "Nothing can grow unplanned"
         private const val WATER_LASTS_TOOLTIP: String =
             "How many ticks one full watering lasts before the first plant runs out. " +
-                    "A plant out of water can skip growth ticks, and dies if it stays out too long."
+                    "A plant out of water can skip growth ticks, and halts at -100% until it is watered."
         private const val SET_ATTRIBUTE_HINT: String = "Click to open chat to set your attribute level"
         private const val RENAME_HINT: String = "\nRight click a name to rename it: greenhouses, presets and plots"
         private const val SCROLL_HINT_GREENHOUSES: String = "Scroll the mouse wheel to switch what the plants show$RENAME_HINT"

@@ -16,6 +16,7 @@ object Lonelily {
 
     val definition = CropDefinition(
         name = "Lonelily",
+        minMutationsBeforeDecay = 10,
         tier = CropTier.Common,
         dropMultiplier = 1.75,
         effects = setOf(

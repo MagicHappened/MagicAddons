@@ -20,6 +20,7 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Coalroot {
     val definition = CropDefinition(
         name = "Coalroot",
+        minMutationsBeforeDecay = 10,
         tier = CropTier.Uncommon,
         dropMultiplier = 1.7,
         effects = setOf(

@@ -15,6 +15,7 @@ import org.magic.magicaddons.data.greenhouse.crops.MissingCropData
 import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseSpawnLog
 import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseData
+import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseTickTime
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.EntityUtils
 import org.magic.magicaddons.util.PlayerUtils
@@ -77,6 +78,13 @@ object FarmingDebug : AbstractCommand() {
                         return@executes 1
                     }
             )
+            .then(
+                LiteralArgumentBuilder.literal<FabricClientCommandSource>("shards")
+                    .executes {
+                        sendGreenhouseShardLevels()
+                        return@executes 1
+                    }
+            )
 
         return farming.then(collect)
     }
@@ -105,6 +113,15 @@ object FarmingDebug : AbstractCommand() {
                     return@executes 1
                 }
             )
+
+    private fun sendGreenhouseShardLevels() {
+        fun levelText(level: Int?): String = level?.let { "level $it" } ?: "not found"
+
+        val speedShard = levelText(GreenhouseTickTime.shardLevelOf(GreenhouseData.GREENHOUSE_SPEED_ATTRIBUTE_ID))
+        val floraShard = if (GreenhouseTickTime.isFloraAttributeIdKnown) levelText(GreenhouseTickTime.floraShardLevel()) else "no flora id yet"
+
+        ChatUtils.sendWithPrefix("Greenhouse speed shard: $speedShard\nFlora shard: $floraShard")
+    }
 
     private fun sendScanStatus() {
         val status = GreenhouseData.scanStatus()

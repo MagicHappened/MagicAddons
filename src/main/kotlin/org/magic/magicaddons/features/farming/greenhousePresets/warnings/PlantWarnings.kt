@@ -236,7 +236,7 @@ object PlantWarnings {
 
     private const val WATER_LABEL: String = "Water"
 
-    private class DecayingPlant(val greenhouse: String, val plant: String, val remainingMs: Long)
+    private class DecayingPlant(val greenhouse: String, val plant: String, val remainingMs: Long, val isCertain: Boolean)
 
     private fun decaySection(profile: ProfileGreenhouses): Section? {
         if (!warningEnabled(DECAY_KEY)) return null
@@ -244,7 +244,11 @@ object PlantWarnings {
         val thresholdMs = Duration.ofHours(GreenhousePresets.decayThresholdHours().toLong()).toMillis()
         val decaying = profile.grids.flatMap { grid ->
             grid.layout.plants.mapNotNull { plant ->
-                plant.decayRemainingMs?.let { DecayingPlant(grid.layout.displayName(), plant.cropDef.name, it) }
+                val remainingMs = plant.decayRemainingMs ?: return@mapNotNull null
+                val outlook = grid.layout.decayOutlookOf(plant)
+                if (!outlook.canDecay) return@mapNotNull null
+
+                DecayingPlant(grid.layout.displayName(), plant.cropDef.name, remainingMs, outlook.isCertain)
             }
         }.filter { it.remainingMs <= thresholdMs }.sortedBy { it.remainingMs }
 
@@ -255,8 +259,8 @@ object PlantWarnings {
                 .append(Component.literal(" in ").withStyle(ChatFormatting.GRAY))
                 .append(Component.literal(decayingPlant.greenhouse).withStyle(ChatFormatting.AQUA))
                 .append(
-                    if (decayingPlant.remainingMs <= 0) Component.literal(" - decayed").withStyle(ChatFormatting.DARK_RED)
-                    else Component.literal(" - ${decayingPlant.remainingMs.toShortDuration()}").withStyle(ChatFormatting.WHITE)
+                    if (decayingPlant.remainingMs <= 0 && decayingPlant.isCertain) Component.literal(" - decayed").withStyle(ChatFormatting.DARK_RED)
+                    else Component.literal(" - ${if (decayingPlant.isCertain) "" else "≥"}${decayingPlant.remainingMs.toShortDuration()}").withStyle(ChatFormatting.WHITE)
                 )
         }
 
@@ -312,13 +316,12 @@ object PlantWarnings {
         count("Noctilume time change", NOCTILUME_KEY) { it.needsOtherTimeOfDay(gardenTime) }
         count("Snoozling asleep", SNOOZLING_KEY) { it.isAsleep && it.cropDef.name == "Snoozling" }
         count("Jerryflower asleep", SNOOZLING_KEY) { it.isAsleep && it.cropDef.name == "Jerryflower" }
-        count("Thunderling near overload", THUNDERLING_KEY) { it.cropDef.chargeRule != null && !it.isPlacedMutation && it.charge >= chargeThreshold }
+        count("Thunderling near overload", THUNDERLING_KEY) {
+            it.cropDef.chargeRule != null && !it.isPlacedMutation && it.charge >= chargeThreshold && !it.isHaltedByCharge
+        }
+        count("Thunderling halted at full charge", THUNDERLING_KEY) { it.isHaltedByCharge }
         count("Glasscorn about to reset", GLASSCORN_KEY) { it.cropDef.resetsToFirstStage && it.highestStage == it.cropDef.maxStage }
 
-        if (warningEnabled(THUNDERLING_KEY)) {
-            val destroyed = profile.grids.sumOf { it.state.thunderlingsDestroyed }
-            if (destroyed > 0) counts["Thunderling destroyed"] = destroyed
-        }
         if (warningEnabled(GLASSCORN_KEY)) {
             val reset = profile.grids.sumOf { it.state.glasscornsReset }
             if (reset > 0) counts["Glasscorn reset"] = reset
@@ -356,8 +359,8 @@ object PlantWarnings {
     fun chorusExplanation(ticksAhead: Int): String = if (ticksAhead >= 2) CHORUS_EXPLANATION_BY_THEN else CHORUS_EXPLANATION
 
     private enum class Thirst(val label: String, val color: ChatFormatting) {
-        PresumedDead("presumed dead", ChatFormatting.DARK_RED),
-        DyingNextTick("dying next tick", ChatFormatting.RED),
+        Halted("halted", ChatFormatting.DARK_RED),
+        HaltsNextTick("halts next tick", ChatFormatting.RED),
         OutOfWater("out of water", ChatFormatting.GOLD)
     }
 
@@ -373,13 +376,13 @@ object PlantWarnings {
                 if (!plant.consumesWater) return@mapNotNull null
 
                 val water = plant.waterLevel ?: return@mapNotNull null
-                if (water <= PlotPrediction.WATER_DEATH_LEVEL) return@mapNotNull ThirstyPlant(plant, grid.layout.displayName(), Thirst.PresumedDead)
+                if (plant.isHaltedByWater) return@mapNotNull ThirstyPlant(plant, grid.layout.displayName(), Thirst.Halted)
 
                 val effect = GreenhouseGrid.waterEffectAt(grid.layout, plant.slot)
-                val ticksLeft = PlotPrediction.ticksUntilDeath(water, effect) ?: return@mapNotNull null
+                val ticksLeft = PlotPrediction.ticksUntilHalt(water, effect) ?: return@mapNotNull null
 
                 when {
-                    ticksLeft <= 1 -> ThirstyPlant(plant, grid.layout.displayName(), Thirst.DyingNextTick)
+                    ticksLeft <= 1 -> ThirstyPlant(plant, grid.layout.displayName(), Thirst.HaltsNextTick)
                     water < 0 && warnNegative -> ThirstyPlant(plant, grid.layout.displayName(), Thirst.OutOfWater)
                     else -> null
                 }

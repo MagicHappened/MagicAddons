@@ -20,6 +20,7 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object PlantBoyAdvance {
     val definition = CropDefinition(
         name = "PlantBoy Advance",
+        minMutationsBeforeDecay = 6,
         tier = CropTier.Epic,
         dropMultiplier = 23.0,
         effects = setOf(

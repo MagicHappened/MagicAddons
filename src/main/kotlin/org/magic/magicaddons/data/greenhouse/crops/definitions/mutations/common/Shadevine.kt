@@ -17,6 +17,7 @@ object Shadevine {
 
     val definition = CropDefinition(
         name = "Shadevine",
+        minMutationsBeforeDecay = 10,
         tier = CropTier.Common,
         dropMultiplier = 0.26,
         effects = setOf(

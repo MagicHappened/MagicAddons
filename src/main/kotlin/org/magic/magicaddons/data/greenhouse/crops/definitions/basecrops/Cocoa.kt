@@ -17,6 +17,7 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Cocoa {
     val definition = CropDefinition(
         name = "Cocoa Beans",
+        minMutationsBeforeDecay = 12,
         tier = CropTier.BaseCrop,
         dropMultiplier = 0.15,
         effects = setOf(

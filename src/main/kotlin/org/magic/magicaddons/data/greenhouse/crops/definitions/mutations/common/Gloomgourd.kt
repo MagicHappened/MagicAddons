@@ -18,6 +18,7 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Gloomgourd {
     val definition = CropDefinition(
         name = "Gloomgourd",
+        minMutationsBeforeDecay = 10,
         tier = CropTier.Common,
         dropMultiplier = 0.2,
         effects = setOf(

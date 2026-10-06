@@ -88,6 +88,7 @@ object Noctilume {
 
     val definition = CropDefinition(
         name = "Noctilume",
+        minMutationsBeforeDecay = 8,
         tier = CropTier.Rare,
         dropMultiplier = 5.3,
         effects = setOf(

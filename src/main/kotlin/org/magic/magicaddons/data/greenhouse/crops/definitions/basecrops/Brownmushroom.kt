@@ -15,6 +15,7 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Brownmushroom {
     val definition = CropDefinition(
         name = "Brown Mushroom",
+        minMutationsBeforeDecay = 12,
         tier = CropTier.BaseCrop,
         dropMultiplier = 0.08,
         effects = setOf(

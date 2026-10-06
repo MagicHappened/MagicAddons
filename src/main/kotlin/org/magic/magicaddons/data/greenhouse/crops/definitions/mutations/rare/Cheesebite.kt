@@ -19,6 +19,7 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Cheesebite {
     val definition = CropDefinition(
         name = "Cheesebite",
+        minMutationsBeforeDecay = 8,
         tier = CropTier.Rare,
         dropMultiplier = 4.0,
         effects = setOf(

@@ -15,6 +15,7 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object DeadPlant {
     val definition = CropDefinition(
         name = "Dead Plant",
+        minMutationsBeforeDecay = 10,
         tier = CropTier.Other,
         skyblockId = SkyBlockItemId.item("DEAD_PLANT"),
         stages = listOf(
@@ -29,7 +30,6 @@ object DeadPlant {
                 1..1
             )
         ),
-        decayTimeMs = NEVER_DECAYS,
         requiredSoil = setOf(Blocks.SAND, Blocks.RED_SAND, Blocks.DIRT, Blocks.FARMLAND, Blocks.MYCELIUM, Blocks.PODZOL, Blocks.SOUL_SAND, Blocks.END_STONE),
         needsWater = false,
         isMutation = false,
