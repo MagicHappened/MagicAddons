@@ -28,9 +28,14 @@ import org.magic.magicaddons.util.ChatUtils
 // for tracking how hypixel mutations spawns work.
 object GreenhouseSpawnLog {
 
-    private class RecordedPlant(val x: Int, val y: Int, val cropName: String, val stages: String, val water: Double?) {
-        override fun toString(): String = "$x,$y:$cropName@$stages" + (water?.let { "/${"%.1f".format(it)}" } ?: "")
+    private class RecordedPlant(val x: Int, val y: Int, val cropName: String, val stages: String, val water: Double?, val timesMutated: String?) {
+        override fun toString(): String =
+            "$x,$y:$cropName@$stages" + (water?.let { "/${"%.1f".format(it)}" } ?: "") + (timesMutated?.let { "#$it" } ?: "")
     }
+
+    private class PendingRow(val record: Record, val layoutAfter: PlotLayout, val spawnCandidates: String, val grid: GreenhouseGrid)
+
+    private val pendingRowByGrid = mutableMapOf<GreenhouseGrid, PendingRow>()
 
     private class Record(
         val plotId: String,
@@ -54,7 +59,7 @@ object GreenhouseSpawnLog {
 
     private const val HEADER: String = "time,plot,ticks,left_garden,weight_multiplier,empty_target_spots," +
             "expected_target_spawns,target_spawns,expected_other_spawns,other_spawns_on_targets,spawns_elsewhere," +
-            "spawns,plants_before,plants_after"
+            "spawns,plants_before,plants_after,spawn_candidates"
     private const val TICKS_COLUMN: Int = 2
     private const val EXPECTED_TARGET_COLUMN: Int = 6
     private const val TARGET_SPAWNS_COLUMN: Int = 7
@@ -90,10 +95,12 @@ object GreenhouseSpawnLog {
 
     fun discardOpenRecords() {
         openRecordByGrid.clear()
+        writePendingRows()
     }
 
     fun noteGrowthTicks(grid: GreenhouseGrid, ticks: Int, leftGarden: Boolean) {
         if (!isEnabled || GreenhouseProfiles.holdsAlphaData) return
+        pendingRowByGrid.remove(grid)?.let(::writePendingRow)
 
         val openRecord = openRecordByGrid[grid]
         if (openRecord != null) {
@@ -115,7 +122,34 @@ object GreenhouseSpawnLog {
     fun noteScan(grid: GreenhouseGrid) {
         if (!isEnabled || GreenhouseProfiles.holdsAlphaData) return
         val record = openRecordByGrid.remove(grid) ?: return
-        writeRow(record, grid.layout.freshCopy())
+        val layoutAfter = grid.layout.freshCopy()
+        pendingRowByGrid.remove(grid)?.let(::writePendingRow)
+        pendingRowByGrid[grid] = PendingRow(record, layoutAfter, spawnCandidatesOf(grid, spawnsBetween(record.layoutBefore, layoutAfter)), grid)
+    }
+
+    private fun writePendingRow(pending: PendingRow) {
+        val liveBySlot = pending.grid.layout.plants.associateBy { it.slot.x to it.slot.y }
+        pending.layoutAfter.plants.forEach { copy ->
+            val live = liveBySlot[copy.slot.x to copy.slot.y]?.takeIf { it.cropTypeEquals(copy) && it.appearedAt == copy.appearedAt } ?: return@forEach
+            copy.mutationsSpawned = live.mutationsSpawned
+            copy.mutationsSpawnedIsMinimum = live.mutationsSpawnedIsMinimum
+        }
+        writeRow(pending.record, pending.layoutAfter, pending.spawnCandidates)
+    }
+
+    private fun writePendingRows() {
+        pendingRowByGrid.values.forEach(::writePendingRow)
+        pendingRowByGrid.clear()
+    }
+
+    private fun spawnCandidatesOf(grid: GreenhouseGrid, spawns: List<Plant>): String = spawns.joinToString(";") { spawn ->
+        val credit = PlotPrediction.spawnCreditOf(grid.layout, spawn.cropDef, spawn.slot.x, spawn.slot.y, ignoredPlant = grid.layout.plantCovering(spawn.slot.x, spawn.slot.y))
+        val candidates = (credit.certain + credit.uncertain).sortedWith(compareBy({ it.slot.y }, { it.slot.x })).joinToString("|") { candidate ->
+            val world = grid.getPosForSlot(candidate.slot)
+            "${candidate.slot.x},${candidate.slot.y}=${world?.x},${world?.z}:${candidate.cropDef.name}"
+        }
+        val spawnWorld = grid.getPosForSlot(spawn.slot)
+        "${spawn.slot.x},${spawn.slot.y}=${spawnWorld?.x},${spawnWorld?.z}:${spawn.cropDef.name}<-$candidates"
     }
 
     fun onGameClosing() {
@@ -126,19 +160,20 @@ object GreenhouseSpawnLog {
     }
 
     private fun writeEveryOpenRecord() {
-        openRecordByGrid.values.forEach { writeRow(it, layoutAfter = null) }
+        writePendingRows()
+        openRecordByGrid.values.forEach { writeRow(it, layoutAfter = null, spawnCandidates = "") }
         openRecordByGrid.clear()
     }
 
-    private fun writeRow(record: Record, layoutAfter: PlotLayout?) {
+    private fun writeRow(record: Record, layoutAfter: PlotLayout?, spawnCandidates: String) {
         val fileName = activeFileName ?: return
         rowWriter.execute {
-            runCatching { appendRow(fileName, record, layoutAfter) }
+            runCatching { appendRow(fileName, record, layoutAfter, spawnCandidates) }
                 .onFailure { Common.LOGGER.warn("Could not write a spawn log row for ${record.plotId}", it) }
         }
     }
 
-    private fun appendRow(fileName: String, record: Record, layoutAfter: PlotLayout?) {
+    private fun appendRow(fileName: String, record: Record, layoutAfter: PlotLayout?, spawnCandidates: String) {
         val spawns = layoutAfter?.let { spawnsBetween(record.layoutBefore, it) }.orEmpty()
         val targetsByOrigin = record.emptyTargets.associateBy { it.slot.x to it.slot.y }
         val (spawnsOnTargets, spawnsElsewhere) = spawns.partition { (it.slot.x to it.slot.y) in targetsByOrigin }
@@ -159,7 +194,8 @@ object GreenhouseSpawnLog {
             spawnsElsewhere.size.toString(),
             csvField(spawns.map { recordedPlant(it) }.joinToString(";")),
             csvField(record.plantsBefore.joinToString(";")),
-            csvField(layoutAfter?.let { recordedPlants(it) }.orEmpty().joinToString(";"))
+            csvField(layoutAfter?.let { recordedPlants(it) }.orEmpty().joinToString(";")),
+            csvField(spawnCandidates)
         )
         Files.write(LOG_DIR.resolve(fileName), listOf(row.joinToString(",")), StandardOpenOption.CREATE, StandardOpenOption.APPEND)
     }
@@ -183,7 +219,12 @@ object GreenhouseSpawnLog {
         layout.plants.sortedWith(compareBy({ it.slot.y }, { it.slot.x })).map { recordedPlant(it) }
 
     private fun recordedPlant(plant: Plant): RecordedPlant =
-        RecordedPlant(plant.slot.x, plant.slot.y, plant.cropDef.name, stagesOf(plant), plant.waterLevel)
+        RecordedPlant(plant.slot.x, plant.slot.y, plant.cropDef.name, stagesOf(plant), plant.waterLevel, timesMutatedOf(plant))
+
+    private fun timesMutatedOf(plant: Plant): String? {
+        if (plant.cropDef.minMutationsBeforeDecay == null) return null
+        return plant.mutationsSpawned.toString() + if (plant.mutationsSpawnedIsMinimum) "+" else ""
+    }
 
     private fun stagesOf(plant: Plant): String = when (val stage = plant.growthStage) {
         is PlantStage.Known -> stage.stage.toString()

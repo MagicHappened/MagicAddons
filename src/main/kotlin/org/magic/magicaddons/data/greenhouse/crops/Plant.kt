@@ -100,6 +100,8 @@ data class Plant(
 
     val isPlacedMutation: Boolean get() = placed && cropDef.isMutation
 
+    val isGrowingTeleporter: Boolean get() = cropDef.teleportsWhileGrowing && !isPlacedMutation && !isFullyGrown
+
     val isCollectable: Boolean
         get() = isPlacedMutation && appearedAt?.let { GreenhouseTickTime.hasGrowthTickPassedSince(it) } != true
 

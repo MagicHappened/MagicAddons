@@ -138,8 +138,7 @@ data class ServerGreenhouseData(
                 ?: grid.state.chorusRiskCalculation?.takeIf { grid.state.isChorusRiskCalculating }?.immediateLossChanceByTick())?.toList()
         )
 
-        private fun isDecayReachable(outlook: DecayOutlook): Boolean =
-            outlook.kind != DecayOutlook.Kind.AfterSpawns || outlook.mutationsLeft <= outlook.spotsThatCanSpawn
+        private fun isDecayReachable(outlook: DecayOutlook): Boolean = outlook.isReachableFromCurrentSpots
 
         private fun plantOf(layout: PlotLayout, plant: GreenhousePlant): Plant {
             val stage = plant.growthStage

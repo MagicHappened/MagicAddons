@@ -26,11 +26,17 @@ class BlindSpawns(
     val createdAt: Long,
     val isBeforeTracking: Boolean,
     var atLeast: Int = 0,
-    var isExact: Boolean = false
+    var isExact: Boolean = false,
+    val atMost: Int? = null,
+    val drawId: String? = null,
+    val drawCredited: Int = 0,
+    val drawSize: Int = 0
 ) {
     fun contributorsIn(layout: PlotLayout): List<Plant> = layout.plants.filter { plant ->
         (plant.slot.x to plant.slot.y) in contributorSlots && (plant.appearedAt ?: 0L) <= createdAt
     }
+
+    fun isCountedIn(reading: DiagnosisReading): Boolean = isBeforeTracking || createdAt <= reading.readAt
 }
 
 object MutationCounting {
@@ -60,7 +66,7 @@ object MutationCounting {
         plant.mutationsSpawnedIsMinimum = false
     }
 
-    fun countSpawn(layout: PlotLayout, spawn: Plant) {
+    fun countSpawn(layout: PlotLayout, spawn: Plant, blindSpawns: MutableList<BlindSpawns>) {
         val crop = spawn.cropDef
         val spawnX = spawn.slot.x
         val spawnY = spawn.slot.y
@@ -72,10 +78,20 @@ object MutationCounting {
         }
 
         val credit = PlotPrediction.spawnCreditOf(layout, crop, spawnX, spawnY, ignoredPlant = spawn)
-        credit.uncertain.forEach(::loseExactCount)
         credit.certain.forEach {
             it.seenSpawnsHelped++
             creditReading(it)
+        }
+
+        val now = System.currentTimeMillis()
+        credit.draws.forEach { draw ->
+            val drawId = "$spawnX,$spawnY,${crop.elementId},$now,${draw.candidates.first().cropDef.name}"
+            draw.candidates.forEach { candidate ->
+                blindSpawns += BlindSpawns(
+                    spawnX, spawnY, crop.elementId, setOf(candidate.slot.x to candidate.slot.y), now, isBeforeTracking = false,
+                    atMost = 1, drawId = drawId, drawCredited = draw.credited, drawSize = draw.candidates.size
+                )
+            }
         }
     }
 
@@ -133,13 +149,38 @@ object MutationCounting {
         }
     }
 
-    fun noteDiagnosis(layout: PlotLayout, plant: Plant, reading: DiagnosisReading, blindSpawns: List<BlindSpawns>) {
+    fun noteDiagnosis(layout: PlotLayout, plant: Plant, reading: DiagnosisReading, blindSpawns: MutableList<BlindSpawns>) {
         plant.lastDiagnosisReading = reading
-        if (blindSpawns.any { blind -> !blind.isExact && plant in blind.contributorsIn(layout) }) return
+        val blindsInReading = blindSpawns.filter { it.isCountedIn(reading) && plant in it.contributorsIn(layout) }
 
-        plant.seenSpawnsHelped = reading.timesMutated - blindSpawns.filter { plant in it.contributorsIn(layout) }.sumOf { it.atLeast }
+        if (blindsInReading.any { !it.isExact } || teleporterSpotsOf(layout).any { plant in it.credit.certain }) return
+
+        plant.seenSpawnsHelped = reading.timesMutated - blindsInReading.sumOf { it.atLeast }
         plant.isMutationCountTracked = true
         plant.hasUncertainCredit = false
+    }
+
+    private val warnedUnsolvedPlots = HashSet<String>()
+
+    fun signatureOf(layout: PlotLayout, blindSpawns: List<BlindSpawns>): Int {
+        var signature = 17
+        fun mix(value: Any?) {
+            signature = signature * 31 + value.hashCode()
+        }
+        layout.plants.forEach { plant ->
+            mix(plant.slot.x); mix(plant.slot.y); mix(plant.elementId); mix(plant.appearedAt); mix(plant.isHalted)
+            mix(plant.seenSpawnsHelped); mix(plant.isMutationCountTracked); mix(plant.hasUncertainCredit); mix(plant.isCountedFromStart)
+            mix(plant.mutationsSpawned); mix(plant.mutationsSpawnedIsMinimum)
+            plant.lastDiagnosisReading?.let { reading ->
+                mix(reading.timesMutated); mix(reading.combinedRemaining); mix(reading.readAt)
+                mix(reading.spawnsSeenSince); mix(reading.isStillExact); mix(reading.isFromThisTick)
+            }
+        }
+        blindSpawns.forEach { blind ->
+            mix(blind.x); mix(blind.y); mix(blind.cropId); mix(blind.contributorSlots); mix(blind.createdAt)
+            mix(blind.atLeast); mix(blind.isExact); mix(blind.drawId)
+        }
+        return signature
     }
 
     fun recountPlot(layout: PlotLayout, blindSpawns: MutableList<BlindSpawns>): Map<BlindSpawns, List<Plant>> {
@@ -151,8 +192,11 @@ object MutationCounting {
 
         val solution = BlindSpawnSolver.solve(layout, liveContributors)
         if (solution == null) {
-            Common.LOGGER.warn("Mutation counts in ${layout.displayName()} don't fit the diagnostics readings, keeping the previous counts")
+            if (warnedUnsolvedPlots.add(layout.displayName())) {
+                Common.LOGGER.warn("Mutation counts in ${layout.displayName()} don't fit the diagnostics readings, keeping the previous counts")
+            }
         } else {
+            warnedUnsolvedPlots.remove(layout.displayName())
             solution.spawnsByBlind.forEach { (blind, spawns) ->
                 blind.atLeast = spawns.first
                 blind.isExact = spawns.first == spawns.last
@@ -171,9 +215,11 @@ object MutationCounting {
                     (solvedSum != null || blinds.all { it.isExact })
 
             val reading = plant.lastDiagnosisReading
-            val isReadingExact = reading?.isStillExact == true
+            val blindsAfterReading = reading?.let { blinds.filterNot { blind -> blind.isCountedIn(it) } }.orEmpty()
+            val isReadingExact = reading?.isStillExact == true && blindsAfterReading.all { it.isExact }
+            val readTimesMutated = (reading?.timesMutatedNow ?: 0) + blindsAfterReading.sumOf { it.atLeast }
 
-            plant.mutationsSpawned = maxOf(plant.seenSpawnsHelped + blindSpawnCount, reading?.timesMutatedNow ?: 0)
+            plant.mutationsSpawned = maxOf(plant.seenSpawnsHelped + blindSpawnCount, readTimesMutated)
             plant.mutationsSpawnedIsMinimum = !isCounted && !isReadingExact
         }
 
@@ -187,9 +233,8 @@ object MutationCounting {
 
     private val reportedMismatches = HashSet<String>()
 
-    private fun owedBy(timesMutated: Int, minimum: Int): Int = if (timesMutated in 1 until minimum) minimum - timesMutated else 0
-
-    private fun mostOwedBy(lowestTimesMutated: Int, minimum: Int): Int = owedBy(maxOf(lowestTimesMutated, 1), minimum)
+    fun combinedRemainingOf(timesMutatedByPlant: List<Int>, minimum: Int): Int =
+        timesMutatedByPlant.filter { it >= 1 }.sumOf { minimum - it }.coerceAtLeast(0)
 
     private fun combinedReadingsOf(layout: PlotLayout): List<CombinedReading> = layout.plants
         .mapNotNull { plant -> plant.lastDiagnosisReading?.takeIf { it.combinedRemaining != null && it.isFromThisTick }?.let { plant.cropDef to it } }
@@ -204,47 +249,51 @@ object MutationCounting {
         var isChanged = false
 
         combinedReadingsOf(layout).forEach { combined ->
+            if (combined.remaining <= 0) return@forEach
             val members = layout.plants.filter { it.cropDef == combined.crop }
-            val known = members.filter { !it.mutationsSpawnedIsMinimum }
-            val unknown = members.filter { it.mutationsSpawnedIsMinimum && it.mutationsSpawned < combined.minimum }
+            val (unknown, known) = members.partition { it.mutationsSpawnedIsMinimum }
             if (unknown.isEmpty()) return@forEach
 
-            val remaining = combined.remaining - known.sumOf { owedBy(it.mutationsSpawned, combined.minimum) }
+            val knownPool = known.filter { it.mutationsSpawned >= 1 }
+            val knownTimesMutated = knownPool.sumOf { it.mutationsSpawned }
+
+            if (unknown.all { it.mutationsSpawned >= 1 }) {
+                val unknownTimesMutated = (knownPool.size + unknown.size) * combined.minimum - combined.remaining - knownTimesMutated
+                when {
+                    unknown.size == 1 && unknownTimesMutated >= unknown.single().mutationsSpawned ->
+                        isChanged = noteDerivedCount(unknown.single(), unknownTimesMutated, combined) || isChanged
+                    unknownTimesMutated == unknown.sumOf { it.mutationsSpawned } ->
+                        unknown.forEach { isChanged = noteDerivedCount(it, it.mutationsSpawned, combined) || isChanged }
+                }
+                return@forEach
+            }
+
+            val plant = unknown.singleOrNull() ?: return@forEach
+            val isOutOfPool = knownPool.sumOf { combined.minimum - it.mutationsSpawned } == combined.remaining
+            val timesMutatedIfInPool = (knownPool.size + 1) * combined.minimum - combined.remaining - knownTimesMutated
+            val isInPool = timesMutatedIfInPool >= maxOf(plant.mutationsSpawned, 1)
             when {
-                remaining < 0 -> Unit
-                remaining == unknown.sumOf { mostOwedBy(it.mutationsSpawned, combined.minimum) } -> unknown.forEach {
-                    isChanged = noteDerivedCount(it, maxOf(it.mutationsSpawned, 1), combined, isExact = true) || isChanged
-                }
-                remaining == 0 -> unknown.filter { it.mutationsSpawned >= 1 }.forEach {
-                    isChanged = noteDerivedCount(it, combined.minimum, combined, isExact = false) || isChanged
-                }
-                unknown.size == 1 -> {
-                    val plant = unknown.single()
-                    val timesMutated = combined.minimum - remaining
-                    if (timesMutated >= maxOf(plant.mutationsSpawned, 1)) {
-                        isChanged = noteDerivedCount(plant, timesMutated, combined, isExact = true) || isChanged
-                    }
-                }
+                isOutOfPool && !isInPool -> isChanged = noteDerivedCount(plant, 0, combined) || isChanged
+                isInPool && !isOutOfPool -> isChanged = noteDerivedCount(plant, timesMutatedIfInPool, combined) || isChanged
             }
         }
         return isChanged
     }
 
-    private fun noteDerivedCount(plant: Plant, timesMutated: Int, combined: CombinedReading, isExact: Boolean): Boolean {
+    private fun noteDerivedCount(plant: Plant, timesMutated: Int, combined: CombinedReading): Boolean {
         val reading = plant.lastDiagnosisReading
         if (reading != null && reading.isStillExact) return false
-        if (!isExact && (reading?.timesMutatedNow ?: 0) >= timesMutated) return false
 
-        plant.lastDiagnosisReading = DiagnosisReading(timesMutated, null, combined.readAt, isStillExact = isExact)
+        plant.lastDiagnosisReading = DiagnosisReading(timesMutated, null, combined.readAt)
         return true
     }
 
     private fun reportCombinedMismatches(layout: PlotLayout) {
         combinedReadingsOf(layout).forEach { combined ->
             val members = layout.plants.filter { it.cropDef == combined.crop }
-            if (members.any { it.mutationsSpawnedIsMinimum && it.mutationsSpawned < combined.minimum }) return@forEach
+            if (members.any { it.mutationsSpawnedIsMinimum }) return@forEach
 
-            val counted = members.sumOf { owedBy(it.mutationsSpawned, combined.minimum) }
+            val counted = combinedRemainingOf(members.map { it.mutationsSpawned }, combined.minimum)
             if (counted == combined.remaining) return@forEach
 
             val reportKey = "${layout.displayName()}|${combined.crop.name}|${combined.readAt}"

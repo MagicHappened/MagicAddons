@@ -222,18 +222,25 @@ object PlotPrediction {
             .filterTo(mutableSetOf()) { recipe.isEmpty() || it.cropDef.name in recipe }
     }
 
-    class SpawnCredit(val certain: Set<Plant>, val uncertain: Set<Plant>)
+    class CreditDraw(val credited: Int, val candidates: Set<Plant>)
+
+    class SpawnCredit(val certain: Set<Plant>, val draws: List<CreditDraw>) {
+        val uncertain: Set<Plant> get() = draws.flatMapTo(HashSet()) { it.candidates }
+    }
 
     fun spawnCreditOf(layout: PlotLayout, crop: CropDefinition, x: Int, y: Int, ignoredPlant: Plant? = null): SpawnCredit {
         val recipe = crop.spawnRule?.requiredNeighbourCells.orEmpty()
         val contributingCells = cellsSurrounding(layout, crop, x, y).mapNotNull { (cellX, cellY) -> contributingPlantAtPos(layout, cellX, cellY, ignoredPlant) }
-        if (recipe.isEmpty()) return SpawnCredit(contributingCells.toSet(), emptySet())
+        if (recipe.isEmpty()) return SpawnCredit(contributingCells.toSet(), emptyList())
 
         val (exactlyNeeded, moreThanNeeded) = contributingCells
             .filter { it.cropDef.name in recipe }
             .groupBy { it.cropDef.name }
             .entries.partition { (cropName, cells) -> cells.size <= recipe.getValue(cropName) }
-        return SpawnCredit(exactlyNeeded.flatMap { it.value }.toSet(), moreThanNeeded.flatMap { it.value }.toSet())
+        return SpawnCredit(
+            exactlyNeeded.flatMap { it.value }.toSet(),
+            moreThanNeeded.map { (cropName, cells) -> CreditDraw(recipe.getValue(cropName), cells.toSet()) }
+        )
     }
 
     class HelpedSpawnSpots(val count: Int, val hasTeleportingMutation: Boolean)
@@ -261,17 +268,47 @@ object PlotPrediction {
         return layout.plants.associateWith { HelpedSpawnSpots(spotCountByPlant[it] ?: 0, it in plantsHelpingTeleporters) }
     }
 
-    fun decayOutlookOf(plant: Plant, helpedSpots: HelpedSpawnSpots?): DecayOutlook {
+    fun decayOutlookOf(layout: PlotLayout, plant: Plant, helpedSpotsOf: (Plant) -> HelpedSpawnSpots?): DecayOutlook {
+        if (plant.cropDef.minMutationsBeforeDecay == null || plant.mutationsSpawned == 0) return ownDecayOutlookOf(plant, helpedSpotsOf(plant))
+
+        val minimum = plant.cropDef.minMutationsBeforeDecay
+        val sameCrop = layout.plants.filter { it.cropDef == plant.cropDef }
+        val pool = sameCrop.filter { it.mutationsSpawned >= 1 }
+        val combinedReadThisTick = sameCrop
+            .mapNotNull { member -> member.lastDiagnosisReading?.takeIf { it.combinedRemaining != null && it.isFromThisTick } }
+            .maxByOrNull { it.readAt }
+            ?.combinedRemaining
+        val mutationsLeft = combinedReadThisTick ?: MutationCounting.combinedRemainingOf(pool.map { it.mutationsSpawned }, minimum)
+        val isMutationsLeftMinimum = combinedReadThisTick == null && pool.any { it.mutationsSpawnedIsMinimum }
+        val mayJoinPool = combinedReadThisTick == null && sameCrop.any { it.mutationsSpawned == 0 && it.mutationsSpawnedIsMinimum }
+
+        val helpedByMember = pool.map { helpedSpotsOf(it) }
+        val helpsTeleporter = helpedByMember.any { it?.hasTeleportingMutation == true }
+        val spotsAcrossPool = helpedByMember.sumOf { it?.count ?: 0 }
+
+        val kind = when {
+            mutationsLeft == 0 && !mayJoinPool -> DecayOutlook.Kind.OnTime
+            mutationsLeft > 0 && !isMutationsLeftMinimum && !helpsTeleporter && spotsAcrossPool == 0 -> DecayOutlook.Kind.Never
+            isMutationsLeftMinimum || mayJoinPool || helpsTeleporter -> DecayOutlook.Kind.AfterUncountedSpawns
+            else -> DecayOutlook.Kind.AfterSpawns
+        }
+        val isReachable = isMutationsLeftMinimum || mayJoinPool || helpsTeleporter || mutationsLeft <= spotsAcrossPool
+        return DecayOutlook(kind, mutationsLeft, helpedSpotsOf(plant)?.count ?: 0, pool.size, isMutationsLeftMinimum, isReachable)
+    }
+
+    private fun ownDecayOutlookOf(plant: Plant, helpedSpots: HelpedSpawnSpots?): DecayOutlook {
         val mutationsLeft = plant.mutationsLeftToSpawn
         val spotCount = helpedSpots?.count ?: 0
+        val helpsTeleporter = helpedSpots?.hasTeleportingMutation == true
 
         val kind = when {
             mutationsLeft == 0 -> DecayOutlook.Kind.OnTime
-            plant.mutationsSpawnedIsMinimum || helpedSpots?.hasTeleportingMutation == true -> DecayOutlook.Kind.AfterUncountedSpawns
+            plant.mutationsSpawnedIsMinimum || helpsTeleporter -> DecayOutlook.Kind.AfterUncountedSpawns
             spotCount > 0 -> DecayOutlook.Kind.AfterSpawns
             else -> DecayOutlook.Kind.Never
         }
-        return DecayOutlook(kind, mutationsLeft, spotCount)
+        val isReachable = plant.mutationsSpawnedIsMinimum || helpsTeleporter || mutationsLeft <= spotCount
+        return DecayOutlook(kind, mutationsLeft, spotCount, isMutationsLeftMinimum = plant.mutationsSpawnedIsMinimum, isReachableFromCurrentSpots = isReachable)
     }
 
     private fun isStanding(plant: Plant, ignoredPlant: Plant?): Boolean =

@@ -29,19 +29,34 @@ object GreenhouseTickTime {
     fun uniqueCropBonus(uniqueCrops: Int, floraAttribute: Int): Double =
         BONUS_PER_UNIQUE_CROP * (uniqueCrops + floraAttribute).coerceAtMost(MAX_UNIQUE_CROPS)
 
+    private const val TICK_MS_REUSED_FOR_MS: Long = 1_000
+
+    private var tickMsWorkedOutAt: Long = 0L
+
+    private var lastTickMs: Long? = null
+
     val tickMs: Long?
         get() {
-            val cropGrowth = GreenhouseData.miscInfo.cropGrowthValue ?: return null
-            val upgrade = GreenhouseData.miscInfo.cropSpeedUpgradeValue ?: return null
+            val now = System.currentTimeMillis()
+            if (now - tickMsWorkedOutAt < TICK_MS_REUSED_FOR_MS) return lastTickMs
 
-            return stageTimeMs(
-                GreenhouseData.getCurrentUniques().size,
-                cropGrowth,
-                upgrade,
-                speedAttribute() ?: 0,
-                floraAttribute() ?: 0
-            )
+            lastTickMs = workOutTickMs()
+            tickMsWorkedOutAt = now
+            return lastTickMs
         }
+
+    private fun workOutTickMs(): Long? {
+        val cropGrowth = GreenhouseData.miscInfo.cropGrowthValue ?: return null
+        val upgrade = GreenhouseData.miscInfo.cropSpeedUpgradeValue ?: return null
+
+        return stageTimeMs(
+            GreenhouseData.getCurrentUniques().size,
+            cropGrowth,
+            upgrade,
+            speedAttribute() ?: 0,
+            floraAttribute() ?: 0
+        )
+    }
 
     fun remainingTickMs(): Long? {
         val next = GreenhouseData.miscInfo.nextTickTime ?: return null

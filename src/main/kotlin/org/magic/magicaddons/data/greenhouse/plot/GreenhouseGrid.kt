@@ -1,5 +1,7 @@
 package org.magic.magicaddons.data.greenhouse.plot
 
+import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseData
+import org.magic.magicaddons.util.PlayerUtils
 import java.time.Instant
 import net.minecraft.client.Minecraft
 import net.minecraft.core.BlockPos
@@ -8,6 +10,7 @@ import net.minecraft.world.entity.decoration.ArmorStand
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.Vec3
+import org.magic.magicaddons.Common
 import org.magic.magicaddons.data.greenhouse.crops.*
 import org.magic.magicaddons.data.greenhouse.crops.definitions.misc.DeadPlant
 import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseTickTime
@@ -231,6 +234,7 @@ class GreenhouseGrid(
         val standCache = CropStage.StandCache()
         val merged = mutableListOf<ScannedPlant>()
         val spawnedMutations = mutableListOf<Plant>()
+        val scannedCropBySlot = HashMap<Pair<Int, Int>, String>()
 
         // outside the region nothing is read again
         if (region != null) {
@@ -258,24 +262,32 @@ class GreenhouseGrid(
                 val scannedPlant = slot.soil?.let { soil ->
                     getPosForSlot(slot)?.let { matchPlantAt(it, soil, remainingStands, slot, standCache) }
                 }
+                scannedPlant?.let { scannedCropBySlot[x to y] = it.plant.cropDef.name }
 
-                val isPlantBeforeKept = plantBefore != null && (plantBefore.isPlacedMutation || shouldKeepUnmatchedPlants) &&
+                val isMissedOnce = plantBefore != null && scannedPlant == null && (x to y) !in slotsRecheckedForMiss
+                val isPlantBeforeKept = plantBefore != null && (plantBefore.isPlacedMutation || shouldKeepUnmatchedPlants || isMissedOnce) &&
                         !scanMatchesPlantBefore(plantBefore, scannedPlant)
 
                 val scannedPlantResult = if (plantBefore != null && isPlantBeforeKept) {
-                    plantBeforeIfFootprintFilled(plantBefore, remainingStands) ?: continue
+                    val kept = plantBeforeIfFootprintFilled(plantBefore, remainingStands) ?: continue
+                    if (isMissedOnce && !shouldKeepUnmatchedPlants && !plantBefore.isPlacedMutation) noteMissedOnce(plantBefore, x to y)
+                    kept
                 } else {
+                    if (scannedPlant != null) slotsRecheckedForMiss.remove(x to y)
                     if (scannedPlant == null) continue
                     val def = scannedPlant.plant.cropDef
 
-                    if (plantBefore != null && plantBefore.cropTypeEquals(scannedPlant.plant)) {
+                    val isFreshTeleporterSpawn = plantBefore != null && def.teleportsWhileGrowing && state.lastScanTime != null &&
+                            scannedPlant.plant.highestStage == 1 && (plantBefore.lowestStage ?: 0) > 1
+
+                    if (plantBefore != null && plantBefore.cropTypeEquals(scannedPlant.plant) && !isFreshTeleporterSpawn) {
                         keepRecordedState(plantBefore, scannedPlant)
                     } else {
                         if (def.isMutation && state.lastScanTime != null) {
                             val placedNow = callbacks.placementConfirmed(def, scannedPlant.plant.slot, this)
                             if (scannedPlant.plant.placed || placedNow) {
                                 callbacks.markAsPlaced(scannedPlant.plant)
-                            } else if (plantBefore == null) {
+                            } else if (plantBefore == null || isFreshTeleporterSpawn) {
                                 callbacks.claimSpawnedMutation(scannedPlant.plant, layout)
                                 capStageToTicksSinceScan(scannedPlant.plant)
                                 spawnedMutations += scannedPlant.plant
@@ -304,16 +316,74 @@ class GreenhouseGrid(
             }
         }
 
+        logLostCounts(plantBeforeBySlot.values, merged, scannedCropBySlot, region, shouldKeepUnmatchedPlants)
+
         scannedPlants.clear()
         scannedPlants.addAll(merged)
 
         layout.plants.clear()
         layout.plants.addAll(merged.map { it.plant })
-        spawnedMutations.forEach { MutationCounting.countSpawn(layout, it) }
+        spawnedMutations.forEach { MutationCounting.countSpawn(layout, it, state.blindSpawns) }
 
         return true
     }
 
+
+    private fun logLostCounts(
+        plantsBefore: Collection<Plant>,
+        merged: List<ScannedPlant>,
+        scannedCropBySlot: Map<Pair<Int, Int>, String>,
+        region: Set<Pair<Int, Int>>?,
+        isUnsettled: Boolean
+    ) {
+        val keptSlots = merged.mapTo(HashSet()) { Triple(it.plant.slot.x, it.plant.slot.y, it.plant.elementId) }
+        plantsBefore
+            .filter { Triple(it.slot.x, it.slot.y, it.elementId) !in keptSlots && it.cropDef.minMutationsBeforeDecay != null }
+            .filterNot { it.isGrowingTeleporter }
+            .filter { it.lastDiagnosisReading != null || it.isMutationCountTracked }
+            .forEach { lost ->
+                val slot = lost.slot.x to lost.slot.y
+                val count = (if (lost.mutationsSpawnedIsMinimum) "≥" else "") + lost.mutationsSpawned
+                val scanKind = when {
+                    region != null -> "region scan"
+                    isUnsettled -> "unsettled full scan"
+                    else -> "settled full scan"
+                }
+                Common.LOGGER.info(
+                    "[scan] ${layout.displayName()}: ${lost.cropDef.name} at (${slot.first},${slot.second}) dropped with times mutated $count " +
+                            "by a $scanKind, scan found ${scannedCropBySlot[slot] ?: "nothing"} there. Stands: ${describeStandsOn(lost)}"
+                )
+                getPosForSlot(lost.slot)?.let { droppedSoil += it to lost.cropDef.footprint }
+            }
+    }
+
+    val droppedSoil: MutableList<Pair<BlockPos, Footprint>> = mutableListOf()
+
+    val slotsRecheckedForMiss: MutableSet<Pair<Int, Int>> = mutableSetOf()
+
+    val soilToRecheck: MutableList<BlockPos> = mutableListOf()
+
+    private fun noteMissedOnce(plant: Plant, slot: Pair<Int, Int>) {
+        slotsRecheckedForMiss += slot
+        val soil = getPosForSlot(plant.slot) ?: return
+        soilToRecheck += soil
+        Common.LOGGER.info(
+            "[scan] ${layout.displayName()}: ${plant.cropDef.name} at (${slot.first},${slot.second}) not recognised, kept and rechecking. " +
+                    "Stands: ${describeStandsOn(plant)}"
+        )
+    }
+
+    private fun describeStandsOn(plant: Plant): String {
+        val soil = getPosForSlot(plant.slot) ?: return "plot not loaded"
+        val stands = currentStandsInFootprint(soil, plant.cropDef.footprint)
+        if (stands.isEmpty()) return "none"
+
+        return stands.joinToString("; ") { stand ->
+            val offset = stand.position().subtract(Vec3.atBottomCenterOf(soil))
+            val moving = if (GreenhouseData.isStandMoving(stand.id)) ", still moving" else ""
+            "%s offset (%.5f, %.5f, %.5f)%s".format(PlayerUtils.getSkullHash(stand)?.take(8) ?: "no skull", offset.x, offset.y, offset.z, moving)
+        }
+    }
 
     private fun capStageToTicksSinceScan(plant: Plant) {
         val ticks = state.ticksSinceLastScan.coerceAtLeast(1)
@@ -802,7 +872,9 @@ class GreenhouseGrid(
 
         val blindSpawns: MutableList<BlindSpawns> = mutableListOf()
 
-        var plantsToDiagnose: Set<Plant> = emptySet()
+        var slotsToDiagnose: Set<Pair<Int, Int>> = emptySet()
+
+        var countedSignature: Int? = null
 
         var chorusRiskCalculation: ChorusCollision.Calculation? = null
 

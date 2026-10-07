@@ -1212,8 +1212,8 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
     private var diagnoseLineBox: ScreenRect? = null
 
     private fun renderDiagnoseLine(graphics: GuiGraphicsExtractor, grid: GreenhouseGrid, lineTop: Int, mouseX: Int, mouseY: Int) {
-        val plantsToDiagnose = grid.state.plantsToDiagnose
-        val count = plantsToDiagnose.size
+        val slotsToDiagnose = grid.state.slotsToDiagnose
+        val count = slotsToDiagnose.size
         val lineX = shelfLeft + ActionPanel.PADDING
         val lineWidth = shelfWidth - ActionPanel.PADDING * 2
 
@@ -1224,7 +1224,7 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
         }
         val isMarking = count > 0 && (DiagnosticPlanner.isLinePinned || inRect(mouseX, mouseY, lineX, lineTop, lineWidth, UNPLANNED_LINE_HEIGHT))
         if (isMarking) {
-            displayedGridWidget?.diagnoseCorners = plantsToDiagnose.map { it.slot.x to it.slot.y }.toSet()
+            displayedGridWidget?.diagnoseCorners = slotsToDiagnose
             graphics.fill(lineX, lineTop, lineX + lineWidth, lineTop + UNPLANNED_LINE_HEIGHT, Common.UI.HOVER_WASH)
         }
         graphics.modText(font, Component.literal(text), lineX, lineTop + (UNPLANNED_LINE_HEIGHT - font.lineHeight) / 2 + 1, color)

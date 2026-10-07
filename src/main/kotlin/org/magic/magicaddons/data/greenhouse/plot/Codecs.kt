@@ -234,9 +234,16 @@ object Codecs {
             Codec.LONG.fieldOf("created_at").forGetter { it.createdAt },
             Codec.BOOL.optionalFieldOf("before_tracking", false).forGetter { it.isBeforeTracking },
             Codec.INT.optionalFieldOf("at_least", 0).forGetter { it.atLeast },
-            Codec.BOOL.optionalFieldOf("exact", false).forGetter { it.isExact }
-        ).apply(instance) { x, y, crop, contributors, createdAt, isBeforeTracking, atLeast, isExact ->
-            BlindSpawns(x, y, crop, contributors.mapNotNull(::slotOf).toSet(), createdAt, isBeforeTracking, atLeast, isExact)
+            Codec.BOOL.optionalFieldOf("exact", false).forGetter { it.isExact },
+            Codec.INT.optionalFieldOf("at_most").forGetter { Optional.ofNullable(it.atMost) },
+            Codec.STRING.optionalFieldOf("draw").forGetter { Optional.ofNullable(it.drawId) },
+            Codec.INT.optionalFieldOf("draw_credited", 0).forGetter { it.drawCredited },
+            Codec.INT.optionalFieldOf("draw_size", 0).forGetter { it.drawSize }
+        ).apply(instance) { x, y, crop, contributors, createdAt, isBeforeTracking, atLeast, isExact, atMost, drawId, drawCredited, drawSize ->
+            BlindSpawns(
+                x, y, crop, contributors.mapNotNull(::slotOf).toSet(), createdAt, isBeforeTracking, atLeast, isExact,
+                atMost.orElse(null), drawId.orElse(null), drawCredited, drawSize
+            )
         }
     }
 

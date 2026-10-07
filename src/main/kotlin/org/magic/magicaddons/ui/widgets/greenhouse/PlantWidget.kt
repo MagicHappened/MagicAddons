@@ -228,7 +228,7 @@ class PlantWidget(val plant: Plant) : Renderable, GuiEventListener {
     }
 
     private fun renderMutationCount(graphics: GuiGraphicsExtractor, color: Int) {
-        if (plant.cropDef === FireElement.definition || plant.cropDef.minMutationsBeforeDecay == null) return
+        if (plant.cropDef === FireElement.definition || plant.cropDef.minMutationsBeforeDecay == null || plant.isGrowingTeleporter) return
 
         val text = (if (plant.mutationsSpawnedIsMinimum) "≥" else "") + plant.mutationsSpawned
         mutationCountBox = drawScaledLabel(graphics, text, y + 1f, color, left = x + 1f)
@@ -449,6 +449,9 @@ class PlantWidget(val plant: Plant) : Renderable, GuiEventListener {
 
     private fun decayDoubtExplanation(outlook: DecayOutlook): String {
         if (outlook.kind == DecayOutlook.Kind.AfterUncountedSpawns) return MAY_HAVE_DECAYED_UNCOUNTED
+        if (outlook.isPooled) {
+            return "Decay timer ran out. It decays once the combined mutates remaining of its ${poolText(outlook)} reaches 0 (now ${outlook.mutationsLeft})."
+        }
 
         val spots = if (outlook.spotsThatCanSpawn == 1) "1 spot next to it can" else "${outlook.spotsThatCanSpawn} spots next to it can"
         return "Decay timer ran out. It decays once it has contributed to ${outlook.mutationsLeft} more ${spawnedMutations(outlook.mutationsLeft)}, " +
@@ -457,8 +460,21 @@ class PlantWidget(val plant: Plant) : Renderable, GuiEventListener {
 
     private fun spawnedMutations(count: Int): String = if (count == 1) "spawned mutation" else "spawned mutations"
 
+    private fun poolText(outlook: DecayOutlook): String = "${outlook.poolSize} ${pluralOf(plant.cropDef.name)}"
+
+    private fun pooledDecayTooltipLine(time: String, outlook: DecayOutlook): Component {
+        val remaining = (if (outlook.isMutationsLeftMinimum) "≤" else "") + outlook.mutationsLeft
+        return when (outlook.kind) {
+            DecayOutlook.Kind.OnTime -> labelled("Decays in", time)
+            DecayOutlook.Kind.Never ->
+                labelled("Won't decay", "combined mutates remaining: $remaining, none of its ${poolText(outlook)} has a spot next to it that can spawn")
+            else -> labelled("Decays in", "≥$time, combined mutates remaining: $remaining (${poolText(outlook)})")
+        }
+    }
+
     private fun decayTooltipLine(remainingMs: Long, outlook: DecayOutlook): Component {
         val time = remainingMs.toCoarseDuration()
+        if (outlook.isPooled) return pooledDecayTooltipLine(time, outlook)
         val mutationsLeft = "${outlook.mutationsLeft} ${spawnedMutations(outlook.mutationsLeft)}"
 
         return when (outlook.kind) {
@@ -557,6 +573,12 @@ class PlantWidget(val plant: Plant) : Renderable, GuiEventListener {
 
         val font = Minecraft.getInstance().font
         graphics.drawTooltipLines(lines.flatMap { font.splitMod(it, TOOLTIP_WRAP_WIDTH) }, mouseX, mouseY)
+    }
+
+    private fun pluralOf(name: String): String = when {
+        name.endsWith("s") -> name
+        name.endsWith("o") -> name + "es"
+        else -> name + "s"
     }
 
     companion object {

@@ -23,11 +23,11 @@ object DiagnosticHighlight {
         if (Minecraft.getInstance().player?.mainHandItem?.getSkyBlockId()?.id != GreenhouseData.DIAGNOSTICS_TOOL_ID) return
 
         val grid = GreenhouseData.getCurrentGrid() ?: return
-        val plantsToDiagnose = grid.state.plantsToDiagnose
-        if (plantsToDiagnose.isEmpty()) return
+        val slotsToDiagnose = grid.state.slotsToDiagnose
+        if (slotsToDiagnose.isEmpty()) return
 
         val batch = WorldRenderer.BlockRenderBatch(cameraPos)
-        grid.scannedPlants.filter { it.plant in plantsToDiagnose }.forEach { scannedPlant ->
+        grid.scannedPlants.filter { (it.plant.slot.x to it.plant.slot.y) in slotsToDiagnose }.forEach { scannedPlant ->
             val soil = grid.getPosForSlot(scannedPlant.plant.slot) ?: return@forEach
             val footprint = scannedPlant.plant.cropDef.footprint
             batch.outline(soil, Shapes.create(AABB(0.0, 1.0, 0.0, footprint.width.toDouble(), 2.0, footprint.height.toDouble())), COLOR)

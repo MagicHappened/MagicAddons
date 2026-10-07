@@ -12,13 +12,14 @@ object DiagnosticPlanner {
 
     fun needsDiagnosing(plant: Plant): Boolean {
         val minimum = plant.cropDef.minMutationsBeforeDecay ?: return false
-        if (plant.cropDef.decayTimeMs == NEVER_DECAYS) return false
+        if (plant.cropDef.decayTimeMs == NEVER_DECAYS || plant.isGrowingTeleporter) return false
 
         return plant.mutationsSpawnedIsMinimum && plant.mutationsSpawned < minimum
     }
 
     fun plantsToDiagnose(layout: PlotLayout, contributorsByBlind: Map<BlindSpawns, List<Plant>>): Set<Plant> {
-        val unknownBlinds = contributorsByBlind.filterKeys { !it.isExact }.values.map { it.toSet() }
+        val unknownBlindKeys = contributorsByBlind.keys.filter { !it.isExact }
+        val unknownBlinds = unknownBlindKeys.map { contributorsByBlind.getValue(it).toSet() }
         val plantsWithOwnUnknown = layout.plants.filter { !it.isMutationCountTracked || it.hasUncertainCredit }
         val columnCount = unknownBlinds.size + plantsWithOwnUnknown.size
         val ownColumnByPlant = plantsWithOwnUnknown.withIndex().associate { (index, plant) -> plant to unknownBlinds.size + index }
@@ -32,9 +33,17 @@ object DiagnosticPlanner {
 
         val basis = Basis(columnCount)
         layout.plants.filter { it.lastDiagnosisReading?.isStillExact == true }.forEach { basis.add(rowOf(it)) }
+        contributorsByBlind.keys.filter { it.drawId != null }.groupBy { it.drawId }.values
+            .filter { draw -> draw.size == draw.first().drawSize }
+            .forEach { draw ->
+                val row = DoubleArray(columnCount)
+                unknownBlindKeys.forEachIndexed { index, blind -> if (blind in draw) row[index] = 1.0 }
+                basis.add(row)
+            }
 
         val targets = layout.plants.filter(::needsDiagnosing).associateWith(::rowOf).toMutableMap()
-        val chosen = LinkedHashSet<Plant>()
+        val chosen = LinkedHashSet<Plant>(targets.filterValues { row -> row.all { it == 0.0 } }.keys)
+        targets.keys.removeAll(chosen)
 
         while (true) {
             targets.entries.removeAll { (_, row) -> basis.contains(row) }

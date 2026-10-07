@@ -98,7 +98,7 @@ data class PlotLayout(
         return effectsCache.getOrPut(slot.x * SLOT_KEY_STRIDE + slot.y) { computeEffectsAt(slot) }
     }
 
-    fun decayOutlookOf(plant: Plant): DecayOutlook = PlotPrediction.decayOutlookOf(plant, spawnSpotsHelpedBy(plant))
+    fun decayOutlookOf(plant: Plant): DecayOutlook = PlotPrediction.decayOutlookOf(this, plant, ::spawnSpotsHelpedBy)
 
     fun helpsTeleportingMutationSpawn(plant: Plant): Boolean = spawnSpotsHelpedBy(plant)?.hasTeleportingMutation == true
 
