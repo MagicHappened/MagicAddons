@@ -36,6 +36,7 @@ import org.magic.magicaddons.Common
 import org.magic.magicaddons.features.farming.greenhousePresets.lookups.BioanalysisAccessory
 import org.magic.magicaddons.features.farming.greenhousePresets.warnings.ChorusCollision
 import org.magic.magicaddons.features.farming.greenhousePresets.warnings.PlantWarnings
+import org.magic.magicaddons.util.EntityUtils
 import org.magic.magicaddons.util.PlayerUtils
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.SBLocation
@@ -255,6 +256,37 @@ object GreenhouseData : GridCallbacks {
 
     fun isStandMoving(entityId: Int): Boolean = entityId in standTargets
 
+    private const val NAMEPLATE_WITHIN_SQR: Double = 0.09
+
+    private const val NAMEPLATE_CONFIRMED_AFTER_MOVING_SQR: Double = 0.25
+
+    private val nameplateIds = HashSet<Int>()
+
+    private val nameplateFirstSeenAt = HashMap<Int, Vec3>()
+
+    private var nameplateLevel: Level? = null
+
+    private fun isPlayerNameplate(level: Level, stand: ArmorStand): Boolean {
+        if (level !== nameplateLevel) {
+            nameplateIds.clear()
+            nameplateFirstSeenAt.clear()
+            nameplateLevel = level
+        }
+        if (stand.id in nameplateIds) return true
+
+        val player = Minecraft.getInstance().player ?: return false
+        val dx = player.x - stand.x
+        val dz = player.z - stand.z
+        if (dx * dx + dz * dz > NAMEPLATE_WITHIN_SQR || EntityUtils.carriesAnything(stand)) return false
+
+        val firstSeenAt = nameplateFirstSeenAt.getOrPut(stand.id) { player.position() }
+        if (firstSeenAt.distanceToSqr(player.position()) > NAMEPLATE_CONFIRMED_AFTER_MOVING_SQR) {
+            nameplateIds += stand.id
+            nameplateFirstSeenAt.remove(stand.id)
+        }
+        return true
+    }
+
     private class WatchedSoil(val soil: BlockPos, val footprint: Footprint, val until: Long)
 
     private val watchedSoil: MutableList<WatchedSoil> = mutableListOf()
@@ -288,8 +320,9 @@ object GreenhouseData : GridCallbacks {
         if (!greenhousesInitialized) return
 
         val gridArea = PlotAPI.getCurrentPlot()?.getBuildableArea() ?: return
-        val stand = Minecraft.getInstance().level?.getEntity(entityId) as? ArmorStand ?: return
-        if (!gridArea.contains(stand.position())) return
+        val level = Minecraft.getInstance().level ?: return
+        val stand = level.getEntity(entityId) as? ArmorStand ?: return
+        if (!gridArea.contains(stand.position()) || isPlayerNameplate(level, stand)) return
         if (watchedSoil.isNotEmpty()) logWatchedStandMove(stand, movingTo)
 
         val now = System.currentTimeMillis()

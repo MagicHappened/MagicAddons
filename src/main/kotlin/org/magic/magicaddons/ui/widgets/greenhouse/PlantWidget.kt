@@ -229,6 +229,7 @@ class PlantWidget(val plant: Plant) : Renderable, GuiEventListener {
 
     private fun renderMutationCount(graphics: GuiGraphicsExtractor, color: Int) {
         if (plant.cropDef === FireElement.definition || plant.cropDef.minMutationsBeforeDecay == null || plant.isGrowingTeleporter) return
+        if (decayOutlook?.canDecay == false) return
 
         val text = (if (plant.mutationsSpawnedIsMinimum) "≥" else "") + plant.mutationsSpawned
         mutationCountBox = drawScaledLabel(graphics, text, y + 1f, color, left = x + 1f)

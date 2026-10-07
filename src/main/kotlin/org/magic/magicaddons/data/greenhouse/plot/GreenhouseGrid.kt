@@ -1,6 +1,7 @@
 package org.magic.magicaddons.data.greenhouse.plot
 
 import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseData
+import org.magic.magicaddons.util.EntityUtils
 import org.magic.magicaddons.util.PlayerUtils
 import java.time.Instant
 import net.minecraft.client.Minecraft
@@ -264,13 +265,13 @@ class GreenhouseGrid(
                 }
                 scannedPlant?.let { scannedCropBySlot[x to y] = it.plant.cropDef.name }
 
-                val isMissedOnce = plantBefore != null && scannedPlant == null && (x to y) !in slotsRecheckedForMiss
-                val isPlantBeforeKept = plantBefore != null && (plantBefore.isPlacedMutation || shouldKeepUnmatchedPlants || isMissedOnce) &&
+                val isStillStanding = plantBefore != null && scannedPlant == null && holdsOwnCropParts(plantBefore)
+                val isPlantBeforeKept = plantBefore != null && (plantBefore.isPlacedMutation || shouldKeepUnmatchedPlants || isStillStanding) &&
                         !scanMatchesPlantBefore(plantBefore, scannedPlant)
 
                 val scannedPlantResult = if (plantBefore != null && isPlantBeforeKept) {
                     val kept = plantBeforeIfFootprintFilled(plantBefore, remainingStands) ?: continue
-                    if (isMissedOnce && !shouldKeepUnmatchedPlants && !plantBefore.isPlacedMutation) noteMissedOnce(plantBefore, x to y)
+                    if (isStillStanding && !shouldKeepUnmatchedPlants && !plantBefore.isPlacedMutation) noteMissedOnce(plantBefore, x to y)
                     kept
                 } else {
                     if (scannedPlant != null) slotsRecheckedForMiss.remove(x to y)
@@ -363,8 +364,27 @@ class GreenhouseGrid(
 
     val soilToRecheck: MutableList<BlockPos> = mutableListOf()
 
+    private fun holdsOwnCropParts(plant: Plant): Boolean {
+        val soil = getPosForSlot(plant.slot) ?: return false
+        val level = Minecraft.getInstance().level ?: return false
+        val stages = plant.cropDef.stages
+        val skullHashes = stages.flatMap { it.armorStands.orEmpty() }.mapNotNullTo(HashSet()) { it.hashString }
+        val blocks = stages.flatMap { it.blocks.orEmpty() }.mapTo(HashSet()) { it.blockState.block }
+        val footprint = plant.cropDef.footprint
+
+        val stands = currentStandsInFootprint(soil, footprint)
+        if (stands.any { stand -> PlayerUtils.getSkullHash(stand)?.let { it in skullHashes } == true }) return true
+        if (skullHashes.isEmpty() && stands.any { EntityUtils.carriesAnything(it) }) return true
+
+        return (0 until footprint.width).any { dx ->
+            (0 until footprint.height).any { dz ->
+                (1..CROP_HEIGHT).any { dy -> level.getBlockState(soil.offset(dx, dy, dz)).block in blocks }
+            }
+        }
+    }
+
     private fun noteMissedOnce(plant: Plant, slot: Pair<Int, Int>) {
-        slotsRecheckedForMiss += slot
+        if (!slotsRecheckedForMiss.add(slot)) return
         val soil = getPosForSlot(plant.slot) ?: return
         soilToRecheck += soil
         Common.LOGGER.info(

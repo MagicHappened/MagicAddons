@@ -256,10 +256,12 @@ object PlotPrediction {
 
                 spawningCrops.forEach { crop ->
                     val growingTeleporter = plantOnCell?.takeIf { crop.teleportsWhileGrowing && it.cropDef == crop && !it.isFullyGrown }
-                    if (plantOnCell != null && growingTeleporter == null) return@forEach
-                    if (missingSpawnConditions(layout, crop, x, y, ignoredPlant = growingTeleporter).isNotEmpty()) return@forEach
+                    val spawnHoldingItsSpot = plantOnCell?.takeIf { !crop.teleportsWhileGrowing && it.cropDef == crop && it.slot.x == x && it.slot.y == y }
+                    val reopeningOccupant = growingTeleporter ?: spawnHoldingItsSpot
+                    if (plantOnCell != null && reopeningOccupant == null) return@forEach
+                    if (missingSpawnConditions(layout, crop, x, y, ignoredPlant = reopeningOccupant).isNotEmpty()) return@forEach
 
-                    val contributors = plantsContributingTo(layout, crop, x, y, growingTeleporter)
+                    val contributors = plantsContributingTo(layout, crop, x, y, reopeningOccupant)
                     if (crop.teleportsWhileGrowing) plantsHelpingTeleporters += contributors else plantsHelpingHere += contributors
                 }
                 plantsHelpingHere.forEach { spotCountByPlant.merge(it, 1, Int::plus) }
