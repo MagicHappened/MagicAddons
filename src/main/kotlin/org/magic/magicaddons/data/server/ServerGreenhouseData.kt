@@ -24,6 +24,8 @@ data class ServerGreenhouseData(
     val profileId: String?,
     val isStillOnline: Boolean? = null,
     val visitedGreenhouse: Boolean? = null,
+    val inGarden: Boolean? = null,
+    val activity: Activity? = null,
     val nextTickInMs: Long,
     val tickMs: Long,
     val gardenDayTime: Long?,
@@ -41,11 +43,18 @@ data class ServerGreenhouseData(
         val harvestableIngredients: Boolean,
         val assumeFlatWater: Boolean,
         val warnOnNegativeWater: Boolean,
-        val chorusLossTolerance: Double
+        val chorusLossTolerance: Double,
+        val greenhouseCoop: String
     )
 
+    data class Activity(val harvested: Int, val placed: Int, val watered: Int, val plots: List<String>)
+
     data class Plot(
+        val id: String,
         val name: String,
+        val scannedAt: Long?,
+        val lastChangedAt: Long?,
+        val grid: String,
         val ticksSinceLastScan: Int,
         val slotsBySoil: Map<String, List<Int>>,
         val plants: List<Plant>,
@@ -116,14 +125,19 @@ data class ServerGreenhouseData(
                     harvestableIngredients = GreenhousePresets.countsIngredientsAsHarvestable(),
                     assumeFlatWater = GreenhousePresets.assumeFlatWater(),
                     warnOnNegativeWater = GreenhousePresets.negativeWaterWarningEnabled(),
-                    chorusLossTolerance = GreenhousePresets.chorusLossTolerance()
+                    chorusLossTolerance = GreenhousePresets.chorusLossTolerance(),
+                    greenhouseCoop = GreenhousePresets.greenhouseCoop().name
                 ),
                 plots = plots
             )
         }
 
         private fun plotOf(grid: GreenhouseGrid): Plot = Plot(
+            id = grid.layout.id,
             name = grid.layout.displayName(),
+            scannedAt = grid.state.lastScanTime?.toEpochMilli(),
+            lastChangedAt = grid.state.lastChangedAt,
+            grid = GridBlob.encode(grid),
             ticksSinceLastScan = grid.state.ticksSinceLastScan,
             slotsBySoil = grid.layout.slots
                 .filter { it.soil != DEFAULT_SOIL }

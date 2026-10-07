@@ -335,6 +335,7 @@ class EnumSetting<T : Enum<T>>(
     value: T,
     override val children: List<SettingNode<*>>? = null,
     val childrenProvider: ((T) -> List<SettingNode<*>>)? = null,
+    val optionDescriptions: ((T) -> String?)? = null,
     detail: (() -> SettingDetail?)? = null,
     needsExtensionPack: Boolean = false
 ) : SettingNode<T>(key, displayName, description, value, detail, needsExtensionPack) {

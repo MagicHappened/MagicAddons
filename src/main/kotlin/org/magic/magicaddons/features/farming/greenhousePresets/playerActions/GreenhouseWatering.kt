@@ -5,8 +5,10 @@ import java.time.Instant
 import net.minecraft.client.Minecraft
 import net.minecraft.network.chat.Component
 import net.minecraft.world.entity.decoration.ArmorStand
+import org.magic.magicaddons.data.greenhouse.crops.Plant
 import org.magic.magicaddons.data.greenhouse.crops.StandReader
 import org.magic.magicaddons.data.greenhouse.plot.PlotPrediction
+import org.magic.magicaddons.data.server.CoopSync
 import org.magic.magicaddons.events.EventHandler
 import org.magic.magicaddons.events.world.WorldTickEvent
 import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseData
@@ -25,6 +27,8 @@ object GreenhouseWatering {
     private val WATERING_WINDOW: Duration = Duration.ofSeconds(5)
 
     private var wateringUntil: Instant? = null
+
+    private val wateredThisWindow: MutableSet<Plant> = mutableSetOf()
 
     private fun isWateringCan(id: SkyBlockId): Boolean =
         id.id.substringAfter("item:").uppercase() in wateringCanIds
@@ -48,6 +52,7 @@ object GreenhouseWatering {
 
         if (Instant.now().isAfter(until)) {
             wateringUntil = null
+            wateredThisWindow.clear()
             return
         }
 
@@ -64,7 +69,12 @@ object GreenhouseWatering {
 
             if (!plant.cropDef.needsWater || plant.isPlacedMutation) return@forEach
 
+            val before = plant.waterLevel
             plant.waterLevel = barPercent.toDouble()
+            if (before == null || barPercent > before) {
+                if (wateredThisWindow.add(plant)) CoopSync.noteWatered(grid)
+                GreenhouseData.markContentChanged(grid)
+            }
 
             plant.waterExact = barPercent >= PlotPrediction.WATER_FULL_LEVEL
             plant.waterBestCase = null

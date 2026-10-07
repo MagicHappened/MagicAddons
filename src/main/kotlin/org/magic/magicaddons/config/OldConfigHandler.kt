@@ -54,6 +54,11 @@ object OldConfigHandler {
             version = "1.0.3"
         }
 
+        if (version == "1.0.3" || version == "1.0.4") {
+            updated = update_to_1_0_5(updated)
+            version = "1.0.5"
+        }
+
         updated.add(INFO_KEY, JsonObject().apply { addProperty(VERSION_KEY, targetVersion) })
 
         return updated
@@ -80,6 +85,19 @@ object OldConfigHandler {
             addProperty("enabled", true)
             addProperty("MobHighlight", true)
         })
+
+        return raw
+    }
+
+    // change 1_0_4 -> 1_0_5 the greenhouse presets "Warnings.DiscordIntegration" key moved out from
+    // under Warnings to "DiscordIntegration"
+    fun update_to_1_0_5(raw: JsonObject): JsonObject {
+        val configMap = raw.get(CONFIG_KEY) as? JsonObject ?: return raw
+        val farming = configMap.get("farming") as? JsonObject ?: return raw
+        val greenhousePresets = farming.get("GreenhousePresets") as? JsonObject ?: return raw
+
+        val discordIntegration = greenhousePresets.remove("Warnings.DiscordIntegration") ?: return raw
+        greenhousePresets.add("DiscordIntegration", discordIntegration)
 
         return raw
     }

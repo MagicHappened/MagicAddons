@@ -896,6 +896,10 @@ class GreenhouseGrid(
 
         var countedSignature: Int? = null
 
+        var lastChangedAt: Long? = null
+
+        var contentSignature: Int? = null
+
         var chorusRiskCalculation: ChorusCollision.Calculation? = null
 
         val isChorusRiskCalculating: Boolean

@@ -156,6 +156,7 @@ object PlantDiagnostics {
                     val reading = DiagnosisReading(timesMutated, combinedRemaining, System.currentTimeMillis())
                     MutationCounting.noteDiagnosis(grid.layout, plant, reading, grid.state.blindSpawns)
                     GreenhouseData.recountMutations(grid)
+                    GreenhouseData.refreshContentSignature(grid)
                 }
             }
             decayAttemptInMs?.let { plant.decayAttemptAt = System.currentTimeMillis() + it }

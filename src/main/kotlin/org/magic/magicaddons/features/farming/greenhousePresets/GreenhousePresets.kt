@@ -3,6 +3,7 @@ package org.magic.magicaddons.features.farming.greenhousePresets
 import java.time.Duration
 import kotlin.math.roundToInt
 import org.magic.magicaddons.data.config.BooleanSetting
+import org.magic.magicaddons.data.config.EnumSetting
 import org.magic.magicaddons.data.config.IntSetting
 import org.magic.magicaddons.data.config.ParentSetting
 import org.magic.magicaddons.data.config.TextSetting
@@ -52,6 +53,7 @@ object GreenhousePresets : Feature() {
     private const val TYPES_KEY = "Types"
     private const val REMINDERS_KEY = "Reminders"
     const val DISCORD_INTEGRATION_KEY = "DiscordIntegration"
+    const val GREENHOUSE_COOP_KEY = "GreenhouseCoop"
     const val CHORUS_KEY = "ChorusCollisionWarning"
     const val CHORUS_TOLERANCE_KEY = "ChorusLossTolerance"
     const val AT_TICK_KEY = "AtTheTick"
@@ -525,14 +527,34 @@ object GreenhousePresets : Feature() {
         )
     )
 
+    enum class GreenhouseCoop(private val label: String, val explanation: String) {
+        None("None", "No notifications at all while a coop member is online."),
+        CoopOutsideGarden("Coop Outside Garden", "Receive notifications when no coop member is in the garden."),
+        Always("Always", "Always receive notifications, even while a coop member is in the garden. The information might not be entirely accurate in that case.");
+
+        override fun toString(): String = label
+    }
+
+    private val greenhouseCoopSetting = EnumSetting(
+        key = GREENHOUSE_COOP_KEY,
+        displayName = "Greenhouse Coop",
+        description = "How notifications to Discord are handled when a coop member is online.\n" +
+                "§7Your coop member's strictest setting here decides how often your mod sends the greenhouse data to the server.",
+        value = GreenhouseCoop.None,
+        optionDescriptions = { it.explanation }
+    )
+
     private val discordIntegrationSetting = BooleanSetting(
         key = DISCORD_INTEGRATION_KEY,
         displayName = "Discord integration",
         description = "Enables discord commands for your linked minecraft accounts to view greenhouse data\n" +
+                "§7Turning this setting off in a coop would result in your changes to the greenhouse not being synced " +
+                "to the server, thus causing a coop member to receive incorrect reminders.\n\n" +
                 "Use this link to add the discord app to your discord account\n" +
                 "https://discord.com/oauth2/authorize?client_id=1554839668313427968",
         value = false,
-        requiresServer = true
+        requiresServer = true,
+        children = listOf(greenhouseCoopSetting)
     )
 
     private val warningsSetting = BooleanSetting(
@@ -541,7 +563,7 @@ object GreenhousePresets : Feature() {
         description = "Chat warnings about the greenhouse.\n" +
                 "§7Does not send a warning if you are standing in a greenhouse.",
         value = false,
-        children = listOf(warningTypesSetting, remindersSetting, discordIntegrationSetting)
+        children = listOf(warningTypesSetting, remindersSetting)
     )
 
     val greenhouseHudSetting = BooleanSetting(
@@ -561,6 +583,8 @@ object GreenhousePresets : Feature() {
         warningTypesSetting.availableChildren.filterIsInstance<BooleanSetting>().filter { it.isEnabled }.map { it.key }
 
     fun discordIntegrationEnabled(): Boolean = discordIntegrationSetting.isEnabled
+
+    fun greenhouseCoop(): GreenhouseCoop = greenhouseCoopSetting.value
 
     fun aloeHarvestStage(): Int = aloeHarvestStageSetting.value
 
@@ -637,6 +661,7 @@ object GreenhousePresets : Feature() {
                 )
             ),
             warningsSetting,
+            discordIntegrationSetting,
             greenhouseHudSetting,
             ParentSetting(
                 key = PREDICTION_KEY,

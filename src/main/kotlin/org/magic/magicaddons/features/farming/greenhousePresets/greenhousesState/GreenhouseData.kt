@@ -9,6 +9,7 @@ import net.minecraft.world.entity.decoration.ArmorStand
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.phys.Vec3
+import org.magic.magicaddons.data.server.CoopSync
 import org.magic.magicaddons.data.server.GreenhouseDataSync
 import org.magic.magicaddons.commands.internal.MainInternal
 import org.magic.magicaddons.commands.internal.farming.SetTimestalkAttribute
@@ -387,7 +388,7 @@ object GreenhouseData : GridCallbacks {
         val grid = getCurrentGrid() ?: return
         if (grid.state.scanned && !grid.state.needsRescan) return
 
-        if (joiningSkyBlock) {
+        if (joiningSkyBlock || CoopSync.isScanHeld()) {
             shouldRescanCurrentPlot = true
             return
         }
@@ -404,8 +405,11 @@ object GreenhouseData : GridCallbacks {
 
         grid.readSoilBlocks()
 
+        val plantsBefore = harvestCandidatesOf(grid)
         if (!grid.rescanPlants(shouldKeepUnmatchedPlants = !isPlotSettled)) return
         watchDroppedSoil(grid)
+        countHarvests(grid, plantsBefore)
+        refreshContentSignature(grid)
 
         if (isPlotSettled && !isPlanTurned) {
             grid.state.assignedLayout?.takeUnless { grid.state.noRotateAssignedLayout }?.let { plan ->
@@ -499,6 +503,88 @@ object GreenhouseData : GridCallbacks {
     }
 
 
+    private class HarvestCandidate(val x: Int, val y: Int, val elementId: String, val isHarvestable: Boolean)
+
+    private val attackedSlots: MutableMap<Pair<Int, Int>, Long> = mutableMapOf()
+
+    private const val ATTACK_COUNTS_FOR_MS: Long = 10_000
+
+    private fun harvestCandidatesOf(grid: GreenhouseGrid): List<HarvestCandidate> =
+        grid.layout.plants.map { HarvestCandidate(it.slot.x, it.slot.y, it.elementId, GreenhousePresets.isHarvestable(it)) }
+
+    private fun countHarvests(grid: GreenhouseGrid, before: List<HarvestCandidate>) {
+        val now = System.currentTimeMillis()
+        attackedSlots.entries.removeIf { now - it.value > ATTACK_COUNTS_FOR_MS }
+        val standing = grid.layout.plants.mapTo(HashSet()) { Triple(it.slot.x, it.slot.y, it.elementId) }
+
+        before.filter { it.isHarvestable && Triple(it.x, it.y, it.elementId) !in standing && (it.x to it.y) in attackedSlots }.forEach {
+            attackedSlots.remove(it.x to it.y)
+            CoopSync.noteHarvested(grid)
+        }
+    }
+
+    private fun contentSignatureOf(layout: PlotLayout): Int {
+        var signature = 17
+        layout.plants.sortedWith(compareBy({ it.slot.y }, { it.slot.x })).forEach { plant ->
+            signature = signature * 31 + plant.elementId.hashCode()
+            signature = signature * 31 + plant.slot.x
+            signature = signature * 31 + plant.slot.y
+            signature = signature * 31 + plant.placed.hashCode()
+            signature = signature * 31 + (plant.lastDiagnosisReading?.readAt?.hashCode() ?: 0)
+        }
+        layout.slots.forEach { signature = signature * 31 + (it.soil?.hashCode() ?: 0) }
+        return signature
+    }
+
+    fun refreshContentSignature(grid: GreenhouseGrid, markIfChanged: Boolean = true) {
+        val signature = contentSignatureOf(grid.layout)
+        val previous = grid.state.contentSignature
+        grid.state.contentSignature = signature
+        if (markIfChanged && previous != null && previous != signature) markContentChanged(grid)
+    }
+
+    fun markContentChanged(grid: GreenhouseGrid) {
+        grid.state.lastChangedAt = System.currentTimeMillis()
+        CoopSync.noteChanged(grid)
+    }
+
+    fun gridOf(plant: Plant): GreenhouseGrid? = greenhouseGrids.find { plant in it.layout.plants }
+
+    fun adoptPulledGrid(incoming: GreenhouseGrid, lastChangedAt: Long): GreenhouseGrid {
+        val local = greenhouseGrids.find { it.layout.id == incoming.layout.id } ?: run {
+            incoming.layout.name = null
+            incoming.state.lastChangedAt = lastChangedAt
+            greenhouseGrids.add(incoming)
+            checkGreenhouses = false
+            refreshContentSignature(incoming, markIfChanged = false)
+            return incoming
+        }
+
+        val marks = local.layout.slots.associate { (it.x to it.y) to it.mark }
+        local.layout.copyContentsFrom(incoming.layout)
+        local.layout.slots.forEach { it.mark = marks[it.x to it.y] }
+        local.scannedPlants.clear()
+        with(local.state) {
+            lastScanTime = incoming.state.lastScanTime
+            ticksSinceLastScan = incoming.state.ticksSinceLastScan
+            chorusLossChanceByTick = incoming.state.chorusLossChanceByTick
+            chorusRiskCalculation = null
+            blindSpawns.clear()
+            blindSpawns += incoming.state.blindSpawns
+            this.lastChangedAt = lastChangedAt
+            countedSignature = null
+            slotsToDiagnose = emptySet()
+            scanned = false
+            needsRescan = true
+        }
+        refreshContentSignature(local, markIfChanged = false)
+        GreenhouseSpawnLog.notePull(local)
+        if (getCurrentGrid() === local) shouldRescanCurrentPlot = true
+        LayoutRenderState.refresh()
+        regenRender()
+        return local
+    }
+
     private fun rescanAround(positions: List<BlockPos>) {
         val grid = getCurrentGrid() ?: return
         rescanSlots(grid, grid.regionSetFromPositions(positions))
@@ -520,8 +606,11 @@ object GreenhouseData : GridCallbacks {
         grid.plot = plot
 
         grid.readSoilBlocks()
+        val plantsBefore = harvestCandidatesOf(grid)
         if (!grid.rescanPlants(region, shouldKeepUnmatchedPlants = readiness != PlotReadiness.Settled)) return
         watchDroppedSoil(grid)
+        countHarvests(grid, plantsBefore)
+        refreshContentSignature(grid)
         claimPlantedCrop(grid)
         if (readiness == PlotReadiness.Settled) {
             updateDecayTracking(grid)
@@ -714,6 +803,7 @@ object GreenhouseData : GridCallbacks {
         lastServerTick = null
         gardenArrivedAt = null
         joiningSkyBlock = true
+        CoopSync.resetForProfile()
         regenRender()
     }
 
@@ -733,6 +823,7 @@ object GreenhouseData : GridCallbacks {
         updateTickTimeAfterJoin()
         checkForTickTimeUpdate()
         PlantWarnings.onTick()
+        CoopSync.onTick()
 
         if (!SBLocation.OwnGarden.inside()) return
 
@@ -800,6 +891,7 @@ object GreenhouseData : GridCallbacks {
             GreenhouseSpawnLog.discardOpenRecords()
             GreenhouseProfiles.leaveAlpha()
             GreenhouseDataSync.reportOnlineOnMainNetwork()
+            CoopSync.onSkyBlockJoin()
         }
     }
 
@@ -919,7 +1011,11 @@ object GreenhouseData : GridCallbacks {
         if (event.pos.y == GREENHOUSE_SOIL_Y) {
             slot.soil = Blocks.AIR
         } else {
-            grid.removePlantWithBlockAt(pos)
+            attackedSlots[slot.x to slot.y] = System.currentTimeMillis()
+            grid.removePlantWithBlockAt(pos)?.let { removed ->
+                attackedSlots.remove(slot.x to slot.y)
+                if (GreenhousePresets.isHarvestable(removed.plant)) CoopSync.noteHarvested(grid)
+            }
         }
 
         markBlocksDirty(pos)
@@ -1009,6 +1105,7 @@ object GreenhouseData : GridCallbacks {
         val area = grid.plot?.getBuildableArea() ?: return
         if (!area.contains(event.target.position())) return
 
+        grid.getSlotAt(BlockPos.containing(event.target.position()), matchY = false)?.let { attackedSlots[it.x to it.y] = System.currentTimeMillis() }
         markBlocksDirty(BlockPos.containing(event.target.position()))
     }
 
@@ -1130,6 +1227,7 @@ object GreenhouseData : GridCallbacks {
         }
         if (index < 0) return false
         playerPlacements.removeAt(index)
+        CoopSync.notePlaced(grid)
         return true
     }
 
@@ -1162,6 +1260,7 @@ object GreenhouseData : GridCallbacks {
         plant.waterLevel = null
         plant.waterExact = false
         plant.waterBestCase = null
+        gridOf(plant)?.let { refreshContentSignature(it) }
         LayoutRenderState.refresh()
     }
 
@@ -1171,6 +1270,7 @@ object GreenhouseData : GridCallbacks {
 
         plant.placed = false
         grid.rescanPlants(onlySlots = plant.coveredCells.toSet())
+        refreshContentSignature(grid)
         LayoutRenderState.refresh()
         return true
     }

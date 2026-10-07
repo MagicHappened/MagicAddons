@@ -262,8 +262,9 @@ object Codecs {
                 Codec.DOUBLE.listOf().optionalFieldOf("chorus_loss_chance_by_tick").forGetter {
                     Optional.ofNullable(it.chorusLossChanceByTick?.toList())
                 },
-                BLIND_SPAWNS_CODEC.listOf().optionalFieldOf("blind_spawns", emptyList()).forGetter { it.blindSpawns }
-            ).apply(instance) { lastUpdate, assignedLayout, planTurns, noRotateAssignedLayout, ticksSinceLastScan, chorusLossChances, blindSpawns ->
+                BLIND_SPAWNS_CODEC.listOf().optionalFieldOf("blind_spawns", emptyList()).forGetter { it.blindSpawns },
+                Codec.LONG.optionalFieldOf("last_changed_at").forGetter { Optional.ofNullable(it.lastChangedAt) }
+            ).apply(instance) { lastUpdate, assignedLayout, planTurns, noRotateAssignedLayout, ticksSinceLastScan, chorusLossChances, blindSpawns, lastChangedAt ->
                 GridState(
                     lastScanTime = lastUpdate.orElse(null)?.let { Instant.ofEpochMilli(it) },
                     planTurns = planTurns,
@@ -273,6 +274,7 @@ object Codecs {
                     it.assignedLayoutId = assignedLayout.orElse(null)
                     it.chorusLossChanceByTick = chorusLossChances.orElse(null)?.toDoubleArray()
                     it.blindSpawns += blindSpawns
+                    it.lastChangedAt = lastChangedAt.orElse(null)
                 }
             }
         }

@@ -1,12 +1,15 @@
 package org.magic.magicaddons.data.server
 
 import com.google.gson.Gson
+import com.google.gson.JsonParser
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents
 import org.magic.magicaddons.Common
+import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhousePresets
 import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseData
 import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseProfiles
+import org.magic.magicaddons.util.SBLocation
 import tech.thatgravyboat.skyblockapi.api.location.LocationAPI
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
@@ -39,6 +42,7 @@ object GreenhouseDataSync {
     sealed interface SyncOutcome {
         data object Sent : SyncOutcome
         data object NotLinked : SyncOutcome
+        data object NotProfileMember : SyncOutcome
         data object FeatureOff : SyncOutcome
         data class NoGreenhouseData(val missing: List<ServerGreenhouseData.MissingData>) : SyncOutcome
         data object OnAlpha : SyncOutcome
@@ -49,6 +53,12 @@ object GreenhouseDataSync {
     fun init() {
         ClientPlayConnectionEvents.DISCONNECT.register { _, _ -> uploadActiveProfile("disconnect") }
         ClientLifecycleEvents.CLIENT_STOPPING.register { uploadBeforeGameCloses() }
+        EventBus.register(CoopSync)
+    }
+
+    fun uploadForCoop(reason: String) {
+        if (System.currentTimeMillis() - lastUploadStartedAtMs < SAME_UPLOAD_WINDOW.toMillis()) return
+        uploadActiveProfile(reason, isStillOnline = true)
     }
 
     fun reportOnlineOnMainNetwork() {
@@ -79,7 +89,9 @@ object GreenhouseDataSync {
         }
         val data = ServerGreenhouseData.ofActiveProfile()?.copy(
             isStillOnline = isStillOnline.takeIf { it },
-            visitedGreenhouse = if (isStillOnline) null else visitedGreenhouseThisSession()
+            visitedGreenhouse = if (isStillOnline) null else visitedGreenhouseThisSession(),
+            inGarden = if (isStillOnline) SBLocation.OwnGarden.inside() else null,
+            activity = CoopSync.activity()?.let { ServerGreenhouseData.Activity(it.harvested, it.placed, it.watered, it.plots) }
         )
             ?: return skippedUpload(reason, SyncOutcome.NoGreenhouseData(ServerGreenhouseData.missingDataOfActiveProfile()))
         val body = gson.toJson(data)
@@ -90,6 +102,7 @@ object GreenhouseDataSync {
         }.thenApply { response ->
             val outcome = syncOutcomeOf(response)
             Common.LOGGER.info("greenhouse data upload on {}: {} ({} bytes)", reason, outcome, body.length)
+            if (outcome == SyncOutcome.Sent) CoopSync.noteUploadSent(isCoopIn(response))
             outcome
         }
         pendingUpload = upload
@@ -113,8 +126,13 @@ object GreenhouseDataSync {
         response == null -> SyncOutcome.Failed(null)
         response.statusCode() == ServerSession.HTTP_OK -> SyncOutcome.Sent
         response.body().contains("notLinked") -> SyncOutcome.NotLinked
+        response.body().contains("notProfileMember") -> SyncOutcome.NotProfileMember
         else -> SyncOutcome.Failed(response.statusCode())
     }
+
+    private fun isCoopIn(response: HttpResponse<String>?): Boolean? = runCatching {
+        JsonParser.parseString(response?.body() ?: return null).asJsonObject.get("isCoop")?.asBoolean
+    }.getOrNull()
 
     private fun uploadBeforeGameCloses() {
         val hasJustUploaded = System.currentTimeMillis() - lastUploadStartedAtMs < SAME_UPLOAD_WINDOW.toMillis()

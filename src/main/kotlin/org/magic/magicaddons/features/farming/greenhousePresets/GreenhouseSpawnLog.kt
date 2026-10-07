@@ -42,11 +42,11 @@ object GreenhouseSpawnLog {
         var ticks: Int,
         var leftGarden: Boolean,
         val weightMultiplier: Double,
-        val layoutBefore: PlotLayout,
+        var layoutBefore: PlotLayout,
         val emptyTargets: List<Plant>
     ) {
         val time: LocalDateTime = LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS)
-        val plantsBefore: List<RecordedPlant> = recordedPlants(layoutBefore)
+        var plantsBefore: List<RecordedPlant> = recordedPlants(layoutBefore)
     }
 
     private val rowWriter = Executors.newSingleThreadExecutor { Thread(it, "MagicAddons spawn log").apply { isDaemon = true } }
@@ -117,6 +117,12 @@ object GreenhouseSpawnLog {
             layoutBefore = grid.layout.freshCopy(),
             emptyTargets = emptyTargets(grid)
         )
+    }
+
+    fun notePull(grid: GreenhouseGrid) {
+        val record = openRecordByGrid[grid] ?: return
+        record.layoutBefore = grid.layout.freshCopy()
+        record.plantsBefore = recordedPlants(record.layoutBefore)
     }
 
     fun noteScan(grid: GreenhouseGrid) {

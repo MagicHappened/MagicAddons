@@ -17,6 +17,7 @@ import org.magic.magicaddons.ui.ScrollView
 import org.magic.magicaddons.util.ScreenUtil.drawBorder
 import org.magic.magicaddons.util.ScreenUtil.drawButtonPanel
 import org.magic.magicaddons.util.ScreenUtil.drawScrollBar
+import org.magic.magicaddons.util.ScreenUtil.drawTooltipAtCursor
 import org.magic.magicaddons.util.ScreenUtil.ellipsised
 import org.magic.magicaddons.util.ScreenUtil.inRect
 import org.magic.magicaddons.util.ScreenUtil.stepScroll
@@ -33,6 +34,7 @@ class DropdownWidget<T>(
     val onRightClickValue: ((T?, MouseButtonEvent) -> Unit)? = null,
     val onValueChanged: ((T) -> Unit)? = null,
     val isSearchable: Boolean = true,
+    val rowTooltip: ((T) -> String?)? = null,
 ) : Renderable {
     val list = DropdownList()
 
@@ -281,6 +283,12 @@ class DropdownWidget<T>(
 
             rows.forEach { it.extractRenderState(graphics, mouseX, mouseY) }
             graphics.drawBorder(overlayX, overlayY, overlayX + overlayWidth, overlayY + overlayHeight, Common.UI.BORDER_SIZE, Common.UI.BORDER_COLOR)
+            if (!stillOpening) {
+                val hoveredRow = hoveredElement as? RowWidget<*>
+                @Suppress("UNCHECKED_CAST")
+                val tooltip = hoveredRow?.let { rowTooltip?.invoke(it.value as T) }
+                if (tooltip != null) graphics.drawTooltipAtCursor(tooltip, mouseX, mouseY)
+            }
 
             if (matchingValues.size > visibleRows) {
                 graphics.drawScrollBar(

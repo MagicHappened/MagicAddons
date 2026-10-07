@@ -25,7 +25,8 @@ class EnumSettingWidget<T : Enum<T>>(
                 if (hasChildren()) unfold(true)
             }
         },
-        isSearchable = setting.value.javaClass.enumConstants.size >= MIN_VALUES_FOR_SEARCH
+        isSearchable = setting.value.javaClass.enumConstants.size >= MIN_VALUES_FOR_SEARCH,
+        rowTooltip = setting.optionDescriptions
     ).apply {
         height = FIELD_HEIGHT
         fitToValues(SELECTOR_MAX_WIDTH)

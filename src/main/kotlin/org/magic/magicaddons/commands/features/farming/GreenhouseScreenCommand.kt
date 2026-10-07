@@ -85,6 +85,7 @@ object GreenhouseScreenCommand : AbstractCommand() {
         SyncOutcome.FeatureOff -> ServerRequirements.missingRequirementMessage(needsDiscordIntegration = true)
             ?: Component.literal("Discord integration is off.")
         SyncOutcome.OnAlpha -> Component.literal("Greenhouse data from the Alpha Network is never sent to the server.")
+        SyncOutcome.NotProfileMember -> Component.literal("The server could not confirm you are a member of this profile, so the data was refused.")
         is SyncOutcome.NoGreenhouseData -> Component.literal("Nothing to send yet:").also { message ->
             outcome.missing.forEach { message.append(Component.literal("\n - ")).append(lineFor(it)) }
         }
