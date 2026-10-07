@@ -207,6 +207,7 @@ object CoopSync {
             addProperty("profileId", profileId)
             addProperty("inGarden", inGarden)
             addProperty("coopSetting", setting.name)
+            addProperty("name", Minecraft.getInstance().user.name)
         }
         ServerSession.sendAuthorized("/heartbeat") {
             header("Content-Type", "application/json")
