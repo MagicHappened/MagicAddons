@@ -11,7 +11,6 @@ import net.minecraft.world.entity.decoration.ArmorStand
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.Vec3
-import org.magic.magicaddons.Common
 import org.magic.magicaddons.data.greenhouse.crops.*
 import org.magic.magicaddons.data.greenhouse.crops.definitions.misc.DeadPlant
 import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseTickTime
@@ -235,7 +234,6 @@ class GreenhouseGrid(
         val standCache = CropStage.StandCache()
         val merged = mutableListOf<ScannedPlant>()
         val spawnedMutations = mutableListOf<Plant>()
-        val scannedCropBySlot = HashMap<Pair<Int, Int>, String>()
 
         // outside the region nothing is read again
         if (region != null) {
@@ -263,7 +261,6 @@ class GreenhouseGrid(
                 val scannedPlant = slot.soil?.let { soil ->
                     getPosForSlot(slot)?.let { matchPlantAt(it, soil, remainingStands, slot, standCache) }
                 }
-                scannedPlant?.let { scannedCropBySlot[x to y] = it.plant.cropDef.name }
 
                 val isStillStanding = plantBefore != null && scannedPlant == null && holdsOwnCropParts(plantBefore)
                 val isPlantBeforeKept = plantBefore != null && (plantBefore.isPlacedMutation || shouldKeepUnmatchedPlants || isStillStanding) &&
@@ -317,8 +314,6 @@ class GreenhouseGrid(
             }
         }
 
-        logLostCounts(plantBeforeBySlot.values, merged, scannedCropBySlot, region, shouldKeepUnmatchedPlants)
-
         scannedPlants.clear()
         scannedPlants.addAll(merged)
 
@@ -329,36 +324,6 @@ class GreenhouseGrid(
         return true
     }
 
-
-    private fun logLostCounts(
-        plantsBefore: Collection<Plant>,
-        merged: List<ScannedPlant>,
-        scannedCropBySlot: Map<Pair<Int, Int>, String>,
-        region: Set<Pair<Int, Int>>?,
-        isUnsettled: Boolean
-    ) {
-        val keptSlots = merged.mapTo(HashSet()) { Triple(it.plant.slot.x, it.plant.slot.y, it.plant.elementId) }
-        plantsBefore
-            .filter { Triple(it.slot.x, it.slot.y, it.elementId) !in keptSlots && it.cropDef.minMutationsBeforeDecay != null }
-            .filterNot { it.isGrowingTeleporter }
-            .filter { it.lastDiagnosisReading != null || it.isMutationCountTracked }
-            .forEach { lost ->
-                val slot = lost.slot.x to lost.slot.y
-                val count = (if (lost.mutationsSpawnedIsMinimum) "≥" else "") + lost.mutationsSpawned
-                val scanKind = when {
-                    region != null -> "region scan"
-                    isUnsettled -> "unsettled full scan"
-                    else -> "settled full scan"
-                }
-                Common.LOGGER.info(
-                    "[scan] ${layout.displayName()}: ${lost.cropDef.name} at (${slot.first},${slot.second}) dropped with times mutated $count " +
-                            "by a $scanKind, scan found ${scannedCropBySlot[slot] ?: "nothing"} there. Stands: ${describeStandsOn(lost)}"
-                )
-                getPosForSlot(lost.slot)?.let { droppedSoil += it to lost.cropDef.footprint }
-            }
-    }
-
-    val droppedSoil: MutableList<Pair<BlockPos, Footprint>> = mutableListOf()
 
     val slotsRecheckedForMiss: MutableSet<Pair<Int, Int>> = mutableSetOf()
 
@@ -387,22 +352,6 @@ class GreenhouseGrid(
         if (!slotsRecheckedForMiss.add(slot)) return
         val soil = getPosForSlot(plant.slot) ?: return
         soilToRecheck += soil
-        Common.LOGGER.info(
-            "[scan] ${layout.displayName()}: ${plant.cropDef.name} at (${slot.first},${slot.second}) not recognised, kept and rechecking. " +
-                    "Stands: ${describeStandsOn(plant)}"
-        )
-    }
-
-    private fun describeStandsOn(plant: Plant): String {
-        val soil = getPosForSlot(plant.slot) ?: return "plot not loaded"
-        val stands = currentStandsInFootprint(soil, plant.cropDef.footprint)
-        if (stands.isEmpty()) return "none"
-
-        return stands.joinToString("; ") { stand ->
-            val offset = stand.position().subtract(Vec3.atBottomCenterOf(soil))
-            val moving = if (GreenhouseData.isStandMoving(stand.id)) ", still moving" else ""
-            "%s offset (%.5f, %.5f, %.5f)%s".format(PlayerUtils.getSkullHash(stand)?.take(8) ?: "no skull", offset.x, offset.y, offset.z, moving)
-        }
     }
 
     private fun capStageToTicksSinceScan(plant: Plant) {

@@ -38,7 +38,6 @@ import org.magic.magicaddons.features.farming.greenhousePresets.lookups.Bioanaly
 import org.magic.magicaddons.features.farming.greenhousePresets.warnings.ChorusCollision
 import org.magic.magicaddons.features.farming.greenhousePresets.warnings.PlantWarnings
 import org.magic.magicaddons.util.EntityUtils
-import org.magic.magicaddons.util.PlayerUtils
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.SBLocation
 import org.magic.magicaddons.util.ServerUtils
@@ -255,8 +254,6 @@ object GreenhouseData : GridCallbacks {
         noteStandChanged(entityId, movingTo)
     }
 
-    fun isStandMoving(entityId: Int): Boolean = entityId in standTargets
-
     private const val NAMEPLATE_WITHIN_SQR: Double = 0.09
 
     private const val NAMEPLATE_CONFIRMED_AFTER_MOVING_SQR: Double = 0.25
@@ -288,33 +285,9 @@ object GreenhouseData : GridCallbacks {
         return true
     }
 
-    private class WatchedSoil(val soil: BlockPos, val footprint: Footprint, val until: Long)
-
-    private val watchedSoil: MutableList<WatchedSoil> = mutableListOf()
-
-    private const val WATCH_DROPPED_SOIL_MS: Long = 30_000
-
-    private fun watchDroppedSoil(grid: GreenhouseGrid) {
+    private fun recheckMissedSoil(grid: GreenhouseGrid) {
         markBlocksDirty(grid.soilToRecheck.map { it.above() })
         grid.soilToRecheck.clear()
-
-        val until = System.currentTimeMillis() + WATCH_DROPPED_SOIL_MS
-        grid.droppedSoil.forEach { (soil, footprint) -> watchedSoil += WatchedSoil(soil, footprint, until) }
-        grid.droppedSoil.clear()
-    }
-
-    private fun logWatchedStandMove(stand: ArmorStand, movingTo: Vec3?) {
-        val now = System.currentTimeMillis()
-        watchedSoil.removeIf { it.until < now }
-        val watched = watchedSoil.firstOrNull { it.footprint.spaceAbove(it.soil, CROP_HEIGHT).contains(stand.position()) } ?: return
-
-        val soilCenter = Vec3.atBottomCenterOf(watched.soil)
-        val from = stand.position().subtract(soilCenter)
-        val to = movingTo?.subtract(soilCenter)?.let { "(%.5f, %.5f, %.5f)".format(it.x, it.y, it.z) } ?: "a teleport or data change"
-        Common.LOGGER.info(
-            "[stand] ${PlayerUtils.getSkullHash(stand)?.take(8) ?: "no skull"} on dropped plant at ${watched.soil.toShortString()} " +
-                    "moves from (%.5f, %.5f, %.5f) to $to".format(from.x, from.y, from.z)
-        )
     }
 
     fun noteStandChanged(entityId: Int, movingTo: Vec3? = null) {
@@ -324,7 +297,6 @@ object GreenhouseData : GridCallbacks {
         val level = Minecraft.getInstance().level ?: return
         val stand = level.getEntity(entityId) as? ArmorStand ?: return
         if (!gridArea.contains(stand.position()) || isPlayerNameplate(level, stand)) return
-        if (watchedSoil.isNotEmpty()) logWatchedStandMove(stand, movingTo)
 
         val now = System.currentTimeMillis()
         lastEntityChangeAt = now
@@ -407,7 +379,7 @@ object GreenhouseData : GridCallbacks {
 
         val plantsBefore = harvestCandidatesOf(grid)
         if (!grid.rescanPlants(shouldKeepUnmatchedPlants = !isPlotSettled)) return
-        watchDroppedSoil(grid)
+        recheckMissedSoil(grid)
         countHarvests(grid, plantsBefore)
         refreshContentSignature(grid)
 
@@ -608,7 +580,7 @@ object GreenhouseData : GridCallbacks {
         grid.readSoilBlocks()
         val plantsBefore = harvestCandidatesOf(grid)
         if (!grid.rescanPlants(region, shouldKeepUnmatchedPlants = readiness != PlotReadiness.Settled)) return
-        watchDroppedSoil(grid)
+        recheckMissedSoil(grid)
         countHarvests(grid, plantsBefore)
         refreshContentSignature(grid)
         claimPlantedCrop(grid)
