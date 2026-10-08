@@ -13,6 +13,7 @@ import org.magic.magicaddons.features.mining.HidePowderCoatingParticles
 import org.magic.magicaddons.features.mining.PickaxeAbilityCooldown
 import org.magic.magicaddons.features.mining.XpOrbHider
 import org.magic.magicaddons.features.misc.HighlightMarkers
+import org.magic.magicaddons.features.misc.SkipResourceReloadOnClose
 import org.magic.magicaddons.features.misc.SmolPeople
 
 object FeatureManager {
@@ -26,6 +27,7 @@ object FeatureManager {
         CustomRendSound,
         SmolPeople,
         HighlightMarkers,
+        SkipResourceReloadOnClose,
         ServerConnection,
         Customization,
         MobHitDebugInfo
