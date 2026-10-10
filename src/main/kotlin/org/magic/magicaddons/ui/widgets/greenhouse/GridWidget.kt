@@ -254,6 +254,9 @@ class GridWidget(
                 val grid = GreenhouseData.greenhouseGrids.find { it.layout.id == layout.id }
                 if (grid != null && GreenhouseTickTime.tickMs != null) {
                     widget.soggybudTicksToGrow = grid.ticksUntilGrown(layout, plant.slot)
+                    if (widget.soggybudTicksToGrow == null && widget.decayOutlook?.canDecay == false) {
+                        widget.soggybudTicksIfWatered = grid.ticksUntilGrown(layout, plant.slot, keepNeighboursWatered = true)
+                    }
                     widget.isSoggybudSimulated = true
                 }
             }

@@ -16,6 +16,7 @@ import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState
 import org.magic.magicaddons.features.farming.greenhousePresets.lookups.PlantBars
 import org.magic.magicaddons.features.farming.greenhousePresets.lookups.StatsWidget
 import org.magic.magicaddons.features.farming.greenhousePresets.playerActions.BreakProtection
+import org.magic.magicaddons.features.farming.greenhousePresets.playerActions.ChorusBreakRule
 import org.magic.magicaddons.features.farming.greenhousePresets.playerActions.GreenhouseKey
 import org.magic.magicaddons.features.farming.greenhousePresets.playerActions.GreenhousePlantDischarge
 import org.magic.magicaddons.features.farming.greenhousePresets.playerActions.GreenhouseWatering
@@ -256,6 +257,20 @@ object GreenhousePresets : Feature() {
     )
 
     fun preventBreakingDuringPestDebuff(): Boolean = preventBreakingDuringPestDebuffSetting.isEnabled
+
+    private val chorusBreakRuleSetting = EnumSetting(
+        key = "ChorusBreakRule",
+        displayName = "Chorus Fruit",
+        description = "Lets you break chorus fruit that isn't harvestable yet, even when a rule above would stop it, " +
+                "so you can lower the chance of chorus teleporting onto your other plants.\n\n" +
+                "- Off: chorus follows the rules above like any mutation\n" +
+                "- Planned Breaks: only the chorus the greenhouse screen tells you to break\n" +
+                "- Any Young Chorus: every chorus that isn't harvestable\n\n" +
+                "§7Planned Breaks follows the prediction slider of that plot in the greenhouse screen.",
+        value = ChorusBreakRule.PlannedBreaks
+    )
+
+    fun chorusBreakRule(): ChorusBreakRule = chorusBreakRuleSetting.value
 
     private val harvestHighlightSetting = BooleanSetting(
         key = HARVEST_HIGHLIGHT_KEY,
@@ -657,7 +672,8 @@ object GreenhousePresets : Feature() {
                     preventBreakingNonHarvestableSetting,
                     preventBreakingUnderFarmingFortuneSetting,
                     preventBreakingChloroniteSetting,
-                    preventBreakingDuringPestDebuffSetting
+                    preventBreakingDuringPestDebuffSetting,
+                    chorusBreakRuleSetting
                 )
             ),
             warningsSetting,

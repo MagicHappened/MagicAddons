@@ -5,8 +5,10 @@ import net.minecraft.client.renderer.SubmitNodeCollector
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
 import net.minecraft.world.phys.shapes.Shapes
+import org.magic.magicaddons.data.greenhouse.crops.Plant
 import org.magic.magicaddons.data.greenhouse.crops.PlantStage
 import org.magic.magicaddons.data.greenhouse.crops.ScannedPlant
+import org.magic.magicaddons.data.greenhouse.crops.definitions.mutations.rare.Soggybud
 import org.magic.magicaddons.data.greenhouse.plot.GreenhouseGrid
 import org.magic.magicaddons.data.greenhouse.plot.PlotPrediction
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhousePresets
@@ -21,6 +23,10 @@ object WaterIndicator {
     private const val FILL_ALPHA_LOW: Int = 0x28
     private const val FILL_ALPHA_HIGH: Int = 0x70
 
+    private var soggybudSpotsKey: Pair<GreenhouseGrid, Int?>? = null
+
+    private var soggybudSpots: Set<Pair<Int, Int>> = emptySet()
+
     fun submitDryPlants(poseStack: PoseStack, collector: SubmitNodeCollector, cameraPos: Vec3) {
         if (!GreenhousePresets.waterIndicatorOn()) return
         if (GreenhousePresets.waterIndicatorOnlyWithoutPlanner() && LayoutRenderState.hasSomethingToShow) return
@@ -34,8 +40,9 @@ object WaterIndicator {
             val plant = scannedPlant.plant
             val water = plant.waterLevel
 
-            // todo add always show water highlight if a suggybud could spawn nearby
-            val feedsDrainer = plant.cropDef.needsWater && grid.layout.plantsSurrounding(plant).any { it.cropDef.drainsNeighbours && !it.isFullyGrown }
+            val feedsDrainer = plant.canFeedSoggybud && (
+                    grid.layout.plantsSurrounding(plant).any { it.cropDef.drainsNeighbours && !it.isFullyGrown } ||
+                            cellsAround(plant).any { it in soggybudSpotsOf(grid) })
 
             (plant.consumesWater || feedsDrainer) && !plant.cropDef.drainsNeighbours &&
                     (water == null || water < PlotPrediction.WATER_FULL_LEVEL) &&
@@ -53,6 +60,28 @@ object WaterIndicator {
             presetBatch.fillWithOutline(soil, footprintBox, CYAN, alpha)
         }
         presetBatch.submitBatch(poseStack, collector)
+    }
+
+    private fun soggybudSpotsOf(grid: GreenhouseGrid): Set<Pair<Int, Int>> {
+        val key = grid to grid.state.contentSignature
+        if (key == soggybudSpotsKey) return soggybudSpots
+
+        val layout = grid.layout
+        soggybudSpots = (0 until layout.size).flatMap { x -> (0 until layout.size).map { y -> x to y } }
+            .filterTo(HashSet()) { (x, y) ->
+                layout.plantCovering(x, y) == null && PlotPrediction.missingSpawnConditions(layout, Soggybud.definition, x, y).isEmpty()
+            }
+        soggybudSpotsKey = key
+        return soggybudSpots
+    }
+
+    private fun cellsAround(plant: Plant): List<Pair<Int, Int>> {
+        val footprint = plant.cropDef.footprint
+        val covered = plant.coveredCells.toSet()
+
+        return ((plant.slot.x - 1)..(plant.slot.x + footprint.width)).flatMap { x ->
+            ((plant.slot.y - 1)..(plant.slot.y + footprint.height)).map { y -> x to y }
+        }.filter { it !in covered }
     }
 
     private fun fullGrowthNoNegativeWater(grid: GreenhouseGrid, scannedPlant: ScannedPlant): Boolean {

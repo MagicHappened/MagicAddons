@@ -110,6 +110,8 @@ data class Plant(
 
     val consumesWater: Boolean get() = cropDef.needsWater && !isPlacedMutation && !isFullyGrown
 
+    val canFeedSoggybud: Boolean get() = cropDef.needsWater && !cropDef.drainsNeighbours && !isPlacedMutation
+
     val isHaltedByWater: Boolean get() = consumesWater && (waterLevel ?: 0.0) <= PlotPrediction.WATER_HALT_LEVEL
 
     val isHaltedByCharge: Boolean get() = !isPlacedMutation && cropDef.chargeRule?.let { charge >= it.limit } == true

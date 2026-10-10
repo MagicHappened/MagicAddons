@@ -29,6 +29,7 @@ import org.magic.magicaddons.events.world.WorldTickEvent
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhousePresets
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhousePresets.baseSetting
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseSpawnLog
+import org.magic.magicaddons.features.farming.greenhousePresets.playerActions.ChorusBreakRule
 import org.magic.magicaddons.features.farming.greenhousePresets.playerActions.GreenhousePlantDischarge
 import org.magic.magicaddons.features.farming.greenhousePresets.playerActions.GreenhouseWatering
 import org.magic.magicaddons.features.farming.greenhousePresets.render.LayoutRenderState
@@ -621,6 +622,7 @@ object GreenhouseData : GridCallbacks {
     }
 
     private fun refreshChorusRisk(grid: GreenhouseGrid) {
+        if (grid.state.ticksSinceLastScan > 0) grid.state.lastChorusBreaks = emptyList()
         grid.state.ticksSinceLastScan = 0
         val risk = ChorusCollision.riskOf(
             grid.layout,
@@ -639,13 +641,33 @@ object GreenhouseData : GridCallbacks {
         calculation.lossChanceByTick
             .thenAccept { chances ->
                 Minecraft.getInstance().execute {
-                    if (chances != null && grid.state.chorusRiskCalculation === calculation) grid.state.chorusLossChanceByTick = chances
+                    if (chances != null && grid.state.chorusRiskCalculation === calculation) {
+                        grid.state.chorusLossChanceByTick = chances
+                        if (GreenhousePresets.chorusBreakRule() == ChorusBreakRule.PlannedBreaks) plannedChorusBreaks(grid)
+                    }
                 }
             }
             .exceptionally { failure ->
                 Common.LOGGER.warn("Could not work out the chorus collision risk for ${grid.layout.displayName()}", failure)
                 null
             }
+    }
+
+    fun plannedChorusBreaks(grid: GreenhouseGrid): List<ChorusCollision.Break> {
+        val state = grid.state
+        val calculation = state.chorusRiskCalculation ?: return emptyList()
+        if (state.ticksSinceLastScan > 0 || calculation.ripeCells.isNotEmpty()) return emptyList()
+
+        val tolerance = GreenhousePresets.chorusLossTolerance()
+        val chance = state.chorusLossChanceByTicksAhead(state.predictTicks) ?: return state.lastChorusBreaks
+        if (chance <= tolerance) return emptyList()
+
+        val breakOrder = calculation.breakOrder(maxOf(state.predictTicks, 1), tolerance)
+        if (breakOrder.isCompletedExceptionally) return emptyList()
+        val order = breakOrder.getNow(null) ?: return state.lastChorusBreaks
+
+        state.lastChorusBreaks = order.breaks
+        return order.breaks
     }
 
     fun getCurrentGrid(): GreenhouseGrid? {

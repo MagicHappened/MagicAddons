@@ -74,6 +74,8 @@ class PlantWidget(val plant: Plant) : Renderable, GuiEventListener {
 
     var soggybudTicksToGrow: Int? = null
 
+    var soggybudTicksIfWatered: Int? = null
+
     var isSoggybudSimulated: Boolean = false
 
     private var hintMarkBox: ScreenRect? = null
@@ -394,10 +396,21 @@ class PlantWidget(val plant: Plant) : Renderable, GuiEventListener {
             if (!isSoggybudSimulated) {
                 text = "?"
                 color = Common.UI.TEXT_COLOR
-            } else if (ticksToGrow == null) {
+            } else if (ticksToGrow == null && decayOutlook?.canDecay != false) {
                 text = "stalls" + HINT_MARK
                 color = Common.UI.DANGER_COLOR
                 hintTooltip = SOGGYBUD_STALL
+            } else if (ticksToGrow == null) {
+                val ticksIfWatered = soggybudTicksIfWatered
+                if (ticksIfWatered == null) {
+                    text = "no water" + HINT_MARK
+                    color = Common.UI.DANGER_COLOR
+                    hintTooltip = SOGGYBUD_NO_DONORS
+                } else {
+                    text = (remainingMs + (ticksIfWatered - 1) * tickMs).toCoarseDuration() + HINT_MARK
+                    color = Common.UI.WATER_FULL_COLOR
+                    hintTooltip = SOGGYBUD_IF_WATERED
+                }
             } else {
                 text = (remainingMs + (ticksToGrow - 1) * tickMs).toCoarseDuration()
                 color = Common.UI.SUCCESS_COLOR
@@ -605,6 +618,10 @@ class PlantWidget(val plant: Plant) : Renderable, GuiEventListener {
 
         private const val SOGGYBUD_STALL: String =
             "This soggybud will not have enough neighbours with water in the current situation to reach full growth without decaying first."
+
+        private const val SOGGYBUD_IF_WATERED: String = "Assuming the plants around it are always watered."
+
+        private const val SOGGYBUD_NO_DONORS: String = "None of its neighbours can give this soggybud water, so it can't grow."
 
         private val NEGATIVE_WATER_MAY_HALT: String = """
             With negative water the plant may skip ticks, and a skipped tick costs no water.

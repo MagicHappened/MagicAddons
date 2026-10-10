@@ -5,6 +5,7 @@ import java.time.Instant
 import net.minecraft.world.entity.decoration.ArmorStand
 import org.magic.magicaddons.data.greenhouse.crops.Plant
 import org.magic.magicaddons.data.greenhouse.crops.ScannedPlant
+import org.magic.magicaddons.data.greenhouse.crops.definitions.mutations.epic.ChorusFruit
 import org.magic.magicaddons.data.greenhouse.crops.definitions.mutations.rare.Chloronite
 import org.magic.magicaddons.events.EventHandler
 import org.magic.magicaddons.events.interact.AttackEntityEvent
@@ -66,6 +67,7 @@ object BreakProtection {
 
     private fun refusesBreak(scanned: ScannedPlant): Boolean {
         val message = messageForPlantBreak(scanned) ?: return false
+        if (isChorusBreakAllowed(scanned.plant)) return false
 
         sendMessageForPlant(scanned.plant, message)
         return true
@@ -96,6 +98,21 @@ object BreakProtection {
         if (!GreenhousePresets.preventBreakingUnderFarmingFortune()) return null
 
         return fortunePreventionMessage(crop, StatsWidget.FARMING_FORTUNE, "farming fortune", GreenhousePresets.farmingFortuneThreshold)
+    }
+
+    private fun isChorusBreakAllowed(plant: Plant): Boolean {
+        if (plant.cropDef != ChorusFruit.definition || plant.isFullyGrown) return false
+
+        return when (GreenhousePresets.chorusBreakRule()) {
+            ChorusBreakRule.Off -> false
+            ChorusBreakRule.AnyYoungChorus -> true
+            ChorusBreakRule.PlannedBreaks -> {
+                val grid = GreenhouseData.getCurrentGrid() ?: return false
+                GreenhouseData.plannedChorusBreaks(grid).any { planned ->
+                    planned.x == plant.slot.x && planned.y == plant.slot.y && planned.stage == (plant.lowestStage ?: 1)
+                }
+            }
+        }
     }
 
     private fun notHarvestableMessage(plant: Plant, crop: String): String? = when {

@@ -478,16 +478,26 @@ class GreenhouseGrid(
     }
 
     // null if predicted to not grow
-    fun ticksUntilGrown(from: PlotLayout, slot: LayoutSlot, tickMs: Long? = GreenhouseTickTime.tickMs): Int? {
+    fun ticksUntilGrown(
+        from: PlotLayout,
+        slot: LayoutSlot,
+        keepNeighboursWatered: Boolean = false,
+        tickMs: Long? = GreenhouseTickTime.tickMs
+    ): Int? {
         val knownTickMs = tickMs ?: return null
+        val original = from.plants.find { it.slot.x == slot.x && it.slot.y == slot.y } ?: return null
+        val canDecay = from.decayOutlookOf(original).canDecay
         val layoutCopy = from.freshCopy()
         val soggybud = layoutCopy.plants.find { it.slot.x == slot.x && it.slot.y == slot.y } ?: return null
-        val ticksBeforeDecay = soggybud.decayRemainingMs?.let { (it / knownTickMs).toInt() }
+        val ticksBeforeDecay = soggybud.decayRemainingMs?.takeIf { canDecay }?.let { (it / knownTickMs).toInt() }
         val limitTicks = minOf(ticksBeforeDecay ?: SOGGYBUD_GROWTH_LIMIT_TICKS, SOGGYBUD_GROWTH_LIMIT_TICKS)
+        val wateredDonors = if (keepNeighboursWatered) layoutCopy.plantsSurrounding(soggybud).filter { it.canFeedSoggybud } else emptyList()
+        if (keepNeighboursWatered && wateredDonors.isEmpty()) return null
 
         var ticks = 0
         while (!soggybud.isFullyGrown) {
             if (ticks >= limitTicks) return null
+            wateredDonors.forEach { it.waterLevel = PlotPrediction.WATER_FULL_LEVEL.toDouble() }
             simulateLayout(layoutCopy, 1)
             ticks++
         }
@@ -525,8 +535,7 @@ class GreenhouseGrid(
                 var waterTaken = 0.0
 
                 layout.plantsSurrounding(soggybud).forEach { donor ->
-                    // soggybuds do not drain each other
-                    if (donor.cropDef.drainsNeighbours || !donor.cropDef.needsWater) return@forEach
+                    if (!donor.canFeedSoggybud) return@forEach
 
                     val plantWater = donor.waterLevel ?: return@forEach
                     if (plantWater <= 0.0) return@forEach
@@ -850,6 +859,10 @@ class GreenhouseGrid(
         var contentSignature: Int? = null
 
         var chorusRiskCalculation: ChorusCollision.Calculation? = null
+
+        var predictTicks: Int = 0
+
+        var lastChorusBreaks: List<ChorusCollision.Break> = emptyList()
 
         val isChorusRiskCalculating: Boolean
             get() = chorusLossChanceByTick == null && chorusRiskCalculation?.isRunning == true

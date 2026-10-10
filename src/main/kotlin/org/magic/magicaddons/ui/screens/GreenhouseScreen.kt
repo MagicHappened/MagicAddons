@@ -153,7 +153,7 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
 
     private var gridWidgetBeforePrediction: GridWidget? = null
 
-    private val predictSlider = SliderWidget { showPrediction(it) }
+    private val predictSlider = SliderWidget { movePrediction(it) }
 
     private var tickTimeHovered = false
 
@@ -436,6 +436,7 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
 
         plotTabs.items = greenhouseGridWidgets.map { it.layout }
         plotTabs.selectedItem = displayedGridWidget?.layout
+        restorePrediction()
 
         layoutNameBox()
     }
@@ -625,7 +626,7 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
             else -> grid.layout.getSlot(sx, sy)?.soil?.let { PaletteItem.Soil(it) }
         } ?: return false
 
-        plantPalette.pickUp(picked)
+        plantPalette.pickUp(picked, plant?.slot?.mark)
         return true
     }
 
@@ -637,6 +638,7 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
         saveUndoSnapshot(grid.layout)
         removePlantCovering(grid, sx, sy)
         slot.soil = null
+        slot.mark = null
         grid.rebuildWidgets()
         return true
     }
@@ -645,6 +647,7 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
         val covering = grid.layout.plantCovering(sx, sy) ?: return
         grid.startVanishing(covering)
         grid.layout.plants.remove(covering)
+        covering.slot.mark = null
     }
 
     private fun markCell(sx: Int, sy: Int, marking: LayoutSlot.Marking?): Boolean {
@@ -721,12 +724,16 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
         if (!fitsInsideGrid(grid.layout, def, sx, sy)) return
 
         saveUndoSnapshot(grid.layout)
-        grid.layout.plants.removeAll(plantsOverlapping(grid.layout, def, sx, sy))
+        plantsOverlapping(grid.layout, def, sx, sy).forEach { replaced ->
+            grid.layout.plants.remove(replaced)
+            replaced.slot.mark = null
+        }
 
         def.requiredSoil.firstOrNull()?.let { soil ->
             def.footprint.cellsFrom(sx, sy).forEach { (cellX, cellY) -> grid.layout.getSlot(cellX, cellY)?.soil = soil }
         }
 
+        slot.mark = if (item == plantPalette.selectedItem) plantPalette.placingMark else null
         val instance = Plant(def.elementId, slot, null, null, cropDef = def)
         grid.layout.plants.add(instance)
         grid.plantsJustPlaced.add(instance)
@@ -1949,8 +1956,18 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
     }
 
     private fun dropPrediction() {
-        predictSlider.setValue(0)
+        predictSlider.setValueWithoutNotifying(0)
         gridWidgetBeforePrediction = null
+    }
+
+    private fun movePrediction(ticks: Int) {
+        gridBehindPrediction()?.state?.predictTicks = ticks
+        showPrediction(ticks)
+    }
+
+    private fun restorePrediction() {
+        predictSlider.setValueWithoutNotifying(gridBehindPrediction()?.state?.predictTicks ?: 0)
+        showPrediction(predictSlider.value)
     }
 
     private fun predictLabel(): String =
@@ -2069,7 +2086,7 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
         plotTabs.selectedItem = widget.layout
         isPresetCleared = false
         displayedName = widget.layout.displayName()
-        showPrediction(predictSlider.value)
+        restorePrediction()
 
         layoutNameBox()
     }
