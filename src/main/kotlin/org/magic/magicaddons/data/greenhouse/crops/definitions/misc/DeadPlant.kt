@@ -18,7 +18,7 @@ object DeadPlant {
         minMutationsBeforeDecay = 10,
         tier = CropTier.Other,
         skyblockId = SkyBlockItemId.item("DEAD_PLANT"),
-        stages = listOf(
+        growingStages = listOf(
             CropStage(
                 blocks = listOf(
                     StageBlock(

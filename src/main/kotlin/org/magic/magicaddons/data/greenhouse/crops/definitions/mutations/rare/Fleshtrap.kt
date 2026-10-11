@@ -28,7 +28,7 @@ object Fleshtrap {
             CropEffect.BonusDrops
         ),
         skyblockId = SkyBlockItemId.item("FLESHTRAP"),
-        stages = listOf(
+        growingStages = listOf(
             CropStage(
                 blocks = listOf(
                     StageBlock(

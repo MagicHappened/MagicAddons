@@ -22,7 +22,7 @@ object Veilshroom {
             CropEffect.WaterDrain
         ),
         skyblockId = SkyBlockItemId.item("VEILSHROOM"),
-        stages = listOf(
+        growingStages = listOf(
             CropStage(
                 blocks = listOf(),
                 armorStands = listOf(

@@ -26,7 +26,8 @@ data class CropDefinition(
 
     val skyblockId: SkyBlockId?,
     val aliases: List<SkyBlockId>? = null,
-    val stages: List<CropStage>,
+    val growingStages: List<CropStage>,
+    val placedStages: List<PlacedStage> = emptyList(),
     val maxStage: Int = 1,
     val isBaseCrop: Boolean = false,
     val isMutation: Boolean = false,
@@ -61,7 +62,7 @@ data class CropDefinition(
     fun chanceToGrow(fromStage: Int, toStage: Int): Double =
         (fromStage + 1..toStage).fold(1.0) { chance, stage -> chance * (1 - (resetPercentByStage[stage] ?: 0) / 100.0) }
     val elementId: String get() = skyblockId?.id ?: name
-    val hasHungerBar: Boolean get() = stages.any { stage -> stage.readers.any { it.key == StandReader.HUNGER } }
+    val hasHungerBar: Boolean get() = growingStages.any { stage -> stage.readers.any { it.key == StandReader.HUNGER } }
 
     override fun toString(): String {
         return name

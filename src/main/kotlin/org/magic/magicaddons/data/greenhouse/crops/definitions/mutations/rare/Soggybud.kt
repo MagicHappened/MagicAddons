@@ -26,7 +26,7 @@ object Soggybud {
         skyblockId = SkyBlockItemId.item("SOGGYBUD"),
         maxStage = 10,
         drainsNeighbours = true,
-        stages = listOf(
+        growingStages = listOf(
             CropStage(
                 blocks = listOf(
                 ),

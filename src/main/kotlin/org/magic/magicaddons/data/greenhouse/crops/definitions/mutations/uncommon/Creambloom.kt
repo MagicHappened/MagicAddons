@@ -23,7 +23,7 @@ object Creambloom {
             CropEffect.Immunity
         ),
         skyblockId = SkyBlockItemId.item("CREAMBLOOM"),
-        stages = listOf(
+        growingStages = listOf(
             CropStage(
                 blocks = listOf(),
                 armorStands = listOf(

@@ -22,7 +22,7 @@ object Turtlellini {
             CropEffect.Immunity
         ),
         skyblockId = SkyBlockItemId.item("TURTLELLINI"),
-        stages = listOf(
+        growingStages = listOf(
             CropStage(
                 blocks = listOf(),
                 armorStands = listOf(

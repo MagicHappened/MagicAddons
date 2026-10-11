@@ -282,9 +282,12 @@ class GreenhouseGrid(
                         keepRecordedState(plantBefore, scannedPlant)
                     } else {
                         if (def.isMutation && state.lastScanTime != null) {
-                            val placedNow = callbacks.placementConfirmed(def, scannedPlant.plant.slot, this)
-                            if (scannedPlant.plant.placed || placedNow) {
-                                callbacks.markAsPlaced(scannedPlant.plant)
+                            val placedAt = callbacks.placementConfirmed(scannedPlant.plant, this)
+                            val placedByStage = placedAt == null && plantBefore == null && cannotHaveSpawnedSinceLastScan(scannedPlant, x to y)
+                            if (placedAt != null || placedByStage) scannedPlant.placedLookIfPlaced?.let { showsPlacedLook(scannedPlant.plant, it) }
+
+                            if (scannedPlant.plant.placed || placedAt != null || placedByStage) {
+                                callbacks.markAsPlaced(scannedPlant.plant, placedAt)
                             } else if (plantBefore == null || isFreshTeleporterSpawn) {
                                 callbacks.claimSpawnedMutation(scannedPlant.plant, layout)
                                 capStageToTicksSinceScan(scannedPlant.plant)
@@ -314,6 +317,8 @@ class GreenhouseGrid(
             }
         }
 
+        if (!shouldKeepUnmatchedPlants) noteEmptySlots(region, visitedSlots, remainingStands)
+
         scannedPlants.clear()
         scannedPlants.addAll(merged)
 
@@ -327,12 +332,38 @@ class GreenhouseGrid(
 
     val slotsRecheckedForMiss: MutableSet<Pair<Int, Int>> = mutableSetOf()
 
+    private val slotsSeenEmpty: MutableSet<Pair<Int, Int>> = mutableSetOf()
+
+    private fun noteEmptySlots(region: Set<Pair<Int, Int>>?, visitedSlots: Array<BooleanArray>, remainingStands: List<ArmorStand>) {
+        for (y in 0 until height) {
+            for (x in 0 until width) {
+                val cell = x to y
+                if (region != null && cell !in region) continue
+
+                val soil = layout.getSlot(x, y)?.takeIf { it.soil != null }?.let { getPosForSlot(it) }
+                val (stands, blocks) = soil?.let { existsInFootprint(it, Footprint(1, 1), remainingStands) } ?: (emptyList<ArmorStand>() to emptyMap())
+                val isEmpty = soil != null && !visitedSlots[y][x] && stands.isEmpty() && blocks.isEmpty()
+
+                if (isEmpty) slotsSeenEmpty += cell else slotsSeenEmpty -= cell
+            }
+        }
+    }
+
+    private fun cannotHaveSpawnedSinceLastScan(scanned: ScannedPlant, cell: Pair<Int, Int>): Boolean {
+        val plant = scanned.plant
+        if (plant.cropDef.teleportsWhileGrowing || cell !in slotsSeenEmpty) return false
+
+        val stage = plant.lowestStage ?: return false
+        val looksPlaced = stage >= plant.cropDef.maxStage || scanned.placedLookIfPlaced != null
+        return looksPlaced && stage - 1 > state.ticksSinceLastScan
+    }
+
     val soilToRecheck: MutableList<BlockPos> = mutableListOf()
 
     private fun holdsOwnCropParts(plant: Plant): Boolean {
         val soil = getPosForSlot(plant.slot) ?: return false
         val level = Minecraft.getInstance().level ?: return false
-        val stages = plant.cropDef.stages
+        val stages = plant.cropDef.growingStages + plant.cropDef.placedStages
         val skullHashes = stages.flatMap { it.armorStands.orEmpty() }.mapNotNullTo(HashSet()) { it.hashString }
         val blocks = stages.flatMap { it.blocks.orEmpty() }.mapTo(HashSet()) { it.blockState.block }
         val footprint = plant.cropDef.footprint
@@ -388,13 +419,14 @@ class GreenhouseGrid(
         plantAfter: ScannedPlant
     ): ScannedPlant {
         val scannedPlant = plantAfter.plant
+        if (plantBefore.isPlacedMutation) plantAfter.placedLookIfPlaced?.let { showsPlacedLook(scannedPlant, it) }
         scannedPlant.appearedAt = plantBefore.appearedAt
 
         scannedPlant.charge = plantBefore.charge
         scannedPlant.chargeKnown = plantBefore.chargeKnown
 
         scannedPlant.firstSeenStage = plantBefore.firstSeenStage ?: scannedPlant.lowestStage
-        scannedPlant.placed = plantBefore.placed
+        scannedPlant.placed = plantBefore.placed || scannedPlant.placed
         scannedPlant.mutationsSpawned = plantBefore.mutationsSpawned
         scannedPlant.mutationsSpawnedIsMinimum = plantBefore.mutationsSpawnedIsMinimum
         scannedPlant.seenSpawnsHelped = plantBefore.seenSpawnsHelped
@@ -404,7 +436,7 @@ class GreenhouseGrid(
         scannedPlant.lastDiagnosisReading = plantBefore.lastDiagnosisReading
         scannedPlant.decayAttemptAt = plantBefore.decayAttemptAt
 
-        val readerKeys = scannedPlant.cropDef.stages.flatMapTo(mutableSetOf()) { stage -> stage.readers.map { it.key } } -
+        val readerKeys = scannedPlant.cropDef.growingStages.flatMapTo(mutableSetOf()) { stage -> stage.readers.map { it.key } } -
                 StandReader.CHARGE - StandReader.ASLEEP
         plantBefore.readings.forEach { (key, value) ->
             if (key in readerKeys) scannedPlant.readings.putIfAbsent(key, value)
@@ -693,7 +725,7 @@ class GreenhouseGrid(
             var bestBlocks: Map<BlockPos, BlockState>? = null
 
             for (cropCandidate in cropCandidates) {
-                for (stageCandidate in cropCandidate.stages) {
+                for (stageCandidate in cropCandidate.growingStages) {
                     val stageResult = stageCandidate.matchesStage(
                         origin, remainingStands, cropCandidate,
                         ignoreStemAge = cropCandidate.stemAgeVaries,
@@ -719,6 +751,35 @@ class GreenhouseGrid(
                 }
             }
 
+            var bestPlacedStage: PlacedStage? = null
+            var placedLookIfPlaced: PlacedStage? = null
+
+            for (cropCandidate in cropCandidates) {
+                for (placedCandidate in cropCandidate.placedStages) {
+                    val stageResult = placedCandidate.matchesStage(origin, remainingStands, cropCandidate, standCache = standCache) ?: continue
+
+                    val looksLikeBestGrowingStage = cropCandidate == bestCrop && bestPlacedStage == null &&
+                            stageResult.score == bestScore && stageResult.matchingHeadPoses == bestMatchingHeadPoses
+                    if (looksLikeBestGrowingStage) {
+                        placedLookIfPlaced = placedCandidate
+                        continue
+                    }
+
+                    if (stageResult.score < bestScore) continue
+                    if (stageResult.score == bestScore && stageResult.matchingHeadPoses <= bestMatchingHeadPoses) continue
+
+                    bestScore = stageResult.score
+                    bestMatchingHeadPoses = stageResult.matchingHeadPoses
+                    bestCrop = cropCandidate
+                    bestStage = placedCandidate
+                    bestPlacedStage = placedCandidate
+                    placedLookIfPlaced = null
+                    bestUsedStands = stageResult.usedStands
+                    bestBlocks = stageResult.matchedBlocks
+                    bestGrowthStage = PlantStage.Known(cropCandidate.stagePlacedAt)
+                }
+            }
+
             // if no crop match
             val matchedCrop = bestCrop ?: return placedThisSession(origin, soil, remainingStands, slot)
 
@@ -728,6 +789,8 @@ class GreenhouseGrid(
                 growthStage = bestGrowthStage,
                 cropDef = matchedCrop
             )
+
+            bestPlacedStage?.let { showsPlacedLook(plant, it) }
 
             plant.firstSeenStage = plant.lowestStage
 
@@ -748,8 +811,15 @@ class GreenhouseGrid(
             return ScannedPlant(
                 plant = plant,
                 stands = bestUsedStands,
-                blocks = bestBlocks
+                blocks = bestBlocks,
+                placedLookIfPlaced = placedLookIfPlaced
             )
+        }
+
+        fun showsPlacedLook(plant: Plant, look: PlacedStage) {
+            plant.placed = true
+            plant.placedPhase = look.shownWhile
+            plant.growthStage = PlantStage.Known(plant.cropDef.stagePlacedAt)
         }
 
         /** a mutation is placed with a look no grown stage has */

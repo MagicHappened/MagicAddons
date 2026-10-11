@@ -59,7 +59,7 @@ object GreenhouseSpawnLog {
 
     private const val HEADER: String = "time,plot,ticks,left_garden,weight_multiplier,empty_target_spots," +
             "expected_target_spawns,target_spawns,expected_other_spawns,other_spawns_on_targets,spawns_elsewhere," +
-            "spawns,plants_before,plants_after,spawn_candidates"
+            "expected_water_skips,water_skips,spawns,plants_before,plants_after,spawn_candidates"
     private const val TICKS_COLUMN: Int = 2
     private const val EXPECTED_TARGET_COLUMN: Int = 6
     private const val TARGET_SPAWNS_COLUMN: Int = 7
@@ -185,6 +185,7 @@ object GreenhouseSpawnLog {
         val (spawnsOnTargets, spawnsElsewhere) = spawns.partition { (it.slot.x to it.slot.y) in targetsByOrigin }
         val targetSpawns = spawnsOnTargets.count { targetsByOrigin.getValue(it.slot.x to it.slot.y).acceptsCrop(it.cropDef) }
         val expected = PlotPrediction.expectedSpawnsDuringAbsence(record.layoutBefore, record.emptyTargets, record.ticks, record.weightMultiplier)
+        val waterSkips = layoutAfter?.let { waterSkipsBetween(record.layoutBefore, it, record.ticks) }
 
         val row = listOf(
             record.time.toString(),
@@ -198,12 +199,51 @@ object GreenhouseSpawnLog {
             "%.2f".format(expected.otherOnTargets),
             (spawnsOnTargets.size - targetSpawns).toString(),
             spawnsElsewhere.size.toString(),
+            waterSkips?.let { "%.2f".format(it.expected) }.orEmpty(),
+            waterSkips?.observed?.toString().orEmpty(),
             csvField(spawns.map { recordedPlant(it) }.joinToString(";")),
             csvField(record.plantsBefore.joinToString(";")),
             csvField(layoutAfter?.let { recordedPlants(it) }.orEmpty().joinToString(";")),
             csvField(spawnCandidates)
         )
         Files.write(LOG_DIR.resolve(fileName), listOf(row.joinToString(",")), StandardOpenOption.CREATE, StandardOpenOption.APPEND)
+    }
+
+    private class WaterSkips(val expected: Double, val observed: Int)
+
+    private fun waterSkipsBetween(before: PlotLayout, after: PlotLayout, ticks: Int): WaterSkips {
+        var expected = 0.0
+        var observed = 0
+
+        before.plants.forEach { plantBefore ->
+            val stageBefore = (plantBefore.growthStage as? PlantStage.Known)?.stage ?: return@forEach
+            val plantAfter = after.plants.firstOrNull { it.slot.x == plantBefore.slot.x && it.slot.y == plantBefore.slot.y && it.cropTypeEquals(plantBefore) }
+            val stageAfter = (plantAfter?.growthStage as? PlantStage.Known)?.stage ?: return@forEach
+
+            val ticksBelowZero = ticksStartingBelowZero(plantBefore, before, stageBefore, ticks)
+            if (ticksBelowZero == 0) return@forEach
+
+            expected += ticksBelowZero * PlotPrediction.NEGATIVE_WATER_SKIP_CHANCE
+            val expectedGain = minOf(ticks, plantBefore.cropDef.maxStage - stageBefore)
+            observed += (expectedGain - (stageAfter - stageBefore)).coerceAtLeast(0)
+        }
+
+        return WaterSkips(expected, observed)
+    }
+
+    private fun ticksStartingBelowZero(plant: Plant, layout: PlotLayout, stage: Int, ticks: Int): Int {
+        val crop = plant.cropDef
+        val growsEveryTick = !crop.drainsNeighbours && crop.sleepStages.isEmpty() && !crop.hasHungerBar && crop.chargeRule == null &&
+                !crop.resetsToFirstStage && crop.resetPercentByStage.isEmpty() && !crop.teleportsWhileGrowing && plant.timeOfDayNeeded == null
+        if (!plant.consumesWater || !growsEveryTick) return 0
+
+        val water = plant.waterLevel ?: return 0
+        val waterEffect = GreenhouseGrid.waterEffectAt(layout, plant.slot)
+
+        return (1..ticks).count { tick ->
+            val waterAtTickStart = PlotPrediction.waterLevelAfter(water, tick - 1, waterEffect)
+            waterAtTickStart < 0 && waterAtTickStart > PlotPrediction.WATER_HALT_LEVEL && stage + tick - 1 < crop.maxStage
+        }
     }
 
     private fun spawnsBetween(before: PlotLayout, after: PlotLayout): List<Plant> {

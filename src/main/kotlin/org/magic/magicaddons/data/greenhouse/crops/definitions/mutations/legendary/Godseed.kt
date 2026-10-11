@@ -2,12 +2,14 @@ package org.magic.magicaddons.data.greenhouse.crops.definitions.mutations.legend
 
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Rotations
+import net.minecraft.world.entity.EquipmentSlot
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.crops.CropBlocks.melonStemState
 import org.magic.magicaddons.data.greenhouse.crops.CropBlocks.wheatState
 import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
 import org.magic.magicaddons.data.greenhouse.crops.CropEffect
 import org.magic.magicaddons.data.greenhouse.crops.CropStage
+import org.magic.magicaddons.data.greenhouse.crops.PlacedStage
 import org.magic.magicaddons.data.greenhouse.crops.CropTier
 import org.magic.magicaddons.data.greenhouse.crops.Footprint
 import org.magic.magicaddons.data.greenhouse.crops.SpawnRule
@@ -41,7 +43,7 @@ object Godseed {
         ),
         skyblockId = SkyBlockItemId.item("GODSEED"),
         footprint = Footprint(3, 3),
-        stages = listOf(
+        growingStages = listOf(
             CropStage(
                 blocks = StageBlock.atPositions(
                     positions = surroundWheatPositions,
@@ -517,6 +519,85 @@ object Godseed {
             )
         ),
         decayTimeMs = TEN_DAY_DECAY_TIME_MS,
+        placedStages = listOf(
+            PlacedStage(
+                blocks = StageBlock.atPositions(
+                    positions = listOf(
+                        BlockPos(0, 1, 0),
+                        BlockPos(0, 1, 1),
+                        BlockPos(0, 1, 2),
+                        BlockPos(1, 1, 0),
+                        BlockPos(1, 1, 2),
+                        BlockPos(2, 1, 0),
+                        BlockPos(2, 1, 1),
+                        BlockPos(2, 1, 2)
+                    ),
+                    blockState = wheatState(6)
+                ) + listOf(
+                    StageBlock(
+                        offset = BlockPos(1, 1, 1),
+                        blockState = melonStemState(7)
+                    )
+                ),
+                armorStands = StageStand.atOffsets(
+                    offsets = listOf(
+                        Vec3(-1.0, -0.4375, 1.0),
+                        Vec3(-1.0, 0.75, 1.0),
+                        Vec3(0.0, 0.0625, 1.0),
+                        Vec3(1.0, -0.4375, 1.0),
+                        Vec3(1.0, 0.75, 1.0),
+                        Vec3(-1.0, -0.4375, -1.0),
+                        Vec3(-1.0, 0.71875, -1.0),
+                        Vec3(0.0, 0.0625, -1.0),
+                        Vec3(-1.0, 0.0625, 0.0),
+                        Vec3(1.0, -0.4375, -1.0),
+                        Vec3(1.0, 0.75, -1.0),
+                        Vec3(1.0, 0.0625, 0.0)
+                    ),
+                    isSmall = false,
+                    rotations = listOf(
+                        Rotations(0.0f, 0.0f, 0.0f),
+                        Rotations(180.0f, 90.0f, 0.0f),
+                        Rotations(180.0f, 0.0f, 0.0f),
+                        Rotations(0.0f, 0.0f, 0.0f),
+                        Rotations(180.0f, 90.0f, 0.0f),
+                        Rotations(0.0f, 0.0f, 0.0f),
+                        Rotations(180.0f, 90.0f, 0.0f),
+                        Rotations(180.0f, 0.0f, 0.0f),
+                        Rotations(180.0f, 0.0f, 0.0f),
+                        Rotations(0.0f, 0.0f, 0.0f),
+                        Rotations(180.0f, 90.0f, 0.0f),
+                        Rotations(180.0f, 0.0f, 0.0f)
+                    ),
+                    hashString = "a0cc95bd6b1e5c007cf0d2b8c613a33a7ad3500b27638947c0b6b1db8fcb4887"
+                ) +
+                StageStand.atOffsets(
+                    offsets = listOf(
+                        Vec3(-0.34375, 1.65625, 0.75),
+                        Vec3(1.65625, 1.6875, 0.71875),
+                        Vec3(-0.34375, 1.625, -1.25),
+                        Vec3(1.65625, 1.65625, -1.25)
+                    ),
+                    isSmall = false,
+                    rotations = listOf(
+                        Rotations(0.0f, 0.0f, 0.0f),
+                        Rotations(0.0f, 0.0f, 0.0f),
+                        Rotations(0.0f, 0.0f, 0.0f),
+                        Rotations(0.0f, 0.0f, 0.0f)
+                    ),
+                    heldItemId = "minecraft:gold_block",
+                    itemSlot = EquipmentSlot.MAINHAND
+                ) +
+                listOf(
+                    StageStand(
+                        offset = Vec3(0.0, 1.4375, 0.0),
+                        isSmall = false,
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
+                        hashString = "9d6bdd07abe3f398720e5f010648c2c194a2ba0f5ef3e27013b0670336eb4f3c"
+                    )
+                )
+            )
+        ),
         maxStage = 40,
         isMutation = true,
         spawnRule = SpawnRule(weight = 5, needsOwnEffectsAround = true, staysOffPlotEdge = true)

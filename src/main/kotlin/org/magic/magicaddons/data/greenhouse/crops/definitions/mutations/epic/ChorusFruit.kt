@@ -24,7 +24,7 @@ object ChorusFruit {
             CropEffect.HarvestLoss
         ),
         skyblockId = SkyBlockItemId.item("CHORUS_FRUIT"),
-        stages = listOf(
+        growingStages = listOf(
             CropStage(
                 blocks = listOf(
                 ),

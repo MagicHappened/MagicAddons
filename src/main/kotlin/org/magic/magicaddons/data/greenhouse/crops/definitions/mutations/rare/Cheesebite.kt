@@ -27,7 +27,7 @@ object Cheesebite {
             CropEffect.HarvestLoss
         ),
         skyblockId = SkyBlockItemId.item("CHEESEBITE"),
-        stages = listOf(
+        growingStages = listOf(
             CropStage(
                 blocks = listOf(
                     StageBlock(

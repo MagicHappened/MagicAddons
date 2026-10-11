@@ -20,7 +20,8 @@ sealed interface PlantStage {
 data class ScannedPlant(
     val plant: Plant,
     val stands: List<Entity>?,
-    val blocks: Map<BlockPos,BlockState>?
+    val blocks: Map<BlockPos,BlockState>?,
+    val placedLookIfPlaced: PlacedStage? = null
 )
 
 data class Plant(
@@ -72,6 +73,8 @@ data class Plant(
 
     var placed: Boolean = false
 
+    var placedPhase: PlacedPhase? = null
+
     var charge: Int = 0
 
     var chargeKnown: Boolean = false
@@ -103,7 +106,15 @@ data class Plant(
     val isGrowingTeleporter: Boolean get() = cropDef.teleportsWhileGrowing && !isPlacedMutation && !isFullyGrown
 
     val isCollectable: Boolean
-        get() = isPlacedMutation && appearedAt?.let { GreenhouseTickTime.hasGrowthTickPassedSince(it) } != true
+        get() = isPlacedMutation && when (placedPhase) {
+            PlacedPhase.Collectable -> true
+            PlacedPhase.Uncollectable -> false
+            PlacedPhase.Always -> !hasTickPassedSincePlaced
+            null -> cropDef.placedStages.none { it.shownWhile == PlacedPhase.Collectable } && !hasTickPassedSincePlaced
+        }
+
+    private val hasTickPassedSincePlaced: Boolean
+        get() = appearedAt?.let { GreenhouseTickTime.hasGrowthTickPassedSince(it) } == true
 
     val readyToHarvest: Boolean
         get() = (cropDef.isMutation || cropDef.isBaseCrop) && !isPlacedMutation && (highestStage ?: 0) >= cropDef.maxStage
@@ -126,6 +137,7 @@ data class Plant(
             it.waterExact = waterExact
             it.firstSeenStage = firstSeenStage
             it.placed = placed
+            it.placedPhase = placedPhase
             it.waterBestCase = waterBestCase
             it.charge = charge
             it.chargeKnown = chargeKnown

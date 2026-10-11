@@ -24,7 +24,7 @@ object Ashwreath {
             CropEffect.XpLoss
         ),
         skyblockId = SkyBlockItemId.item("ASHWREATH"),
-        stages = listOf(
+        growingStages = listOf(
             CropStage(
                 blocks = listOf(
                     StageBlock(

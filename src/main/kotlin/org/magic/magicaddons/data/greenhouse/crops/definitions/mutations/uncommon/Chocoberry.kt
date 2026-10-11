@@ -25,7 +25,7 @@ object Chocoberry {
             CropEffect.WaterRetain
         ),
         skyblockId = SkyBlockItemId.item("CHOCOBERRY"),
-        stages = listOf(
+        growingStages = listOf(
             CropStage(
                 blocks = listOf(
                 ),

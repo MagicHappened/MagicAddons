@@ -28,7 +28,7 @@ object Zombud {
             CropEffect.BonusDrops
         ),
         skyblockId = SkyBlockItemId.item("ZOMBUD"),
-        stages = listOf(
+        growingStages = listOf(
             CropStage(
                 blocks = listOf(
                     StageBlock(

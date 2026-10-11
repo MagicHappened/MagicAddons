@@ -114,7 +114,33 @@ object GreenhouseData : GridCallbacks {
 
     var lastServerTick: Long? = null
 
-    private class PlayerPlacement(val def: CropDefinition, val pos: BlockPos, val at: Instant)
+    var lagAdjustmentSinceReadingMs: Long = 0
+
+    private class PlayerPlacement(
+        val def: CropDefinition,
+        val pos: BlockPos,
+        val at: Instant,
+        val validUntil: Instant,
+        val tickPassedAt: Instant?
+    ) {
+        fun needsSpawnProof(now: Instant): Boolean = tickPassedAt?.let { !now.isBefore(it) } == true
+    }
+
+    private fun placementAt(def: CropDefinition, pos: BlockPos, at: Instant): PlayerPlacement {
+        val tickMs = GreenhouseTickTime.tickMs
+        val knownTick = miscInfo.nextTickTime
+        if (tickMs == null || knownTick == null) return PlayerPlacement(def, pos, at, at.plus(SERVER_PLACE_WINDOW), null)
+
+        var nextTick: Instant = knownTick
+        while (!nextTick.isAfter(at)) nextTick = nextTick.plusMillis(tickMs)
+        val clearAt = nextTick.minus(PENDING_PLACE_TICK_BUFFER)
+
+        return if (at.isBefore(clearAt)) {
+            PlayerPlacement(def, pos, at, clearAt, null)
+        } else {
+            PlayerPlacement(def, pos, at, clearAt.plusMillis(tickMs), nextTick)
+        }
+    }
 
     private val playerPlacements = mutableListOf<PlayerPlacement>()
 
@@ -143,6 +169,8 @@ object GreenhouseData : GridCallbacks {
                 aOrigin.z < bOrigin.z + b.footprint.height && bOrigin.z < aOrigin.z + a.footprint.height
 
     private val SERVER_PLACE_WINDOW: Duration = Duration.ofSeconds(5)
+
+    private val PENDING_PLACE_TICK_BUFFER: Duration = Duration.ofSeconds(20)
 
     private var plantDiagnosticHitBaseBlock: BlockPos? = null
 
@@ -751,6 +779,7 @@ object GreenhouseData : GridCallbacks {
             val adjustmentDelta = unaccountedMs.coerceIn(-MAX_TICK_ADJUSTMENT_MS, MAX_TICK_ADJUSTMENT_MS)
 
             current = nextTick.plusMillis(adjustmentDelta)
+            lagAdjustmentSinceReadingMs += adjustmentDelta
             miscInfo.nextTickTime = current
             lastCheckTime = now
 
@@ -775,6 +804,7 @@ object GreenhouseData : GridCallbacks {
             GreenhouseSpawnLog.noteGrowthTicks(grid, elapsedTicks, leftGarden = !onlineTickTracking)
             grid.state.ticksSinceLastScan += elapsedTicks
             grid.state.needsRescan = true
+            grid.layout.plants.filter { it.placedPhase == PlacedPhase.Collectable }.forEach { it.placedPhase = PlacedPhase.Uncollectable }
 
             grid.simulateGreenhouse(elapsedTicks)
         }
@@ -1153,7 +1183,8 @@ object GreenhouseData : GridCallbacks {
             val footprint = foundCrop.footprint
             val pos = aimed.offset(-((footprint.width - 1) / 2), 0, -((footprint.height - 1) / 2))
 
-            playerPlacements.add(PlayerPlacement(foundCrop, pos, Instant.now()))
+            playerPlacements.removeAll { it.pos == pos }
+            playerPlacements.add(placementAt(foundCrop, pos, Instant.now()))
 
             val soil = BlockPos(pos.x, GREENHOUSE_SOIL_Y, pos.z)
             cropPlacements.entries.removeAll { (at, placed) -> overlaps(at, placed.def, soil, foundCrop) }
@@ -1202,32 +1233,38 @@ object GreenhouseData : GridCallbacks {
 
     private fun claimPlantedCrop(grid: GreenhouseGrid) {
         val now = Instant.now()
-        playerPlacements.removeAll { now.isAfter(it.at.plus(SERVER_PLACE_WINDOW)) }
+        playerPlacements.removeAll { now.isAfter(it.validUntil) }
 
         playerPlacements.toList().forEach { placement ->
             val slot = grid.getSlotAt(placement.pos, false) ?: return@forEach
             val element = grid.elementCoveringSlot(slot) ?: return@forEach
 
-            if (placementConfirmed(element.plant.cropDef, slot, grid)) markAsPlaced(element.plant)
+            placementConfirmed(element.plant, grid)?.let { placedAt -> markAsPlaced(element.plant, placedAt) }
         }
     }
 
-    override fun placementConfirmed(crop: CropDefinition, slot: LayoutSlot, grid: GreenhouseGrid): Boolean {
+    override fun placementConfirmed(plant: Plant, grid: GreenhouseGrid): Long? {
         val now = Instant.now()
+        val slot = plant.slot
         val index = playerPlacements.indexOfFirst { placement ->
-            placement.def == crop &&
-                    !now.isAfter(placement.at.plus(SERVER_PLACE_WINDOW)) &&
-                    grid.getSlotAt(placement.pos, false)?.let { it.x == slot.x && it.y == slot.y } == true
+            placement.def == plant.cropDef &&
+                    !now.isAfter(placement.validUntil) &&
+                    grid.getSlotAt(placement.pos, false)?.let { it.x == slot.x && it.y == slot.y } == true &&
+                    (!placement.needsSpawnProof(now) || cannotBeFreshSpawn(plant, grid))
         }
-        if (index < 0) return false
-        playerPlacements.removeAt(index)
+        if (index < 0) return null
+        val placement = playerPlacements.removeAt(index)
         CoopSync.notePlaced(grid)
-        return true
+        return placement.at.toEpochMilli()
     }
 
-    override fun markAsPlaced(plant: Plant) {
+    private fun cannotBeFreshSpawn(plant: Plant, grid: GreenhouseGrid): Boolean =
+        (plant.lowestStage ?: 1) > 1 ||
+                PlotPrediction.missingSpawnConditions(grid.layout, plant.cropDef, plant.slot.x, plant.slot.y, ignoredPlant = plant).isNotEmpty()
+
+    override fun markAsPlaced(plant: Plant, placedAt: Long?) {
         plant.placed = true
-        plant.appearedAt = System.currentTimeMillis()
+        plant.appearedAt = placedAt ?: System.currentTimeMillis()
         MutationCounting.startCountingFromZero(plant)
 
         val stage = plant.growthStage

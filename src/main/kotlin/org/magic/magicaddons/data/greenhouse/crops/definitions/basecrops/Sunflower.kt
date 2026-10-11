@@ -30,7 +30,7 @@ object Sunflower {
             "b40d6fc1e1b67c58d7f82350bcac083f9e9547f9131236463164417fbdd3bee4" to StandPose.Fixed(Rotations(-45.0f, 0.0f, 0.0f)),
             "f2c4a75b5b6478087b6565edf7643c2b868a5e3eccec1250cdfaa371adfc0754" to StandPose.Fixed(Rotations(-22.5f, 0.0f, 0.0f))
         ),
-        stages = listOf(
+        growingStages = listOf(
             CropStage(
                 blocks = listOf(
                 ),

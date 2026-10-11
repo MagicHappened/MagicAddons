@@ -23,7 +23,7 @@ object Melon {
         ),
         skyblockId = SkyBlockItemId.item("MELON"),
         aliases = listOf(SkyBlockItemId.item("MELON_SEEDS")),
-        stages = listOf(
+        growingStages = listOf(
             CropStage(
                 blocks = listOf(
                     StageBlock(

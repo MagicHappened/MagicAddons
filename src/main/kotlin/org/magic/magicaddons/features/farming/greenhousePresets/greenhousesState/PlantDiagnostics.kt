@@ -2,6 +2,8 @@ package org.magic.magicaddons.features.farming.greenhousePresets.greenhousesStat
 
 import java.time.Duration
 import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import net.minecraft.core.BlockPos
 import net.minecraft.network.chat.Component
 import net.minecraft.world.item.ItemStack
@@ -113,7 +115,7 @@ object PlantDiagnostics {
         val stageRaw = saplingLore.valueFor("Stage")?.substringBefore('/')?.trim()
             ?.let { raw ->
                 when {
-                    raw.equals("FULLY GROWN", ignoreCase = true) -> def?.maxStage
+                    raw.equals("FULLY GROWN", ignoreCase = true) -> def?.takeUnless { it.resetsToFirstStage }?.maxStage
                     raw.equals("DEAD", ignoreCase = true) -> {
                         if (def?.skyblockId == SkyBlockItemId.item("DEAD_PLANT"))
                             return@let 1
@@ -129,15 +131,15 @@ object PlantDiagnostics {
         if (nextStage?.contains(Regex("\\d")) ?: false) {
             if (SBLocation.OwnGreenhouse.inside()) {
                 val lastTickTime = GreenhouseData.miscInfo.nextTickTime
+                val correctedTickTime = Instant.now().plusMillis(nextStage.parseDurationToMs())
 
-                GreenhouseData.miscInfo.nextTickTime = Instant.now().plusMillis(nextStage.parseDurationToMs())
+                GreenhouseData.miscInfo.nextTickTime = correctedTickTime
                 GreenhouseData.lastCheckTime = Instant.now()
 
-                lastTickTime?.let {
-                    val movedSeconds = Duration.between(it, GreenhouseData.miscInfo.nextTickTime).toSeconds()
-
-                    Common.LOGGER.info("[tick] resynced from the game: countdown moved ${movedSeconds}s")
-                }
+                val tickPassedSinceLastReading = previousReadingTickTime?.let { !Instant.now().isBefore(it) } == true
+                if (tickPassedSinceLastReading) lastTickTime?.let { logTickCorrection(it, correctedTickTime) }
+                previousReadingTickTime = correctedTickTime
+                GreenhouseData.lagAdjustmentSinceReadingMs = 0
 
                 GreenhouseData.realignWithGameTime()
             }
@@ -251,5 +253,27 @@ object PlantDiagnostics {
         }.joinToString("\n")
 
         ChatUtils.sendWithCopyableHover(message, dump)
+    }
+
+    private var previousReadingTickTime: Instant? = null
+
+    private val TICK_LOG_TIME: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss").withZone(ZoneId.systemDefault())
+
+    private fun logTickCorrection(lagCounterPrediction: Instant, correctedTickTime: Instant) {
+        Common.LOGGER.info("[tick] Tick time corrected to ${TICK_LOG_TIME.format(correctedTickTime)}")
+
+        val wallClockPrediction = lagCounterPrediction.minusMillis(GreenhouseData.lagAdjustmentSinceReadingMs)
+        Common.LOGGER.info("[tick] Wall clock predicted ${describePrediction(wallClockPrediction, correctedTickTime)}")
+        Common.LOGGER.info("[tick] Server lag counter predicted ${describePrediction(lagCounterPrediction, correctedTickTime)}")
+    }
+
+    private fun describePrediction(predicted: Instant, actual: Instant): String {
+        val offSeconds = Duration.between(actual, predicted).toSeconds()
+        val offBy = when {
+            offSeconds > 0 -> "${offSeconds}s late"
+            offSeconds < 0 -> "${-offSeconds}s early"
+            else -> "exact"
+        }
+        return "${TICK_LOG_TIME.format(predicted)} ($offBy)"
     }
 }

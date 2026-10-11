@@ -24,7 +24,7 @@ object Cactus {
             CropEffect.HarvestLoss
         ),
         skyblockId = SkyBlockItemId.item("CACTUS"),
-        stages = listOf(
+        growingStages = listOf(
             CropStage(
                 blocks = listOf(),
                 armorStands = listOf(

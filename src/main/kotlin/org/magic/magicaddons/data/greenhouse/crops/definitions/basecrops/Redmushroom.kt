@@ -23,7 +23,7 @@ object Redmushroom {
             CropEffect.WaterDrain
         ),
         skyblockId = SkyBlockItemId.item("RED_MUSHROOM"),
-        stages = listOf(
+        growingStages = listOf(
             CropStage(
                 blocks = listOf(
                     StageBlock(

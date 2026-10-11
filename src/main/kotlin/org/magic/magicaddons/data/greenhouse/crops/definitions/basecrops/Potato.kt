@@ -19,7 +19,7 @@ object Potato {
             CropEffect.Immunity
         ),
         skyblockId = SkyBlockItemId.item("POTATO_ITEM"),
-        stages = listOf(
+        growingStages = listOf(
             CropStage(
                 blocks = listOf(
                     StageBlock(

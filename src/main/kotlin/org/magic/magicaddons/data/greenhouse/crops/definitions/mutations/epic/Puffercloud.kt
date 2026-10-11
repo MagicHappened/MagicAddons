@@ -26,7 +26,7 @@ object Puffercloud {
             CropEffect.WaterDrain
         ),
         skyblockId = SkyBlockItemId.item("PUFFERCLOUD"),
-        stages = listOf(
+        growingStages = listOf(
             CropStage(
                 blocks = listOf(
                     StageBlock(

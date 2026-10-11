@@ -26,7 +26,7 @@ object Gloomgourd {
             CropEffect.BonusDrops
         ),
         skyblockId = SkyBlockItemId.item("GLOOMGOURD"),
-        stages = listOf(
+        growingStages = listOf(
             CropStage(
                 blocks = listOf(
                     StageBlock(

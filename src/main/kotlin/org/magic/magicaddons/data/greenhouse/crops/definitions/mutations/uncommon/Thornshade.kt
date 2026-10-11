@@ -23,7 +23,7 @@ object Thornshade {
             CropEffect.EffectSpread
         ),
         skyblockId = SkyBlockItemId.item("THORNSHADE"),
-        stages = listOf(
+        growingStages = listOf(
             CropStage(
                 blocks = listOf(
                 ),

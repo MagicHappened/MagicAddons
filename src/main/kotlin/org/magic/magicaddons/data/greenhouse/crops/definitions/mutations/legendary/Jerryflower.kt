@@ -20,7 +20,7 @@ object Jerryflower {
         tier = CropTier.Legendary,
         dropMultiplier = 2.0,
         skyblockId = SkyBlockItemId.item("JERRYFLOWER"),
-        stages = listOf(
+        growingStages = listOf(
             CropStage(
                 blocks = listOf(
                     StageBlock(

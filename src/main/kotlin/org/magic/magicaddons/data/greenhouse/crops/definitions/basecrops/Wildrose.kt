@@ -24,7 +24,7 @@ object Wildrose {
             CropEffect.EffectSpread
         ),
         skyblockId = SkyBlockItemId.item("WILD_ROSE"),
-        stages = listOf(
+        growingStages = listOf(
             CropStage(
                 blocks = listOf(
                     StageBlock(

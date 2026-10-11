@@ -23,7 +23,7 @@ object Dustgrain {
             CropEffect.HarvestBoost
         ),
         skyblockId = SkyBlockItemId.item("DUSTGRAIN"),
-        stages = listOf(
+        growingStages = listOf(
             CropStage(
                 blocks = listOf(
                     StageBlock(

@@ -29,7 +29,7 @@ object Thunderling {
         standPoses = mapOf(
             "b35914deb539a1fde1b1c473f8e05cacca257b959e7270d444c1dc5ad2bf7cc8" to StandPose.Fixed(Rotations(22.5f, 22.5f, 0.0f))
         ),
-        stages = listOf(
+        growingStages = listOf(
             CropStage(
                 blocks = listOf(
                 ),

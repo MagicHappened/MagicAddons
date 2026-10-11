@@ -42,7 +42,7 @@ object Snoozling {
         standPoses = mapOf(
             "77bb86dedeb827f2489aa0103d58d0e12e64a8152d5a0f5b1d4d208a3cb55999" to StandPose.Fixed(Rotations(-22.5f, 0.0f, 0.0f))
         ),
-        stages = listOf(
+        growingStages = listOf(
             CropStage(
                 blocks = StageBlock.atPositions(
                     positions = wheatPositions,

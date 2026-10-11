@@ -1,6 +1,7 @@
 package org.magic.magicaddons.data.greenhouse.crops.definitions.mutations.legendary
 
 import net.minecraft.core.BlockPos
+import net.minecraft.core.Rotations
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.Vec3
@@ -29,15 +30,59 @@ object Glasscorn {
             CropEffect.HarvestLoss
         ),
         skyblockId = SkyBlockItemId.item("GLASSCORN"),
-        stages = listOf(
+        growingStages = listOf(
             glasscornStage(glass("white"), 1..2),
             glasscornStage(glass("lime"), 3..3),
             glasscornStage(glass("yellow"), 4..4),
             glasscornStage(glass("orange"), 5..5),
             glasscornStage(glass("red"), 6..6),
-            glasscornStage(Blocks.AIR.defaultBlockState(), 7..8)
+            glasscornStage(Blocks.AIR.defaultBlockState(), 7..8),
+            CropStage(
+                blocks = StageBlock.atPositions(
+                    positions = listOf(
+                        BlockPos(0, 1, 0),
+                        BlockPos(0, 1, 1),
+                        BlockPos(1, 1, 0),
+                        BlockPos(1, 1, 1)
+                    ),
+                    blockState = sunflowerState()
+                ),
+                armorStands = StageStand.atOffsets(
+                    offsets = listOf(
+                        Vec3(0.5, 0.5, 0.5),
+                        Vec3(-0.5, 0.5, 0.5),
+                        Vec3(-0.5, 0.5, -0.5),
+                        Vec3(0.5, 0.5, -0.5)
+                    ),
+                    isSmall = false,
+                    rotations = listOf(
+                        Rotations(0.0f, 0.0f, 0.0f),
+                        Rotations(0.0f, 0.0f, 0.0f),
+                        Rotations(0.0f, 0.0f, 0.0f),
+                        Rotations(0.0f, 0.0f, 0.0f)
+                    ),
+                    hashString = "297de27338b9f876e570d1cc01fe1beccfc940467c5c97c467e93e79c81c25ee"
+                ) +
+                StageStand.atOffsets(
+                    offsets = listOf(
+                        Vec3(0.5, 1.03125, 0.5),
+                        Vec3(-0.5, 1.03125, 0.5),
+                        Vec3(-0.5, 1.03125, -0.5),
+                        Vec3(0.5, 1.03125, -0.5)
+                    ),
+                    isSmall = false,
+                    rotations = listOf(
+                        Rotations(0.0f, 0.0f, 0.0f),
+                        Rotations(0.0f, 0.0f, 0.0f),
+                        Rotations(0.0f, 0.0f, 0.0f),
+                        Rotations(0.0f, 0.0f, 0.0f)
+                    ),
+                    hashString = "c85e9fa773337f43de3afc9e2a60b26299f5eea9fd8490d19ed2ab34fc0c9cbb"
+                ),
+                stageRange = 9..9
+            )
         ),
-        maxStage = 8,
+        maxStage = 9,
         footprint = Footprint(2, 2),
         requiredSoil = setOf(Blocks.SAND, Blocks.RED_SAND),
         isMutation = true,

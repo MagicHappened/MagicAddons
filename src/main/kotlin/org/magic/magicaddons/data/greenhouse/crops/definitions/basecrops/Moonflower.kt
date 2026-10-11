@@ -30,7 +30,7 @@ object Moonflower {
             "7775c5d80efc36c7b029470852aaf161e3733f8ae691fb5ed5450232630e4fcb" to StandPose.Fixed(Rotations(15.0f, 0.0f, 0.0f)),
             "bd1001840c85349f87c6e20478317f4026b588514d8b1e78241a849d93f9cd94" to StandPose.Fixed(Rotations(-22.5f, 0.0f, 0.0f))
         ),
-        stages = listOf(
+        growingStages = listOf(
             CropStage(
                 blocks = listOf(),
                 armorStands = listOf(

@@ -27,7 +27,7 @@ object Scourroot {
         standPoses = mapOf(
             "a9da3b8dcffbb5dd9708b83e54746fced475f0ee16c6c0ce4668cca7999c4d1e" to StandPose.Fixed(Rotations(45.0f, 0.0f, 0.0f))
         ),
-        stages = listOf(
+        growingStages = listOf(
             CropStage(
                 blocks = listOf(),
                 armorStands = listOf(

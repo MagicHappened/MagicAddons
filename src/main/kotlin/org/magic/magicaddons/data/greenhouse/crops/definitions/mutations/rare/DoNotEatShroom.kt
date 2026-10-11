@@ -22,7 +22,7 @@ object DoNotEatShroom {
             CropEffect.WaterDrain
         ),
         skyblockId = SkyBlockItemId.item("DO_NOT_EAT_SHROOM"),
-        stages = listOf(
+        growingStages = listOf(
             CropStage(
                 blocks = listOf(),
                 armorStands = listOf(

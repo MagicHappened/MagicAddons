@@ -26,7 +26,7 @@ object Duskbloom {
             CropEffect.BonusDrops
         ),
         skyblockId = SkyBlockItemId.item("DUSKBLOOM"),
-        stages = listOf(
+        growingStages = listOf(
             CropStage(
                 blocks = listOf(
                 ),

@@ -37,7 +37,7 @@ object AllinAloe {
         standPoses = mapOf(
             "dde18b1db0f938380dd8bed0c9189c3e62ea3acf900a19b2e95f52708c3ae3f2" to StandPose.Fixed(Rotations(22.5f, 0.0f, 0.0f))
         ),
-        stages = listOf(
+        growingStages = listOf(
             CropStage(
                 blocks = listOf(
                     StageBlock(

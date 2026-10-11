@@ -25,7 +25,7 @@ object Witherbloom {
             CropEffect.EffectSpread
         ),
         skyblockId = SkyBlockItemId.item("WITHERBLOOM"),
-        stages = listOf(
+        growingStages = listOf(
             CropStage(
                 blocks = listOf(
                     StageBlock(

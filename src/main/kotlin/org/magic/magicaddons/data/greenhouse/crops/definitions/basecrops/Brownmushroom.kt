@@ -24,7 +24,7 @@ object Brownmushroom {
         ),
         skyblockId = SkyBlockItemId.item("BROWN_MUSHROOM"),
 
-        stages = listOf(
+        growingStages = listOf(
             CropStage(
                 blocks = listOf(
                     StageBlock(

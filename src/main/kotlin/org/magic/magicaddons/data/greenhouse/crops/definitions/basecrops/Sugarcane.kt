@@ -22,7 +22,7 @@ object Sugarcane {
             CropEffect.HarvestLoss
         ),
         skyblockId = SkyBlockItemId.item("SUGAR_CANE"),
-        stages = listOf(
+        growingStages = listOf(
             CropStage(
                 blocks = listOf(
                     StageBlock(

@@ -19,7 +19,7 @@ object Carrot {
             CropEffect.XpBoost
         ),
         skyblockId = SkyBlockItemId.item("CARROT_ITEM"),
-        stages = listOf(
+        growingStages = listOf(
             CropStage(
                 blocks = listOf(
                     StageBlock(

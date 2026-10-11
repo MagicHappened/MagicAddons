@@ -19,7 +19,7 @@ object Shellfruit {
             CropEffect.Immunity
         ),
         skyblockId = SkyBlockItemId.item("SHELLFRUIT"),
-        stages = listOf(
+        growingStages = listOf(
             CropStage(
                 blocks = listOf(
                 ),

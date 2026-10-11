@@ -21,7 +21,7 @@ object Netherwart {
             CropEffect.XpLoss
         ),
         skyblockId = SkyBlockItemId.item("NETHER_STALK"),
-        stages = listOf(
+        growingStages = listOf(
             CropStage(
                 blocks = listOf(
                     StageBlock(

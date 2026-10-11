@@ -33,7 +33,7 @@ object Cindershade {
             "a0646bc0558155207204711cf5d3d07920e0e98c9b2be0b6107becb409a97427" to StandPose.Fixed(Rotations(0.0f, 45.0f, 0.0f)),
             "7bd5a39c3f9b1f513ecc299afaa5f90040fdb7424a5cd592e9ff31de7a3aafb3" to StandPose.Fixed(Rotations(0.0f, 45.0f, 0.0f))
         ),
-        stages = listOf(
+        growingStages = listOf(
             CropStage(
                 blocks = listOf(),
                 armorStands = listOf(

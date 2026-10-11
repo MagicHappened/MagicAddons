@@ -9,6 +9,7 @@ import org.magic.magicaddons.data.greenhouse.crops.CropBlocks.sugarcaneState
 import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
 import org.magic.magicaddons.data.greenhouse.crops.CropEffect
 import org.magic.magicaddons.data.greenhouse.crops.CropStage
+import org.magic.magicaddons.data.greenhouse.crops.PlacedStage
 import org.magic.magicaddons.data.greenhouse.crops.CropTier
 import org.magic.magicaddons.data.greenhouse.crops.NEVER_DECAYS
 import org.magic.magicaddons.data.greenhouse.crops.SpawnRule
@@ -121,6 +122,8 @@ object MagicJellybean {
     )
 
 
+    private val growingStages: List<CropStage> = generateStages()
+
     val definition = CropDefinition(
         name = "Magic Jellybean",
         tier = CropTier.Rare,
@@ -130,7 +133,8 @@ object MagicJellybean {
             CropEffect.HarvestLoss
         ),
         skyblockId = SkyBlockItemId.item("MAGIC_JELLYBEAN"),
-        stages = generateStages(),
+        growingStages = growingStages,
+        placedStages = listOf(PlacedStage.lookingLike(growingStages.first { MAX_STAGE - 1 in it.stageRange })),
         standPoses = mapOf(
             CANE_HASH to StandPose.Cycle(CANE_POSES),
             MELON_HASH to StandPose.Fixed(Rotations(0.0f, 22.5f, 22.5f))

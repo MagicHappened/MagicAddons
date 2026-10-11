@@ -23,7 +23,7 @@ object Lonelily {
             CropEffect.BonusDrops
         ),
         skyblockId = SkyBlockItemId.item("LONELILY"),
-        stages = listOf(
+        growingStages = listOf(
             CropStage(
                 blocks = listOf(
                     StageBlock(

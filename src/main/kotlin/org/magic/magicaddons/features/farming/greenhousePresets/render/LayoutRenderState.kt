@@ -502,7 +502,7 @@ object LayoutRenderState {
 
     private fun ghostStageOf(definition: CropDefinition): CropStage? {
         val at = definition.stagePlacedAt
-        val stage = definition.stages.firstOrNull { at in it.stageRange }
+        val stage = definition.growingStages.firstOrNull { at in it.stageRange }
 
         if (stage == null && reportedMissingStage.add(definition.name)) {
             ChatUtils.sendWithPrefix("No stage $at described for ${definition.name}, skipping it.")

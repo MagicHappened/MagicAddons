@@ -22,7 +22,7 @@ object Wheat {
         aliases = listOf(
             SkyBlockItemId.item("SEEDS")
         ),
-        stages = listOf(
+        growingStages = listOf(
             CropStage(
                 blocks = listOf(
                     StageBlock(

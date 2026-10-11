@@ -29,7 +29,7 @@ object Cocoa {
         standPoses = mapOf(
             "db8f7d08f93594e385058afda93b0a077b218345751c1b9415d2623110e6afbd" to StandPose.Fixed(Rotations(0.0f, 22.5f, 22.5f))
         ),
-        stages = listOf(
+        growingStages = listOf(
             CropStage(
                 blocks = listOf(
                     StageBlock(

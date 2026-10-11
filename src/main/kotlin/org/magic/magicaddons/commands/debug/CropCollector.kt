@@ -27,6 +27,7 @@ import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.commands.internal.MainInternal
 import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
 import org.magic.magicaddons.data.greenhouse.crops.CropRegistry
+import org.magic.magicaddons.data.greenhouse.crops.CropStage
 import org.magic.magicaddons.data.greenhouse.crops.StandReader
 import org.magic.magicaddons.data.greenhouse.crops.PlantStage
 import org.magic.magicaddons.data.greenhouse.crops.WorldRotation
@@ -292,7 +293,10 @@ object CropCollector : EntityUtils.HighlightSource {
     private const val PLANT_DEX_MISSING_COMMAND: String = "/ma debug farming plantDex missing"
 
     private fun stemAgesMatch(def: CropDefinition, stage: Int, origin: BlockPos, stands: List<ArmorStand>): Boolean =
-        def.stages.filter { stage in it.stageRange }.any { it.matchesStage(origin, stands, def) != null }
+        looksAtStage(def, stage).any { it.matchesStage(origin, stands, def) != null }
+
+    private fun looksAtStage(def: CropDefinition, stage: Int): List<CropStage> =
+        def.growingStages.filter { stage in it.stageRange } + if (stage == def.stagePlacedAt) def.placedStages else emptyList()
 
     private fun waterNote(origin: BlockPos): String {
         val grid = GreenhouseData.getCurrentGrid() ?: return "water=?"
@@ -344,7 +348,7 @@ object CropCollector : EntityUtils.HighlightSource {
     private val defsByState: Map<BlockState, List<CropDefinition>> by lazy {
         buildMap<BlockState, MutableList<CropDefinition>> {
             CropRegistry.allCrops.forEach { def ->
-                def.stages
+                (def.growingStages + def.placedStages)
                     .flatMap { it.blocks.orEmpty() }
                     .map { it.blockState }
                     .distinct()
@@ -373,7 +377,7 @@ object CropCollector : EntityUtils.HighlightSource {
         val skullHashToCropDefs = mutableMapOf<String, MutableSet<CropDefinition>>()
 
         CropRegistry.allCrops.forEach { def ->
-            def.stages.forEach { stage ->
+            (def.growingStages + def.placedStages).forEach { stage ->
                 stage.armorStands?.forEach { stand ->
                     stand.hashString?.let { skullHashToCropDefs.getOrPut(it) { mutableSetOf() }.add(def) }
                 }
@@ -578,7 +582,7 @@ object CropCollector : EntityUtils.HighlightSource {
                         claimed.z in standingOn.z until standingOn.z + h
             }
         val roots = CropRegistry.allCrops.firstOrNull { it.name == DEVOURER_ROOTS }
-        val rootSkulls = roots?.stages.orEmpty()
+        val rootSkulls = roots?.growingStages.orEmpty()
             .flatMap { it.armorStands.orEmpty() }
             .mapNotNull { it.hashString }
             .toSet()
@@ -606,11 +610,9 @@ object CropCollector : EntityUtils.HighlightSource {
             }
         }
 
-        val recorded = def.stages
-            .filter { stage in it.stageRange }
+        val recorded = looksAtStage(def, stage)
             .firstNotNullOfOrNull { it.matchesStage(standingOn, stands, def) }
-        val recordedIgnoringStemAge = recorded ?: def.stages
-            .filter { stage in it.stageRange }
+        val recordedIgnoringStemAge = recorded ?: looksAtStage(def, stage)
             .firstNotNullOfOrNull { it.matchesStage(standingOn, stands, def, ignoreStemAge = true) }
 
         val status = when {

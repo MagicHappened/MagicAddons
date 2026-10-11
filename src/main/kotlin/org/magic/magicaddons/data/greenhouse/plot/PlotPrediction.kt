@@ -353,6 +353,8 @@ object PlotPrediction {
 
     const val WATER_HALT_LEVEL: Int = -100
 
+    const val NEGATIVE_WATER_SKIP_CHANCE: Double = 0.175
+
     const val WATER_FULL_LEVEL: Int = 100
 
     // the plant near the soggy bud drain amount
