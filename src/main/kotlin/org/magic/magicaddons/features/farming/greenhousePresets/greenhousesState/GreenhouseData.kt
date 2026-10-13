@@ -11,14 +11,13 @@ import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.server.CoopSync
 import org.magic.magicaddons.data.server.GreenhouseDataSync
-import org.magic.magicaddons.commands.internal.MainInternal
-import org.magic.magicaddons.commands.internal.farming.SetTimestalkAttribute
 import org.magic.magicaddons.data.greenhouse.crops.*
 import org.magic.magicaddons.data.greenhouse.crops.definitions.misc.FireElement
 import org.magic.magicaddons.data.greenhouse.plot.*
 import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.events.EventHandler
 import org.magic.magicaddons.events.chat.SystemChatEvent
+import org.magic.magicaddons.events.greenhouse.GreenhouseChangedEvent
 import org.magic.magicaddons.events.greenhouse.GrowthTickEvent
 import org.magic.magicaddons.events.greenhouse.PlotChangedEvent
 import org.magic.magicaddons.events.interact.*
@@ -33,7 +32,6 @@ import org.magic.magicaddons.features.farming.greenhousePresets.playerActions.Ch
 import org.magic.magicaddons.features.farming.greenhousePresets.playerActions.GreenhousePlantDischarge
 import org.magic.magicaddons.features.farming.greenhousePresets.playerActions.GreenhouseWatering
 import org.magic.magicaddons.features.farming.greenhousePresets.render.LayoutRenderState
-import org.magic.magicaddons.features.farming.greenhousePresets.shrunkPlants.ShorterCaneCrops
 import org.magic.magicaddons.Common
 import org.magic.magicaddons.features.farming.greenhousePresets.lookups.BioanalysisAccessory
 import org.magic.magicaddons.features.farming.greenhousePresets.warnings.ChorusCollision
@@ -225,7 +223,9 @@ object GreenhouseData : GridCallbacks {
 
         val quietSince = maxOf(lastEntityChangeAt ?: 0L, plotEnteredAt)
 
-        if (standsStillMoving(level) == 0 && now - quietSince >= ENTITY_QUIET_MS) return PlotReadiness.Settled
+        val hasArrivalSettled = gardenArrivedAt?.let { now - it.toEpochMilli() >= ARRIVAL_SETTLE_MS } == true
+
+        if (hasArrivalSettled && standsStillMoving(level) == 0 && now - quietSince >= ENTITY_QUIET_MS) return PlotReadiness.Settled
 
         val deferredSince = scanDeferredSince ?: now.also { scanDeferredSince = it }
 
@@ -271,6 +271,8 @@ object GreenhouseData : GridCallbacks {
     private const val ENTITY_QUIET_MS: Long = 250
 
     private const val MAX_SCAN_DEFER_MS: Long = 3_000
+
+    private const val ARRIVAL_SETTLE_MS: Long = 3_000
 
     private var scanDeferredSince: Long? = null
 
@@ -410,7 +412,6 @@ object GreenhouseData : GridCallbacks {
         if (!grid.rescanPlants(shouldKeepUnmatchedPlants = !isPlotSettled)) return
         recheckMissedSoil(grid)
         countHarvests(grid, plantsBefore)
-        refreshContentSignature(grid)
 
         if (isPlotSettled && !isPlanTurned) {
             grid.state.assignedLayout?.takeUnless { grid.state.noRotateAssignedLayout }?.let { plan ->
@@ -427,17 +428,15 @@ object GreenhouseData : GridCallbacks {
         if (isPlotSettled) {
             GreenhouseSpawnLog.noteScan(grid)
             updateDecayTracking(grid)
-            refreshChorusRisk(grid)
+            noteSettledScan(grid)
         }
-
-        LayoutRenderState.refresh()
 
         // after grid update
         grid.state.scanned = true
         grid.state.needsRescan = false
         grid.state.lastScanTime = Instant.now()
 
-        ShorterCaneCrops.updateHiddenPlantParts()
+        noteGridUpdated(grid, GreenhouseChangedEvent.Source.Scan)
     }
     private const val MAX_TICK_ADJUSTMENT_MS: Long = 5_000
 
@@ -510,6 +509,58 @@ object GreenhouseData : GridCallbacks {
 
     private const val ATTACK_COUNTS_FOR_MS: Long = 10_000
 
+    private class RecentHarvest(val grid: GreenhouseGrid, val x: Int, val y: Int, val elementId: String, val at: Long, var isReplanted: Boolean = false)
+
+    private val recentHarvests: MutableList<RecentHarvest> = mutableListOf()
+
+    private const val REPLANT_NOTICE_WINDOW_MS: Long = 60_000
+
+    private val REPLANT_NOTICE: Regex = Regex("re-mutated an? ", RegexOption.IGNORE_CASE)
+
+    private fun noteHarvest(grid: GreenhouseGrid, x: Int, y: Int, elementId: String) {
+        val now = System.currentTimeMillis()
+        recentHarvests.removeIf { now - it.at > REPLANT_NOTICE_WINDOW_MS }
+        recentHarvests += RecentHarvest(grid, x, y, elementId, now)
+    }
+
+    @EventHandler
+    fun onReplantNotice(event: SystemChatEvent) {
+        if (!REPLANT_NOTICE.containsMatchIn(event.text)) return
+
+        val now = System.currentTimeMillis()
+        val harvest = recentHarvests.lastOrNull { !it.isReplanted && now - it.at <= REPLANT_NOTICE_WINDOW_MS } ?: return
+        harvest.isReplanted = true
+        harvest.grid.state.needsRescan = true
+    }
+
+    override fun replantedAt(grid: GreenhouseGrid, x: Int, y: Int, crop: CropDefinition): Long? {
+        val now = System.currentTimeMillis()
+        val harvest = recentHarvests.lastOrNull {
+            it.grid === grid && it.x == x && it.y == y && it.elementId == crop.elementId && now - it.at <= REPLANT_NOTICE_WINDOW_MS &&
+                    (it.isReplanted || grid.state.ticksSinceLastScan == 0)
+        } ?: return null
+
+        recentHarvests.remove(harvest)
+        return harvest.at
+    }
+
+    override fun claimReplant(plant: Plant, grid: GreenhouseGrid, replantedAt: Long) {
+        plant.placed = false
+        plant.appearedAt = replantedAt
+        plant.decayAttemptAt = null
+        plant.resetTimesMutated()
+        plant.firstSeenStage = 1
+
+        plant.waterLevel = if (plant.cropDef.needsWater) 0.0 else null
+        plant.waterExact = plant.cropDef.needsWater
+        plant.waterBestCase = null
+
+        if (attackedSlots.remove(plant.slot.x to plant.slot.y) != null) CoopSync.noteHarvested(grid)
+    }
+
+    override fun wasAttacked(grid: GreenhouseGrid, x: Int, y: Int): Boolean =
+        grid === getCurrentGrid() && attackedSlots[x to y]?.let { System.currentTimeMillis() - it <= ATTACK_COUNTS_FOR_MS } == true
+
     private fun harvestCandidatesOf(grid: GreenhouseGrid): List<HarvestCandidate> =
         grid.layout.plants.map { HarvestCandidate(it.slot.x, it.slot.y, it.elementId, GreenhousePresets.isHarvestable(it)) }
 
@@ -520,6 +571,7 @@ object GreenhouseData : GridCallbacks {
 
         before.filter { it.isHarvestable && Triple(it.x, it.y, it.elementId) !in standing && (it.x to it.y) in attackedSlots }.forEach {
             attackedSlots.remove(it.x to it.y)
+            noteHarvest(grid, it.x, it.y, it.elementId)
             CoopSync.noteHarvested(grid)
         }
     }
@@ -531,17 +583,56 @@ object GreenhouseData : GridCallbacks {
             signature = signature * 31 + plant.slot.x
             signature = signature * 31 + plant.slot.y
             signature = signature * 31 + plant.placed.hashCode()
-            signature = signature * 31 + (plant.lastDiagnosisReading?.readAt?.hashCode() ?: 0)
+            signature = signature * 31 + (plant.lastDiagnosis?.diagnosedAt?.hashCode() ?: 0)
         }
         layout.slots.forEach { signature = signature * 31 + (it.soil?.hashCode() ?: 0) }
         return signature
     }
 
-    fun refreshContentSignature(grid: GreenhouseGrid, markIfChanged: Boolean = true) {
-        val signature = contentSignatureOf(grid.layout)
-        val previous = grid.state.contentSignature
-        grid.state.contentSignature = signature
-        if (markIfChanged && previous != null && previous != signature) markContentChanged(grid)
+    private fun growthSignatureOf(layout: PlotLayout): Int {
+        var signature = 17
+        layout.plants.sortedWith(compareBy({ it.slot.y }, { it.slot.x })).forEach { plant ->
+            signature = signature * 31 + plant.growthStage.hashCode()
+            signature = signature * 31 + plant.waterLevel.hashCode()
+            signature = signature * 31 + plant.appearedAt.hashCode()
+            signature = signature * 31 + plant.decayAttemptAt.hashCode()
+        }
+        return signature
+    }
+
+    private fun partsSignatureOf(grid: GreenhouseGrid): Int {
+        var signature = 17
+        grid.scannedPlants.forEach { scannedPlant ->
+            scannedPlant.stands.orEmpty().forEach { signature = signature * 31 + it.id }
+            scannedPlant.blocks.orEmpty().forEach { (pos, state) ->
+                signature = signature * 31 + pos.hashCode()
+                signature = signature * 31 + state.hashCode()
+            }
+        }
+        return signature
+    }
+
+    fun recordLoadedSignatures(grid: GreenhouseGrid) {
+        grid.state.contentSignature = contentSignatureOf(grid.layout)
+        grid.state.growthSignature = growthSignatureOf(grid.layout)
+    }
+
+    fun noteGridUpdated(grid: GreenhouseGrid, source: GreenhouseChangedEvent.Source) {
+        val state = grid.state
+        val contents = contentSignatureOf(grid.layout)
+        val growth = growthSignatureOf(grid.layout)
+        val parts = partsSignatureOf(grid)
+
+        val changes = buildSet {
+            if (contents != state.contentSignature) add(GreenhouseChangedEvent.Change.Contents)
+            if (growth != state.growthSignature) add(GreenhouseChangedEvent.Change.Growth)
+            if (parts != state.partsSignature) add(GreenhouseChangedEvent.Change.Parts)
+        }
+        state.contentSignature = contents
+        state.growthSignature = growth
+        state.partsSignature = parts
+
+        if (changes.isNotEmpty()) EventBus.post(GreenhouseChangedEvent(grid, changes, source))
     }
 
     fun markContentChanged(grid: GreenhouseGrid) {
@@ -557,7 +648,7 @@ object GreenhouseData : GridCallbacks {
             incoming.state.lastChangedAt = lastChangedAt
             greenhouseGrids.add(incoming)
             checkGreenhouses = false
-            refreshContentSignature(incoming, markIfChanged = false)
+            noteGridUpdated(incoming, GreenhouseChangedEvent.Source.Pull)
             return incoming
         }
 
@@ -570,18 +661,17 @@ object GreenhouseData : GridCallbacks {
             ticksSinceLastScan = incoming.state.ticksSinceLastScan
             chorusLossChanceByTick = incoming.state.chorusLossChanceByTick
             chorusRiskCalculation = null
-            blindSpawns.clear()
-            blindSpawns += incoming.state.blindSpawns
+            uncertainSpawns.clear()
+            uncertainSpawns += incoming.state.uncertainSpawns
             this.lastChangedAt = lastChangedAt
             countedSignature = null
             slotsToDiagnose = emptySet()
             scanned = false
             needsRescan = true
         }
-        refreshContentSignature(local, markIfChanged = false)
+        noteGridUpdated(local, GreenhouseChangedEvent.Source.Pull)
         GreenhouseSpawnLog.notePull(local)
         if (getCurrentGrid() === local) shouldRescanCurrentPlot = true
-        LayoutRenderState.refresh()
         regenRender()
         return local
     }
@@ -611,14 +701,12 @@ object GreenhouseData : GridCallbacks {
         if (!grid.rescanPlants(region, shouldKeepUnmatchedPlants = readiness != PlotReadiness.Settled)) return
         recheckMissedSoil(grid)
         countHarvests(grid, plantsBefore)
-        refreshContentSignature(grid)
         claimPlantedCrop(grid)
         if (readiness == PlotReadiness.Settled) {
             updateDecayTracking(grid)
-            refreshChorusRisk(grid)
+            noteSettledScan(grid)
         }
-        LayoutRenderState.refresh()
-        ShorterCaneCrops.updateHiddenPlantParts()
+        noteGridUpdated(grid, GreenhouseChangedEvent.Source.Scan)
     }
 
     private const val UNWATCHED_TICKS_LOSING_TELEPORTER_SPAWNS: Int = 2
@@ -626,7 +714,7 @@ object GreenhouseData : GridCallbacks {
     private fun updateDecayTracking(grid: GreenhouseGrid) {
         val layout = grid.layout
         if (grid.state.ticksSinceLastScan >= UNWATCHED_TICKS_LOSING_TELEPORTER_SPAWNS) {
-            MutationCounting.noteUnwatchedTicks(layout, grid.state.blindSpawns)
+            TimesMutatedCounter.addUnwatchedSpawns(layout, grid.state.uncertainSpawns)
         }
         recountMutations(grid)
 
@@ -642,22 +730,56 @@ object GreenhouseData : GridCallbacks {
     }
 
     fun recountMutations(grid: GreenhouseGrid) {
-        if (MutationCounting.signatureOf(grid.layout, grid.state.blindSpawns) == grid.state.countedSignature) return
+        if (TimesMutatedCounter.countInputsSignatureOf(grid.layout, grid.state.uncertainSpawns) == grid.state.countedSignature) return
 
-        val contributorsByBlind = MutationCounting.recountPlot(grid.layout, grid.state.blindSpawns)
+        val contributorsByBlind = TimesMutatedCounter.recountPlot(grid.layout, grid.state.uncertainSpawns)
         grid.state.slotsToDiagnose = DiagnosticPlanner.plantsToDiagnose(grid.layout, contributorsByBlind).mapTo(HashSet()) { it.slot.x to it.slot.y }
-        grid.state.countedSignature = MutationCounting.signatureOf(grid.layout, grid.state.blindSpawns)
+        grid.state.countedSignature = TimesMutatedCounter.countInputsSignatureOf(grid.layout, grid.state.uncertainSpawns)
     }
 
-    private fun refreshChorusRisk(grid: GreenhouseGrid) {
+    private class PendingChorusRisk(val fingerprint: Int?, val changedAt: Long)
+
+    private val pendingChorusRisks: MutableMap<GreenhouseGrid, PendingChorusRisk> = mutableMapOf()
+
+    private const val CHORUS_RISK_QUIET_MS: Long = 5_000
+
+    private fun chorusRiskOf(grid: GreenhouseGrid): ChorusCollision.Risk? = ChorusCollision.riskOf(
+        grid.layout,
+        BioanalysisAccessory.mutationWeightMultiplier(),
+        GreenhouseTickTime.remainingTickMs(),
+        GreenhouseTickTime.tickMs
+    )
+
+    private fun noteSettledScan(grid: GreenhouseGrid) {
         if (grid.state.ticksSinceLastScan > 0) grid.state.lastChorusBreaks = emptyList()
         grid.state.ticksSinceLastScan = 0
-        val risk = ChorusCollision.riskOf(
-            grid.layout,
-            BioanalysisAccessory.mutationWeightMultiplier(),
-            GreenhouseTickTime.remainingTickMs(),
-            GreenhouseTickTime.tickMs
-        )
+    }
+
+    @EventHandler
+    fun onGreenhouseChanged(event: GreenhouseChangedEvent) {
+        val grid = event.grid
+        val fingerprint = chorusRiskOf(grid)?.fingerprint
+        if (fingerprint != null && fingerprint == grid.state.chorusRiskCalculation?.fingerprint) {
+            pendingChorusRisks.remove(grid)
+            return
+        }
+        if (pendingChorusRisks[grid]?.fingerprint == fingerprint) return
+        pendingChorusRisks[grid] = PendingChorusRisk(fingerprint, System.currentTimeMillis())
+    }
+
+    private fun calculateQuietChorusRisks() {
+        val now = System.currentTimeMillis()
+        pendingChorusRisks.filterValues { now - it.changedAt >= CHORUS_RISK_QUIET_MS }.keys.forEach(::calculateChorusRisk)
+    }
+
+    fun calculatePendingChorusRisks() {
+        pendingChorusRisks.keys.toList().forEach(::calculateChorusRisk)
+    }
+
+    private fun calculateChorusRisk(grid: GreenhouseGrid) {
+        pendingChorusRisks.remove(grid)
+        if (greenhouseGrids.none { it === grid }) return
+        val risk = chorusRiskOf(grid)
         if (risk != null && risk.fingerprint == grid.state.chorusRiskCalculation?.fingerprint) return
 
         grid.state.chorusRiskCalculation?.cancel()
@@ -848,6 +970,7 @@ object GreenhouseData : GridCallbacks {
         checkForTickTimeUpdate()
         PlantWarnings.onTick()
         CoopSync.onTick()
+        calculateQuietChorusRisks()
 
         if (!SBLocation.OwnGarden.inside()) return
 
@@ -970,15 +1093,6 @@ object GreenhouseData : GridCallbacks {
         regenRender()
     }
 
-    fun unplanCurrentGreenhouse(): Boolean {
-        val grid = getCurrentGrid() ?: run {
-            ChatUtils.sendWithPrefix("Not standing in a greenhouse.")
-            return false
-        }
-
-        return unplanGreenhouse(grid)
-    }
-
     fun unplanGreenhouse(grid: GreenhouseGrid): Boolean {
         if (grid.state.assignedLayout == null) {
             ChatUtils.sendWithPrefix("No planner running on ${grid.layout.displayName()}.")
@@ -1038,7 +1152,10 @@ object GreenhouseData : GridCallbacks {
             attackedSlots[slot.x to slot.y] = System.currentTimeMillis()
             grid.removePlantWithBlockAt(pos)?.let { removed ->
                 attackedSlots.remove(slot.x to slot.y)
-                if (GreenhousePresets.isHarvestable(removed.plant)) CoopSync.noteHarvested(grid)
+                if (GreenhousePresets.isHarvestable(removed.plant)) {
+                    noteHarvest(grid, removed.plant.slot.x, removed.plant.slot.y, removed.plant.elementId)
+                    CoopSync.noteHarvested(grid)
+                }
             }
         }
 
@@ -1214,14 +1331,6 @@ object GreenhouseData : GridCallbacks {
                 )
             )
         }
-        if (GreenhouseTickTime.speedAttribute() == null) {
-            warnings.add(
-                ChatUtils.buildWithCommand(
-                    "Unknown Timestalk attribute, defaulting to zero. Click to set it",
-                    "${MainInternal.PATH} ${SetTimestalkAttribute.NAME}"
-                )
-            )
-        }
         if (miscInfo.nextTickTime == null) {
             warnings.add(
                 ChatUtils.buildWithPrefix("Unknown tick time, please right click a non fully grown plant")
@@ -1265,7 +1374,7 @@ object GreenhouseData : GridCallbacks {
     override fun markAsPlaced(plant: Plant, placedAt: Long?) {
         plant.placed = true
         plant.appearedAt = placedAt ?: System.currentTimeMillis()
-        MutationCounting.startCountingFromZero(plant)
+        plant.resetTimesMutated()
 
         val stage = plant.growthStage
         if (stage is PlantStage.Estimated && plant.cropDef.stagePlacedAt in stage.range) {
@@ -1291,8 +1400,7 @@ object GreenhouseData : GridCallbacks {
         plant.waterLevel = null
         plant.waterExact = false
         plant.waterBestCase = null
-        gridOf(plant)?.let { refreshContentSignature(it) }
-        LayoutRenderState.refresh()
+        gridOf(plant)?.let { noteGridUpdated(it, GreenhouseChangedEvent.Source.Hand) }
     }
 
     fun unmarkPlacedByHand(grid: GreenhouseGrid, plant: Plant): Boolean {
@@ -1301,8 +1409,7 @@ object GreenhouseData : GridCallbacks {
 
         plant.placed = false
         grid.rescanPlants(onlySlots = plant.coveredCells.toSet())
-        refreshContentSignature(grid)
-        LayoutRenderState.refresh()
+        noteGridUpdated(grid, GreenhouseChangedEvent.Source.Hand)
         return true
     }
 
@@ -1322,7 +1429,7 @@ object GreenhouseData : GridCallbacks {
 
         plant.waterBestCase = null
         plant.appearedAt = (gardenArrivedAt ?: now).toEpochMilli()
-        MutationCounting.startCountingFromZero(plant)
+        plant.resetTimesMutated()
         plant.firstSeenStage = 1
     }
 

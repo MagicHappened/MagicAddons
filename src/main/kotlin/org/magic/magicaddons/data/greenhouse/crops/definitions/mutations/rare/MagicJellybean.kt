@@ -42,11 +42,14 @@ object MagicJellybean {
     private data class Top(
         val stemAge: Int,
         val melonStandY: Double? = null,
-        val extraCaneStand: Boolean = false
+        val extraCaneStand: Boolean = false,
+        val holdsBean: Boolean = false
     )
 
+    private val HELD_BEAN_STAND_OFFSET = Vec3(0.4393196180462837, -0.09413555264473, -1.0491547584533691)
+
     private val cycle: List<Pair<IntRange, Top>> = listOf(
-        0..2 to Top(stemAge = 3),
+        0..2 to Top(stemAge = 3, holdsBean = true),
         3..4 to Top(stemAge = 5, melonStandY = 0.28125),
         5..6 to Top(stemAge = 7, melonStandY = 0.59375),
         7..8 to Top(stemAge = 7, melonStandY = 0.6875),
@@ -91,13 +94,23 @@ object MagicJellybean {
                     )
                 }
 
+                val heldBeanStand = if (top.holdsBean) {
+                    StageStand(
+                        offset = HELD_BEAN_STAND_OFFSET.add(0.0, caneHeight.toDouble(), 0.0),
+                        hashString = MELON_HASH,
+                        isSmall = false
+                    )
+                } else {
+                    null
+                }
+
                 add(
                     CropStage(
                         blocks = canes + StageBlock(
                             offset = BlockPos(0, caneHeight + 1, 0),
                             blockState = melonStemState(top.stemAge)
                         ),
-                        armorStands = caneStands + listOfNotNull(melonStand),
+                        armorStands = caneStands + listOfNotNull(melonStand, heldBeanStand),
                         stageRange = first..last
                     )
                 )

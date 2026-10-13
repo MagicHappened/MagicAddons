@@ -137,8 +137,8 @@ object GreenhouseSpawnLog {
         val liveBySlot = pending.grid.layout.plants.associateBy { it.slot.x to it.slot.y }
         pending.layoutAfter.plants.forEach { copy ->
             val live = liveBySlot[copy.slot.x to copy.slot.y]?.takeIf { it.cropTypeEquals(copy) && it.appearedAt == copy.appearedAt } ?: return@forEach
-            copy.mutationsSpawned = live.mutationsSpawned
-            copy.mutationsSpawnedIsMinimum = live.mutationsSpawnedIsMinimum
+            copy.timesMutated = live.timesMutated
+            copy.isTimesMutatedMinimum = live.isTimesMutatedMinimum
         }
         writeRow(pending.record, pending.layoutAfter, pending.spawnCandidates)
     }
@@ -269,7 +269,7 @@ object GreenhouseSpawnLog {
 
     private fun timesMutatedOf(plant: Plant): String? {
         if (plant.cropDef.minMutationsBeforeDecay == null) return null
-        return plant.mutationsSpawned.toString() + if (plant.mutationsSpawnedIsMinimum) "+" else ""
+        return plant.timesMutated.toString() + if (plant.isTimesMutatedMinimum) "+" else ""
     }
 
     private fun stagesOf(plant: Plant): String = when (val stage = plant.growthStage) {

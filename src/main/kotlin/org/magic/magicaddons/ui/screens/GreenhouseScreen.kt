@@ -63,8 +63,6 @@ import org.magic.magicaddons.ui.widgets.greenhouse.PlantPalette
 import org.magic.magicaddons.ui.widgets.greenhouse.PresetPanel
 import org.magic.magicaddons.ui.widgets.greenhouse.RenameContext
 import org.magic.magicaddons.ui.widgets.greenhouse.ScrollHint
-import org.magic.magicaddons.commands.internal.MainInternal
-import org.magic.magicaddons.commands.internal.farming.SetTimestalkAttribute
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.SBLocation
 import org.magic.magicaddons.util.ScreenUtil
@@ -273,6 +271,7 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
         width = (width / drawScale).toInt()
         height = (height / drawScale).toInt()
 
+        GreenhouseData.calculatePendingChorusRisks()
         initBaseLayout()
 
         GreenhouseData.warnUnknownValues()
@@ -510,10 +509,6 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
 
         if (isOverTickTimeLine(mouseX, mouseY, UNIQUE_CROPS_LABEL)) {
             drawMissingUniques(graphics, mouseX, mouseY)
-        }
-
-        if (isOverTickTimeLine(mouseX, mouseY, SPEED_ATTRIBUTE_LABEL)) {
-            graphics.drawTooltipAtCursor(SET_ATTRIBUTE_HINT, mouseX, mouseY)
         }
     }
 
@@ -1579,11 +1574,6 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
             return true
         }
 
-        if (tickTimePinned && isOverTickTimeLine(layoutEvent.x.toInt(), layoutEvent.y.toInt(), SPEED_ATTRIBUTE_LABEL)) {
-            ScreenUtil.openChatThenReturn("${MainInternal.COMMAND} ${SetTimestalkAttribute.NAME} ", this)
-            return true
-        }
-
         if (toggleUnplannedPinOnClick(layoutEvent)) return true
         if (toggleDiagnosePinOnClick(layoutEvent)) return true
         if (selectContentsTabOnClick(layoutEvent)) return true
@@ -2284,7 +2274,6 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
         private const val WATER_LASTS_TOOLTIP: String =
             "How many ticks one full watering lasts before the first plant runs out. " +
                     "A plant out of water can skip growth ticks, and halts at -100% until it is watered."
-        private const val SET_ATTRIBUTE_HINT: String = "Click to open chat to set your attribute level"
         private const val RENAME_HINT: String = "\nRight click a name to rename it: greenhouses, presets and plots"
         private const val SCROLL_HINT_GREENHOUSES: String = "Scroll the mouse wheel to switch what the plants show$RENAME_HINT"
         private const val SCROLL_HINT_PRESETS: String = "Scroll the mouse wheel to switch preset$RENAME_HINT"

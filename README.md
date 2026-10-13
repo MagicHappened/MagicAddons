@@ -9,11 +9,12 @@ Made for Minecraft 26.1.2 and 26.2, with plans to update to newer versions as Hy
 - **Greenhouse Presets**: up to three plots per preset, with an in-game editor, target markings for the mutations you are growing, and import and export in several formats.
 - **Break Protection**: several customizable options for preventing breaking crops in your greenhouse.
 - **Greenhouse Prediction**: lets you visually see what your greenhouse will look like up to 10 ticks ahead of time (doesn't include spawned mutations since they are chance based).
-- **Water Model**: predicts each plant's water tick by tick, including retain and drain effects, and how long a plant has until it fully grows or dies (assumes no player interaction).
+- **Water Model**: predicts each plant's water tick by tick, including retain and drain effects, and how long a plant has until it fully grows or halts at -100% water (assumes no player interaction).
 - **Highlights**: water and harvest highlights in the world.
 - **Shorter Cane Crops**: visually shrinks Sugar Cane and Magic Jellybean to their bottom block, with the growth stage shown above while they are growing. Hitboxes stay the same, so they can still be hit on all of their blocks.
 - **Reminders**: ready to harvest, needs water, decay, snoozling asleep, noctilume time switch, chorus collision, with reminders before and at the growth tick (with support for multiple profiles).
   Some reminders might not behave correctly, as I did not have the crops to test them myself; please open an issue if something is off.
+- **Discord Reminders**: with Discord integration on and your account linked, the MagicAddons Discord app sends you direct messages about your greenhouse while the game is closed: what is ready to harvest, running out of water, about to decay or needs attention, listing everything in the next 4 to 24 hours (set with `/reminders` in Discord). `/greenhouse` in Discord shows your greenhouse report at any time.
 
 ## Foraging
 
@@ -37,9 +38,10 @@ Made for Minecraft 26.1.2 and 26.2, with plans to update to newer versions as Hy
 
 ## Commands
 
-- `/ma` opens the config; `/ma toggle <feature>` and `/ma edit <feature>` toggle a feature or go to it in the menu.
-- `/ma GreenhouseScreen` opens the greenhouse planner and preset editor (`/ma gh` for short).
+- `/ma` opens the config; `/ma feature toggle <feature>` and `/ma feature edit <feature>` toggle a feature or go to it in the menu.
+- `/ma gh` opens the greenhouse planner and preset editor.
 - `/ma hud` opens the HUD editor.
+- `/ma link` gives you a code to run with `/link` in Discord, linking your Discord account to your Minecraft account for Discord reminders.
 - `/ma version` shows the running version and whether a newer one exists.
 
 ## Extension features

@@ -29,6 +29,7 @@ import org.magic.magicaddons.data.greenhouse.plot.GREENHOUSE_SOIL_Y
 import org.magic.magicaddons.events.ConfigChangedEvent
 import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.events.EventHandler
+import org.magic.magicaddons.events.greenhouse.GreenhouseChangedEvent
 import org.magic.magicaddons.events.greenhouse.PlotChangedEvent
 import org.magic.magicaddons.events.world.LevelUnloadingEvent
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhousePresets
@@ -77,6 +78,12 @@ object ShorterCaneCrops {
 
     @EventHandler
     fun onConfigChanged(event: ConfigChangedEvent) = onRenderThread { updateHiddenPlantParts() }
+
+    @EventHandler
+    fun onGreenhouseChanged(event: GreenhouseChangedEvent) {
+        if (event.grid !== GreenhouseData.getCurrentGrid()) return
+        updateHiddenPlantParts()
+    }
 
     @EventHandler
     fun onLevelUnloading(event: LevelUnloadingEvent) = onRenderThread { applyHiddenPlantParts(emptyList()) }

@@ -14,13 +14,13 @@ object DiagnosticPlanner {
         val minimum = plant.cropDef.minMutationsBeforeDecay ?: return false
         if (plant.cropDef.decayTimeMs == NEVER_DECAYS || plant.isGrowingTeleporter) return false
 
-        return plant.mutationsSpawnedIsMinimum && plant.mutationsSpawned < minimum
+        return plant.isTimesMutatedMinimum && plant.timesMutated < minimum
     }
 
-    fun plantsToDiagnose(layout: PlotLayout, contributorsByBlind: Map<BlindSpawns, List<Plant>>): Set<Plant> {
-        val unknownBlindKeys = contributorsByBlind.keys.filter { !it.isExact }
+    fun plantsToDiagnose(layout: PlotLayout, contributorsByBlind: Map<UncertainSpawns, List<Plant>>): Set<Plant> {
+        val unknownBlindKeys = contributorsByBlind.keys.filter { !it.isCountExact }
         val unknownBlinds = unknownBlindKeys.map { contributorsByBlind.getValue(it).toSet() }
-        val plantsWithOwnUnknown = layout.plants.filter { !it.isMutationCountTracked || it.hasUncertainCredit }
+        val plantsWithOwnUnknown = layout.plants.filter { !it.isTimesMutatedTracked || it.hasUncertainCredit }
         val columnCount = unknownBlinds.size + plantsWithOwnUnknown.size
         val ownColumnByPlant = plantsWithOwnUnknown.withIndex().associate { (index, plant) -> plant to unknownBlinds.size + index }
 
@@ -32,9 +32,9 @@ object DiagnosticPlanner {
         }
 
         val basis = Basis(columnCount)
-        layout.plants.filter { it.lastDiagnosisReading?.isStillExact == true }.forEach { basis.add(rowOf(it)) }
-        contributorsByBlind.keys.filter { it.drawId != null }.groupBy { it.drawId }.values
-            .filter { draw -> draw.size == draw.first().drawSize }
+        layout.plants.filter { it.lastDiagnosis?.isExact == true }.forEach { basis.add(rowOf(it)) }
+        contributorsByBlind.keys.filter { it.drawGroupId != null }.groupBy { it.drawGroupId }.values
+            .filter { draw -> draw.size == draw.first().drawCandidateCount }
             .forEach { draw ->
                 val row = DoubleArray(columnCount)
                 unknownBlindKeys.forEachIndexed { index, blind -> if (blind in draw) row[index] = 1.0 }

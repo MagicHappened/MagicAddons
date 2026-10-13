@@ -4,14 +4,14 @@ import com.google.gson.JsonParser
 import com.mojang.brigadier.builder.LiteralArgumentBuilder
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource
 import net.minecraft.client.Minecraft
-import org.magic.magicaddons.commands.AbstractCommand
+import org.magic.magicaddons.commands.AbstractDebugCommand
 import org.magic.magicaddons.data.server.ServerSession
 import org.magic.magicaddons.util.ChatUtils
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
-object AuthDebug : AbstractCommand() {
+object AuthDebug : AbstractDebugCommand() {
 
     private val EXPIRY_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("d MMM HH:mm").withZone(ZoneId.systemDefault())
 

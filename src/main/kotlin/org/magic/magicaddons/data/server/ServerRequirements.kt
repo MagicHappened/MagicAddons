@@ -3,7 +3,7 @@ package org.magic.magicaddons.data.server
 import net.minecraft.ChatFormatting
 import net.minecraft.network.chat.ClickEvent
 import net.minecraft.network.chat.Component
-import org.magic.magicaddons.commands.features.EditFeature
+import org.magic.magicaddons.commands.config.EditFeature
 import org.magic.magicaddons.data.config.BooleanSetting
 import org.magic.magicaddons.features.Feature
 import org.magic.magicaddons.features.account.ServerConnection

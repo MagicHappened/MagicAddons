@@ -2,7 +2,7 @@ package org.magic.magicaddons.data.greenhouse.plot
 
 import org.magic.magicaddons.data.greenhouse.crops.Plant
 
-object BlindSpawnSolver {
+object UncertainSpawnSolver {
 
     private const val SEARCH_NODE_LIMIT: Int = 2_000_000
 
@@ -14,15 +14,15 @@ object BlindSpawnSolver {
 
     private class Member(val fixedSpawns: Int, val blindIndexes: IntArray)
 
-    class Solution(val spawnsByBlind: Map<BlindSpawns, IntRange>, val blindSpawnsByPlant: Map<Plant, IntRange>)
+    class Solution(val spawnsByBlind: Map<UncertainSpawns, IntRange>, val blindSpawnsByPlant: Map<Plant, IntRange>)
 
-    fun solve(layout: PlotLayout, contributorsByBlind: Map<BlindSpawns, List<Plant>>): Solution? {
+    fun solve(layout: PlotLayout, contributorsByBlind: Map<UncertainSpawns, List<Plant>>): Solution? {
         val blinds = contributorsByBlind.keys.toList()
         if (blinds.isEmpty()) return Solution(emptyMap(), emptyMap())
 
-        val lowest = IntArray(blinds.size) { blinds[it].atLeast }
-        val isFixed = BooleanArray(blinds.size) { blinds[it].isExact }
-        val cap = IntArray(blinds.size) { blinds[it].atMost ?: Int.MAX_VALUE }
+        val lowest = IntArray(blinds.size) { blinds[it].minimumCount }
+        val isFixed = BooleanArray(blinds.size) { blinds[it].isCountExact }
+        val cap = IntArray(blinds.size) { blinds[it].maximumCount ?: Int.MAX_VALUE }
         val blindIndexesByPlant = blinds.indices
             .flatMap { index -> contributorsByBlind.getValue(blinds[index]).map { it to index } }
             .groupBy({ it.first }, { it.second })
@@ -80,12 +80,12 @@ object BlindSpawnSolver {
         return Solution(spawnsByBlind, sumRangeByPlant)
     }
 
-    private fun readingSumOf(plant: Plant, blindIndexes: IntArray, blinds: List<BlindSpawns>): Sum? {
-        val reading = plant.lastDiagnosisReading ?: return null
-        val indexesInReading = blindIndexes.filter { blinds[it].isCountedIn(reading) }.toIntArray()
-        val target = reading.timesMutatedNow - plant.seenSpawnsHelped
-        val isOwnCountKnown = plant.isMutationCountTracked && !plant.hasUncertainCredit
-        val isExact = reading.isStillExact
+    private fun readingSumOf(plant: Plant, blindIndexes: IntArray, blinds: List<UncertainSpawns>): Sum? {
+        val reading = plant.lastDiagnosis ?: return null
+        val indexesInReading = blindIndexes.filter { blinds[it].isIncludedIn(reading) }.toIntArray()
+        val target = reading.timesMutatedNow - plant.seenTimesMutated
+        val isOwnCountKnown = plant.isTimesMutatedTracked && !plant.hasUncertainCredit
+        val isExact = reading.isExact
 
         return when {
             isOwnCountKnown && isExact -> Sum(indexesInReading, target, Bound.Exact, isFromReading = true)
@@ -95,13 +95,13 @@ object BlindSpawnSolver {
         }
     }
 
-    private fun drawSumsOf(blinds: List<BlindSpawns>): List<Sum> = blinds.indices
-        .filter { blinds[it].drawId != null }
-        .groupBy { blinds[it].drawId }
+    private fun drawSumsOf(blinds: List<UncertainSpawns>): List<Sum> = blinds.indices
+        .filter { blinds[it].drawGroupId != null }
+        .groupBy { blinds[it].drawGroupId }
         .mapNotNull { (_, indexes) ->
             val draw = blinds[indexes.first()]
-            if (indexes.size != draw.drawSize) return@mapNotNull null
-            Sum(indexes.toIntArray(), draw.drawCredited, Bound.Exact, isFromReading = false)
+            if (indexes.size != draw.drawCandidateCount) return@mapNotNull null
+            Sum(indexes.toIntArray(), draw.drawCreditedCount, Bound.Exact, isFromReading = false)
         }
 
     private fun searchedBlinds(count: Int, isFixed: BooleanArray, highest: IntArray, readingSums: List<Sum>, drawSums: List<Sum>): BooleanArray {
@@ -139,20 +139,20 @@ object BlindSpawnSolver {
     }
 
     private fun combinedChecksOf(layout: PlotLayout, blindIndexesByPlant: Map<Plant, IntArray>): List<CombinedRemaining> = layout.plants
-        .filter { plant -> plant.lastDiagnosisReading?.let { it.combinedRemaining != null && it.isFromThisTick } == true }
+        .filter { plant -> plant.lastDiagnosis?.let { it.combinedMutatesRemaining != null && it.isFromCurrentTick } == true }
         .groupBy { it.cropDef }
         .mapNotNull { (crop, readPlants) ->
             val minimum = crop.minMutationsBeforeDecay ?: return@mapNotNull null
             val members = layout.plants.filter { it.cropDef == crop }.map { plant ->
-                val reading = plant.lastDiagnosisReading?.takeIf { it.isFromThisTick && it.isStillExact }
+                val reading = plant.lastDiagnosis?.takeIf { it.isFromCurrentTick && it.isExact }
                 when {
                     reading != null -> Member(reading.timesMutatedNow, IntArray(0))
-                    plant.isMutationCountTracked && !plant.hasUncertainCredit ->
-                        Member(plant.seenSpawnsHelped, blindIndexesByPlant[plant] ?: IntArray(0))
+                    plant.isTimesMutatedTracked && !plant.hasUncertainCredit ->
+                        Member(plant.seenTimesMutated, blindIndexesByPlant[plant] ?: IntArray(0))
                     else -> return@mapNotNull null
                 }
             }
-            CombinedRemaining(minimum, members, readPlants.last().lastDiagnosisReading!!.combinedRemaining!!)
+            CombinedRemaining(minimum, members, readPlants.last().lastDiagnosis!!.combinedMutatesRemaining!!)
         }
 
     private class Search(
@@ -239,7 +239,7 @@ object BlindSpawnSolver {
 
         private fun isMet(check: CombinedRemaining): Boolean {
             val timesMutatedByMember = check.members.map { member -> member.fixedSpawns + member.blindIndexes.sumOf { spawns[it] } }
-            return MutationCounting.combinedRemainingOf(timesMutatedByMember, check.minimum) == check.target
+            return TimesMutatedCounter.combinedMutatesRemainingOf(timesMutatedByMember, check.minimum) == check.target
         }
 
         private fun noteSolution() {

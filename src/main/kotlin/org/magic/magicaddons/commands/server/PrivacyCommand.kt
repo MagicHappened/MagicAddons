@@ -1,4 +1,4 @@
-package org.magic.magicaddons.commands.misc
+package org.magic.magicaddons.commands.server
 
 import com.mojang.brigadier.builder.LiteralArgumentBuilder
 import java.net.http.HttpRequest

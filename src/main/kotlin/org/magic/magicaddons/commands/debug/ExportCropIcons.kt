@@ -1,16 +1,16 @@
-package org.magic.magicaddons.commands.internal.icons
+package org.magic.magicaddons.commands.debug
 
 import com.mojang.brigadier.builder.LiteralArgumentBuilder
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
 import org.magic.magicaddons.Common
-import org.magic.magicaddons.commands.AbstractCommand
+import org.magic.magicaddons.commands.AbstractDebugCommand
 import org.magic.magicaddons.data.greenhouse.crops.CropRegistry
 import org.magic.magicaddons.util.ItemIconExport
 import org.magic.magicaddons.util.ScreenUtil
 
-object ExportCropIcons : AbstractCommand() {
+object ExportCropIcons : AbstractDebugCommand() {
 
     override val argument: String = "exportCropIcons"
 

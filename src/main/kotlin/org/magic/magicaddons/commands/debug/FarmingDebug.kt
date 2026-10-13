@@ -1,5 +1,6 @@
 package org.magic.magicaddons.commands.debug
 
+import com.mojang.brigadier.arguments.IntegerArgumentType
 import com.mojang.brigadier.arguments.StringArgumentType
 import com.mojang.brigadier.builder.LiteralArgumentBuilder
 import com.mojang.brigadier.builder.RequiredArgumentBuilder
@@ -9,8 +10,9 @@ import net.minecraft.client.Minecraft
 import net.minecraft.network.chat.ClickEvent
 import net.minecraft.network.chat.Component
 import net.minecraft.world.entity.decoration.ArmorStand
-import org.magic.magicaddons.commands.AbstractCommand
+import org.magic.magicaddons.commands.AbstractDebugCommand
 import org.magic.magicaddons.commands.CropWords
+import org.magic.magicaddons.commands.toExactDuration
 import org.magic.magicaddons.data.greenhouse.crops.MissingCropData
 import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseSpawnLog
@@ -21,7 +23,7 @@ import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.EntityUtils
 import org.magic.magicaddons.util.PlayerUtils
 
-object FarmingDebug : AbstractCommand() {
+object FarmingDebug : AbstractDebugCommand() {
 
     private const val MISSING_WORD: String = "missing"
 
@@ -111,15 +113,42 @@ object FarmingDebug : AbstractCommand() {
                         return@executes 1
                     }
             )
-            .then(
-                LiteralArgumentBuilder.literal<FabricClientCommandSource>("shards")
-                    .executes {
-                        sendGreenhouseShardLevels()
-                        return@executes 1
-                    }
-            )
 
-        return farming.then(collect)
+        return farming.then(collect).then(calculateTickTimeCommand())
+    }
+
+    private const val MAX_SPEED_UPGRADE: Int = 9
+
+    private const val MAX_ATTRIBUTE_LEVEL: Int = 10
+
+    private val TICK_TIME_ARGUMENTS: List<Pair<String, IntegerArgumentType>> = listOf(
+        "cropGrowth" to IntegerArgumentType.integer(0),
+        "speedUpgrade" to IntegerArgumentType.integer(0, MAX_SPEED_UPGRADE),
+        "uniqueCrops" to IntegerArgumentType.integer(0, GreenhouseTickTime.MAX_UNIQUE_CROPS),
+        "flora" to IntegerArgumentType.integer(0, MAX_ATTRIBUTE_LEVEL),
+        "timestalk" to IntegerArgumentType.integer(0, MAX_ATTRIBUTE_LEVEL)
+    )
+
+    private fun calculateTickTimeCommand(): LiteralArgumentBuilder<FabricClientCommandSource> {
+        val last = TICK_TIME_ARGUMENTS.last()
+        val arguments = TICK_TIME_ARGUMENTS.dropLast(1).foldRight(
+            RequiredArgumentBuilder.argument<FabricClientCommandSource, Int>(last.first, last.second).executes { context ->
+                val (cropGrowth, speedUpgrade, uniqueCrops, flora, timestalk) =
+                    TICK_TIME_ARGUMENTS.map { IntegerArgumentType.getInteger(context, it.first) }
+                sendTickTime(cropGrowth, speedUpgrade, uniqueCrops, flora, timestalk)
+                return@executes 1
+            }
+        ) { (name, type), next -> RequiredArgumentBuilder.argument<FabricClientCommandSource, Int>(name, type).then(next) }
+
+        return LiteralArgumentBuilder.literal<FabricClientCommandSource>("calculateTickTime").then(arguments)
+    }
+
+    private fun sendTickTime(cropGrowth: Int, speedUpgrade: Int, uniqueCrops: Int, flora: Int, timestalk: Int) {
+        val tickMs = GreenhouseTickTime.stageTimeMs(uniqueCrops, cropGrowth, speedUpgrade, timestalk, flora)
+        ChatUtils.sendWithPrefix(
+            "Tick time for crop growth $cropGrowth, speed upgrade $speedUpgrade, $uniqueCrops unique crops, " +
+                    "flora attribute $flora, timestalk attribute $timestalk: ${tickMs.toExactDuration()}"
+        )
     }
 
     private fun cropDataGapsCommand(): LiteralArgumentBuilder<FabricClientCommandSource> =
@@ -146,15 +175,6 @@ object FarmingDebug : AbstractCommand() {
                     return@executes 1
                 }
             )
-
-    private fun sendGreenhouseShardLevels() {
-        fun levelText(level: Int?): String = level?.let { "level $it" } ?: "not found"
-
-        val speedShard = levelText(GreenhouseTickTime.shardLevelOf(GreenhouseData.GREENHOUSE_SPEED_ATTRIBUTE_ID))
-        val floraShard = if (GreenhouseTickTime.isFloraAttributeIdKnown) levelText(GreenhouseTickTime.floraShardLevel()) else "no flora id yet"
-
-        ChatUtils.sendWithPrefix("Greenhouse speed shard: $speedShard\nFlora shard: $floraShard")
-    }
 
     private fun sendScanStatus() {
         val status = GreenhouseData.scanStatus()

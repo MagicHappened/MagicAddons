@@ -2,6 +2,8 @@ package org.magic.mixins;
 
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
+import net.minecraft.client.player.LocalPlayer;
+import org.magic.magicaddons.commands.MainCommand;
 import org.magic.magicaddons.events.EventBus;
 import org.magic.magicaddons.events.ui.InventoryClosedEvent;
 import org.spongepowered.asm.mixin.Mixin;
@@ -19,5 +21,10 @@ public class ScreenMixin {
 
         InventoryClosedEvent event = new InventoryClosedEvent();
         EventBus.post(event);
+    }
+
+    @Inject(method = "clickCommandAction", at = @At("HEAD"), cancellable = true)
+    private static void onClickCommand(LocalPlayer player, String command, Screen screen, CallbackInfo ci) {
+        if (MainCommand.INSTANCE.runClickedInternalCommand(command)) ci.cancel();
     }
 }

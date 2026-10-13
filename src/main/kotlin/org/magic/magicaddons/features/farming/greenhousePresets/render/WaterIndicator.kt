@@ -11,6 +11,8 @@ import org.magic.magicaddons.data.greenhouse.crops.ScannedPlant
 import org.magic.magicaddons.data.greenhouse.crops.definitions.mutations.rare.Soggybud
 import org.magic.magicaddons.data.greenhouse.plot.GreenhouseGrid
 import org.magic.magicaddons.data.greenhouse.plot.PlotPrediction
+import org.magic.magicaddons.events.EventHandler
+import org.magic.magicaddons.events.greenhouse.GreenhouseChangedEvent
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhousePresets
 import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseData
 import org.magic.magicaddons.render.WorldRenderer
@@ -23,9 +25,15 @@ object WaterIndicator {
     private const val FILL_ALPHA_LOW: Int = 0x28
     private const val FILL_ALPHA_HIGH: Int = 0x70
 
-    private var soggybudSpotsKey: Pair<GreenhouseGrid, Int?>? = null
+    private var soggybudSpotsGrid: GreenhouseGrid? = null
 
     private var soggybudSpots: Set<Pair<Int, Int>> = emptySet()
+
+    @EventHandler
+    fun onGreenhouseChanged(event: GreenhouseChangedEvent) {
+        if (GreenhouseChangedEvent.Change.Contents !in event.changes || event.grid !== soggybudSpotsGrid) return
+        soggybudSpotsGrid = null
+    }
 
     fun submitDryPlants(poseStack: PoseStack, collector: SubmitNodeCollector, cameraPos: Vec3) {
         if (!GreenhousePresets.waterIndicatorOn()) return
@@ -63,15 +71,14 @@ object WaterIndicator {
     }
 
     private fun soggybudSpotsOf(grid: GreenhouseGrid): Set<Pair<Int, Int>> {
-        val key = grid to grid.state.contentSignature
-        if (key == soggybudSpotsKey) return soggybudSpots
+        if (grid === soggybudSpotsGrid) return soggybudSpots
 
         val layout = grid.layout
         soggybudSpots = (0 until layout.size).flatMap { x -> (0 until layout.size).map { y -> x to y } }
             .filterTo(HashSet()) { (x, y) ->
                 layout.plantCovering(x, y) == null && PlotPrediction.missingSpawnConditions(layout, Soggybud.definition, x, y).isEmpty()
             }
-        soggybudSpotsKey = key
+        soggybudSpotsGrid = grid
         return soggybudSpots
     }
 

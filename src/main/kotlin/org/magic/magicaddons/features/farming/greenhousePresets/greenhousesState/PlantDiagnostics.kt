@@ -11,9 +11,10 @@ import net.minecraft.world.item.Items
 import org.magic.magicaddons.Common
 import org.magic.magicaddons.commands.debug.CropCollector
 import org.magic.magicaddons.data.greenhouse.crops.*
-import org.magic.magicaddons.data.greenhouse.plot.DiagnosisReading
+import org.magic.magicaddons.data.greenhouse.plot.Diagnosis
 import org.magic.magicaddons.data.greenhouse.plot.GREENHOUSE_SOIL_Y
-import org.magic.magicaddons.data.greenhouse.plot.MutationCounting
+import org.magic.magicaddons.data.greenhouse.plot.TimesMutatedCounter
+import org.magic.magicaddons.events.greenhouse.GreenhouseChangedEvent
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhousePresets.baseSetting
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.SBLocation
@@ -39,14 +40,14 @@ object PlantDiagnostics {
             ?: hit?.let { grid?.getSlotAt(BlockPos(it.x, GREENHOUSE_SOIL_Y, it.z), false) }
         val storedPlant = listening?.plant ?: slot?.let { grid?.elementCoveringSlot(it)?.plant }
 
-        val combinedRemaining = saplingLore.valueFor("Combined Mutates Remaining")
-        val remaining = combinedRemaining ?: saplingLore.valueFor("Mutates Remaining")
+        val combinedMutatesRemaining = saplingLore.valueFor("Combined Mutates Remaining")
+        val remaining = combinedMutatesRemaining ?: saplingLore.valueFor("Mutates Remaining")
         val position = slot?.let { "${it.x},${it.y}" } ?: "?"
 
         ChatUtils.sendWithPrefix(
             "${toolCrop?.name ?: "unknown"} : ${storedPlant?.cropDef?.name ?: "unknown"} $position, " +
                     "contributed to: ${saplingLore.valueFor("Times Mutated") ?: "?"}, " +
-                    "remaining mutations ${remaining ?: "?"}, combined: ${combinedRemaining != null}"
+                    "remaining mutations ${remaining ?: "?"}, combined: ${combinedMutatesRemaining != null}"
         )
     }
 
@@ -153,12 +154,11 @@ object PlantDiagnostics {
 
             val plant = element.plant
             timesMutated?.let { timesMutated ->
-                val combinedRemaining = saplingLore.valueFor("Combined Mutates Remaining")?.toIntOrNull()
+                val combinedMutatesRemaining = saplingLore.valueFor("Combined Mutates Remaining")?.toIntOrNull()
                 GreenhouseData.getCurrentGrid()?.let { grid ->
-                    val reading = DiagnosisReading(timesMutated, combinedRemaining, System.currentTimeMillis())
-                    MutationCounting.noteDiagnosis(grid.layout, plant, reading, grid.state.blindSpawns)
+                    val reading = Diagnosis(timesMutated, combinedMutatesRemaining, System.currentTimeMillis())
+                    TimesMutatedCounter.applyDiagnosis(grid.layout, plant, reading, grid.state.uncertainSpawns)
                     GreenhouseData.recountMutations(grid)
-                    GreenhouseData.refreshContentSignature(grid)
                 }
             }
             decayAttemptInMs?.let { plant.decayAttemptAt = System.currentTimeMillis() + it }
@@ -178,6 +178,7 @@ object PlantDiagnostics {
                 element.plant.waterPredictedNegative = false
                 element.plant.waterExact = true
             }
+            GreenhouseData.getCurrentGrid()?.let { GreenhouseData.noteGridUpdated(it, GreenhouseChangedEvent.Source.Diagnosis) }
         }
 
         if (!CropCollector.isCollectorActive()) return

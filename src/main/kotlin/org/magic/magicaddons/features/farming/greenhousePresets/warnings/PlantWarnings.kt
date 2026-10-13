@@ -9,9 +9,8 @@ import net.minecraft.network.chat.ClickEvent
 import net.minecraft.network.chat.Component
 import net.minecraft.network.chat.MutableComponent
 import net.minecraft.network.chat.Style
-import org.magic.magicaddons.commands.internal.MainInternal
-import org.magic.magicaddons.commands.internal.farming.ChorusExplanation
-import org.magic.magicaddons.commands.internal.farming.TickReport
+import org.magic.magicaddons.commands.internal.ChorusExplanation
+import org.magic.magicaddons.commands.internal.TickReport
 import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
 import org.magic.magicaddons.data.greenhouse.crops.CropTier
 import org.magic.magicaddons.data.greenhouse.crops.Plant
@@ -178,7 +177,7 @@ object PlantWarnings {
 
     private fun infoButton(profile: ProfileGreenhouses): Component {
         val command = buildString {
-            append("/${MainInternal.PATH} ${TickReport.NAME}")
+            append(TickReport.command)
             profile.name?.let { append(" $it") }
         }
 
@@ -205,7 +204,7 @@ object PlantWarnings {
 
         sections.forEach { section ->
             message.append(Component.literal("\n  "))
-            val click = if (section.clickExplains) ClickEvent.RunCommand("/${MainInternal.PATH} ${ChorusExplanation.NAME}") else null
+            val click = if (section.clickExplains) ClickEvent.RunCommand(ChorusExplanation.command) else null
             message.append(
                 ChatUtils.buildStyled("${section.label}: ${section.count}", ChatFormatting.AQUA, hoverText(section), click)
             )

@@ -1,4 +1,4 @@
-package org.magic.magicaddons.commands.internal.icons
+package org.magic.magicaddons.commands.debug
 
 import net.minecraft.ChatFormatting
 import net.minecraft.client.Minecraft

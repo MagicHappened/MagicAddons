@@ -1,4 +1,4 @@
-package org.magic.magicaddons.commands.features
+package org.magic.magicaddons.commands.config
 
 import com.mojang.brigadier.arguments.StringArgumentType
 import com.mojang.brigadier.builder.LiteralArgumentBuilder
@@ -17,10 +17,10 @@ object EditFeature : AbstractCommand() {
     private const val SETTING_ARGUMENT: String = "setting"
 
     fun commandFor(featureId: String, settingKey: String? = null): String =
-        "/${Common.MOD_NAME} edit $featureId" + (settingKey?.let { " $it" } ?: "")
+        "/${Common.MOD_NAME} ${FeatureCommand.argument} $argument $featureId" + (settingKey?.let { " $it" } ?: "")
 
     override fun build(): LiteralArgumentBuilder<FabricClientCommandSource> {
-        val command = LiteralArgumentBuilder.literal<FabricClientCommandSource>("edit")
+        val command = LiteralArgumentBuilder.literal<FabricClientCommandSource>(argument)
         command.executes {
             it.source.sendError(ChatUtils.buildWithPrefix("Must provide a feature to edit"))
             return@executes 0

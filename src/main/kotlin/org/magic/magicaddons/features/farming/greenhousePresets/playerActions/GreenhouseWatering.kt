@@ -10,6 +10,7 @@ import org.magic.magicaddons.data.greenhouse.crops.StandReader
 import org.magic.magicaddons.data.greenhouse.plot.PlotPrediction
 import org.magic.magicaddons.data.server.CoopSync
 import org.magic.magicaddons.events.EventHandler
+import org.magic.magicaddons.events.greenhouse.GreenhouseChangedEvent
 import org.magic.magicaddons.events.world.WorldTickEvent
 import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseData
 import org.magic.magicaddons.util.getBuildableArea
@@ -80,6 +81,7 @@ object GreenhouseWatering {
             plant.waterBestCase = null
             plant.waterPredictedNegative = false
         }
+        GreenhouseData.noteGridUpdated(grid, GreenhouseChangedEvent.Source.Watering)
     }
 
     private fun waterBarPercent(name: Component): Int? {

@@ -1,4 +1,4 @@
-package org.magic.magicaddons.commands.misc
+package org.magic.magicaddons.commands.config
 
 import com.mojang.brigadier.builder.LiteralArgumentBuilder
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource

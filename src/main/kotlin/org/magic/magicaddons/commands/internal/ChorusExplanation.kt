@@ -1,15 +1,14 @@
-package org.magic.magicaddons.commands.internal.farming
+package org.magic.magicaddons.commands.internal
 
 import com.mojang.brigadier.builder.LiteralArgumentBuilder
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource
-import org.magic.magicaddons.commands.AbstractCommand
+import org.magic.magicaddons.commands.AbstractInternalCommand
 import org.magic.magicaddons.features.farming.greenhousePresets.warnings.PlantWarnings
 
-object ChorusExplanation : AbstractCommand() {
+object ChorusExplanation : AbstractInternalCommand() {
 
-    const val NAME: String = "chorusExplanation"
 
-    override val argument: String = NAME
+    override val argument: String = "chorusExplanation"
 
     override fun build(): LiteralArgumentBuilder<FabricClientCommandSource> =
         LiteralArgumentBuilder.literal<FabricClientCommandSource>(argument).executes {

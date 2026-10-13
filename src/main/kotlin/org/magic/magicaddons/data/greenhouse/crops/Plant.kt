@@ -4,7 +4,7 @@ import net.minecraft.core.BlockPos
 import net.minecraft.world.entity.Entity
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.state.BlockState
-import org.magic.magicaddons.data.greenhouse.plot.DiagnosisReading
+import org.magic.magicaddons.data.greenhouse.plot.Diagnosis
 import org.magic.magicaddons.data.greenhouse.plot.LayoutSlot
 import org.magic.magicaddons.data.greenhouse.plot.PlotPrediction
 import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseTickTime
@@ -83,19 +83,19 @@ data class Plant(
 
     var waterBestCase: Double? = null
 
-    var mutationsSpawned: Int = 0
+    var timesMutated: Int = 0
 
-    var seenSpawnsHelped: Int = 0
+    var seenTimesMutated: Int = 0
 
-    var isMutationCountTracked: Boolean = false
+    var isTimesMutatedTracked: Boolean = false
 
     var isCountedFromStart: Boolean = false
 
     var hasUncertainCredit: Boolean = false
 
-    var lastDiagnosisReading: DiagnosisReading? = null
+    var lastDiagnosis: Diagnosis? = null
 
-    var mutationsSpawnedIsMinimum: Boolean = true
+    var isTimesMutatedMinimum: Boolean = true
 
     var decayAttemptAt: Long? = null
 
@@ -129,7 +129,16 @@ data class Plant(
 
     val isHalted: Boolean get() = isHaltedByWater || isHaltedByCharge
 
-    val mutationsLeftToSpawn: Int get() = ((cropDef.minMutationsBeforeDecay ?: 0) - mutationsSpawned).coerceAtLeast(0)
+    val mutationsLeftToSpawn: Int get() = ((cropDef.minMutationsBeforeDecay ?: 0) - timesMutated).coerceAtLeast(0)
+
+    fun resetTimesMutated() {
+        seenTimesMutated = 0
+        isCountedFromStart = true
+        isTimesMutatedTracked = true
+        hasUncertainCredit = false
+        timesMutated = 0
+        isTimesMutatedMinimum = false
+    }
 
     fun copyForPrediction(slot: LayoutSlot): Plant =
         copy(slot = slot, readings = readings.toMutableMap(), presetAlternatives = presetAlternatives.toMutableList()).also {
@@ -142,13 +151,13 @@ data class Plant(
             it.charge = charge
             it.chargeKnown = chargeKnown
             it.chanceToReachStage = chanceToReachStage
-            it.mutationsSpawned = mutationsSpawned
-            it.seenSpawnsHelped = seenSpawnsHelped
-            it.isMutationCountTracked = isMutationCountTracked
+            it.timesMutated = timesMutated
+            it.seenTimesMutated = seenTimesMutated
+            it.isTimesMutatedTracked = isTimesMutatedTracked
             it.isCountedFromStart = isCountedFromStart
             it.hasUncertainCredit = hasUncertainCredit
-            it.lastDiagnosisReading = lastDiagnosisReading
-            it.mutationsSpawnedIsMinimum = mutationsSpawnedIsMinimum
+            it.lastDiagnosis = lastDiagnosis
+            it.isTimesMutatedMinimum = isTimesMutatedMinimum
             it.decayAttemptAt = decayAttemptAt
         }
 

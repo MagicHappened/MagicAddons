@@ -11,6 +11,7 @@ import org.magic.magicaddons.Common
 import org.magic.magicaddons.data.greenhouse.plot.GreenhouseGrid
 import org.magic.magicaddons.events.ConfigChangedEvent
 import org.magic.magicaddons.events.EventHandler
+import org.magic.magicaddons.events.greenhouse.GreenhouseChangedEvent
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhousePresets
 import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseData
 import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseProfiles
@@ -133,6 +134,12 @@ object CoopSync {
         if (isAlways && SBLocation.OwnGarden.inside() && now - lastUploadAtMs >= ALWAYS_UPLOAD_INTERVAL.toMillis() && hasChangesSinceLastUpload()) {
             GreenhouseDataSync.uploadForCoop("coop interval")
         }
+    }
+
+    @EventHandler
+    fun onGreenhouseChanged(event: GreenhouseChangedEvent) {
+        if (event.source == GreenhouseChangedEvent.Source.Pull || GreenhouseChangedEvent.Change.Contents !in event.changes) return
+        GreenhouseData.markContentChanged(event.grid)
     }
 
     @EventHandler

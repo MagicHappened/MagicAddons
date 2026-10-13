@@ -22,6 +22,7 @@ import org.magic.magicaddons.features.farming.greenhousePresets.playerActions.Gr
 import org.magic.magicaddons.features.farming.greenhousePresets.playerActions.GreenhouseWatering
 import org.magic.magicaddons.features.farming.greenhousePresets.render.LayoutRenderState
 import org.magic.magicaddons.features.farming.greenhousePresets.render.PlannerMark
+import org.magic.magicaddons.features.farming.greenhousePresets.render.WaterIndicator
 import org.magic.magicaddons.features.farming.greenhousePresets.warnings.PlantWarnings
 import tech.thatgravyboat.skyblockapi.api.SkyBlockAPI
 import tech.thatgravyboat.skyblockapi.api.profile.hunting.AttributeAPI
@@ -80,6 +81,7 @@ object GreenhousePresets : Feature() {
         EventBus.register(GreenhouseKey)
         EventBus.register(GreenhouseHud)
         EventBus.register(LayoutRenderState)
+        EventBus.register(WaterIndicator)
         EventBus.register(OtherProfiles)
         EventBus.register(PlannerNeeds)
         CropRegistry

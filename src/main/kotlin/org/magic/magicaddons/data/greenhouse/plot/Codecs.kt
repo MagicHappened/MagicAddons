@@ -155,15 +155,15 @@ object Codecs {
         }
     }
 
-    private val DIAGNOSIS_READING_CODEC: Codec<DiagnosisReading> = RecordCodecBuilder.create { instance ->
+    private val DIAGNOSIS_CODEC: Codec<Diagnosis> = RecordCodecBuilder.create { instance ->
         instance.group(
             Codec.INT.fieldOf("times_mutated").forGetter { it.timesMutated },
-            Codec.INT.optionalFieldOf("combined").forGetter { Optional.ofNullable(it.combinedRemaining) },
-            Codec.LONG.fieldOf("read_at").forGetter { it.readAt },
+            Codec.INT.optionalFieldOf("combined").forGetter { Optional.ofNullable(it.combinedMutatesRemaining) },
+            Codec.LONG.fieldOf("read_at").forGetter { it.diagnosedAt },
             Codec.INT.optionalFieldOf("seen_since", 0).forGetter { it.spawnsSeenSince },
-            Codec.BOOL.optionalFieldOf("exact", false).forGetter { it.isStillExact }
-        ).apply(instance) { timesMutated, combined, readAt, seenSince, isStillExact ->
-            DiagnosisReading(timesMutated, combined.orElse(null), readAt, seenSince, isStillExact)
+            Codec.BOOL.optionalFieldOf("exact", false).forGetter { it.isExact }
+        ).apply(instance) { timesMutated, combined, diagnosedAt, seenSince, isExact ->
+            Diagnosis(timesMutated, combined.orElse(null), diagnosedAt, seenSince, isExact)
         }
     }
 
@@ -175,29 +175,29 @@ object Codecs {
         val isCountedFromStart: Boolean,
         val hasUncertainCredit: Boolean,
         val decayAttemptAt: Long?,
-        val lastReading: DiagnosisReading?
+        val lastReading: Diagnosis?
     ) {
         fun applyTo(plant: Plant) {
-            plant.mutationsSpawned = spawned
-            plant.mutationsSpawnedIsMinimum = isMinimum
-            plant.seenSpawnsHelped = seenSpawned
-            plant.isMutationCountTracked = isTracked
+            plant.timesMutated = spawned
+            plant.isTimesMutatedMinimum = isMinimum
+            plant.seenTimesMutated = seenSpawned
+            plant.isTimesMutatedTracked = isTracked
             plant.isCountedFromStart = isCountedFromStart
             plant.hasUncertainCredit = hasUncertainCredit
             plant.decayAttemptAt = decayAttemptAt
-            plant.lastDiagnosisReading = lastReading
+            plant.lastDiagnosis = lastReading
         }
 
         companion object {
             fun of(plant: Plant): MutationTrackingRecord = MutationTrackingRecord(
-                plant.mutationsSpawned,
-                plant.mutationsSpawnedIsMinimum,
-                plant.seenSpawnsHelped,
-                plant.isMutationCountTracked,
+                plant.timesMutated,
+                plant.isTimesMutatedMinimum,
+                plant.seenTimesMutated,
+                plant.isTimesMutatedTracked,
                 plant.isCountedFromStart,
                 plant.hasUncertainCredit,
                 plant.decayAttemptAt,
-                plant.lastDiagnosisReading
+                plant.lastDiagnosis
             )
         }
     }
@@ -212,7 +212,7 @@ object Codecs {
             Codec.BOOL.optionalFieldOf("counted_from_start", false).forGetter { it.isCountedFromStart },
             Codec.BOOL.optionalFieldOf("uncertain_credit", false).forGetter { it.hasUncertainCredit },
             Codec.LONG.optionalFieldOf("decay_attempt_at").forGetter { Optional.ofNullable(it.decayAttemptAt) },
-            DIAGNOSIS_READING_CODEC.optionalFieldOf("last_reading").forGetter { Optional.ofNullable(it.lastReading) }
+            DIAGNOSIS_CODEC.optionalFieldOf("last_reading").forGetter { Optional.ofNullable(it.lastReading) }
         ).apply(instance) { spawned, isMinimum, seenSpawned, stationarySpawned, isTracked, isCountedFromStart, hasUncertainCredit, decayAttemptAt, lastReading ->
             MutationTrackingRecord(spawned, isMinimum, seenSpawned.or { stationarySpawned }.orElse(0), isTracked, isCountedFromStart, hasUncertainCredit, decayAttemptAt.orElse(null), lastReading.orElse(null))
         }
@@ -225,24 +225,24 @@ object Codecs {
         return x to y
     }
 
-    private val BLIND_SPAWNS_CODEC: Codec<BlindSpawns> = RecordCodecBuilder.create { instance ->
+    private val UNCERTAIN_SPAWNS_CODEC: Codec<UncertainSpawns> = RecordCodecBuilder.create { instance ->
         instance.group(
-            Codec.INT.fieldOf("x").forGetter { it.x },
-            Codec.INT.fieldOf("y").forGetter { it.y },
-            Codec.STRING.fieldOf("crop").forGetter { it.cropId },
-            Codec.STRING.listOf().fieldOf("contributors").forGetter { blind -> blind.contributorSlots.map(::slotKeyOf) },
+            Codec.INT.fieldOf("x").forGetter { it.spawnX },
+            Codec.INT.fieldOf("y").forGetter { it.spawnY },
+            Codec.STRING.fieldOf("crop").forGetter { it.spawnedCropId },
+            Codec.STRING.listOf().fieldOf("contributors").forGetter { group -> group.contributorCells.map(::slotKeyOf) },
             Codec.LONG.fieldOf("created_at").forGetter { it.createdAt },
-            Codec.BOOL.optionalFieldOf("before_tracking", false).forGetter { it.isBeforeTracking },
-            Codec.INT.optionalFieldOf("at_least", 0).forGetter { it.atLeast },
-            Codec.BOOL.optionalFieldOf("exact", false).forGetter { it.isExact },
-            Codec.INT.optionalFieldOf("at_most").forGetter { Optional.ofNullable(it.atMost) },
-            Codec.STRING.optionalFieldOf("draw").forGetter { Optional.ofNullable(it.drawId) },
-            Codec.INT.optionalFieldOf("draw_credited", 0).forGetter { it.drawCredited },
-            Codec.INT.optionalFieldOf("draw_size", 0).forGetter { it.drawSize }
-        ).apply(instance) { x, y, crop, contributors, createdAt, isBeforeTracking, atLeast, isExact, atMost, drawId, drawCredited, drawSize ->
-            BlindSpawns(
-                x, y, crop, contributors.mapNotNull(::slotOf).toSet(), createdAt, isBeforeTracking, atLeast, isExact,
-                atMost.orElse(null), drawId.orElse(null), drawCredited, drawSize
+            Codec.BOOL.optionalFieldOf("before_tracking", false).forGetter { it.isInEveryDiagnosis },
+            Codec.INT.optionalFieldOf("at_least", 0).forGetter { it.minimumCount },
+            Codec.BOOL.optionalFieldOf("exact", false).forGetter { it.isCountExact },
+            Codec.INT.optionalFieldOf("at_most").forGetter { Optional.ofNullable(it.maximumCount) },
+            Codec.STRING.optionalFieldOf("draw").forGetter { Optional.ofNullable(it.drawGroupId) },
+            Codec.INT.optionalFieldOf("draw_credited", 0).forGetter { it.drawCreditedCount },
+            Codec.INT.optionalFieldOf("draw_size", 0).forGetter { it.drawCandidateCount }
+        ).apply(instance) { x, y, crop, contributors, createdAt, isInEveryDiagnosis, minimumCount, isCountExact, maximumCount, drawGroupId, drawCreditedCount, drawCandidateCount ->
+            UncertainSpawns(
+                x, y, crop, contributors.mapNotNull(::slotOf).toSet(), createdAt, isInEveryDiagnosis, minimumCount, isCountExact,
+                maximumCount.orElse(null), drawGroupId.orElse(null), drawCreditedCount, drawCandidateCount
             )
         }
     }
@@ -262,10 +262,10 @@ object Codecs {
                 Codec.DOUBLE.listOf().optionalFieldOf("chorus_loss_chance_by_tick").forGetter {
                     Optional.ofNullable(it.chorusLossChanceByTick?.toList())
                 },
-                BLIND_SPAWNS_CODEC.listOf().optionalFieldOf("blind_spawns", emptyList()).forGetter { it.blindSpawns },
+                UNCERTAIN_SPAWNS_CODEC.listOf().optionalFieldOf("blind_spawns", emptyList()).forGetter { it.uncertainSpawns },
                 Codec.LONG.optionalFieldOf("last_changed_at").forGetter { Optional.ofNullable(it.lastChangedAt) },
                 Codec.INT.optionalFieldOf("predict_ticks", 0).forGetter { it.predictTicks }
-            ).apply(instance) { lastUpdate, assignedLayout, planTurns, noRotateAssignedLayout, ticksSinceLastScan, chorusLossChances, blindSpawns, lastChangedAt, predictTicks ->
+            ).apply(instance) { lastUpdate, assignedLayout, planTurns, noRotateAssignedLayout, ticksSinceLastScan, chorusLossChances, uncertainSpawns, lastChangedAt, predictTicks ->
                 GridState(
                     lastScanTime = lastUpdate.orElse(null)?.let { Instant.ofEpochMilli(it) },
                     planTurns = planTurns,
@@ -274,7 +274,7 @@ object Codecs {
                 ).also {
                     it.assignedLayoutId = assignedLayout.orElse(null)
                     it.chorusLossChanceByTick = chorusLossChances.orElse(null)?.toDoubleArray()
-                    it.blindSpawns += blindSpawns
+                    it.uncertainSpawns += uncertainSpawns
                     it.lastChangedAt = lastChangedAt.orElse(null)
                     it.predictTicks = predictTicks
                 }

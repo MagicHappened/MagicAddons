@@ -11,8 +11,7 @@ import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.Blocks
-import org.magic.magicaddons.commands.internal.MainInternal
-import org.magic.magicaddons.commands.internal.farming.GetPlannerItemCommand
+import org.magic.magicaddons.commands.internal.GetPlannerItemCommand
 import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
 import org.magic.magicaddons.data.greenhouse.crops.definitions.misc.FireElement
 import org.magic.magicaddons.data.greenhouse.plot.GreenhouseGrid
@@ -321,7 +320,7 @@ object PlannerNeeds {
             label,
             ChatFormatting.AQUA,
             requestedItem.hoverText,
-            ClickEvent.RunCommand("${MainInternal.COMMAND} ${GetPlannerItemCommand.NAME} $command"),
+            ClickEvent.RunCommand("${GetPlannerItemCommand.command} $command"),
         )
     }
 

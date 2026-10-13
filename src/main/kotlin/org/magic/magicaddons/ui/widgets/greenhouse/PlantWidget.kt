@@ -233,7 +233,7 @@ class PlantWidget(val plant: Plant) : Renderable, GuiEventListener {
         if (plant.cropDef === FireElement.definition || plant.cropDef.minMutationsBeforeDecay == null || plant.isGrowingTeleporter) return
         if (decayOutlook?.canDecay == false) return
 
-        val text = (if (plant.mutationsSpawnedIsMinimum) "≥" else "") + plant.mutationsSpawned
+        val text = (if (plant.isTimesMutatedMinimum) "≥" else "") + plant.timesMutated
         mutationCountBox = drawScaledLabel(graphics, text, y + 1f, color, left = x + 1f)
     }
 
@@ -241,7 +241,7 @@ class PlantWidget(val plant: Plant) : Renderable, GuiEventListener {
         val box = mutationCountBox ?: return null
         if (!inRect(mouseX, mouseY, box.x, box.y, box.width, box.height)) return null
 
-        return if (plant.mutationsSpawnedIsMinimum) MUTATION_COUNT_MINIMUM else MUTATION_COUNT_EXACT
+        return if (plant.isTimesMutatedMinimum) MUTATION_COUNT_MINIMUM else MUTATION_COUNT_EXACT
     }
 
     private fun renderStalledLabel(graphics: GuiGraphicsExtractor) {
@@ -495,8 +495,8 @@ class PlantWidget(val plant: Plant) : Renderable, GuiEventListener {
             DecayOutlook.Kind.OnTime -> labelled("Decays in", time)
             DecayOutlook.Kind.AfterSpawns -> labelled("Decays in", "≥$time, needs to contribute to $mutationsLeft")
             DecayOutlook.Kind.AfterUncountedSpawns ->
-                if (plant.mutationsSpawnedIsMinimum) {
-                    labelled("Decays in", "≥$time, contributed to at least ${plant.mutationsSpawned} of ${plant.cropDef.minMutationsBeforeDecay} spawned mutations")
+                if (plant.isTimesMutatedMinimum) {
+                    labelled("Decays in", "≥$time, contributed to at least ${plant.timesMutated} of ${plant.cropDef.minMutationsBeforeDecay} spawned mutations")
                 } else {
                     labelled("Decays in", "≥$time, needs to contribute to $mutationsLeft")
                 }
@@ -632,7 +632,6 @@ class PlantWidget(val plant: Plant) : Renderable, GuiEventListener {
         private val NEGATIVE_WATER_MAY_STALL: String = """
             With negative water the plant may skip ticks, and a skipped tick costs no water.
             This plant has enough water regardless, so it will not halt.
-            The time is with no tick skipped; it grows on the ticks it doesn't skip, which may be the next one or many away.
         """.trimIndent()
 
         private val MAY_HAVE_DECAYED_MARK: ItemStack = ItemStack(Items.DEAD_BUSH)

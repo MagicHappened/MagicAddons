@@ -1,6 +1,9 @@
 package org.magic.magicaddons.commands.debug
 
 import com.mojang.blaze3d.vertex.PoseStack
+import com.google.gson.JsonArray
+import com.google.gson.JsonNull
+import com.google.gson.JsonObject
 import java.io.File
 import java.time.Instant
 import kotlin.math.abs
@@ -24,17 +27,15 @@ import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
-import org.magic.magicaddons.commands.internal.MainInternal
 import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
 import org.magic.magicaddons.data.greenhouse.crops.CropRegistry
 import org.magic.magicaddons.data.greenhouse.crops.CropStage
 import org.magic.magicaddons.data.greenhouse.crops.StandReader
+import org.magic.magicaddons.data.greenhouse.crops.Plant
 import org.magic.magicaddons.data.greenhouse.crops.PlantStage
-import org.magic.magicaddons.data.greenhouse.crops.WorldRotation
 import org.magic.magicaddons.data.greenhouse.plot.GREENHOUSE_SOIL_Y
 import org.magic.magicaddons.data.greenhouse.plot.GreenhouseGrid
 import org.magic.magicaddons.data.greenhouse.plot.LayoutSlot
-import org.magic.magicaddons.data.greenhouse.plot.PlotPrediction
 import org.magic.magicaddons.data.handlers.ModFiles
 import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseData
 import org.magic.magicaddons.render.WorldRenderer
@@ -66,13 +67,17 @@ object CropCollector : EntityUtils.HighlightSource {
 
     private const val BLOCK_ALPHA: Int = 0x38
 
+    private const val HELD_ITEM_MARKER_RADIUS: Double = 0.0625
+    private const val HELD_ITEM_MARKER_RANGE: Double = 32.0
+    private const val HELD_ITEM_MARKER_COLOR: Int = 0xFFFF00FF.toInt()
+
     private val CROP_PALETTE_COLORS: IntArray = intArrayOf(
         0xFFFF5555.toInt(), 0xFF55FF55.toInt(), 0xFF5599FF.toInt(), 0xFFFFAA00.toInt(),
         0xFFFF55FF.toInt(), 0xFF55FFFF.toInt(), 0xFFFFFF55.toInt(), 0xFFAA77FF.toInt(),
         0xFFFF9999.toInt(), 0xFF99CC66.toInt(), 0xFF66CCCC.toInt(), 0xFFCC9966.toInt()
     )
 
-    private enum class Status(val label: String) {
+    private enum class PlantStatus(val label: String) {
         MatchesData("matches current data"),
 
         StemAgeVaries("stem ages differ"),
@@ -87,7 +92,7 @@ object CropCollector : EntityUtils.HighlightSource {
         val def: CropDefinition?,
         val origin: BlockPos,
         val stands: List<ArmorStand>,
-        val status: Status,
+        val status: PlantStatus,
 
         val stageText: String?,
         val stageNum: Int?,
@@ -149,6 +154,8 @@ object CropCollector : EntityUtils.HighlightSource {
                         EntityUtils.heldItem(it) == null
             }.toMutableList()
 
+        val matchedPlants = mutableListOf<MatchedPlant>()
+
         for (dx in 0 until GRID_SIZE) {
             for (dz in 0 until GRID_SIZE) {
 
@@ -176,18 +183,32 @@ object CropCollector : EntityUtils.HighlightSource {
                 }
 
                 val status = when {
-                    num != null && def.stemAgeVaries && !stemAgesMatch(def, num, slotPos, usedStands) -> Status.StemAgeVaries
-                    else -> Status.MatchesData
+                    num != null && def.stemAgeVaries && !stemAgesMatch(def, num, slotPos, usedStands) -> PlantStatus.StemAgeVaries
+                    else -> PlantStatus.MatchesData
                 }
 
-                addEntry(def, slotPos, usedStands, status, text, num, usedStands.standNames())
+                matchedPlants += MatchedPlant(def, slotPos, usedStands, status, text, num)
             }
+        }
+
+        matchedPlants.forEach { matched ->
+            val unrecordedStands = entities.filter { stand ->
+                val cell = EntityUtils.cellOf(stand)
+                identifyDefinitionForStand(stand) == matched.def &&
+                        cell.x - matched.origin.x in 0 until matched.def.footprint.width &&
+                        cell.z - matched.origin.z in 0 until matched.def.footprint.height
+            }
+            entities.removeAll(unrecordedStands.toSet())
+
+            val stands = matched.stands + unrecordedStands
+            val status = if (unrecordedStands.isEmpty()) matched.status else PlantStatus.Unrecorded
+            addEntry(matched.def, matched.origin, stands, status, matched.stageText, matched.stageNum, stands.standNames())
         }
 
         for ((def, standsOfCrop) in entities.groupBy { identifyDefinitionForStand(it) }) {
             if (def == null) {
-                standsOfCrop.groupBy { it.blockPosition().atY(origin.y) }.forEach { (pos, stands) ->
-                    addEntry(null, pos, stands, Status.Unknown, null, null, stands.standNames())
+                standsOfCrop.groupBy { EntityUtils.cellOf(it).atY(origin.y) }.forEach { (pos, stands) ->
+                    addEntry(null, pos, stands, PlantStatus.Unknown, null, null, stands.standNames())
                 }
                 continue
             }
@@ -197,7 +218,7 @@ object CropCollector : EntityUtils.HighlightSource {
                     def,
                     guessOrigin(cluster, def, origin.y),
                     cluster,
-                    Status.Unrecorded,
+                    PlantStatus.Unrecorded,
                     null, null,
                     cluster.standNames()
                 )
@@ -231,23 +252,23 @@ object CropCollector : EntityUtils.HighlightSource {
                 when {
                     candidates.size == 1 -> addEntry(
                         candidates.single(), slotPos, emptyList(),
-                        Status.Unrecorded, null, null, setOf(described)
+                        PlantStatus.Unrecorded, null, null, setOf(described)
                     )
 
                     candidates.isEmpty() -> addEntry(
                         null, slotPos, emptyList(),
-                        Status.Unknown, null, null, setOf(described)
+                        PlantStatus.Unknown, null, null, setOf(described)
                     )
 
                     else -> addEntry(
-                        null, slotPos, emptyList(), Status.Unknown, null, null,
+                        null, slotPos, emptyList(), PlantStatus.Unknown, null, null,
                         setOf(described + " \u2014 " + candidates.joinToString("/") { it.name })
                     )
                 }
             }
         }
 
-        collectorSession.entries.sortBy { it.status.ordinal.let { statusNum -> if (it.status == Status.MatchesData) 9 else statusNum } }
+        collectorSession.entries.sortBy { it.status.ordinal.let { statusNum -> if (it.status == PlantStatus.MatchesData) 9 else statusNum } }
 
         sendInstructions(collectorSession.entries.size)
     }
@@ -298,18 +319,21 @@ object CropCollector : EntityUtils.HighlightSource {
     private fun looksAtStage(def: CropDefinition, stage: Int): List<CropStage> =
         def.growingStages.filter { stage in it.stageRange } + if (stage == def.stagePlacedAt) def.placedStages else emptyList()
 
-    private fun waterNote(origin: BlockPos): String {
-        val grid = GreenhouseData.getCurrentGrid() ?: return "water=?"
-        val plant = grid.getSlotAt(origin, matchY = false)?.let { grid.layout.plantCovering(it) } ?: return "water=?"
-        val water = plant.waterLevel ?: return "water=none"
-        return "water=${PlotPrediction.formatWaterLevel(water)}" + if (plant.waterExact) "" else "(estimated)"
+    private fun recordedPlantAt(origin: BlockPos): Plant? {
+        val grid = GreenhouseData.getCurrentGrid() ?: return null
+        return grid.getSlotAt(origin, matchY = false)?.let { grid.layout.plantCovering(it) }
+    }
+
+    private fun stageRangeOf(entry: PlantEntry): List<Int>? {
+        if (entry.stageNum != null) return null
+        return entry.stageText?.split("..")?.mapNotNull { it.toIntOrNull() }?.takeIf { it.size == 2 }
     }
 
     private fun addEntry(
         def: CropDefinition?,
         origin: BlockPos,
         stands: List<ArmorStand>,
-        status: Status,
+        status: PlantStatus,
         stageText: String?,
         stageNum: Int?,
         names: Set<String>
@@ -317,8 +341,8 @@ object CropCollector : EntityUtils.HighlightSource {
         val s = session ?: return
 
         val color = when (status) {
-            Status.MatchesData -> GRAY
-            Status.Unknown -> UNKNOWN_WHITE
+            PlantStatus.MatchesData -> GRAY
+            PlantStatus.Unknown -> UNKNOWN_WHITE
             else -> def?.let { colorFor(it.name) } ?: UNKNOWN_WHITE
         }
 
@@ -399,6 +423,15 @@ object CropCollector : EntityUtils.HighlightSource {
         return BlockPos(area.minX.toInt(), GREENHOUSE_SOIL_Y, area.minZ.toInt())
     }
 
+    private class MatchedPlant(
+        val def: CropDefinition,
+        val origin: BlockPos,
+        val stands: List<ArmorStand>,
+        val status: PlantStatus,
+        val stageText: String?,
+        val stageNum: Int?
+    )
+
     private fun identifyDefinitionForStand(stand: ArmorStand): CropDefinition? =
         defForStandName(stand.standName())
             ?: PlayerUtils.getSkullHash(stand)?.let { defsByHash[it] }
@@ -426,8 +459,8 @@ object CropCollector : EntityUtils.HighlightSource {
                 clusterGrew = false
                 val standNearCluster = standsRemaining.filter { candidate ->
                     cluster.any { member ->
-                        val a = candidate.blockPosition()
-                        val b = member.blockPosition()
+                        val a = EntityUtils.cellOf(candidate)
+                        val b = EntityUtils.cellOf(member)
                         max(abs(a.x - b.x), abs(a.z - b.z)) <= radius
                     }
                 }
@@ -446,8 +479,8 @@ object CropCollector : EntityUtils.HighlightSource {
 
     // guess plant origin by the mid-point of its furthest stands
     private fun guessOrigin(cluster: List<ArmorStand>, def: CropDefinition, soilY: Int): BlockPos {
-        val xs = cluster.map { it.x }
-        val zs = cluster.map { it.z }
+        val xs = cluster.map { EntityUtils.shownAt(it).x }
+        val zs = cluster.map { EntityUtils.shownAt(it).z }
         val midX = (xs.min() + xs.max()) / 2.0
         val midZ = (zs.min() + zs.max()) / 2.0
 
@@ -496,7 +529,7 @@ object CropCollector : EntityUtils.HighlightSource {
             label = (if (entry.confirmed) "✔ " else "") + rowLabel(entry),
             color = entry.color,
             confirmed = entry.confirmed,
-            isCollectable = entry.status != Status.Unknown
+            isCollectable = entry.status != PlantStatus.Unknown
         )
     } ?: emptyList()
 
@@ -510,7 +543,7 @@ object CropCollector : EntityUtils.HighlightSource {
             return
         }
 
-        if (entry.status == Status.Unknown) {
+        if (entry.status == PlantStatus.Unknown) {
             ChatUtils.sendWithPrefix(
                 "${entry.names.firstOrNull() ?: "That"} has no definition to anchor by"
             )
@@ -532,25 +565,6 @@ object CropCollector : EntityUtils.HighlightSource {
             }
         }
 
-    }
-
-    fun heldItemBlock(stand: ArmorStand): BlockPos? {
-        val holdsItem = !stand.getItemBySlot(EquipmentSlot.MAINHAND).isEmpty ||
-                !stand.getItemBySlot(EquipmentSlot.OFFHAND).isEmpty
-        if (!holdsItem) return null
-
-        val scale = if (stand.isSmall) 0.5 else 1.0
-        val pose = stand.rightArmPose
-
-        val arm = Vec3(0.0, -10.0 / 16.0, 0.0)
-            .xRot(Math.toRadians(pose.x.toDouble()).toFloat())
-            .yRot(-Math.toRadians(pose.y.toDouble()).toFloat())
-            .zRot(-Math.toRadians(pose.z.toDouble()).toFloat())
-
-        val local = Vec3(-5.0 / 16.0, 22.0 / 16.0, 0.0).add(arm).scale(scale)
-        val turned = local.yRot(-Math.toRadians(stand.yRot.toDouble()).toFloat())
-
-        return BlockPos.containing(stand.position().add(turned))
     }
 
     fun correctEntries(diagnosed: CropDefinition, diagnosedStage: Int, hit: BlockPos) {
@@ -576,7 +590,7 @@ object CropCollector : EntityUtils.HighlightSource {
                         EntityUtils.heldItem(it) == null
             }
             .filter { stand ->
-                val claimed = heldItemBlock(stand) ?: stand.blockPosition()
+                val claimed = EntityUtils.cellOf(stand)
 
                 claimed.x in standingOn.x until standingOn.x + w &&
                         claimed.z in standingOn.z until standingOn.z + h
@@ -616,9 +630,9 @@ object CropCollector : EntityUtils.HighlightSource {
             .firstNotNullOfOrNull { it.matchesStage(standingOn, stands, def, ignoreStemAge = true) }
 
         val status = when {
-            recorded == null && recordedIgnoringStemAge != null -> Status.StemAgeVaries
-            recorded == null -> Status.Unrecorded
-            else -> Status.MatchesData
+            recorded == null && recordedIgnoringStemAge != null -> PlantStatus.StemAgeVaries
+            recorded == null -> PlantStatus.Unrecorded
+            else -> PlantStatus.MatchesData
         }
 
         addEntry(
@@ -663,42 +677,45 @@ object CropCollector : EntityUtils.HighlightSource {
             return
         }
 
-        val text = buildString {
-            appendLine("// collected from grid at (${s.gridOrigin.x}, ${s.gridOrigin.y}, ${s.gridOrigin.z})")
-            appendLine()
+        val stamp = System.currentTimeMillis()
+        val plants = JsonArray()
 
-            confirmed.forEach { entry ->
-                val def = entry.def ?: return@forEach
+        confirmed.forEach { entry ->
+            val def = entry.def
+            val parts = CropStageExporter.partsJson(entry.origin, def, entry.stands) ?: return@forEach
+            val recorded = recordedPlantAt(entry.origin)
 
-                appendLine("// ===== ${def.name} at (${entry.origin.x}, ${entry.origin.y}, ${entry.origin.z}) =====")
-                appendLine(
-                    "// status=${entry.status.label} stage=${entry.stageText ?: "unread"}" +
-                            " worldStep=${WorldRotation.quarterTurnsAt(entry.origin.x, entry.origin.z)}" +
-                            " stands=${entry.stands.size} names=${entry.names} ${waterNote(entry.origin)}" +
-                            " time=${if (GreenhouseGrid.dayOrNightNow() == StandReader.NEEDS_NIGHT) "night" else "day"}"
-                )
+            plants.add(JsonObject().apply {
+                addProperty("crop", def?.name)
+                addProperty("elementId", def?.elementId)
+                add("origin", CropStageExporter.jsonArrayOf(entry.origin.x, entry.origin.y, entry.origin.z))
+                add("worldStep", parts.get("worldStep"))
+                addProperty("status", entry.status.label)
+                addProperty("stage", entry.stageNum)
+                add("stageRange", stageRangeOf(entry)?.let { CropStageExporter.jsonArrayOf(*it.toTypedArray()) } ?: JsonNull.INSTANCE)
+                addProperty("water", recorded?.waterLevel)
+                addProperty("waterExact", recorded?.waterLevel?.let { recorded.waterExact })
+                add("names", JsonArray().apply { entry.names.forEach { add(it) } })
+                add("blocks", parts.get("blocks"))
+                add("stands", parts.get("stands"))
+            })
+        }
 
-                val code = CropStageExporter.buildCropStageData(
-                    basePos = entry.origin,
-                    stageNum = entry.stageNum,
-                    foundDefinition = def,
-                    quiet = true,
-                    knownStands = entry.stands
-                )
-                appendLine(code ?: "// world went away while writing this one")
-                appendLine()
-            }
+        val collection = JsonObject().apply {
+            addProperty("collectedAt", stamp)
+            add("gridOrigin", CropStageExporter.jsonArrayOf(s.gridOrigin.x, s.gridOrigin.y, s.gridOrigin.z))
+            addProperty("time", if (GreenhouseGrid.dayOrNightNow() == StandReader.NEEDS_NIGHT) "night" else "day")
+            add("plants", plants)
         }
 
         val dir = ModFiles.modDir.resolve("collected").toFile()
         val crops = confirmed.mapNotNull { it.def?.name }.toSet()
-        val stamp = System.currentTimeMillis()
         val file = if (crops.size == 1) {
-            File(dir, "collected_${crops.first().replace(' ', '_')}_$stamp.txt")
+            File(dir, "collected_${crops.first().replace(' ', '_')}_$stamp.json")
         } else {
-            File(dir, "collect-$stamp.txt")
+            File(dir, "collect-$stamp.json")
         }
-        ModFiles.writeTextAtomically(file.toPath(), text)
+        ModFiles.writeTextAtomically(file.toPath(), CropStageExporter.prettyJson(collection) + "\n")
 
         s.finishedAt = Instant.now()
 
@@ -734,6 +751,13 @@ object CropCollector : EntityUtils.HighlightSource {
                 WorldRenderer.markBox(poseStack, collector, cameraPos, box, entry.color, BLOCK_ALPHA)
             }
         }
+
+        s.level.getEntitiesOfClass(ArmorStand::class.java, AABB.ofSize(cameraPos, HELD_ITEM_MARKER_RANGE, HELD_ITEM_MARKER_RANGE, HELD_ITEM_MARKER_RANGE))
+            .forEach { stand ->
+                val held = EntityUtils.heldItemPosition(stand) ?: return@forEach
+                val marker = AABB.ofSize(held, HELD_ITEM_MARKER_RADIUS * 2, HELD_ITEM_MARKER_RADIUS * 2, HELD_ITEM_MARKER_RADIUS * 2)
+                WorldRenderer.markBox(poseStack, collector, cameraPos, marker, HELD_ITEM_MARKER_COLOR, BLOCK_ALPHA)
+            }
     }
 
     private fun clearCollectorSession() {

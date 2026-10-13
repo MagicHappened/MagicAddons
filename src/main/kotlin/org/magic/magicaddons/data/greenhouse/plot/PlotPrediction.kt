@@ -271,18 +271,18 @@ object PlotPrediction {
     }
 
     fun decayOutlookOf(layout: PlotLayout, plant: Plant, helpedSpotsOf: (Plant) -> HelpedSpawnSpots?): DecayOutlook {
-        if (plant.cropDef.minMutationsBeforeDecay == null || plant.mutationsSpawned == 0) return ownDecayOutlookOf(plant, helpedSpotsOf(plant))
+        if (plant.cropDef.minMutationsBeforeDecay == null || plant.timesMutated == 0) return ownDecayOutlookOf(plant, helpedSpotsOf(plant))
 
         val minimum = plant.cropDef.minMutationsBeforeDecay
         val sameCrop = layout.plants.filter { it.cropDef == plant.cropDef }
-        val pool = sameCrop.filter { it.mutationsSpawned >= 1 }
+        val pool = sameCrop.filter { it.timesMutated >= 1 }
         val combinedReadThisTick = sameCrop
-            .mapNotNull { member -> member.lastDiagnosisReading?.takeIf { it.combinedRemaining != null && it.isFromThisTick } }
-            .maxByOrNull { it.readAt }
-            ?.combinedRemaining
-        val mutationsLeft = combinedReadThisTick ?: MutationCounting.combinedRemainingOf(pool.map { it.mutationsSpawned }, minimum)
-        val isMutationsLeftMinimum = combinedReadThisTick == null && pool.any { it.mutationsSpawnedIsMinimum }
-        val mayJoinPool = combinedReadThisTick == null && sameCrop.any { it.mutationsSpawned == 0 && it.mutationsSpawnedIsMinimum }
+            .mapNotNull { member -> member.lastDiagnosis?.takeIf { it.combinedMutatesRemaining != null && it.isFromCurrentTick } }
+            .maxByOrNull { it.diagnosedAt }
+            ?.combinedMutatesRemaining
+        val mutationsLeft = combinedReadThisTick ?: TimesMutatedCounter.combinedMutatesRemainingOf(pool.map { it.timesMutated }, minimum)
+        val isMutationsLeftMinimum = combinedReadThisTick == null && pool.any { it.isTimesMutatedMinimum }
+        val mayJoinPool = combinedReadThisTick == null && sameCrop.any { it.timesMutated == 0 && it.isTimesMutatedMinimum }
 
         val helpedByMember = pool.map { helpedSpotsOf(it) }
         val helpsTeleporter = helpedByMember.any { it?.hasTeleportingMutation == true }
@@ -305,12 +305,12 @@ object PlotPrediction {
 
         val kind = when {
             mutationsLeft == 0 -> DecayOutlook.Kind.OnTime
-            plant.mutationsSpawnedIsMinimum || helpsTeleporter -> DecayOutlook.Kind.AfterUncountedSpawns
+            plant.isTimesMutatedMinimum || helpsTeleporter -> DecayOutlook.Kind.AfterUncountedSpawns
             spotCount > 0 -> DecayOutlook.Kind.AfterSpawns
             else -> DecayOutlook.Kind.Never
         }
-        val isReachable = plant.mutationsSpawnedIsMinimum || helpsTeleporter || mutationsLeft <= spotCount
-        return DecayOutlook(kind, mutationsLeft, spotCount, isMutationsLeftMinimum = plant.mutationsSpawnedIsMinimum, isReachableFromCurrentSpots = isReachable)
+        val isReachable = plant.isTimesMutatedMinimum || helpsTeleporter || mutationsLeft <= spotCount
+        return DecayOutlook(kind, mutationsLeft, spotCount, isMutationsLeftMinimum = plant.isTimesMutatedMinimum, isReachableFromCurrentSpots = isReachable)
     }
 
     private fun isStanding(plant: Plant, ignoredPlant: Plant?): Boolean =

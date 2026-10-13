@@ -263,11 +263,15 @@ class GreenhouseGrid(
                 }
 
                 val isStillStanding = plantBefore != null && scannedPlant == null && holdsOwnCropParts(plantBefore)
-                val isPlantBeforeKept = plantBefore != null && (plantBefore.isPlacedMutation || shouldKeepUnmatchedPlants || isStillStanding) &&
+                val isMissingBriefly = plantBefore != null && scannedPlant == null && !isStillStanding && isWithinMissingGrace(x to y)
+                if (!isMissingBriefly) missingSince.remove(x to y)
+                val isPlantBeforeKept = plantBefore != null &&
+                        (plantBefore.isPlacedMutation || shouldKeepUnmatchedPlants || isStillStanding || isMissingBriefly) &&
                         !scanMatchesPlantBefore(plantBefore, scannedPlant)
 
                 val scannedPlantResult = if (plantBefore != null && isPlantBeforeKept) {
-                    val kept = plantBeforeIfFootprintFilled(plantBefore, remainingStands) ?: continue
+                    val kept = plantBeforeIfFootprintFilled(plantBefore, remainingStands)
+                        ?: if (isMissingBriefly) ScannedPlant(plant = plantBefore, stands = emptyList(), blocks = emptyMap()) else continue
                     if (isStillStanding && !shouldKeepUnmatchedPlants && !plantBefore.isPlacedMutation) noteMissedOnce(plantBefore, x to y)
                     kept
                 } else {
@@ -278,7 +282,16 @@ class GreenhouseGrid(
                     val isFreshTeleporterSpawn = plantBefore != null && def.teleportsWhileGrowing && state.lastScanTime != null &&
                             scannedPlant.plant.highestStage == 1 && (plantBefore.lowestStage ?: 0) > 1
 
-                    if (plantBefore != null && plantBefore.cropTypeEquals(scannedPlant.plant) && !isFreshTeleporterSpawn) {
+                    val replantedAt = if (def.isMutation && state.lastScanTime != null && scannedPlant.plant.highestStage == 1) {
+                        callbacks.replantedAt(this, x, y, def)
+                    } else {
+                        null
+                    }
+
+                    if (replantedAt != null) {
+                        callbacks.claimReplant(scannedPlant.plant, this, replantedAt)
+                        scannedPlant
+                    } else if (plantBefore != null && plantBefore.cropTypeEquals(scannedPlant.plant) && !isFreshTeleporterSpawn) {
                         keepRecordedState(plantBefore, scannedPlant)
                     } else {
                         if (def.isMutation && state.lastScanTime != null) {
@@ -324,7 +337,7 @@ class GreenhouseGrid(
 
         layout.plants.clear()
         layout.plants.addAll(merged.map { it.plant })
-        spawnedMutations.forEach { MutationCounting.countSpawn(layout, it, state.blindSpawns) }
+        spawnedMutations.forEach { TimesMutatedCounter.incrementSpawnCounts(layout, it, state.uncertainSpawns) }
 
         return true
     }
@@ -347,6 +360,16 @@ class GreenhouseGrid(
                 if (isEmpty) slotsSeenEmpty += cell else slotsSeenEmpty -= cell
             }
         }
+    }
+
+    private val missingSince: MutableMap<Pair<Int, Int>, Long> = mutableMapOf()
+
+    private fun isWithinMissingGrace(cell: Pair<Int, Int>): Boolean {
+        if (callbacks.wasAttacked(this, cell.first, cell.second)) return false
+
+        val now = System.currentTimeMillis()
+        val since = missingSince[cell]?.takeIf { now - it < MISSING_ENTRY_STALE_MS } ?: now.also { missingSince[cell] = it }
+        return now - since < MISSING_PLANT_GRACE_MS
     }
 
     private fun cannotHaveSpawnedSinceLastScan(scanned: ScannedPlant, cell: Pair<Int, Int>): Boolean {
@@ -427,13 +450,13 @@ class GreenhouseGrid(
 
         scannedPlant.firstSeenStage = plantBefore.firstSeenStage ?: scannedPlant.lowestStage
         scannedPlant.placed = plantBefore.placed || scannedPlant.placed
-        scannedPlant.mutationsSpawned = plantBefore.mutationsSpawned
-        scannedPlant.mutationsSpawnedIsMinimum = plantBefore.mutationsSpawnedIsMinimum
-        scannedPlant.seenSpawnsHelped = plantBefore.seenSpawnsHelped
-        scannedPlant.isMutationCountTracked = plantBefore.isMutationCountTracked
+        scannedPlant.timesMutated = plantBefore.timesMutated
+        scannedPlant.isTimesMutatedMinimum = plantBefore.isTimesMutatedMinimum
+        scannedPlant.seenTimesMutated = plantBefore.seenTimesMutated
+        scannedPlant.isTimesMutatedTracked = plantBefore.isTimesMutatedTracked
         scannedPlant.isCountedFromStart = plantBefore.isCountedFromStart
         scannedPlant.hasUncertainCredit = plantBefore.hasUncertainCredit
-        scannedPlant.lastDiagnosisReading = plantBefore.lastDiagnosisReading
+        scannedPlant.lastDiagnosis = plantBefore.lastDiagnosis
         scannedPlant.decayAttemptAt = plantBefore.decayAttemptAt
 
         val readerKeys = scannedPlant.cropDef.growingStages.flatMapTo(mutableSetOf()) { stage -> stage.readers.map { it.key } } -
@@ -541,6 +564,10 @@ class GreenhouseGrid(
         private const val SOGGYBUD_GROWTH_LIMIT_TICKS: Int = 200
 
         private const val MATCHED_PLANT_SCORE: Int = 2
+
+        private const val MISSING_PLANT_GRACE_MS: Long = 10_000
+
+        private const val MISSING_ENTRY_STALE_MS: Long = 30_000
 
         class PredictedLostPlants(var glasscornsReset: Int = 0)
 
@@ -876,8 +903,15 @@ class GreenhouseGrid(
 
         private fun currentStandsInFootprint(origin: BlockPos, footprint: Footprint): List<ArmorStand> {
             val level = Minecraft.getInstance().level ?: return emptyList()
-            return level.getEntitiesOfClass(ArmorStand::class.java, footprint.spaceAbove(origin, CROP_HEIGHT))
+            val searchArea = footprint.spaceAbove(origin, CROP_HEIGHT).inflate(HELD_ITEM_REACH, 0.0, HELD_ITEM_REACH)
+
+            return level.getEntitiesOfClass(ArmorStand::class.java, searchArea).filter { stand ->
+                val cell = EntityUtils.cellOf(stand)
+                cell.x - origin.x in 0 until footprint.width && cell.z - origin.z in 0 until footprint.height
+            }
         }
+
+        private const val HELD_ITEM_REACH: Double = 1.0
 
         private fun existsInFootprint(
             origin: BlockPos,
@@ -918,7 +952,7 @@ class GreenhouseGrid(
 
         var chorusLossChanceByTick: DoubleArray? = null
 
-        val blindSpawns: MutableList<BlindSpawns> = mutableListOf()
+        val uncertainSpawns: MutableList<UncertainSpawns> = mutableListOf()
 
         var slotsToDiagnose: Set<Pair<Int, Int>> = emptySet()
 
@@ -927,6 +961,10 @@ class GreenhouseGrid(
         var lastChangedAt: Long? = null
 
         var contentSignature: Int? = null
+
+        var growthSignature: Int? = null
+
+        var partsSignature: Int? = null
 
         var chorusRiskCalculation: ChorusCollision.Calculation? = null
 

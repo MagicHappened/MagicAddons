@@ -1,4 +1,4 @@
-package org.magic.magicaddons.commands.features.farming
+package org.magic.magicaddons.commands.farming
 
 import com.mojang.brigadier.arguments.StringArgumentType
 import com.mojang.brigadier.builder.LiteralArgumentBuilder
@@ -10,7 +10,7 @@ import net.minecraft.network.chat.ClickEvent
 import net.minecraft.network.chat.Component
 import org.magic.magicaddons.commands.AbstractCommand
 import org.magic.magicaddons.commands.CropWords
-import org.magic.magicaddons.commands.misc.LinkCommand
+import org.magic.magicaddons.commands.server.LinkCommand
 import org.magic.magicaddons.data.server.GreenhouseDataSync
 import org.magic.magicaddons.data.server.GreenhouseDataSync.SyncOutcome
 import org.magic.magicaddons.data.server.ServerGreenhouseData.MissingData
@@ -21,8 +21,7 @@ import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.ScreenUtil
 
 object GreenhouseScreenCommand : AbstractCommand() {
-    override val argument: String = "GreenhouseScreen"
-    override val aliases: List<String> = listOf("gh")
+    override val argument: String = "gh"
 
     override fun build(): LiteralArgumentBuilder<FabricClientCommandSource> {
         val preview = LiteralArgumentBuilder.literal<FabricClientCommandSource>("preview")

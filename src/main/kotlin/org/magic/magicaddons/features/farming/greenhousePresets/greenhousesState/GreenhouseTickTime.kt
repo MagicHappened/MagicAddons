@@ -11,14 +11,14 @@ object GreenhouseTickTime {
 
     private val FLORA_ATTRIBUTE_ID: String? = "attribute:l52"
 
-    val isFloraAttributeIdKnown: Boolean get() = FLORA_ATTRIBUTE_ID != null
-
     fun shardLevelOf(attributeId: String): Int? =
         AttributeAPI.attributeMap.entries.firstOrNull { it.key.id == attributeId }?.value?.level
 
-    fun speedAttribute(): Int? =
-        GreenhouseData.miscInfo.greenhouseSpeedAttribute
-            ?: shardLevelOf(GreenhouseData.GREENHOUSE_SPEED_ATTRIBUTE_ID)?.takeIf { it > 0 }
+    fun speedAttribute(): Int? {
+        val shardLevel = shardLevelOf(GreenhouseData.GREENHOUSE_SPEED_ATTRIBUTE_ID)?.takeIf { it > 0 }
+        if (shardLevel != null) GreenhouseData.miscInfo.greenhouseSpeedAttribute = shardLevel
+        return shardLevel ?: GreenhouseData.miscInfo.greenhouseSpeedAttribute
+    }
 
     fun floraShardLevel(): Int? = FLORA_ATTRIBUTE_ID?.let { shardLevelOf(it) }
 

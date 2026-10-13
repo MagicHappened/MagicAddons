@@ -28,6 +28,7 @@ import org.magic.magicaddons.data.greenhouse.plot.LayoutSlot
 import org.magic.magicaddons.data.greenhouse.plot.PlotLayout
 import org.magic.magicaddons.events.ConfigChangedEvent
 import org.magic.magicaddons.events.EventHandler
+import org.magic.magicaddons.events.greenhouse.GreenhouseChangedEvent
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhousePresets
 import org.magic.magicaddons.features.farming.greenhousePresets.PlannerNeeds
 import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseData
@@ -176,6 +177,12 @@ object LayoutRenderState {
 
     @EventHandler
     fun onConfigChanged(event: ConfigChangedEvent) {
+        refresh()
+    }
+
+    @EventHandler
+    fun onGreenhouseChanged(event: GreenhouseChangedEvent) {
+        if (event.grid !== GreenhouseData.getCurrentGrid()) return
         refresh()
     }
 

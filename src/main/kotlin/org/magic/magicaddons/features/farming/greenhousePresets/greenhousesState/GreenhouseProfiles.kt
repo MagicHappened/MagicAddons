@@ -123,6 +123,7 @@ object GreenhouseProfiles {
             Common.LOGGER.error("Failed to load greenhouses data")
             mutableListOf()
         }
+        GreenhouseData.greenhouseGrids.forEach { GreenhouseData.recordLoadedSignatures(it) }
 
         GreenhouseData.resolveAssignedLayoutIds()
     }

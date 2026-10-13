@@ -1,4 +1,4 @@
-package org.magic.magicaddons.commands.misc
+package org.magic.magicaddons.commands.debug
 
 import com.mojang.brigadier.arguments.FloatArgumentType
 import com.mojang.brigadier.arguments.StringArgumentType
@@ -9,10 +9,10 @@ import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource
 import net.minecraft.client.Minecraft
 import net.minecraft.resources.Identifier
 import net.minecraft.sounds.SoundEvent
-import org.magic.magicaddons.commands.AbstractCommand
+import org.magic.magicaddons.commands.AbstractDebugCommand
 import org.magic.magicaddons.util.ChatUtils
 
-object PlaySound : AbstractCommand() {
+object PlaySound : AbstractDebugCommand() {
     override val argument: String = "playsound"
 
     override fun build(): LiteralArgumentBuilder<FabricClientCommandSource> {

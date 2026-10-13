@@ -1,4 +1,4 @@
-package org.magic.magicaddons.commands.internal.icons
+package org.magic.magicaddons.commands.debug
 
 import com.mojang.brigadier.arguments.StringArgumentType
 import com.mojang.brigadier.builder.LiteralArgumentBuilder
@@ -7,13 +7,13 @@ import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource
 import net.minecraft.client.Minecraft
 import net.minecraft.core.registries.BuiltInRegistries
 import org.magic.magicaddons.Common
-import org.magic.magicaddons.commands.AbstractCommand
+import org.magic.magicaddons.commands.AbstractDebugCommand
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.ItemIconExport
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockId.Companion.getSkyBlockId
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
-object ExportSkins : AbstractCommand() {
+object ExportSkins : AbstractDebugCommand() {
 
     override val argument: String = "exportSkins"
 
