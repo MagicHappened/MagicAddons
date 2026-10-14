@@ -10,11 +10,17 @@ object DiagnosticPlanner {
 
     var isLinePinned: Boolean = false
 
-    fun needsDiagnosing(plant: Plant): Boolean {
+    fun needsDiagnosing(layout: PlotLayout, plant: Plant): Boolean {
         val minimum = plant.cropDef.minMutationsBeforeDecay ?: return false
         if (plant.cropDef.decayTimeMs == NEVER_DECAYS || plant.isGrowingTeleporter) return false
+        if (!plant.isTimesMutatedMinimum || plant.timesMutated >= minimum) return false
 
-        return plant.isTimesMutatedMinimum && plant.timesMutated < minimum
+        return plant.timesMutated == 0 || !isPoolSpent(layout, plant, minimum)
+    }
+
+    private fun isPoolSpent(layout: PlotLayout, plant: Plant, minimum: Int): Boolean {
+        val sameCrop = layout.plants.filter { it.cropDef == plant.cropDef }
+        return TimesMutatedCounter.combinedMutatesRemainingOf(sameCrop.map { it.timesMutated }, minimum) == 0
     }
 
     fun plantsToDiagnose(layout: PlotLayout, contributorsByBlind: Map<UncertainSpawns, List<Plant>>): Set<Plant> {
@@ -41,7 +47,7 @@ object DiagnosticPlanner {
                 basis.add(row)
             }
 
-        val targets = layout.plants.filter(::needsDiagnosing).associateWith(::rowOf).toMutableMap()
+        val targets = layout.plants.filter { needsDiagnosing(layout, it) }.associateWith(::rowOf).toMutableMap()
         val chosen = LinkedHashSet<Plant>(targets.filterValues { row -> row.all { it == 0.0 } }.keys)
         targets.keys.removeAll(chosen)
 

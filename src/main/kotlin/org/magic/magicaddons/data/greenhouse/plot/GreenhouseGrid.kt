@@ -265,18 +265,20 @@ class GreenhouseGrid(
                 val isStillStanding = plantBefore != null && scannedPlant == null && holdsOwnCropParts(plantBefore)
                 val isMissingBriefly = plantBefore != null && scannedPlant == null && !isStillStanding && isWithinMissingGrace(x to y)
                 if (!isMissingBriefly) missingSince.remove(x to y)
+                val isPlacedAwaitingSettle = shouldKeepUnmatchedPlants && plantBefore?.isPlacedMutation == true
                 val isPlantBeforeKept = plantBefore != null &&
                         (plantBefore.isPlacedMutation || shouldKeepUnmatchedPlants || isStillStanding || isMissingBriefly) &&
                         !scanMatchesPlantBefore(plantBefore, scannedPlant)
 
                 val scannedPlantResult = if (plantBefore != null && isPlantBeforeKept) {
                     val kept = plantBeforeIfFootprintFilled(plantBefore, remainingStands)
-                        ?: if (isMissingBriefly) ScannedPlant(plant = plantBefore, stands = emptyList(), blocks = emptyMap()) else continue
+                        ?: if (isMissingBriefly || isPlacedAwaitingSettle) ScannedPlant(plant = plantBefore, stands = emptyList(), blocks = emptyMap()) else continue
                     if (isStillStanding && !shouldKeepUnmatchedPlants && !plantBefore.isPlacedMutation) noteMissedOnce(plantBefore, x to y)
                     kept
                 } else {
                     if (scannedPlant != null) slotsRecheckedForMiss.remove(x to y)
                     if (scannedPlant == null) continue
+                    if (shouldKeepUnmatchedPlants && plantBefore == null && scannedPlant.plant.isGrowingTeleporter) continue
                     val def = scannedPlant.plant.cropDef
 
                     val isFreshTeleporterSpawn = plantBefore != null && def.teleportsWhileGrowing && state.lastScanTime != null &&

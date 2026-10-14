@@ -272,7 +272,7 @@ object GreenhouseData : GridCallbacks {
 
     private const val MAX_SCAN_DEFER_MS: Long = 3_000
 
-    private const val ARRIVAL_SETTLE_MS: Long = 3_000
+    private const val ARRIVAL_SETTLE_MS: Long = 2_000
 
     private var scanDeferredSince: Long? = null
 
@@ -711,6 +711,7 @@ object GreenhouseData : GridCallbacks {
 
     private const val UNWATCHED_TICKS_LOSING_TELEPORTER_SPAWNS: Int = 2
 
+    // TODO: the timer is extended to the first tick after it ends, needs more evidence before implementing, waiting for the 15 October Chloronites.
     private fun updateDecayTracking(grid: GreenhouseGrid) {
         val layout = grid.layout
         if (grid.state.ticksSinceLastScan >= UNWATCHED_TICKS_LOSING_TELEPORTER_SPAWNS) {
