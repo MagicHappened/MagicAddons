@@ -161,7 +161,10 @@ object PlantDiagnostics {
                     GreenhouseData.recountMutations(grid)
                 }
             }
-            decayAttemptInMs?.let { plant.decayAttemptAt = System.currentTimeMillis() + it }
+            decayAttemptInMs?.let {
+                val attemptAt = System.currentTimeMillis() + it
+                plant.decayAttemptAt = if (age != null) plant.decayTimerEndBehind(attemptAt) else attemptAt
+            }
             if (plant.cropDef.isMutation) {
                 val stage = stageRaw ?: plant.highestStage
                 val grown = stage != null && stage >= plant.cropDef.maxStage

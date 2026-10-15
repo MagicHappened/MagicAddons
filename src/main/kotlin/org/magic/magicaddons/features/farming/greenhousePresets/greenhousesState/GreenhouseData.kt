@@ -711,7 +711,6 @@ object GreenhouseData : GridCallbacks {
 
     private const val UNWATCHED_TICKS_LOSING_TELEPORTER_SPAWNS: Int = 2
 
-    // TODO: the timer is extended to the first tick after it ends, needs more evidence before implementing, waiting for the 15 October Chloronites.
     private fun updateDecayTracking(grid: GreenhouseGrid) {
         val layout = grid.layout
         if (grid.state.ticksSinceLastScan >= UNWATCHED_TICKS_LOSING_TELEPORTER_SPAWNS) {
@@ -722,11 +721,12 @@ object GreenhouseData : GridCallbacks {
         val now = System.currentTimeMillis()
         layout.plants.forEach { plant ->
             if (plant.cropDef.minMutationsBeforeDecay == null) return@forEach
-            val timerEndedAt = plant.decayTimerEndsAt?.takeIf { it <= now } ?: return@forEach
+            val timerEndedAt = plant.decayTimerEndsAt ?: return@forEach
+            if ((plant.decayAttemptLandsAt ?: return@forEach) > now) return@forEach
 
-            var nextAttemptAt = timerEndedAt + DECAY_EXTENSION_MS
-            while (nextAttemptAt <= now) nextAttemptAt += DECAY_EXTENSION_MS
-            plant.decayAttemptAt = nextAttemptAt
+            var nextTimerEndsAt = timerEndedAt + DECAY_EXTENSION_MS
+            while (GreenhouseTickTime.firstTickAtOrAfter(nextTimerEndsAt) <= now) nextTimerEndsAt += DECAY_EXTENSION_MS
+            plant.decayAttemptAt = nextTimerEndsAt
         }
     }
 

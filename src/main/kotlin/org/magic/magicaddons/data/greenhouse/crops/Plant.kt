@@ -216,13 +216,24 @@ data class Plant(
     val age: Long?
         get() = appearedAt?.let { (System.currentTimeMillis() - it).coerceAtLeast(0L) }
 
-    // TODO: decay attempt lands on the first tick after this timer, waiting for one more confirmation run.
     val decayTimerEndsAt: Long?
         get() {
             if (cropDef.decayTimeMs == NEVER_DECAYS) return null
             return decayAttemptAt ?: appearedAt?.plus(cropDef.decayTimeMs)
         }
 
+    val decayAttemptLandsAt: Long?
+        get() = decayTimerEndsAt?.let(GreenhouseTickTime::firstTickAtOrAfter)
+
     val decayRemainingMs: Long?
-        get() = decayTimerEndsAt?.let { (it - System.currentTimeMillis()).coerceAtLeast(0L) }
+        get() = decayAttemptLandsAt?.let { (it - System.currentTimeMillis()).coerceAtLeast(0L) }
+
+    fun decayTimerEndBehind(attemptAt: Long): Long {
+        val firstTimerEndsAt = appearedAt?.plus(cropDef.decayTimeMs) ?: return attemptAt
+        if (attemptAt < firstTimerEndsAt) return attemptAt
+
+        val timerEndsAt = firstTimerEndsAt + (attemptAt - firstTimerEndsAt) / DECAY_EXTENSION_MS * DECAY_EXTENSION_MS
+        val growthTickMs = GreenhouseTickTime.tickMs ?: return attemptAt
+        return if (attemptAt - timerEndsAt <= growthTickMs) timerEndsAt else attemptAt
+    }
 }

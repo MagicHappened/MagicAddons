@@ -64,6 +64,13 @@ object GreenhouseTickTime {
         return (next.toEpochMilli() - Instant.now().toEpochMilli()).coerceAtLeast(0L)
     }
 
+    fun firstTickAtOrAfter(epochMs: Long): Long {
+        val nextTickMs = GreenhouseData.miscInfo.nextTickTime?.toEpochMilli() ?: return epochMs
+        val growthTickMs = tickMs ?: return epochMs
+
+        return nextTickMs + Math.ceilDiv(epochMs - nextTickMs, growthTickMs) * growthTickMs
+    }
+
     fun hasGrowthTickPassedSince(epochMs: Long): Boolean? {
         val nextTickMs = GreenhouseData.miscInfo.nextTickTime?.toEpochMilli() ?: return null
         val growthTickMs = tickMs ?: return null
