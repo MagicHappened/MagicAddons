@@ -6,6 +6,7 @@ import org.magic.magicaddons.features.account.ServerConnection
 import org.magic.magicaddons.features.combat.HighlightMobs
 import org.magic.magicaddons.features.customization.Customization
 import org.magic.magicaddons.features.debug.MobHitDebugInfo
+import org.magic.magicaddons.features.farming.fortune.FarmingFortune
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhousePresets
 import org.magic.magicaddons.features.foraging.safarihelper.SafariHelper
 import org.magic.magicaddons.features.kuudra.CustomRendSound
@@ -22,6 +23,7 @@ object FeatureManager {
         PickaxeAbilityCooldown,
         XpOrbHider,
         GreenhousePresets,
+        FarmingFortune,
         HighlightMobs,
         SafariHelper,
         CustomRendSound,

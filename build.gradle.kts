@@ -8,20 +8,21 @@ fun git(vararg args: String): String? = runCatching {
     providers.exec { commandLine("git", *args) }.standardOutput.asText.get().trim()
 }.getOrNull()?.takeIf { it.isNotEmpty() }
 
-fun localBetaId(): String? {
-    if (git("rev-parse", "--abbrev-ref", "HEAD") != "beta") return null
+fun localBuildTag(): String? {
+    val branch = git("rev-parse", "--abbrev-ref", "HEAD")?.takeIf { it != "master" && it != "HEAD" } ?: return null
     val hash = git("rev-parse", "--short", "HEAD") ?: return null
-    return if (git("status", "--porcelain") == null) hash else "$hash-dirty"
+    val dirty = if (git("status", "--porcelain") == null) "" else "-dirty"
+    return "${branch.replace(Regex("[^A-Za-z0-9]"), "-")}.$hash$dirty"
 }
 
-// the jar says which Minecraft it is for, and a beta build says which commit it came from:
+// the jar says which Minecraft it is for, and a build off master says which branch and commit it came from:
 // magicaddons-1.2.1+26.1.2.jar, magicaddons-1.2.1+26.1.2.beta.c1e57d1.jar
-val buildId: String? = (findProperty("build_id") as String?)?.takeIf { it.isNotBlank() } ?: localBetaId()
+val buildTag: String? = (findProperty("build_id") as String?)?.takeIf { it.isNotBlank() }?.let { "beta.$it" } ?: localBuildTag()
 
 version = buildString {
     append(project.property("mod_version") as String)
     append("+${project.property("minecraft_version")}")
-    buildId?.let { append(".beta.$it") }
+    buildTag?.let { append(".$it") }
 }
 group = project.property("maven_group") as String
 

@@ -17,6 +17,7 @@ import org.magic.magicaddons.commands.debug.ExportSkins
 import org.magic.magicaddons.commands.debug.FarmingDebug
 import org.magic.magicaddons.commands.debug.MiningDebug
 import org.magic.magicaddons.commands.debug.PlaySound
+import org.magic.magicaddons.commands.farming.FortuneCommand
 import org.magic.magicaddons.commands.farming.GreenhouseScreenCommand
 import org.magic.magicaddons.commands.foraging.SafariHelperCommand
 import org.magic.magicaddons.commands.internal.ChorusExplanation
@@ -39,6 +40,7 @@ object MainCommand {
 
     val commandList: List<AbstractCommand> = listOf(
         GreenhouseScreenCommand,
+        FortuneCommand,
         SafariHelperCommand,
         FeatureCommand,
         HudCommand,
