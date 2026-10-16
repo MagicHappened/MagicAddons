@@ -32,7 +32,7 @@ object Phantomleaf {
             "988eaca2c41056ed3fb34669548843c62bae0b406441ea9d224fd7bd2f73f86e" to StandPose.Fixed(Rotations(45.0f, 0.0f, 0.0f)),
             "66e4ba32a6e955f6f7787fbd6e7fe69d9466413fab75950c152785641002ca2f" to StandPose.Fixed(Rotations(67.5f, 0.0f, 0.0f))
         ),
-        stages = listOf(
+        growingStages = listOf(
             CropStage(
                 blocks = listOf(
                     StageBlock(

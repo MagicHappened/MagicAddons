@@ -13,7 +13,7 @@ object Helianthus {
         name = "Helianthus",
         tier = CropTier.RareCrop,
         skyblockId = SkyBlockItemId.item("HELIANTHUS"),
-        stages = listOf(
+        growingStages = listOf(
             CropStage(
                 blocks = listOf(),
                 armorStands = listOf(

@@ -28,7 +28,6 @@ import net.minecraft.world.item.ItemStack
 import org.magic.magicaddons.data.EntityInfo
 import org.magic.magicaddons.util.EntityUtils
 import org.magic.magicaddons.util.PlayerUtils
-import tech.thatgravyboat.skyblockapi.api.location.LocationAPI
 import tech.thatgravyboat.skyblockapi.api.location.SkyBlockIsland
 import kotlin.math.abs
 import kotlin.reflect.KClass
@@ -99,7 +98,7 @@ object SingleMobs {
     fun hypixelByName(name: String): Mob? = hypixel.firstOrNull { it.name == name }
 
     fun hypixelTarget(mob: Mob, info: EntityInfo): Entity? {
-        if (mob.island != null && LocationAPI.island != mob.island) return null
+        if (mob.island?.inIsland() == false) return null
 
         val entity = info.entity
 

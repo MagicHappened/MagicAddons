@@ -4,6 +4,7 @@ import net.minecraft.core.BlockPos
 import net.minecraft.world.entity.Entity
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.state.BlockState
+import org.magic.magicaddons.data.greenhouse.plot.Diagnosis
 import org.magic.magicaddons.data.greenhouse.plot.LayoutSlot
 import org.magic.magicaddons.data.greenhouse.plot.PlotPrediction
 import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseTickTime
@@ -19,7 +20,8 @@ sealed interface PlantStage {
 data class ScannedPlant(
     val plant: Plant,
     val stands: List<Entity>?,
-    val blocks: Map<BlockPos,BlockState>?
+    val blocks: Map<BlockPos,BlockState>?,
+    val placedLookIfPlaced: PlacedStage? = null
 )
 
 data class Plant(
@@ -71,21 +73,72 @@ data class Plant(
 
     var placed: Boolean = false
 
+    var placedPhase: PlacedPhase? = null
+
     var charge: Int = 0
 
     var chargeKnown: Boolean = false
 
+    var chanceToReachStage: Double? = null
+
     var waterBestCase: Double? = null
+
+    var timesMutated: Int = 0
+
+    var seenTimesMutated: Int = 0
+
+    var isTimesMutatedTracked: Boolean = false
+
+    var isCountedFromStart: Boolean = false
+
+    var hasUncertainCredit: Boolean = false
+
+    var lastDiagnosis: Diagnosis? = null
+
+    var isTimesMutatedMinimum: Boolean = true
+
+    var decayAttemptAt: Long? = null
+
+    var predictedDecayDoubt: DecayOutlook? = null
 
     val isPlacedMutation: Boolean get() = placed && cropDef.isMutation
 
+    val isGrowingTeleporter: Boolean get() = cropDef.teleportsWhileGrowing && !isPlacedMutation && !isFullyGrown
+
     val isCollectable: Boolean
-        get() = isPlacedMutation && appearedAt?.let { GreenhouseTickTime.hasGrowthTickPassedSince(it) } != true
+        get() = isPlacedMutation && when (placedPhase) {
+            PlacedPhase.Collectable -> true
+            PlacedPhase.Uncollectable -> false
+            PlacedPhase.Always -> !hasTickPassedSincePlaced
+            null -> cropDef.placedStages.none { it.shownWhile == PlacedPhase.Collectable } && !hasTickPassedSincePlaced
+        }
+
+    private val hasTickPassedSincePlaced: Boolean
+        get() = appearedAt?.let { GreenhouseTickTime.hasGrowthTickPassedSince(it) } == true
 
     val readyToHarvest: Boolean
         get() = (cropDef.isMutation || cropDef.isBaseCrop) && !isPlacedMutation && (highestStage ?: 0) >= cropDef.maxStage
 
     val consumesWater: Boolean get() = cropDef.needsWater && !isPlacedMutation && !isFullyGrown
+
+    val canFeedSoggybud: Boolean get() = cropDef.needsWater && !cropDef.drainsNeighbours && !isPlacedMutation
+
+    val isHaltedByWater: Boolean get() = consumesWater && (waterLevel ?: 0.0) <= PlotPrediction.WATER_HALT_LEVEL
+
+    val isHaltedByCharge: Boolean get() = !isPlacedMutation && cropDef.chargeRule?.let { charge >= it.limit } == true
+
+    val isHalted: Boolean get() = isHaltedByWater || isHaltedByCharge
+
+    val mutationsLeftToSpawn: Int get() = ((cropDef.minMutationsBeforeDecay ?: 0) - timesMutated).coerceAtLeast(0)
+
+    fun resetTimesMutated() {
+        seenTimesMutated = 0
+        isCountedFromStart = true
+        isTimesMutatedTracked = true
+        hasUncertainCredit = false
+        timesMutated = 0
+        isTimesMutatedMinimum = false
+    }
 
     fun copyForPrediction(slot: LayoutSlot): Plant =
         copy(slot = slot, readings = readings.toMutableMap(), presetAlternatives = presetAlternatives.toMutableList()).also {
@@ -93,23 +146,40 @@ data class Plant(
             it.waterExact = waterExact
             it.firstSeenStage = firstSeenStage
             it.placed = placed
+            it.placedPhase = placedPhase
             it.waterBestCase = waterBestCase
             it.charge = charge
             it.chargeKnown = chargeKnown
+            it.chanceToReachStage = chanceToReachStage
+            it.timesMutated = timesMutated
+            it.seenTimesMutated = seenTimesMutated
+            it.isTimesMutatedTracked = isTimesMutatedTracked
+            it.isCountedFromStart = isCountedFromStart
+            it.hasUncertainCredit = hasUncertainCredit
+            it.lastDiagnosis = lastDiagnosis
+            it.isTimesMutatedMinimum = isTimesMutatedMinimum
+            it.decayAttemptAt = decayAttemptAt
         }
 
     fun waterLastsUntilGrown(waterEffectPercent: Int): Boolean? {
         if (!consumesWater || cropDef.drainsNeighbours) return true
 
         val water = waterLevel ?: return null
-        if (water <= PlotPrediction.WATER_DEATH_LEVEL) return false
+        if (water <= PlotPrediction.WATER_HALT_LEVEL) return false
 
-        val ticksLeft = PlotPrediction.ticksUntilDeath(water, waterEffectPercent) ?: return true
+        val ticksLeft = PlotPrediction.ticksUntilHalt(water, waterEffectPercent) ?: return true
 
         val stage = (if (waterPredictedNegative) highestStage else lowestStage) ?: return null
         if (cropDef.maxStage <= 1) return null
 
         return ticksLeft > cropDef.maxStage - stage
+    }
+
+    fun ticksUntilWaterHalt(waterEffectPercent: Int): Int? {
+        if (isHaltedByWater) return 0
+        if (waterLastsUntilGrown(waterEffectPercent) != false) return null
+
+        return waterLevel?.let { PlotPrediction.ticksUntilHalt(it, waterEffectPercent) }
     }
 
     val isFullyGrown: Boolean get() = (lowestStage ?: 0) >= cropDef.maxStage
@@ -146,11 +216,24 @@ data class Plant(
     val age: Long?
         get() = appearedAt?.let { (System.currentTimeMillis() - it).coerceAtLeast(0L) }
 
-    val decayRemainingMs: Long?
+    val decayTimerEndsAt: Long?
         get() {
-            val decayTime = cropDef.decayTimeMs
-            if (decayTime == NEVER_DECAYS) return null
-            val age = age ?: return null
-            return (decayTime - age).coerceAtLeast(0L)
+            if (cropDef.decayTimeMs == NEVER_DECAYS) return null
+            return decayAttemptAt ?: appearedAt?.plus(cropDef.decayTimeMs)
         }
+
+    val decayAttemptLandsAt: Long?
+        get() = decayTimerEndsAt?.let(GreenhouseTickTime::firstTickAtOrAfter)
+
+    val decayRemainingMs: Long?
+        get() = decayAttemptLandsAt?.let { (it - System.currentTimeMillis()).coerceAtLeast(0L) }
+
+    fun decayTimerEndBehind(attemptAt: Long): Long {
+        val firstTimerEndsAt = appearedAt?.plus(cropDef.decayTimeMs) ?: return attemptAt
+        if (attemptAt < firstTimerEndsAt) return attemptAt
+
+        val timerEndsAt = firstTimerEndsAt + (attemptAt - firstTimerEndsAt) / DECAY_EXTENSION_MS * DECAY_EXTENSION_MS
+        val growthTickMs = GreenhouseTickTime.tickMs ?: return attemptAt
+        return if (attemptAt - timerEndsAt <= growthTickMs) timerEndsAt else attemptAt
+    }
 }

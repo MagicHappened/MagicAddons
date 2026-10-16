@@ -1,8 +1,12 @@
 package org.magic.mixins;
 
+import com.llamalad7.mixinextras.injector.v2.WrapWithCondition;
+import com.llamalad7.mixinextras.sugar.Local;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.multiplayer.ClientPacketListener;
+import net.minecraft.client.particle.Particle;
+import net.minecraft.client.particle.ParticleEngine;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.protocol.game.ClientboundBlockUpdatePacket;
@@ -13,6 +17,8 @@ import net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket;
 import net.minecraft.network.protocol.game.ClientboundSetTimePacket;
 import net.minecraft.network.protocol.game.ClientboundUpdateAttributesPacket;
 import net.minecraft.network.protocol.game.ClientboundSystemChatPacket;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.ExperienceOrb;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 import org.magic.magicaddons.events.EventBus;
@@ -23,6 +29,7 @@ import org.magic.magicaddons.events.interact.BlockChangedEvent;
 import org.magic.magicaddons.events.world.AddParticleEvent;
 import org.magic.magicaddons.events.world.SetTimePacketEvent;
 import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseData;
+import org.magic.magicaddons.features.mining.XpOrbHider;
 import org.magic.magicaddons.util.EntityUtils;
 import org.magic.misc.BlockEventBufferAccess;
 import org.spongepowered.asm.mixin.Mixin;
@@ -140,6 +147,17 @@ public class ClientPacketListenerMixin {
     )
     private void onSystemChat(ClientboundSystemChatPacket packet, CallbackInfo ci) {
         EventBus.post(new SystemChatEvent(packet.content(), packet.overlay()));
+    }
+
+    @WrapWithCondition(
+            method = "handleTakeItemEntity",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/client/particle/ParticleEngine;add(Lnet/minecraft/client/particle/Particle;)V"
+            )
+    )
+    private boolean shouldShowPickupAnimation(ParticleEngine particleEngine, Particle pickupParticle, @Local(ordinal = 0) Entity pickedUpEntity) {
+        return !(pickedUpEntity instanceof ExperienceOrb && XpOrbHider.INSTANCE.shouldHideXpOrbs());
     }
 
 }

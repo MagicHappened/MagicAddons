@@ -5,6 +5,9 @@ import com.mojang.blaze3d.vertex.PoseStack
 import com.mojang.blaze3d.vertex.VertexConsumer
 import net.minecraft.client.renderer.SubmitNodeCollector
 import net.minecraft.client.renderer.rendertype.RenderTypes
+import net.minecraft.client.renderer.state.level.CameraRenderState
+import net.minecraft.network.chat.Component
+import net.minecraft.util.LightCoordsUtil
 import net.minecraft.util.Mth
 import net.minecraft.world.phys.shapes.VoxelShape
 
@@ -24,6 +27,20 @@ object RenderCompat {
         collector.submitCustomGeometry(poseStack, RenderTypes.LINES) { transform, consumer ->
             consumer.edges(transform, shape, color)
         }
+        //?}
+    }
+
+    fun submitNameTag(
+        collector: SubmitNodeCollector,
+        poseStack: PoseStack,
+        text: Component,
+        distanceToCameraSqr: Double,
+        camera: CameraRenderState
+    ) {
+        //? if >=26.2 {
+        /*collector.submitNameTag(poseStack, Vec3.ZERO, 0, text, true, LightCoordsUtil.FULL_BRIGHT, camera)
+        *///?} else {
+        collector.submitNameTag(poseStack, Vec3.ZERO, 0, text, true, LightCoordsUtil.FULL_BRIGHT, distanceToCameraSqr, camera)
         //?}
     }
 

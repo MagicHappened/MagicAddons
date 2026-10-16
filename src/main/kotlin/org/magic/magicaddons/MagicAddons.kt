@@ -5,7 +5,10 @@ import net.fabricmc.fabric.api.client.rendering.v1.PictureInPictureRendererRegis
 import org.magic.magicaddons.commands.MainCommand
 import org.magic.magicaddons.config.MagicAddonsConfigJsonHandler
 import org.magic.magicaddons.data.handlers.ModFiles
+import org.magic.magicaddons.data.server.GreenhouseDataSync
 import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.PresetStorage
+import org.magic.magicaddons.data.server.ServerSession
+import org.magic.magicaddons.features.farming.greenhousePresets.shrunkPlants.ShorterCaneCrops
 import org.magic.magicaddons.ui.fonts.SystemFonts
 import org.magic.magicaddons.features.farming.greenhousePresets.playerActions.GreenhouseKey
 import org.magic.magicaddons.render.CropPreviewRenderer
@@ -44,7 +47,10 @@ class MagicAddons : ClientModInitializer {
         ModFiles.init()
         PresetStorage.loadPresets()
         SystemFonts.init()
+        ShorterCaneCrops.init()
         VersionChecker
+        ServerSession.init()
+        GreenhouseDataSync.init()
 
 
         if (!MagicAddonsConfigJsonHandler.load()){

@@ -8,6 +8,8 @@ import org.magic.magicaddons.data.greenhouse.crops.CropBlocks.melonStemState
 import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
 import org.magic.magicaddons.data.greenhouse.crops.CropEffect
 import org.magic.magicaddons.data.greenhouse.crops.CropStage
+import org.magic.magicaddons.data.greenhouse.crops.PlacedPhase
+import org.magic.magicaddons.data.greenhouse.crops.PlacedStage
 import org.magic.magicaddons.data.greenhouse.crops.CropTier
 import org.magic.magicaddons.data.greenhouse.crops.FIVE_DAY_DECAY_TIME_MS
 import org.magic.magicaddons.data.greenhouse.crops.SpawnRule
@@ -27,7 +29,7 @@ object Timestalk {
             CropEffect.HarvestLoss
         ),
         skyblockId = SkyBlockItemId.item("TIMESTALK"),
-        stages = listOf(
+        growingStages = listOf(
             CropStage(
                 blocks = StageBlock.atPositions(
                     listOf(
@@ -338,6 +340,20 @@ object Timestalk {
             )
         ),
         decayTimeMs = FIVE_DAY_DECAY_TIME_MS,
+        placedStages = listOf(
+            PlacedStage(
+                blocks = listOf(),
+                armorStands = listOf(
+                    StageStand(
+                        offset = Vec3(0.0, 0.3125, 0.0),
+                        isSmall = true,
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
+                        hashString = "1b9add43e0e770b7c4ccdcf6708f8b9e875ff13b2a75ab63ff69f2f0e57af9e5"
+                    )
+                ),
+                shownWhile = PlacedPhase.Always
+            )
+        ),
         maxStage = 14,
         requiredSoil = setOf(Blocks.END_STONE),
         isMutation = true,

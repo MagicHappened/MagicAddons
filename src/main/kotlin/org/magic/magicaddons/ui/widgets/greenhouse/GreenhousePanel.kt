@@ -45,6 +45,25 @@ class GreenhousePanel(
         onValueChanged = { onPlanPicked(it.plot) }
     )
 
+    private val placedSelector = DropdownWidget(
+        values = PlacedChoice.entries,
+        currentValue = PlacedChoice.Off,
+        overlayContext = overlayContext,
+        isSearchable = false
+    )
+
+    val placedChoice: PlacedChoice get() = placedSelector.currentValue ?: PlacedChoice.Off
+
+    fun dropPlacedTool() {
+        placedSelector.currentValue = PlacedChoice.Off
+    }
+
+    override val dropdowns: List<DropdownWidget<*>> = listOf(placedSelector)
+
+    override fun isShown(dropdown: DropdownWidget<*>): Boolean = isGreenhouseShown
+
+    override fun groupOf(dropdown: DropdownWidget<*>): Int = 1
+
     private val noRotateCheckbox = CheckboxWidget(CHECKBOX_SIZE)
     private var isNoRotateHovered: Boolean = false
 
@@ -109,6 +128,11 @@ class GreenhousePanel(
             graphics.modText(font, NO_ROTATE_LABEL, labelX, planSelector.y + (planSelector.height - font.lineHeight) / 2 + 1, Common.UI.TEXT_COLOR)
         }
 
+        placedSelector.frameColor = when (placedChoice) {
+            PlacedChoice.Off -> null
+            PlacedChoice.Mark -> Common.UI.ACCENT_COLOR
+            PlacedChoice.Unmark -> Common.UI.DANGER_COLOR
+        }
         super.extractRenderState(graphics, mouseX, mouseY, delta)
 
         if (isGreenhouseShown && isNoRotateHovered) graphics.drawTooltipAtCursor(NO_ROTATE_TOOLTIP, mouseX, mouseY)
@@ -138,7 +162,10 @@ class GreenhousePanel(
                 mouseY >= planSelector.y && mouseY <= planSelector.y + planSelector.height
     }
 
-    fun closePlanList() = planSelector.closeList()
+    fun closePlanList() {
+        planSelector.closeList()
+        placedSelector.closeList()
+    }
 
     private fun openExportMenu(event: MouseButtonEvent) {
         openMenu(event, "Format:", LayoutFormatType.entries) { type ->

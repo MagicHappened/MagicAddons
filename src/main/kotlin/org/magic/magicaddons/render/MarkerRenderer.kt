@@ -57,7 +57,7 @@ object MarkerRenderer {
     }
 
     private fun drawTracer(graphics: GuiGraphicsExtractor) {
-        if (!HighlightMarkers.tracerSetting.value || !HighlightMarkers.baseSetting.value) return
+        if (!HighlightMarkers.tracerSetting.isEnabled) return
 
         val player = Minecraft.getInstance().player ?: return
         val window = Minecraft.getInstance().window

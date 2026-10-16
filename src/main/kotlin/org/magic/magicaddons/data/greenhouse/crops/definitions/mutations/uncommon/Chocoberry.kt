@@ -18,13 +18,14 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Chocoberry {
     val definition = CropDefinition(
         name = "Chocoberry",
+        minMutationsBeforeDecay = 10,
         tier = CropTier.Uncommon,
         dropMultiplier = 2.2,
         effects = setOf(
             CropEffect.WaterRetain
         ),
         skyblockId = SkyBlockItemId.item("CHOCOBERRY"),
-        stages = listOf(
+        growingStages = listOf(
             CropStage(
                 blocks = listOf(
                 ),

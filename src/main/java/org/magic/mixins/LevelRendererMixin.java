@@ -31,8 +31,10 @@ import org.joml.Vector4f;
 import org.jspecify.annotations.Nullable;
 import org.magic.magicaddons.commands.debug.CropCollector;
 import org.magic.magicaddons.features.farming.greenhousePresets.render.LayoutRenderState;
+import org.magic.magicaddons.features.farming.greenhousePresets.shrunkPlants.ShorterCaneCrops;
 import org.magic.magicaddons.features.misc.HighlightMarkers;
 import org.magic.magicaddons.features.farming.greenhousePresets.render.PlantHighlight;
+import org.magic.magicaddons.features.farming.greenhousePresets.render.DiagnosticHighlight;
 import org.magic.magicaddons.features.farming.greenhousePresets.render.WaterIndicator;
 import org.magic.magicaddons.util.EntityUtils;
 import org.magic.misc.EntityRenderModifier;
@@ -140,10 +142,22 @@ public abstract class LevelRendererMixin {
                     levelRenderState.cameraRenderState.pos
             );
 
+            DiagnosticHighlight.INSTANCE.submitPlantsToDiagnose(
+                    poseStack,
+                    submitNodeCollector,
+                    levelRenderState.cameraRenderState.pos
+            );
+
             CropCollector.INSTANCE.submitHighlights(
                     poseStack,
                     submitNodeCollector,
                     levelRenderState.cameraRenderState.pos
+            );
+
+            ShorterCaneCrops.INSTANCE.submitStageLabels(
+                    poseStack,
+                    submitNodeCollector,
+                    levelRenderState.cameraRenderState
             );
         } catch (Throwable error) {
             ErrorReporter.INSTANCE.report("the hologram", error);

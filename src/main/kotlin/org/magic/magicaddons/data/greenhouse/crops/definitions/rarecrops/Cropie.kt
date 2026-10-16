@@ -13,7 +13,7 @@ object Cropie {
         name = "Cropie",
         tier = CropTier.RareCrop,
         skyblockId = SkyBlockItemId.item("CROPIE"),
-        stages = listOf(
+        growingStages = listOf(
             CropStage(
                 blocks = listOf(),
                 armorStands = listOf(

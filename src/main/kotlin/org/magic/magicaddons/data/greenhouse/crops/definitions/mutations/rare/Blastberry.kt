@@ -8,6 +8,7 @@ import org.magic.magicaddons.data.greenhouse.crops.CropBlocks.stateOf
 import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
 import org.magic.magicaddons.data.greenhouse.crops.CropEffect
 import org.magic.magicaddons.data.greenhouse.crops.CropStage
+import org.magic.magicaddons.data.greenhouse.crops.PlacedStage
 import org.magic.magicaddons.data.greenhouse.crops.CropTier
 import org.magic.magicaddons.data.greenhouse.crops.SpawnRule
 import org.magic.magicaddons.data.greenhouse.crops.StageBlock
@@ -19,6 +20,7 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Blastberry {
     val definition = CropDefinition(
         name = "Blastberry",
+        minMutationsBeforeDecay = 8,
         tier = CropTier.Rare,
         dropMultiplier = 2.0,
         effects = setOf(
@@ -27,7 +29,7 @@ object Blastberry {
             CropEffect.XpLoss
         ),
         skyblockId = SkyBlockItemId.item("BLASTBERRY"),
-        stages = listOf(
+        growingStages = listOf(
             CropStage(
                 blocks = listOf(),
                 armorStands = listOf(
@@ -110,6 +112,24 @@ object Blastberry {
                 6..6
             )
 
+        ),
+        placedStages = listOf(
+            PlacedStage(
+                blocks = listOf(
+                    StageBlock(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = stateOf("minecraft:redstone_torch[lit=false]")
+                    )
+                ),
+                armorStands = listOf(
+                    StageStand(
+                        offset = Vec3(0.0, -0.53125, 0.0),
+                        isSmall = false,
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
+                        hashString = "bacae0e87ffeadb750260c2e6531004d69d14473376cb22577fafe70569349f3"
+                    )
+                )
+            )
         ),
         maxStage = 6,
         requiredSoil = setOf(Blocks.SAND, Blocks.RED_SAND),

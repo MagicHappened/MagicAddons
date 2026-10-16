@@ -1,4 +1,4 @@
-package org.magic.magicaddons.commands.features
+package org.magic.magicaddons.commands.config
 
 import com.mojang.brigadier.builder.LiteralArgumentBuilder
 import com.mojang.brigadier.builder.LiteralArgumentBuilder.literal

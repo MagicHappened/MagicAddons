@@ -16,13 +16,14 @@ object Lonelily {
 
     val definition = CropDefinition(
         name = "Lonelily",
+        minMutationsBeforeDecay = 10,
         tier = CropTier.Common,
         dropMultiplier = 1.75,
         effects = setOf(
             CropEffect.BonusDrops
         ),
         skyblockId = SkyBlockItemId.item("LONELILY"),
-        stages = listOf(
+        growingStages = listOf(
             CropStage(
                 blocks = listOf(
                     StageBlock(

@@ -13,7 +13,7 @@ object Squash {
         name = "Squash",
         tier = CropTier.RareCrop,
         skyblockId = SkyBlockItemId.item("SQUASH"),
-        stages = listOf(
+        growingStages = listOf(
             CropStage(
                 blocks = listOf(),
                 armorStands = listOf(

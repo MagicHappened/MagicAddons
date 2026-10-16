@@ -16,13 +16,14 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Creambloom {
     val definition = CropDefinition(
         name = "Creambloom",
+        minMutationsBeforeDecay = 8,
         tier = CropTier.Uncommon,
         dropMultiplier = 2.8,
         effects = setOf(
             CropEffect.Immunity
         ),
         skyblockId = SkyBlockItemId.item("CREAMBLOOM"),
-        stages = listOf(
+        growingStages = listOf(
             CropStage(
                 blocks = listOf(),
                 armorStands = listOf(

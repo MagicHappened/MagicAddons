@@ -16,13 +16,14 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Dustgrain {
     val definition = CropDefinition(
         name = "Dustgrain",
+        minMutationsBeforeDecay = 10,
         tier = CropTier.Common,
         dropMultiplier = 0.25,
         effects = setOf(
             CropEffect.HarvestBoost
         ),
         skyblockId = SkyBlockItemId.item("DUSTGRAIN"),
-        stages = listOf(
+        growingStages = listOf(
             CropStage(
                 blocks = listOf(
                     StageBlock(

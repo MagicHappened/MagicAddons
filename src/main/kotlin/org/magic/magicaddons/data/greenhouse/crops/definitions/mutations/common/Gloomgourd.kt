@@ -18,6 +18,7 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Gloomgourd {
     val definition = CropDefinition(
         name = "Gloomgourd",
+        minMutationsBeforeDecay = 10,
         tier = CropTier.Common,
         dropMultiplier = 0.2,
         effects = setOf(
@@ -25,7 +26,7 @@ object Gloomgourd {
             CropEffect.BonusDrops
         ),
         skyblockId = SkyBlockItemId.item("GLOOMGOURD"),
-        stages = listOf(
+        growingStages = listOf(
             CropStage(
                 blocks = listOf(
                     StageBlock(

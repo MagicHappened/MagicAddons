@@ -14,6 +14,7 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Sugarcane {
     val definition = CropDefinition(
         name = "Sugar Cane",
+        minMutationsBeforeDecay = 12,
         tier = CropTier.BaseCrop,
         dropMultiplier = 0.17,
         effects = setOf(
@@ -21,7 +22,7 @@ object Sugarcane {
             CropEffect.HarvestLoss
         ),
         skyblockId = SkyBlockItemId.item("SUGAR_CANE"),
-        stages = listOf(
+        growingStages = listOf(
             CropStage(
                 blocks = listOf(
                     StageBlock(

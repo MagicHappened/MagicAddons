@@ -15,6 +15,7 @@ import org.magic.magicaddons.Common
 import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
 import org.magic.magicaddons.data.greenhouse.crops.CropRegistry
 import org.magic.magicaddons.data.greenhouse.crops.CropTier
+import org.magic.magicaddons.data.greenhouse.plot.LayoutSlot
 import org.magic.magicaddons.ui.OverlayContext
 import org.magic.magicaddons.ui.widgets.DropdownWidget
 import org.magic.magicaddons.ui.widgets.TextField
@@ -53,13 +54,15 @@ class PlantPalette(
 
     val isHoldingTool: Boolean get() = selectedItem != null || isDeleteMode || isUniquesMode || markChoice.applies
 
-    fun pickUp(item: PaletteItem) {
+    fun pickUp(item: PaletteItem, mark: LayoutSlot.Marking? = null) {
         clearTools()
         selectedItem = item
+        placingMark = mark
     }
 
     fun clearTools(keepMark: Boolean = false) {
         selectedItem = null
+        placingMark = null
         isDeleteMode = false
         isUniquesMode = false
         if (!keepMark) markSelector.currentValue = MarkChoice.Off
@@ -103,6 +106,9 @@ class PlantPalette(
     private var dragY = 0
 
     var selectedItem: PaletteItem? = null
+        private set
+
+    var placingMark: LayoutSlot.Marking? = null
         private set
 
     private var pressedItem: PaletteItem? = null
@@ -330,6 +336,7 @@ class PlantPalette(
 
         drawIcon(graphics, item, left, top, iconSize)
         graphics.fill(left, top, left + iconSize, top + iconSize, DRAG_VEIL)
+        placingMark?.let { graphics.drawBorder(left, top, left + iconSize, top + iconSize, Common.UI.BORDER_SIZE, it.color) }
     }
 
     private fun drawIcon(graphics: GuiGraphicsExtractor, item: PaletteItem, left: Int, top: Int, iconSize: Int) {
@@ -420,6 +427,7 @@ class PlantPalette(
         if (draggedItem == null && (abs(event.x - pressX) > DRAG_THRESHOLD || abs(event.y - pressY) > DRAG_THRESHOLD)) {
             draggedItem = heldItem
             selectedItem = null
+            placingMark = null
         }
         if (draggedItem == null) return true
 

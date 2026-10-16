@@ -100,7 +100,7 @@ object HighlightMarkers : Feature() {
     }
 
 
-    fun markingEnabled(): Boolean = baseSetting.value && (iconSetting.value || arrowsSetting.value)
+    fun markingEnabled(): Boolean = iconSetting.isEnabled || arrowsSetting.isEnabled
 
     @JvmStatic
     fun markingReplacesOutline(entity: Entity, source: EntityUtils.HighlightSource): Boolean {

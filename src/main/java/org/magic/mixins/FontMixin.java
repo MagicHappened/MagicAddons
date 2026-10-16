@@ -7,7 +7,6 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.ModifyVariable;
 
-/** every draw and every width measurement passes through getGlyphSource, so this one point puts the mod's font on all of them */
 @Mixin(Font.class)
 public class FontMixin {
 

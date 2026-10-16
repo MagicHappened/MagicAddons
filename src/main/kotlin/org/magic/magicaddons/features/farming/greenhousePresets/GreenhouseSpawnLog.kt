@@ -8,10 +8,12 @@ import java.nio.file.StandardOpenOption
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 import kotlin.io.path.exists
 import kotlin.io.path.readLines
 import kotlin.io.path.readText
-import kotlin.math.pow
+import net.minecraft.client.Minecraft
 import org.magic.magicaddons.data.greenhouse.crops.Plant
 import org.magic.magicaddons.data.greenhouse.crops.PlantStage
 import org.magic.magicaddons.data.greenhouse.plot.GreenhouseGrid
@@ -26,30 +28,30 @@ import org.magic.magicaddons.util.ChatUtils
 // for tracking how hypixel mutations spawns work.
 object GreenhouseSpawnLog {
 
-    private class RecordedPlant(val x: Int, val y: Int, val cropName: String, var stages: String, var water: Double?) {
-        override fun toString(): String = "$x,$y:$cropName@$stages" + (water?.let { "/${"%.1f".format(it)}" } ?: "")
+    private class RecordedPlant(val x: Int, val y: Int, val cropName: String, val stages: String, val water: Double?, val timesMutated: String?) {
+        override fun toString(): String =
+            "$x,$y:$cropName@$stages" + (water?.let { "/${"%.1f".format(it)}" } ?: "") + (timesMutated?.let { "#$it" } ?: "")
     }
 
-    private class EmptyTargetSpot(val x: Int, val y: Int, val plannedPlant: Plant, val targetChance: Double, val otherChance: Double) {
-        fun expectedSpawns(chance: Double, ticks: Int): Double {
-            val anyChance = targetChance + otherChance
-            if (anyChance <= 0.0) return 0.0
-            return chance / anyChance * (1.0 - (1.0 - anyChance).pow(ticks))
-        }
-    }
+    private class PendingRow(val record: Record, val layoutAfter: PlotLayout, val spawnCandidates: String, val grid: GreenhouseGrid)
+
+    private val pendingRowByGrid = mutableMapOf<GreenhouseGrid, PendingRow>()
 
     private class Record(
         val plotId: String,
         var ticks: Int,
         var leftGarden: Boolean,
         val weightMultiplier: Double,
-        val emptyTargetSpots: List<EmptyTargetSpot>,
-        val plantsBefore: List<RecordedPlant>
+        var layoutBefore: PlotLayout,
+        val emptyTargets: List<Plant>
     ) {
         val time: LocalDateTime = LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS)
-        val spawns = mutableListOf<RecordedPlant>()
-        var plantsAfter: List<RecordedPlant>? = null
+        var plantsBefore: List<RecordedPlant> = recordedPlants(layoutBefore)
     }
+
+    private val rowWriter = Executors.newSingleThreadExecutor { Thread(it, "MagicAddons spawn log").apply { isDaemon = true } }
+
+    private const val CLOSING_WRITE_TIMEOUT_SECONDS: Long = 10
 
     private val SETTINGS_FILE: Path = ModFiles.modDir.resolve("spawn-log.json")
     private val LOG_DIR: Path = ModFiles.modDir.resolve("collected")
@@ -57,7 +59,7 @@ object GreenhouseSpawnLog {
 
     private const val HEADER: String = "time,plot,ticks,left_garden,weight_multiplier,empty_target_spots," +
             "expected_target_spawns,target_spawns,expected_other_spawns,other_spawns_on_targets,spawns_elsewhere," +
-            "spawns,plants_before,plants_after"
+            "expected_water_skips,water_skips,spawns,plants_before,plants_after,spawn_candidates"
     private const val TICKS_COLUMN: Int = 2
     private const val EXPECTED_TARGET_COLUMN: Int = 6
     private const val TARGET_SPAWNS_COLUMN: Int = 7
@@ -74,83 +76,116 @@ object GreenhouseSpawnLog {
         }
 
         val fileName = activeFileName
-        submitEveryRecord()
+        writeEveryOpenRecord()
         activeFileName = null
         writeSettings()
 
+        rowWriter.execute { announceLogClosed(fileName) }
+    }
+
+    private fun announceLogClosed(fileName: String?) {
         val rows = fileName?.let { LOG_DIR.resolve(it) }?.takeIf { it.exists() }?.readLines().orEmpty().drop(1).filter { it.isNotBlank() }
         val columnsByRow = rows.map { splitCsvRow(it) }
         val ticks = columnsByRow.sumOf { it.getOrNull(TICKS_COLUMN)?.toIntOrNull() ?: 0 }
         val targetSpawns = columnsByRow.sumOf { it.getOrNull(TARGET_SPAWNS_COLUMN)?.toIntOrNull() ?: 0 }
         val expectedTargetSpawns = columnsByRow.sumOf { it.getOrNull(EXPECTED_TARGET_COLUMN)?.toDoubleOrNull() ?: 0.0 }
-        ChatUtils.sendWithPrefix(
-            "Spawn log off. ${rows.size} rows, $ticks ticks: $targetSpawns target spawns, ${"%.1f".format(expectedTargetSpawns)} expected."
-        )
+        val summary = "Spawn log off. ${rows.size} rows, $ticks ticks: $targetSpawns target spawns, ${"%.1f".format(expectedTargetSpawns)} expected."
+        Minecraft.getInstance().execute { ChatUtils.sendWithPrefix(summary) }
     }
 
     fun discardOpenRecords() {
         openRecordByGrid.clear()
+        writePendingRows()
     }
 
     fun noteGrowthTicks(grid: GreenhouseGrid, ticks: Int, leftGarden: Boolean) {
         if (!isEnabled || GreenhouseProfiles.holdsAlphaData) return
+        pendingRowByGrid.remove(grid)?.let(::writePendingRow)
 
         val openRecord = openRecordByGrid[grid]
-        if (openRecord != null && openRecord.plantsAfter == null) {
+        if (openRecord != null) {
             openRecord.ticks += ticks
             openRecord.leftGarden = openRecord.leftGarden && leftGarden
             return
         }
-        openRecord?.let { submit(grid, it) }
 
-        val weightMultiplier = BioanalysisAccessory.mutationWeightMultiplier()
         openRecordByGrid[grid] = Record(
             plotId = grid.layout.id,
             ticks = ticks,
             leftGarden = leftGarden,
-            weightMultiplier = weightMultiplier,
-            emptyTargetSpots = emptyTargetSpots(grid, weightMultiplier),
-            plantsBefore = recordedPlants(grid.layout)
+            weightMultiplier = BioanalysisAccessory.mutationWeightMultiplier(),
+            layoutBefore = grid.layout.freshCopy(),
+            emptyTargets = emptyTargets(grid)
         )
     }
 
-    fun recordSpawn(spawn: Plant, layout: PlotLayout) {
-        if (!isEnabled || GreenhouseProfiles.holdsAlphaData) return
-        val record = openRecordByGrid.entries.firstOrNull { it.key.layout === layout }?.value ?: return
-        val recorded = recordedPlant(spawn)
-        if (record.spawns.any { it.x == recorded.x && it.y == recorded.y && it.cropName == recorded.cropName }) return
-        record.spawns.add(recorded)
+    fun notePull(grid: GreenhouseGrid) {
+        val record = openRecordByGrid[grid] ?: return
+        record.layoutBefore = grid.layout.freshCopy()
+        record.plantsBefore = recordedPlants(record.layoutBefore)
     }
 
     fun noteScan(grid: GreenhouseGrid) {
         if (!isEnabled || GreenhouseProfiles.holdsAlphaData) return
-        val record = openRecordByGrid[grid] ?: return
-        if (record.plantsAfter == null) record.plantsAfter = recordedPlants(grid.layout)
+        val record = openRecordByGrid.remove(grid) ?: return
+        val layoutAfter = grid.layout.freshCopy()
+        pendingRowByGrid.remove(grid)?.let(::writePendingRow)
+        pendingRowByGrid[grid] = PendingRow(record, layoutAfter, spawnCandidatesOf(grid, spawnsBetween(record.layoutBefore, layoutAfter)), grid)
+    }
+
+    private fun writePendingRow(pending: PendingRow) {
+        val liveBySlot = pending.grid.layout.plants.associateBy { it.slot.x to it.slot.y }
+        pending.layoutAfter.plants.forEach { copy ->
+            val live = liveBySlot[copy.slot.x to copy.slot.y]?.takeIf { it.cropTypeEquals(copy) && it.appearedAt == copy.appearedAt } ?: return@forEach
+            copy.timesMutated = live.timesMutated
+            copy.isTimesMutatedMinimum = live.isTimesMutatedMinimum
+        }
+        writeRow(pending.record, pending.layoutAfter, pending.spawnCandidates)
+    }
+
+    private fun writePendingRows() {
+        pendingRowByGrid.values.forEach(::writePendingRow)
+        pendingRowByGrid.clear()
+    }
+
+    private fun spawnCandidatesOf(grid: GreenhouseGrid, spawns: List<Plant>): String = spawns.joinToString(";") { spawn ->
+        val credit = PlotPrediction.spawnCreditOf(grid.layout, spawn.cropDef, spawn.slot.x, spawn.slot.y, ignoredPlant = grid.layout.plantCovering(spawn.slot.x, spawn.slot.y))
+        val candidates = (credit.certain + credit.uncertain).sortedWith(compareBy({ it.slot.y }, { it.slot.x })).joinToString("|") { candidate ->
+            val world = grid.getPosForSlot(candidate.slot)
+            "${candidate.slot.x},${candidate.slot.y}=${world?.x},${world?.z}:${candidate.cropDef.name}"
+        }
+        val spawnWorld = grid.getPosForSlot(spawn.slot)
+        "${spawn.slot.x},${spawn.slot.y}=${spawnWorld?.x},${spawnWorld?.z}:${spawn.cropDef.name}<-$candidates"
     }
 
     fun onGameClosing() {
         if (!isEnabled) return
-        submitEveryRecord()
+        writeEveryOpenRecord()
+        rowWriter.shutdown()
+        rowWriter.awaitTermination(CLOSING_WRITE_TIMEOUT_SECONDS, TimeUnit.SECONDS)
     }
 
-    private fun submitEveryRecord() {
-        openRecordByGrid.entries.toList().forEach { (grid, record) -> submit(grid, record) }
+    private fun writeEveryOpenRecord() {
+        writePendingRows()
+        openRecordByGrid.values.forEach { writeRow(it, layoutAfter = null, spawnCandidates = "") }
         openRecordByGrid.clear()
     }
 
-    private fun submit(grid: GreenhouseGrid, record: Record) {
+    private fun writeRow(record: Record, layoutAfter: PlotLayout?, spawnCandidates: String) {
         val fileName = activeFileName ?: return
-
-        narrowStageRanges(grid, record)
-
-        val plantsAfter = record.plantsAfter.orEmpty()
-        val plantsAfterWithSpawns = plantsAfter + record.spawns.filter { spawn -> plantsAfter.none { it.x == spawn.x && it.y == spawn.y } }
-
-        val spotsByPosition = record.emptyTargetSpots.associateBy { it.x to it.y }
-        val (spawnsOnTargets, spawnsElsewhere) = record.spawns.partition { (it.x to it.y) in spotsByPosition }
-        val targetSpawns = spawnsOnTargets.count { spawn ->
-            spotsByPosition.getValue(spawn.x to spawn.y).plannedPlant.acceptedCrops.any { it.name == spawn.cropName }
+        rowWriter.execute {
+            runCatching { appendRow(fileName, record, layoutAfter, spawnCandidates) }
+                .onFailure { Common.LOGGER.warn("Could not write a spawn log row for ${record.plotId}", it) }
         }
+    }
+
+    private fun appendRow(fileName: String, record: Record, layoutAfter: PlotLayout?, spawnCandidates: String) {
+        val spawns = layoutAfter?.let { spawnsBetween(record.layoutBefore, it) }.orEmpty()
+        val targetsByOrigin = record.emptyTargets.associateBy { it.slot.x to it.slot.y }
+        val (spawnsOnTargets, spawnsElsewhere) = spawns.partition { (it.slot.x to it.slot.y) in targetsByOrigin }
+        val targetSpawns = spawnsOnTargets.count { targetsByOrigin.getValue(it.slot.x to it.slot.y).acceptsCrop(it.cropDef) }
+        val expected = PlotPrediction.expectedSpawnsDuringAbsence(record.layoutBefore, record.emptyTargets, record.ticks, record.weightMultiplier)
+        val waterSkips = layoutAfter?.let { waterSkipsBetween(record.layoutBefore, it, record.ticks) }
 
         val row = listOf(
             record.time.toString(),
@@ -158,63 +193,84 @@ object GreenhouseSpawnLog {
             record.ticks.toString(),
             if (record.leftGarden) "yes" else "no",
             "%.2f".format(record.weightMultiplier),
-            record.emptyTargetSpots.size.toString(),
-            "%.2f".format(record.emptyTargetSpots.sumOf { it.expectedSpawns(it.targetChance, record.ticks) }),
+            record.emptyTargets.size.toString(),
+            "%.2f".format(expected.onTargets),
             targetSpawns.toString(),
-            "%.2f".format(record.emptyTargetSpots.sumOf { it.expectedSpawns(it.otherChance, record.ticks) }),
+            "%.2f".format(expected.otherOnTargets),
             (spawnsOnTargets.size - targetSpawns).toString(),
             spawnsElsewhere.size.toString(),
-            csvField(record.spawns.joinToString(";")),
+            waterSkips?.let { "%.2f".format(it.expected) }.orEmpty(),
+            waterSkips?.observed?.toString().orEmpty(),
+            csvField(spawns.map { recordedPlant(it) }.joinToString(";")),
             csvField(record.plantsBefore.joinToString(";")),
-            csvField(plantsAfterWithSpawns.sortedWith(compareBy({ it.y }, { it.x })).joinToString(";"))
+            csvField(layoutAfter?.let { recordedPlants(it) }.orEmpty().joinToString(";")),
+            csvField(spawnCandidates)
         )
         Files.write(LOG_DIR.resolve(fileName), listOf(row.joinToString(",")), StandardOpenOption.CREATE, StandardOpenOption.APPEND)
     }
 
-    private fun narrowStageRanges(grid: GreenhouseGrid, record: Record) {
-        val plantsBySlot = grid.layout.plants.associateBy { it.slot.x to it.slot.y }
+    private class WaterSkips(val expected: Double, val observed: Int)
 
-        (record.plantsAfter.orEmpty() + record.spawns).forEach { recorded ->
-            val recordedRange = stageRangeOf(recorded.stages) ?: return@forEach
-            val plant = plantsBySlot[recorded.x to recorded.y] ?: return@forEach
-            if (plant.cropDef.name != recorded.cropName) return@forEach
+    private fun waterSkipsBetween(before: PlotLayout, after: PlotLayout, ticks: Int): WaterSkips {
+        var expected = 0.0
+        var observed = 0
 
-            val narrowed = when (val stage = plant.growthStage) {
-                is PlantStage.Known -> stage.stage..stage.stage
-                is PlantStage.Estimated -> stage.range
-                null -> return@forEach
-            }
-            if (narrowed.first < recordedRange.first || narrowed.last > recordedRange.last) return@forEach
-            if (narrowed == recordedRange) return@forEach
+        before.plants.forEach { plantBefore ->
+            val stageBefore = (plantBefore.growthStage as? PlantStage.Known)?.stage ?: return@forEach
+            val plantAfter = after.plants.firstOrNull { it.slot.x == plantBefore.slot.x && it.slot.y == plantBefore.slot.y && it.cropTypeEquals(plantBefore) }
+            val stageAfter = (plantAfter?.growthStage as? PlantStage.Known)?.stage ?: return@forEach
 
-            recorded.stages = if (narrowed.first == narrowed.last) "${narrowed.first}" else "${narrowed.first}-${narrowed.last}"
+            val ticksBelowZero = ticksStartingBelowZero(plantBefore, before, stageBefore, ticks)
+            if (ticksBelowZero == 0) return@forEach
+
+            expected += ticksBelowZero * PlotPrediction.NEGATIVE_WATER_SKIP_CHANCE
+            val expectedGain = minOf(ticks, plantBefore.cropDef.maxStage - stageBefore)
+            observed += (expectedGain - (stageAfter - stageBefore)).coerceAtLeast(0)
+        }
+
+        return WaterSkips(expected, observed)
+    }
+
+    private fun ticksStartingBelowZero(plant: Plant, layout: PlotLayout, stage: Int, ticks: Int): Int {
+        val crop = plant.cropDef
+        val growsEveryTick = !crop.drainsNeighbours && crop.sleepStages.isEmpty() && !crop.hasHungerBar && crop.chargeRule == null &&
+                !crop.resetsToFirstStage && crop.resetPercentByStage.isEmpty() && !crop.teleportsWhileGrowing && plant.timeOfDayNeeded == null
+        if (!plant.consumesWater || !growsEveryTick) return 0
+
+        val water = plant.waterLevel ?: return 0
+        val waterEffect = GreenhouseGrid.waterEffectAt(layout, plant.slot)
+
+        return (1..ticks).count { tick ->
+            val waterAtTickStart = PlotPrediction.waterLevelAfter(water, tick - 1, waterEffect)
+            waterAtTickStart < 0 && waterAtTickStart > PlotPrediction.WATER_HALT_LEVEL && stage + tick - 1 < crop.maxStage
         }
     }
 
-    private fun stageRangeOf(stages: String): IntRange? {
-        val first = stages.substringBefore("-").toIntOrNull() ?: return null
-        val last = stages.substringAfter("-").toIntOrNull() ?: return null
-        return first..last
+    private fun spawnsBetween(before: PlotLayout, after: PlotLayout): List<Plant> {
+        val cellsCoveredBefore = before.plants.flatMapTo(mutableSetOf()) { it.coveredCells }
+        return after.plants
+            .filter { it.cropDef.isMutation && !it.placed && it.coveredCells.none { cell -> cell in cellsCoveredBefore } }
+            .sortedWith(compareBy({ it.slot.y }, { it.slot.x }))
     }
 
-    private fun emptyTargetSpots(grid: GreenhouseGrid, weightMultiplier: Double): List<EmptyTargetSpot> {
+    private fun emptyTargets(grid: GreenhouseGrid): List<Plant> {
         val plan = grid.state.assignedLayout?.turnedBy(grid.state.planTurns) ?: return emptyList()
 
         return plan.plants
             .filter { it.slot.mark == LayoutSlot.Marking.Target }
-            .filter { planned -> grid.layout.getSlot(planned.slot.x, planned.slot.y)?.let { grid.layout.plantCovering(it) } == null }
-            .map { planned ->
-                val chances = PlotPrediction.mutationChancesAtSlot(grid.layout, planned.slot.x, planned.slot.y, weightMultiplier)
-                val (targetChances, otherChances) = chances.partition { planned.acceptsCrop(it.crop) }
-                EmptyTargetSpot(planned.slot.x, planned.slot.y, planned, targetChances.sumOf { it.chance }, otherChances.sumOf { it.chance })
-            }
+            .filter { planned -> grid.layout.plantCovering(planned.slot.x, planned.slot.y) == null }
     }
 
     private fun recordedPlants(layout: PlotLayout): List<RecordedPlant> =
         layout.plants.sortedWith(compareBy({ it.slot.y }, { it.slot.x })).map { recordedPlant(it) }
 
     private fun recordedPlant(plant: Plant): RecordedPlant =
-        RecordedPlant(plant.slot.x, plant.slot.y, plant.cropDef.name, stagesOf(plant), plant.waterLevel)
+        RecordedPlant(plant.slot.x, plant.slot.y, plant.cropDef.name, stagesOf(plant), plant.waterLevel, timesMutatedOf(plant))
+
+    private fun timesMutatedOf(plant: Plant): String? {
+        if (plant.cropDef.minMutationsBeforeDecay == null) return null
+        return plant.timesMutated.toString() + if (plant.isTimesMutatedMinimum) "+" else ""
+    }
 
     private fun stagesOf(plant: Plant): String = when (val stage = plant.growthStage) {
         is PlantStage.Known -> stage.stage.toString()

@@ -17,6 +17,7 @@ object Shadevine {
 
     val definition = CropDefinition(
         name = "Shadevine",
+        minMutationsBeforeDecay = 10,
         tier = CropTier.Common,
         dropMultiplier = 0.26,
         effects = setOf(
@@ -28,7 +29,7 @@ object Shadevine {
         standPoses = mapOf(
             "c3c6d9dcb8fbd73de6171a2c2155314d097a9c99d09c9fce9cba068d7e5aedf7" to StandPose.Fixed(Rotations(-45.0f, 0.0f, 0.0f))
         ),
-        stages = listOf(
+        growingStages = listOf(
             CropStage(
                 blocks = listOf(),
                 armorStands = listOf(

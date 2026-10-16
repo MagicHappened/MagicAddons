@@ -24,9 +24,9 @@ class IntSettingWidget(
     private val valueBox = TextField(VALUE_BOX_WIDTH, FIELD_HEIGHT).also {
         it.setMaxLength(12)
         it.isFramed = true
-        it.value = setting.value.toString()
+        it.value = setting.valueText(setting.value)
         it.setResponder { typed ->
-            typed.trim().toIntOrNull()?.let { number -> setting.value = number.coerceIn(setting.range) }
+            setting.valueFromText(typed)?.let { number -> setting.value = number.coerceIn(setting.range) }
         }
     }
 
@@ -37,7 +37,7 @@ class IntSettingWidget(
     }
 
     private fun showValueInBox() {
-        if (!valueBox.isFocused) valueBox.value = setting.value.toString()
+        if (!valueBox.isFocused) valueBox.value = setting.valueText(setting.value)
     }
 
     override fun belowTextHeight(): Int = BAR_HEIGHT + KNOB_OVERHANG * 2
@@ -137,9 +137,9 @@ class IntSettingWidget(
         if (!valueBox.isFocused) return
         valueBox.isFocused = false
 
-        val typed = valueBox.value.trim().toIntOrNull()
+        val typed = setting.valueFromText(valueBox.value)
         if (typed != null) setting.value = typed.coerceIn(setting.range)
-        valueBox.value = setting.value.toString()
+        valueBox.value = setting.valueText(setting.value)
     }
 
     private companion object {

@@ -31,7 +31,7 @@ object MissingCropData {
     }
 
     private fun unrecordedStages(crop: CropDefinition): List<Int> {
-        val covered = crop.stages.flatMap { it.stageRange }.toSet()
+        val covered = crop.growingStages.flatMap { it.stageRange }.toSet()
         return (1..crop.maxStage).filterNot { it in covered }
     }
 
@@ -47,7 +47,7 @@ object MissingCropData {
         missingStages(crop).joinToString("; ").takeIf { it.isNotEmpty() }
 
     fun recordedPercent(crop: CropDefinition): Int {
-        val covered = crop.stages.flatMap { it.stageRange }.toSet().count { it in 1..crop.maxStage }
+        val covered = crop.growingStages.flatMap { it.stageRange }.toSet().count { it in 1..crop.maxStage }
 
         return if (crop.maxStage == 0) 100 else covered * 100 / crop.maxStage
     }

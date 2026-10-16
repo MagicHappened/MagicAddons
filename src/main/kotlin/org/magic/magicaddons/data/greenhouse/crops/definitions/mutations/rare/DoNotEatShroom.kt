@@ -14,6 +14,7 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object DoNotEatShroom {
     val definition = CropDefinition(
         name = "Do-not-eat-shroom",
+        minMutationsBeforeDecay = 8,
         tier = CropTier.Rare,
         dropMultiplier = 2.1,
         effects = setOf(
@@ -21,7 +22,7 @@ object DoNotEatShroom {
             CropEffect.WaterDrain
         ),
         skyblockId = SkyBlockItemId.item("DO_NOT_EAT_SHROOM"),
-        stages = listOf(
+        growingStages = listOf(
             CropStage(
                 blocks = listOf(),
                 armorStands = listOf(

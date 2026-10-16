@@ -15,6 +15,7 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Melon {
     val definition = CropDefinition(
         name = "Melon",
+        minMutationsBeforeDecay = 12,
         tier = CropTier.BaseCrop,
         dropMultiplier = 0.2,
         effects = setOf(
@@ -22,7 +23,7 @@ object Melon {
         ),
         skyblockId = SkyBlockItemId.item("MELON"),
         aliases = listOf(SkyBlockItemId.item("MELON_SEEDS")),
-        stages = listOf(
+        growingStages = listOf(
             CropStage(
                 blocks = listOf(
                     StageBlock(

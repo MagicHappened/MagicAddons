@@ -13,7 +13,7 @@ object Fermento {
         name = "Fermento",
         tier = CropTier.RareCrop,
         skyblockId = SkyBlockItemId.item("FERMENTO"),
-        stages = listOf(
+        growingStages = listOf(
             CropStage(
                 blocks = listOf(),
                 armorStands = listOf(

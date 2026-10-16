@@ -20,7 +20,7 @@ object FireElement {
         tier = CropTier.Other,
         skyblockId = null,
         aliases = listOf(SkyBlockItemId.item("FLINT_AND_STEEL")),
-        stages = listOf(
+        growingStages = listOf(
             CropStage(
                 blocks = listOf(
                     StageBlock(

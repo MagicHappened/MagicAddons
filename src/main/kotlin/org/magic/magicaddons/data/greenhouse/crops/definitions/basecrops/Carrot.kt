@@ -12,13 +12,14 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Carrot {
     val definition = CropDefinition(
         name = "Carrot",
+        minMutationsBeforeDecay = 12,
         tier = CropTier.BaseCrop,
         dropMultiplier = 0.125,
         effects = setOf(
             CropEffect.XpBoost
         ),
         skyblockId = SkyBlockItemId.item("CARROT_ITEM"),
-        stages = listOf(
+        growingStages = listOf(
             CropStage(
                 blocks = listOf(
                     StageBlock(

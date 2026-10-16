@@ -196,3 +196,11 @@ if (!activeVersion) {
         enabled = false
     }
 }
+
+val exportCropTable by tasks.registering(JavaExec::class) {
+    description = "Writes crops.json for the MagicAddons server from the crop registry."
+    classpath = sourceSets.main.get().runtimeClasspath
+    mainClass.set("org.magic.magicaddons.data.greenhouse.crops.CropTableExport")
+    args((findProperty("cropTableOutput") as String?) ?: rootProject.file("build/crops.json").absolutePath)
+    onlyIf { activeVersion }
+}

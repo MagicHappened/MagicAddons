@@ -18,6 +18,7 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Choconut {
     val definition = CropDefinition(
         name = "Choconut",
+        minMutationsBeforeDecay = 10,
         tier = CropTier.Common,
         dropMultiplier = 0.25,
         effects = setOf(
@@ -27,7 +28,7 @@ object Choconut {
         standPoses = mapOf(
             "2a8d74b77a0e510d058c544c7292a8844e70b9293880caffc562ce5ab5a49ad8" to StandPose.Fixed(Rotations(45.0f, 0.0f, 45.0f))
         ),
-        stages = listOf(
+        growingStages = listOf(
             CropStage(
                 blocks = listOf(
                     StageBlock(

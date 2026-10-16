@@ -14,7 +14,7 @@ object DevourerRoots {
         name = "DevourerRoots",
         tier = CropTier.Other,
         skyblockId = null,
-        stages = listOf(
+        growingStages = listOf(
             CropStage(
                 blocks = listOf(),
                 armorStands = listOf(

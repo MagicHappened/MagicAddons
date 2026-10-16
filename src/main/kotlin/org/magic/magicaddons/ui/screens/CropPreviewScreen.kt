@@ -71,7 +71,7 @@ class CropPreviewScreen(
     private val shownVariant: Variant? get() = variantSelector.currentValue
 
     private fun variantsFor(def: CropDefinition): List<Variant> = when {
-        def.stages.any { StandReader.NEEDS_TIME in it.traits } -> listOf(Variant.Day, Variant.Night)
+        def.growingStages.any { StandReader.NEEDS_TIME in it.traits } -> listOf(Variant.Day, Variant.Night)
         def.sleepStages.isNotEmpty() -> listOf(Variant.Awake, Variant.Asleep)
         else -> emptyList()
     }
@@ -142,7 +142,7 @@ class CropPreviewScreen(
         sceneMaxY = 1.0
         val level = Minecraft.getInstance().level ?: return
 
-        def.stages
+        def.growingStages
             .mapNotNull { it.hologramStageAt(level, ORIGIN, def) }
             .forEach { hologram ->
                 hologram.blockMap.keys.forEach {
@@ -182,7 +182,7 @@ class CropPreviewScreen(
         val def = selectedCrop ?: return
         val level = Minecraft.getInstance().level ?: return
 
-        val stageDef = def.stages
+        val stageDef = def.growingStages
             .firstOrNull { shownStage in it.stageRange && it.matchesVariant(shownVariant, def, shownStage) }
             ?: return
 

@@ -6,6 +6,7 @@ import net.minecraft.ChatFormatting
 import net.minecraft.client.Minecraft
 import net.minecraft.network.chat.Component
 import net.minecraft.sounds.SoundEvents
+import org.magic.magicaddons.util.SBLocation
 import org.magic.magicaddons.util.compat.McCompat
 import java.util.UUID
 import net.minecraft.world.entity.Display
@@ -33,7 +34,6 @@ import org.magic.magicaddons.util.EntityUtils
 import tech.thatgravyboat.skyblockapi.api.SkyBlockAPI
 import tech.thatgravyboat.skyblockapi.api.events.base.Subscription
 import tech.thatgravyboat.skyblockapi.api.events.location.IslandChangeEvent
-import tech.thatgravyboat.skyblockapi.api.location.LocationAPI
 import tech.thatgravyboat.skyblockapi.api.location.SkyBlockIsland
 
 object SafariHelper : HighlightFeature() {
@@ -53,8 +53,8 @@ object SafariHelper : HighlightFeature() {
             get() = ConfigTarget(SafariHelper, listOf(baseSetting, uniqueTrackingSetting))
 
         override fun currentContent(): HudContent? {
-            if (!baseSetting.value || !uniqueTrackingSetting.value) return null
-            if (LocationAPI.island != SkyBlockIsland.SAFARI) return null
+            if (!uniqueTrackingSetting.isEnabled) return null
+            if (!SBLocation.Safari.inside()) return null
 
             return HudContent(hudLines().map { HudLine.Text(it) })
         }
@@ -302,7 +302,7 @@ object SafariHelper : HighlightFeature() {
 
     @EventHandler
     fun onWorldTick(event: WorldTickEvent) {
-        val zone = if (LocationAPI.island == SkyBlockIsland.SAFARI) {
+        val zone = if (SBLocation.Safari.inside()) {
             Minecraft.getInstance().player?.position()?.let { SafariZone.at(it) }
         } else {
             null

@@ -12,6 +12,7 @@ import org.magic.magicaddons.data.greenhouse.transfer.LayoutTransferResult
 import org.magic.magicaddons.ui.HoverableContainer
 import org.magic.magicaddons.ui.OverlayContext
 import org.magic.magicaddons.ui.widgets.ClickableButtonWidget
+import org.magic.magicaddons.ui.widgets.DropdownWidget
 import org.magic.magicaddons.ui.widgets.PickContext
 import org.magic.magicaddons.ui.widgets.PickWithOptionContext
 import org.magic.magicaddons.util.ChatUtils
@@ -41,9 +42,17 @@ abstract class ActionPanel(protected val overlayContext: OverlayContext) : Rende
 
     protected open fun groupLabel(group: Int): String? = null
 
+    protected open val dropdowns: List<DropdownWidget<*>> = emptyList()
+
+    protected open fun isShown(dropdown: DropdownWidget<*>): Boolean = true
+
+    protected open fun groupOf(dropdown: DropdownWidget<*>): Int = 0
+
     private val groupLabelPositions = mutableMapOf<Int, Pair<Int, Int>>()
 
     private val font get() = Minecraft.getInstance().font
+
+    private fun shownDropdowns(): List<DropdownWidget<*>> = dropdowns.filter { isShown(it) }
 
     fun layoutIn(x: Int, y: Int, availableWidth: Int) {
         this.x = x
@@ -52,8 +61,10 @@ abstract class ActionPanel(protected val overlayContext: OverlayContext) : Rende
         groupLabelPositions.clear()
 
         var rowY = y + PADDING + headerHeight()
+        val shownButtonsByGroup = buttons.filter { isShown(it) }.groupBy { groupOf(it) }
+        val shownDropdownsByGroup = shownDropdowns().groupBy { groupOf(it) }
 
-        buttons.filter { isShown(it) }.groupBy { groupOf(it) }.toSortedMap().forEach { (group, shownButtons) ->
+        (shownButtonsByGroup.keys + shownDropdownsByGroup.keys).sorted().forEach { group ->
             groupLabel(group)?.let {
                 groupLabelPositions[group] = (x + PADDING) to rowY
                 rowY += font.lineHeight + Common.UI.SPACING
@@ -62,29 +73,41 @@ abstract class ActionPanel(protected val overlayContext: OverlayContext) : Rende
             var rowX = x + PADDING
             var rowHeight = 0
 
-            shownButtons.forEach { button ->
-                if (rowX + button.width > x + availableWidth - PADDING && rowX > x + PADDING) {
+            fun place(width: Int, height: Int): Pair<Int, Int> {
+                if (rowX + width > x + availableWidth - PADDING && rowX > x + PADDING) {
                     rowX = x + PADDING
                     rowY += rowHeight + Common.UI.SPACING
                     rowHeight = 0
                 }
+                val at = rowX to rowY
+                rowX += width + Common.UI.SPACING
+                rowHeight = maxOf(rowHeight, height)
+                return at
+            }
 
-                button.x = rowX
-                button.y = rowY
-
-                rowX += button.width + Common.UI.SPACING
-                rowHeight = maxOf(rowHeight, button.height)
+            shownButtonsByGroup[group].orEmpty().forEach { button ->
+                val (buttonX, buttonY) = place(button.width, button.height)
+                button.x = buttonX
+                button.y = buttonY
+            }
+            shownDropdownsByGroup[group].orEmpty().forEach { dropdown ->
+                dropdown.fitToValues(availableWidth - PADDING * 2)
+                dropdown.height = ClickableButtonWidget.DEFAULT_HEIGHT
+                val (dropdownX, dropdownY) = place(dropdown.width, dropdown.height)
+                dropdown.x = dropdownX
+                dropdown.y = dropdownY
             }
 
             rowY += rowHeight + Common.UI.SPACING_LARGE
         }
     }
 
-    fun hasShownButtons(): Boolean = buttons.any { isShown(it) }
+    fun hasShownButtons(): Boolean = buttons.any { isShown(it) } || shownDropdowns().isNotEmpty()
 
     val contentHeight: Int
         get() {
-            val bottom = buttons.filter { isShown(it) }.maxOfOrNull { it.y + it.height } ?: return 0
+            val bottom = (buttons.filter { isShown(it) }.map { it.y + it.height } + shownDropdowns().map { it.y + it.height })
+                .maxOrNull() ?: return 0
 
             return bottom - y + PADDING
         }
@@ -95,9 +118,11 @@ abstract class ActionPanel(protected val overlayContext: OverlayContext) : Rende
         }
         buttons.filter { isShown(it) }
             .forEach { it.extractRenderState(graphics, mouseX, mouseY, delta) }
+        shownDropdowns().forEach { it.extractRenderState(graphics, mouseX, mouseY, delta) }
     }
 
     open fun mouseClicked(mouseButtonEvent: MouseButtonEvent, doubled: Boolean): Boolean {
+        if (shownDropdowns().any { it.mouseClicked(mouseButtonEvent, doubled) }) return true
         buttons.filter { isShown(it) }.forEach { button ->
             if (button.mouseClicked(mouseButtonEvent, doubled)) {
                 return onPressed(button, mouseButtonEvent)
@@ -109,6 +134,7 @@ abstract class ActionPanel(protected val overlayContext: OverlayContext) : Rende
 
     open fun mouseMoved(mouseX: Double, mouseY: Double) {
         buttons.forEach { it.mouseMoved(mouseX, mouseY) }
+        dropdowns.forEach { it.mouseMoved(mouseX, mouseY) }
         hoveredElement = buttons.firstOrNull { isShown(it) && it.isMouseOver(mouseX, mouseY) }
     }
 

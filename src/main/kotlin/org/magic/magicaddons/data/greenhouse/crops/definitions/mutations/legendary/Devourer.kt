@@ -32,7 +32,7 @@ object Devourer {
         standPoses = mapOf(
             "d5dcd6e26e5ab3c3a60ccc824c05b0fd195f526961019d3249776e8d57399d27" to StandPose.Fixed(Rotations(0.0f, 45.0f, 0.0f), yRotation = 90.0f)
         ),
-        stages = listOf(
+        growingStages = listOf(
             CropStage(
                 blocks = listOf(
                     StageBlock(

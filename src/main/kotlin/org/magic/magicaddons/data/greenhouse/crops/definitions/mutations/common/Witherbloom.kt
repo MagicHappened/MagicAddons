@@ -18,13 +18,14 @@ object Witherbloom {
 
     val definition = CropDefinition(
         name = "Witherbloom",
+        minMutationsBeforeDecay = 10,
         tier = CropTier.Common,
         dropMultiplier = 0.23,
         effects = setOf(
             CropEffect.EffectSpread
         ),
         skyblockId = SkyBlockItemId.item("WITHERBLOOM"),
-        stages = listOf(
+        growingStages = listOf(
             CropStage(
                 blocks = listOf(
                     StageBlock(

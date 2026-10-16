@@ -16,6 +16,7 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Ashwreath {
     val definition = CropDefinition(
         name = "Ashwreath",
+        minMutationsBeforeDecay = 10,
         tier = CropTier.Common,
         dropMultiplier = 0.15,
         effects = setOf(
@@ -23,7 +24,7 @@ object Ashwreath {
             CropEffect.XpLoss
         ),
         skyblockId = SkyBlockItemId.item("ASHWREATH"),
-        stages = listOf(
+        growingStages = listOf(
             CropStage(
                 blocks = listOf(
                     StageBlock(

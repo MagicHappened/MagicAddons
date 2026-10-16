@@ -9,6 +9,7 @@ import net.minecraft.resources.Identifier
 import net.minecraft.world.entity.Display
 import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.EquipmentSlot
+import net.minecraft.world.entity.HumanoidArm
 import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.decoration.ArmorStand
 import net.minecraft.client.player.LocalPlayer
@@ -20,6 +21,9 @@ import net.minecraft.world.level.Level
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.HitResult
 import net.minecraft.world.phys.Vec3
+import org.joml.Matrix4f
+import org.joml.Quaternionf
+import org.joml.Vector3f
 import org.magic.magicaddons.data.EntityInfo
 import org.magic.magicaddons.events.EventBus
 import org.magic.magicaddons.events.EventHandler
@@ -362,6 +366,51 @@ object EntityUtils {
             if (stack.isEmpty || PlayerUtils.getSkinHash(stack) != null) null
             else slot to BuiltInRegistries.ITEM.getKey(stack.item).toString()
         }
+
+    private const val ARM_PIVOT_X: Float = 5f
+    private const val ARM_PIVOT_Y: Float = 2f
+    private const val SMALL_BODY_Y_OFFSET: Float = 24f
+    private const val SMALL_PART_SCALE: Float = 0.5f
+    private const val MODEL_Y_OFFSET: Float = -1.501f
+    private const val HELD_SKULL_LIFT: Float = 3f
+    private const val HELD_SKULL_TILT: Float = 45f
+    private const val HELD_SKULL_SCALE: Float = 0.5f
+
+    fun heldItemPosition(stand: ArmorStand): Vec3? {
+        val arm = when {
+            !stand.getItemBySlot(EquipmentSlot.MAINHAND).isEmpty -> stand.mainArm
+            !stand.getItemBySlot(EquipmentSlot.OFFHAND).isEmpty -> stand.mainArm.opposite
+            else -> return null
+        }
+        val isLeft = arm == HumanoidArm.LEFT
+        val side = if (isLeft) 1f else -1f
+        val pose = if (isLeft) stand.leftArmPose else stand.rightArmPose
+        val partScale = if (stand.isSmall) SMALL_PART_SCALE else 1f
+        val shoulderY = ARM_PIVOT_Y + if (stand.isSmall) SMALL_BODY_Y_OFFSET else 0f
+
+        val hand = Matrix4f()
+            .rotateY(Math.toRadians(180.0 - stand.yBodyRot).toFloat())
+            .scale(-1f, -1f, 1f)
+            .translate(0f, MODEL_Y_OFFSET, 0f)
+            .translate(side * ARM_PIVOT_X * partScale / 16f, shoulderY * partScale / 16f, 0f)
+            .rotate(Quaternionf().rotationZYX(radians(pose.z), radians(pose.y), radians(pose.x)))
+            .scale(partScale)
+            .rotateX(radians(-90f))
+            .rotateY(radians(180f))
+            .translate(-side / 16f, 2f / 16f, -10f / 16f)
+            .translate(0f, HELD_SKULL_LIFT / 16f, 0f)
+            .rotate(Quaternionf().rotationXYZ(radians(HELD_SKULL_TILT), radians(side * -HELD_SKULL_TILT), 0f))
+            .scale(HELD_SKULL_SCALE)
+            .transformPosition(Vector3f())
+
+        return stand.position().add(hand.x.toDouble(), hand.y.toDouble(), hand.z.toDouble())
+    }
+
+    private fun radians(degrees: Float): Float = Math.toRadians(degrees.toDouble()).toFloat()
+
+    fun shownAt(stand: ArmorStand): Vec3 = heldItemPosition(stand) ?: stand.position()
+
+    fun cellOf(stand: ArmorStand): BlockPos = BlockPos.containing(shownAt(stand))
 
     fun itemIdIn(entity: LivingEntity, slot: EquipmentSlot): String? {
         val stack = entity.getItemBySlot(slot)

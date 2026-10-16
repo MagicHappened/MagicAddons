@@ -2,6 +2,8 @@ package org.magic.magicaddons.features.farming.greenhousePresets.greenhousesStat
 
 import java.time.Duration
 import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import net.minecraft.core.BlockPos
 import net.minecraft.network.chat.Component
 import net.minecraft.world.item.ItemStack
@@ -9,8 +11,13 @@ import net.minecraft.world.item.Items
 import org.magic.magicaddons.Common
 import org.magic.magicaddons.commands.debug.CropCollector
 import org.magic.magicaddons.data.greenhouse.crops.*
+import org.magic.magicaddons.data.greenhouse.plot.Diagnosis
+import org.magic.magicaddons.data.greenhouse.plot.GREENHOUSE_SOIL_Y
+import org.magic.magicaddons.data.greenhouse.plot.TimesMutatedCounter
+import org.magic.magicaddons.events.greenhouse.GreenhouseChangedEvent
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhousePresets.baseSetting
 import org.magic.magicaddons.util.ChatUtils
+import org.magic.magicaddons.util.SBLocation
 import org.magic.magicaddons.util.parseDurationToMs
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockId.Companion.getSkyBlockId
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
@@ -19,6 +26,30 @@ import tech.thatgravyboat.skyblockapi.utils.extentions.getLore
 object PlantDiagnostics {
 
     private const val WATER_LABEL: String = "Water"
+
+    private var isCombinedMutationOutputOn: Boolean = false
+
+    fun toggleCombinedMutationOutput() {
+        isCombinedMutationOutputOn = !isCombinedMutationOutputOn
+        ChatUtils.sendWithPrefix("Combined mutation output ${if (isCombinedMutationOutputOn) "on" else "off"}.")
+    }
+
+    private fun sendCombinedMutationLine(toolCrop: CropDefinition?, listening: ScannedPlant?, hit: BlockPos?, saplingLore: List<Component>) {
+        val grid = GreenhouseData.getCurrentGrid()
+        val slot = listening?.plant?.slot
+            ?: hit?.let { grid?.getSlotAt(BlockPos(it.x, GREENHOUSE_SOIL_Y, it.z), false) }
+        val storedPlant = listening?.plant ?: slot?.let { grid?.elementCoveringSlot(it)?.plant }
+
+        val combinedMutatesRemaining = saplingLore.valueFor("Combined Mutates Remaining")
+        val remaining = combinedMutatesRemaining ?: saplingLore.valueFor("Mutates Remaining")
+        val position = slot?.let { "${it.x},${it.y}" } ?: "?"
+
+        ChatUtils.sendWithPrefix(
+            "${toolCrop?.name ?: "unknown"} : ${storedPlant?.cropDef?.name ?: "unknown"} $position, " +
+                    "contributed to: ${saplingLore.valueFor("Times Mutated") ?: "?"}, " +
+                    "remaining mutations ${remaining ?: "?"}, combined: ${combinedMutatesRemaining != null}"
+        )
+    }
 
     fun readDiagnosticTool(realItems: List<ItemStack>, listening: ScannedPlant?, hit: BlockPos?) {
         if (!baseSetting.value) return
@@ -75,13 +106,17 @@ object PlantDiagnostics {
             sendLoreOnHover("Could not read the status, hover to see details", beaconLore)
         }
 
+        if (isCombinedMutationOutputOn) sendCombinedMutationLine(def, listening, hit, saplingLore)
+
         val age = saplingLore.valueFor("Age")
+        val timesMutated = saplingLore.valueFor("Times Mutated")?.toIntOrNull()
+        val decayAttemptInMs = saplingLore.valueFor("Decay attempt in")?.parseDurationToMs()
 
         // "Stage: 1/15"
         val stageRaw = saplingLore.valueFor("Stage")?.substringBefore('/')?.trim()
             ?.let { raw ->
                 when {
-                    raw.equals("FULLY GROWN", ignoreCase = true) -> def?.maxStage
+                    raw.equals("FULLY GROWN", ignoreCase = true) -> def?.takeUnless { it.resetsToFirstStage }?.maxStage
                     raw.equals("DEAD", ignoreCase = true) -> {
                         if (def?.skyblockId == SkyBlockItemId.item("DEAD_PLANT"))
                             return@let 1
@@ -95,29 +130,41 @@ object PlantDiagnostics {
         val nextStage = saplingLore.valueFor("Next Stage")
 
         if (nextStage?.contains(Regex("\\d")) ?: false) {
-            if (GreenhouseData.inOwnGreenhouse()) {
+            if (SBLocation.OwnGreenhouse.inside()) {
                 val lastTickTime = GreenhouseData.miscInfo.nextTickTime
+                val correctedTickTime = Instant.now().plusMillis(nextStage.parseDurationToMs())
 
-                GreenhouseData.miscInfo.nextTickTime = Instant.now().plusMillis(nextStage.parseDurationToMs())
+                GreenhouseData.miscInfo.nextTickTime = correctedTickTime
                 GreenhouseData.lastCheckTime = Instant.now()
 
-                lastTickTime?.let {
-                    val movedSeconds = Duration.between(it, GreenhouseData.miscInfo.nextTickTime).toSeconds()
-
-                    Common.LOGGER.info("[tick] resynced from the game: countdown moved ${movedSeconds}s")
-                }
+                val tickPassedSinceLastReading = previousReadingTickTime?.let { !Instant.now().isBefore(it) } == true
+                if (tickPassedSinceLastReading) lastTickTime?.let { logTickCorrection(it, correctedTickTime) }
+                previousReadingTickTime = correctedTickTime
+                GreenhouseData.lagAdjustmentSinceReadingMs = 0
 
                 GreenhouseData.realignWithGameTime()
             }
         }
 
-        val target = listening?.takeIf { GreenhouseData.inOwnGarden() }?.let { disputeRecordWith(it, def, statusPage) }
+        val target = listening?.takeIf { SBLocation.OwnGarden.inside() }?.let { disputeRecordWith(it, def, statusPage) }
 
         target?.let { element ->
             age?.parseDurationToMs()?.let { element.plant.appearedAt = System.currentTimeMillis() - it }
             stageRaw?.let { element.plant.growthStage = PlantStage.Known(it) }
 
             val plant = element.plant
+            timesMutated?.let { timesMutated ->
+                val combinedMutatesRemaining = saplingLore.valueFor("Combined Mutates Remaining")?.toIntOrNull()
+                GreenhouseData.getCurrentGrid()?.let { grid ->
+                    val reading = Diagnosis(timesMutated, combinedMutatesRemaining, System.currentTimeMillis())
+                    TimesMutatedCounter.applyDiagnosis(grid.layout, plant, reading, grid.state.uncertainSpawns)
+                    GreenhouseData.recountMutations(grid)
+                }
+            }
+            decayAttemptInMs?.let {
+                val attemptAt = System.currentTimeMillis() + it
+                plant.decayAttemptAt = if (age != null) plant.decayTimerEndBehind(attemptAt) else attemptAt
+            }
             if (plant.cropDef.isMutation) {
                 val stage = stageRaw ?: plant.highestStage
                 val grown = stage != null && stage >= plant.cropDef.maxStage
@@ -134,6 +181,7 @@ object PlantDiagnostics {
                 element.plant.waterPredictedNegative = false
                 element.plant.waterExact = true
             }
+            GreenhouseData.getCurrentGrid()?.let { GreenhouseData.noteGridUpdated(it, GreenhouseChangedEvent.Source.Diagnosis) }
         }
 
         if (!CropCollector.isCollectorActive()) return
@@ -209,5 +257,27 @@ object PlantDiagnostics {
         }.joinToString("\n")
 
         ChatUtils.sendWithCopyableHover(message, dump)
+    }
+
+    private var previousReadingTickTime: Instant? = null
+
+    private val TICK_LOG_TIME: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss").withZone(ZoneId.systemDefault())
+
+    private fun logTickCorrection(lagCounterPrediction: Instant, correctedTickTime: Instant) {
+        Common.LOGGER.info("[tick] Tick time corrected to ${TICK_LOG_TIME.format(correctedTickTime)}")
+
+        val wallClockPrediction = lagCounterPrediction.minusMillis(GreenhouseData.lagAdjustmentSinceReadingMs)
+        Common.LOGGER.info("[tick] Wall clock predicted ${describePrediction(wallClockPrediction, correctedTickTime)}")
+        Common.LOGGER.info("[tick] Server lag counter predicted ${describePrediction(lagCounterPrediction, correctedTickTime)}")
+    }
+
+    private fun describePrediction(predicted: Instant, actual: Instant): String {
+        val offSeconds = Duration.between(actual, predicted).toSeconds()
+        val offBy = when {
+            offSeconds > 0 -> "${offSeconds}s late"
+            offSeconds < 0 -> "${-offSeconds}s early"
+            else -> "exact"
+        }
+        return "${TICK_LOG_TIME.format(predicted)} ($offBy)"
     }
 }

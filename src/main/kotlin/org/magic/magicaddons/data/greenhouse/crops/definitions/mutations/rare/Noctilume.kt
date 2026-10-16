@@ -7,6 +7,7 @@ import org.magic.magicaddons.data.greenhouse.crops.CropBlocks.wheatState
 import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
 import org.magic.magicaddons.data.greenhouse.crops.CropEffect
 import org.magic.magicaddons.data.greenhouse.crops.CropStage
+import org.magic.magicaddons.data.greenhouse.crops.PlacedStage
 import org.magic.magicaddons.data.greenhouse.crops.CropTier
 import org.magic.magicaddons.data.greenhouse.crops.Footprint
 import org.magic.magicaddons.data.greenhouse.crops.SIX_DAY_DECAY_TIME_MS
@@ -19,6 +20,9 @@ import org.magic.magicaddons.data.greenhouse.crops.definitions.mutations.uncommo
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
 object Noctilume {
+
+    private const val NIGHT_CRAVING_GROWN_HASH = "b1b18493d50ff8972f7ef359893d9063fdc54cb822c679002957c294fc8b0005"
+    private const val DAY_CRAVING_GROWN_HASH = "5cdd8c3d5d76a1dc07cdbedc5fd0bb230852df9c1864896f8893f5bfdf3d4c96"
 
     private val wheatPositions = listOf(
         BlockPos(0, 1, 0),
@@ -86,8 +90,20 @@ object Noctilume {
         traits = craving?.let { mapOf(StandReader.NEEDS_TIME to it) } ?: emptyMap()
     )
 
+    private fun placedStage(hash: String, craving: Int): PlacedStage = PlacedStage.lookingLike(
+        generateStage(
+            stage = 4,
+            hash = hash,
+            craving = craving,
+            wheatAge = 5,
+            offsets = grownOffsets,
+            fullSized = setOf(0, 1, 2, 3)
+        )
+    )
+
     val definition = CropDefinition(
         name = "Noctilume",
+        minMutationsBeforeDecay = 8,
         tier = CropTier.Rare,
         dropMultiplier = 5.3,
         effects = setOf(
@@ -96,7 +112,7 @@ object Noctilume {
             CropEffect.HarvestLoss
         ),
         skyblockId = SkyBlockItemId.item("NOCTILUME"),
-        stages = listOf(
+        growingStages = listOf(
             generateStage(
                 stage = 1,
                 hash = "281e8164cf7af240cc235d4826996013bd045de20d40abd262145dc24c790a09",
@@ -145,7 +161,7 @@ object Noctilume {
             ),
             generateStage(
                 stage = 4,
-                hash = "b1b18493d50ff8972f7ef359893d9063fdc54cb822c679002957c294fc8b0005",
+                hash = NIGHT_CRAVING_GROWN_HASH,
                 craving = StandReader.NEEDS_NIGHT,
                 wheatAge = 6,
                 offsets = grownOffsets,
@@ -153,12 +169,16 @@ object Noctilume {
             ),
             generateStage(
                 stage = 4,
-                hash = "5cdd8c3d5d76a1dc07cdbedc5fd0bb230852df9c1864896f8893f5bfdf3d4c96",
+                hash = DAY_CRAVING_GROWN_HASH,
                 craving = StandReader.NEEDS_DAY,
                 wheatAge = 6,
                 offsets = grownOffsets,
                 fullSized = setOf(0, 1, 2, 3)
             )
+        ),
+        placedStages = listOf(
+            placedStage(hash = NIGHT_CRAVING_GROWN_HASH, craving = StandReader.NEEDS_NIGHT),
+            placedStage(hash = DAY_CRAVING_GROWN_HASH, craving = StandReader.NEEDS_DAY)
         ),
         decayTimeMs = SIX_DAY_DECAY_TIME_MS,
         maxStage = 4,

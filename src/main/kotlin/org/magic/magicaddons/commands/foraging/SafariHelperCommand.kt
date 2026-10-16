@@ -1,4 +1,4 @@
-package org.magic.magicaddons.commands.features.foraging
+package org.magic.magicaddons.commands.foraging
 
 import com.mojang.brigadier.builder.LiteralArgumentBuilder
 import com.mojang.brigadier.builder.LiteralArgumentBuilder.literal
@@ -12,7 +12,7 @@ import org.magic.magicaddons.util.ChatUtils
 
 object SafariHelperCommand : AbstractCommand() {
 
-    override val argument: String = "SafariHelper"
+    override val argument: String = "safari"
 
     override fun build(): LiteralArgumentBuilder<FabricClientCommandSource> {
         val remainingMobs = literal<FabricClientCommandSource>("SendRemainingMobs")

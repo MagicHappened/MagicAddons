@@ -92,40 +92,83 @@ data class PlotLayout(
         val hashNow = plantsHash()
         if (hashNow != previousPlantHash) {
             effectsCache.clear()
+            appliedEffectsBySlot = null
             previousPlantHash = hashNow
         }
         return effectsCache.getOrPut(slot.x * SLOT_KEY_STRIDE + slot.y) { computeEffectsAt(slot) }
     }
 
+    fun decayOutlookOf(plant: Plant): DecayOutlook = PlotPrediction.decayOutlookOf(this, plant, ::spawnSpotsHelpedBy)
+
+    fun helpsTeleportingMutationSpawn(plant: Plant): Boolean = spawnSpotsHelpedBy(plant)?.hasTeleportingMutation == true
+
+    private fun spawnSpotsHelpedBy(plant: Plant): PlotPrediction.HelpedSpawnSpots? {
+        val hashNow = plantsHash()
+        val helpedSpotsBySlot = helpedSpawnSpotsBySlot?.takeIf { hashNow == helpedSpawnSpotsHash }
+            ?: PlotPrediction.spawnSpotsHelpedByPlant(this).mapKeys { slotKeyOf(it.key) }.also {
+                helpedSpawnSpotsBySlot = it
+                helpedSpawnSpotsHash = hashNow
+            }
+        return helpedSpotsBySlot[slotKeyOf(plant)]
+    }
+
+    private var helpedSpawnSpotsBySlot: Map<Int, PlotPrediction.HelpedSpawnSpots>? = null
+
+    private var helpedSpawnSpotsHash: Int = 0
+
     private val effectsCache = HashMap<Int, Set<CropEffect>>()
+
+    private var appliedEffectsBySlot: Map<Int, Set<CropEffect>>? = null
 
     private var previousPlantHash: Int = 0
 
     private fun plantsHash(): Int {
         var hash = plants.size
-        plants.forEach { hash = hash * 31 + (it.slot.x * SLOT_KEY_STRIDE + it.slot.y) * 31 + it.cropDef.name.hashCode() }
+        plants.forEach {
+            hash = hash * 31 + (it.slot.x * SLOT_KEY_STRIDE + it.slot.y) * 31 + it.cropDef.name.hashCode()
+            if (it.isHalted) hash = hash * 31 + 1
+            if (it.isFullyGrown) hash = hash * 31 + 2
+        }
         return hash
     }
 
     private fun computeEffectsAt(slot: LayoutSlot): Set<CropEffect> {
-        val neighbours = plants.filter { !it.covers(slot) && it.isOrthogonallyBeside(slot) }
+        val appliedBySlot = appliedEffectsBySlot ?: computeAppliedEffects().also { appliedEffectsBySlot = it }
 
-        val effects = neighbours.flatMapTo(mutableSetOf()) { it.cropDef.effects }
+        return plants
+            .filter { !it.covers(slot) && it.isOrthogonallyBeside(slot) && !it.isHalted }
+            .flatMapTo(mutableSetOf()) { appliedBySlot.getValue(slotKeyOf(it)) }
+    }
 
-        neighbours.forEach { neighbour ->
-            val neighbourEffects = grantedToSlotBeforeSpread(neighbour.slot)
+    // calculated east to west and north to south
+    private fun computeAppliedEffects(): Map<Int, Set<CropEffect>> {
+        val appliedBySlot = HashMap<Int, Set<CropEffect>>()
+        plants.forEach { appliedBySlot[slotKeyOf(it)] = it.cropDef.effects }
 
-            if (CropEffect.EffectSpread in neighbourEffects) {
-                effects += neighbourEffects - CropEffect.EffectSpread
+        plants
+            .sortedWith(compareByDescending<Plant> { it.slot.x }.thenBy { it.slot.y })
+            .forEach { plant ->
+                val received = plantsOrthogonallyBeside(plant).filterNot { it.isHalted }.flatMapTo(mutableSetOf()) { appliedBySlot.getValue(slotKeyOf(it)) }
+
+                if (CropEffect.EffectSpread in received) {
+                    appliedBySlot[slotKeyOf(plant)] = plant.cropDef.effects + (received - CropEffect.EffectSpread)
+                }
+            }
+
+        return appliedBySlot
+    }
+
+    private fun slotKeyOf(plant: Plant): Int = plant.slot.x * SLOT_KEY_STRIDE + plant.slot.y
+
+    private fun plantsOrthogonallyBeside(plant: Plant): List<Plant> =
+        plants.filter { other ->
+            other !== plant && plant.coveredCells.any { (cellX, cellY) ->
+                other.coveredCells.any { (otherX, otherY) -> abs(cellX - otherX) + abs(cellY - otherY) == 1 }
             }
         }
 
-        return effects
-    }
-
-    private fun grantedToSlotBeforeSpread(slot: LayoutSlot): Set<CropEffect> = plants
-        .filter { !it.covers(slot) && it.isOrthogonallyBeside(slot) }
-        .flatMapTo(mutableSetOf()) { it.cropDef.effects }
+    fun effectsReceivedBy(plant: Plant): Set<CropEffect> =
+        plant.coveredCells.mapNotNull { (cellX, cellY) -> getSlot(cellX, cellY) }.flatMapTo(mutableSetOf()) { effectsAt(it) }
 
     fun waterEffectAt(slot: LayoutSlot): Int = CropEffect.appliedEffect(effectsAt(slot), CropEffect.EffectKind.Water)
 

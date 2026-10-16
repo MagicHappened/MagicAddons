@@ -11,6 +11,7 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Shellfruit {
     val definition = CropDefinition(
         name = "Shellfruit",
+        minMutationsBeforeDecay = 6,
         tier = CropTier.Epic,
         dropMultiplier = 0.5,
         effects = setOf(
@@ -18,7 +19,7 @@ object Shellfruit {
             CropEffect.Immunity
         ),
         skyblockId = SkyBlockItemId.item("SHELLFRUIT"),
-        stages = listOf(
+        growingStages = listOf(
             CropStage(
                 blocks = listOf(
                 ),

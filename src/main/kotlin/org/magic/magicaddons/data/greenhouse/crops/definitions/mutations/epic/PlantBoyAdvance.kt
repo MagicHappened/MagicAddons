@@ -7,6 +7,7 @@ import org.magic.magicaddons.data.greenhouse.crops.CropBlocks.melonStemState
 import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
 import org.magic.magicaddons.data.greenhouse.crops.CropEffect
 import org.magic.magicaddons.data.greenhouse.crops.CropStage
+import org.magic.magicaddons.data.greenhouse.crops.PlacedStage
 import org.magic.magicaddons.data.greenhouse.crops.CropTier
 import org.magic.magicaddons.data.greenhouse.crops.FIVE_DAY_DECAY_TIME_MS
 import org.magic.magicaddons.data.greenhouse.crops.Footprint
@@ -20,6 +21,7 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object PlantBoyAdvance {
     val definition = CropDefinition(
         name = "PlantBoy Advance",
+        minMutationsBeforeDecay = 6,
         tier = CropTier.Epic,
         dropMultiplier = 23.0,
         effects = setOf(
@@ -30,7 +32,7 @@ object PlantBoyAdvance {
             "765accb195aad0d7212eedd647e3f80ed5d4acdffe4329ead074f7587f366457" to StandPose.Fixed(Rotations(-22.5f, 0.0f, 0.0f)),
             "f10e337f0a17a99e94bed4e8b13d5c7863debdd301f457da19763cf73a34d200" to StandPose.Fixed(Rotations(-45.0f, 0.0f, 0.0f))
         ),
-        stages = listOf(
+        growingStages = listOf(
             CropStage(
                 blocks = StageBlock.atPositions(
                     positions = listOf(
@@ -426,7 +428,7 @@ object PlantBoyAdvance {
                 11..11
             ),
             CropStage(
-                blocks =             StageBlock.atPositions(
+                blocks = StageBlock.atPositions(
                     listOf(
                         BlockPos(0, 1, 0),
                         BlockPos(1, 1, 0)
@@ -467,6 +469,47 @@ object PlantBoyAdvance {
 
         ),
         decayTimeMs = FIVE_DAY_DECAY_TIME_MS,
+        placedStages = listOf(
+            PlacedStage(
+                blocks = StageBlock.atPositions(
+                    positions = listOf(
+                        BlockPos(0, 1, 0),
+                        BlockPos(1, 1, 0)
+                    ),
+                    blockState = melonStemState(7)
+                ) +             StageBlock.atPositions(
+                    positions = listOf(
+                        BlockPos(0, 1, 1),
+                        BlockPos(1, 1, 1)
+                    ),
+                    blockState = melonStemState(4)
+                ),
+                armorStands = StageStand.atOffsets(
+                    offsets = listOf(
+                        Vec3(0.5, -0.65625, 0.0),
+                        Vec3(-0.5, -0.65625, 0.0)
+                    ),
+                    isSmall = false,
+                    rotations = listOf(
+                        Rotations(45.0f, 180.0f, 0.0f),
+                        Rotations(45.0f, 0.0f, 0.0f)
+                    ),
+                    yRotations = listOf(
+                        90.0f,
+                        90.0f
+                    ),
+                    hashString = "9eaf5fc0bf98649111f53d7516b18dec5d9d13f19273bef2b2b04f068ca9d337"
+                ) +
+                listOf(
+                    StageStand(
+                        offset = Vec3(0.0, -0.4375, 0.0),
+                        isSmall = false,
+                        headRotation = Rotations(-22.5f, 0.0f, 0.0f),
+                        hashString = "765accb195aad0d7212eedd647e3f80ed5d4acdffe4329ead074f7587f366457"
+                    )
+                )
+            )
+        ),
         maxStage = 12,
         footprint = Footprint(2, 2),
         rotatesWithPlot = false,

@@ -21,6 +21,7 @@ import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
 import org.magic.magicaddons.data.greenhouse.crops.CropRegistry
 import org.magic.magicaddons.data.greenhouse.crops.Footprint
 import org.magic.magicaddons.data.greenhouse.crops.Plant
+import org.magic.magicaddons.data.greenhouse.plot.DiagnosticPlanner
 import org.magic.magicaddons.data.greenhouse.plot.GREENHOUSE_SIZE
 import org.magic.magicaddons.data.greenhouse.plot.GreenhouseGrid
 import org.magic.magicaddons.data.greenhouse.plot.GreenhouseLayout
@@ -35,7 +36,9 @@ import org.magic.magicaddons.features.farming.greenhousePresets.PlannerNeeds
 import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseData
 import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseTickTime
 import org.magic.magicaddons.features.farming.greenhousePresets.lookups.BioanalysisAccessory
+import org.magic.magicaddons.features.farming.greenhousePresets.render.DiagnosticHighlight
 import org.magic.magicaddons.features.farming.greenhousePresets.render.PlantHighlight
+import org.magic.magicaddons.features.farming.greenhousePresets.warnings.PlantWarnings
 import org.magic.magicaddons.ui.HoverableContainer
 import org.magic.magicaddons.ui.OverlayContext
 import org.magic.magicaddons.ui.OverlayRenderable
@@ -52,21 +55,23 @@ import org.magic.magicaddons.ui.widgets.greenhouse.PlantWidget
 import org.magic.magicaddons.ui.widgets.greenhouse.GreenhousePanel
 import org.magic.magicaddons.ui.widgets.greenhouse.GridWidget
 import org.magic.magicaddons.ui.widgets.greenhouse.MarkChoice
+import org.magic.magicaddons.ui.widgets.greenhouse.PlacedChoice
+import org.magic.magicaddons.features.farming.greenhousePresets.lookups.CropSupply
 import org.magic.magicaddons.ui.widgets.greenhouse.PaletteItem
 import org.magic.magicaddons.ui.widgets.greenhouse.PlantLabelTabs
 import org.magic.magicaddons.ui.widgets.greenhouse.PlantPalette
 import org.magic.magicaddons.ui.widgets.greenhouse.PresetPanel
 import org.magic.magicaddons.ui.widgets.greenhouse.RenameContext
 import org.magic.magicaddons.ui.widgets.greenhouse.ScrollHint
-import org.magic.magicaddons.commands.internal.MainInternal
-import org.magic.magicaddons.commands.internal.farming.SetTimestalkAttribute
 import org.magic.magicaddons.util.ChatUtils
+import org.magic.magicaddons.util.SBLocation
 import org.magic.magicaddons.util.ScreenUtil
 import org.magic.magicaddons.util.ScreenUtil.at
 import org.magic.magicaddons.util.ScreenUtil.textBoxHeight
 import org.magic.magicaddons.util.ScreenUtil.drawButtonPanel
 import org.magic.magicaddons.util.ScreenUtil.drawCenteredTextBox
 import org.magic.magicaddons.util.ScreenUtil.drawPanel
+import org.magic.magicaddons.util.ScreenUtil.drawScrollBar
 import org.magic.magicaddons.util.ScreenUtil.drawShelf
 import org.magic.magicaddons.util.ScreenUtil.drawSimpleTooltip
 import org.magic.magicaddons.util.ScreenUtil.drawTooltipAtCursor
@@ -79,7 +84,6 @@ import org.magic.magicaddons.util.ScreenUtil.drawItem
 import org.magic.magicaddons.util.ScreenUtil.itemStackFor
 import org.magic.magicaddons.util.toReadableDuration
 import org.magic.magicaddons.util.toShortDuration
-import tech.thatgravyboat.skyblockapi.api.location.LocationAPI
 import tech.thatgravyboat.skyblockapi.api.profile.garden.PlotAPI
 
 class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"), "the greenhouse screen"), HoverableContainer, OverlayContext {
@@ -139,11 +143,15 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
     private var viewShelfHeight: Int = 0
     private var predictShelfY: Int = 0
     private var predictShelfHeight: Int = 0
+    private var predictShelfChorusLines: Int = 0
+    private var chorusLineBox: ScreenRect? = null
+    private var chorusPlanLineBox: ScreenRect? = null
+    private var chorusPlan: ChorusPlanView? = null
     private var actionShelfY: Int = 0
 
     private var gridWidgetBeforePrediction: GridWidget? = null
 
-    private val predictSlider = SliderWidget { showPrediction(it) }
+    private val predictSlider = SliderWidget { movePrediction(it) }
 
     private var tickTimeHovered = false
 
@@ -263,6 +271,7 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
         width = (width / drawScale).toInt()
         height = (height / drawScale).toInt()
 
+        GreenhouseData.calculatePendingChorusRisks()
         initBaseLayout()
 
         GreenhouseData.warnUnknownValues()
@@ -319,8 +328,10 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
         viewShelfHeight = shelfTitleHeight() + ActionPanel.PADDING * 2 + plotsButton.height
 
         predictShelfY = viewShelfY + viewShelfHeight + Common.UI.SPACING_LARGE
+        predictShelfChorusLines = chorusLineCount()
         predictShelfHeight = if (currentDisplay == DisplayMode.Greenhouses) {
-            shelfTitleHeight() + ActionPanel.PADDING * 2 + SliderWidget.HEIGHT + Common.UI.SPACING + font.lineHeight * 2
+            shelfTitleHeight() + ActionPanel.PADDING * 2 + SliderWidget.HEIGHT + Common.UI.SPACING +
+                    font.lineHeight * (2 + predictShelfChorusLines)
         } else {
             0
         }
@@ -385,7 +396,7 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
         greenhouseGridWidgets.clear()
         val scannedGreenhouseCount = GreenhouseData.greenhouseGrids.count { it.state.lastScanTime != null }
         if (PlotAPI.plots.any { it.data == null }) {
-            if (!LocationAPI.isOnSkyBlock) {
+            if (!SBLocation.SkyBlock.inside()) {
                 ChatUtils.sendWithPrefix("Plot data is null, please join skyblock.")
             } else {
                 ChatUtils.sendWithCommand(
@@ -424,6 +435,7 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
 
         plotTabs.items = greenhouseGridWidgets.map { it.layout }
         plotTabs.selectedItem = displayedGridWidget?.layout
+        restorePrediction()
 
         layoutNameBox()
     }
@@ -495,18 +507,15 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
         val lines = tickTimeTooltip().split('\n').map { Component.literal(it).visualOrderText }
         pinnedTickTimeBox = graphics.drawTooltipLines(lines, TICK_TIME_LEFT, tickTimeBox.bottom + Common.UI.SPACING)
 
-        if (isOverTickTimeLine(mouseX, mouseY, UNIQUE_LINE)) {
+        if (isOverTickTimeLine(mouseX, mouseY, UNIQUE_CROPS_LABEL)) {
             drawMissingUniques(graphics, mouseX, mouseY)
-        }
-
-        if (isOverTickTimeLine(mouseX, mouseY, ATTRIBUTE_LINE)) {
-            graphics.drawTooltipAtCursor(SET_ATTRIBUTE_HINT, mouseX, mouseY)
         }
     }
 
     private var pinnedTickTimeBox: ScreenRect = ScreenRect(0, 0, 0, 0)
 
-    private fun isOverTickTimeLine(mouseX: Int, mouseY: Int, line: Int): Boolean {
+    private fun isOverTickTimeLine(mouseX: Int, mouseY: Int, label: String): Boolean {
+        val line = tickTimeTooltip().split('\n').indexOfFirst { it.startsWith(label) }.takeIf { it >= 0 } ?: return false
         val box = pinnedTickTimeBox
         val lineTop = box.y + ScreenUtil.TOOLTIP_PADDING + line * font.lineHeight
 
@@ -527,8 +536,9 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
     }.sortedBy { it.text }
 
     private fun drawMissingUniques(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int) {
-        val lines = missingUniques()
-        val heading = if (lines.isEmpty()) "§aEvery unique crop is growing" else "§7Missing unique crops:"
+        val isBonusMaxed = GreenhouseData.getCurrentUniques().size >= GreenhouseTickTime.uniqueCropsNeeded()
+        val lines = if (isBonusMaxed) emptyList() else missingUniques()
+        val heading = if (lines.isEmpty()) "§aUnique crop bonus is at its maximum" else "§7Unique crops you can still add:"
         val texts = (listOf(heading) + lines.map { it.text }).map { Component.literal(it).visualOrderText }
 
         graphics.drawTooltipLinesAtCursor(texts, mouseX, mouseY) { index ->
@@ -555,11 +565,18 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
             "§f%dh %dm %ds".format(seconds / 3600, seconds % 3600 / 60, seconds % 60)
         } ?: "§8?"
 
-        return listOf(
+        val uniqueCropsNeeded = GreenhouseTickTime.uniqueCropsNeeded()
+        val uniqueCropsLine = UNIQUE_CROPS_LABEL + coloredOutOf(
+            GreenhouseData.getCurrentUniques().size.coerceAtMost(uniqueCropsNeeded),
+            uniqueCropsNeeded
+        )
+
+        return listOfNotNull(
             "§7Your tick time: $tickTime",
-            "§7Unique crops: " + coloredOutOf(GreenhouseData.getCurrentUniques().size, MAX_UNIQUE_CROPS),
+            uniqueCropsLine.takeIf { uniqueCropsNeeded > 0 },
+            "§7Flora attribute: " + coloredOutOf(GreenhouseTickTime.floraAttribute(), MAX_ATTRIBUTE),
             "§7Greenhouse speed upgrade: " + coloredOutOf(misc.cropSpeedUpgradeValue, MAX_SPEED_UPGRADE),
-            "§7Greenhouse attribute: " + coloredOutOf(GreenhouseTickTime.speedAttribute(), MAX_ATTRIBUTE),
+            SPEED_ATTRIBUTE_LABEL + coloredOutOf(GreenhouseTickTime.speedAttribute(), MAX_ATTRIBUTE),
             "§7Crop growth: §f" + (misc.cropGrowthValue?.toString() ?: "§8?")
         ).joinToString("\n")
     }
@@ -604,7 +621,7 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
             else -> grid.layout.getSlot(sx, sy)?.soil?.let { PaletteItem.Soil(it) }
         } ?: return false
 
-        plantPalette.pickUp(picked)
+        plantPalette.pickUp(picked, plant?.slot?.mark)
         return true
     }
 
@@ -616,6 +633,7 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
         saveUndoSnapshot(grid.layout)
         removePlantCovering(grid, sx, sy)
         slot.soil = null
+        slot.mark = null
         grid.rebuildWidgets()
         return true
     }
@@ -624,6 +642,7 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
         val covering = grid.layout.plantCovering(sx, sy) ?: return
         grid.startVanishing(covering)
         grid.layout.plants.remove(covering)
+        covering.slot.mark = null
     }
 
     private fun markCell(sx: Int, sy: Int, marking: LayoutSlot.Marking?): Boolean {
@@ -649,6 +668,26 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
         if (acted) lastPaintedCell = cell
 
         return acted
+    }
+
+    private fun paintPlacedUnderMouse(event: MouseButtonEvent): Boolean {
+        val placed = greenhousePanel.placedChoice.placed ?: return false
+        val grid = displayedGrid() ?: return false
+        val cell = displayedGridWidget?.slotAt(event.x, event.y) ?: return false
+        if (cell == lastPaintedCell) return true
+
+        val isFirstCellOfStroke = lastPaintedCell == null
+        lastPaintedCell = cell
+        val plant = grid.layout.plantCovering(cell.first, cell.second) ?: return true
+
+        if (placed) {
+            GreenhouseData.markPlacedByHand(plant)
+        } else if (!GreenhouseData.unmarkPlacedByHand(grid, plant)) {
+            if (isFirstCellOfStroke) ChatUtils.sendWithPrefix(UNMARK_PLACED_AWAY)
+            return true
+        }
+        displayedGridWidget?.rebuildWidgets()
+        return true
     }
 
     private fun placePaletteItem(item: PaletteItem, mouseX: Double, mouseY: Double) {
@@ -680,12 +719,16 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
         if (!fitsInsideGrid(grid.layout, def, sx, sy)) return
 
         saveUndoSnapshot(grid.layout)
-        grid.layout.plants.removeAll(plantsOverlapping(grid.layout, def, sx, sy))
+        plantsOverlapping(grid.layout, def, sx, sy).forEach { replaced ->
+            grid.layout.plants.remove(replaced)
+            replaced.slot.mark = null
+        }
 
         def.requiredSoil.firstOrNull()?.let { soil ->
             def.footprint.cellsFrom(sx, sy).forEach { (cellX, cellY) -> grid.layout.getSlot(cellX, cellY)?.soil = soil }
         }
 
+        slot.mark = if (item == plantPalette.selectedItem) plantPalette.placingMark else null
         val instance = Plant(def.elementId, slot, null, null, cropDef = def)
         grid.layout.plants.add(instance)
         grid.plantsJustPlaced.add(instance)
@@ -982,6 +1025,8 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
         drawNameBox(graphics)
         drawTickTimeBox(graphics, mouseX, mouseY)
 
+        chorusPlan = chorusPlanView()
+        displayedGridWidget?.chorusMarks = chorusPlan?.marks
         displayedGridWidget?.extractRenderState(graphics, mouseX, mouseY, delta)
         if (displayedGridWidget == null && currentDisplay == DisplayMode.Presets) {
             emptyGridWidget?.extractRenderState(graphics, mouseX, mouseY, delta)
@@ -989,6 +1034,9 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
 
         graphics.drawShelf(shelfLeft, viewShelfY, shelfLeft + shelfWidth, viewShelfY + viewShelfHeight, SHELF_VIEW)
 
+        if (chorusLineCount() != predictShelfChorusLines) relayoutShelves()
+        chorusLineBox = null
+        chorusPlanLineBox = null
         if (predictShelfHeight > 0) {
             graphics.drawShelf(
                 shelfLeft,
@@ -1022,18 +1070,26 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
                 Common.UI.TEXT_COLOR,
                 false
             )
+            val chorusLineY = predictSlider.y + SliderWidget.HEIGHT + Common.UI.SPACING + font.lineHeight * 2
+            if (predictShelfChorusLines >= 1) drawChorusLine(graphics, chorusLineY)
+            if (predictShelfChorusLines >= 2) chorusPlan?.let { drawChorusPlanLine(graphics, it, chorusLineY + font.lineHeight) }
         }
 
         val panel = if (currentDisplay == DisplayMode.Greenhouses) greenhousePanel else presetPanel
         unplannedLineBox = null
+        diagnoseLineBox = null
         waterLastsLineBox = null
+        displayedGridWidget?.diagnoseCorners = emptySet()
         if (panel.hasShownButtons()) {
             val title = if (currentDisplay == DisplayMode.Greenhouses) SHELF_GREENHOUSE else SHELF_PRESET
             val lineTop = actionShelfY + shelfTitleHeight() + panel.contentHeight
             val hasPlan = displayedGridWidget?.targetPlan?.invoke() != null
-            val bottom = lineTop + if (hasPlan) UNPLANNED_LINE_HEIGHT else 0
+            val diagnoseLineTop = lineTop + if (hasPlan) UNPLANNED_LINE_HEIGHT else 0
+            val diagnosedGrid = gridBehindPrediction()?.takeIf { currentDisplay == DisplayMode.Greenhouses }
+            val bottom = diagnoseLineTop + if (diagnosedGrid != null) UNPLANNED_LINE_HEIGHT else 0
             graphics.drawShelf(shelfLeft, actionShelfY, shelfLeft + shelfWidth, bottom, title)
             if (hasPlan) renderUnplannedMutationsLine(graphics, lineTop, mouseX, mouseY)
+            diagnosedGrid?.let { renderDiagnoseLine(graphics, it, diagnoseLineTop, mouseX, mouseY) }
         }
 
         val rightShelfLeft = if (currentDisplay == DisplayMode.Greenhouses) {
@@ -1095,6 +1151,25 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
             }
         }
 
+        chorusLineBox?.let { (lineX, lineTop, lineWidth, lineHeight) ->
+            if (mouseX in lineX until lineX + lineWidth && mouseY in lineTop until lineTop + lineHeight) {
+                graphics.drawTooltipAtCursor(PlantWarnings.chorusExplanation(predictSlider.value), mouseX, mouseY)
+                return
+            }
+        }
+
+        chorusPlanLineBox?.let { (lineX, lineTop, lineWidth, lineHeight) ->
+            if (mouseX in lineX until lineX + lineWidth && mouseY in lineTop until lineTop + lineHeight) {
+                graphics.drawTooltipAtCursor(CHORUS_PLAN_TOOLTIP, mouseX, mouseY)
+                return
+            }
+        }
+
+        displayedGridWidget?.chorusMarkTooltipAt(mouseX.toDouble(), mouseY.toDouble())?.let { lines ->
+            graphics.drawTooltipLinesAtCursor(lines.map { it.visualOrderText }, mouseX, mouseY)
+            return
+        }
+
         displayedGridWidget?.unplannedTooltipAt(mouseX.toDouble(), mouseY.toDouble())?.let { lines ->
             graphics.drawTooltipLinesAtCursor(lines.map { it.visualOrderText }, mouseX, mouseY)
             return
@@ -1102,7 +1177,7 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
 
         val hovered = hoveredElement as? PlantWidget ?: return
 
-        (hovered.deadTooltipAt(mouseX, mouseY)
+        (hovered.cornerMarkTooltipAt(mouseX, mouseY) ?: hovered.mutationCountTooltipAt(mouseX, mouseY)
             ?: hovered.hintTooltipAt(mouseX, mouseY)
             ?: hovered.chargeTooltipAt(mouseX, mouseY))?.let {
             graphics.drawTooltipAtCursor(it, mouseX, mouseY)
@@ -1136,6 +1211,36 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
         unplannedLineBox = ScreenRect(lineX, lineTop, lineWidth, UNPLANNED_LINE_HEIGHT)
     }
 
+    private var diagnoseLineBox: ScreenRect? = null
+
+    private fun renderDiagnoseLine(graphics: GuiGraphicsExtractor, grid: GreenhouseGrid, lineTop: Int, mouseX: Int, mouseY: Int) {
+        val slotsToDiagnose = grid.state.slotsToDiagnose
+        val count = slotsToDiagnose.size
+        val lineX = shelfLeft + ActionPanel.PADDING
+        val lineWidth = shelfWidth - ActionPanel.PADDING * 2
+
+        val (text, color) = when (count) {
+            0 -> DIAGNOSE_NONE to Common.UI.TEXT_DIM_COLOR
+            1 -> "Diagnose 1 plant to know its decay" to DiagnosticHighlight.COLOR
+            else -> "Diagnose $count plants to know their decay" to DiagnosticHighlight.COLOR
+        }
+        val isMarking = count > 0 && (DiagnosticPlanner.isLinePinned || inRect(mouseX, mouseY, lineX, lineTop, lineWidth, UNPLANNED_LINE_HEIGHT))
+        if (isMarking) {
+            displayedGridWidget?.diagnoseCorners = slotsToDiagnose
+            graphics.fill(lineX, lineTop, lineX + lineWidth, lineTop + UNPLANNED_LINE_HEIGHT, Common.UI.HOVER_WASH)
+        }
+        graphics.modText(font, Component.literal(text), lineX, lineTop + (UNPLANNED_LINE_HEIGHT - font.lineHeight) / 2 + 1, color)
+        diagnoseLineBox = ScreenRect(lineX, lineTop, lineWidth, UNPLANNED_LINE_HEIGHT)
+    }
+
+    private fun toggleDiagnosePinOnClick(event: MouseButtonEvent): Boolean {
+        val line = diagnoseLineBox ?: return false
+        if (event.button() != 0 || !inRect(event.x, event.y, line.x, line.y, line.width, line.height)) return false
+
+        DiagnosticPlanner.isLinePinned = !DiagnosticPlanner.isLinePinned
+        return true
+    }
+
     private fun toggleUnplannedPinOnClick(event: MouseButtonEvent): Boolean {
         val line = unplannedLineBox ?: return false
         if (event.button() != 0 || !inRect(event.x, event.y, line.x, line.y, line.width, line.height)) return false
@@ -1146,6 +1251,14 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
     }
 
     private class CropCountRow(val def: CropDefinition, val x: Int, val y: Int, val width: Int)
+
+    private data class CropCountEntry(val def: CropDefinition, val mark: LayoutSlot.Marking?, val count: Int)
+
+    private var contentsScroll: Int = 0
+
+    private var contentsScrollArea: ScreenRect? = null
+
+    private var contentsRowCounts: Pair<Int, Int> = 0 to 0
 
     private var cropCountRows: List<CropCountRow> = emptyList()
 
@@ -1158,6 +1271,7 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
 
     private fun renderContentsShelf(graphics: GuiGraphicsExtractor, left: Int, top: Int, width: Int, mouseX: Int, mouseY: Int) {
         cropCountRows = emptyList()
+        contentsScrollArea = null
         contentsTabTitleBoxes = emptyMap()
         contentsShelfBottom = top
         contentsShelfLeft = left
@@ -1209,27 +1323,46 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
         mouseY: Int,
         draw: Boolean
     ): Int? {
-        val plantCountsByCrop = layout.plants
-            .groupingBy { it.cropDef }
+        val entries = layout.plants
+            .groupingBy { it.cropDef to it.slot.mark }
             .eachCount()
-            .entries
-            .sortedWith(compareByDescending<Map.Entry<CropDefinition, Int>> { it.value }.thenBy { it.key.name })
-        if (plantCountsByCrop.isEmpty()) return null
+            .map { (key, count) -> CropCountEntry(key.first, key.second, count) }
+            .sortedWith(
+                compareBy<CropCountEntry> { it.mark == LayoutSlot.Marking.Target }
+                    .thenByDescending { it.count }
+                    .thenBy { it.def.name }
+            )
+        if (entries.isEmpty()) return null
 
         val withChecklist = currentDisplay == DisplayMode.Greenhouses
         val frameBottom = gridTop + gridSpan + BORDER_PADDING
         val rowsThatFit = ((frameBottom - rowsTop - ActionPanel.PADDING) / CONTENTS_ROW_HEIGHT).coerceAtLeast(1)
-        val columns = if (plantCountsByCrop.size > rowsThatFit) 2 else 1
-        val rowsPerColumn = (plantCountsByCrop.size + columns - 1) / columns
-        val columnWidth = (width - ActionPanel.PADDING * 2 - Common.UI.SPACING * (columns - 1)) / columns
+        val visibleRows = minOf(entries.size, rowsThatFit)
+        val isScrollable = entries.size > visibleRows
+        contentsScroll = contentsScroll.coerceIn(0, entries.size - visibleRows)
+        val scrollBarSpace = if (isScrollable) Common.UI.SCROLLBAR_WIDTH + Common.UI.SPACING else 0
+        val columnWidth = width - ActionPanel.PADDING * 2 - scrollBarSpace
 
-        val rowsBottom = rowsTop + rowsPerColumn * CONTENTS_ROW_HEIGHT + ActionPanel.PADDING
+        val rowsBottom = rowsTop + visibleRows * CONTENTS_ROW_HEIGHT + ActionPanel.PADDING
+        contentsScrollArea = if (isScrollable) ScreenRect(left, rowsTop, width, visibleRows * CONTENTS_ROW_HEIGHT) else null
+        contentsRowCounts = entries.size to visibleRows
         if (!draw) return rowsBottom
 
+        if (isScrollable) {
+            graphics.drawScrollBar(
+                left + width - ActionPanel.PADDING - Common.UI.SCROLLBAR_WIDTH,
+                rowsTop,
+                visibleRows * CONTENTS_ROW_HEIGHT,
+                entries.size,
+                visibleRows,
+                contentsScroll
+            )
+        }
+
         val cropIdsWithoutLabel = GreenhouseData.miscInfo.cropsWithoutInfo
-        cropCountRows = plantCountsByCrop.mapIndexed { index, (def, count) ->
-            val rowX = left + ActionPanel.PADDING + (index / rowsPerColumn) * (columnWidth + Common.UI.SPACING)
-            val rowY = rowsTop + (index % rowsPerColumn) * CONTENTS_ROW_HEIGHT
+        cropCountRows = entries.drop(contentsScroll).take(visibleRows).mapIndexed { index, (def, mark, count) ->
+            val rowX = left + ActionPanel.PADDING
+            val rowY = rowsTop + index * CONTENTS_ROW_HEIGHT
             val isLabelShown = !withChecklist || def.elementId !in cropIdsWithoutLabel
 
             if (withChecklist && inRect(mouseX, mouseY, rowX, rowY, columnWidth, CONTENTS_ROW_HEIGHT)) {
@@ -1248,17 +1381,25 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
             }
 
             val textX = rowX + CONTENTS_ICON_SIZE + Common.UI.SPACING
-            val countText = " x$count"
-            val nameWidthLeft = textRight - Common.UI.SPACING - textX - font.width(countText)
-            val nameColor = if (isLabelShown) markColorFor(layout, def) else Common.UI.DISABLED_TEXT_COLOR
+            val countLabel = countLabelFor(def, count, isTarget = mark == LayoutSlot.Marking.Target)
+            val nameWidthLeft = textRight - Common.UI.SPACING - textX - font.width(countLabel)
+            val nameColor = if (isLabelShown) mark?.color ?: Common.UI.TEXT_COLOR else Common.UI.DISABLED_TEXT_COLOR
             val label = Component.literal(font.plainSubstrByWidth(def.name, nameWidthLeft.coerceAtLeast(0))).withColor(rgb(nameColor))
-                .append(Component.literal(countText).withStyle(ChatFormatting.GRAY))
+                .append(countLabel)
             graphics.modText(font, label, textX, rowY + (CONTENTS_ROW_HEIGHT - font.lineHeight) / 2 + 1, Common.UI.TEXT_COLOR)
 
             CropCountRow(def, rowX, rowY, columnWidth)
         }.takeIf { withChecklist }.orEmpty()
 
         return rowsBottom
+    }
+
+    private fun countLabelFor(def: CropDefinition, needed: Int, isTarget: Boolean): Component {
+        val owned = if (currentDisplay == DisplayMode.Presets && !isTarget) CropSupply.ownedCount(def) else null
+        if (owned == null) return Component.literal(" x$needed").withStyle(ChatFormatting.GRAY)
+
+        val color = if (owned >= needed) ChatFormatting.GREEN else ChatFormatting.RED
+        return Component.literal(" (${owned.coerceAtMost(needed)}/$needed)").withStyle(color)
     }
 
     private fun targetPlanOfDisplayedGrid(): PlotLayout? = displayedGridWidget?.targetPlan?.invoke()
@@ -1369,16 +1510,6 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
         return true
     }
 
-    private fun markColorFor(layout: PlotLayout, def: CropDefinition): Int {
-        val marks = layout.plants.filter { it.cropDef == def }.mapNotNull { it.slot.mark }
-
-        return when {
-            LayoutSlot.Marking.Target in marks -> LayoutSlot.Marking.Target.color
-            LayoutSlot.Marking.Ingredient in marks -> LayoutSlot.Marking.Ingredient.color
-            else -> Common.UI.TEXT_COLOR
-        }
-    }
-
     private fun rgb(color: Int): Int = color and 0xFFFFFF
 
     private fun drawTickTimeBox(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int) {
@@ -1443,12 +1574,8 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
             return true
         }
 
-        if (tickTimePinned && isOverTickTimeLine(layoutEvent.x.toInt(), layoutEvent.y.toInt(), ATTRIBUTE_LINE)) {
-            ScreenUtil.openChatThenReturn("${MainInternal.COMMAND} ${SetTimestalkAttribute.NAME} ", this)
-            return true
-        }
-
         if (toggleUnplannedPinOnClick(layoutEvent)) return true
+        if (toggleDiagnosePinOnClick(layoutEvent)) return true
         if (selectContentsTabOnClick(layoutEvent)) return true
         if (contentsTab == ContentsTab.Report && awayTicksSlider.mouseClicked(layoutEvent.x, layoutEvent.y)) return true
 
@@ -1505,6 +1632,12 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
     }
 
     private fun handleGreenhouseClick(event: MouseButtonEvent, doubled: Boolean): Boolean {
+        if (event.button() == 1 && greenhousePanel.placedChoice != PlacedChoice.Off) {
+            greenhousePanel.dropPlacedTool()
+            return true
+        }
+        if (event.button() == 0 && greenhousePanel.placedChoice != PlacedChoice.Off && paintPlacedUnderMouse(event)) return true
+
         if (event.button() == 0) {
             val clicked = displayedGridWidget?.elementAtPos(event.x, event.y)
             if (clicked != null && highlightPlant(clicked)) return true
@@ -1620,6 +1753,7 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
             if (plantPalette.mouseDragged(inLayoutUnits(event), dragX, dragY)) return true
             if (event.button() == 0 && paintUnderMouse(inLayoutUnits(event))) return true
         }
+        if (currentDisplay == DisplayMode.Greenhouses && event.button() == 0 && paintPlacedUnderMouse(inLayoutUnits(event))) return true
         return super.onMouseDragged(event, dragX, dragY)
     }
 
@@ -1639,6 +1773,11 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
 
         if (scrollY == 0.0) return super.onMouseScrolled(layoutX, layoutY, scrollX, scrollY)
         if (currentDisplay == DisplayMode.Presets && plantPalette.mouseScrolled(layoutX, layoutY, scrollX, scrollY)) return true
+        contentsScrollArea?.takeIf { inRect(layoutX, layoutY, it.x, it.y, it.width, it.height) }?.let {
+            val (totalRows, visibleRows) = contentsRowCounts
+            contentsScroll = ScreenUtil.stepScroll(contentsScroll, scrollY, totalRows, visibleRows)
+            return true
+        }
 
         when (currentDisplay) {
             DisplayMode.Greenhouses -> plantLabelTabs.cycleSelectedLabel(down = scrollY < 0)
@@ -1807,12 +1946,92 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
     }
 
     private fun dropPrediction() {
-        predictSlider.setValue(0)
+        predictSlider.setValueWithoutNotifying(0)
         gridWidgetBeforePrediction = null
+    }
+
+    private fun movePrediction(ticks: Int) {
+        gridBehindPrediction()?.state?.predictTicks = ticks
+        showPrediction(ticks)
+    }
+
+    private fun restorePrediction() {
+        predictSlider.setValueWithoutNotifying(gridBehindPrediction()?.state?.predictTicks ?: 0)
+        showPrediction(predictSlider.value)
     }
 
     private fun predictLabel(): String =
         if (predictSlider.value == 0) PREDICT_NOW else "+${predictSlider.value}"
+
+    private fun gridBehindPrediction(): GreenhouseGrid? {
+        val layout = (gridWidgetBeforePrediction ?: displayedGridWidget)?.layout ?: return null
+
+        return GreenhouseData.greenhouseGrids.firstOrNull { it.layout === layout }
+    }
+
+    private fun isChorusLineShown(): Boolean {
+        if (currentDisplay != DisplayMode.Greenhouses || !GreenhousePresets.warningTypeEnabled(GreenhousePresets.CHORUS_KEY)) return false
+        val state = gridBehindPrediction()?.state ?: return false
+
+        return state.chorusLossChanceByTick != null || state.isChorusRiskCalculating
+    }
+
+    private class ChorusPlanView(val line: String, val marks: GridWidget.ChorusMarks?, val isBreakOrder: Boolean)
+
+    private fun chorusLineCount(): Int = when {
+        !isChorusLineShown() -> 0
+        chorusPlan == null -> 1
+        else -> 2
+    }
+
+    private fun chorusPlanView(): ChorusPlanView? {
+        if (!isChorusLineShown()) return null
+        val state = gridBehindPrediction()?.state ?: return null
+        if (state.isChorusRiskCalculating) return null
+        val tolerance = GreenhousePresets.chorusLossTolerance()
+        val chance = state.chorusLossChanceByTicksAhead(predictSlider.value) ?: return null
+        if (chance <= tolerance) return null
+
+        val calculation = state.chorusRiskCalculation
+        if (state.ticksSinceLastScan > 0 || calculation == null) return ChorusPlanView(CHORUS_PLAN_ENTER, null, false)
+        val isNextTick = predictSlider.value <= 1
+
+        val ripeCells = calculation.ripeCells
+        if (ripeCells.isNotEmpty()) {
+            return ChorusPlanView("Harvest ${ripeCells.size} ripe chorus first", GridWidget.ChorusMarks(emptyList(), ripeCells, isNextTick), false)
+        }
+
+        val breakOrder = calculation.breakOrder(maxOf(predictSlider.value, 1), tolerance)
+        if (breakOrder.isCompletedExceptionally) return null
+        val order = breakOrder.getNow(null) ?: return ChorusPlanView(CHORUS_PLAN_WORKING, null, false)
+        if (order.breaks.isEmpty()) return null
+        val line = "Break ${order.breaks.size} chorus to reach ${PlantWarnings.chorusRiskText(order.finalChance)}"
+
+        return ChorusPlanView(line, GridWidget.ChorusMarks(order.breaks, emptyList(), isNextTick), true)
+    }
+
+    private fun drawChorusPlanLine(graphics: GuiGraphicsExtractor, plan: ChorusPlanView, lineY: Int) {
+        val text = Component.literal(plan.line)
+        val color = if (plan.marks == null) Common.UI.TEXT_DIM_COLOR else Common.UI.TEXT_COLOR
+
+        if (plan.isBreakOrder) chorusPlanLineBox = ScreenRect(predictSlider.x, lineY, font.width(text), font.lineHeight)
+        graphics.text(font, text, predictSlider.x, lineY, color, false)
+    }
+
+    private fun drawChorusLine(graphics: GuiGraphicsExtractor, lineY: Int) {
+        if (gridBehindPrediction()?.state?.isChorusRiskCalculating == true) {
+            graphics.text(font, Component.literal(CHORUS_LINE_CALCULATING), predictSlider.x, lineY, Common.UI.TEXT_DIM_COLOR, false)
+            return
+        }
+        val ticksAhead = predictSlider.value
+        val chance = gridBehindPrediction()?.state?.chorusLossChanceByTicksAhead(ticksAhead) ?: return
+        val label = if (ticksAhead >= 2) CHORUS_LINE_BY_THEN else CHORUS_LINE
+        val text = Component.literal(label + PlantWarnings.chorusRiskText(chance))
+        val color = if (chance > GreenhousePresets.chorusLossTolerance()) Common.UI.DANGER_COLOR else Common.UI.SUCCESS_COLOR
+
+        chorusLineBox = ScreenRect(predictSlider.x, lineY, font.width(text), font.lineHeight)
+        graphics.text(font, text, predictSlider.x, lineY, color, false)
+    }
 
     private fun predictWindowMs(): LongRange? {
         val ticks = predictSlider.value
@@ -1845,8 +2064,8 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
     }
 
     private fun showGreenhouse(layout: PlotLayout) {
-        dropPrediction()
         val widget = greenhouseGridWidgets.find { it.layout == layout } ?: return
+        gridWidgetBeforePrediction = null
 
         GreenhouseData.greenhouseGrids
             .indexOfFirst { it.layout === widget.layout }
@@ -1857,6 +2076,7 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
         plotTabs.selectedItem = widget.layout
         isPresetCleared = false
         displayedName = widget.layout.displayName()
+        restorePrediction()
 
         layoutNameBox()
     }
@@ -2015,15 +2235,13 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
         private const val CONTENTS_ICON_SIZE: Int = 12
         private const val CONTENTS_ROW_HEIGHT: Int = CONTENTS_ICON_SIZE + 2
         private const val CONTENTS_CHECKBOX_SIZE: Int = 9
-        private const val UNIQUE_LINE: Int = 1
-        private const val ATTRIBUTE_LINE: Int = 3
+        private const val UNIQUE_CROPS_LABEL: String = "§7Unique crops: "
+        private const val SPEED_ATTRIBUTE_LABEL: String = "§7Greenhouse attribute: "
         private const val OFF_SCREEN: Double = -1.0
 
         private const val MAX_PREDICT_TICKS: Int = 10
         private const val MAX_AWAY_TICKS: Int = 20
         private const val HISTORY_LIMIT: Int = 50
-
-        private const val MAX_UNIQUE_CROPS: Int = 12
         private const val MAX_SPEED_UPGRADE: Int = 9
         private const val MAX_ATTRIBUTE: Int = 10
 
@@ -2034,19 +2252,28 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
         private const val TOGGLE_PLOTS: String = "Plots"
         private const val TOGGLE_PRESETS: String = "Presets"
         private const val TELEPORT_LABEL: String = "Teleport to Plot"
+        private const val UNMARK_PLACED_AWAY: String = "Stand in that greenhouse to unmark placed crops"
         private const val SHELF_VIEW: String = "View"
         private const val SHELF_PREDICT: String = "Prediction"
         private const val SHELF_GREENHOUSE: String = "Greenhouse"
         private const val SHELF_PRESET: String = "Preset"
         private const val PREDICT_NOW: String = "Now"
         private const val PREDICT_WINDOW_UNKNOWN: String = "tick time unknown"
+        private const val CHORUS_LINE: String = "Chorus collision: "
+        private const val CHORUS_LINE_BY_THEN: String = "Chorus collision by then: "
+        private const val CHORUS_LINE_CALCULATING: String = "Calculating chorus break percentage..."
+        private const val CHORUS_PLAN_WORKING: String = "Working out the break order..."
+        private const val CHORUS_PLAN_ENTER: String = "Enter this greenhouse for the break order"
+        private const val CHORUS_PLAN_TOOLTIP: String =
+            "Chorus on a spawn tile are broken first: they would leave that tile empty for a new chorus to spawn in"
         private val CLOCK_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("h:mma", Locale.ENGLISH)
         private val DAY_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("EEE", Locale.ENGLISH)
         private const val UNPLANNED_NONE: String = "Nothing can grow unplanned"
+
+        private const val DIAGNOSE_NONE: String = "Every plant's decay is known"
         private const val WATER_LASTS_TOOLTIP: String =
             "How many ticks one full watering lasts before the first plant runs out. " +
-                    "A plant out of water can skip growth ticks, and dies if it stays out too long."
-        private const val SET_ATTRIBUTE_HINT: String = "Click to open chat to set your attribute level"
+                    "A plant out of water can skip growth ticks, and halts at -100% until it is watered."
         private const val RENAME_HINT: String = "\nRight click a name to rename it: greenhouses, presets and plots"
         private const val SCROLL_HINT_GREENHOUSES: String = "Scroll the mouse wheel to switch what the plants show$RENAME_HINT"
         private const val SCROLL_HINT_PRESETS: String = "Scroll the mouse wheel to switch preset$RENAME_HINT"

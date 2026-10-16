@@ -2,6 +2,7 @@ package org.magic.magicaddons.features
 
 import com.google.gson.JsonObject
 import org.magic.magicaddons.config.MagicAddonsConfigJsonHandler
+import org.magic.magicaddons.features.account.ServerConnection
 import org.magic.magicaddons.features.combat.HighlightMobs
 import org.magic.magicaddons.features.customization.Customization
 import org.magic.magicaddons.features.debug.MobHitDebugInfo
@@ -10,19 +11,24 @@ import org.magic.magicaddons.features.foraging.safarihelper.SafariHelper
 import org.magic.magicaddons.features.kuudra.CustomRendSound
 import org.magic.magicaddons.features.mining.HidePowderCoatingParticles
 import org.magic.magicaddons.features.mining.PickaxeAbilityCooldown
+import org.magic.magicaddons.features.mining.XpOrbHider
 import org.magic.magicaddons.features.misc.HighlightMarkers
+import org.magic.magicaddons.features.misc.SkipResourceReloadOnClose
 import org.magic.magicaddons.features.misc.SmolPeople
 
 object FeatureManager {
     val features = listOf(
         HidePowderCoatingParticles,
         PickaxeAbilityCooldown,
+        XpOrbHider,
         GreenhousePresets,
         HighlightMobs,
         SafariHelper,
         CustomRendSound,
         SmolPeople,
         HighlightMarkers,
+        SkipResourceReloadOnClose,
+        ServerConnection,
         Customization,
         MobHitDebugInfo
     )
@@ -31,7 +37,7 @@ object FeatureManager {
 
     private val CATEGORY_ORDER = listOf("farming", "mining", "foraging", "combat", "kuudra")
 
-    private val BELOW_DIVIDER = setOf(Customization.CATEGORY, "debug")
+    private val BELOW_DIVIDER = setOf(ServerConnection.CATEGORY, Customization.CATEGORY, "debug")
 
     fun categories(): List<Category> = availableFeatures
         .groupBy { it.category }

@@ -111,7 +111,7 @@ object Customization : Feature() {
         mouseScrollEnabled = false
     )
 
-    val borderSize: Int get() = if (baseSetting.value) borderThicknessSetting.value else 2
+    val borderSize: Int get() = borderThicknessSetting.valueIfEnabled ?: 2
 
     private val hoverStrengthSetting = IntSetting(
         key = "HoverStrength",
@@ -303,7 +303,7 @@ object Customization : Feature() {
     )
 
     val backgroundSource: BackgroundSource
-        get() = if (baseSetting.value) backgroundSetting.value else BackgroundSource.None
+        get() = backgroundSetting.valueIfEnabled ?: BackgroundSource.None
 
     val backgroundFile: String get() = savedPictureSetting.value
 
@@ -329,7 +329,7 @@ object Customization : Feature() {
         }
     )
 
-    val uiScale: Float get() = if (baseSetting.value) uiScaleSetting.value / 100f else 1f
+    val uiScale: Float get() = (uiScaleSetting.valueIfEnabled ?: 100) / 100f
 
     private val interfaceGroup = ParentSetting(
         key = "Interface",
@@ -406,7 +406,7 @@ object Customization : Feature() {
     )
 
     val fontId: Identifier?
-        get() = if (baseSetting.value) SystemFonts.fontIdFor(fontSetting.value) else null
+        get() = fontSetting.valueIfEnabled?.let { SystemFonts.fontIdFor(it) }
 
     private val textShadowSetting = BooleanSetting(
         key = "TextShadow",
@@ -415,7 +415,7 @@ object Customization : Feature() {
         value = false
     )
 
-    val textShadow: Boolean get() = baseSetting.value && textShadowSetting.value
+    val textShadow: Boolean get() = textShadowSetting.isEnabled
 
     private val textGroup = ParentSetting(
         key = "Text",

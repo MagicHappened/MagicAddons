@@ -16,6 +16,7 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object ChorusFruit {
     val definition = CropDefinition(
         name = "Chorus Fruit",
+        minMutationsBeforeDecay = 6,
         tier = CropTier.Epic,
         dropMultiplier = 3.5,
         effects = setOf(
@@ -23,7 +24,7 @@ object ChorusFruit {
             CropEffect.HarvestLoss
         ),
         skyblockId = SkyBlockItemId.item("CHORUS_FRUIT"),
-        stages = listOf(
+        growingStages = listOf(
             CropStage(
                 blocks = listOf(
                 ),
@@ -228,6 +229,7 @@ object ChorusFruit {
             )
         ),
         decayTimeMs = FIVE_DAY_DECAY_TIME_MS,
+        teleportsWhileGrowing = true,
         maxStage = 12,
         requiredSoil = setOf(Blocks.END_STONE),
         needsWater = false,

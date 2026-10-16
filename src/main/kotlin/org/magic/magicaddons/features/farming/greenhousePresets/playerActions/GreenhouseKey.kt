@@ -10,10 +10,10 @@ import net.minecraft.resources.Identifier
 import org.lwjgl.glfw.GLFW
 import org.magic.magicaddons.Common
 import org.magic.magicaddons.ui.screens.GreenhouseScreen
+import org.magic.magicaddons.util.SBLocation
 import org.magic.magicaddons.util.compat.McCompat
 import org.magic.magicaddons.util.ScreenUtil
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhousePresets
-import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseData
 
 object GreenhouseKey {
 
@@ -29,7 +29,7 @@ object GreenhouseKey {
     private fun openScreen() {
         if (McCompat.currentScreen() != null) return
         if (!GreenhousePresets.baseSetting.value) return
-        if (!GreenhousePresets.keyWorksAnywhere() && !GreenhouseData.inOwnGarden()) return
+        if (!GreenhousePresets.keyWorksAnywhere() && !SBLocation.OwnGarden.inside()) return
 
         ScreenUtil.setScreen(GreenhouseScreen())
     }

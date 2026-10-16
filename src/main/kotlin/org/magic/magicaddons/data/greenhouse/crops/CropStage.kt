@@ -292,3 +292,18 @@ sealed interface StandPose {
             poses[Math.floorMod(x + z + floor(offset.y + 0.5).toInt(), poses.size)]
     }
 }
+
+enum class PlacedPhase { Collectable, Uncollectable, Always }
+
+class PlacedStage(
+    blocks: List<StageBlock>? = null,
+    armorStands: List<StageStand>? = null,
+    traits: Map<String, Int> = emptyMap(),
+    val shownWhile: PlacedPhase = PlacedPhase.Collectable
+) : CropStage(blocks = blocks, armorStands = armorStands, stageRange = IntRange.EMPTY, traits = traits) {
+
+    companion object {
+        fun lookingLike(stage: CropStage, shownWhile: PlacedPhase = PlacedPhase.Collectable): PlacedStage =
+            PlacedStage(stage.blocks, stage.armorStands, stage.traits, shownWhile)
+    }
+}

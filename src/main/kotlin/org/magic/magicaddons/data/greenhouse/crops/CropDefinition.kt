@@ -26,11 +26,13 @@ data class CropDefinition(
 
     val skyblockId: SkyBlockId?,
     val aliases: List<SkyBlockId>? = null,
-    val stages: List<CropStage>,
+    val growingStages: List<CropStage>,
+    val placedStages: List<PlacedStage> = emptyList(),
     val maxStage: Int = 1,
     val isBaseCrop: Boolean = false,
     val isMutation: Boolean = false,
     val decayTimeMs: Long = THREE_DAY_DECAY_TIME_MS,
+    val minMutationsBeforeDecay: Int? = null,
     val footprint: Footprint = Footprint(1,1),
     val requiredSoil: Set<Block> = setOf(Blocks.FARMLAND),
     val needsWater: Boolean = true,
@@ -45,17 +47,22 @@ data class CropDefinition(
 
     val drainsNeighbours: Boolean = false,
     val resetsToFirstStage: Boolean = false,
+    val resetPercentByStage: Map<Int, Int> = emptyMap(),
     val sleepStages: Set<Int> = emptySet(),
     val stallExplanation: String? = null,
     val chargeRule: ChargeRule? = null,
-    val stemAgeVaries: Boolean = false
+    val stemAgeVaries: Boolean = false,
+    val teleportsWhileGrowing: Boolean = false
 ){
     fun headPoseFor(stand: StageStand, x: Int, z: Int): Rotations? =
         stand.headRotation ?: standPoses[stand.hashString]?.headAt(x, z, stand.offset)
 
     val stagePlacedAt: Int get() = if (isMutation) maxStage else 1
+
+    fun chanceToGrow(fromStage: Int, toStage: Int): Double =
+        (fromStage + 1..toStage).fold(1.0) { chance, stage -> chance * (1 - (resetPercentByStage[stage] ?: 0) / 100.0) }
     val elementId: String get() = skyblockId?.id ?: name
-    val hasHungerBar: Boolean get() = stages.any { stage -> stage.readers.any { it.key == StandReader.HUNGER } }
+    val hasHungerBar: Boolean get() = growingStages.any { stage -> stage.readers.any { it.key == StandReader.HUNGER } }
 
     override fun toString(): String {
         return name
@@ -93,13 +100,13 @@ enum class CropEffect(val kind: EffectKind, val percent: Int, val label: String)
 
     EffectSpread(EffectKind.Spread, 0, "Effect Spread");
 
-    enum class EffectKind(val positiveLabel: String) {
-        Yield("Harvest Boost"),
-        Xp("XP Boost"),
-        Water("Water Retain"),
-        Drops("Bonus Drops"),
-        Immunity("Immunity"),
-        Spread("Effect Spread")
+    enum class EffectKind {
+        Yield,
+        Xp,
+        Water,
+        Drops,
+        Immunity,
+        Spread
     }
 
 
@@ -119,16 +126,15 @@ data class SpawnRule(
     val weight: Int,
     val requiredNeighbourCells: Map<String, Int> = emptyMap(),
     val needsNoNeighbours: Boolean = false,
-    val needsAllPositiveEffects: Boolean = false
-) {
-    val isRuleSettled: Boolean get() = !needsAllPositiveEffects
-}
+    val needsOwnEffectsAround: Boolean = false,
+    val staysOffPlotEdge: Boolean = false
+)
 
 data class ChargeRule(
     val perStage: Int,
     val limit: Int
 ) {
-    fun stagesUntilOverload(charge: Int): Int = (limit - charge) / perStage
+    fun stagesUntilFullCharge(charge: Int): Int = (limit - charge) / perStage
 
     fun chargeByStageNum(stage: Int): Int = perStage * (stage - 1).coerceAtLeast(0)
 
@@ -141,3 +147,5 @@ const val THREE_DAY_DECAY_TIME_MS: Long = 3L * 24 * 60 * 60 * 1000
 const val FIVE_DAY_DECAY_TIME_MS: Long = 5L * 24 * 60 * 60 * 1000
 const val SIX_DAY_DECAY_TIME_MS: Long = 6L * 24 * 60 * 60 * 1000
 const val TEN_DAY_DECAY_TIME_MS: Long = 10L * 24 * 60 * 60 * 1000
+
+const val DECAY_EXTENSION_MS: Long = 24L * 60 * 60 * 1000

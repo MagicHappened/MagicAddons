@@ -8,6 +8,7 @@ import org.magic.magicaddons.data.greenhouse.crops.CropBlocks.melonStemState
 import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
 import org.magic.magicaddons.data.greenhouse.crops.CropEffect
 import org.magic.magicaddons.data.greenhouse.crops.CropStage
+import org.magic.magicaddons.data.greenhouse.crops.PlacedStage
 import org.magic.magicaddons.data.greenhouse.crops.CropTier
 import org.magic.magicaddons.data.greenhouse.crops.SpawnRule
 import org.magic.magicaddons.data.greenhouse.crops.StageBlock
@@ -20,6 +21,7 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Coalroot {
     val definition = CropDefinition(
         name = "Coalroot",
+        minMutationsBeforeDecay = 10,
         tier = CropTier.Uncommon,
         dropMultiplier = 1.7,
         effects = setOf(
@@ -29,7 +31,7 @@ object Coalroot {
         standPoses = mapOf(
             "f946443fa0039354edd31a70c749c4f963464744dc20b79137bd9910356ee90" to StandPose.Fixed(Rotations(0.0f, 0.0f, 0.0f))
         ),
-        stages = listOf(
+        growingStages = listOf(
             CropStage(
                 blocks = listOf(),
                 armorStands = listOf(
@@ -149,6 +151,24 @@ object Coalroot {
                 8..8
             )
 
+        ),
+        placedStages = listOf(
+            PlacedStage(
+                blocks = listOf(
+                    StageBlock(
+                        offset = BlockPos(0, 1, 0),
+                        blockState = melonStemState(7)
+                    )
+                ),
+                armorStands = listOf(
+                    StageStand(
+                        offset = Vec3(0.0, -0.40625, 0.0),
+                        isSmall = false,
+                        headRotation = Rotations(0.0f, 0.0f, 0.0f),
+                        hashString = "f946443fa0039354edd31a70c749c4f963464744dc20b79137bd9910356ee90"
+                    )
+                )
+            )
         ),
         maxStage = 8,
         isMutation = true,

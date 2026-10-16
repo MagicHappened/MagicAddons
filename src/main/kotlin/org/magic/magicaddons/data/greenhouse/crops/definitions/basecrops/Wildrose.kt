@@ -17,13 +17,14 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Wildrose {
     val definition = CropDefinition(
         name = "Wild Rose",
+        minMutationsBeforeDecay = 12,
         tier = CropTier.BaseCrop,
         dropMultiplier = 0.25,
         effects = setOf(
             CropEffect.EffectSpread
         ),
         skyblockId = SkyBlockItemId.item("WILD_ROSE"),
-        stages = listOf(
+        growingStages = listOf(
             CropStage(
                 blocks = listOf(
                     StageBlock(

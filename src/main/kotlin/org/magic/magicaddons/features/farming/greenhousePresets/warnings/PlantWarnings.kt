@@ -2,14 +2,15 @@ package org.magic.magicaddons.features.farming.greenhousePresets.warnings
 
 import java.time.Duration
 import java.time.Instant
+import java.util.concurrent.CompletableFuture
 import net.minecraft.ChatFormatting
 import net.minecraft.client.Minecraft
 import net.minecraft.network.chat.ClickEvent
 import net.minecraft.network.chat.Component
 import net.minecraft.network.chat.MutableComponent
 import net.minecraft.network.chat.Style
-import org.magic.magicaddons.commands.internal.MainInternal
-import org.magic.magicaddons.commands.internal.farming.TickReport
+import org.magic.magicaddons.commands.internal.ChorusExplanation
+import org.magic.magicaddons.commands.internal.TickReport
 import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
 import org.magic.magicaddons.data.greenhouse.crops.CropTier
 import org.magic.magicaddons.data.greenhouse.crops.Plant
@@ -22,14 +23,15 @@ import org.magic.magicaddons.events.greenhouse.GrowthTickEvent
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhousePresets
 import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseData
 import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.OtherProfiles
-import org.magic.magicaddons.features.farming.greenhousePresets.lookups.BioanalysisAccessory
 import org.magic.magicaddons.util.ChatUtils
+import org.magic.magicaddons.util.SBLocation
 import org.magic.magicaddons.util.toShortDuration
 
 object PlantWarnings {
 
     const val HARVEST_KEY: String = "ReadyToHarvestWarning"
     const val DECAY_KEY: String = "DecayWarning"
+    const val DECAY_THRESHOLD_KEY: String = "DecayThresholdHours"
     const val SNOOZLING_KEY: String = "SnoozlingAsleepWarning"
     const val NOCTILUME_KEY: String = "NoctilumeTimeWarning"
     const val FLESHTRAP_KEY: String = "FleshtrapMeatWarning"
@@ -43,8 +45,15 @@ object PlantWarnings {
 
     private const val HOVER_LINES: Int = 5
 
-    // todo make this configurable
-    private val DECAY_WITHIN: Duration = Duration.ofDays(1)
+    private const val CERTAIN_LOSS: Double = 0.99995
+
+    private const val CHORUS_CLICK_HINT: String = "Click for details on chorus!"
+
+    private const val CHORUS_EXPLANATION: String =
+        "Chorus collision % is the chance that a chorus will break at least 1 of your plants in the next tick."
+
+    private const val CHORUS_EXPLANATION_BY_THEN: String =
+        "Chorus collision % is the chance that a chorus will break at least 1 of your plants by then."
 
     private val HARVEST_TIER_ORDER: List<CropTier> = listOf(
         CropTier.Legendary, CropTier.Epic, CropTier.Rare, CropTier.Uncommon, CropTier.Common,
@@ -63,7 +72,13 @@ object PlantWarnings {
         val key: String get() = name ?: ""
     }
 
-    class Section(val label: String, val count: Int, val hoverHeading: String, val lines: List<Component>)
+    class Section(
+        val label: String,
+        val count: Int,
+        val hoverHeading: String,
+        val lines: List<Component>,
+        val clickExplains: Boolean = false
+    )
 
     fun activeProfile(): ProfileGreenhouses = ProfileGreenhouses(null, GreenhouseData.miscInfo, GreenhouseData.greenhouseGrids)
 
@@ -117,8 +132,21 @@ object PlantWarnings {
         sendTickLine(profile, ticksPassed, nextTickIn = crossed.min())
     }
 
-    private fun sendTickLine(profile: ProfileGreenhouses, ticksPassed: Int, nextTickIn: Duration?) {
-        if (profile.name == null && GreenhouseData.inOwnGreenhouse()) return
+    private fun afterChorusRisksSettle(profile: ProfileGreenhouses, action: () -> Unit) {
+        val running = profile.grids.filter { it.state.isChorusRiskCalculating }.mapNotNull { it.state.chorusRiskCalculation?.lossChanceByTick }
+        if (running.isEmpty()) return action()
+
+        CompletableFuture.allOf(*running.toTypedArray()).handle { _, _ ->
+            Minecraft.getInstance().execute { afterChorusRisksSettle(profile, action) }
+        }
+    }
+
+    private fun sendTickLine(profile: ProfileGreenhouses, ticksPassed: Int, nextTickIn: Duration?) = afterChorusRisksSettle(profile) {
+        sendTickLineNow(profile, ticksPassed, nextTickIn)
+    }
+
+    private fun sendTickLineNow(profile: ProfileGreenhouses, ticksPassed: Int, nextTickIn: Duration?) {
+        if (profile.name == null && SBLocation.OwnGreenhouse.inside()) return
 
         val sections = sections(profile)
         val inProfile = profile.name?.let { " in profile $it" } ?: ""
@@ -149,7 +177,7 @@ object PlantWarnings {
 
     private fun infoButton(profile: ProfileGreenhouses): Component {
         val command = buildString {
-            append("/${MainInternal.PATH} ${TickReport.NAME}")
+            append(TickReport.command)
             profile.name?.let { append(" $it") }
         }
 
@@ -161,7 +189,9 @@ object PlantWarnings {
         )
     }
 
-    fun sendReport(profile: ProfileGreenhouses) {
+    fun sendReport(profile: ProfileGreenhouses) = afterChorusRisksSettle(profile) { sendReportNow(profile) }
+
+    private fun sendReportNow(profile: ProfileGreenhouses) {
         val sections = sections(profile)
 
         val message = ChatUtils.buildWithPrefix(Component.literal("Greenhouse report:").withStyle(ChatFormatting.YELLOW))
@@ -174,8 +204,9 @@ object PlantWarnings {
 
         sections.forEach { section ->
             message.append(Component.literal("\n  "))
+            val click = if (section.clickExplains) ClickEvent.RunCommand(ChorusExplanation.command) else null
             message.append(
-                ChatUtils.buildStyled("${section.label}: ${section.count}", ChatFormatting.AQUA, hoverText(section))
+                ChatUtils.buildStyled("${section.label}: ${section.count}", ChatFormatting.AQUA, hoverText(section), click)
             )
         }
 
@@ -204,27 +235,31 @@ object PlantWarnings {
 
     private const val WATER_LABEL: String = "Water"
 
-    private class DecayingPlant(val greenhouse: String, val plant: String, val remainingMs: Long)
+    private class DecayingPlant(val greenhouse: String, val plant: String, val remainingMs: Long, val isCertain: Boolean)
 
     private fun decaySection(profile: ProfileGreenhouses): Section? {
         if (!warningEnabled(DECAY_KEY)) return null
 
+        val thresholdMs = Duration.ofHours(GreenhousePresets.decayThresholdHours().toLong()).toMillis()
         val decaying = profile.grids.flatMap { grid ->
             grid.layout.plants.mapNotNull { plant ->
-                plant.decayRemainingMs?.let { DecayingPlant(grid.layout.displayName(), plant.cropDef.name, it) }
-            }
-        }.sortedBy { it.remainingMs }
+                val remainingMs = plant.decayRemainingMs ?: return@mapNotNull null
+                val outlook = grid.layout.decayOutlookOf(plant)
+                if (!outlook.canDecay) return@mapNotNull null
 
-        val soonest = decaying.firstOrNull() ?: return null
-        if (soonest.remainingMs > DECAY_WITHIN.toMillis()) return null
+                DecayingPlant(grid.layout.displayName(), plant.cropDef.name, remainingMs, outlook.isCertain)
+            }
+        }.filter { it.remainingMs <= thresholdMs }.sortedBy { it.remainingMs }
+
+        if (decaying.isEmpty()) return null
 
         val lines = decaying.map { decayingPlant ->
             Component.literal(decayingPlant.plant).withStyle(ChatFormatting.YELLOW)
                 .append(Component.literal(" in ").withStyle(ChatFormatting.GRAY))
                 .append(Component.literal(decayingPlant.greenhouse).withStyle(ChatFormatting.AQUA))
                 .append(
-                    if (decayingPlant.remainingMs <= 0) Component.literal(" - decayed").withStyle(ChatFormatting.DARK_RED)
-                    else Component.literal(" - ${decayingPlant.remainingMs.toShortDuration()}").withStyle(ChatFormatting.WHITE)
+                    if (decayingPlant.remainingMs <= 0 && decayingPlant.isCertain) Component.literal(" - decayed").withStyle(ChatFormatting.DARK_RED)
+                    else Component.literal(" - ${if (decayingPlant.isCertain) "" else "≥"}${decayingPlant.remainingMs.toShortDuration()}").withStyle(ChatFormatting.WHITE)
                 )
         }
 
@@ -280,44 +315,51 @@ object PlantWarnings {
         count("Noctilume time change", NOCTILUME_KEY) { it.needsOtherTimeOfDay(gardenTime) }
         count("Snoozling asleep", SNOOZLING_KEY) { it.isAsleep && it.cropDef.name == "Snoozling" }
         count("Jerryflower asleep", SNOOZLING_KEY) { it.isAsleep && it.cropDef.name == "Jerryflower" }
-        count("Thunderling near overload", THUNDERLING_KEY) { it.cropDef.chargeRule != null && !it.isPlacedMutation && it.charge >= chargeThreshold }
+        count("Thunderling near overload", THUNDERLING_KEY) {
+            it.cropDef.chargeRule != null && !it.isPlacedMutation && it.charge >= chargeThreshold && !it.isHaltedByCharge
+        }
+        count("Thunderling halted at full charge", THUNDERLING_KEY) { it.isHaltedByCharge }
         count("Glasscorn about to reset", GLASSCORN_KEY) { it.cropDef.resetsToFirstStage && it.highestStage == it.cropDef.maxStage }
 
-        if (warningEnabled(THUNDERLING_KEY)) {
-            val destroyed = profile.grids.sumOf { it.state.thunderlingsDestroyed }
-            if (destroyed > 0) counts["Thunderling destroyed"] = destroyed
-        }
         if (warningEnabled(GLASSCORN_KEY)) {
             val reset = profile.grids.sumOf { it.state.glasscornsReset }
             if (reset > 0) counts["Glasscorn reset"] = reset
         }
 
-        val chorusCollisions = chorusCollisions(profile)
-        if (chorusCollisions > 0) counts["Chorus collision"] = chorusCollisions
+        val chorusRisks = chorusRisksOverTolerance(profile)
+        if (chorusRisks.isNotEmpty()) counts["Chorus collision ${chorusRiskText(chorusRisks.max())}"] = chorusRisks.size
 
         if (counts.isEmpty()) return null
 
         val lines = counts.map { (label, count) ->
             Component.literal(label).withStyle(ChatFormatting.YELLOW)
                 .append(Component.literal(" x$count").withStyle(ChatFormatting.WHITE))
-        }
+        }.toMutableList()
+        if (chorusRisks.isNotEmpty()) lines += Component.literal(CHORUS_CLICK_HINT).withStyle(ChatFormatting.GRAY)
 
-        return Section("Attention plants", counts.values.sum(), "Needs attention:", lines)
+        return Section("Attention plants", counts.values.sum(), "Needs attention:", lines, clickExplains = chorusRisks.isNotEmpty())
     }
 
-    private fun chorusCollisions(profile: ProfileGreenhouses): Int {
-        if (!warningEnabled(GreenhousePresets.CHORUS_KEY)) return 0
+    /** the chance that teleporting chorus destroy a plant at the next tick, for every greenhouse over the tolerance */
+    private fun chorusRisksOverTolerance(profile: ProfileGreenhouses): List<Double> {
+        if (!warningEnabled(GreenhousePresets.CHORUS_KEY)) return emptyList()
+        val tolerance = GreenhousePresets.chorusLossTolerance()
 
-        val ticks = GreenhousePresets.chorusAbsenceTicks() ?: return 0
-
-        return profile.grids.count { grid ->
-            ChorusCollision.reportFor(grid, ticks, BioanalysisAccessory.mutationWeightMultiplier())?.needsWarning == true
-        }
+        return profile.grids.mapNotNull { it.state.chorusLossChanceNextTick }.filter { it > tolerance }
     }
+
+    fun chorusRiskText(chance: Double): String =
+        if (chance >= CERTAIN_LOSS) "certain" else "%.2f%%".format(chance * 100)
+
+    fun sendChorusExplanation() {
+        ChatUtils.sendWithPrefix(CHORUS_EXPLANATION)
+    }
+
+    fun chorusExplanation(ticksAhead: Int): String = if (ticksAhead >= 2) CHORUS_EXPLANATION_BY_THEN else CHORUS_EXPLANATION
 
     private enum class Thirst(val label: String, val color: ChatFormatting) {
-        PresumedDead("presumed dead", ChatFormatting.DARK_RED),
-        DyingNextTick("dying next tick", ChatFormatting.RED),
+        Halted("halted", ChatFormatting.DARK_RED),
+        HaltsNextTick("halts next tick", ChatFormatting.RED),
         OutOfWater("out of water", ChatFormatting.GOLD)
     }
 
@@ -333,13 +375,13 @@ object PlantWarnings {
                 if (!plant.consumesWater) return@mapNotNull null
 
                 val water = plant.waterLevel ?: return@mapNotNull null
-                if (water <= PlotPrediction.WATER_DEATH_LEVEL) return@mapNotNull ThirstyPlant(plant, grid.layout.displayName(), Thirst.PresumedDead)
+                if (plant.isHaltedByWater) return@mapNotNull ThirstyPlant(plant, grid.layout.displayName(), Thirst.Halted)
 
                 val effect = GreenhouseGrid.waterEffectAt(grid.layout, plant.slot)
-                val ticksLeft = PlotPrediction.ticksUntilDeath(water, effect) ?: return@mapNotNull null
+                val ticksLeft = PlotPrediction.ticksUntilHalt(water, effect) ?: return@mapNotNull null
 
                 when {
-                    ticksLeft <= 1 -> ThirstyPlant(plant, grid.layout.displayName(), Thirst.DyingNextTick)
+                    ticksLeft <= 1 -> ThirstyPlant(plant, grid.layout.displayName(), Thirst.HaltsNextTick)
                     water < 0 && warnNegative -> ThirstyPlant(plant, grid.layout.displayName(), Thirst.OutOfWater)
                     else -> null
                 }

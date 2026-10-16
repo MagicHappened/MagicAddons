@@ -9,6 +9,7 @@ import org.magic.magicaddons.data.greenhouse.crops.CropBlocks.sugarcaneState
 import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
 import org.magic.magicaddons.data.greenhouse.crops.CropEffect
 import org.magic.magicaddons.data.greenhouse.crops.CropStage
+import org.magic.magicaddons.data.greenhouse.crops.PlacedStage
 import org.magic.magicaddons.data.greenhouse.crops.CropTier
 import org.magic.magicaddons.data.greenhouse.crops.NEVER_DECAYS
 import org.magic.magicaddons.data.greenhouse.crops.SpawnRule
@@ -20,7 +21,7 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
 object MagicJellybean {
 
-    private const val CANE_HASH = "c526a56b80f56a6870f891d1d46fa7f8c71494cad24e94326da84b3829417b81"
+    const val CANE_HASH = "c526a56b80f56a6870f891d1d46fa7f8c71494cad24e94326da84b3829417b81"
 
     private const val MELON_HASH = "e3f23b34867472673a484f4baea5f51fbf93abe4d11e2808b6634970150bde24"
 
@@ -41,11 +42,14 @@ object MagicJellybean {
     private data class Top(
         val stemAge: Int,
         val melonStandY: Double? = null,
-        val extraCaneStand: Boolean = false
+        val extraCaneStand: Boolean = false,
+        val holdsBean: Boolean = false
     )
 
+    private val HELD_BEAN_STAND_OFFSET = Vec3(0.4393196180462837, -0.09413555264473, -1.0491547584533691)
+
     private val cycle: List<Pair<IntRange, Top>> = listOf(
-        0..2 to Top(stemAge = 3),
+        0..2 to Top(stemAge = 3, holdsBean = true),
         3..4 to Top(stemAge = 5, melonStandY = 0.28125),
         5..6 to Top(stemAge = 7, melonStandY = 0.59375),
         7..8 to Top(stemAge = 7, melonStandY = 0.6875),
@@ -90,13 +94,23 @@ object MagicJellybean {
                     )
                 }
 
+                val heldBeanStand = if (top.holdsBean) {
+                    StageStand(
+                        offset = HELD_BEAN_STAND_OFFSET.add(0.0, caneHeight.toDouble(), 0.0),
+                        hashString = MELON_HASH,
+                        isSmall = false
+                    )
+                } else {
+                    null
+                }
+
                 add(
                     CropStage(
                         blocks = canes + StageBlock(
                             offset = BlockPos(0, caneHeight + 1, 0),
                             blockState = melonStemState(top.stemAge)
                         ),
-                        armorStands = caneStands + listOfNotNull(melonStand),
+                        armorStands = caneStands + listOfNotNull(melonStand, heldBeanStand),
                         stageRange = first..last
                     )
                 )
@@ -121,6 +135,8 @@ object MagicJellybean {
     )
 
 
+    private val growingStages: List<CropStage> = generateStages()
+
     val definition = CropDefinition(
         name = "Magic Jellybean",
         tier = CropTier.Rare,
@@ -130,7 +146,8 @@ object MagicJellybean {
             CropEffect.HarvestLoss
         ),
         skyblockId = SkyBlockItemId.item("MAGIC_JELLYBEAN"),
-        stages = generateStages(),
+        growingStages = growingStages,
+        placedStages = listOf(PlacedStage.lookingLike(growingStages.first { MAX_STAGE - 1 in it.stageRange })),
         standPoses = mapOf(
             CANE_HASH to StandPose.Cycle(CANE_POSES),
             MELON_HASH to StandPose.Fixed(Rotations(0.0f, 22.5f, 22.5f))

@@ -19,13 +19,14 @@ import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 object Duskbloom {
     val definition = CropDefinition(
         name = "Duskbloom",
+        minMutationsBeforeDecay = 8,
         tier = CropTier.Uncommon,
         dropMultiplier = 2.7,
         effects = setOf(
             CropEffect.BonusDrops
         ),
         skyblockId = SkyBlockItemId.item("DUSKBLOOM"),
-        stages = listOf(
+        growingStages = listOf(
             CropStage(
                 blocks = listOf(
                 ),
