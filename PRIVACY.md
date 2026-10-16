@@ -1,43 +1,43 @@
 # MagicAddons privacy policy
 
-Last updated: 7 October 2026.
+Last updated: 16 October 2026.
 
 MagicAddons is a Minecraft mod for Hypixel SkyBlock. Most of what it does happens on your own
-game client and never leaves it. This policy covers the optional parts that talk to the MagicAddons
+game client and never leaves it. This policy covers the optional parts that send data to the MagicAddons
 server, which is run by Magic (MagicHappened on GitHub). To contact Magic about your data, email
 magicaddons@proton.me.
 
 ## 1. Connection to the server is on an opt-in basis
 
-The mod sends no data anywhere until you enable **Connect to MagicAddons Server** in its settings.
-Greenhouse data is only sent once you also enable **Discord integration**. Both are off by default,
-and turning them off stops any further sending at once.
+The mod sends nothing to the MagicAddons server until you enable **Connect to MagicAddons Server**
+in its settings. Greenhouse data is only sent once you also enable **Discord integration**. Both are
+off by default, and turning them off stops any future data from being sent.
+
+Separately, the mod checks GitHub for a newer version when you change islands. GitHub sees your IP
+address and, on the beta version, which commit you are running.
 
 ## 2. What the server stores
 
-When the server features are on, the server stores:
+When the server features are on, the mod sends some of your greenhouse data, your Minecraft UUID
+and name, and your SkyBlock profile id and name. The server stores:
 
-- **Your Minecraft account id (UUID) and player name.** The UUID is proven at login with the key
-  Mojang issues to your game client, so that nobody can impersonate you and contact the server on
-  your behalf. The name is sent by the mod so that coop messages in Discord can name who did what in
-  the greenhouse.
-- **Your Discord user id**, only after you link it with `/link` in Discord. It is used to send you
-  direct messages and to answer your Discord commands.
-- **Your SkyBlock profile id and profile name.**
-- **Your greenhouse data**: the plots, the plants on them with their growth stage, water, readings
-  from the Plant Diagnostics Tool and whether you placed them, your planner marks, and the mod
-  settings that decide what you are warned about (harvest stages, warning types, chorus tolerance,
-  the Greenhouse Coop choice).
-- **Activity counts**: how many plants you harvested, placed and watered since your previous upload,
-  and which plots that was in.
-- **Presence**: whether you are online and whether you are in your garden, refreshed about every
-  15 minutes while the features are on, the times of your recent uploads and new profiles, to limit
-  abuse, and when you last left the game, so reminders know how long you have been away.
-- **Your IP address**, only to limit login attempts. It is kept for 10 minutes and is not tied to
-  your account.
+- **Your Minecraft UUID and name.** The UUID is proven at login with the key Mojang issues to your
+  game client, so nobody can pretend to be you. The name lets coop messages
+  in Discord say who did what.
+- **Your Discord user id**, once you link it with `/link` in Discord, to send you direct messages
+  and answer your Discord commands. A wrong `/link` code also stores it for up to 20 minutes, to
+  limit guessing.
+- **Your SkyBlock profile id and name.**
+- **Your greenhouse data**: your plots and the plants on them, and the mod settings that decide
+  what you are reminded about.
+- **Activity and presence**: how many plants you harvested, placed and watered, whether you are
+  online and in your garden, and when you last uploaded or left the game.
+- **Your IP address**, only to limit login attempts, and not tied to your account.
 
-The server never sees your Minecraft password, your Mojang or Microsoft login, your chat, your
-inventory or anything outside the greenhouse features described here.
+The mod is open source, so exactly what is sent can be read in its code:
+https://github.com/MagicHappened/MagicAddons
+
+The server never sees your Minecraft password, your Mojang or Microsoft login, or your chat.
 
 ## 3. What it is used for
 
@@ -49,35 +49,36 @@ inventory or anything outside the greenhouse features described here.
 ## 4. Who else sees it
 
 - **Cloudflare** hosts the server and stores the data above on your behalf. Cloudflare also keeps
-  its own request logs, which include IP addresses, for its usual retention period. Cloudflare's
-  privacy policy can be found here: https://www.cloudflare.com/privacypolicy/
+  request logs, which include IP addresses and which Magic can look at to fix problems. Cloudflare's
+  privacy policy: https://www.cloudflare.com/privacypolicy/
 - **Discord** receives the direct messages and slash command replies, and keeps them under its own
   policy: https://discord.com/privacy
-- **Hypixel** receives your UUID and your profile id when the server checks that you are a member of
-  a coop profile. This check only happens when two accounts upload the same profile. Hypixel's
-  privacy policy: https://hypixel.net/privacy-policy
+- **Hypixel** receives your profile id when the server checks that two accounts uploading the same
+  profile are members of it. The result is kept for 3 days. Hypixel's privacy policy:
+  https://hypixel.net/privacy-policy
 - **Your coop members.** If you and another player both use the mod on the same coop profile, each
-  of you can see game information relevant to the profile you are playing together: the plants and
-  readings on the shared plots, placed flags, the activity counts, the Minecraft name, and whether
-  the other is online or in the garden. Your planner marks, plot names, settings and Discord link
-  are not shared. The **Greenhouse Coop** setting and `/reminders coop` in Discord control what you
-  receive, not what is shared; to stop sharing, turn off Discord integration.
+  of you can see the shared plots and their plants, the activity counts, the other's Minecraft name
+  (or UUID if no name is stored), and whether the other is online or in the garden. Your plot names,
+  planner marks and Discord link are not shared. Your settings are not shared either, except
+  **Greenhouse Coop**: the strictest choice in the coop applies to everyone in it, including how
+  often the other members' mods upload. To stop sharing, turn off Discord integration.
 
 Nothing is sold, and nothing is used for advertising or profiling.
 
 ## 5. How long it is kept
 
-- Greenhouse data and activity counts: deleted 14 days after your last upload.
-- Login attempts (IP address): 10 minutes.
-- Link codes shown by `/ma link`: 10 minutes.
+- Greenhouse and activity data: deleted 14 days after your last upload from that profile.
+- Your name, presence and Greenhouse Coop choice in a profile: deleted 14 days after the mod last
+  contacted the server from that profile.
+- Login attempts (IP address) and link codes shown by `/ma link`: up to 20 minutes.
 - Your Discord link, your Minecraft UUID and name, your settings and your reminder state: until you
   unlink.
 
 ## 6. How to delete it
 
 - Run `/unlink` in Discord. This deletes everything the server stores for your Minecraft account at
-  once: the Discord link, all greenhouse data, settings and reminder state. Your coop members'
-  copies of shared plots are not affected, since those are their own uploads.
+  once: the Discord link, all greenhouse data, settings, reminder state and pending link codes.
+  Your coop members' copies of shared plots are not affected, since those are their own uploads.
 - Run `/ma privacy DeleteMe` in game. It does the same as `/unlink`, from the game instead of
   Discord, and asks you to run it a second time within 20 seconds to confirm.
 - Turning off **Connect to MagicAddons Server** stops all sending; stored data then expires as
@@ -87,5 +88,5 @@ Nothing is sold, and nothing is used for advertising or profiling.
 
 ## 7. Changes
 
-This policy lives at https://github.com/MagicHappened/MagicAddons/blob/beta/PRIVACY.md. Changes are listed in the release notes
-of the version that makes them.
+This policy lives at https://github.com/MagicHappened/MagicAddons/blob/master/PRIVACY.md. Changes
+are listed in the release notes of the version that makes them.

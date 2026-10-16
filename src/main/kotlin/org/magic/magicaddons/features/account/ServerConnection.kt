@@ -9,7 +9,7 @@ object ServerConnection : Feature() {
 
     const val CATEGORY: String = "account"
 
-    const val PRIVACY_POLICY_URL: String = "https://github.com/MagicHappened/MagicAddons/blob/beta/PRIVACY.md"
+    const val PRIVACY_POLICY_URL: String = "https://github.com/MagicHappened/MagicAddons/blob/master/PRIVACY.md"
 
     override val id: String = "ServerConnection"
     override val displayName: String = "Connect to MagicAddons Server"
