@@ -31,6 +31,13 @@ object GreenhouseWatering {
 
     private val wateredThisWindow: MutableSet<Plant> = mutableSetOf()
 
+    private const val HUNGER_LABEL: String = "Hunger"
+    private val HUNGER_BAR_SETTLE: Duration = Duration.ofMillis(1500)
+
+    private class PendingWater(val percent: Int, val since: Instant)
+
+    private val pendingHungryPlantWater: MutableMap<Plant, PendingWater> = mutableMapOf()
+
     private fun isWateringCan(id: SkyBlockId): Boolean =
         id.id.substringAfter("item:").uppercase() in wateringCanIds
 
@@ -54,6 +61,7 @@ object GreenhouseWatering {
         if (Instant.now().isAfter(until)) {
             wateringUntil = null
             wateredThisWindow.clear()
+            pendingHungryPlantWater.clear()
             return
         }
 
@@ -63,12 +71,20 @@ object GreenhouseWatering {
         val buildableArea = grid.plot?.getBuildableArea() ?: return
         val level = Minecraft.getInstance().level ?: return
 
-        level.getEntitiesOfClass(ArmorStand::class.java, buildableArea).forEach { stand ->
-            val barPercent = stand.customName?.let { waterBarPercent(it) } ?: return@forEach
-            val slot = grid.getSlotAt(stand.blockPosition(), matchY = false) ?: return@forEach
-            val plant = grid.elementCoveringSlot(slot)?.plant ?: return@forEach
+        val standNamesByPlant = level.getEntitiesOfClass(ArmorStand::class.java, buildableArea)
+            .mapNotNull { stand ->
+                val name = stand.customName ?: return@mapNotNull null
+                val slot = grid.getSlotAt(stand.blockPosition(), matchY = false) ?: return@mapNotNull null
+                val plant = grid.elementCoveringSlot(slot)?.plant ?: return@mapNotNull null
+                plant to name
+            }
+            .groupBy({ it.first }, { it.second })
 
+        val now = Instant.now()
+        standNamesByPlant.forEach { (plant, names) ->
             if (!plant.cropDef.needsWater || plant.isPlacedMutation) return@forEach
+            val barPercent = names.firstNotNullOfOrNull { waterBarPercent(it) } ?: return@forEach
+            if (plant.cropDef.hasHungerBar && !hungryPlantWaterSettled(plant, names, barPercent, now)) return@forEach
 
             val before = plant.waterLevel
             plant.waterLevel = barPercent.toDouble()
@@ -82,6 +98,20 @@ object GreenhouseWatering {
             plant.waterPredictedNegative = false
         }
         GreenhouseData.noteGridUpdated(grid, GreenhouseChangedEvent.Source.Watering)
+    }
+
+    private fun hungryPlantWaterSettled(plant: Plant, names: List<Component>, barPercent: Int, now: Instant): Boolean {
+        if (names.any { it.string.contains(HUNGER_LABEL, ignoreCase = true) }) {
+            pendingHungryPlantWater.remove(plant)
+            return false
+        }
+
+        val pending = pendingHungryPlantWater[plant]
+        if (pending == null || pending.percent != barPercent) {
+            pendingHungryPlantWater[plant] = PendingWater(barPercent, now)
+            return false
+        }
+        return Duration.between(pending.since, now) >= HUNGER_BAR_SETTLE
     }
 
     private fun waterBarPercent(name: Component): Int? {
