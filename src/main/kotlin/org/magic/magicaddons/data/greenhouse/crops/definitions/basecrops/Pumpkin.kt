@@ -4,6 +4,7 @@ import net.minecraft.core.BlockPos
 import net.minecraft.core.Rotations
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.crops.CropBlocks.melonStemState
+import org.magic.magicaddons.data.greenhouse.crops.CropDrop
 import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
 import org.magic.magicaddons.data.greenhouse.crops.CropEffect
 import org.magic.magicaddons.data.greenhouse.crops.CropStage
@@ -18,6 +19,7 @@ object Pumpkin {
         minMutationsBeforeDecay = 12,
         tier = CropTier.BaseCrop,
         dropMultiplier = 0.2,
+        drops = mapOf(CropDrop.Pumpkin to 68),
         effects = setOf(
             CropEffect.BonusDrops
         ),

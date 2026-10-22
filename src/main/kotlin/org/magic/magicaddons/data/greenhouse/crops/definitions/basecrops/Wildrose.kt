@@ -6,6 +6,7 @@ import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.crops.CropBlocks.roseBushState
 import org.magic.magicaddons.data.greenhouse.crops.CropBlocks.shortGrassState
 import org.magic.magicaddons.data.greenhouse.crops.CropBlocks.wheatState
+import org.magic.magicaddons.data.greenhouse.crops.CropDrop
 import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
 import org.magic.magicaddons.data.greenhouse.crops.CropEffect
 import org.magic.magicaddons.data.greenhouse.crops.CropStage
@@ -20,6 +21,7 @@ object Wildrose {
         minMutationsBeforeDecay = 12,
         tier = CropTier.BaseCrop,
         dropMultiplier = 0.25,
+        drops = mapOf(CropDrop.WildRose to 200),
         effects = setOf(
             CropEffect.EffectSpread
         ),

@@ -5,6 +5,7 @@ import net.minecraft.core.Rotations
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.crops.CropBlocks.wheatState
+import org.magic.magicaddons.data.greenhouse.crops.CropDrop
 import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
 import org.magic.magicaddons.data.greenhouse.crops.CropEffect
 import org.magic.magicaddons.data.greenhouse.crops.CropStage
@@ -15,6 +16,7 @@ import org.magic.magicaddons.data.greenhouse.crops.StageBlock
 import org.magic.magicaddons.data.greenhouse.crops.StageStand
 import org.magic.magicaddons.data.greenhouse.crops.StandPose
 import org.magic.magicaddons.data.greenhouse.crops.definitions.mutations.epic.Shellfruit
+import org.magic.magicaddons.data.greenhouse.crops.definitions.mutations.epic.ChorusFruit
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
 object Phantomleaf {
@@ -22,6 +24,7 @@ object Phantomleaf {
         name = "Phantomleaf",
         tier = CropTier.Legendary,
         dropMultiplier = 5.0,
+        drops = mapOf(CropDrop.Potato to 3000, CropDrop.Carrot to 3500),
         effects = setOf(
             CropEffect.XpBoost,
             CropEffect.Immunity
@@ -238,6 +241,6 @@ object Phantomleaf {
         requiredSoil = setOf(Blocks.SOUL_SAND),
         needsWater = false,
         isMutation = true,
-        spawnRule = SpawnRule(weight = 20, requiredNeighbourCells = mapOf("Chorus Fruit" to 4, "Shellfruit" to 4))
+        spawnRule = SpawnRule(weight = 20, requiredNeighbourCells = mapOf(ChorusFruit.definition to 4, Shellfruit.definition to 4))
     )
 }

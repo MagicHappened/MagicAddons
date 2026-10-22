@@ -2,6 +2,7 @@ package org.magic.magicaddons.data.greenhouse.crops.definitions.basecrops
 
 import net.minecraft.core.BlockPos
 import org.magic.magicaddons.data.greenhouse.crops.CropBlocks.carrotState
+import org.magic.magicaddons.data.greenhouse.crops.CropDrop
 import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
 import org.magic.magicaddons.data.greenhouse.crops.CropEffect
 import org.magic.magicaddons.data.greenhouse.crops.CropStage
@@ -15,6 +16,7 @@ object Carrot {
         minMutationsBeforeDecay = 12,
         tier = CropTier.BaseCrop,
         dropMultiplier = 0.125,
+        drops = mapOf(CropDrop.Carrot to 175),
         effects = setOf(
             CropEffect.XpBoost
         ),

@@ -7,6 +7,7 @@ import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.crops.CropBlocks.stateOf
 import org.magic.magicaddons.data.greenhouse.crops.CropBlocks.sunflowerState
+import org.magic.magicaddons.data.greenhouse.crops.CropDrop
 import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
 import org.magic.magicaddons.data.greenhouse.crops.CropEffect
 import org.magic.magicaddons.data.greenhouse.crops.CropStage
@@ -24,6 +25,7 @@ object Glasscorn {
         name = "Glasscorn",
         tier = CropTier.Legendary,
         dropMultiplier = 16.0,
+        drops = mapOf(CropDrop.Potato to 4800, CropDrop.Cactus to 7200),
         effects = setOf(
             CropEffect.Immunity,
             CropEffect.ImprovedWaterRetain,
@@ -87,7 +89,7 @@ object Glasscorn {
         requiredSoil = setOf(Blocks.SAND, Blocks.RED_SAND),
         isMutation = true,
         resetsToFirstStage = true,
-        spawnRule = SpawnRule(weight = 20, requiredNeighbourCells = mapOf("Startlevine" to 6, "Chloronite" to 6))
+        spawnRule = SpawnRule(weight = 20, requiredNeighbourCells = mapOf(Startlevine.definition to 6, Chloronite.definition to 6))
     )
 
     private fun glass(color: String): BlockState = stateOf("minecraft:${color}_stained_glass")

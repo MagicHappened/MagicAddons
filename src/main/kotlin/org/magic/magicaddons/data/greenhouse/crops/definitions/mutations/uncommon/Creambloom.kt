@@ -3,6 +3,7 @@ package org.magic.magicaddons.data.greenhouse.crops.definitions.mutations.uncomm
 import net.minecraft.core.BlockPos
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.crops.CropBlocks.melonStemState
+import org.magic.magicaddons.data.greenhouse.crops.CropDrop
 import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
 import org.magic.magicaddons.data.greenhouse.crops.CropEffect
 import org.magic.magicaddons.data.greenhouse.crops.CropStage
@@ -19,6 +20,7 @@ object Creambloom {
         minMutationsBeforeDecay = 8,
         tier = CropTier.Uncommon,
         dropMultiplier = 2.8,
+        drops = mapOf(CropDrop.CocoaBeans to 2240),
         effects = setOf(
             CropEffect.Immunity
         ),
@@ -118,6 +120,6 @@ object Creambloom {
         ),
         maxStage = 6,
         isMutation = true,
-        spawnRule = SpawnRule(weight = 25, requiredNeighbourCells = mapOf("Choconut" to 8))
+        spawnRule = SpawnRule(weight = 25, requiredNeighbourCells = mapOf(Choconut.definition to 8))
     )
 }

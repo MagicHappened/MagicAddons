@@ -7,20 +7,19 @@ import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource
 import net.minecraft.client.Minecraft
 import net.minecraft.core.registries.BuiltInRegistries
 import org.magic.magicaddons.Common
-import org.magic.magicaddons.commands.AbstractDebugCommand
 import org.magic.magicaddons.util.ChatUtils
 import org.magic.magicaddons.util.ItemIconExport
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockId.Companion.getSkyBlockId
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
-object ExportSkins : AbstractDebugCommand() {
+object ExportSkins {
 
-    override val argument: String = "exportSkins"
+    private const val ARGUMENT: String = "skins"
 
     private const val HAND: String = "hand"
 
-    override fun build(): LiteralArgumentBuilder<FabricClientCommandSource> =
-        LiteralArgumentBuilder.literal<FabricClientCommandSource>(argument)
+    fun build(): LiteralArgumentBuilder<FabricClientCommandSource> =
+        LiteralArgumentBuilder.literal<FabricClientCommandSource>(ARGUMENT)
             .executes { exportHand() }
             .then(
                 RequiredArgumentBuilder.argument<FabricClientCommandSource, String>("identifier", StringArgumentType.greedyString())

@@ -5,6 +5,7 @@ import net.minecraft.core.Rotations
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.crops.CropBlocks.melonStemState
 import org.magic.magicaddons.data.greenhouse.crops.CropBlocks.wheatState
+import org.magic.magicaddons.data.greenhouse.crops.CropDrop
 import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
 import org.magic.magicaddons.data.greenhouse.crops.CropEffect
 import org.magic.magicaddons.data.greenhouse.crops.CropStage
@@ -23,6 +24,7 @@ object Devourer {
         name = "Devourer",
         tier = CropTier.Legendary,
         dropMultiplier = 19.0,
+        drops = mapOf(CropDrop.BrownMushroom to 1805, CropDrop.Pumpkin to 3230, CropDrop.RedMushroom to 1805),
         effects = setOf(
             CropEffect.BonusDrops,
             CropEffect.ImprovedHarvestBoost,
@@ -315,6 +317,6 @@ object Devourer {
         decayTimeMs = FIVE_DAY_DECAY_TIME_MS,
         maxStage = 16,
         isMutation = true,
-        spawnRule = SpawnRule(weight = 20, requiredNeighbourCells = mapOf("Puffercloud" to 4, "Zombud" to 4))
+        spawnRule = SpawnRule(weight = 20, requiredNeighbourCells = mapOf(Puffercloud.definition to 4, Zombud.definition to 4))
     )
 }

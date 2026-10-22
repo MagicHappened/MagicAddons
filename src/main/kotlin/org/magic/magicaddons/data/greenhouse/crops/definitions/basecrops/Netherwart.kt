@@ -3,6 +3,7 @@ package org.magic.magicaddons.data.greenhouse.crops.definitions.basecrops
 import net.minecraft.core.BlockPos
 import net.minecraft.world.level.block.Blocks
 import org.magic.magicaddons.data.greenhouse.crops.CropBlocks.netherwartState
+import org.magic.magicaddons.data.greenhouse.crops.CropDrop
 import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
 import org.magic.magicaddons.data.greenhouse.crops.CropEffect
 import org.magic.magicaddons.data.greenhouse.crops.CropStage
@@ -16,6 +17,7 @@ object Netherwart {
         minMutationsBeforeDecay = 12,
         tier = CropTier.BaseCrop,
         dropMultiplier = 0.09,
+        drops = mapOf(CropDrop.NetherWart to 108),
         effects = setOf(
             CropEffect.ImprovedHarvestBoost,
             CropEffect.XpLoss

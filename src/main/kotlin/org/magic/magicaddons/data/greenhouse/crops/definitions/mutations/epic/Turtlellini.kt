@@ -2,6 +2,7 @@ package org.magic.magicaddons.data.greenhouse.crops.definitions.mutations.epic
 
 import net.minecraft.core.Rotations
 import net.minecraft.world.phys.Vec3
+import org.magic.magicaddons.data.greenhouse.crops.CropDrop
 import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
 import org.magic.magicaddons.data.greenhouse.crops.CropEffect
 import org.magic.magicaddons.data.greenhouse.crops.CropStage
@@ -17,6 +18,7 @@ object Turtlellini {
         name = "Turtlellini",
         tier = CropTier.Epic,
         dropMultiplier = 0.5,
+        drops = mapOf(CropDrop.Melon to 800),
         effects = setOf(
             CropEffect.WaterRetain,
             CropEffect.Immunity
@@ -38,6 +40,6 @@ object Turtlellini {
         ),
         needsWater = false,
         isMutation = true,
-        spawnRule = SpawnRule(weight = 25, requiredNeighbourCells = mapOf("Soggybud" to 4, "Choconut" to 4))
+        spawnRule = SpawnRule(weight = 25, requiredNeighbourCells = mapOf(Soggybud.definition to 4, Choconut.definition to 4))
     )
 }

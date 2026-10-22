@@ -6,6 +6,7 @@ import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.crops.CropBlocks.melonStemState
 import org.magic.magicaddons.data.greenhouse.crops.CropBlocks.sugarcaneState
+import org.magic.magicaddons.data.greenhouse.crops.CropDrop
 import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
 import org.magic.magicaddons.data.greenhouse.crops.CropEffect
 import org.magic.magicaddons.data.greenhouse.crops.CropStage
@@ -17,6 +18,7 @@ import org.magic.magicaddons.data.greenhouse.crops.StageBlock
 import org.magic.magicaddons.data.greenhouse.crops.StageStand
 import org.magic.magicaddons.data.greenhouse.crops.StandPose
 import org.magic.magicaddons.data.greenhouse.crops.definitions.mutations.uncommon.Duskbloom
+import org.magic.magicaddons.data.greenhouse.crops.definitions.basecrops.Sugarcane
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
 object MagicJellybean {
@@ -141,6 +143,7 @@ object MagicJellybean {
         name = "Magic Jellybean",
         tier = CropTier.Rare,
         dropMultiplier = 3.0,
+        drops = mapOf(CropDrop.Moonflower to 600, CropDrop.Sunflower to 600, CropDrop.SugarCane to 1200),
         effects = setOf(
             CropEffect.ImprovedXpBoost,
             CropEffect.HarvestLoss
@@ -156,6 +159,6 @@ object MagicJellybean {
         decayTimeMs = NEVER_DECAYS,
         requiredSoil = setOf(Blocks.SAND, Blocks.RED_SAND),
         isMutation = true,
-        spawnRule = SpawnRule(weight = 25, requiredNeighbourCells = mapOf("Sugar Cane" to 5, "Duskbloom" to 3))
+        spawnRule = SpawnRule(weight = 25, requiredNeighbourCells = mapOf(Sugarcane.definition to 5, Duskbloom.definition to 3))
     )
 }

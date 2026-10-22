@@ -3,6 +3,7 @@ package org.magic.magicaddons.data.greenhouse.crops.definitions.mutations.common
 import net.minecraft.core.BlockPos
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.crops.CropBlocks.wheatState
+import org.magic.magicaddons.data.greenhouse.crops.CropDrop
 import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
 import org.magic.magicaddons.data.greenhouse.crops.CropEffect
 import org.magic.magicaddons.data.greenhouse.crops.CropStage
@@ -19,6 +20,7 @@ object Dustgrain {
         minMutationsBeforeDecay = 10,
         tier = CropTier.Common,
         dropMultiplier = 0.25,
+        drops = mapOf(CropDrop.Wheat to 100),
         effects = setOf(
             CropEffect.HarvestBoost
         ),
@@ -43,6 +45,6 @@ object Dustgrain {
         ),
         needsWater = false,
         isMutation = true,
-        spawnRule = SpawnRule(weight = 30, requiredNeighbourCells = mapOf("Wheat" to 2))
+        spawnRule = SpawnRule(weight = 30, requiredNeighbourCells = mapOf(Wheat.definition to 2))
     )
 }

@@ -4,6 +4,7 @@ import net.minecraft.core.BlockPos
 import net.minecraft.core.Rotations
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.crops.CropBlocks.wheatState
+import org.magic.magicaddons.data.greenhouse.crops.CropDrop
 import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
 import org.magic.magicaddons.data.greenhouse.crops.CropEffect
 import org.magic.magicaddons.data.greenhouse.crops.CropStage
@@ -21,6 +22,7 @@ object Gloomgourd {
         minMutationsBeforeDecay = 10,
         tier = CropTier.Common,
         dropMultiplier = 0.2,
+        drops = mapOf(CropDrop.Pumpkin to 34, CropDrop.Melon to 160),
         effects = setOf(
             CropEffect.WaterRetain,
             CropEffect.BonusDrops
@@ -51,6 +53,6 @@ object Gloomgourd {
         ),
         needsWater = false,
         isMutation = true,
-        spawnRule = SpawnRule(weight = 30, requiredNeighbourCells = mapOf("Pumpkin" to 1, "Melon" to 1))
+        spawnRule = SpawnRule(weight = 30, requiredNeighbourCells = mapOf(Pumpkin.definition to 1, Melon.definition to 1))
     )
 }

@@ -3,6 +3,7 @@ package org.magic.magicaddons.data.greenhouse.crops.definitions.mutations.uncomm
 import net.minecraft.core.BlockPos
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.crops.CropBlocks.melonStemState
+import org.magic.magicaddons.data.greenhouse.crops.CropDrop
 import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
 import org.magic.magicaddons.data.greenhouse.crops.CropEffect
 import org.magic.magicaddons.data.greenhouse.crops.CropStage
@@ -11,6 +12,7 @@ import org.magic.magicaddons.data.greenhouse.crops.SpawnRule
 import org.magic.magicaddons.data.greenhouse.crops.StageBlock
 import org.magic.magicaddons.data.greenhouse.crops.StageStand
 import org.magic.magicaddons.data.greenhouse.crops.definitions.mutations.common.Veilshroom
+import org.magic.magicaddons.data.greenhouse.crops.definitions.basecrops.Wildrose
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
 object Thornshade {
@@ -19,6 +21,7 @@ object Thornshade {
         minMutationsBeforeDecay = 8,
         tier = CropTier.Uncommon,
         dropMultiplier = 2.0,
+        drops = mapOf(CropDrop.BrownMushroom to 190, CropDrop.RedMushroom to 190, CropDrop.WildRose to 800),
         effects = setOf(
             CropEffect.EffectSpread
         ),
@@ -153,6 +156,6 @@ object Thornshade {
         ),
         maxStage = 8,
         isMutation = true,
-        spawnRule = SpawnRule(weight = 25, requiredNeighbourCells = mapOf("Wild Rose" to 4, "Veilshroom" to 4))
+        spawnRule = SpawnRule(weight = 25, requiredNeighbourCells = mapOf(Wildrose.definition to 4, Veilshroom.definition to 4))
     )
 }

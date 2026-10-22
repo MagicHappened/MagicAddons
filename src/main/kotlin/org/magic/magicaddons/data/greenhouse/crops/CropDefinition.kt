@@ -21,7 +21,7 @@ data class Footprint(val width: Int, val height: Int) {
         (0 until width).flatMap { offsetX -> (0 until height).map { offsetY -> (x + offsetX) to (y + offsetY) } }
 }
 
-data class CropDefinition(
+class CropDefinition(
     val name: String,
 
     val skyblockId: SkyBlockId?,
@@ -39,6 +39,7 @@ data class CropDefinition(
     val effects: Set<CropEffect> = emptySet(),
     val spawnRule: SpawnRule? = null,
     val dropMultiplier: Double? = null,
+    val drops: Map<CropDrop, Int> = emptyMap(),
 
     val tier: CropTier,
     val displayItem: Item? = null,
@@ -124,7 +125,7 @@ enum class CropEffect(val kind: EffectKind, val percent: Int, val label: String)
 
 data class SpawnRule(
     val weight: Int,
-    val requiredNeighbourCells: Map<String, Int> = emptyMap(),
+    val requiredNeighbourCells: Map<CropDefinition, Int> = emptyMap(),
     val needsNoNeighbours: Boolean = false,
     val needsOwnEffectsAround: Boolean = false,
     val staysOffPlotEdge: Boolean = false

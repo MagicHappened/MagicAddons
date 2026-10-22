@@ -4,6 +4,7 @@ import net.minecraft.core.BlockPos
 import net.minecraft.core.Rotations
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.crops.CropBlocks.melonStemState
+import org.magic.magicaddons.data.greenhouse.crops.CropDrop
 import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
 import org.magic.magicaddons.data.greenhouse.crops.CropEffect
 import org.magic.magicaddons.data.greenhouse.crops.CropStage
@@ -23,6 +24,7 @@ object StoplightPetal {
         name = "Stoplight Petal",
         tier = CropTier.Epic,
         dropMultiplier = 25.0,
+        drops = mapOf(CropDrop.Cactus to 7500, CropDrop.WildRose to 10000),
         effects = setOf(
             CropEffect.EffectSpread,
             CropEffect.ImprovedWaterRetain,
@@ -401,6 +403,6 @@ object StoplightPetal {
         ),
         maxStage = 12,
         isMutation = true,
-        spawnRule = SpawnRule(weight = 25, requiredNeighbourCells = mapOf("Snoozling" to 4, "Noctilume" to 4))
+        spawnRule = SpawnRule(weight = 25, requiredNeighbourCells = mapOf(Snoozling.definition to 4, Noctilume.definition to 4))
     )
 }

@@ -1,119 +1,68 @@
 package org.magic.magicaddons.features.farming.fortune
 
-import net.minecraft.core.component.DataComponents
 import net.minecraft.world.item.ItemStack
-import org.magic.magicaddons.features.farming.fortune.FortuneTables.ArmorPiece
-import org.magic.magicaddons.features.farming.fortune.FortuneTables.ArmorSet
-import tech.thatgravyboat.skyblockapi.api.data.SkyBlockRarity
+import org.magic.magicaddons.data.greenhouse.crops.CropDrop
 import tech.thatgravyboat.skyblockapi.api.datatype.DataTypes
-import tech.thatgravyboat.skyblockapi.api.datatype.defaults.Gemstone
 import tech.thatgravyboat.skyblockapi.api.datatype.getData
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockId.Companion.getSkyBlockId
 import tech.thatgravyboat.skyblockapi.utils.extentions.getLore
 
 object ItemFortune {
 
-    private const val DUMMIES_TAG: String = "farming_for_dummies_count"
+    private val FARMING_FORTUNE_LINE: Regex = Regex("""^Farming Fortune: \+([\d.]+)""")
+    private val CROP_FORTUNE_LINE: Regex = Regex("""^(.+?) Fortune: \+([\d.]+)""")
+    private val TIERED_BONUS_LINE: Regex = Regex("""Tiered Bonus: .*\((\d)/4\)""")
+    private val GRANTS_LINE: Regex = Regex("""Grants \+([\d.]+)""")
 
-    private val PIECE_BONUS: Regex = Regex("""Piece Bonus:\s*\+(\d+(?:\.\d+)?)""")
+    private const val PER_TURBO_LEVEL: Double = 5.0
+    private const val TURBO_ENCHANT_PREFIX: String = "turbo_"
 
-    class Read(val sources: List<FortuneSource>, val unknown: List<String>)
+    private val TURBO_CROPS: Map<String, CropDrop> = mapOf(
+        "wheat" to CropDrop.Wheat,
+        "carrot" to CropDrop.Carrot,
+        "potato" to CropDrop.Potato,
+        "pumpkin" to CropDrop.Pumpkin,
+        "cane" to CropDrop.SugarCane,
+        "melon" to CropDrop.Melon,
+        "cactus" to CropDrop.Cactus,
+        "coco" to CropDrop.CocoaBeans,
+        "mushrooms" to CropDrop.RedMushroom,
+        "warts" to CropDrop.NetherWart
+    )
 
     fun rawId(item: ItemStack): String? =
         item.getSkyBlockId()?.id?.substringAfter(':', "")?.takeIf { it.isNotEmpty() }?.uppercase()
 
-    fun armorSetOf(id: String): Pair<ArmorSet, ArmorPiece>? {
-        val piece = ArmorPiece.entries.firstOrNull { id.endsWith(it.idSuffix) } ?: return null
-        val set = FortuneTables.ARMOR_SETS.firstOrNull { id == it.idPrefix + piece.idSuffix } ?: return null
-        return set to piece
-    }
+    fun isFarmingTool(item: ItemStack): Boolean =
+        item.getLore().any { it.string.trim() == "Farming Tool" }
 
-    fun armor(item: ItemStack, farmingLevel: Int): Read {
-        val id = rawId(item) ?: return Read(emptyList(), emptyList())
+    fun statLines(item: ItemStack): List<FortuneSource> {
         val name = item.hoverName.string
-        val sources = mutableListOf<FortuneSource>()
-
-        armorSetOf(id)?.let { (set, piece) -> sources += FortuneSource(name, set.fortuneByPiece.getValue(piece), "base") }
-        if (id in FortuneTables.FARMING_LEVEL_ARMOR) sources += FortuneSource(name, farmingLevel.toDouble(), "1 per farming level")
-
-        sources += reforge(item, name)
-        sources += peridot(item, name, half = false)
-        enchantLevel(item, "pesterminator")?.let {
-            sources += FortuneSource(name, it * FortuneTables.PER_PESTERMINATOR_LEVEL, "Pesterminator $it")
+        return item.getLore().flatMap { line ->
+            val text = line.string.trim()
+            FARMING_FORTUNE_LINE.find(text)?.let { return@flatMap listOf(FortuneSource(name, FortuneStat.General, it.groupValues[1].toDouble(), "stat line")) }
+            val crop = CROP_FORTUNE_LINE.find(text) ?: return@flatMap emptyList()
+            FortuneCrops.byStatName(crop.groupValues[1]).map { FortuneSource(name, FortuneStat.Crop(it), crop.groupValues[2].toDouble(), "stat line") }
         }
-        return Read(sources, emptyList())
     }
 
-    fun equipment(item: ItemStack): Read {
-        val id = rawId(item) ?: return Read(emptyList(), emptyList())
-        val name = item.hoverName.string
-        val sources = mutableListOf<FortuneSource>()
-        val unknown = mutableListOf<String>()
-
-        FortuneTables.EQUIPMENT_BASE[id]?.let { sources += FortuneSource(name, it, "base") }
-        pieceBonus(item)?.let { sources += FortuneSource(name, it, "piece bonus") }
-        sources += reforge(item, name)
-        enchantLevel(item, "green_thumb")?.let { unknown += "$name: Green Thumb $it needs the unique visitor count" }
-        return Read(sources, unknown)
+    fun armorSetBonus(armor: List<ItemStack>): FortuneSource? {
+        val piece = armor.firstOrNull { item -> item.getLore().any { TIERED_BONUS_LINE.containsMatchIn(it.string) } } ?: return null
+        val lore = piece.getLore().map { it.string }
+        val pieces = lore.firstNotNullOfOrNull { TIERED_BONUS_LINE.find(it) }?.groupValues?.get(1)?.toIntOrNull() ?: return null
+        if (pieces < 2) return null
+        val granted = lore.firstNotNullOfOrNull { GRANTS_LINE.find(it) }?.groupValues?.get(1)?.toDoubleOrNull() ?: return null
+        return FortuneSource("${piece.hoverName.string} set ($pieces/4)", FortuneStat.General, granted, "tiered bonus")
     }
 
-    fun isFarmingTool(item: ItemStack): Boolean {
-        val id = rawId(item) ?: return false
-        return FortuneTables.FARMING_TOOL_PREFIXES.any { id.startsWith(it) } || id in FortuneTables.VACUUM_BASE
-    }
-
-    fun tool(item: ItemStack): Read {
-        val id = rawId(item) ?: return Read(emptyList(), emptyList())
-        val name = item.hoverName.string
-        val sources = mutableListOf<FortuneSource>()
-
-        (FortuneTables.GARDENING_TOOL_BASE[id] ?: FortuneTables.VACUUM_BASE[id])?.let { sources += FortuneSource(name, it, "base") }
-        sources += reforge(item, name)
-        sources += peridot(item, name, half = false)
-        enchantLevel(item, "harvesting")?.let { sources += FortuneSource(name, it * FortuneTables.PER_HARVESTING_LEVEL, "Harvesting $it") }
-        enchantLevel(item, "cultivating")?.let { sources += FortuneSource(name, it * FortuneTables.PER_CULTIVATING_LEVEL, "Cultivating $it") }
-        dummies(item).takeIf { it > 0 }?.let {
-            sources += FortuneSource(name, it * FortuneTables.PER_FARMING_FOR_DUMMIES, "Farming for Dummies $it")
+    fun turboFortune(tool: ItemStack): List<FortuneSource> {
+        val name = tool.hoverName.string
+        val coveredByLine = statLines(tool).mapNotNull { (it.stat as? FortuneStat.Crop)?.crop }.toSet()
+        return tool.getData(DataTypes.ENCHANTMENTS).orEmpty().mapNotNull { (enchant, level) ->
+            if (!enchant.startsWith(TURBO_ENCHANT_PREFIX) || level <= 0) return@mapNotNull null
+            val crop = TURBO_CROPS[enchant.removePrefix(TURBO_ENCHANT_PREFIX)] ?: return@mapNotNull null
+            if (crop in coveredByLine) return@mapNotNull null
+            FortuneSource(name, FortuneStat.Crop(crop), level * PER_TURBO_LEVEL, "Turbo $level, off-crop")
         }
-        return Read(sources, emptyList())
     }
-
-    fun accessory(item: ItemStack): Read {
-        val id = rawId(item) ?: return Read(emptyList(), emptyList())
-        val name = item.hoverName.string
-        val sources = mutableListOf<FortuneSource>()
-
-        if (id == "HELIANTHUS_RELIC") sources += FortuneSource(name, FortuneTables.HELIANTHUS_RELIC)
-        sources += peridot(item, name, half = true)
-        return Read(sources, emptyList())
-    }
-
-    private fun rarity(item: ItemStack): SkyBlockRarity = item.getData(DataTypes.RARITY) ?: SkyBlockRarity.COMMON
-
-    private fun reforge(item: ItemStack, name: String): List<FortuneSource> {
-        val modifier = item.getData(DataTypes.MODIFIER) ?: return emptyList()
-        val value = FortuneTables.reforgeFortune(modifier, rarity(item)) ?: return emptyList()
-        return listOf(FortuneSource(name, value, modifier.replace('_', ' ')))
-    }
-
-    private fun peridot(item: ItemStack, name: String, half: Boolean): List<FortuneSource> {
-        val rarity = rarity(item)
-        return item.getData(DataTypes.GEMSTONES).orEmpty()
-            .filter { it.gemstone == Gemstone.PERIDOT }
-            .map { gem ->
-                val value = FortuneTables.peridotFortune(gem.quality, rarity)
-                FortuneSource(name, if (half) value / 2 else value, "${gem.quality.name.lowercase()} peridot")
-            }
-    }
-
-    private fun enchantLevel(item: ItemStack, enchant: String): Int? =
-        item.getData(DataTypes.ENCHANTMENTS)?.get(enchant)?.takeIf { it > 0 }
-
-    private fun dummies(item: ItemStack): Int {
-        val tag = item.get(DataComponents.CUSTOM_DATA)?.copyTag() ?: return 0
-        return tag.getInt(DUMMIES_TAG).orElse(0).coerceAtMost(FortuneTables.MAX_FARMING_FOR_DUMMIES)
-    }
-
-    private fun pieceBonus(item: ItemStack): Double? =
-        item.getLore().asReversed().firstNotNullOfOrNull { PIECE_BONUS.find(it.string) }?.groupValues?.get(1)?.toDoubleOrNull()
 }

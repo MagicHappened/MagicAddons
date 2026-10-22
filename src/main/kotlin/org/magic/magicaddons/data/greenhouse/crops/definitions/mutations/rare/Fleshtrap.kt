@@ -5,6 +5,7 @@ import net.minecraft.core.Rotations
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.crops.CropBlocks.melonStemState
 import org.magic.magicaddons.data.greenhouse.crops.CropBlocks.wheatState
+import org.magic.magicaddons.data.greenhouse.crops.CropDrop
 import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
 import org.magic.magicaddons.data.greenhouse.crops.CropEffect
 import org.magic.magicaddons.data.greenhouse.crops.CropStage
@@ -24,6 +25,7 @@ object Fleshtrap {
         minMutationsBeforeDecay = 6,
         tier = CropTier.Rare,
         dropMultiplier = 1.7,
+        drops = mapOf(CropDrop.Potato to 510, CropDrop.Carrot to 595, CropDrop.Pumpkin to 289),
         effects = setOf(
             CropEffect.BonusDrops
         ),
@@ -310,6 +312,6 @@ object Fleshtrap {
         maxStage = 14,
         decayTimeMs = NEVER_DECAYS,
         isMutation = true,
-        spawnRule = SpawnRule(weight = 25, requiredNeighbourCells = mapOf("Cindershade" to 4, "Lonelily" to 4))
+        spawnRule = SpawnRule(weight = 25, requiredNeighbourCells = mapOf(Cindershade.definition to 4, Lonelily.definition to 4))
     )
 }

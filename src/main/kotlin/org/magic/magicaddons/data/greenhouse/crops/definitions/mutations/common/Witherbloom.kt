@@ -4,6 +4,7 @@ import net.minecraft.core.BlockPos
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.crops.CropBlocks.deadBushState
+import org.magic.magicaddons.data.greenhouse.crops.CropDrop
 import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
 import org.magic.magicaddons.data.greenhouse.crops.CropEffect
 import org.magic.magicaddons.data.greenhouse.crops.CropStage
@@ -12,6 +13,7 @@ import org.magic.magicaddons.data.greenhouse.crops.Plant
 import org.magic.magicaddons.data.greenhouse.crops.SpawnRule
 import org.magic.magicaddons.data.greenhouse.crops.StageBlock
 import org.magic.magicaddons.data.greenhouse.crops.StageStand
+import org.magic.magicaddons.data.greenhouse.crops.definitions.misc.DeadPlant
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
 object Witherbloom {
@@ -21,6 +23,7 @@ object Witherbloom {
         minMutationsBeforeDecay = 10,
         tier = CropTier.Common,
         dropMultiplier = 0.23,
+        drops = mapOf(CropDrop.WildRose to 184),
         effects = setOf(
             CropEffect.EffectSpread
         ),
@@ -46,6 +49,6 @@ object Witherbloom {
         requiredSoil = setOf(Blocks.SOUL_SAND),
         needsWater = false,
         isMutation = true,
-        spawnRule = SpawnRule(weight = 30, requiredNeighbourCells = mapOf("Dead Plant" to 4))
+        spawnRule = SpawnRule(weight = 30, requiredNeighbourCells = mapOf(DeadPlant.definition to 4))
     )
 }

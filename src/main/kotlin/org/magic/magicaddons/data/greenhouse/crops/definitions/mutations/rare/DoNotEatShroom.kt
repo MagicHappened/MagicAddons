@@ -1,6 +1,7 @@
 package org.magic.magicaddons.data.greenhouse.crops.definitions.mutations.rare
 
 import net.minecraft.world.phys.Vec3
+import org.magic.magicaddons.data.greenhouse.crops.CropDrop
 import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
 import org.magic.magicaddons.data.greenhouse.crops.CropEffect
 import org.magic.magicaddons.data.greenhouse.crops.CropStage
@@ -17,6 +18,12 @@ object DoNotEatShroom {
         minMutationsBeforeDecay = 8,
         tier = CropTier.Rare,
         dropMultiplier = 2.1,
+        drops = mapOf(
+            CropDrop.BrownMushroom to 200,
+            CropDrop.Potato to 630,
+            CropDrop.Carrot to 735,
+            CropDrop.RedMushroom to 200,
+        ),
         effects = setOf(
             CropEffect.ImprovedHarvestBoost,
             CropEffect.WaterDrain
@@ -115,6 +122,6 @@ object DoNotEatShroom {
         ),
         maxStage = 8,
         isMutation = true,
-        spawnRule = SpawnRule(weight = 25, requiredNeighbourCells = mapOf("Veilshroom" to 4, "Scourroot" to 4))
+        spawnRule = SpawnRule(weight = 25, requiredNeighbourCells = mapOf(Veilshroom.definition to 4, Scourroot.definition to 4))
     )
 }

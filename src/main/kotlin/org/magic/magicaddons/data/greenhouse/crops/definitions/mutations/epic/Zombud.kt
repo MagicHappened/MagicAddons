@@ -4,6 +4,7 @@ import net.minecraft.core.BlockPos
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.crops.CropBlocks.netherwartState
+import org.magic.magicaddons.data.greenhouse.crops.CropDrop
 import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
 import org.magic.magicaddons.data.greenhouse.crops.CropEffect
 import org.magic.magicaddons.data.greenhouse.crops.CropStage
@@ -15,6 +16,7 @@ import org.magic.magicaddons.data.greenhouse.crops.StageBlock
 import org.magic.magicaddons.data.greenhouse.crops.StageStand
 import org.magic.magicaddons.data.greenhouse.crops.definitions.mutations.rare.Fleshtrap
 import org.magic.magicaddons.data.greenhouse.crops.definitions.mutations.uncommon.Cindershade
+import org.magic.magicaddons.data.greenhouse.crops.definitions.misc.DeadPlant
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
 object Zombud {
@@ -23,6 +25,7 @@ object Zombud {
         minMutationsBeforeDecay = 6,
         tier = CropTier.Epic,
         dropMultiplier = 4.5,
+        drops = mapOf(CropDrop.Pumpkin to 765, CropDrop.WildRose to 1800),
         effects = setOf(
             CropEffect.EffectSpread,
             CropEffect.BonusDrops
@@ -263,6 +266,6 @@ object Zombud {
         requiredSoil = setOf(Blocks.SOUL_SAND),
         needsWater = false,
         isMutation = true,
-        spawnRule = SpawnRule(weight = 25, requiredNeighbourCells = mapOf("Dead Plant" to 4, "Cindershade" to 2, "Fleshtrap" to 2))
+        spawnRule = SpawnRule(weight = 25, requiredNeighbourCells = mapOf(DeadPlant.definition to 4, Cindershade.definition to 2, Fleshtrap.definition to 2))
     )
 }

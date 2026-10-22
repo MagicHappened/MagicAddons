@@ -5,6 +5,7 @@ import net.minecraft.core.Rotations
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.crops.CropBlocks.stateOf
+import org.magic.magicaddons.data.greenhouse.crops.CropDrop
 import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
 import org.magic.magicaddons.data.greenhouse.crops.CropEffect
 import org.magic.magicaddons.data.greenhouse.crops.CropStage
@@ -23,6 +24,7 @@ object Blastberry {
         minMutationsBeforeDecay = 8,
         tier = CropTier.Rare,
         dropMultiplier = 2.0,
+        drops = mapOf(CropDrop.CocoaBeans to 800, CropDrop.NetherWart to 1200),
         effects = setOf(
             CropEffect.Immunity,
             CropEffect.ImprovedHarvestBoost,
@@ -134,6 +136,6 @@ object Blastberry {
         maxStage = 6,
         requiredSoil = setOf(Blocks.SAND, Blocks.RED_SAND),
         isMutation = true,
-        spawnRule = SpawnRule(weight = 25, requiredNeighbourCells = mapOf("Chocoberry" to 5, "Ashwreath" to 3))
+        spawnRule = SpawnRule(weight = 25, requiredNeighbourCells = mapOf(Chocoberry.definition to 5, Ashwreath.definition to 3))
     )
 }

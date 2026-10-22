@@ -3,6 +3,7 @@ package org.magic.magicaddons.data.greenhouse.crops.definitions.mutations.epic
 import net.minecraft.core.Rotations
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.phys.Vec3
+import org.magic.magicaddons.data.greenhouse.crops.CropDrop
 import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
 import org.magic.magicaddons.data.greenhouse.crops.CropEffect
 import org.magic.magicaddons.data.greenhouse.crops.CropStage
@@ -11,6 +12,7 @@ import org.magic.magicaddons.data.greenhouse.crops.FIVE_DAY_DECAY_TIME_MS
 import org.magic.magicaddons.data.greenhouse.crops.SpawnRule
 import org.magic.magicaddons.data.greenhouse.crops.StageStand
 import org.magic.magicaddons.data.greenhouse.crops.definitions.mutations.rare.Chloronite
+import org.magic.magicaddons.data.greenhouse.crops.definitions.mutations.rare.MagicJellybean
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
 object ChorusFruit {
@@ -19,6 +21,7 @@ object ChorusFruit {
         minMutationsBeforeDecay = 6,
         tier = CropTier.Epic,
         dropMultiplier = 3.5,
+        drops = mapOf(CropDrop.Potato to 1050, CropDrop.Carrot to 1225, CropDrop.SugarCane to 1400),
         effects = setOf(
             CropEffect.ImprovedXpBoost,
             CropEffect.HarvestLoss
@@ -234,6 +237,6 @@ object ChorusFruit {
         requiredSoil = setOf(Blocks.END_STONE),
         needsWater = false,
         isMutation = true,
-        spawnRule = SpawnRule(weight = 25, requiredNeighbourCells = mapOf("Chloronite" to 5, "Magic Jellybean" to 3))
+        spawnRule = SpawnRule(weight = 25, requiredNeighbourCells = mapOf(Chloronite.definition to 5, MagicJellybean.definition to 3))
     )
 }

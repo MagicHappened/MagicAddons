@@ -4,6 +4,7 @@ import net.minecraft.core.BlockPos
 import net.minecraft.core.Rotations
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.crops.CropBlocks.wheatState
+import org.magic.magicaddons.data.greenhouse.crops.CropDrop
 import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
 import org.magic.magicaddons.data.greenhouse.crops.CropEffect
 import org.magic.magicaddons.data.greenhouse.crops.CropStage
@@ -106,6 +107,7 @@ object Noctilume {
         minMutationsBeforeDecay = 8,
         tier = CropTier.Rare,
         dropMultiplier = 5.3,
+        drops = mapOf(CropDrop.Cactus to 1590, CropDrop.WildRose to 2120),
         effects = setOf(
             CropEffect.EffectSpread,
             CropEffect.ImprovedWaterRetain,
@@ -184,6 +186,6 @@ object Noctilume {
         maxStage = 4,
         footprint = Footprint(2, 2),
         isMutation = true,
-        spawnRule = SpawnRule(weight = 25, requiredNeighbourCells = mapOf("Duskbloom" to 6, "Lonelily" to 6))
+        spawnRule = SpawnRule(weight = 25, requiredNeighbourCells = mapOf(Duskbloom.definition to 6, Lonelily.definition to 6))
     )
 }

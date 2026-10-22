@@ -4,6 +4,7 @@ import net.minecraft.core.BlockPos
 import net.minecraft.core.Rotations
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.crops.CropBlocks.wheatState
+import org.magic.magicaddons.data.greenhouse.crops.CropDrop
 import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
 import org.magic.magicaddons.data.greenhouse.crops.CropEffect
 import org.magic.magicaddons.data.greenhouse.crops.CropStage
@@ -35,6 +36,12 @@ object Snoozling {
         minMutationsBeforeDecay = 8,
         tier = CropTier.Rare,
         dropMultiplier = 21.0,
+        drops = mapOf(
+            CropDrop.Moonflower to 4200,
+            CropDrop.Sunflower to 4200,
+            CropDrop.Cactus to 3150,
+            CropDrop.SugarCane to 4200,
+        ),
         effects = setOf(
             CropEffect.BonusDrops
         ),
@@ -901,6 +908,6 @@ object Snoozling {
         stallExplanation = "This snoozling is asleep and will not grow until it is woken.",
         footprint = Footprint(3, 3),
         isMutation = true,
-        spawnRule = SpawnRule(weight = 25, requiredNeighbourCells = mapOf("Creambloom" to 4, "Dustgrain" to 3, "Witherbloom" to 3, "Duskbloom" to 3, "Thornshade" to 3))
+        spawnRule = SpawnRule(weight = 25, requiredNeighbourCells = mapOf(Creambloom.definition to 4, Dustgrain.definition to 3, Witherbloom.definition to 3, Duskbloom.definition to 3, Thornshade.definition to 3))
     )
 }

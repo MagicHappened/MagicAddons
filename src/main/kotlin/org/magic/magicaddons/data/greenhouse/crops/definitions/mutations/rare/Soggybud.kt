@@ -3,6 +3,7 @@ package org.magic.magicaddons.data.greenhouse.crops.definitions.mutations.rare
 import net.minecraft.core.BlockPos
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.crops.CropBlocks.melonStemState
+import org.magic.magicaddons.data.greenhouse.crops.CropDrop
 import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
 import org.magic.magicaddons.data.greenhouse.crops.CropEffect
 import org.magic.magicaddons.data.greenhouse.crops.CropStage
@@ -20,6 +21,7 @@ object Soggybud {
         minMutationsBeforeDecay = 8,
         tier = CropTier.Rare,
         dropMultiplier = 1.2,
+        drops = mapOf(CropDrop.Melon to 1920),
         effects = setOf(
             CropEffect.WaterRetain
         ),
@@ -152,6 +154,6 @@ object Soggybud {
             )
         ),
         isMutation = true,
-        spawnRule = SpawnRule(weight = 25, requiredNeighbourCells = mapOf("Melon" to 2, "Gloomgourd" to 2))
+        spawnRule = SpawnRule(weight = 25, requiredNeighbourCells = mapOf(Melon.definition to 2, Gloomgourd.definition to 2))
     )
 }

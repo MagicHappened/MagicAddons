@@ -5,6 +5,7 @@ import net.minecraft.core.Rotations
 import net.minecraft.world.item.Items
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.crops.CropBlocks.melonStemState
+import org.magic.magicaddons.data.greenhouse.crops.CropDrop
 import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
 import org.magic.magicaddons.data.greenhouse.crops.CropEffect
 import org.magic.magicaddons.data.greenhouse.crops.CropStage
@@ -20,6 +21,7 @@ object Cocoa {
         minMutationsBeforeDecay = 12,
         tier = CropTier.BaseCrop,
         dropMultiplier = 0.15,
+        drops = mapOf(CropDrop.CocoaBeans to 120),
         effects = setOf(
             CropEffect.Immunity
         ),

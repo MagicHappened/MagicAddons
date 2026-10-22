@@ -2,12 +2,15 @@ package org.magic.magicaddons.data.greenhouse.crops.definitions.mutations.common
 
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.phys.Vec3
+import org.magic.magicaddons.data.greenhouse.crops.CropDrop
 import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
 import org.magic.magicaddons.data.greenhouse.crops.CropEffect
 import org.magic.magicaddons.data.greenhouse.crops.CropStage
 import org.magic.magicaddons.data.greenhouse.crops.CropTier
 import org.magic.magicaddons.data.greenhouse.crops.SpawnRule
 import org.magic.magicaddons.data.greenhouse.crops.StageStand
+import org.magic.magicaddons.data.greenhouse.crops.definitions.basecrops.Brownmushroom
+import org.magic.magicaddons.data.greenhouse.crops.definitions.basecrops.Redmushroom
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
 object Veilshroom {
@@ -17,6 +20,7 @@ object Veilshroom {
         minMutationsBeforeDecay = 10,
         tier = CropTier.Common,
         dropMultiplier = 0.15,
+        drops = mapOf(CropDrop.BrownMushroom to 28, CropDrop.RedMushroom to 28),
         effects = setOf(
             CropEffect.ImprovedHarvestBoost,
             CropEffect.WaterDrain
@@ -38,6 +42,6 @@ object Veilshroom {
         requiredSoil = setOf(Blocks.MYCELIUM, Blocks.PODZOL),
         needsWater = false,
         isMutation = true,
-        spawnRule = SpawnRule(weight = 30, requiredNeighbourCells = mapOf("Red Mushroom" to 1, "Brown Mushroom" to 1))
+        spawnRule = SpawnRule(weight = 30, requiredNeighbourCells = mapOf(Redmushroom.definition to 1, Brownmushroom.definition to 1))
     )
 }

@@ -4,6 +4,7 @@ import net.minecraft.core.BlockPos
 import net.minecraft.core.Rotations
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.crops.CropBlocks.melonStemState
+import org.magic.magicaddons.data.greenhouse.crops.CropDrop
 import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
 import org.magic.magicaddons.data.greenhouse.crops.CropEffect
 import org.magic.magicaddons.data.greenhouse.crops.CropStage
@@ -24,6 +25,7 @@ object PlantBoyAdvance {
         minMutationsBeforeDecay = 6,
         tier = CropTier.Epic,
         dropMultiplier = 23.0,
+        drops = mapOf(CropDrop.Moonflower to 4600, CropDrop.Sunflower to 4600, CropDrop.Wheat to 4600),
         effects = setOf(
             CropEffect.HarvestBoost
         ),
@@ -515,6 +517,6 @@ object PlantBoyAdvance {
         rotatesWithPlot = false,
         needsWater = false,
         isMutation = true,
-        spawnRule = SpawnRule(weight = 25, requiredNeighbourCells = mapOf("Snoozling" to 6, "Thunderling" to 6))
+        spawnRule = SpawnRule(weight = 25, requiredNeighbourCells = mapOf(Snoozling.definition to 6, Thunderling.definition to 6))
     )
 }

@@ -12,8 +12,7 @@ import org.magic.magicaddons.Common
 import org.magic.magicaddons.commands.config.FeatureCommand
 import org.magic.magicaddons.commands.config.HudCommand
 import org.magic.magicaddons.commands.debug.AuthDebug
-import org.magic.magicaddons.commands.debug.ExportCropIcons
-import org.magic.magicaddons.commands.debug.ExportSkins
+import org.magic.magicaddons.commands.debug.ExportCommand
 import org.magic.magicaddons.commands.debug.FarmingDebug
 import org.magic.magicaddons.commands.debug.MiningDebug
 import org.magic.magicaddons.commands.debug.PlaySound
@@ -51,8 +50,7 @@ object MainCommand {
         MiningDebug,
         AuthDebug,
         PlaySound,
-        ExportSkins,
-        ExportCropIcons,
+        ExportCommand,
         TickReport,
         ChorusExplanation,
         GetPlannerItemCommand

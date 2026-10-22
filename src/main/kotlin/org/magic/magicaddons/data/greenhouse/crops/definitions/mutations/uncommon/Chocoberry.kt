@@ -4,6 +4,7 @@ import net.minecraft.core.BlockPos
 import net.minecraft.core.Rotations
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.crops.CropBlocks.melonStemState
+import org.magic.magicaddons.data.greenhouse.crops.CropDrop
 import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
 import org.magic.magicaddons.data.greenhouse.crops.CropEffect
 import org.magic.magicaddons.data.greenhouse.crops.CropStage
@@ -21,6 +22,7 @@ object Chocoberry {
         minMutationsBeforeDecay = 10,
         tier = CropTier.Uncommon,
         dropMultiplier = 2.2,
+        drops = mapOf(CropDrop.CocoaBeans to 440, CropDrop.Pumpkin to 187, CropDrop.Melon to 1760),
         effects = setOf(
             CropEffect.WaterRetain
         ),
@@ -128,6 +130,6 @@ object Chocoberry {
         ),
         maxStage = 6,
         isMutation = true,
-        spawnRule = SpawnRule(weight = 25, requiredNeighbourCells = mapOf("Choconut" to 6, "Gloomgourd" to 2))
+        spawnRule = SpawnRule(weight = 25, requiredNeighbourCells = mapOf(Choconut.definition to 6, Gloomgourd.definition to 2))
     )
 }

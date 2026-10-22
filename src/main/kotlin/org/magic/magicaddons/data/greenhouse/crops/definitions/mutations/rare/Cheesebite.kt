@@ -5,6 +5,7 @@ import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.crops.CropBlocks.melonStemState
 import org.magic.magicaddons.data.greenhouse.crops.CropBlocks.sunflowerState
 import org.magic.magicaddons.data.greenhouse.crops.CropBlocks.wheatState
+import org.magic.magicaddons.data.greenhouse.crops.CropDrop
 import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
 import org.magic.magicaddons.data.greenhouse.crops.CropEffect
 import org.magic.magicaddons.data.greenhouse.crops.CropStage
@@ -22,6 +23,12 @@ object Cheesebite {
         minMutationsBeforeDecay = 8,
         tier = CropTier.Rare,
         dropMultiplier = 4.0,
+        drops = mapOf(
+            CropDrop.BrownMushroom to 253,
+            CropDrop.Cactus to 800,
+            CropDrop.SugarCane to 1067,
+            CropDrop.RedMushroom to 253,
+        ),
         effects = setOf(
             CropEffect.ImprovedWaterRetain,
             CropEffect.HarvestLoss
@@ -193,6 +200,6 @@ object Cheesebite {
         ),
         maxStage = 10,
         isMutation = true,
-        spawnRule = SpawnRule(weight = 25, requiredNeighbourCells = mapOf("Creambloom" to 4, "Fermento" to 4))
+        spawnRule = SpawnRule(weight = 25, requiredNeighbourCells = mapOf(Creambloom.definition to 4, Fermento.definition to 4))
     )
 }

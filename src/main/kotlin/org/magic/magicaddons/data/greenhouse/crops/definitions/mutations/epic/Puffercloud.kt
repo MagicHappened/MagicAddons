@@ -4,6 +4,7 @@ import net.minecraft.core.BlockPos
 import net.minecraft.core.Rotations
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.crops.CropBlocks.wheatState
+import org.magic.magicaddons.data.greenhouse.crops.CropDrop
 import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
 import org.magic.magicaddons.data.greenhouse.crops.CropEffect
 import org.magic.magicaddons.data.greenhouse.crops.CropStage
@@ -13,6 +14,7 @@ import org.magic.magicaddons.data.greenhouse.crops.SpawnRule
 import org.magic.magicaddons.data.greenhouse.crops.StageBlock
 import org.magic.magicaddons.data.greenhouse.crops.StageStand
 import org.magic.magicaddons.data.greenhouse.crops.definitions.mutations.rare.Snoozling
+import org.magic.magicaddons.data.greenhouse.crops.definitions.mutations.rare.DoNotEatShroom
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
 object Puffercloud {
@@ -21,6 +23,12 @@ object Puffercloud {
         minMutationsBeforeDecay = 6,
         tier = CropTier.Epic,
         dropMultiplier = 6.0,
+        drops = mapOf(
+            CropDrop.BrownMushroom to 570,
+            CropDrop.Moonflower to 1200,
+            CropDrop.Sunflower to 1200,
+            CropDrop.RedMushroom to 570,
+        ),
         effects = setOf(
             CropEffect.ImprovedHarvestBoost,
             CropEffect.WaterDrain
@@ -246,6 +254,6 @@ object Puffercloud {
         decayTimeMs = FIVE_DAY_DECAY_TIME_MS,
         maxStage = 14,
         isMutation = true,
-        spawnRule = SpawnRule(weight = 25, requiredNeighbourCells = mapOf("Snoozling" to 2, "Do-not-eat-shroom" to 6))
+        spawnRule = SpawnRule(weight = 25, requiredNeighbourCells = mapOf(Snoozling.definition to 2, DoNotEatShroom.definition to 6))
     )
 }

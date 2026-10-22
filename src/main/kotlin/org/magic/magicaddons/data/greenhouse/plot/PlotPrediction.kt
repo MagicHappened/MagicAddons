@@ -175,7 +175,7 @@ object PlotPrediction {
     ): List<String> {
         val rule = crop.spawnRule ?: return emptyList()
         val surroundingCellsByCrop = cellsSurrounding(layout, crop, x, y).mapNotNull { (cellX, cellY) -> contributingPlantAtPos(layout, cellX, cellY, ignoredPlant) }
-            .groupingBy { it.cropDef.name }
+            .groupingBy { it.cropDef }
             .eachCount()
 
         val missing = mutableListOf<String>()
@@ -183,7 +183,7 @@ object PlotPrediction {
 
         rule.requiredNeighbourCells.forEach { (neighbourCrop, requiredCells) ->
             val missingCount = requiredCells - (surroundingCellsByCrop[neighbourCrop] ?: 0)
-            if (missingCount > 0) missing += "$missingCount more $neighbourCrop"
+            if (missingCount > 0) missing += "$missingCount more ${neighbourCrop.name}"
         }
         return missing
     }
@@ -219,7 +219,7 @@ object PlotPrediction {
 
         return cellsSurrounding(layout, crop, x, y)
             .mapNotNull { (cellX, cellY) -> contributingPlantAtPos(layout, cellX, cellY, ignoredPlant) }
-            .filterTo(mutableSetOf()) { recipe.isEmpty() || it.cropDef.name in recipe }
+            .filterTo(mutableSetOf()) { recipe.isEmpty() || it.cropDef in recipe }
     }
 
     class CreditDraw(val credited: Int, val candidates: Set<Plant>)
@@ -234,9 +234,9 @@ object PlotPrediction {
         if (recipe.isEmpty()) return SpawnCredit(contributingCells.toSet(), emptyList())
 
         val (exactlyNeeded, moreThanNeeded) = contributingCells
-            .filter { it.cropDef.name in recipe }
-            .groupBy { it.cropDef.name }
-            .entries.partition { (cropName, cells) -> cells.size <= recipe.getValue(cropName) }
+            .filter { it.cropDef in recipe }
+            .groupBy { it.cropDef }
+            .entries.partition { (neighbourCrop, cells) -> cells.size <= recipe.getValue(neighbourCrop) }
         return SpawnCredit(
             exactlyNeeded.flatMap { it.value }.toSet(),
             moreThanNeeded.map { (cropName, cells) -> CreditDraw(recipe.getValue(cropName), cells.toSet()) }

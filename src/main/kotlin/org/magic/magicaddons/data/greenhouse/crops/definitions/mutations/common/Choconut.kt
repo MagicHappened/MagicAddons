@@ -4,6 +4,7 @@ import net.minecraft.core.BlockPos
 import net.minecraft.core.Rotations
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.crops.CropBlocks.pumpkinStemState
+import org.magic.magicaddons.data.greenhouse.crops.CropDrop
 import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
 import org.magic.magicaddons.data.greenhouse.crops.CropEffect
 import org.magic.magicaddons.data.greenhouse.crops.CropStage
@@ -21,6 +22,7 @@ object Choconut {
         minMutationsBeforeDecay = 10,
         tier = CropTier.Common,
         dropMultiplier = 0.25,
+        drops = mapOf(CropDrop.CocoaBeans to 200),
         effects = setOf(
             CropEffect.Immunity
         ),
@@ -48,6 +50,6 @@ object Choconut {
         ),
         needsWater = false,
         isMutation = true,
-        spawnRule = SpawnRule(weight = 30, requiredNeighbourCells = mapOf("Cocoa Beans" to 2))
+        spawnRule = SpawnRule(weight = 30, requiredNeighbourCells = mapOf(Cocoa.definition to 2))
     )
 }

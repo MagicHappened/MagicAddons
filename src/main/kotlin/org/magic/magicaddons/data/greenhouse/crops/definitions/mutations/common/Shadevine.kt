@@ -3,6 +3,7 @@ package org.magic.magicaddons.data.greenhouse.crops.definitions.mutations.common
 import net.minecraft.core.Rotations
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.phys.Vec3
+import org.magic.magicaddons.data.greenhouse.crops.CropDrop
 import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
 import org.magic.magicaddons.data.greenhouse.crops.CropEffect
 import org.magic.magicaddons.data.greenhouse.crops.CropStage
@@ -11,6 +12,7 @@ import org.magic.magicaddons.data.greenhouse.crops.SpawnRule
 import org.magic.magicaddons.data.greenhouse.crops.StageStand
 import org.magic.magicaddons.data.greenhouse.crops.StandPose
 import org.magic.magicaddons.data.greenhouse.crops.definitions.basecrops.Cactus
+import org.magic.magicaddons.data.greenhouse.crops.definitions.basecrops.Sugarcane
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
 object Shadevine {
@@ -20,6 +22,7 @@ object Shadevine {
         minMutationsBeforeDecay = 10,
         tier = CropTier.Common,
         dropMultiplier = 0.26,
+        drops = mapOf(CropDrop.Cactus to 78, CropDrop.SugarCane to 104),
         effects = setOf(
             CropEffect.ImprovedWaterRetain,
             CropEffect.ImprovedXpBoost,
@@ -45,6 +48,6 @@ object Shadevine {
         requiredSoil = setOf(Blocks.FARMLAND, Blocks.SAND, Blocks.RED_SAND),
         needsWater = false,
         isMutation = true,
-        spawnRule = SpawnRule(weight = 30, requiredNeighbourCells = mapOf("Cactus" to 1, "Sugar Cane" to 1))
+        spawnRule = SpawnRule(weight = 30, requiredNeighbourCells = mapOf(Cactus.definition to 1, Sugarcane.definition to 1))
     )
 }

@@ -3,6 +3,7 @@ package org.magic.magicaddons.data.greenhouse.crops.definitions.mutations.common
 import net.minecraft.core.BlockPos
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.crops.CropBlocks.wheatState
+import org.magic.magicaddons.data.greenhouse.crops.CropDrop
 import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
 import org.magic.magicaddons.data.greenhouse.crops.CropEffect
 import org.magic.magicaddons.data.greenhouse.crops.CropStage
@@ -19,6 +20,7 @@ object Lonelily {
         minMutationsBeforeDecay = 10,
         tier = CropTier.Common,
         dropMultiplier = 1.75,
+        drops = mapOf(CropDrop.Potato to 525, CropDrop.Carrot to 613, CropDrop.Pumpkin to 298),
         effects = setOf(
             CropEffect.BonusDrops
         ),

@@ -5,6 +5,7 @@ import org.magic.magicaddons.config.MagicAddonsConfigJsonHandler
 import org.magic.magicaddons.features.account.ServerConnection
 import org.magic.magicaddons.features.combat.HighlightMobs
 import org.magic.magicaddons.features.customization.Customization
+import org.magic.magicaddons.features.debug.ContainerItemDump
 import org.magic.magicaddons.features.debug.MobHitDebugInfo
 import org.magic.magicaddons.features.farming.fortune.FarmingFortune
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhousePresets
@@ -32,7 +33,8 @@ object FeatureManager {
         SkipResourceReloadOnClose,
         ServerConnection,
         Customization,
-        MobHitDebugInfo
+        MobHitDebugInfo,
+        ContainerItemDump
     )
 
     data class Category(val key: String, val name: String, val features: List<Feature>, val isUnrelatedToGame: Boolean)

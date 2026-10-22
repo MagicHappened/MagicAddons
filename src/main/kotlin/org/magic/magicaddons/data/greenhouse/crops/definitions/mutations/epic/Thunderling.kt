@@ -3,6 +3,7 @@ package org.magic.magicaddons.data.greenhouse.crops.definitions.mutations.epic
 import net.minecraft.core.Rotations
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.crops.ChargeRule
+import org.magic.magicaddons.data.greenhouse.crops.CropDrop
 import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
 import org.magic.magicaddons.data.greenhouse.crops.CropEffect
 import org.magic.magicaddons.data.greenhouse.crops.CropStage
@@ -22,6 +23,7 @@ object Thunderling {
         minMutationsBeforeDecay = 6,
         tier = CropTier.Epic,
         dropMultiplier = 11.0,
+        drops = mapOf(CropDrop.Cactus to 1650, CropDrop.Melon to 4400, CropDrop.WildRose to 4400),
         effects = setOf(
             CropEffect.EffectSpread
         ),
@@ -319,7 +321,7 @@ object Thunderling {
         maxStage = 16,
         needsWater = false,
         isMutation = true,
-        spawnRule = SpawnRule(weight = 25, requiredNeighbourCells = mapOf("Soggybud" to 5, "Noctilume" to 3)),
+        spawnRule = SpawnRule(weight = 25, requiredNeighbourCells = mapOf(Soggybud.definition to 5, Noctilume.definition to 3)),
         chargeRule = ChargeRule(perStage = 2000, limit = 16000)
     )
 }

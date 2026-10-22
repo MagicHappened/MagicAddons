@@ -5,6 +5,7 @@ import net.minecraft.core.Rotations
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.crops.CropBlocks.deadBushState
 import org.magic.magicaddons.data.greenhouse.crops.CropBlocks.melonStemState
+import org.magic.magicaddons.data.greenhouse.crops.CropDrop
 import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
 import org.magic.magicaddons.data.greenhouse.crops.CropEffect
 import org.magic.magicaddons.data.greenhouse.crops.CropStage
@@ -24,6 +25,7 @@ object Coalroot {
         minMutationsBeforeDecay = 10,
         tier = CropTier.Uncommon,
         dropMultiplier = 1.7,
+        drops = mapOf(CropDrop.Potato to 510, CropDrop.Carrot to 1190, CropDrop.NetherWart to 510),
         effects = setOf(
             CropEffect.XpBoost
         ),
@@ -172,6 +174,6 @@ object Coalroot {
         ),
         maxStage = 8,
         isMutation = true,
-        spawnRule = SpawnRule(weight = 25, requiredNeighbourCells = mapOf("Scourroot" to 3, "Ashwreath" to 5))
+        spawnRule = SpawnRule(weight = 25, requiredNeighbourCells = mapOf(Scourroot.definition to 3, Ashwreath.definition to 5))
     )
 }

@@ -5,6 +5,7 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 import kotlin.math.sqrt
 import kotlin.random.Random
+import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
 import org.magic.magicaddons.data.greenhouse.crops.definitions.misc.DeadPlant
 import org.magic.magicaddons.data.greenhouse.crops.definitions.mutations.epic.ChorusFruit
 import org.magic.magicaddons.data.greenhouse.plot.GREENHOUSE_SIZE
@@ -240,7 +241,7 @@ object ChorusCollision {
     fun riskOf(layout: PlotLayout, weightMultiplier: Double, nextTickInMs: Long?, tickMs: Long?): Risk? {
         val chorus = ChorusFruit.definition
         val stageOrKind = IntArray(TILE_COUNT) { EMPTY }
-        val cropNames = arrayOfNulls<String>(TILE_COUNT)
+        val cropsOnTiles = arrayOfNulls<CropDefinition>(TILE_COUNT)
         val decayTicks = IntArray(TILE_COUNT) { NEVER }
         val ringLeavingTicks = IntArray(TILE_COUNT) { NEVER }
         var hasChorus = false
@@ -259,7 +260,7 @@ object ChorusCollision {
             plant.coveredCells.forEach { (x, y) ->
                 if (x !in 0 until GREENHOUSE_SIZE || y !in 0 until GREENHOUSE_SIZE) return@forEach
                 val tile = y * GREENHOUSE_SIZE + x
-                cropNames[tile] = plant.cropDef.name
+                cropsOnTiles[tile] = plant.cropDef
                 decayTicks[tile] = decayTick
                 ringLeavingTicks[tile] = minOf(decayTick, haltTick)
                 stageOrKind[tile] = when {
@@ -271,10 +272,10 @@ object ChorusCollision {
             }
         }
         val spawnRecipe = chorus.spawnRule?.requiredNeighbourCells.orEmpty()
-        fun namesInRingsAt(tick: Int) = Array(TILE_COUNT) { tile -> cropNames[tile].takeIf { ringLeavingTicks[tile] > tick } }
-        val spawnTiles = (0 until TILE_COUNT).filter { tile -> ringHolds(cropNames, tile, spawnRecipe) }.toIntArray()
+        fun cropsInRingsAt(tick: Int) = Array(TILE_COUNT) { tile -> cropsOnTiles[tile].takeIf { ringLeavingTicks[tile] > tick } }
+        val spawnTiles = (0 until TILE_COUNT).filter { tile -> ringHolds(cropsOnTiles, tile, spawnRecipe) }.toIntArray()
         val spawnTileLastTicks = IntArray(spawnTiles.size) { index ->
-            val ringBreaksAt = (0 until RISK_HORIZON_TICKS).firstOrNull { tick -> !ringHolds(namesInRingsAt(tick), spawnTiles[index], spawnRecipe) }
+            val ringBreaksAt = (0 until RISK_HORIZON_TICKS).firstOrNull { tick -> !ringHolds(cropsInRingsAt(tick), spawnTiles[index], spawnRecipe) }
             (ringBreaksAt ?: RISK_HORIZON_TICKS) - 1
         }
         if (!hasChorus && spawnTiles.none { stageOrKind[it] == EMPTY }) return null
@@ -292,7 +293,7 @@ object ChorusCollision {
         return ((remainingMs - nextTickInMs + tickMs - 1) / tickMs).coerceAtMost(NEVER.toLong()).toInt()
     }
 
-    private fun ringHolds(cropNames: Array<String?>, tile: Int, recipe: Map<String, Int>): Boolean {
+    private fun ringHolds(cropsOnTiles: Array<CropDefinition?>, tile: Int, recipe: Map<CropDefinition, Int>): Boolean {
         val x = tile % GREENHOUSE_SIZE
         val y = tile / GREENHOUSE_SIZE
 
@@ -304,7 +305,7 @@ object ChorusCollision {
                     val nx = x + dx
                     val ny = y + dy
                     if (nx !in 0 until GREENHOUSE_SIZE || ny !in 0 until GREENHOUSE_SIZE) continue
-                    if (cropNames[ny * GREENHOUSE_SIZE + nx] == crop) found++
+                    if (cropsOnTiles[ny * GREENHOUSE_SIZE + nx] == crop) found++
                 }
             }
             if (found < needed) return false

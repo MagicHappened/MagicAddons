@@ -4,6 +4,7 @@ import net.minecraft.core.BlockPos
 import net.minecraft.world.level.block.Blocks
 import org.magic.magicaddons.data.greenhouse.crops.CropBlocks.sugarcaneState
 import org.magic.magicaddons.data.greenhouse.crops.CropBlocks.wheatState
+import org.magic.magicaddons.data.greenhouse.crops.CropDrop
 import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
 import org.magic.magicaddons.data.greenhouse.crops.CropEffect
 import org.magic.magicaddons.data.greenhouse.crops.CropStage
@@ -17,6 +18,7 @@ object Sugarcane {
         minMutationsBeforeDecay = 12,
         tier = CropTier.BaseCrop,
         dropMultiplier = 0.17,
+        drops = mapOf(CropDrop.SugarCane to 136),
         effects = setOf(
             CropEffect.ImprovedXpBoost,
             CropEffect.HarvestLoss

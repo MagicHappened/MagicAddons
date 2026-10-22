@@ -4,6 +4,7 @@ import net.minecraft.core.BlockPos
 import net.minecraft.core.Rotations
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.crops.CropBlocks.wheatState
+import org.magic.magicaddons.data.greenhouse.crops.CropDrop
 import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
 import org.magic.magicaddons.data.greenhouse.crops.CropEffect
 import org.magic.magicaddons.data.greenhouse.crops.CropStage
@@ -23,6 +24,13 @@ object Chloronite {
         minMutationsBeforeDecay = 8,
         tier = CropTier.Rare,
         dropMultiplier = 2.7,
+        drops = mapOf(
+            CropDrop.BrownMushroom to 128,
+            CropDrop.Potato to 810,
+            CropDrop.Carrot to 945,
+            CropDrop.RedMushroom to 128,
+            CropDrop.WildRose to 540,
+        ),
         effects = setOf(
             CropEffect.Immunity
         ),
@@ -150,6 +158,6 @@ object Chloronite {
         ),
         maxStage = 10,
         isMutation = true,
-        spawnRule = SpawnRule(weight = 25, requiredNeighbourCells = mapOf("Coalroot" to 6, "Thornshade" to 2))
+        spawnRule = SpawnRule(weight = 25, requiredNeighbourCells = mapOf(Coalroot.definition to 6, Thornshade.definition to 2))
     )
 }

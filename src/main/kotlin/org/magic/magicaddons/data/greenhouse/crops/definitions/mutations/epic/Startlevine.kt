@@ -6,6 +6,7 @@ import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.crops.CropBlocks.melonStemState
 import org.magic.magicaddons.data.greenhouse.crops.CropBlocks.sunflowerState
 import org.magic.magicaddons.data.greenhouse.crops.CropBlocks.wheatState
+import org.magic.magicaddons.data.greenhouse.crops.CropDrop
 import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
 import org.magic.magicaddons.data.greenhouse.crops.CropEffect
 import org.magic.magicaddons.data.greenhouse.crops.CropStage
@@ -25,6 +26,7 @@ object Startlevine {
         minMutationsBeforeDecay = 6,
         tier = CropTier.Epic,
         dropMultiplier = 7.5,
+        drops = mapOf(CropDrop.Cactus to 2250, CropDrop.SugarCane to 3000),
         effects = setOf(
             CropEffect.ImprovedWaterRetain,
             CropEffect.ImprovedXpBoost,
@@ -248,6 +250,6 @@ object Startlevine {
         ),
         maxStage = 12,
         isMutation = true,
-        spawnRule = SpawnRule(weight = 25, requiredNeighbourCells = mapOf("Blastberry" to 4, "Cheesebite" to 4))
+        spawnRule = SpawnRule(weight = 25, requiredNeighbourCells = mapOf(Blastberry.definition to 4, Cheesebite.definition to 4))
     )
 }

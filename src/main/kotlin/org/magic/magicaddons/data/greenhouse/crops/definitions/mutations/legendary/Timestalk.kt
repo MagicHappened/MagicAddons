@@ -5,6 +5,7 @@ import net.minecraft.core.Rotations
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.crops.CropBlocks.melonStemState
+import org.magic.magicaddons.data.greenhouse.crops.CropDrop
 import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
 import org.magic.magicaddons.data.greenhouse.crops.CropEffect
 import org.magic.magicaddons.data.greenhouse.crops.CropStage
@@ -16,6 +17,8 @@ import org.magic.magicaddons.data.greenhouse.crops.SpawnRule
 import org.magic.magicaddons.data.greenhouse.crops.StageBlock
 import org.magic.magicaddons.data.greenhouse.crops.StageStand
 import org.magic.magicaddons.data.greenhouse.crops.definitions.mutations.epic.Shellfruit
+import org.magic.magicaddons.data.greenhouse.crops.definitions.mutations.epic.ChorusFruit
+import org.magic.magicaddons.data.greenhouse.crops.definitions.mutations.epic.StoplightPetal
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
 object Timestalk {
@@ -23,6 +26,7 @@ object Timestalk {
         name = "Timestalk",
         tier = CropTier.Legendary,
         dropMultiplier = 9.0,
+        drops = mapOf(CropDrop.Cactus to 2700, CropDrop.SugarCane to 3600),
         effects = setOf(
             CropEffect.ImprovedWaterRetain,
             CropEffect.ImprovedXpBoost,
@@ -357,7 +361,7 @@ object Timestalk {
         maxStage = 14,
         requiredSoil = setOf(Blocks.END_STONE),
         isMutation = true,
-        spawnRule = SpawnRule(weight = 20, requiredNeighbourCells = mapOf("Stoplight Petal" to 4, "Chorus Fruit" to 2, "Shellfruit" to 2)),
+        spawnRule = SpawnRule(weight = 20, requiredNeighbourCells = mapOf(StoplightPetal.definition to 4, ChorusFruit.definition to 2, Shellfruit.definition to 2)),
         stemAgeVaries = true
     )
 }

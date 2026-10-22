@@ -2,6 +2,7 @@ package org.magic.magicaddons.data.greenhouse.crops.definitions.mutations.common
 
 import net.minecraft.core.Rotations
 import net.minecraft.world.phys.Vec3
+import org.magic.magicaddons.data.greenhouse.crops.CropDrop
 import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
 import org.magic.magicaddons.data.greenhouse.crops.CropEffect
 import org.magic.magicaddons.data.greenhouse.crops.CropStage
@@ -19,6 +20,7 @@ object Scourroot {
         minMutationsBeforeDecay = 10,
         tier = CropTier.Common,
         dropMultiplier = 0.17,
+        drops = mapOf(CropDrop.Potato to 102, CropDrop.Carrot to 119),
         effects = setOf(
             CropEffect.XpBoost,
             CropEffect.Immunity
@@ -42,6 +44,6 @@ object Scourroot {
         ),
         needsWater = false,
         isMutation = true,
-        spawnRule = SpawnRule(weight = 30, requiredNeighbourCells = mapOf("Potato" to 1, "Carrot" to 1))
+        spawnRule = SpawnRule(weight = 30, requiredNeighbourCells = mapOf(Potato.definition to 1, Carrot.definition to 1))
     )
 }

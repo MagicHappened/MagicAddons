@@ -1,7 +1,6 @@
 package org.magic.magicaddons.features.farming.fortune
 
-import tech.thatgravyboat.skyblockapi.api.data.SkyBlockRarity
-import tech.thatgravyboat.skyblockapi.api.datatype.defaults.GemstoneQuality
+import org.magic.magicaddons.data.greenhouse.crops.CropDrop
 
 // Values follow Elite Farmers' farming-weight package (MIT): github.com/EliteFarmers/Website
 object FortuneTables {
@@ -10,13 +9,24 @@ object FortuneTables {
     const val MAX_FARMING_LEVEL: Int = 60
     const val PER_PLOT: Double = 3.0
     const val MAX_PLOTS: Int = 24
-    const val PER_HARVESTING_LEVEL: Double = 12.5
-    const val PER_CULTIVATING_LEVEL: Double = 2.0
-    const val PER_PESTERMINATOR_LEVEL: Double = 2.0
-    const val PER_FARMING_FOR_DUMMIES: Double = 1.0
-    const val MAX_FARMING_FOR_DUMMIES: Int = 5
-    const val HELIANTHUS_RELIC: Double = 40.0
-    const val YELLOW_BANDANA: Double = 30.0
+
+    const val PER_ANITA_LEVEL: Double = 4.0
+    const val MAX_ANITA_LEVEL: Int = 15
+    const val PER_COMMUNITY_LEVEL: Double = 4.0
+    const val MAX_COMMUNITY_LEVEL: Int = 10
+    const val PER_PEST_BRACKET: Double = 0.4
+    const val MAX_PEST_BRACKETS: Int = 250
+    const val PER_DNA_MILESTONE: Double = 5.0
+    const val MAX_DNA_MILESTONES: Int = 6
+    const val MAX_ROSEWATER_FLASKS: Int = 5
+    const val MAX_CHIP_LEVEL: Int = 20
+    const val PER_CROP_UPGRADE: Double = 5.0
+    const val MAX_CROP_UPGRADE: Int = 9
+    const val MAX_PERSONAL_BEST_FORTUNE: Double = 100.0
+    const val PERSONAL_BEST_PER_TIER: Double = 0.01
+    const val EXPORTABLE_CROP: Double = 12.0
+    const val MAX_COCOA_UPGRADES: Int = 25
+    const val MAX_TRUFFLES: Int = 5
 
     const val PER_FLY_LEVEL: Double = 2.5
     const val PER_FIREFLY_LEVEL: Double = 5.0
@@ -24,93 +34,66 @@ object FortuneTables {
     const val PER_EARTHWORM_LEVEL: Double = 3.0
     const val PER_GALAXY_FISH_LEVEL: Double = 1.0
 
-    private val RARITY_COLUMNS = listOf(
-        SkyBlockRarity.COMMON, SkyBlockRarity.UNCOMMON, SkyBlockRarity.RARE,
-        SkyBlockRarity.EPIC, SkyBlockRarity.LEGENDARY, SkyBlockRarity.MYTHIC
-    )
+    private const val CHIP_RARE_MAX_LEVEL: Int = 10
+    private const val CHIP_EPIC_MAX_LEVEL: Int = 15
 
-    private fun columnOf(rarity: SkyBlockRarity): Int = RARITY_COLUMNS.indexOf(rarity).coerceIn(0, RARITY_COLUMNS.lastIndex)
-
-    private val REFORGES: Map<String, List<Double>> = mapOf(
-        "mossy" to listOf(5.0, 10.0, 15.0, 20.0, 25.0, 30.0),
-        "bustling" to listOf(1.0, 2.0, 4.0, 6.0, 8.0, 10.0),
-        "mantid" to listOf(2.0, 4.0, 6.0, 8.0, 10.0, 12.0),
-        "rooted" to listOf(6.0, 9.0, 12.0, 15.0, 18.0, 21.0),
-        "blooming" to listOf(1.0, 2.0, 3.0, 4.0, 5.0, 6.0),
-        "squeaky" to listOf(2.0, 4.0, 6.0, 8.0, 10.0, 12.0),
-        "thorny" to listOf(2.0, 4.0, 6.0, 8.0, 10.0, 12.0),
-        "blessed" to listOf(5.0, 7.0, 10.0, 13.0, 16.0, 20.0),
-        "bountiful" to listOf(1.0, 2.0, 3.0, 5.0, 7.0, 10.0),
-        "robust" to listOf(2.0, 3.0, 4.0, 6.0, 8.0, 10.0),
-        "earthy" to listOf(2.0, 4.0, 6.0, 8.0, 10.0, 12.0),
-        "green_thumb" to listOf(1.0, 2.0, 3.0, 4.0, 5.0, 6.0),
-        "deep_fried" to listOf(5.0, 9.0, 13.0, 18.0, 23.0, 28.0),
-        "overpriced" to listOf(5.0, 10.0, 15.0, 20.0, 25.0, 30.0),
-        "buzzing" to listOf(2.0, 3.0, 5.0, 7.0, 9.0, 11.0)
-    )
-
-    fun reforgeFortune(modifier: String, rarity: SkyBlockRarity): Double? =
-        REFORGES[modifier.lowercase()]?.get(columnOf(rarity))
-
-    private val PERIDOT: Map<GemstoneQuality, List<Double>> = mapOf(
-        GemstoneQuality.ROUGH to listOf(0.5, 1.0, 1.5, 2.0, 2.5, 3.0),
-        GemstoneQuality.FLAWED to listOf(1.0, 1.5, 2.0, 2.5, 3.0, 4.0),
-        GemstoneQuality.FINE to listOf(1.5, 2.0, 3.0, 4.0, 5.0, 6.0),
-        GemstoneQuality.FLAWLESS to listOf(2.0, 3.0, 4.0, 5.0, 6.0, 8.0),
-        GemstoneQuality.PERFECT to listOf(3.0, 4.0, 5.0, 6.0, 8.0, 10.0)
-    )
-
-    fun peridotFortune(quality: GemstoneQuality, rarity: SkyBlockRarity): Double =
-        PERIDOT.getValue(quality)[columnOf(rarity)]
-
-    enum class ArmorPiece(val idSuffix: String) {
-        HELMET("_HELMET"), CHESTPLATE("_CHESTPLATE"), LEGGINGS("_LEGGINGS"), BOOTS("_BOOTS")
+    fun cropshotFortune(level: Int): Double = level * when {
+        level <= CHIP_RARE_MAX_LEVEL -> 3.0
+        level <= CHIP_EPIC_MAX_LEVEL -> 4.0
+        else -> 5.0
     }
 
-    class ArmorSet(val idPrefix: String, val displayName: String, pieces: List<Double>, val setBonus: List<Double>?) {
-        val fortuneByPiece: Map<ArmorPiece, Double> = ArmorPiece.entries.zip(pieces).toMap()
+    private val PEST_BRACKETS: List<Int> = listOf(1, 2, 3, 5, 7, 9, 14, 17, 21, 25, 50, 80, 125, 175, 250)
+    private val SLOW_PEST_BRACKETS: List<Int> = listOf(1, 2, 3, 5, 7, 9, 11, 14, 17, 20, 30, 40, 55, 75, 100)
+    private val CLONE_BRACKETS: List<Int> = listOf(1, 2, 3, 5, 7, 9, 11, 14, 17, 20)
+
+    val PEST_BESTIARY_BRACKETS: Map<String, List<Int>> = buildMap {
+        listOf("beetle", "cricket", "worm", "fly", "locust", "mite", "mosquito", "moth", "rat", "slug", "dragonfly", "firefly", "praying_mantis")
+            .forEach { put("pest_${it}_1", PEST_BRACKETS) }
+        put("pest_mouse_1", SLOW_PEST_BRACKETS)
+        put("pest_lunar_moth_1", SLOW_PEST_BRACKETS)
+        put("zombuddy_1", SLOW_PEST_BRACKETS)
+        put("timestalk_clone_100", CLONE_BRACKETS)
     }
 
-    val ARMOR_SETS: List<ArmorSet> = listOf(
-        ArmorSet("FARM_SUIT", "Farm Suit", listOf(5.0, 5.0, 5.0, 5.0), null),
-        ArmorSet("FARM_ARMOR", "Farm Armor", listOf(10.0, 10.0, 10.0, 10.0), null),
-        ArmorSet("PUMPKIN", "Pumpkin", listOf(15.0, 15.0, 15.0, 15.0), null),
-        ArmorSet("MELON", "Melon", listOf(15.0, 20.0, 20.0, 15.0), listOf(10.0, 20.0, 30.0)),
-        ArmorSet("CROPIE", "Cropie", listOf(20.0, 25.0, 25.0, 20.0), listOf(15.0, 30.0, 45.0)),
-        ArmorSet("SQUASH", "Squash", listOf(25.0, 30.0, 30.0, 25.0), listOf(20.0, 40.0, 60.0)),
-        ArmorSet("FERMENTO", "Fermento", listOf(30.0, 35.0, 35.0, 30.0), listOf(25.0, 50.0, 75.0)),
-        ArmorSet("HELIANTHUS", "Helianthus", listOf(35.0, 40.0, 40.0, 35.0), listOf(25.0, 50.0, 75.0))
-    )
-
-    val FARMING_LEVEL_ARMOR: Set<String> = setOf("FARMER_BOOTS", "RANCHERS_BOOTS", "ENCHANTED_JACK_O_LANTERN")
-
-    val EQUIPMENT_BASE: Map<String, Double> = buildMap {
-        listOf("NECKLACE", "CLOAK", "BELT", "BRACELET").forEach { slot ->
-            put("LOTUS_$slot", 5.0)
-            put("BLOSSOM_$slot", 7.0)
-        }
-        put("ZORROS_CAPE", 10.0)
+    fun pestBrackets(kills: Map<String, Long>): Int = PEST_BESTIARY_BRACKETS.entries.sumOf { (key, brackets) ->
+        val killed = kills[key] ?: 0L
+        brackets.count { killed >= it }
     }
 
-    val GARDENING_TOOL_BASE: Map<String, Double> = mapOf(
-        "ROOKIE_HOE" to 5.0,
-        "ROOKIE_FARMING_AXE" to 5.0,
-        "BASIC_GARDENING_HOE" to 10.0,
-        "BASIC_GARDENING_AXE" to 10.0,
-        "ADVANCED_GARDENING_HOE" to 15.0,
-        "ADVANCED_GARDENING_AXE" to 15.0
+    val PERSONAL_BEST_CROPS_PER_TIER: Map<CropDrop, Int> = mapOf(
+        CropDrop.Wheat to 100,
+        CropDrop.Carrot to 300,
+        CropDrop.Potato to 300,
+        CropDrop.Pumpkin to 100,
+        CropDrop.Melon to 500,
+        CropDrop.RedMushroom to 100,
+        CropDrop.BrownMushroom to 100,
+        CropDrop.Cactus to 200,
+        CropDrop.SugarCane to 200,
+        CropDrop.NetherWart to 300,
+        CropDrop.CocoaBeans to 300,
+        CropDrop.Sunflower to 200,
+        CropDrop.Moonflower to 200,
+        CropDrop.WildRose to 200
     )
 
-    val FARMING_TOOL_PREFIXES: List<String> = listOf(
-        "THEORETICAL_HOE", "MELON_DICER", "PUMPKIN_DICER", "CACTUS_KNIFE", "COCO_CHOPPER", "FUNGI_CUTTER",
-        "ECLIPSE_SICKLE"
-    ) + GARDENING_TOOL_BASE.keys
+    fun personalBestFortune(crop: CropDrop, best: Long): Double =
+        (best / PERSONAL_BEST_CROPS_PER_TIER.getValue(crop) * PERSONAL_BEST_PER_TIER).coerceAtMost(MAX_PERSONAL_BEST_FORTUNE)
 
-    val VACUUM_BASE: Map<String, Double> = mapOf(
-        "SKYMART_VACUUM" to 5.0,
-        "SKYMART_TURBO_VACUUM" to 10.0,
-        "SKYMART_HYPER_VACUUM" to 15.0,
-        "INFINI_VACUUM" to 20.0,
-        "INFINI_VACUUM_HOOVERIUS" to 25.0
+    val HYPIXEL_CROP_IDS: Map<String, List<CropDrop>> = mapOf(
+        "WHEAT" to listOf(CropDrop.Wheat),
+        "CARROT_ITEM" to listOf(CropDrop.Carrot),
+        "POTATO_ITEM" to listOf(CropDrop.Potato),
+        "PUMPKIN" to listOf(CropDrop.Pumpkin),
+        "MELON" to listOf(CropDrop.Melon),
+        "MUSHROOM_COLLECTION" to FortuneCrops.MUSHROOMS,
+        "CACTUS" to listOf(CropDrop.Cactus),
+        "SUGAR_CANE" to listOf(CropDrop.SugarCane),
+        "NETHER_STALK" to listOf(CropDrop.NetherWart),
+        "INK_SACK:3" to listOf(CropDrop.CocoaBeans),
+        "SUNFLOWER" to listOf(CropDrop.Sunflower),
+        "MOONFLOWER" to listOf(CropDrop.Moonflower),
+        "WILD_ROSE" to listOf(CropDrop.WildRose)
     )
 }

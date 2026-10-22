@@ -1,6 +1,7 @@
 package org.magic.magicaddons.data.greenhouse.crops.definitions.mutations.epic
 
 import net.minecraft.world.phys.Vec3
+import org.magic.magicaddons.data.greenhouse.crops.CropDrop
 import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
 import org.magic.magicaddons.data.greenhouse.crops.CropEffect
 import org.magic.magicaddons.data.greenhouse.crops.CropStage
@@ -14,6 +15,7 @@ object Shellfruit {
         minMutationsBeforeDecay = 6,
         tier = CropTier.Epic,
         dropMultiplier = 0.5,
+        drops = mapOf(CropDrop.CocoaBeans to 400),
         effects = setOf(
             CropEffect.WaterRetain,
             CropEffect.Immunity

@@ -6,6 +6,7 @@ import net.minecraft.world.entity.EquipmentSlot
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.crops.CropBlocks.melonStemState
 import org.magic.magicaddons.data.greenhouse.crops.CropBlocks.wheatState
+import org.magic.magicaddons.data.greenhouse.crops.CropDrop
 import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
 import org.magic.magicaddons.data.greenhouse.crops.CropEffect
 import org.magic.magicaddons.data.greenhouse.crops.CropStage
@@ -33,6 +34,22 @@ object Godseed {
         name = "Godseed",
         tier = CropTier.Legendary,
         dropMultiplier = 8.0,
+        drops = mapOf(
+            CropDrop.BrownMushroom to 117,
+            CropDrop.CocoaBeans to 492,
+            CropDrop.Moonflower to 492,
+            CropDrop.Carrot to 862,
+            CropDrop.Sunflower to 492,
+            CropDrop.Cactus to 369,
+            CropDrop.SugarCane to 492,
+            CropDrop.Pumpkin to 209,
+            CropDrop.Wheat to 246,
+            CropDrop.Melon to 985,
+            CropDrop.Potato to 738,
+            CropDrop.NetherWart to 738,
+            CropDrop.RedMushroom to 117,
+            CropDrop.WildRose to 492,
+        ),
         effects = setOf(
             CropEffect.ImprovedHarvestBoost,
             CropEffect.ImprovedWaterRetain,

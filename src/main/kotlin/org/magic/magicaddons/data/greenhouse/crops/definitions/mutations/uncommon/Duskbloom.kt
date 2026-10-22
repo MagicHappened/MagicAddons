@@ -3,6 +3,7 @@ package org.magic.magicaddons.data.greenhouse.crops.definitions.mutations.uncomm
 import net.minecraft.core.BlockPos
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.crops.CropBlocks.wheatState
+import org.magic.magicaddons.data.greenhouse.crops.CropDrop
 import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
 import org.magic.magicaddons.data.greenhouse.crops.CropEffect
 import org.magic.magicaddons.data.greenhouse.crops.CropStage
@@ -22,6 +23,7 @@ object Duskbloom {
         minMutationsBeforeDecay = 8,
         tier = CropTier.Uncommon,
         dropMultiplier = 2.7,
+        drops = mapOf(CropDrop.Moonflower to 720, CropDrop.Sunflower to 720, CropDrop.Wheat to 360),
         effects = setOf(
             CropEffect.BonusDrops
         ),
@@ -156,6 +158,6 @@ object Duskbloom {
         ),
         maxStage = 8,
         isMutation = true,
-        spawnRule = SpawnRule(weight = 25, requiredNeighbourCells = mapOf("Moonflower" to 2, "Shadevine" to 2, "Sunflower" to 2, "Dustgrain" to 2))
+        spawnRule = SpawnRule(weight = 25, requiredNeighbourCells = mapOf(Moonflower.definition to 2, Shadevine.definition to 2, Sunflower.definition to 2, Dustgrain.definition to 2))
     )
 }

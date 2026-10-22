@@ -5,6 +5,7 @@ import net.minecraft.core.Rotations
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.crops.CropBlocks.netherwartState
+import org.magic.magicaddons.data.greenhouse.crops.CropDrop
 import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
 import org.magic.magicaddons.data.greenhouse.crops.CropEffect
 import org.magic.magicaddons.data.greenhouse.crops.CropStage
@@ -23,6 +24,7 @@ object Cindershade {
         minMutationsBeforeDecay = 8,
         tier = CropTier.Uncommon,
         dropMultiplier = 1.7,
+        drops = mapOf(CropDrop.NetherWart to 1020, CropDrop.WildRose to 680),
         effects = setOf(
             CropEffect.EffectSpread,
             CropEffect.ImprovedHarvestBoost,
@@ -200,6 +202,6 @@ object Cindershade {
         requiredSoil = setOf(Blocks.SOUL_SAND),
         needsWater = false,
         isMutation = true,
-        spawnRule = SpawnRule(weight = 25, requiredNeighbourCells = mapOf("Ashwreath" to 4, "Witherbloom" to 4))
+        spawnRule = SpawnRule(weight = 25, requiredNeighbourCells = mapOf(Ashwreath.definition to 4, Witherbloom.definition to 4))
     )
 }

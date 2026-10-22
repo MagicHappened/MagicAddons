@@ -6,6 +6,7 @@ import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.phys.Vec3
 import org.magic.magicaddons.data.greenhouse.crops.CropBlocks.melonStemState
 import org.magic.magicaddons.data.greenhouse.crops.CropBlocks.stateOf
+import org.magic.magicaddons.data.greenhouse.crops.CropDrop
 import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
 import org.magic.magicaddons.data.greenhouse.crops.CropEffect
 import org.magic.magicaddons.data.greenhouse.crops.CropStage
@@ -16,6 +17,8 @@ import org.magic.magicaddons.data.greenhouse.crops.StageBlock
 import org.magic.magicaddons.data.greenhouse.crops.StageStand
 import org.magic.magicaddons.data.greenhouse.crops.StandPose
 import org.magic.magicaddons.data.greenhouse.crops.StandReader
+import org.magic.magicaddons.data.greenhouse.crops.definitions.mutations.epic.PlantBoyAdvance
+import org.magic.magicaddons.data.greenhouse.crops.definitions.mutations.rare.MagicJellybean
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockId
 import tech.thatgravyboat.skyblockapi.api.remote.api.SkyBlockItemId
 
@@ -30,6 +33,7 @@ object AllinAloe {
         name = "All-in Aloe",
         tier = CropTier.Legendary,
         dropMultiplier = 0.7,
+        drops = mapOf(CropDrop.Moonflower to 140, CropDrop.Sunflower to 140, CropDrop.Wheat to 140),
         effects = setOf(
             CropEffect.HarvestBoost
         ),
@@ -354,6 +358,6 @@ object AllinAloe {
         requiredSoil = setOf(Blocks.SAND, Blocks.RED_SAND),
         needsWater = false,
         isMutation = true,
-        spawnRule = SpawnRule(weight = 25, requiredNeighbourCells = mapOf("Magic Jellybean" to 6, "PlantBoy Advance" to 2))
+        spawnRule = SpawnRule(weight = 25, requiredNeighbourCells = mapOf(MagicJellybean.definition to 6, PlantBoyAdvance.definition to 2))
     )
 }
