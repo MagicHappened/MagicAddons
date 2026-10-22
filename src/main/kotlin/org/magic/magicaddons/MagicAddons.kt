@@ -6,6 +6,7 @@ import org.magic.magicaddons.commands.MainCommand
 import org.magic.magicaddons.config.MagicAddonsConfigJsonHandler
 import org.magic.magicaddons.data.handlers.ModFiles
 import org.magic.magicaddons.data.server.GreenhouseDataSync
+import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseSpawnLog
 import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.PresetStorage
 import org.magic.magicaddons.data.server.ServerSession
 import org.magic.magicaddons.features.farming.greenhousePresets.shrunkPlants.ShorterCaneCrops
@@ -51,6 +52,7 @@ class MagicAddons : ClientModInitializer {
         VersionChecker
         ServerSession.init()
         GreenhouseDataSync.init()
+        GreenhouseSpawnLog.init()
 
 
         if (!MagicAddonsConfigJsonHandler.load()){

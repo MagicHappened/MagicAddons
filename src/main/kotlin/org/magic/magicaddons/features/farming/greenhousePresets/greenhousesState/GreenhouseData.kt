@@ -517,10 +517,28 @@ object GreenhouseData : GridCallbacks {
 
     private val REPLANT_NOTICE: Regex = Regex("re-mutated an? ", RegexOption.IGNORE_CASE)
 
+    private const val TIME_WARP_NOTICE: String = "TIME WARP! You have successfully warped time for your Greenhouse!"
+
+    private val TIME_WARP_MS: Long = Duration.ofHours(1).toMillis()
+
     private fun noteHarvest(grid: GreenhouseGrid, x: Int, y: Int, elementId: String) {
         val now = System.currentTimeMillis()
         recentHarvests.removeIf { now - it.at > REPLANT_NOTICE_WINDOW_MS }
         recentHarvests += RecentHarvest(grid, x, y, elementId, now)
+    }
+
+    @EventHandler
+    fun onTimeWarpNotice(event: SystemChatEvent) {
+        if (event.text.trim() != TIME_WARP_NOTICE) return
+        warpGreenhouseTime(TIME_WARP_MS)
+    }
+
+    fun warpGreenhouseTime(ms: Long) {
+        if (!greenhousesInitialized) return
+        miscInfo.nextTickTime = miscInfo.nextTickTime?.minusMillis(ms)
+        greenhouseGrids.forEach { grid -> grid.layout.plants.forEach { it.ageBy(ms) } }
+        checkForGrowthTickUpdate()
+        regenRender()
     }
 
     @EventHandler
@@ -1022,7 +1040,7 @@ object GreenhouseData : GridCallbacks {
     private fun leaveActiveProfile() {
         scoreboardLines = emptyList()
         pestDebuffActive = false
-        GreenhouseSpawnLog.onGameClosing()
+        GreenhouseSpawnLog.onDisconnect()
         saveForThisNetwork()
     }
 

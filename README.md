@@ -1,50 +1,85 @@
 # MagicAddons
 
-MagicAddons is a Fabric mod for Hypixel SkyBlock that currently has many greenhouse features, with a few other niche ones.
-Made for Minecraft 26.1.2 and 26.2, with plans to update to newer versions as Hypixel does too.
+MagicAddons is a Fabric mod for Hypixel SkyBlock, currently has a lot of greenhouse features, with some other ones. 
+It runs on Minecraft 26.1.2 and 26.2, and will update as Hypixel updates to newer versions.
 
-## Farming
+## Greenhouse
 
-- **Greenhouse Planner**: shows the plants of a saved preset in the world, colored by whether each spot is right, missing, or obstructed.
-- **Greenhouse Presets**: up to three plots per preset, with an in-game editor, target markings for the mutations you are growing, and import and export in several formats.
-- **Break Protection**: several customizable options for preventing breaking crops in your greenhouse.
-- **Greenhouse Prediction**: lets you visually see what your greenhouse will look like up to 10 ticks ahead of time (doesn't include spawned mutations since they are chance based).
-- **Water Model**: predicts each plant's water tick by tick, including retain and drain effects, and how long a plant has until it fully grows or halts at -100% water (assumes no player interaction).
-- **Highlights**: water and harvest highlights in the world.
-- **Shorter Cane Crops**: visually shrinks Sugar Cane and Magic Jellybean to their bottom block, with the growth stage shown above while they are growing. Hitboxes stay the same, so they can still be hit on all of their blocks.
-- **Reminders**: ready to harvest, needs water, decay, snoozling asleep, noctilume time switch, chorus collision, with reminders before and at the growth tick (with support for multiple profiles).
-  Some reminders might not behave correctly, as I did not have the crops to test them myself; please open an issue if something is off.
-- **Discord Reminders**: with Discord integration on and your account linked, the MagicAddons Discord app sends you direct messages about your greenhouse while the game is closed: what is ready to harvest, running out of water, about to decay or needs attention, listing everything in the next 4 to 24 hours (set with `/reminders` in Discord). `/greenhouse` in Discord shows your greenhouse report at any time.
+- **Planner**: shows a saved preset's plants in the world, colored by whether each spot is right, missing
+  or in the way. Items the planner needs get a highlight in inventories, and a helpful message to get items from sacks/search in storage.
+- **Presets**: up to three plots per preset, an in-game editor with undo and redo, target markings for the
+  mutations you grow, soft import that fits a preset around what is already in that preset, and import and export
+  as MagicAddons, SkyLayouts, SkyMutations and SkyShards codes.
+- **Prediction**: see your greenhouse up to 10 ticks ahead, including which plants decay. Spawned
+  mutations are chance based and are not predicted.
+- **Water**: each plant's water tick by tick, including retain and drain effects, how long until it fully
+  grows or halts at -100% water, and a water highlight in the world.
+- **Decay**: tracks how many mutations each plant helped spawn, when it can decay, and which plants are
+  worth checking with the Plant Diagnostics Tool (highlighted while you hold it).
+- **Chorus Collision**: the chance that a teleporting chorus breaks one of your plants at the next tick,
+  with a break order telling you which chorus to harvest or break to get under the loss you accept.
+- **Break Protection**: blocks breaking mutations under a fortune threshold, while pest debuff is active, before
+  they are harvestable, or young chorus outside the suggested break order.
+- **Reminders**: ready to harvest, water, decay, Snoozling asleep, Noctilume time, Fleshtrap meat,
+  Thunderling charge, Glasscorn reset and Chorus collision, before and at the growth tick, for other
+  profiles too.
+- **Growth tick timer and HUD**: set your garden upgrades once and the HUD shows the next tick.
+- **Crop Preview** (`/ma gh preview`): a preview of how each crop looks at each stage.
+- **Shorter Cane Crops**: Sugar Cane and Magic Jellybean drawn as their bottom block, growth stage above.
+  Hitboxes do not change.
 
-## Foraging
+## Discord Reminders and Coop
 
-- **Safari Helper**: highlights and tracks which mobs are still uncaught in each zone and which player is assigned to it in the HUD, with optional messages to party chat for zone completions, and a warning when a sparkling is detected.
+These need **Connect to MagicAddons Server** and **Discord integration**, both off by default. Install the
+[MagicAddons Discord app](https://discord.com/oauth2/authorize?client_id=1554839668313427968), then link
+with `/ma link` in game and `/link` in Discord.
 
-## Combat
+- **Discord Reminders**: while the game is closed, the app messages you about what is ready to harvest,
+  running out of water, about to decay or needs attention, in the next 4 to 24 hours (`/reminders` in
+  Discord). `/greenhouse` in Discord shows your greenhouse report at any time.
+- **Greenhouse Coop**: coop members running the mod share their plots, and the Greenhouse Coop setting
+  decides how reminders behave while a coop member is online.
 
-- **Mob Highlight**: highlights mobs by name, by a preset for an area, or picked from the Hypixel and vanilla mob lists.
-- **Custom Rend Sound**: detects when a player has rended and plays a configurable sound.
+What the server stores and how to delete it is in the [privacy policy](PRIVACY.md). `/unlink` in Discord
+or `/ma privacy DeleteMe` in game deletes everything.
 
-## Mining
+## Other features
 
-- **Pickaxe Ability Cooldown**: shows the cooldown of your pickaxe ability as a HUD element, with an optional warning when it is ready.
-- **Powder Coating Hider**: hides powder coating particles while wearing Divan armor.
-- **XP Orb Hider**: hides experience orbs on the ground, optionally only on mining islands.
-
-## Misc
-
-- **Smol People**: draws other players visually smaller.
-- **Appearance**: customize the mod's UI to your own liking, with presets you can save and share.
+- **Foraging**
+  - **Safari Helper**: tracks which mobs are still uncaught in each zone and who is assigned where, with
+    optional party chat messages and a sparkling warning.
+- **Combat**
+  - **Mob Highlight**: highlights mobs by name, by an area preset, or picked from the Hypixel and vanilla
+    mob lists.
+  - **Custom Rend Sound**: plays a configurable sound when a player has rended.
+- **Mining**
+  - **Pickaxe Ability Cooldown**: a HUD element for the ability cooldown, with an optional ready warning.
+  - **Powder Coating Hider**: hides powder coating particles while wearing Divan armor.
+  - **XP Orb Hider**: hides experience orbs on the ground, optionally only on mining islands.
+- **Misc**
+  - **Smol People**: draws other players smaller.
+  - **Skip Resource Reload On Close**: a faster shutdown when closing the game on Hypixel.
+  - **Appearance**: color palettes, fonts from your computer, backgrounds, and presets you can save and share.
+  - **HUD Editor**: drag, resize, fade and group HUD elements, with a layout per location.
 
 ## Commands
 
-- `/ma` opens the config; `/ma feature toggle <feature>` and `/ma feature edit <feature>` toggle a feature or go to it in the menu.
-- `/ma gh` opens the greenhouse planner and preset editor.
+- `/ma` opens the config; `/ma feature toggle <feature>` and `/ma feature edit <feature>` toggle a
+  feature or jump to it.
+- `/ma gh` opens the greenhouse screen; `/ma gh preview [crop]` the crop preview; `/ma gh SyncData` sends
+  your greenhouse data to the server by hand.
 - `/ma hud` opens the HUD editor.
-- `/ma link` gives you a code to run with `/link` in Discord, linking your Discord account to your Minecraft account for Discord reminders.
+- `/ma safari` for the Safari Helper.
+- `/ma link` links your Discord account; `/ma privacy DeleteMe` deletes your server data.
 - `/ma version` shows the running version and whether a newer one exists.
 
 ## Extension features
 
-Some features are only available with the extension jar (`magicaddons-extension-<version>.jar`) in your mods folder next to the main one.
-These features are used at your own risk, which is why they are gated this way.
+Some features only load with `magicaddons-extension-<version>.jar` in your mods folder next to the main
+jar. They are used at your own risk, which is why they are separated.
+
+## Beta
+
+The `beta` branch is early testing, expect bugs and very recent version changes. Every push builds jars on
+[Actions](https://github.com/MagicHappened/MagicAddons/actions), named `magicaddons-<version>+<minecraft>.beta.<commit>.jar`;
+the mod tells you when a newer beta build exists.

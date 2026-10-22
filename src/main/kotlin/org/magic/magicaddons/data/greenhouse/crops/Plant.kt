@@ -216,6 +216,11 @@ data class Plant(
     val age: Long?
         get() = appearedAt?.let { (System.currentTimeMillis() - it).coerceAtLeast(0L) }
 
+    fun ageBy(ms: Long) {
+        appearedAt = appearedAt?.minus(ms)
+        decayAttemptAt = decayAttemptAt?.minus(ms)
+    }
+
     val decayTimerEndsAt: Long?
         get() {
             if (cropDef.decayTimeMs == NEVER_DECAYS) return null

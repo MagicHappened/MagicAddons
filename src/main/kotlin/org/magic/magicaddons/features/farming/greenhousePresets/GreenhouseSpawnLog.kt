@@ -13,6 +13,7 @@ import java.util.concurrent.TimeUnit
 import kotlin.io.path.exists
 import kotlin.io.path.readLines
 import kotlin.io.path.readText
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents
 import net.minecraft.client.Minecraft
 import org.magic.magicaddons.data.greenhouse.crops.Plant
 import org.magic.magicaddons.data.greenhouse.crops.PlantStage
@@ -158,7 +159,16 @@ object GreenhouseSpawnLog {
         "${spawn.slot.x},${spawn.slot.y}=${spawnWorld?.x},${spawnWorld?.z}:${spawn.cropDef.name}<-$candidates"
     }
 
-    fun onGameClosing() {
+    fun init() {
+        ClientLifecycleEvents.CLIENT_STOPPING.register { onGameClosing() }
+    }
+
+    fun onDisconnect() {
+        if (!isEnabled) return
+        writeEveryOpenRecord()
+    }
+
+    private fun onGameClosing() {
         if (!isEnabled) return
         writeEveryOpenRecord()
         rowWriter.shutdown()
@@ -173,6 +183,7 @@ object GreenhouseSpawnLog {
 
     private fun writeRow(record: Record, layoutAfter: PlotLayout?, spawnCandidates: String) {
         val fileName = activeFileName ?: return
+        if (rowWriter.isShutdown) return
         rowWriter.execute {
             runCatching { appendRow(fileName, record, layoutAfter, spawnCandidates) }
                 .onFailure { Common.LOGGER.warn("Could not write a spawn log row for ${record.plotId}", it) }
