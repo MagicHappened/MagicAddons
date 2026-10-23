@@ -27,12 +27,30 @@ object FortuneTables {
     const val EXPORTABLE_CROP: Double = 12.0
     const val MAX_COCOA_UPGRADES: Int = 25
     const val MAX_TRUFFLES: Int = 5
+    const val MAX_CROP_MILESTONE: Int = 46
+    const val MAX_FORTUNATE_FEASTING: Int = 5
+    const val PER_FORTUNATE_FEASTING_LEVEL: Double = 5.0
+
+    val DEDICATION_PER_MILESTONE: List<Double> = listOf(0.0, 0.5, 0.75, 1.0, 2.0)
 
     const val PER_FLY_LEVEL: Double = 2.5
     const val PER_FIREFLY_LEVEL: Double = 5.0
     const val PER_LUNAR_MOTH_LEVEL: Double = 5.0
     const val PER_EARTHWORM_LEVEL: Double = 3.0
     const val PER_GALAXY_FISH_LEVEL: Double = 1.0
+
+    private const val ROSE_DRAGON_FIRST_LEVEL: Int = 100
+    private const val ROSE_DRAGON_FIRST_LEVEL_FORTUNE: Double = 20.0
+    private const val ROSE_DRAGON_FORTUNE_PER_LEVEL: Double = 0.2
+
+    private const val GARDEN_POWER_PER_FARMING_LEVEL_AT_MAX: Double = 3.0
+    private const val ROSE_DRAGON_MAX_LEVEL: Int = 200
+
+    fun roseDragonLevelFromGardenPower(gardenPower: Double, farmingLevel: Int): Int =
+        Math.round(gardenPower * ROSE_DRAGON_MAX_LEVEL / (GARDEN_POWER_PER_FARMING_LEVEL_AT_MAX * farmingLevel)).toInt().coerceIn(ROSE_DRAGON_FIRST_LEVEL, ROSE_DRAGON_MAX_LEVEL)
+
+    fun roseDragonBaseFortune(level: Int): Double =
+        if (level < ROSE_DRAGON_FIRST_LEVEL) 0.0 else ROSE_DRAGON_FIRST_LEVEL_FORTUNE + (level - ROSE_DRAGON_FIRST_LEVEL) * ROSE_DRAGON_FORTUNE_PER_LEVEL
 
     private const val CHIP_RARE_MAX_LEVEL: Int = 10
     private const val CHIP_EPIC_MAX_LEVEL: Int = 15
@@ -93,6 +111,7 @@ object FortuneTables {
         "NETHER_STALK" to listOf(CropDrop.NetherWart),
         "INK_SACK:3" to listOf(CropDrop.CocoaBeans),
         "SUNFLOWER" to listOf(CropDrop.Sunflower),
+        "DOUBLE_PLANT" to listOf(CropDrop.Sunflower),
         "MOONFLOWER" to listOf(CropDrop.Moonflower),
         "WILD_ROSE" to listOf(CropDrop.WildRose)
     )

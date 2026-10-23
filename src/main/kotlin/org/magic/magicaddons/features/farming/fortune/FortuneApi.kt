@@ -24,6 +24,9 @@ object FortuneApi {
 
     private const val HTTP_TOO_MANY_REQUESTS: Int = 429
     private const val HTTP_NOT_FOUND: Int = 404
+    private const val HTTP_BAD_GATEWAY: Int = 502
+    private const val HTTP_SERVICE_UNAVAILABLE: Int = 503
+    private const val RETRY_AFTER_HEADER: String = "Retry-After"
 
     fun fetch(): CompletableFuture<Outcome> {
         if (!ServerSession.isConnected) return CompletableFuture.completedFuture(Outcome.NotConnected)
@@ -35,16 +38,13 @@ object FortuneApi {
 
     private fun outcomeOf(response: HttpResponse<String>?): Outcome {
         if (response == null) return Outcome.Failed(null)
-        val body = runCatching { JsonParser.parseString(response.body()).asJsonObject }.getOrNull()
-        if (response.statusCode() == ServerSession.HTTP_OK && body != null) return Outcome.Filled(apply(body))
-
-        val error = body?.get("error")?.asString
-        return when {
-            error == "rateLimited" -> Outcome.CoolingDown(body.get("retryAfterSeconds")?.asInt ?: 0)
-            error == "hypixelThrottled" -> Outcome.HypixelThrottled
-            error == "hypixelUnavailable" || error == "noHypixelKey" -> Outcome.HypixelUnavailable
-            error == "noProfile" || response.statusCode() == HTTP_NOT_FOUND -> Outcome.NoProfile
-            response.statusCode() == HTTP_TOO_MANY_REQUESTS -> Outcome.CoolingDown(0)
+        return when (response.statusCode()) {
+            ServerSession.HTTP_OK -> runCatching { JsonParser.parseString(response.body()).asJsonObject }.getOrNull()
+                ?.let { Outcome.Filled(apply(it)) } ?: Outcome.Failed(response.statusCode())
+            HTTP_TOO_MANY_REQUESTS -> Outcome.CoolingDown(response.headers().firstValue(RETRY_AFTER_HEADER).orElse("0").toIntOrNull() ?: 0)
+            HTTP_NOT_FOUND -> Outcome.NoProfile
+            HTTP_SERVICE_UNAVAILABLE -> Outcome.HypixelThrottled
+            HTTP_BAD_GATEWAY -> Outcome.HypixelUnavailable
             else -> Outcome.Failed(response.statusCode())
         }
     }
@@ -52,7 +52,7 @@ object FortuneApi {
     private fun apply(body: JsonObject): Int {
         var filled = 0
         fun fill(field: FortuneField, crop: CropDrop?, level: Double) {
-            FortuneReadings.set(field, crop, level, FortuneReadings.ORIGIN_API)
+            FortuneReadings.set(field, crop, level)
             filled++
         }
 
@@ -74,6 +74,14 @@ object FortuneApi {
             FortuneTables.HYPIXEL_CROP_IDS[id]?.forEach { crop ->
                 fill(FortuneField.PersonalBest, crop, if (bestsUnlocked) FortuneTables.personalBestFortune(crop, best.asLong) else 0.0)
             }
+        }
+
+        body.get("fortunateFeasting")?.takeIf { it.isJsonPrimitive }?.let { fill(FortuneField.FortunateFeasting, null, it.asDouble) }
+        body.get("uniqueVisitors")?.takeIf { it.isJsonPrimitive }?.let { fill(FortuneField.UniqueVisitors, null, it.asDouble) }
+        body.getAsJsonArray("servedVisitors")?.map { it.asString }?.let { FortuneReadings.noteServed(it) }
+
+        body.getAsJsonObject("cropsCollected")?.entrySet()?.forEach { (id, collected) ->
+            FortuneTables.HYPIXEL_CROP_IDS[id]?.forEach { fill(FortuneField.CropMilestone, it, CropMilestones.tierFor(it, collected.asLong).toDouble()) }
         }
 
         Common.LOGGER.info("Filled {} fortune readings from the Hypixel API", filled)

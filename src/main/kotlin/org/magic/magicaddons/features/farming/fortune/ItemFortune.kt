@@ -12,7 +12,7 @@ object ItemFortune {
     private val FARMING_FORTUNE_LINE: Regex = Regex("""^Farming Fortune: \+([\d.]+)""")
     private val CROP_FORTUNE_LINE: Regex = Regex("""^(.+?) Fortune: \+([\d.]+)""")
     private val TIERED_BONUS_LINE: Regex = Regex("""Tiered Bonus: .*\((\d)/4\)""")
-    private val GRANTS_LINE: Regex = Regex("""Grants \+([\d.]+)""")
+    private val GRANTS_LINE: Regex = Regex("""Grants \+?([\d.,]+)\D*?Farming Fortune""")
 
     private const val PER_TURBO_LEVEL: Double = 5.0
     private const val TURBO_ENCHANT_PREFIX: String = "turbo_"
@@ -49,10 +49,24 @@ object ItemFortune {
     fun armorSetBonus(armor: List<ItemStack>): FortuneSource? {
         val piece = armor.firstOrNull { item -> item.getLore().any { TIERED_BONUS_LINE.containsMatchIn(it.string) } } ?: return null
         val lore = piece.getLore().map { it.string }
-        val pieces = lore.firstNotNullOfOrNull { TIERED_BONUS_LINE.find(it) }?.groupValues?.get(1)?.toIntOrNull() ?: return null
+        val tieredLine = lore.indexOfFirst { TIERED_BONUS_LINE.containsMatchIn(it) }
+        val pieces = TIERED_BONUS_LINE.find(lore[tieredLine])?.groupValues?.get(1)?.toIntOrNull() ?: return null
         if (pieces < 2) return null
-        val granted = lore.firstNotNullOfOrNull { GRANTS_LINE.find(it) }?.groupValues?.get(1)?.toDoubleOrNull() ?: return null
+        val paragraph = lore.drop(tieredLine + 1).takeWhile { it.isNotBlank() }.joinToString(" ")
+        val granted = GRANTS_LINE.find(paragraph)?.groupValues?.get(1)?.replace(",", "")?.toDoubleOrNull() ?: return null
         return FortuneSource("${piece.hoverName.string} set ($pieces/4)", FortuneStat.General, granted, "tiered bonus")
+    }
+
+    private const val DEDICATION_ENCHANT: String = "dedication"
+
+    fun dedicationFortune(tool: ItemStack): List<FortuneSource> {
+        val level = tool.getData(DataTypes.ENCHANTMENTS)?.get(DEDICATION_ENCHANT)?.takeIf { it > 0 } ?: return emptyList()
+        val perTier = FortuneTables.DEDICATION_PER_MILESTONE.getOrNull(level) ?: return emptyList()
+        val coveredByLine = statLines(tool).mapNotNull { (it.stat as? FortuneStat.Crop)?.crop }.toSet()
+        return CropDrop.entries.filter { it !in coveredByLine }.mapNotNull { crop ->
+            val tier = FortuneReadings.get(FortuneField.CropMilestone, crop)?.level ?: return@mapNotNull null
+            FortuneSource(tool.hoverName.string, FortuneStat.Crop(crop), tier * perTier, "Dedication $level, milestone ${tier.toInt()}")
+        }
     }
 
     fun turboFortune(tool: ItemStack): List<FortuneSource> {

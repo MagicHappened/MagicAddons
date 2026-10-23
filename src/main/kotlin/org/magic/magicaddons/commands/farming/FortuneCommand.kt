@@ -92,7 +92,7 @@ object FortuneCommand : AbstractCommand() {
                 ChatUtils.sendWithPrefix("${field.displayName} needs a crop: /ma fortune set ${field.name} <crop> <${field.unit}>")
                 return 0
             }
-            FortuneCrops.byStatName(FortuneCrops.statName(drop)).forEach { FortuneReadings.set(field, it, value, FortuneReadings.ORIGIN_MANUAL) }
+            FortuneCrops.byStatName(FortuneCrops.statName(drop)).forEach { FortuneReadings.set(field, it, value) }
             ChatUtils.sendWithPrefix("${field.displayName} for ${FortuneCrops.statName(drop)} set to ${FortuneAudit.format(value)} ${field.unit}.")
             return 1
         }
@@ -101,7 +101,7 @@ object FortuneCommand : AbstractCommand() {
             ChatUtils.sendWithPrefix("${field.displayName} is not per crop: /ma fortune set ${field.name} <${field.unit}>")
             return 0
         }
-        FortuneReadings.set(field, null, value, FortuneReadings.ORIGIN_MANUAL)
+        FortuneReadings.set(field, null, value)
         ChatUtils.sendWithPrefix("${field.displayName} set to ${FortuneAudit.format(value)} ${field.unit}.")
         return 1
     }
@@ -114,14 +114,17 @@ object FortuneCommand : AbstractCommand() {
             message.append(line(name, sources.sumOf { it.value }, details.takeIf { it.isNotEmpty() }, ChatFormatting.GREEN))
         }
 
-        message.append(Component.literal("\nPer crop:").withStyle(ChatFormatting.GRAY))
-        FortuneAudit.lines(snapshot).drop(1).forEach { audit ->
-            val color = when (audit.verdict) {
-                FortuneAudit.Verdict.Matches -> ChatFormatting.GREEN
-                FortuneAudit.Verdict.Differs -> ChatFormatting.RED
-                FortuneAudit.Verdict.NotInTab -> ChatFormatting.GRAY
-            }
-            message.append(Component.literal("\n  ${audit.text}").withStyle(color))
+        message.append(Component.literal("\nCrop fortune (added on top):").withStyle(ChatFormatting.GRAY))
+        FortuneCrops.representatives.forEach { crop ->
+            message.append(line(FortuneCrops.tabStat(crop), snapshot.cropOnly(crop), null, ChatFormatting.GREEN))
+        }
+
+        val comparisons = FortuneAudit.comparisons(snapshot)
+        if (comparisons.isNotEmpty()) message.append(Component.literal("\nLast Your Stats Breakdown reading:").withStyle(ChatFormatting.GRAY))
+        comparisons.forEach { comparison ->
+            message.append(Component.literal("\n  ${comparison.stat}: ").withStyle(ChatFormatting.GRAY))
+            message.append(Component.literal("+${FortuneAudit.format(comparison.hypixel)}").withStyle(if (comparison.matches) ChatFormatting.GREEN else ChatFormatting.GRAY))
+            if (!comparison.matches) message.append(Component.literal(" (${FortuneAudit.signed(comparison.difference)})").withStyle(ChatFormatting.RED))
         }
 
         if (snapshot.unknown.isNotEmpty()) {
