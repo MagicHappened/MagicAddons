@@ -90,10 +90,15 @@ object GreenhouseHud : HudElement("greenhouse", "Greenhouse") {
             .minOrNull()
         val asleep = plants.count { it.isAsleep }
         val craving = plants.count { it.needsOtherTimeOfDay(gardenTime) }
-        val nextDecay = plants
+        val decays = plants
             .mapNotNull { plant -> plant.decayRemainingMs?.let { it to grid.layout.decayOutlookOf(plant) } }
             .filter { (_, outlook) -> outlook.canDecay }
-            .minByOrNull { (remainingMs, _) -> remainingMs }
+        val nextDecay = decays.minByOrNull { (decayMs, _) -> decayMs }?.let { (soonestMs, _) ->
+            val soonestTick = tickOfDecay(soonestMs, remainingMs, tickMs)
+            val sameTick = decays.filter { (decayMs, _) -> tickOfDecay(decayMs, remainingMs, tickMs) == soonestTick }
+            sameTick.filter { (_, outlook) -> outlook.isCertain }.minByOrNull { (decayMs, _) -> decayMs }
+                ?: sameTick.minBy { (decayMs, _) -> decayMs }
+        }
 
         if (ready > 0) add(Line("Ready to harvest", ready.toString(), Common.UI.SUCCESS_COLOR))
         if (thirst != null) add(Line("Halting from water in", if (thirst == 0L) "now" else thirst.toShortDuration(), if (thirst < URGENT_MS) Common.UI.DANGER_COLOR else Common.UI.WARNING_COLOR))
@@ -104,5 +109,11 @@ object GreenhouseHud : HudElement("greenhouse", "Greenhouse") {
             val time = (if (outlook.isCertain) "" else "≥") + remainingMs.toShortDuration()
             add(Line("Next decay", time, if (remainingMs < URGENT_MS) Common.UI.DANGER_COLOR else Common.UI.TEXT_COLOR))
         }
+    }
+
+    private fun tickOfDecay(decayMs: Long, untilNextTickMs: Long?, tickMs: Long?): Long {
+        if (untilNextTickMs == null || tickMs == null || tickMs <= 0) return decayMs
+        if (decayMs <= untilNextTickMs) return 0
+        return 1 + (decayMs - untilNextTickMs - 1) / tickMs
     }
 }

@@ -39,9 +39,18 @@ object Codecs {
                 PlotLayout(
                     id = id,
                     name = nameOpt.orElse(null),
-                    slots = slots,
-                    plants = elements.toMutableList()
-                )
+                    slots = slots
+                ).also { layout ->
+                    elements.forEach { plant ->
+                        val slot = layout.getSlot(plant.slot.x, plant.slot.y)
+                        if (slot == null) {
+                            layout.plants.add(plant)
+                            return@forEach
+                        }
+                        slot.mark = plant.slot.mark
+                        layout.plants.add(plant.copyForPrediction(slot))
+                    }
+                }
             }
         }
     }
