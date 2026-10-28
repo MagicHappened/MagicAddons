@@ -77,6 +77,8 @@ object BreakProtection {
         val plant = scanned.plant
         val crop = plant.cropDef.name
 
+        if ((plant.isPlacedMutation || plant.cropDef.isBaseCrop) && GreenhouseData.isInTheWayOfPlan(plant)) return null
+
         if (GreenhousePresets.preventBreakingNonHarvestable() && !GreenhousePresets.isHarvestable(plant)) {
             notHarvestableMessage(plant, crop)?.let { return it }
         }

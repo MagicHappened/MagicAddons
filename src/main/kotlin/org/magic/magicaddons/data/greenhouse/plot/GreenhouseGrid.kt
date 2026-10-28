@@ -15,6 +15,7 @@ import org.magic.magicaddons.data.greenhouse.crops.*
 import org.magic.magicaddons.data.greenhouse.crops.definitions.misc.DeadPlant
 import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseTickTime
 import org.magic.magicaddons.features.farming.greenhousePresets.warnings.ChorusCollision
+import org.magic.magicaddons.features.farming.greenhousePresets.warnings.LikelySpawns
 import org.magic.magicaddons.util.getBuildableArea
 import tech.thatgravyboat.skyblockapi.api.profile.garden.Plot
 import tech.thatgravyboat.skyblockapi.api.profile.garden.PlotAPI
@@ -970,6 +971,10 @@ class GreenhouseGrid(
 
         var chorusRiskCalculation: ChorusCollision.Calculation? = null
 
+        var spawnChances: PlotPrediction.SpawnChances? = null
+
+        var spawnChanceCalculation: LikelySpawns.Calculation? = null
+
         var predictTicks: Int = 0
 
         var lastChorusBreaks: List<ChorusCollision.Break> = emptyList()
@@ -983,6 +988,11 @@ class GreenhouseGrid(
         fun chorusLossChanceByTicksAhead(ticksAhead: Int): Double? = chorusLossChanceByTick?.let { chances ->
             chances.getOrNull(ticksSinceLastScan + maxOf(ticksAhead, 1) - 1) ?: chances.lastOrNull()
         }
+
+        val isSpawnChanceCalculating: Boolean
+            get() = spawnChances == null && spawnChanceCalculation?.isRunning == true
+
+        fun likelySpawnCount(confidence: Double): Int? = spawnChances?.countReachedWith(confidence, ticksSinceLastScan)
     }
 
     override fun toString(): String = layout.displayName()

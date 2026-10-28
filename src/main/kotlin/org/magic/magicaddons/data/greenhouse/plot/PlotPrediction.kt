@@ -11,6 +11,8 @@ import org.magic.magicaddons.data.greenhouse.crops.CropRegistry
 import org.magic.magicaddons.data.greenhouse.crops.DecayOutlook
 import org.magic.magicaddons.data.greenhouse.crops.Plant
 import org.magic.magicaddons.data.greenhouse.crops.PlantStage
+import org.magic.magicaddons.data.greenhouse.crops.definitions.misc.DeadPlant
+import org.magic.magicaddons.data.greenhouse.crops.definitions.mutations.common.Lonelily
 
 object PlotPrediction {
 
@@ -53,9 +55,21 @@ object PlotPrediction {
 
     private const val ABSENCE_SIMULATION_RUNS: Int = 100
 
-    private const val SURROUNDINGS_REACH: Int = 3
+    const val MAX_COUNTED_SPAWNS: Int = GREENHOUSE_SIZE * GREENHOUSE_SIZE
 
-    private data class Surroundings(val x: Int, val y: Int, val cropNames: List<String?>)
+    const val LIKELY_SPAWNS_HORIZON_TICKS: Int = 150
+
+    private const val SPAWN_CHANCE_RUNS: Int = 10_000
+
+    private const val STORED_CHANCE_DECIMALS: Double = 10_000.0
+
+    private const val EMPTY_CELL: Int = -1
+
+    const val NEVER_TICK: Int = Int.MAX_VALUE
+
+    private const val LARGEST_FOOTPRINT: Int = 3
+
+    private val neverPlannedCrops: Set<CropDefinition> = setOf(Lonelily.definition)
 
     fun expectedSpawnsDuringAbsence(
         layoutBefore: PlotLayout,
@@ -65,48 +79,346 @@ object PlotPrediction {
         random: Random = Random.Default
     ): AbsenceSpawns {
         val targetsByOrigin = targets.associateBy { it.slot.x to it.slot.y }
-        val (effectRuledCrops, neighbourRuledCrops) = spawningCrops.partition { it.spawnRule!!.needsOwnEffectsAround }
-        val neighbourRuledCropsBySurroundings = HashMap<Surroundings, List<CropDefinition>>()
+        val simulation = spawnSimulationOf(layoutBefore, weightMultiplier, nextTickInMs = null, tickMs = null) { _, _, _ -> false }
         var spawnsOnTargets = 0
         var otherSpawnsOnTargets = 0
 
         repeat(ABSENCE_SIMULATION_RUNS) {
-            val layout = layoutBefore.freshCopy()
-            repeat(ticks) {
-                val spawnsThisTick = layout.slots.filter { layout.plantCovering(it) == null }.mapNotNull { slot ->
-                    val eligibleCrops = neighbourRuledCropsBySurroundings.getOrPut(surroundingsOf(layout, slot.x, slot.y)) {
-                        neighbourRuledCrops.filter { missingSpawnConditions(layout, it, slot.x, slot.y).isEmpty() }
-                    } + effectRuledCrops.filter {
-                        missingFootprintConditions(layout, it, slot.x, slot.y, null).isEmpty() &&
-                                missingSpawnConditions(layout, it, slot.x, slot.y).isEmpty()
-                    }
-                    rolledCrop(chancesAmong(eligibleCrops, layout, slot.x, slot.y, weightMultiplier, null), random)?.let { it to slot }
-                }
-
-                spawnsThisTick.forEach { (crop, slot) ->
-                    if (crop.footprint.cellsFrom(slot.x, slot.y).any { (cellX, cellY) -> layout.plantCovering(cellX, cellY) != null }) return@forEach
-                    layout.plants.add(Plant(elementId = crop.elementId, slot = slot, growthStage = PlantStage.Known(1), cropDef = crop))
-
-                    val target = targetsByOrigin[slot.x to slot.y] ?: return@forEach
-                    if (target.acceptsCrop(crop)) spawnsOnTargets++ else otherSpawnsOnTargets++
-                }
+            simulation.run(random, ticks) { _, spawnable, x, y ->
+                val target = targetsByOrigin[x to y] ?: return@run
+                if (target.acceptsCrop(simulation.cropOf(spawnable))) spawnsOnTargets++ else otherSpawnsOnTargets++
             }
         }
         return AbsenceSpawns(spawnsOnTargets.toDouble() / ABSENCE_SIMULATION_RUNS, otherSpawnsOnTargets.toDouble() / ABSENCE_SIMULATION_RUNS)
     }
 
-    private fun surroundingsOf(layout: PlotLayout, x: Int, y: Int): Surroundings =
-        Surroundings(x, y, ((y - 1)..(y + SURROUNDINGS_REACH)).flatMap { cellY ->
-            ((x - 1)..(x + SURROUNDINGS_REACH)).map { cellX -> layout.plantCovering(cellX, cellY)?.cropDef?.name }
-        })
+    fun ticksUntil(remainingMs: Long?, nextTickInMs: Long?, tickMs: Long?): Int {
+        if (remainingMs == null || nextTickInMs == null || tickMs == null || tickMs <= 0) return NEVER_TICK
+        if (remainingMs <= nextTickInMs) return 0
 
-    private fun rolledCrop(chances: List<MutationChance>, random: Random): CropDefinition? {
-        var roll = random.nextDouble()
-        chances.forEach { chance ->
-            roll -= chance.chance
-            if (roll < 0) return chance.crop
+        return ((remainingMs - nextTickInMs + tickMs - 1) / tickMs).coerceAtMost(NEVER_TICK.toLong()).toInt()
+    }
+
+    class SpawnChances(val chancesByTick: List<DoubleArray>, val crops: List<String>) {
+
+        fun chanceOfAtLeast(count: Int, ticksPassed: Int): Double =
+            chancesByTick[ticksPassed.coerceIn(0, chancesByTick.lastIndex)].getOrElse(count - 1) { 0.0 }
+
+        fun chancesOfAtLeast(count: Int): List<Double> = chancesByTick.map { rounded(it.getOrElse(count - 1) { 0.0 }) }
+
+        fun countReachedWith(confidence: Double, ticksPassed: Int): Int =
+            chancesByTick[ticksPassed.coerceIn(0, chancesByTick.lastIndex)].count { it >= confidence }
+
+        fun countsReachedWith(confidence: Double): List<Int> = chancesByTick.indices.map { countReachedWith(confidence, it) }
+
+        fun storedRows(): List<List<Double>> = chancesByTick.map { row -> row.map(::rounded).dropLastWhile { it == 0.0 } }
+
+        private fun rounded(chance: Double): Double = Math.round(chance * STORED_CHANCE_DECIMALS) / STORED_CHANCE_DECIMALS
+
+        companion object {
+            fun fromStoredRows(rows: List<List<Double>>, crops: List<String>): SpawnChances? {
+                if (rows.isEmpty()) return null
+                return SpawnChances(rows.map { row -> DoubleArray(MAX_COUNTED_SPAWNS) { row.getOrElse(it) { 0.0 } } }, crops)
+            }
         }
-        return null
+    }
+
+    internal class SpawnableCrop(
+        val crop: CropDefinition,
+        val id: Int,
+        val weight: Double,
+        val needsNoNeighbours: Boolean,
+        val recipeIds: IntArray,
+        val recipeCounts: IntArray,
+        val originOk: BooleanArray,
+        val haltTicksAfterSpawn: IntArray?,
+        val counted: BooleanArray
+    ) {
+        val width: Int = crop.footprint.width
+        val height: Int = crop.footprint.height
+        val ringSize: Int = (width + 2) * (height + 2) - width * height
+    }
+
+    fun spawnSimulationOf(
+        layout: PlotLayout,
+        weightMultiplier: Double,
+        nextTickInMs: Long?,
+        tickMs: Long?,
+        countsSpawn: (CropDefinition, Int, Int) -> Boolean
+    ): SpawnSimulation {
+        val size = layout.size
+        val tileCount = size * size
+        val idByCropName = linkedMapOf<String, Int>()
+        fun idOf(cropName: String): Int = idByCropName.getOrPut(cropName) { idByCropName.size }
+        val deadPlantId = idOf(DeadPlant.definition.name)
+
+        val occupants = IntArray(tileCount) { EMPTY_CELL }
+        val contributesUntil = IntArray(tileCount)
+        val decaysAt = IntArray(tileCount) { NEVER_TICK }
+        layout.plants.filter { isStanding(it, null) }.forEach { plant ->
+            val id = idOf(plant.cropDef.name)
+            val decayTick = if (layout.decayOutlookOf(plant).canDecay) ticksUntil(plant.decayRemainingMs, nextTickInMs, tickMs) else NEVER_TICK
+            val haltTick = when {
+                plant.isHalted -> 0
+                else -> plant.ticksUntilWaterHalt(GreenhouseGrid.waterEffectAt(layout, plant.slot))?.let { (it - 1).coerceAtLeast(0) } ?: NEVER_TICK
+            }
+            plant.coveredCells.forEach { (x, y) ->
+                if (x !in 0 until size || y !in 0 until size) return@forEach
+                val cell = y * size + x
+                occupants[cell] = id
+                decaysAt[cell] = decayTick
+                contributesUntil[cell] = minOf(decayTick, haltTick)
+            }
+        }
+
+        val spawnables = spawningCrops
+            .sortedWith(compareBy({ it.footprint.width }, { it.footprint.height }))
+            .map { crop ->
+                val rule = crop.spawnRule!!
+                val width = crop.footprint.width
+                val height = crop.footprint.height
+                val originOk = BooleanArray(tileCount) { cell ->
+                    val x = cell % size
+                    val y = cell / size
+                    x + width <= size && y + height <= size &&
+                            !(rule.staysOffPlotEdge && (x == 0 || y == 0 || x + width == size || y + height == size)) &&
+                            crop.footprint.cellsFrom(x, y).all { (cellX, cellY) -> layout.getSlot(cellX, cellY)?.soil?.let { it in crop.requiredSoil } == true } &&
+                            (!rule.needsOwnEffectsAround || effectsReceivedAround(layout, crop, x, y, null).containsAll(crop.effects))
+                }
+                val isCountable = crop.maxStage == 1 && crop !in neverPlannedCrops
+                SpawnableCrop(
+                    crop = crop,
+                    id = idOf(crop.name),
+                    weight = rule.weight * weightMultiplier,
+                    needsNoNeighbours = rule.needsNoNeighbours,
+                    recipeIds = rule.requiredNeighbourCells.keys.map(::idOf).toIntArray(),
+                    recipeCounts = rule.requiredNeighbourCells.values.toIntArray(),
+                    originOk = originOk,
+                    haltTicksAfterSpawn = if (!crop.needsWater) null else IntArray(tileCount) { cell ->
+                        val slot = layout.getSlot(cell % size, cell / size) ?: return@IntArray NEVER_TICK
+                        ticksUntilHalt(0.0, GreenhouseGrid.waterEffectAt(layout, slot)) ?: NEVER_TICK
+                    },
+                    counted = BooleanArray(tileCount) { cell -> isCountable && originOk[cell] && countsSpawn(crop, cell % size, cell / size) }
+                )
+            }
+        return SpawnSimulation(size, idByCropName.size, deadPlantId, spawnables, occupants, contributesUntil, decaysAt)
+    }
+
+    class SpawnSimulation internal constructor(
+        private val size: Int,
+        cropCount: Int,
+        private val deadPlantId: Int,
+        private val spawnables: List<SpawnableCrop>,
+        private val occupants: IntArray,
+        private val contributesUntil: IntArray,
+        private val decaysAt: IntArray
+    ) {
+        private val tileCount = size * size
+
+        val fingerprint: Int = listOf(
+            occupants.contentHashCode(),
+            contributesUntil.contentHashCode(),
+            decaysAt.contentHashCode(),
+            spawnables.map { it.weight }.hashCode(),
+            spawnables.map { it.originOk.contentHashCode() }.hashCode(),
+            spawnables.map { it.counted.contentHashCode() }.hashCode(),
+            spawnables.map { it.haltTicksAfterSpawn?.contentHashCode() ?: 0 }.hashCode()
+        ).fold(0) { hash, part -> 31 * hash + part }
+
+        private val cells = IntArray(tileCount)
+        private val until = IntArray(tileCount)
+        private val dirty = BooleanArray(tileCount)
+        private val eligibleCount = IntArray(tileCount)
+        private val eligibleCrop = IntArray(tileCount * spawnables.size)
+        private val eligibleChance = DoubleArray(tileCount * spawnables.size)
+        private val ringCounts = IntArray(cropCount)
+        private val spawnCells = IntArray(tileCount)
+        private val spawnCrops = IntArray(tileCount)
+        private var events: Array<MutableList<Int>> = emptyArray()
+
+        private val startEligibleCount: IntArray
+        private val startEligibleCrop: IntArray
+        private val startEligibleChance: DoubleArray
+
+        init {
+            occupants.copyInto(cells)
+            contributesUntil.copyInto(until)
+            for (cell in 0 until tileCount) if (cells[cell] == EMPTY_CELL) refreshEligibility(cell, 0)
+            startEligibleCount = eligibleCount.copyOf()
+            startEligibleCrop = eligibleCrop.copyOf()
+            startEligibleChance = eligibleChance.copyOf()
+        }
+
+        fun cropOf(spawnable: Int): CropDefinition = spawnables[spawnable].crop
+
+        fun spawnChancesByTick(random: Random, isCancelled: () -> Boolean): SpawnChances? {
+            val horizon = LIKELY_SPAWNS_HORIZON_TICKS
+            val hits = Array(horizon + 1) { IntArray(MAX_COUNTED_SPAWNS) }
+            val spawnsAtTick = IntArray(horizon)
+            val spawnsBySpawnable = IntArray(spawnables.size)
+
+            repeat(SPAWN_CHANCE_RUNS) {
+                if (isCancelled()) return null
+                spawnsAtTick.fill(0)
+                run(random, horizon) { tick, spawnable, x, y ->
+                    if (!spawnables[spawnable].counted[y * size + x]) return@run
+                    spawnsAtTick[tick]++
+                    spawnsBySpawnable[spawnable]++
+                }
+                var spawned = 0
+                for (tick in 0 until horizon) {
+                    spawned += spawnsAtTick[tick]
+                    val row = hits[tick + 1]
+                    for (index in 0 until min(spawned, MAX_COUNTED_SPAWNS)) row[index]++
+                }
+            }
+            val chancesByTick = hits.map { row -> DoubleArray(MAX_COUNTED_SPAWNS) { row[it].toDouble() / SPAWN_CHANCE_RUNS } }
+            val crops = spawnables.indices.filter { spawnsBySpawnable[it] > 0 }.sortedByDescending { spawnsBySpawnable[it] }.map { spawnables[it].crop.name }
+            return SpawnChances(chancesByTick, crops)
+        }
+
+        fun run(random: Random, horizon: Int, onSpawn: (tick: Int, spawnable: Int, x: Int, y: Int) -> Unit) {
+            occupants.copyInto(cells)
+            contributesUntil.copyInto(until)
+            startEligibleCount.copyInto(eligibleCount)
+            startEligibleCrop.copyInto(eligibleCrop)
+            startEligibleChance.copyInto(eligibleChance)
+            dirty.fill(false)
+            if (events.size < horizon) events = Array(horizon) { mutableListOf() } else events.forEach { it.clear() }
+            for (cell in 0 until tileCount) {
+                if (decaysAt[cell] < horizon) events[decaysAt[cell]].add(cell)
+                if (contributesUntil[cell] in 1 until horizon && contributesUntil[cell] != decaysAt[cell]) events[contributesUntil[cell]].add(cell)
+            }
+
+            for (tick in 0 until horizon) {
+                for (cell in events[tick]) {
+                    if (decaysAt[cell] == tick && cells[cell] == occupants[cell]) {
+                        cells[cell] = if (cells[cell] == deadPlantId) EMPTY_CELL else deadPlantId
+                        until[cell] = NEVER_TICK
+                    }
+                    markDirtyAround(cell)
+                }
+
+                var spawnCount = 0
+                for (cell in 0 until tileCount) {
+                    if (cells[cell] != EMPTY_CELL) continue
+                    if (dirty[cell]) {
+                        refreshEligibility(cell, tick)
+                        dirty[cell] = false
+                    }
+                    val count = eligibleCount[cell]
+                    if (count == 0) continue
+                    var roll = random.nextDouble()
+                    val base = cell * spawnables.size
+                    for (index in 0 until count) {
+                        roll -= eligibleChance[base + index]
+                        if (roll < 0) {
+                            spawnCells[spawnCount] = cell
+                            spawnCrops[spawnCount] = eligibleCrop[base + index]
+                            spawnCount++
+                            break
+                        }
+                    }
+                }
+
+                for (index in 0 until spawnCount) {
+                    val origin = spawnCells[index]
+                    val spawnable = spawnables[spawnCrops[index]]
+                    if (!isFootprintEmpty(origin, spawnable)) continue
+                    val haltTicks = spawnable.haltTicksAfterSpawn?.get(origin) ?: NEVER_TICK
+                    val contributesUntilTick = if (haltTicks == NEVER_TICK) NEVER_TICK else tick + haltTicks
+                    val x = origin % size
+                    val y = origin / size
+                    for (dy in 0 until spawnable.height) {
+                        for (dx in 0 until spawnable.width) {
+                            val cell = (y + dy) * size + x + dx
+                            cells[cell] = spawnable.id
+                            until[cell] = contributesUntilTick
+                            if (contributesUntilTick < horizon) events[contributesUntilTick].add(cell)
+                            markDirtyAround(cell)
+                        }
+                    }
+                    onSpawn(tick, spawnCrops[index], x, y)
+                }
+            }
+        }
+
+        private fun isFootprintEmpty(origin: Int, spawnable: SpawnableCrop): Boolean {
+            val x = origin % size
+            val y = origin / size
+            for (dy in 0 until spawnable.height) {
+                for (dx in 0 until spawnable.width) {
+                    if (cells[(y + dy) * size + x + dx] != EMPTY_CELL) return false
+                }
+            }
+            return true
+        }
+
+        private fun markDirtyAround(cell: Int) {
+            val x = cell % size
+            val y = cell / size
+            for (originY in (y - LARGEST_FOOTPRINT).coerceAtLeast(0)..(y + 1).coerceAtMost(size - 1)) {
+                for (originX in (x - LARGEST_FOOTPRINT).coerceAtLeast(0)..(x + 1).coerceAtMost(size - 1)) {
+                    dirty[originY * size + originX] = true
+                }
+            }
+        }
+
+        private fun refreshEligibility(cell: Int, tick: Int) {
+            val x = cell % size
+            val y = cell / size
+            val base = cell * spawnables.size
+            var count = 0
+            var weightSum = 0.0
+            var ringWidth = -1
+            var ringHeight = -1
+            var contributing = 0
+
+            for ((index, spawnable) in spawnables.withIndex()) {
+                if (!spawnable.originOk[cell] || !isFootprintEmpty(cell, spawnable)) continue
+                if (spawnable.width != ringWidth || spawnable.height != ringHeight) {
+                    ringWidth = spawnable.width
+                    ringHeight = spawnable.height
+                    contributing = countRing(x, y, ringWidth, ringHeight, tick)
+                }
+                if (spawnable.needsNoNeighbours && contributing > 0) continue
+                var hasRecipe = true
+                for (part in spawnable.recipeIds.indices) {
+                    if (ringCounts[spawnable.recipeIds[part]] < spawnable.recipeCounts[part]) {
+                        hasRecipe = false
+                        break
+                    }
+                }
+                if (!hasRecipe) continue
+                val fill = if (spawnable.recipeIds.isEmpty()) 1.0 else min(1.0, contributing / (spawnable.ringSize * FULL_CHANCE_RING_SHARE))
+                eligibleCrop[base + count] = index
+                eligibleChance[base + count] = spawnable.weight * fill
+                weightSum += spawnable.weight
+                count++
+            }
+            val rollTotal = max(MIN_ROLL_WEIGHT_TOTAL, weightSum)
+            for (index in 0 until count) eligibleChance[base + index] /= rollTotal
+            eligibleCount[cell] = count
+        }
+
+        private fun countRing(x: Int, y: Int, width: Int, height: Int, tick: Int): Int {
+            ringCounts.fill(0)
+            var contributing = 0
+            for (dy in -1..height) {
+                for (dx in -1..width) {
+                    if (dx in 0 until width && dy in 0 until height) continue
+                    val ringX = x + dx
+                    val ringY = y + dy
+                    if (ringX !in 0 until size || ringY !in 0 until size) continue
+                    val cell = ringY * size + ringX
+                    val id = cells[cell]
+                    if (id == EMPTY_CELL || until[cell] <= tick) continue
+                    ringCounts[id]++
+                    contributing++
+                }
+            }
+            return contributing
+        }
     }
 
     // hypixel multiplies mutation chances by the amount of crops around the spawn cell, reaching the actual chance at 4 (25% per crop)

@@ -273,8 +273,12 @@ object Codecs {
                 },
                 UNCERTAIN_SPAWNS_CODEC.listOf().optionalFieldOf("blind_spawns", emptyList()).forGetter { it.uncertainSpawns },
                 Codec.LONG.optionalFieldOf("last_changed_at").forGetter { Optional.ofNullable(it.lastChangedAt) },
-                Codec.INT.optionalFieldOf("predict_ticks", 0).forGetter { it.predictTicks }
-            ).apply(instance) { lastUpdate, assignedLayout, planTurns, noRotateAssignedLayout, ticksSinceLastScan, chorusLossChances, uncertainSpawns, lastChangedAt, predictTicks ->
+                Codec.INT.optionalFieldOf("predict_ticks", 0).forGetter { it.predictTicks },
+                Codec.DOUBLE.listOf().listOf().optionalFieldOf("spawn_chance_by_tick", emptyList()).forGetter {
+                    it.spawnChances?.storedRows().orEmpty()
+                },
+                Codec.STRING.listOf().optionalFieldOf("spawn_crops", emptyList()).forGetter { it.spawnChances?.crops.orEmpty() }
+            ).apply(instance) { lastUpdate, assignedLayout, planTurns, noRotateAssignedLayout, ticksSinceLastScan, chorusLossChances, uncertainSpawns, lastChangedAt, predictTicks, spawnChanceRows, spawnCrops ->
                 GridState(
                     lastScanTime = lastUpdate.orElse(null)?.let { Instant.ofEpochMilli(it) },
                     planTurns = planTurns,
@@ -286,6 +290,7 @@ object Codecs {
                     it.uncertainSpawns += uncertainSpawns
                     it.lastChangedAt = lastChangedAt.orElse(null)
                     it.predictTicks = predictTicks
+                    it.spawnChances = PlotPrediction.SpawnChances.fromStoredRows(spawnChanceRows, spawnCrops)
                 }
             }
         }

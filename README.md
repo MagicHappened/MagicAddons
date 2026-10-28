@@ -20,9 +20,9 @@ It runs on Minecraft 26.1.2 and 26.2, and will update as Hypixel updates to newe
   with a break order telling you which chorus to harvest or break to get under the loss you accept.
 - **Break Protection**: blocks breaking mutations under a fortune threshold, while pest debuff is active, before
   they are harvestable, or young chorus outside the suggested break order.
-- **Reminders**: ready to harvest, water, decay, Snoozling asleep, Noctilume time, Fleshtrap meat,
-  Thunderling charge, Glasscorn reset and Chorus collision, before and at the growth tick, for other
-  profiles too.
+- **Reminders**: ready to harvest, likely spawns of single stage mutations, water, decay, Snoozling asleep,
+  Noctilume time, Fleshtrap meat, Thunderling charge, Glasscorn reset and Chorus collision, before and at
+  the growth tick, for other profiles too.
 - **Growth tick timer and HUD**: set your garden upgrades once and the HUD shows the next tick.
 - **Crop Preview** (`/ma gh preview`): a preview of how each crop looks at each stage.
 - **Shorter Cane Crops**: Sugar Cane and Magic Jellybean drawn as their bottom block, growth stage above.

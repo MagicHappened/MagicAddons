@@ -10,6 +10,7 @@ import org.magic.magicaddons.data.greenhouse.crops.PlantStage
 import org.magic.magicaddons.data.greenhouse.plot.GREENHOUSE_SIZE
 import org.magic.magicaddons.data.greenhouse.plot.GreenhouseGrid
 import org.magic.magicaddons.data.greenhouse.plot.PlotLayout
+import org.magic.magicaddons.data.greenhouse.plot.PlotPrediction
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhousePresets
 import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseData
 import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseProfiles
@@ -45,6 +46,8 @@ data class ServerGreenhouseData(
         val assumeFlatWater: Boolean,
         val warnOnNegativeWater: Boolean,
         val chorusLossTolerance: Double,
+        val spawnConfidence: Double,
+        val spawnCount: Int,
         val greenhouseCoop: String
     )
 
@@ -60,7 +63,10 @@ data class ServerGreenhouseData(
         val slotsBySoil: Map<String, List<Int>>,
         val plants: List<Plant>,
         val plan: List<PlannedSlot>?,
-        val chorusLossChanceByTick: List<Double>?
+        val chorusLossChanceByTick: List<Double>?,
+        val spawnChanceByTick: List<Double>?,
+        val spawnCountByTick: List<Int>?,
+        val spawnCrops: List<String>?
     )
 
     data class Plant(
@@ -128,11 +134,16 @@ data class ServerGreenhouseData(
                     assumeFlatWater = GreenhousePresets.assumeFlatWater(),
                     warnOnNegativeWater = GreenhousePresets.negativeWaterWarningEnabled(),
                     chorusLossTolerance = GreenhousePresets.chorusLossTolerance(),
+                    spawnConfidence = GreenhousePresets.spawnConfidence(),
+                    spawnCount = GreenhousePresets.spawnCountThreshold(),
                     greenhouseCoop = GreenhousePresets.greenhouseCoop().name
                 ),
                 plots = plots
             )
         }
+
+        private fun spawnChancesOf(grid: GreenhouseGrid): PlotPrediction.SpawnChances? =
+            grid.state.spawnChances ?: grid.state.spawnChanceCalculation?.chances?.getNow(null)
 
         private fun plotOf(grid: GreenhouseGrid): Plot = Plot(
             id = grid.layout.id,
@@ -151,7 +162,10 @@ data class ServerGreenhouseData(
                     .map { planned -> PlannedSlot(planned.slot.x, planned.slot.y, planned.slot.mark!!.name, planned.acceptedCrops.map { it.name }) }
             },
             chorusLossChanceByTick = (grid.state.chorusLossChanceByTick
-                ?: grid.state.chorusRiskCalculation?.takeIf { grid.state.isChorusRiskCalculating }?.immediateLossChanceByTick())?.toList()
+                ?: grid.state.chorusRiskCalculation?.takeIf { grid.state.isChorusRiskCalculating }?.immediateLossChanceByTick())?.toList(),
+            spawnChanceByTick = spawnChancesOf(grid)?.chancesOfAtLeast(GreenhousePresets.spawnCountThreshold()),
+            spawnCountByTick = spawnChancesOf(grid)?.countsReachedWith(GreenhousePresets.spawnConfidence()),
+            spawnCrops = spawnChancesOf(grid)?.crops
         )
 
         private fun isDecayReachable(outlook: DecayOutlook): Boolean = outlook.isReachableFromCurrentSpots

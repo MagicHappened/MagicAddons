@@ -121,6 +121,15 @@ object GreenhousePresets : Feature() {
     @JvmStatic
     fun plantAlpha(): Int = 255 * (100 - plantTransparencySetting.value) / 100
 
+    private val ignoreSoilsByBuggedJellybeansSetting = BooleanSetting(
+        key = "IgnoreSoilsNextToBuggedJellybeans",
+        displayName = "Ignore soils next to bugged Magic Jellybeans",
+        description = "Ignores missing soils next to Magic Jellybean stage 1 and 2, as its impossible to place blocks next to them.",
+        value = true
+    )
+
+    fun ignoresSoilsNextToBuggedJellybeans(): Boolean = ignoreSoilsByBuggedJellybeansSetting.value
+
     private val harvestOnlyTargetsSetting = BooleanSetting(
         key = HARVEST_ONLY_TARGETS_KEY,
         displayName = "Only highlight based on Target marking",
@@ -437,6 +446,26 @@ object GreenhousePresets : Feature() {
         valueFromText = { typed -> typed.trim().removeSuffix("%").trim().toDoubleOrNull()?.let { (it * 10).roundToInt() } }
     )
 
+    private val spawnConfidenceSetting = IntSetting(
+        key = PlantWarnings.SPAWN_CONFIDENCE_KEY,
+        displayName = "Confidence",
+        description = "Warn once the chance of the spawn count below is at least this",
+        value = 90,
+        range = 50..99,
+        step = 5,
+        valueText = { "$it%" },
+        valueFromText = { typed -> typed.trim().removeSuffix("%").trim().toIntOrNull() }
+    )
+
+    private val spawnCountSetting = IntSetting(
+        key = PlantWarnings.SPAWN_COUNT_KEY,
+        displayName = "Spawn Count",
+        description = "How many single stage mutations must have spawned in a plot",
+        value = 5,
+        range = 1..25,
+        step = 1
+    )
+
     private val warningTypesSetting = BooleanSetting(
         key = TYPES_KEY,
         displayName = "Types",
@@ -501,6 +530,13 @@ object GreenhousePresets : Feature() {
                 description = "Warns before a chorus fruit runs out of tiles to teleport into and starts destroying the plot around it",
                 value = false,
                 children = listOf(chorusLossToleranceSetting)
+            ),
+            BooleanSetting(
+                key = PlantWarnings.LIKELY_SPAWNS_KEY,
+                displayName = "Likely Spawns",
+                description = "Warns when single stage mutations have probably spawned since your last visit",
+                value = true,
+                children = listOf(spawnConfidenceSetting, spawnCountSetting)
             ),
             BooleanSetting(
                 key = PlantWarnings.OTHER_PROFILES_KEY,
@@ -626,6 +662,10 @@ object GreenhousePresets : Feature() {
 
     fun chorusLossTolerance(): Double = chorusLossToleranceSetting.value / 1000.0
 
+    fun spawnConfidence(): Double = spawnConfidenceSetting.value / 100.0
+
+    fun spawnCountThreshold(): Int = spawnCountSetting.value
+
     fun thunderlingChargeThreshold(): Int = thunderlingChargeThresholdSetting.value
     override val id = "GreenhousePresets"
     override val displayName = "Greenhouse Presets"
@@ -647,7 +687,7 @@ object GreenhousePresets : Feature() {
                 key = PLANNER_OPTIONS_KEY,
                 displayName = "Planner",
                 description = "How a plan running on a greenhouse is shown",
-                children = listOf(plantTransparencySetting, plannerColorsGroup)
+                children = listOf(plantTransparencySetting, ignoreSoilsByBuggedJellybeansSetting, plannerColorsGroup)
             ),
             ParentSetting(
                 key = PLANT_HIGHLIGHTS_KEY,

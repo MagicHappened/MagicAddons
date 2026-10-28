@@ -22,6 +22,7 @@ import org.magic.magicaddons.data.greenhouse.crops.CropRegistry
 import org.magic.magicaddons.data.greenhouse.crops.CropStage
 import org.magic.magicaddons.data.greenhouse.crops.Footprint
 import org.magic.magicaddons.data.greenhouse.crops.ScannedPlant
+import org.magic.magicaddons.data.greenhouse.crops.definitions.mutations.rare.MagicJellybean
 import org.magic.magicaddons.data.greenhouse.plot.CROP_HEIGHT
 import org.magic.magicaddons.data.greenhouse.plot.GreenhouseGrid
 import org.magic.magicaddons.data.greenhouse.plot.LayoutSlot
@@ -46,6 +47,8 @@ object LayoutRenderState {
     private const val PULSE_ALPHA_HIGH: Int = 0x70
 
     private const val FILL_ALPHA: Int = 0x4D
+
+    private const val BUGGED_JELLYBEAN_STAGE: Int = 2
 
     private fun ghostAlpha(): Int = GreenhousePresets.plantAlpha()
 
@@ -90,9 +93,12 @@ object LayoutRenderState {
         val watchMarks: Map<BlockPos, Pair<VoxelShape, PlannerMark>> = emptyMap(),
         val watchStands: Map<UUID, Int> = emptyMap(),
         val ghostCrops: Map<BlockPos, String> = emptyMap(),
-        val standCrops: Map<UUID, String> = emptyMap()
+        val standCrops: Map<UUID, String> = emptyMap(),
+        val toleratedGhosts: Set<BlockPos> = emptySet()
     ) {
         val ghostStands: List<ArmorStand> = ghostStandsByPlant.values.flatten()
+
+        val hasPendingGhosts: Boolean get() = ghosts.keys.any { it !in toleratedGhosts }
 
         val comparisonKey: String = buildString {
             append(phase).append('|')
@@ -136,7 +142,7 @@ object LayoutRenderState {
     val ghostStands: List<ArmorStand> get() = if (SBLocation.OwnGarden.inside()) plannerLayout.ghostStands else emptyList()
 
     val hasSomethingToShow: Boolean
-        get() = plannerLayout.marks.isNotEmpty() || plannerLayout.ghosts.isNotEmpty() || plannerLayout.ghostStands.isNotEmpty() ||
+        get() = plannerLayout.marks.isNotEmpty() || plannerLayout.hasPendingGhosts || plannerLayout.ghostStands.isNotEmpty() ||
                 plannerLayout.badStands.isNotEmpty() || plannerLayout.obstructedSoils.isNotEmpty()
 
     private var lastFinished: Boolean = false
@@ -228,12 +234,19 @@ object LayoutRenderState {
         var soilComplete = true
         val soilNeeded = linkedMapOf<Block, Int>()
         val cropsNeeded = linkedMapOf<CropDefinition, Int>()
+        val unplaceableSoils = if (GreenhousePresets.ignoresSoilsNextToBuggedJellybeans()) cellsNextToYoungJellybeans(grid) else emptySet()
+        val toleratedGhosts = mutableSetOf<BlockPos>()
 
         layout.slots.forEach { slot ->
             val wantedSoil = slot.soil ?: return@forEach
             val pos = grid.getPosForSlotCoords(slot.x, slot.y) ?: return@forEach
             val wantedState = wantedSoil.defaultBlockState()
 
+            if ((slot.x to slot.y) in unplaceableSoils && level.getBlockState(pos).isAir) {
+                ghosts[pos] = wantedState
+                toleratedGhosts.add(pos)
+                return@forEach
+            }
             if (markBlockDifference(level, pos, wantedState, layout.soilsPlantAcceptsAt(slot), marks, ghosts)) return@forEach
 
             soilComplete = false
@@ -251,6 +264,7 @@ object LayoutRenderState {
                         }
                     }
                 }
+                if (footprintSlots.any { slot -> (slot.x to slot.y) in unplaceableSoils && grid.getPosForSlotCoords(slot.x, slot.y)?.let { level.getBlockState(it).isAir } == true }) return@forEach
                 val growing = footprintSlots.mapNotNull { grid.elementCoveringSlot(it) }.distinct()
 
                 val target = layoutPlant.slot.mark == LayoutSlot.Marking.Target
@@ -269,7 +283,7 @@ object LayoutRenderState {
                 val soil = grid.getPosForSlotCoords(layoutPlant.slot.x, layoutPlant.slot.y)
                     ?: return@forEach
 
-                if (markObstructions(level, soil, layoutPlant.cropDef.footprint, marks, badStands)) {
+                if (markObstructions(level, grid, soil, layoutPlant.cropDef.footprint, marks, badStands)) {
                     obstructedSoils.add(soil)
                     return@forEach
                 }
@@ -303,7 +317,7 @@ object LayoutRenderState {
         if (GreenhousePresets.harvestHighlightOnlyTargets()) watchTargets(level, grid, layout, watchMarks, watchStands)
         else watchHarvestable(level, grid, watchMarks, watchStands)
 
-        val next = PlannerLayout(phase, marks, ghosts, badStands, obstructedSoils, ghostStandsByPlant, watchMarks, watchStands, ghostCrops, standCrops)
+        val next = PlannerLayout(phase, marks, ghosts, badStands, obstructedSoils, ghostStandsByPlant, watchMarks, watchStands, ghostCrops, standCrops, toleratedGhosts)
 
         if (soilComplete) PlannerNeeds.sendPlantNeeds(grid, cropsNeeded)
         else PlannerNeeds.sendSoilNeeds(grid, soilNeeded)
@@ -318,7 +332,7 @@ object LayoutRenderState {
     private fun announceIfFinished(grid: GreenhouseGrid, layout: PlotLayout, next: PlannerLayout, nothingToPlace: Boolean) {
         if (grid.state.buildAnnounced) return
 
-        val finished = nothingToPlace && next.marks.isEmpty() && next.ghosts.isEmpty() &&
+        val finished = nothingToPlace && next.marks.isEmpty() && !next.hasPendingGhosts &&
                 next.badStands.isEmpty() && next.obstructedSoils.isEmpty()
         val was = lastFinished
 
@@ -392,6 +406,14 @@ object LayoutRenderState {
             }
     }
 
+    private fun cellsNextToYoungJellybeans(grid: GreenhouseGrid): Set<Pair<Int, Int>> =
+        grid.scannedPlants
+            .filter { it.plant.cropDef == MagicJellybean.definition && !it.plant.isPlacedMutation && (it.plant.highestStage ?: 0) <= BUGGED_JELLYBEAN_STAGE }
+            .flatMapTo(mutableSetOf()) { scanned ->
+                val origin = scanned.plant.slot
+                (-1..1).flatMap { dx -> (-1..1).map { dy -> (origin.x + dx) to (origin.y + dy) } }.filter { it != (origin.x to origin.y) }
+            }
+
     private fun soilOf(grid: GreenhouseGrid, growing: ScannedPlant): List<BlockPos> {
         val origin = growing.plant.slot
         val footprint = growing.plant.cropDef.footprint
@@ -433,12 +455,14 @@ object LayoutRenderState {
 
     private fun markObstructions(
         level: Level,
+        grid: GreenhouseGrid,
         soil: BlockPos,
         footprint: Footprint,
         marks: MutableMap<BlockPos, Pair<VoxelShape, PlannerMark>>,
         badStands: MutableSet<UUID>
     ): Boolean {
         var found = false
+        val scannedStands = grid.scannedPlants.flatMapTo(HashSet()) { it.stands.orEmpty() }
 
         for (offsetX in 0 until footprint.width) {
             for (offsetY in 0 until footprint.height) {
@@ -455,7 +479,7 @@ object LayoutRenderState {
 
         val space = footprint.spaceAbove(soil, CROP_HEIGHT)
         level.getEntitiesOfClass(ArmorStand::class.java, space)
-            .filter { space.contains(it.position()) && !it.isMarker && (!it.isInvisible || EntityUtils.carriesAnything(it)) }
+            .filter { space.contains(it.position()) && !it.isMarker && it !in scannedStands && (!it.isInvisible || EntityUtils.carriesAnything(it)) }
             .forEach {
                 badStands.add(it.uuid)
                 found = true

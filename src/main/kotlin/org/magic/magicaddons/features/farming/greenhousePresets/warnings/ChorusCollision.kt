@@ -10,6 +10,7 @@ import org.magic.magicaddons.data.greenhouse.crops.definitions.mutations.epic.Ch
 import org.magic.magicaddons.data.greenhouse.plot.GREENHOUSE_SIZE
 import org.magic.magicaddons.data.greenhouse.plot.GreenhouseGrid
 import org.magic.magicaddons.data.greenhouse.plot.PlotLayout
+import org.magic.magicaddons.data.greenhouse.plot.PlotPrediction
 
 object ChorusCollision {
 
@@ -250,7 +251,7 @@ object ChorusCollision {
             if (isChorus) hasChorus = true
             val stage = plant.lowestStage ?: 1
             val isDead = plant.cropDef == DeadPlant.definition
-            val decayTick = if (isChorus || !layout.decayOutlookOf(plant).canDecay) NEVER else ticksUntil(plant.decayRemainingMs, nextTickInMs, tickMs)
+            val decayTick = if (isChorus || !layout.decayOutlookOf(plant).canDecay) NEVER else PlotPrediction.ticksUntil(plant.decayRemainingMs, nextTickInMs, tickMs)
             val haltTick = when {
                 plant.isHalted -> 0
                 else -> plant.ticksUntilWaterHalt(GreenhouseGrid.waterEffectAt(layout, plant.slot))?.let { (it - 1).coerceAtLeast(0) } ?: NEVER
@@ -283,13 +284,6 @@ object ChorusCollision {
         val spawnChance = (chorus.spawnRule?.weight ?: 0) * weightMultiplier / 100.0
 
         return Risk(stageOrKind, spawnTiles, spawnTileLastTicks, decays, spawnChance)
-    }
-
-    private fun ticksUntil(remainingMs: Long?, nextTickInMs: Long?, tickMs: Long?): Int {
-        if (remainingMs == null || nextTickInMs == null || tickMs == null || tickMs <= 0) return NEVER
-        if (remainingMs <= nextTickInMs) return 0
-
-        return ((remainingMs - nextTickInMs + tickMs - 1) / tickMs).coerceAtMost(NEVER.toLong()).toInt()
     }
 
     private fun ringHolds(cropNames: Array<String?>, tile: Int, recipe: Map<String, Int>): Boolean {

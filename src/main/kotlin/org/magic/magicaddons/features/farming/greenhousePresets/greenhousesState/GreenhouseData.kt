@@ -35,6 +35,7 @@ import org.magic.magicaddons.features.farming.greenhousePresets.render.LayoutRen
 import org.magic.magicaddons.Common
 import org.magic.magicaddons.features.farming.greenhousePresets.lookups.BioanalysisAccessory
 import org.magic.magicaddons.features.farming.greenhousePresets.warnings.ChorusCollision
+import org.magic.magicaddons.features.farming.greenhousePresets.warnings.LikelySpawns
 import org.magic.magicaddons.features.farming.greenhousePresets.warnings.PlantWarnings
 import org.magic.magicaddons.util.EntityUtils
 import org.magic.magicaddons.util.ChatUtils
@@ -679,6 +680,8 @@ object GreenhouseData : GridCallbacks {
             ticksSinceLastScan = incoming.state.ticksSinceLastScan
             chorusLossChanceByTick = incoming.state.chorusLossChanceByTick
             chorusRiskCalculation = null
+            spawnChances = incoming.state.spawnChances
+            spawnChanceCalculation = null
             uncertainSpawns.clear()
             uncertainSpawns += incoming.state.uncertainSpawns
             this.lastChangedAt = lastChangedAt
@@ -756,11 +759,11 @@ object GreenhouseData : GridCallbacks {
         grid.state.countedSignature = TimesMutatedCounter.countInputsSignatureOf(grid.layout, grid.state.uncertainSpawns)
     }
 
-    private class PendingChorusRisk(val fingerprint: Int?, val changedAt: Long)
+    private class PendingForecasts(val chorusFingerprint: Int?, val spawnFingerprint: Int, val changedAt: Long)
 
-    private val pendingChorusRisks: MutableMap<GreenhouseGrid, PendingChorusRisk> = mutableMapOf()
+    private val pendingForecasts: MutableMap<GreenhouseGrid, PendingForecasts> = mutableMapOf()
 
-    private const val CHORUS_RISK_QUIET_MS: Long = 5_000
+    private const val FORECAST_QUIET_MS: Long = 5_000
 
     private fun chorusRiskOf(grid: GreenhouseGrid): ChorusCollision.Risk? = ChorusCollision.riskOf(
         grid.layout,
@@ -777,27 +780,57 @@ object GreenhouseData : GridCallbacks {
     @EventHandler
     fun onGreenhouseChanged(event: GreenhouseChangedEvent) {
         val grid = event.grid
-        val fingerprint = chorusRiskOf(grid)?.fingerprint
-        if (fingerprint != null && fingerprint == grid.state.chorusRiskCalculation?.fingerprint) {
-            pendingChorusRisks.remove(grid)
+        val chorusFingerprint = chorusRiskOf(grid)?.fingerprint
+        val spawnFingerprint = LikelySpawns.simulationOf(grid).fingerprint
+        val isChorusCurrent = chorusFingerprint != null && chorusFingerprint == grid.state.chorusRiskCalculation?.fingerprint
+        val isSpawnCurrent = spawnFingerprint == grid.state.spawnChanceCalculation?.fingerprint
+        if (isChorusCurrent && isSpawnCurrent) {
+            pendingForecasts.remove(grid)
             return
         }
-        if (pendingChorusRisks[grid]?.fingerprint == fingerprint) return
-        pendingChorusRisks[grid] = PendingChorusRisk(fingerprint, System.currentTimeMillis())
+        val pending = pendingForecasts[grid]
+        if (pending != null && pending.chorusFingerprint == chorusFingerprint && pending.spawnFingerprint == spawnFingerprint) return
+        pendingForecasts[grid] = PendingForecasts(chorusFingerprint, spawnFingerprint, System.currentTimeMillis())
     }
 
-    private fun calculateQuietChorusRisks() {
+    private fun calculateQuietForecasts() {
         val now = System.currentTimeMillis()
-        pendingChorusRisks.filterValues { now - it.changedAt >= CHORUS_RISK_QUIET_MS }.keys.forEach(::calculateChorusRisk)
+        pendingForecasts.filterValues { now - it.changedAt >= FORECAST_QUIET_MS }.keys.forEach(::calculateForecasts)
     }
 
-    fun calculatePendingChorusRisks() {
-        pendingChorusRisks.keys.toList().forEach(::calculateChorusRisk)
+    fun calculatePendingForecasts() {
+        pendingForecasts.keys.toList().forEach(::calculateForecasts)
+    }
+
+    private fun calculateForecasts(grid: GreenhouseGrid) {
+        pendingForecasts.remove(grid)
+        if (greenhouseGrids.none { it === grid }) return
+        calculateChorusRisk(grid)
+        calculateSpawnChances(grid)
+    }
+
+    private fun calculateSpawnChances(grid: GreenhouseGrid) {
+        val simulation = LikelySpawns.simulationOf(grid)
+        if (simulation.fingerprint == grid.state.spawnChanceCalculation?.fingerprint) return
+
+        grid.state.spawnChanceCalculation?.cancel()
+        grid.state.spawnChances = null
+        val calculation = LikelySpawns.Calculation(simulation)
+        grid.state.spawnChanceCalculation = calculation
+
+        calculation.chances
+            .thenAccept { chances ->
+                Minecraft.getInstance().execute {
+                    if (chances != null && grid.state.spawnChanceCalculation === calculation) grid.state.spawnChances = chances
+                }
+            }
+            .exceptionally { failure ->
+                Common.LOGGER.warn("Could not work out the likely spawns for ${grid.layout.displayName()}", failure)
+                null
+            }
     }
 
     private fun calculateChorusRisk(grid: GreenhouseGrid) {
-        pendingChorusRisks.remove(grid)
-        if (greenhouseGrids.none { it === grid }) return
         val risk = chorusRiskOf(grid)
         if (risk != null && risk.fingerprint == grid.state.chorusRiskCalculation?.fingerprint) return
 
@@ -989,7 +1022,7 @@ object GreenhouseData : GridCallbacks {
         checkForTickTimeUpdate()
         PlantWarnings.onTick()
         CoopSync.onTick()
-        calculateQuietChorusRisks()
+        calculateQuietForecasts()
 
         if (!SBLocation.OwnGarden.inside()) return
 
@@ -1476,6 +1509,14 @@ object GreenhouseData : GridCallbacks {
         val planned = scannedGrid()?.plannedPlantAt(plant.slot.x, plant.slot.y) ?: return false
 
         return planned.slot.mark == LayoutSlot.Marking.Ingredient && planned.acceptsCrop(plant.cropDef)
+    }
+
+    fun isInTheWayOfPlan(plant: Plant): Boolean {
+        val grid = scannedGrid() ?: return false
+        if (grid.state.assignedLayout == null) return false
+
+        val planned = grid.plannedPlantAt(plant.slot.x, plant.slot.y) ?: return true
+        return planned.slot.x != plant.slot.x || planned.slot.y != plant.slot.y || !planned.acceptsCrop(plant.cropDef)
     }
 
     private fun scannedGrid(): GreenhouseGrid? = getCurrentGrid()?.takeIf { it.isScanned() }

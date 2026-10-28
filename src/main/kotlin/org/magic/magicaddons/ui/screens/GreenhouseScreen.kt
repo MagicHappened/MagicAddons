@@ -39,6 +39,7 @@ import org.magic.magicaddons.features.farming.greenhousePresets.lookups.Bioanaly
 import org.magic.magicaddons.features.farming.greenhousePresets.render.DiagnosticHighlight
 import org.magic.magicaddons.features.farming.greenhousePresets.render.PlantHighlight
 import org.magic.magicaddons.features.farming.greenhousePresets.warnings.PlantWarnings
+import kotlin.math.roundToInt
 import org.magic.magicaddons.ui.HoverableContainer
 import org.magic.magicaddons.ui.OverlayContext
 import org.magic.magicaddons.ui.OverlayRenderable
@@ -144,8 +145,10 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
     private var predictShelfY: Int = 0
     private var predictShelfHeight: Int = 0
     private var predictShelfChorusLines: Int = 0
+    private var predictShelfSpawnLines: Int = 0
     private var chorusLineBox: ScreenRect? = null
     private var chorusPlanLineBox: ScreenRect? = null
+    private var spawnLineBox: ScreenRect? = null
     private var chorusPlan: ChorusPlanView? = null
     private var actionShelfY: Int = 0
 
@@ -271,7 +274,7 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
         width = (width / drawScale).toInt()
         height = (height / drawScale).toInt()
 
-        GreenhouseData.calculatePendingChorusRisks()
+        GreenhouseData.calculatePendingForecasts()
         initBaseLayout()
 
         GreenhouseData.warnUnknownValues()
@@ -329,9 +332,10 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
 
         predictShelfY = viewShelfY + viewShelfHeight + Common.UI.SPACING_LARGE
         predictShelfChorusLines = chorusLineCount()
+        predictShelfSpawnLines = spawnLineCount()
         predictShelfHeight = if (currentDisplay == DisplayMode.Greenhouses) {
             shelfTitleHeight() + ActionPanel.PADDING * 2 + SliderWidget.HEIGHT + Common.UI.SPACING +
-                    font.lineHeight * (2 + predictShelfChorusLines)
+                    font.lineHeight * (2 + predictShelfChorusLines + predictShelfSpawnLines)
         } else {
             0
         }
@@ -1034,9 +1038,10 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
 
         graphics.drawShelf(shelfLeft, viewShelfY, shelfLeft + shelfWidth, viewShelfY + viewShelfHeight, SHELF_VIEW)
 
-        if (chorusLineCount() != predictShelfChorusLines) relayoutShelves()
+        if (chorusLineCount() != predictShelfChorusLines || spawnLineCount() != predictShelfSpawnLines) relayoutShelves()
         chorusLineBox = null
         chorusPlanLineBox = null
+        spawnLineBox = null
         if (predictShelfHeight > 0) {
             graphics.drawShelf(
                 shelfLeft,
@@ -1070,7 +1075,9 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
                 Common.UI.TEXT_COLOR,
                 false
             )
-            val chorusLineY = predictSlider.y + SliderWidget.HEIGHT + Common.UI.SPACING + font.lineHeight * 2
+            val spawnLineY = predictSlider.y + SliderWidget.HEIGHT + Common.UI.SPACING + font.lineHeight * 2
+            if (predictShelfSpawnLines >= 1) drawSpawnLine(graphics, spawnLineY)
+            val chorusLineY = spawnLineY + font.lineHeight * predictShelfSpawnLines
             if (predictShelfChorusLines >= 1) drawChorusLine(graphics, chorusLineY)
             if (predictShelfChorusLines >= 2) chorusPlan?.let { drawChorusPlanLine(graphics, it, chorusLineY + font.lineHeight) }
         }
@@ -1161,6 +1168,13 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
         chorusPlanLineBox?.let { (lineX, lineTop, lineWidth, lineHeight) ->
             if (mouseX in lineX until lineX + lineWidth && mouseY in lineTop until lineTop + lineHeight) {
                 graphics.drawTooltipAtCursor(CHORUS_PLAN_TOOLTIP, mouseX, mouseY)
+                return
+            }
+        }
+
+        spawnLineBox?.let { (lineX, lineTop, lineWidth, lineHeight) ->
+            if (mouseX in lineX until lineX + lineWidth && mouseY in lineTop until lineTop + lineHeight) {
+                graphics.drawTooltipAtCursor(spawnLineTooltip(), mouseX, mouseY)
                 return
             }
         }
@@ -2033,6 +2047,44 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
         graphics.text(font, text, predictSlider.x, lineY, color, false)
     }
 
+    private fun isSpawnLineShown(): Boolean {
+        if (currentDisplay != DisplayMode.Greenhouses || !GreenhousePresets.warningTypeEnabled(PlantWarnings.LIKELY_SPAWNS_KEY)) return false
+        val state = gridBehindPrediction()?.state ?: return false
+
+        return state.isSpawnChanceCalculating || likelySpawnCount(state) != null
+    }
+
+    private fun spawnLineCount(): Int = if (isSpawnLineShown()) 1 else 0
+
+    private fun likelySpawnCount(state: GreenhouseGrid.GridState): Int? {
+        val chances = state.spawnChances ?: return null
+        val count = chances.countReachedWith(GreenhousePresets.spawnConfidence(), state.ticksSinceLastScan + predictSlider.value)
+
+        return count.takeIf { it >= GreenhousePresets.spawnCountThreshold() }
+    }
+
+    private fun confidencePercent(): Int = (GreenhousePresets.spawnConfidence() * 100).roundToInt()
+
+    private fun drawSpawnLine(graphics: GuiGraphicsExtractor, lineY: Int) {
+        val state = gridBehindPrediction()?.state ?: return
+        if (state.isSpawnChanceCalculating) {
+            graphics.text(font, Component.literal(SPAWN_LINE_CALCULATING), predictSlider.x, lineY, Common.UI.TEXT_DIM_COLOR, false)
+            return
+        }
+        val count = likelySpawnCount(state) ?: return
+        val text = Component.literal("$SPAWN_LINE${confidencePercent()}% for $count+ mutations")
+
+        spawnLineBox = ScreenRect(predictSlider.x, lineY, font.width(text), font.lineHeight)
+        graphics.text(font, text, predictSlider.x, lineY, Common.UI.SUCCESS_COLOR, false)
+    }
+
+    private fun spawnLineTooltip(): String {
+        val count = gridBehindPrediction()?.state?.let { likelySpawnCount(it) } ?: return ""
+        val moment = if (predictSlider.value >= 1) "will have spawned by then" else "have spawned since your last scan"
+
+        return "At least $count single stage mutations $moment, with ${confidencePercent()}% confidence"
+    }
+
     private fun predictWindowMs(): LongRange? {
         val ticks = predictSlider.value
         val tickMs = GreenhouseTickTime.tickMs ?: return null
@@ -2262,6 +2314,8 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
         private const val CHORUS_LINE: String = "Chorus collision: "
         private const val CHORUS_LINE_BY_THEN: String = "Chorus collision by then: "
         private const val CHORUS_LINE_CALCULATING: String = "Calculating chorus break percentage..."
+        private const val SPAWN_LINE: String = "Likely spawns: "
+        private const val SPAWN_LINE_CALCULATING: String = "Calculating likely spawns..."
         private const val CHORUS_PLAN_WORKING: String = "Working out the break order..."
         private const val CHORUS_PLAN_ENTER: String = "Enter this greenhouse for the break order"
         private const val CHORUS_PLAN_TOOLTIP: String =

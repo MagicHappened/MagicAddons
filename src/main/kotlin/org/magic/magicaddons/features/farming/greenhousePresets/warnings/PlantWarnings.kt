@@ -1,6 +1,7 @@
 package org.magic.magicaddons.features.farming.greenhousePresets.warnings
 
 import java.time.Duration
+import kotlin.math.roundToInt
 import java.time.Instant
 import java.util.concurrent.CompletableFuture
 import net.minecraft.ChatFormatting
@@ -42,6 +43,9 @@ object PlantWarnings {
     const val OTHER_PROFILES_KEY: String = "OtherProfileWarnings"
     const val THIRST_KEY: String = "DehydrationWarning"
     const val NEGATIVE_WATER_KEY: String = "AlsoOnNegative"
+    const val LIKELY_SPAWNS_KEY: String = "LikelySpawnsWarning"
+    const val SPAWN_CONFIDENCE_KEY: String = "SpawnConfidencePercent"
+    const val SPAWN_COUNT_KEY: String = "SpawnCountThreshold"
 
     private const val HOVER_LINES: Int = 5
 
@@ -132,16 +136,17 @@ object PlantWarnings {
         sendTickLine(profile, ticksPassed, nextTickIn = crossed.min())
     }
 
-    private fun afterChorusRisksSettle(profile: ProfileGreenhouses, action: () -> Unit) {
-        val running = profile.grids.filter { it.state.isChorusRiskCalculating }.mapNotNull { it.state.chorusRiskCalculation?.lossChanceByTick }
+    private fun afterForecastsSettle(profile: ProfileGreenhouses, action: () -> Unit) {
+        val running = profile.grids.filter { it.state.isChorusRiskCalculating }.mapNotNull { it.state.chorusRiskCalculation?.lossChanceByTick } +
+                profile.grids.filter { it.state.isSpawnChanceCalculating }.mapNotNull { it.state.spawnChanceCalculation?.chances }
         if (running.isEmpty()) return action()
 
         CompletableFuture.allOf(*running.toTypedArray()).handle { _, _ ->
-            Minecraft.getInstance().execute { afterChorusRisksSettle(profile, action) }
+            Minecraft.getInstance().execute { afterForecastsSettle(profile, action) }
         }
     }
 
-    private fun sendTickLine(profile: ProfileGreenhouses, ticksPassed: Int, nextTickIn: Duration?) = afterChorusRisksSettle(profile) {
+    private fun sendTickLine(profile: ProfileGreenhouses, ticksPassed: Int, nextTickIn: Duration?) = afterForecastsSettle(profile) {
         sendTickLineNow(profile, ticksPassed, nextTickIn)
     }
 
@@ -189,7 +194,7 @@ object PlantWarnings {
         )
     }
 
-    fun sendReport(profile: ProfileGreenhouses) = afterChorusRisksSettle(profile) { sendReportNow(profile) }
+    fun sendReport(profile: ProfileGreenhouses) = afterForecastsSettle(profile) { sendReportNow(profile) }
 
     private fun sendReportNow(profile: ProfileGreenhouses) {
         val sections = sections(profile)
@@ -267,22 +272,40 @@ object PlantWarnings {
     }
 
     private fun harvestSection(profile: ProfileGreenhouses): Section? {
-        if (!warningEnabled(HARVEST_KEY)) return null
-
-        val onlyTargets = GreenhousePresets.harvestHighlightOnlyTargets()
-        val harvestable = profile.grids.flatMap { grid ->
-            grid.layout.plants.filter { plant ->
-                GreenhousePresets.isHarvestable(plant) && (!onlyTargets || onWantedTarget(grid, plant))
-            }
-        }
-        if (harvestable.isEmpty()) return null
+        val harvestable = if (warningEnabled(HARVEST_KEY)) harvestablePlants(profile) else emptyList()
+        val likelySpawnLines = likelySpawnLines(profile)
+        if (harvestable.isEmpty() && likelySpawnLines.isEmpty()) return null
 
         val counted = harvestable.groupingBy { it.cropDef }.eachCount()
         val lines = counted.entries
             .sortedWith(compareBy<Map.Entry<CropDefinition, Int>> { HARVEST_TIER_ORDER.indexOf(it.key.tier) }.thenByDescending { it.value })
             .map { (crop, count) -> countedLine(count, crop.name) }
 
-        return Section("Harvestable", harvestable.size, "Ready to harvest:", lines)
+        return Section("Harvestable", harvestable.size, "Ready to harvest:", lines + likelySpawnLines)
+    }
+
+    private fun harvestablePlants(profile: ProfileGreenhouses): List<Plant> {
+        val onlyTargets = GreenhousePresets.harvestHighlightOnlyTargets()
+
+        return profile.grids.flatMap { grid ->
+            grid.layout.plants.filter { plant ->
+                GreenhousePresets.isHarvestable(plant) && (!onlyTargets || onWantedTarget(grid, plant))
+            }
+        }
+    }
+
+    private fun likelySpawnLines(profile: ProfileGreenhouses): List<Component> {
+        if (!warningEnabled(LIKELY_SPAWNS_KEY)) return emptyList()
+        val threshold = GreenhousePresets.spawnCountThreshold()
+        val confidence = GreenhousePresets.spawnConfidence()
+
+        return profile.grids.mapNotNull { grid ->
+            val count = grid.state.likelySpawnCount(confidence) ?: return@mapNotNull null
+            if (count < threshold) return@mapNotNull null
+
+            Component.literal(grid.layout.displayName()).withStyle(ChatFormatting.AQUA)
+                .append(Component.literal(" - ${(confidence * 100).roundToInt()}% for $count+ spawns").withStyle(ChatFormatting.WHITE))
+        }
     }
 
     private fun onWantedTarget(grid: GreenhouseGrid, plant: Plant): Boolean {
