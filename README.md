@@ -1,7 +1,7 @@
 # MagicAddons
 
 MagicAddons is a Fabric mod for Hypixel SkyBlock, currently has a lot of greenhouse features, with some other ones. 
-It runs on Minecraft 26.1.2 and 26.2, and will update as Hypixel updates to newer versions.
+It supports Minecraft 26.1.2 and 26.2, and will update as Hypixel updates to newer versions.
 
 ## Greenhouse
 
@@ -20,6 +20,8 @@ It runs on Minecraft 26.1.2 and 26.2, and will update as Hypixel updates to newe
   with a break order telling you which chorus to harvest or break to get under the loss you accept.
 - **Break Protection**: blocks breaking mutations under a fortune threshold, while pest debuff is active, before
   they are harvestable, or young chorus outside the suggested break order.
+- **Flows**: import a skyshards flows file, put its steps on a preset plot, apply a whole preset to your
+  greenhouses in with the picker menu, and each plot moves through its steps automatically via the conditions set.
 - **Reminders**: ready to harvest, likely spawns of single stage mutations, water, decay, Snoozling asleep,
   Noctilume time, Fleshtrap meat, Thunderling charge, Glasscorn reset and Chorus collision, before and at
   the growth tick, for other profiles too.
@@ -30,7 +32,7 @@ It runs on Minecraft 26.1.2 and 26.2, and will update as Hypixel updates to newe
 
 ## Discord Reminders and Coop
 
-These need **Connect to MagicAddons Server** and **Discord integration**, both off by default. Install the
+These require **Connect to MagicAddons Server** and **Discord integration** to function, both off by default. Install the
 [MagicAddons Discord app](https://discord.com/oauth2/authorize?client_id=1554839668313427968), then link
 with `/ma link` in game and `/link` in Discord.
 
@@ -72,6 +74,11 @@ or `/ma privacy DeleteMe` in game deletes everything.
 - `/ma safari` for the Safari Helper.
 - `/ma link` links your Discord account; `/ma privacy DeleteMe` deletes your server data.
 - `/ma version` shows the running version and whether a newer one exists.
+
+## Credits
+
+- [SkyShards](https://greenhouse.skyshards.com) for the design idea of greenhouse flows, which was adapted into
+  the plot steps here.
 
 ## Extension features
 

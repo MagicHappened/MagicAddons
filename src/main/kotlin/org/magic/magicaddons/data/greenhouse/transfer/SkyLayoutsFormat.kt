@@ -51,7 +51,6 @@ object SkyLayoutsFormat : LayoutFormat {
 
     override fun import(text: String, layoutId: String): LayoutTransferResult {
         val code = linkCodeOf(text) ?: return LayoutTransferResult.Failure("Invalid SkyLayouts link.")
-        val notes = mutableListOf<String>()
 
         val boards = code.substringAfter('~').drop(1).split('~').filter { it.isNotEmpty() }
         if (boards.isEmpty()) return LayoutTransferResult.Failure("The SkyLayouts link holds no plot.")
@@ -59,22 +58,16 @@ object SkyLayoutsFormat : LayoutFormat {
         val head = code.substringBefore('~')
         val target = SITE_CROP_IDS.getOrNull(alphabetValue(head[1]) - 1)?.let { CropRegistry.findByLooseName(it) }
         val spotsFromNeighbours = target?.spawnRule?.let { it.needsNoNeighbours || it.requiredNeighbourCells.isNotEmpty() } == true
-        if (target != null && !spotsFromNeighbours) {
-            notes.add("${target.name} spawn spots cannot be determined automatically, add them by hand.")
-        }
 
         val layouts = boards.take(GreenhouseLayout.MAX_PLOTS).mapIndexed { number, board ->
-            readBoardIntoPlot(board, GreenhouseLayout.plotId(layoutId, number), target.takeIf { spotsFromNeighbours }, notes)
+            readBoardIntoPlot(board, GreenhouseLayout.plotId(layoutId, number), target.takeIf { spotsFromNeighbours })
                 ?: return LayoutTransferResult.Failure("Could not read plot ${number + 1} of the SkyLayouts link.")
         }
-        if (boards.size > GreenhouseLayout.MAX_PLOTS) notes.add("Only the first ${GreenhouseLayout.MAX_PLOTS} plots were taken.")
 
-        if (layouts.size > 1) notes.add("Imported ${layouts.size} plots as one preset.")
-
-        return LayoutTransferResult.Imported(layouts.first(), notes, layouts.drop(1))
+        return LayoutTransferResult.Imported(layouts.first(), layouts.drop(1))
     }
 
-    private fun readBoardIntoPlot(board: String, id: String, target: CropDefinition?, notes: MutableList<String>): PlotLayout? {
+    private fun readBoardIntoPlot(board: String, id: String, target: CropDefinition?): PlotLayout? {
         if (board.length < 3 || board[0] != '3') return null
         val boardSize = alphabetValue(board[1])
         val cropTypeCount = alphabetValue(board[2])
@@ -101,22 +94,16 @@ object SkyLayoutsFormat : LayoutFormat {
         if (cellCropTypeIndices.size != boardSize * boardSize) return null
 
         val layout = PlotLayout(id = id)
-        val unknownCropIds = mutableSetOf<String>()
 
         for (y in 0 until minOf(boardSize, layout.size)) {
             for (x in 0 until minOf(boardSize, layout.size)) {
                 val cropTypeIndex = cellCropTypeIndices[y * boardSize + x]
                 if (cropTypeIndex < 0 || cropTypeIndex >= cropTypes.size || layout.plantCovering(x, y) != null) continue
 
-                val definition = CropRegistry.findByLooseName(cropTypes[cropTypeIndex])
-                if (definition == null) {
-                    unknownCropIds.add(cropTypes[cropTypeIndex])
-                    continue
-                }
+                val definition = CropRegistry.findByLooseName(cropTypes[cropTypeIndex]) ?: continue
                 layout.placeImportedPlant(definition, x, y, null)
             }
         }
-        unknownCropIds.forEach { notes.add("Unknown crop: $it") }
 
         if (target != null) placeTargetSpots(layout, target)
         return layout
@@ -139,30 +126,24 @@ object SkyLayoutsFormat : LayoutFormat {
     override fun exportAll(master: GreenhouseLayout): LayoutTransferResult = writeLink(master.plots)
 
     private fun writeLink(plots: List<PlotLayout>): LayoutTransferResult {
-        val notes = mutableListOf<String>()
-
         val target = plots.flatMap { it.plants }
             .firstOrNull { it.slot.mark == LayoutSlot.Marking.Target && it.cropDef.isMutation }
             ?.let { siteCropIndexOf[it.cropDef] }
         val head = "1" + alphabetLetter(target?.plus(1) ?: 0) + alphabetLetter(SITE_DEFAULT_VISIT_INTERVAL)
 
-        val boards = plots.take(GreenhouseLayout.MAX_PLOTS).map { writeBoard(it, notes) }
-        if (plots.size > GreenhouseLayout.MAX_PLOTS) notes.add("Only the first ${GreenhouseLayout.MAX_PLOTS} plots were written.")
+        val boards = plots.take(GreenhouseLayout.MAX_PLOTS).map { writeBoard(it) }
 
-        return LayoutTransferResult.Exported(SHARE_URL + head + "~p" + boards.joinToString("~"), notes)
+        return LayoutTransferResult.Exported(SHARE_URL + head + "~p" + boards.joinToString("~"))
     }
 
-    private fun writeBoard(layout: PlotLayout, notes: MutableList<String>): String {
+    private fun writeBoard(layout: PlotLayout): String {
         val cropTypes = mutableListOf<Int>()
         val cellCropTypeIndices = IntArray(layout.size * layout.size) { -1 }
 
         layout.plants.forEach { plant ->
             if (plant.slot.mark == LayoutSlot.Marking.Target && plant.cropDef.isMutation) return@forEach
 
-            val siteCropIndex = siteCropIndexOf[plant.cropDef] ?: run {
-                notes.add("${plant.cropDef.name} is not on SkyLayouts and was left out.")
-                return@forEach
-            }
+            val siteCropIndex = siteCropIndexOf[plant.cropDef] ?: return@forEach
             val cropTypeIndex = cropTypes.indexOf(siteCropIndex).takeIf { it >= 0 } ?: cropTypes.size.also { cropTypes.add(siteCropIndex) }
             for (dx in 0 until plant.cropDef.footprint.width) {
                 for (dy in 0 until plant.cropDef.footprint.height) {

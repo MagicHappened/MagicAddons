@@ -66,7 +66,7 @@ class GreenhouseGrid(
     }
 
     class PlotConfiguration(val plants: Int, val clashingCropSlots: Int, val soil: Int) : Comparable<PlotConfiguration> {
-        private val score: Int get() = plants * MATCHED_PLANT_SCORE - clashingCropSlots
+        val score: Int get() = plants * MATCHED_PLANT_SCORE - clashingCropSlots
 
         override fun compareTo(other: PlotConfiguration): Int =
             compareValuesBy(this, other, { it.score }, { it.soil })
@@ -852,7 +852,6 @@ class GreenhouseGrid(
             plant.growthStage = PlantStage.Known(plant.cropDef.stagePlacedAt)
         }
 
-        /** a mutation is placed with a look no grown stage has */
         private fun placedThisSession(
             origin: BlockPos,
             soil: Block,
@@ -944,11 +943,9 @@ class GreenhouseGrid(
         var scanned: Boolean = false,
         var ticksSinceLastScan: Int = 0,
         var buildAnnounced: Boolean = false,
-        /** quarter turns the assigned layout is laid with */
         var planTurns: Int = 0,
         var noRotateAssignedLayout: Boolean = false
     ) {
-        /** read from disk, resolved once the presets load */
         var assignedLayoutId: String? = null
 
         var glasscornsReset: Int = 0
@@ -974,6 +971,18 @@ class GreenhouseGrid(
         var spawnChances: PlotPrediction.SpawnChances? = null
 
         var spawnChanceCalculation: LikelySpawns.Calculation? = null
+
+        class StepSnapshot(val layoutId: String, val startedAt: Long?, val harvested: Map<String, Int>) {
+            var layout: PlotLayout? = null
+        }
+
+        var stepStartedAt: Long? = null
+
+        val harvestedThisStep: MutableMap<String, Int> = mutableMapOf()
+
+        var previousStep: StepSnapshot? = null
+
+        val clearMarked: MutableSet<String> = mutableSetOf()
 
         var predictTicks: Int = 0
 

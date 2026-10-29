@@ -19,6 +19,34 @@ data class PlotLayout(
     private val slotIndex = slots.associateBy { it.x to it.y }
     fun getSlot(x: Int, y: Int) = slotIndex[x to y]
 
+    /** the first step's layout is this plot itself; later steps own their layouts */
+    var flow: PlotFlow? = null
+
+    val steps: List<FlowStep> get() = flow?.steps ?: listOf(FlowStep(null, this, emptyList(), StepPolicies()))
+
+    val hasSteps: Boolean get() = (flow?.steps?.size ?: 0) > 1
+
+    fun stepIndexOf(layout: PlotLayout): Int? = steps.indexOfFirst { it.layout === layout }.takeIf { it >= 0 }
+
+    fun stepId(index: Int): String = stepId(id, index)
+
+    fun copyWithSteps(newId: String, newName: String? = name): PlotLayout {
+        val copy = PlotLayout(id = newId, name = newName, size = size).also { it.copyContentsFrom(this) }
+        copy.adoptFlowFrom(this)
+        return copy
+    }
+
+    fun adoptFlowFrom(other: PlotLayout) {
+        val otherFlow = other.flow ?: run {
+            flow = null
+            return
+        }
+        flow = PlotFlow(otherFlow.loop, otherFlow.steps.mapIndexedTo(mutableListOf()) { index, step ->
+            val layout = if (index == 0) this else PlotLayout(id = stepId(index), name = step.layout.name, size = size).also { it.copyContentsFrom(step.layout) }
+            FlowStep(step.label, layout, step.exits, step.policies)
+        })
+    }
+
     fun copyContentsFrom(other: PlotLayout) {
         slots.forEach { slot ->
             val otherSlot = other.getSlot(slot.x, slot.y)
@@ -81,9 +109,12 @@ data class PlotLayout(
 
     val number: Int? get() = id.removePrefix(PLOT_PREFIX).removePrefix(GREENHOUSE_PRESET_PREFIX).substringBefore("_p").toIntOrNull()
 
-    val part: Int? get() = id.substringAfter("_p", "").toIntOrNull()
+    val part: Int? get() = id.substringAfter("_p", "").substringBefore("_s").toIntOrNull()
+
+    val stepNumber: Int? get() = id.substringAfter("_s", "").toIntOrNull()
 
     fun displayName(): String = name
+        ?: stepNumber?.let { "Step $it" }
         ?: part?.let { "Plot $it" }
         ?: number?.let { if (kind == Kind.PLOT_PRESET) "Plot $it" else "Preset $it" }
         ?: id
@@ -200,6 +231,7 @@ data class PlotLayout(
 
         fun plotId(number: Int): String = "$PLOT_PREFIX$number"
         fun presetId(number: Int): String = "$GREENHOUSE_PRESET_PREFIX$number"
+        fun stepId(plotId: String, index: Int): String = if (index == 0) plotId else "${plotId}_s${index + 1}"
 
         private const val SLOT_KEY_STRIDE: Int = 1024
     }

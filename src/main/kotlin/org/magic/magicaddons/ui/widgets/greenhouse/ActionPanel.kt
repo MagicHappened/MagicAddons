@@ -162,8 +162,6 @@ abstract class ActionPanel(protected val overlayContext: OverlayContext) : Rende
     }
 
     protected fun copyExportToClipboard(result: LayoutTransferResult, format: LayoutFormat, layoutName: String) {
-        result.notes.forEach { ChatUtils.sendWithPrefix(it) }
-
         when (result) {
             is LayoutTransferResult.Failure -> ChatUtils.sendWithPrefix(result.reason)
             is LayoutTransferResult.Exported -> {

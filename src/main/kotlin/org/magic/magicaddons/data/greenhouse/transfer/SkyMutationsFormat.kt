@@ -51,7 +51,6 @@ object SkyMutationsFormat : LayoutFormat {
             ?: return LayoutTransferResult.Failure("SkyMutations layout was not a list of plants.")
 
         val layout = PlotLayout(id = layoutId)
-        val notes = mutableListOf<String>()
 
         cellEntries.forEach { element ->
             val cellEntry = runCatching { element.asJsonArray }.getOrNull() ?: return@forEach
@@ -66,41 +65,24 @@ object SkyMutationsFormat : LayoutFormat {
             val siteName = cellEntry[2].asString
             val cropName = SITE_NAME_BY_CROP_NAME.entries.firstOrNull { it.value == siteName }?.key ?: siteName
 
-            val marking = LayoutSlot.Marking.entries.getOrNull(cellEntry[3].asInt)
-            if (marking == null) {
-                notes.add("Unknown marking on $cropName")
-                return@forEach
-            }
-
-            val definition = CropRegistry.findByIdOrNameIgnoringCase(cropName)
-            if (definition == null) {
-                notes.add("Unknown crop: $cropName")
-                return@forEach
-            }
+            val marking = LayoutSlot.Marking.entries.getOrNull(cellEntry[3].asInt) ?: return@forEach
+            val definition = CropRegistry.findByIdOrNameIgnoringCase(cropName) ?: return@forEach
 
             val footprint = definition.footprint
-            if (row + footprint.height > layout.size || column + footprint.width > layout.size) {
-                notes.add("Malformed data for plant $cropName")
-                return@forEach
-            }
+            if (row + footprint.height > layout.size || column + footprint.width > layout.size) return@forEach
 
             layout.placeImportedPlant(definition, column, row, marking)
         }
 
-        return LayoutTransferResult.Imported(layout, notes)
+        return LayoutTransferResult.Imported(layout)
     }
 
     override fun export(layout: PlotLayout): LayoutTransferResult {
         val cellEntries = JsonArray()
-        val unknownCropNames = mutableSetOf<String>()
 
         layout.plants.forEach { plant ->
             val definition = plant.cropDef
-
-            if (definition.name in CROPS_NOT_ON_SITE) {
-                unknownCropNames.add(definition.name)
-                return@forEach
-            }
+            if (definition.name in CROPS_NOT_ON_SITE) return@forEach
 
             val siteName = SITE_NAME_BY_CROP_NAME[definition.name] ?: definition.name
             val slot = plant.slot
@@ -118,15 +100,6 @@ object SkyMutationsFormat : LayoutFormat {
             }
         }
 
-        val notes = if (unknownCropNames.isEmpty()) {
-            emptyList()
-        } else {
-            listOf("Left out of the link, skymutations has no ${unknownCropNames.joinToString(", ")}")
-        }
-
-        return LayoutTransferResult.Exported(
-            SHARE_URL + LZSEncoding.compressToEncodedURIComponent(cellEntries.toString()),
-            notes
-        )
+        return LayoutTransferResult.Exported(SHARE_URL + LZSEncoding.compressToEncodedURIComponent(cellEntries.toString()))
     }
 }

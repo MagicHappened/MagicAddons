@@ -36,11 +36,13 @@ object SkyShardsFormat : LayoutFormat {
         "jerryflower", "phantomleaf", "timestalk"
     )
 
-    private val siteIdOf: Map<CropDefinition, String> by lazy {
+    private val siteIdByCrop: Map<CropDefinition, String> by lazy {
         buildMap {
             (BASE_CROP_IDS + MUTATION_IDS).forEach { id -> CropRegistry.findByLooseName(id)?.let { putIfAbsent(it, id) } }
         }
     }
+
+    fun siteIdOf(crop: CropDefinition): String? = siteIdByCrop[crop]
 
     private fun siteIdAt(index: Int): String? = when {
         index < 0 -> null
@@ -89,7 +91,6 @@ object SkyShardsFormat : LayoutFormat {
         }
 
         val lettersPerCell = grid.length / CELL_COUNT
-        val notes = mutableListOf<String>()
 
         fun palette(field: String): List<String?> =
             if (field.isBlank()) emptyList()
@@ -99,7 +100,6 @@ object SkyShardsFormat : LayoutFormat {
         val targets = palette(targetField)
 
         val layout = PlotLayout(id = layoutId)
-        val unknownCropIds = mutableSetOf<String>()
 
         for (cell in 0 until CELL_COUNT) {
             val row = cell / GRID_SIZE
@@ -119,57 +119,28 @@ object SkyShardsFormat : LayoutFormat {
             }
 
             val isTarget = cellLetters[0].isUpperCase()
-            val id = (if (isTarget) targets else inputs).getOrNull(index)
-
-            if (id == null) {
-                notes.add("SkyShards named a crop at ${column},${row} that its own tables do not list")
-                continue
-            }
-
-            val definition = CropRegistry.findByLooseName(id)
-            if (definition == null) {
-                unknownCropIds.add(id)
-                continue
-            }
+            val id = (if (isTarget) targets else inputs).getOrNull(index) ?: continue
+            val definition = CropRegistry.findByLooseName(id) ?: continue
 
             val footprint = definition.footprint
-            if (row + footprint.height > GRID_SIZE || column + footprint.width > GRID_SIZE) {
-                notes.add("$id did not fit where SkyShards put it")
-                continue
-            }
+            if (row + footprint.height > GRID_SIZE || column + footprint.width > GRID_SIZE) continue
 
             val marking = if (isTarget) LayoutSlot.Marking.Target else LayoutSlot.Marking.Ingredient
             layout.placeImportedPlant(definition, column, row, marking)
         }
 
-        if (unknownCropIds.isNotEmpty()) {
-            notes.add("No crop described here for ${unknownCropIds.joinToString(", ")}")
-        }
-
-        return LayoutTransferResult.Imported(layout, notes)
+        return LayoutTransferResult.Imported(layout)
     }
 
     override fun export(layout: PlotLayout): LayoutTransferResult {
-        val notes = mutableListOf<String>()
-        val unknownCropNames = mutableSetOf<String>()
 
         val inputCellsById = LinkedHashMap<String, MutableList<Int>>()
         val targetCellsById = LinkedHashMap<String, MutableList<Int>>()
 
         layout.plants.forEach { plant ->
             val definition = plant.cropDef
-            val id = siteIdOf[definition]
-
-            if (id == null) {
-                unknownCropNames.add(definition.name)
-                return@forEach
-            }
-
+            val id = siteIdByCrop[definition] ?: return@forEach
             val isTarget = plant.slot.mark == LayoutSlot.Marking.Target
-
-            if (isTarget && siteIndexOf(id) < BASE_CROP_IDS.size) {
-                notes.add("${definition.name} is marked as a target, which SkyShards keeps for mutations")
-            }
 
             val palette = if (isTarget && siteIndexOf(id) >= BASE_CROP_IDS.size) targetCellsById else inputCellsById
             val cells = palette.getOrPut(id) { mutableListOf() }
@@ -212,10 +183,6 @@ object SkyShardsFormat : LayoutFormat {
             grid.joinToString("")
         ).joinToString("|")
 
-        if (unknownCropNames.isNotEmpty()) {
-            notes.add("Left out of the link, SkyShards has no ${unknownCropNames.joinToString(", ")}")
-        }
-
-        return LayoutTransferResult.Exported(SHARE_URL + encode(text), notes)
+        return LayoutTransferResult.Exported(SHARE_URL + encode(text))
     }
 }

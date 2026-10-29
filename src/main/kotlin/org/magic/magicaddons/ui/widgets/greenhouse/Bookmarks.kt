@@ -17,6 +17,9 @@ class Bookmarks<T>(
     private val labelOf: (T) -> String,
     private val fillColorOf: (T) -> Int = { Common.UI.BACKGROUND_COLOR },
     private val tooltipOf: (T) -> String? = { null },
+    private val tabLength: Int? = null,
+    private val alignToEnd: Boolean = false,
+    private val tuckUnderFrame: Int = Common.UI.BORDER_SIZE,
     private val onPick: (T, MouseButtonEvent) -> Unit
 ) {
     enum class Side { Top, Right, Bottom }
@@ -51,17 +54,21 @@ class Bookmarks<T>(
     private fun tabSize(): Int {
         if (items.isEmpty()) return 0
         val share = length / items.size
+        tabLength?.let { return it.coerceAtMost(share) }
         return if (side == Side.Top) share.coerceAtMost(MAX_TAB_WIDTH) else share
     }
 
+    private fun firstTabOffset(): Int = if (alignToEnd) length - tabSize() * items.size else 0
+
     private fun tabRect(index: Int, item: T): ScreenRect {
         val size = tabSize()
+        val along = firstTabOffset() + index * size
         val lift = (liftByItem[item] ?: 0f).roundToInt()
 
         return when (side) {
-            Side.Top -> ScreenRect(edgeX + index * size, edgeY - TAB_THICKNESS - lift, size, TAB_THICKNESS + lift + TUCK_UNDER_FRAME)
-            Side.Right -> ScreenRect(edgeX - TUCK_UNDER_FRAME, edgeY + index * size, TUCK_UNDER_FRAME + TAB_THICKNESS + lift, size)
-            Side.Bottom -> ScreenRect(edgeX + index * size, edgeY - TUCK_UNDER_FRAME, size, TUCK_UNDER_FRAME + TAB_THICKNESS + lift)
+            Side.Top -> ScreenRect(edgeX + along, edgeY - TAB_THICKNESS - lift, size, TAB_THICKNESS + lift + tuckUnderFrame)
+            Side.Right -> ScreenRect(edgeX - tuckUnderFrame, edgeY + along, tuckUnderFrame + TAB_THICKNESS + lift, size)
+            Side.Bottom -> ScreenRect(edgeX + along, edgeY - tuckUnderFrame, size, tuckUnderFrame + TAB_THICKNESS + lift)
         }
     }
 
@@ -97,11 +104,21 @@ class Bookmarks<T>(
             if (item == hoveredItem && !isSelected) graphics.fill(left, top, right, bottom, Common.UI.HOVER_WASH)
             graphics.drawBorder(left, top, right, bottom, Common.UI.BORDER_SIZE, Common.UI.BORDER_COLOR)
 
-            if (side != Side.Right) {
+            if (side == Side.Right && tabLength != null) {
+                val shownLabel = ellipsised(font, labelOf(item), width - tuckUnderFrame - Common.UI.SPACING_SMALL)
+                graphics.text(
+                    font,
+                    Component.literal(shownLabel),
+                    left + tuckUnderFrame + (width - tuckUnderFrame - font.width(shownLabel)) / 2,
+                    top + (height - font.lineHeight) / 2 + 1,
+                    Common.UI.TEXT_COLOR,
+                    false
+                )
+            } else if (side != Side.Right) {
                 val labelRoomWidth = width - Common.UI.TEXT_X_PAD * 2
                 val shownLabel = ellipsised(font, labelOf(item), labelRoomWidth)
                 val textTop = if (side == Side.Top) top + (TAB_THICKNESS - font.lineHeight) / 2 + Common.UI.BORDER_SIZE / 2
-                else top + TUCK_UNDER_FRAME + (TAB_THICKNESS - font.lineHeight) / 2 + Common.UI.BORDER_SIZE / 2
+                else top + tuckUnderFrame + (TAB_THICKNESS - font.lineHeight) / 2 + Common.UI.BORDER_SIZE / 2
                 graphics.text(
                     font,
                     Component.literal(shownLabel),
@@ -146,8 +163,6 @@ class Bookmarks<T>(
         const val SELECTED_LIFT: Int = 4
 
         const val TOTAL_REACH: Int = TAB_THICKNESS + SELECTED_LIFT
-
-        private val TUCK_UNDER_FRAME: Int get() = Common.UI.BORDER_SIZE
 
         private const val MAX_TAB_WIDTH: Int = 100
         private const val LIFT_ANIMATION_MS: Float = 150f

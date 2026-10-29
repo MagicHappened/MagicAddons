@@ -59,7 +59,13 @@ import org.magic.magicaddons.ui.widgets.greenhouse.MarkChoice
 import org.magic.magicaddons.ui.widgets.greenhouse.PlacedChoice
 import org.magic.magicaddons.features.farming.greenhousePresets.lookups.CropSupply
 import org.magic.magicaddons.ui.widgets.greenhouse.PaletteItem
-import org.magic.magicaddons.ui.widgets.greenhouse.PlantLabelTabs
+import org.magic.magicaddons.ui.widgets.greenhouse.PlantLabelChips
+import org.magic.magicaddons.ui.widgets.greenhouse.ApplyPresetContext
+import org.magic.magicaddons.ui.widgets.greenhouse.MatchPlotsOverlay
+import org.magic.magicaddons.ui.widgets.greenhouse.PlotFlowEditor
+import org.magic.magicaddons.data.greenhouse.plot.FlowStep
+import org.magic.magicaddons.features.farming.greenhousePresets.flows.FlowRunner
+import org.magic.magicaddons.features.farming.greenhousePresets.flows.PresetMatcher
 import org.magic.magicaddons.ui.widgets.greenhouse.PlantPalette
 import org.magic.magicaddons.ui.widgets.greenhouse.PresetPanel
 import org.magic.magicaddons.ui.widgets.greenhouse.RenameContext
@@ -177,10 +183,9 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
 
     private val presetPanel = PresetPanel(
         this,
-        onAssignToGreenhouse = { assignedLayout, selectedGrid, noRotate ->
-            assignPresetLayout(assignedLayout, selectedGrid, noRotate)
-        },
-        onImported = { result, soft -> applyImport(result, soft) },
+        onPlanner = { openApplyMenu(it) },
+        onEditFlow = { openFlowEditor() },
+        onImported = { result, soft, asNewPreset -> applyImport(result, soft, asNewPreset) },
         onDelete = { removePresetLayout(it) },
         onNewPreset = { newPreset() },
         shownPlot = { displayedGridWidget?.layout },
@@ -191,7 +196,26 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
 
     private var slotSize: Int = 0
 
-    private val plantLabelTabs = PlantLabelTabs()
+    private val plantLabelChips = PlantLabelChips(onTeleport = { teleportToDisplayedPlot() })
+
+    private data class StepTab(val index: Int, val step: FlowStep)
+
+    private val stepTabs = Bookmarks<StepTab>(
+        side = Bookmarks.Side.Right,
+        labelOf = { "s${it.index + 1}" },
+        tooltipOf = { it.step.title(it.index) },
+        tabLength = STEP_TAB_LENGTH,
+        tuckUnderFrame = BORDER_PADDING,
+        onPick = { tab, event -> onStepTabPicked(tab, event) }
+    )
+
+    private val backStepButton = ClickableButtonWidget(BACK_STEP_LABEL)
+
+    private var chipRowTop: Int = 0
+    private var flowBoxTop: Int = 0
+
+
+
 
     private val scrollHint = ScrollHint(SCROLL_HINT_GREENHOUSES)
 
@@ -207,16 +231,12 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
         }
     )
 
-    private val teleportTab = Bookmarks<String>(
-        side = Bookmarks.Side.Bottom,
-        labelOf = { it },
-        onPick = { _, _ ->
-            displayedGridWidget?.layout
-                ?.takeIf { it.kind == PlotLayout.Kind.PLOT_PRESET }
-                ?.number
-                ?.let { ChatUtils.sendCommand("tptoplot $it") }
-        }
-    ).apply { items = listOf(TELEPORT_LABEL) }
+    private fun teleportToDisplayedPlot() {
+        displayedGridWidget?.layout
+            ?.takeIf { it.kind == PlotLayout.Kind.PLOT_PRESET }
+            ?.number
+            ?.let { ChatUtils.sendCommand("tptoplot $it") }
+    }
 
     private val plantPalette = PlantPalette(
         this,
@@ -239,8 +259,15 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
     private var shownPlot: PlotLayout?
         get() = GreenhouseData.currentPreset?.plots?.getOrNull(lastShownPlotIndex)
         set(value) {
-            lastShownPlotIndex = GreenhouseData.currentPreset?.plots?.indexOfFirst { it === value }?.coerceAtLeast(0) ?: 0
+            val plots = GreenhouseData.currentPreset?.plots
+            val plot = value?.let { GreenhouseData.presetPlotOf(it) ?: it }
+            lastShownPlotIndex = plots?.indexOfFirst { it === plot }?.coerceAtLeast(0) ?: 0
+            lastShownStepIndex = plot?.stepIndexOf(value ?: plot) ?: 0
         }
+
+    private val shownStepLayout: PlotLayout?
+        get() = shownPlot?.let { plot -> plot.steps.getOrNull(lastShownStepIndex)?.layout ?: plot }
+
 
     private val presetPlotTabs = Bookmarks<PresetPlotTab>(
         side = Bookmarks.Side.Top,
@@ -253,6 +280,7 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
                     openRenameContext(event, presetPlotTitle(tab.layout)) { name -> tab.layout.name = name }
                 tab is PresetPlotTab.Part -> {
                     shownPlot = tab.layout
+                    lastShownStepIndex = 0
                     initPresetLayout()
                 }
             }
@@ -263,7 +291,6 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
 
     private var isPresetCleared = false
 
-    private val cropPreviewButton = ClickableButtonWidget("Crop Preview")
 
     override fun onInit() {
         super.onInit()
@@ -275,6 +302,7 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
         height = (height / drawScale).toInt()
 
         GreenhouseData.calculatePendingForecasts()
+        PlantLabelChips.showStageLabels()
         initBaseLayout()
 
         GreenhouseData.warnUnknownValues()
@@ -284,9 +312,9 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
         topMargin = height / 10
 
         gridTop = maxOf(topMargin, NAME_TOP + textBoxHeight(" ") + Common.UI.SPACING + Bookmarks.TOTAL_REACH + BORDER_PADDING)
-        val spaceBelowGrid = Bookmarks.TOTAL_REACH + Common.UI.SPACING + cropPreviewButton.height + Common.UI.SPACING_LARGE
+        val spaceBelowGrid = CHIP_STRIP_HEIGHT + FLOW_BOX_HEIGHT + Common.UI.SPACING_LARGE
 
-        val spaceBesideGrid = TOOLBAR_WIDTH + PlantLabelTabs.TOTAL_WIDTH + Common.UI.SPACING_LARGE * 2
+        val spaceBesideGrid = TOOLBAR_WIDTH + Bookmarks.TOTAL_REACH + Common.UI.SPACING_LARGE * 3
         val gridHeightAvailable = height - gridTop - BORDER_PADDING * 2 - spaceBelowGrid
         val gridWidthAvailable = width - spaceBesideGrid - BORDER_PADDING * 2
 
@@ -298,9 +326,6 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
         gridLeft = ((width - gridSpan) / 2).coerceAtLeast(TOOLBAR_WIDTH + Common.UI.SPACING_LARGE)
 
         layoutShelves()
-
-        cropPreviewButton.x = (width - cropPreviewButton.width) / 2
-        cropPreviewButton.y = height - cropPreviewButton.height - Common.UI.SPACING_LARGE - 2
 
         layoutGreenhouseWidgets()
         layoutPresetWidgets()
@@ -357,15 +382,18 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
     private fun layoutGreenhouseWidgets() {
         plotTabs.layoutAlong(gridLeft - BORDER_PADDING, gridTop - BORDER_PADDING, gridSpan + BORDER_PADDING * 2)
 
-        teleportTab.layoutAlong(
-            gridLeft + (gridSpan - TELEPORT_WIDTH) / 2,
-            gridTop + gridSpan + BORDER_PADDING,
-            TELEPORT_WIDTH
-        )
+        chipRowTop = gridTop + gridSpan + BORDER_PADDING
+        plantLabelChips.layoutAlong(gridLeft - BORDER_PADDING + Common.UI.SPACING, chipRowTop + (CHIP_STRIP_HEIGHT - PlantLabelChips.HEIGHT) / 2)
+        flowBoxTop = chipRowTop + CHIP_STRIP_HEIGHT - Common.UI.BORDER_SIZE
 
         greenhousePanel.layoutIn(actionRowX, actionRowY, shelfWidth)
-        plantLabelTabs.layoutAgainstGrid(gridLeft + gridSpan, gridTop, gridSpan)
+        stepTabs.layoutAlong(gridLeft + gridSpan + BORDER_PADDING, gridTop - BORDER_PADDING, gridSpan + BORDER_PADDING * 2)
     }
+
+
+    private fun isStepTabsShown(): Boolean = stepTabs.items.isNotEmpty()
+
+    private fun gridRightReach(): Int = if (isStepTabsShown()) Bookmarks.TOTAL_REACH else 0
 
     private fun layoutPresetWidgets() {
         presetPlotTabs.layoutAlong(gridLeft - BORDER_PADDING, gridTop - BORDER_PADDING, gridSpan + BORDER_PADDING * 2)
@@ -440,9 +468,44 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
         plotTabs.items = greenhouseGridWidgets.map { it.layout }
         plotTabs.selectedItem = displayedGridWidget?.layout
         restorePrediction()
+        showStepTabsOfDisplayedGrid()
 
         layoutNameBox()
     }
+
+    private fun showStepTabsOfDisplayedGrid() {
+        val running = displayedGrid()?.let { FlowRunner.runningOn(it) }
+        showStepTabsFor(running?.plot, running?.stepIndex ?: 0)
+    }
+
+    private fun showStepTabsFor(plot: PlotLayout?, stepIndex: Int) {
+        stepTabs.items = if (plot != null && plot.hasSteps) plot.steps.mapIndexed { index, step -> StepTab(index, step) } else emptyList()
+        stepTabs.selectedItem = stepTabs.items.getOrNull(stepIndex)
+    }
+
+    private fun onStepTabPicked(tab: StepTab, event: MouseButtonEvent) {
+        when (currentDisplay) {
+            DisplayMode.Presets -> {
+                lastShownStepIndex = tab.index
+                initPresetLayout()
+            }
+            DisplayMode.Greenhouses -> {
+                val grid = displayedGrid() ?: return
+                val running = FlowRunner.runningOn(grid) ?: return
+                if (tab.index == running.stepIndex) return
+                val question = "Move ${grid.layout.displayName()} to ${tab.step.title(tab.index)}?"
+                val (menuX, menuY) = OverlayRenderable.placeOnScreen(event.x.toInt(), event.y.toInt(), ConfirmContext.widthFor(question), ConfirmContext.heightFor())
+                addContext(ConfirmContext(menuX, menuY, question, this) {
+                    FlowRunner.moveTo(grid, tab.index)
+                    initGreenhouseLayout()
+                })
+            }
+        }
+    }
+
+
+
+
 
     private fun initPresetLayout() {
         dropPrediction()
@@ -457,16 +520,19 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
         if (shownPreset != null && shownPlot !in shownPreset.plots) shownPlot = null
 
         shownPreset?.plots?.forEach { plot ->
-            presetGridWidgets.add(newGridWidget(plot, turns = 0))
+            plot.steps.forEach { step -> presetGridWidgets.add(newGridWidget(step.layout, turns = 0)) }
         }
-        val shown = shownPlot ?: shownPreset?.plots?.firstOrNull()
+        val shownPlotNow = shownPlot ?: shownPreset?.plots?.firstOrNull()
+        if (lastShownStepIndex >= (shownPlotNow?.steps?.size ?: 1)) lastShownStepIndex = 0
+        val shown = shownPlotNow?.steps?.getOrNull(lastShownStepIndex)?.layout ?: shownPlotNow
         displayedGridWidget = presetGridWidgets.find { it.layout === shown }
+        showStepTabsFor(shownPlotNow, lastShownStepIndex)
 
         presetPlotTabs.items = if (shownPreset == null) emptyList() else buildList {
             shownPreset.plots.forEach { add(PresetPlotTab.Part(it)) }
             if (shownPreset.plots.size < GreenhouseLayout.MAX_PLOTS) add(PresetPlotTab.Add)
         }
-        presetPlotTabs.selectedItem = shown?.let { PresetPlotTab.Part(it) }
+        presetPlotTabs.selectedItem = shownPlotNow?.let { PresetPlotTab.Part(it) }
 
         displayedName = shownPreset?.displayName() ?: "Unknown Preset"
 
@@ -823,6 +889,7 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
     private fun saveUndoSnapshot(layout: PlotLayout) = saveHistoryStep(snapshot(layout))
 
     private fun saveHistoryStep(step: HistoryStep) {
+        GreenhouseData.noteUnsavedChange()
         undoStack.addLast(step)
         if (undoStack.size > HISTORY_LIMIT) undoStack.removeFirst()
         redoStack.clear()
@@ -890,12 +957,14 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
 
     private fun undo() {
         val step = takeLiveStep(undoStack) ?: return
+        GreenhouseData.noteUnsavedChange()
         redoStack.addLast(revertStep(step))
         initPresetLayout()
     }
 
     private fun redo() {
         val step = takeLiveStep(redoStack) ?: return
+        GreenhouseData.noteUnsavedChange()
         undoStack.addLast(reapplyStep(step))
         initPresetLayout()
     }
@@ -951,22 +1020,27 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
     }
 
     private fun stopPlannersOn(plot: PlotLayout) {
+        val layouts = plot.steps.map { it.layout }
         GreenhouseData.greenhouseGrids
-            .filter { it.state.assignedLayout === plot }
+            .filter { grid -> layouts.any { it === grid.state.assignedLayout } }
             .forEach { GreenhouseData.unplanGreenhouse(it) }
     }
 
     private fun turnShownPlot(turns: Int) {
         val grid = displayedGridWidget ?: return
+        val plot = GreenhouseData.presetPlotOf(grid.layout) ?: grid.layout
+        val layouts = plot.steps.map { it.layout }
 
-        saveUndoSnapshot(grid.layout)
-        grid.layout.copyContentsFrom(grid.layout.turnedBy(turns))
+        layouts.forEach { layout ->
+            saveUndoSnapshot(layout)
+            layout.copyContentsFrom(layout.turnedBy(turns))
+        }
 
         GreenhouseData.greenhouseGrids
-            .filter { it.state.assignedLayout === grid.layout }
+            .filter { greenhouse -> layouts.any { it === greenhouse.state.assignedLayout } }
             .forEach { it.state.planTurns = Math.floorMod(it.state.planTurns - turns, 4) }
 
-        grid.rebuildWidgets()
+        presetGridWidgets.filter { widget -> layouts.any { it === widget.layout } }.forEach { it.rebuildWidgets() }
     }
 
     private fun newPreset() {
@@ -1001,22 +1075,20 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
 
         val grid = displayedGrid()
         val assignedChoice = grid?.state?.assignedLayout?.let { plan ->
-            GreenhousePanel.PlanChoice(plan, GreenhouseData.nameInFull(plan) + if (grid.state.planTurns == 0) "" else " (turned ${grid.state.planTurns * 90}°)")
+            val plot = GreenhouseData.presetPlotOf(plan) ?: plan
+            GreenhousePanel.PlanChoice(plot, GreenhouseData.nameInFull(plan) + if (grid.state.planTurns == 0) "" else " (turned ${grid.state.planTurns * 90}°)")
         }
         val planChoices = GreenhouseData.presetGrids.flatMap { it.plots }.map { plan ->
-            assignedChoice?.takeIf { it.plot === plan } ?: GreenhousePanel.PlanChoice(plan, GreenhouseData.nameInFull(plan))
+            assignedChoice?.takeIf { it.plot === plan } ?: GreenhousePanel.PlanChoice(plan, GreenhouseData.nameInFull(plan) + if (plan.hasSteps) " (${plan.steps.size} steps)" else "")
         }
         greenhousePanel.showPlans(planChoices, assignedChoice, grid?.state?.noRotateAssignedLayout == true)
 
         if (displayedGridWidget != null) {
             when (currentDisplay) {
-                DisplayMode.Greenhouses -> {
-                    plotTabs.render(graphics)
-                    plantLabelTabs.extractRenderState(graphics, mouseX, mouseY, delta)
-                    teleportTab.render(graphics)
-                }
+                DisplayMode.Greenhouses -> plotTabs.render(graphics)
                 DisplayMode.Presets -> presetPlotTabs.render(graphics)
             }
+            if (isStepTabsShown()) stepTabs.render(graphics)
         }
 
         graphics.drawPanel(
@@ -1099,11 +1171,7 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
             diagnosedGrid?.let { renderDiagnoseLine(graphics, it, diagnoseLineTop, mouseX, mouseY) }
         }
 
-        val rightShelfLeft = if (currentDisplay == DisplayMode.Greenhouses) {
-            plantLabelTabs.x + PlantLabelTabs.TOTAL_WIDTH
-        } else {
-            gridLeft + gridSpan + BORDER_PADDING + Common.UI.SPACING_LARGE
-        }
+        val rightShelfLeft = gridLeft + gridSpan + BORDER_PADDING + gridRightReach() + Common.UI.SPACING_LARGE
         val rightShelfWidth = minOf(shelfWidth, width - rightShelfLeft - Common.UI.SPACING_LARGE)
         renderContentsShelf(graphics, rightShelfLeft, gridTop - BORDER_PADDING, rightShelfWidth.coerceAtLeast(MIN_ACTION_ROW_WIDTH), mouseX, mouseY)
 
@@ -1117,7 +1185,6 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
         presetsButton.isPressed = currentDisplay == DisplayMode.Presets
         plotsButton.extractRenderState(graphics, mouseX, mouseY, delta)
         presetsButton.extractRenderState(graphics, mouseX, mouseY, delta)
-        cropPreviewButton.extractRenderState(graphics, mouseX, mouseY, delta)
 
         if (isWarningHovered) {
             graphics.drawSimpleTooltip(
@@ -1133,17 +1200,14 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
         renderOverlays(graphics, mouseX, mouseY, delta)
 
         when (currentDisplay) {
-            DisplayMode.Greenhouses -> {
-                plotTabs.renderTooltip(graphics, mouseX, mouseY)
-                plantLabelTabs.renderTooltip(graphics, mouseX, mouseY)
-                teleportTab.renderTooltip(graphics, mouseX, mouseY)
-            }
+            DisplayMode.Greenhouses -> plotTabs.renderTooltip(graphics, mouseX, mouseY)
             DisplayMode.Presets -> {
                 if (displayedGridWidget != null) presetPlotTabs.renderTooltip(graphics, mouseX, mouseY)
                 plantPalette.renderDrag(graphics)
                 plantPalette.renderTooltip(graphics, mouseX, mouseY)
             }
         }
+        if (isStepTabsShown()) stepTabs.renderTooltip(graphics, mouseX, mouseY)
 
         if (tickTimePinned) {
             drawPinnedTickTime(graphics, mouseX, mouseY)
@@ -1542,8 +1606,16 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
         inRect(mouseX, mouseY, tickTimeBox.x, tickTimeBox.y, tickTimeBox.width, tickTimeBox.height)
 
     private fun renderGreenhouseMode(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
-        displayedGridWidget?.shownLabel = PlantLabelTabs.selectedLabel
+        displayedGridWidget?.shownLabel = PlantLabelChips.selectedLabel
         displayedGridWidget?.cropIdsWithoutLabel = GreenhouseData.miscInfo.cropsWithoutInfo
+
+        if (displayedGridWidget != null) {
+            val left = gridLeft - BORDER_PADDING
+            graphics.drawPanel(left, chipRowTop - Common.UI.BORDER_SIZE, left + gridSpan + BORDER_PADDING * 2, chipRowTop + CHIP_STRIP_HEIGHT)
+            plantLabelChips.isTeleportShown = true
+            plantLabelChips.render(graphics, mouseX, mouseY, delta)
+            renderRunningFlowBox(graphics, mouseX, mouseY, delta)
+        }
 
         scrollHint.tooltip = SCROLL_HINT_GREENHOUSES
         scrollHint.placeInStrip(
@@ -1560,11 +1632,46 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
         presetSelector.extractRenderState(graphics, mouseX, mouseY, delta)
         plantPalette.render(graphics, mouseX, mouseY, delta)
         renderDropTarget(graphics)
+        shownPlot?.let { plot -> renderStepStrip(graphics, plot, lastShownStepIndex, chipRowTop - Common.UI.BORDER_SIZE) }
 
         scrollHint.tooltip = SCROLL_HINT_PRESETS
         scrollHint.placeBesideControl(presetSelector.x + presetSelector.width, presetSelector.y, presetSelector.height)
 
         presetPanel.extractRenderState(graphics, mouseX, mouseY, delta)
+    }
+
+
+    private fun renderStepStrip(graphics: GuiGraphicsExtractor, plot: PlotLayout, stepIndex: Int, top: Int) {
+        if (!plot.hasSteps) return
+        val step = plot.steps.getOrNull(stepIndex) ?: return
+        val loop = if (plot.flow?.loop == true) " · loops" else ""
+        val first = "${plot.displayName()} step ${stepIndex + 1} of ${plot.steps.size} · ${step.title(stepIndex)}$loop"
+        val exit = step.exitText()?.let { "Done when $it" } ?: if (stepIndex == plot.steps.lastIndex) "Last step" else "No exit"
+        val second = listOfNotNull(exit, step.policyText()).joinToString(" · ")
+        drawFlowBox(graphics, top, first, second)
+    }
+
+    private fun renderRunningFlowBox(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
+        val grid = displayedGrid() ?: return
+        val running = FlowRunner.runningOn(grid) ?: return
+        val first = "Running ${running.preset.displayName()} · ${running.preset.plotTitle(running.plot)}, step ${running.stepIndex + 1} of ${running.stepCount}: ${running.step.title(running.stepIndex)}"
+        val second = FlowRunner.needLine(grid, running) ?: if (running.nextIndex == null) "Last step, nothing more to wait for" else "No exit, move on by hand"
+        val boxWidth = gridSpan + BORDER_PADDING * 2
+        val hasBack = grid.state.previousStep != null
+        drawFlowBox(graphics, flowBoxTop, first, second, if (hasBack) backStepButton.width + Common.UI.SPACING else 0)
+        if (!hasBack) return
+        backStepButton.x = gridLeft - BORDER_PADDING + boxWidth - FLOW_BOX_PADDING - backStepButton.width
+        backStepButton.y = flowBoxTop + (FLOW_BOX_HEIGHT - backStepButton.height) / 2
+        backStepButton.extractRenderState(graphics, mouseX, mouseY, delta)
+    }
+
+    private fun drawFlowBox(graphics: GuiGraphicsExtractor, top: Int, first: String, second: String, rightReserved: Int = 0) {
+        val left = gridLeft - BORDER_PADDING
+        val boxWidth = gridSpan + BORDER_PADDING * 2
+        graphics.drawPanel(left, top, left + boxWidth, top + FLOW_BOX_HEIGHT)
+        val textWidth = boxWidth - FLOW_BOX_PADDING * 2 - rightReserved
+        graphics.modText(font, Component.literal(font.plainSubstrByWidth(first, textWidth)), left + FLOW_BOX_PADDING, top + FLOW_BOX_PADDING, Common.UI.TEXT_COLOR)
+        graphics.modText(font, Component.literal(font.plainSubstrByWidth(second, textWidth)), left + FLOW_BOX_PADDING, top + FLOW_BOX_PADDING + font.lineHeight + 2, Common.UI.TEXT_DIM_COLOR)
     }
 
     private fun inLayoutUnits(event: MouseButtonEvent): MouseButtonEvent = event.at(event.x / drawScale, event.y / drawScale)
@@ -1615,10 +1722,6 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
             predictSlider.mouseClicked(layoutEvent.x, layoutEvent.y)
         ) return true
 
-        if (cropPreviewButton.mouseClicked(layoutEvent, doubled)) {
-            ScreenUtil.setScreen(CropPreviewScreen(this))
-            return true
-        }
 
         if (plotsButton.mouseClicked(layoutEvent, doubled)) {
             showDisplay(DisplayMode.Greenhouses)
@@ -1662,14 +1765,24 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
 
         if (displayedGridWidget != null) {
             if (plotTabs.mouseClicked(event)) return true
-            if (teleportTab.mouseClicked(event)) return true
+            if (isStepTabsShown() && stepTabs.mouseClicked(event)) return true
+            if (plantLabelChips.mouseClicked(event, doubled)) return true
+            if (backStepButton.mouseClicked(event, doubled)) {
+                displayedGrid()?.let { grid ->
+                    FlowRunner.stepBack(grid)
+                    initGreenhouseLayout()
+                }
+                return true
+            }
         }
 
-        return plantLabelTabs.mouseClicked(event)
+        return false
     }
+
 
     private fun handlePresetClick(event: MouseButtonEvent, doubled: Boolean): Boolean {
         if (displayedGridWidget != null && presetPlotTabs.mouseClicked(event)) return true
+        if (displayedGridWidget != null && isStepTabsShown() && stepTabs.mouseClicked(event)) return true
 
         if (event.button() == 1 && plantPalette.isHoldingTool) {
             plantPalette.clearTools()
@@ -1728,9 +1841,9 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
 
         when (currentDisplay) {
             DisplayMode.Greenhouses -> {
-                plantLabelTabs.mouseMoved(widgetX, widgetY)
+                plantLabelChips.mouseMoved(widgetX, widgetY)
+                backStepButton.mouseMoved(widgetX, widgetY)
                 plotTabs.mouseMoved(widgetX, widgetY)
-                teleportTab.mouseMoved(widgetX, widgetY)
                 greenhousePanel.mouseMoved(widgetX, widgetY)
             }
             DisplayMode.Presets -> {
@@ -1739,11 +1852,11 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
                 presetPanel.mouseMoved(widgetX, widgetY)
             }
         }
+        stepTabs.mouseMoved(widgetX, widgetY)
 
         displayedGridWidget?.mouseMoved(widgetX, widgetY)
         plotsButton.mouseMoved(widgetX, widgetY)
         presetsButton.mouseMoved(widgetX, widgetY)
-        cropPreviewButton.mouseMoved(widgetX, widgetY)
 
         hoveredElement = hoveredElement
             ?: displayedGridWidget?.hoveredElement
@@ -1773,6 +1886,8 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
 
     override fun onMouseReleased(event: MouseButtonEvent): Boolean {
         lastPaintedCell = null
+        overlays.filterIsInstance<MatchPlotsOverlay>().forEach { it.mouseReleased(event.x / drawScale, event.y / drawScale) }
+        overlays.filterIsInstance<PlotFlowEditor>().forEach { it.mouseReleased(event.x / drawScale, event.y / drawScale) }
         predictSlider.mouseReleased()
         awayTicksSlider.mouseReleased()
         plantPalette.mouseReleased()?.let { placePaletteItem(it, event.x / drawScale, event.y / drawScale) }
@@ -1794,7 +1909,7 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
         }
 
         when (currentDisplay) {
-            DisplayMode.Greenhouses -> plantLabelTabs.cycleSelectedLabel(down = scrollY < 0)
+            DisplayMode.Greenhouses -> plantLabelChips.cycleSelectedLabel(down = scrollY < 0)
             DisplayMode.Presets -> cycleDisplayedGrid(forward = scrollY < 0)
         }
 
@@ -1825,12 +1940,12 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
         initPresetLayout()
     }
 
-    private fun applyImport(result: LayoutTransferResult.Imported, soft: Boolean) {
+    private fun applyImport(result: LayoutTransferResult.Imported, soft: Boolean, asNewPreset: Boolean) {
         val shownPreset = GreenhouseData.currentPreset
         val shown = displayedGridWidget?.layout
         val incoming = result.plots.filterNot { it.isEmpty() }.ifEmpty { result.plots.take(1) }
 
-        if (shownPreset == null || shown == null) {
+        if (asNewPreset || shownPreset == null || shown == null) {
             importAsNewPreset(result)
             return
         }
@@ -1864,6 +1979,7 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
                 incoming.zip(targets).forEach { (plot, target) ->
                     saveUndoSnapshot(target)
                     target.copyContentsFrom(plot)
+                    target.adoptFlowFrom(plot)
                     if (target.name == null && incoming.size > 1) target.name = plot.name
                 }
                 shownPlot = targets.first()
@@ -1874,6 +1990,7 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
             incoming.size == 1 -> {
                 saveUndoSnapshot(shown)
                 shown.copyContentsFrom(incoming.first())
+                shown.adoptFlowFrom(incoming.first())
                 initPresetLayout()
                 ChatUtils.sendWithPrefix("Imported into ${GreenhouseData.fullPlotName(shown)}")
             }
@@ -1884,9 +2001,7 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
     private fun importAsNewPreset(result: LayoutTransferResult.Imported) {
         val preset = GreenhouseLayout(id = PlotLayout.presetId(GreenhouseData.computeNextAvailableId()), name = result.nameForPreset)
         result.plots.forEachIndexed { index, plot ->
-            PlotLayout(id = preset.plotId(index), name = plot.name.takeIf { index > 0 || result.plots.size > 1 })
-                .also { it.copyContentsFrom(plot) }
-                .let(preset.plots::add)
+            plot.copyWithSteps(preset.plotId(index), plot.name.takeIf { index > 0 || result.plots.size > 1 }).let(preset.plots::add)
         }
         addPresetLayout(preset)
     }
@@ -1898,6 +2013,11 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
         Direction.SOUTH -> 2
         Direction.WEST -> 3
         else -> 0
+    }
+
+    override fun removed() {
+        GreenhouseData.saveIfChanged()
+        super.removed()
     }
 
     override fun onKeyPressed(event: KeyEvent): Boolean {
@@ -1916,6 +2036,7 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
 
         val menu = RenameContext(menuX, menuY, currentName, this) { name ->
             apply(name)
+            GreenhouseData.noteUnsavedChange()
             when (currentDisplay) {
                 DisplayMode.Presets -> initPresetLayout()
                 DisplayMode.Greenhouses -> {
@@ -1929,6 +2050,7 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
 
     private fun showDisplay(display: DisplayMode) {
         if (display == currentDisplay) return
+        if (currentDisplay != DisplayMode.Greenhouses) GreenhouseData.saveIfChanged()
 
         currentDisplay = display
         relayoutShelves()
@@ -2140,13 +2262,13 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
             initGreenhouseLayout()
             return
         }
-        assignPresetLayout(plan, grid, greenhousePanel.isNoRotateChecked)
+        assignPlotToGrid(plan, grid, noRotate = greenhousePanel.isNoRotateChecked)
     }
 
     private fun reassignWithNoRotate(noRotate: Boolean) {
         val grid = displayedGrid() ?: return
         val plan = grid.state.assignedLayout ?: return
-        assignPresetLayout(plan, grid, noRotate)
+        assignPlotToGrid(GreenhouseData.presetPlotOf(plan) ?: plan, grid, noRotate = noRotate)
     }
 
     private fun turnPlan() {
@@ -2162,11 +2284,11 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
     }
 
     private fun editAssignedPreset() {
-        val plot = displayedGrid()?.state?.assignedLayout ?: return
-        val parentPreset = GreenhouseData.greenhouseLayoutFor(plot) ?: return
+        val layout = displayedGrid()?.state?.assignedLayout ?: return
+        val parentPreset = GreenhouseData.greenhouseLayoutFor(layout) ?: return
 
         GreenhouseData.currentPreset = parentPreset
-        shownPlot = plot
+        shownPlot = layout
         isPresetCleared = false
         showDisplay(DisplayMode.Presets)
     }
@@ -2192,23 +2314,95 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
         return GreenhouseData.greenhouseGrids.firstOrNull { it.layout === layout }
     }
 
-    private fun assignPresetLayout(layout: PlotLayout?, grid: GreenhouseGrid, noRotate: Boolean) {
-        if (layout == null) {
-            ChatUtils.sendWithPrefix(
-                "No such plan to run on ${grid.layout.displayName()}"
-            )
+    private fun assignPlotToGrid(plot: PlotLayout, grid: GreenhouseGrid, noRotate: Boolean, pairing: PresetMatcher.Pairing? = null) {
+        val running = FlowRunner.runningOn(grid)?.takeIf { it.plot === plot }
+        val (stepIndex, turns) = when {
+            running != null -> running.stepIndex to if (noRotate) 0 else grid.bestRotationFor(running.step.layout)
+            else -> (pairing ?: PresetMatcher.pairingOf(plot, grid, noRotate)).let { it.stepIndex to it.turns }
+        }
+        FlowRunner.assign(grid, plot, stepIndex, turns, noRotate)
+        GreenhouseData.greenhouseLayoutFor(plot)?.lastApplication?.put(grid.layout.id, plot.id)
+
+        val steps = if (plot.hasSteps) " at step ${stepIndex + 1} of ${plot.steps.size}" else ""
+        ChatUtils.sendWithPrefix("Planner active on ${grid.layout.displayName()} for ${GreenhouseData.fullPlotName(plot)}$steps")
+    }
+
+    private fun scannedGreenhouses(): List<GreenhouseGrid> {
+        val current = GreenhouseData.getCurrentGrid()
+        return GreenhouseData.greenhouseGrids.filter { it.state.lastScanTime != null }.sortedByDescending { it === current }
+    }
+
+    private fun openApplyMenu(event: MouseButtonEvent) {
+        val preset = GreenhouseData.currentPreset ?: run {
+            ChatUtils.sendWithPrefix("No preset to apply.")
             return
         }
-        grid.state.assignedLayout = layout
-        grid.state.noRotateAssignedLayout = noRotate
-        grid.state.planTurns = if (noRotate) 0 else grid.bestRotationFor(layout)
-        grid.state.buildAnnounced = false
-        PlannerNeeds.forgetSentLines(grid)
-        GreenhouseData.regenRender()
-
-        ChatUtils.sendWithPrefix(
-            "Planner active on ${grid.layout.displayName()} for ${GreenhouseData.fullPlotName(layout)}"
+        val greenhouses = scannedGreenhouses()
+        if (greenhouses.isEmpty()) {
+            ChatUtils.sendWithPrefix("No scanned greenhouse to apply ${preset.displayName()} to; enter one first.")
+            return
+        }
+        val pairings = PresetMatcher.bestPairings(preset, greenhouses, lastNoRotate)
+        val shownGreenhouse = GreenhouseData.getCurrentGrid()?.takeIf { it.state.lastScanTime != null }
+        val menu = ApplyPresetContext(
+            event.x.toInt(),
+            event.y.toInt(),
+            preset,
+            pairings,
+            shownPlot,
+            shownGreenhouse,
+            lastNoRotate,
+            this,
+            onApplyAll = { chosen, noRotate -> applyPairings(preset, chosen, noRotate) },
+            onApplySingle = { plot, grid, noRotate ->
+                lastNoRotate = noRotate
+                assignPlotToGrid(plot, grid, noRotate)
+            },
+            onByHand = { noRotate -> openMatchOverlay(preset, greenhouses, noRotate) }
         )
+        menu.init()
+        addContext(menu)
+    }
+
+    private fun applyPairings(preset: GreenhouseLayout, pairings: List<PresetMatcher.Pairing>, noRotate: Boolean, warnsLeftOut: Boolean = true) {
+        lastNoRotate = noRotate
+        val chosen = if (noRotate) pairings.map { PresetMatcher.pairingOf(it.plot, it.grid, noRotate = true) } else pairings
+        chosen.forEach { assignPlotToGrid(it.plot, it.grid, noRotate, it) }
+        val leftOut = preset.plots.filter { plot -> chosen.none { it.plot === plot } }
+        if (warnsLeftOut && leftOut.isNotEmpty()) {
+            ChatUtils.sendWithPrefix("No greenhouse for ${leftOut.joinToString(", ") { preset.plotTitle(it) }}; scan another greenhouse or match plots by hand")
+        }
+    }
+
+    private fun openMatchOverlay(preset: GreenhouseLayout, greenhouses: List<GreenhouseGrid>, noRotate: Boolean) {
+        val remembered = greenhouses.mapNotNull { grid ->
+            preset.plots.find { it.id == preset.lastApplication[grid.layout.id] }?.let { grid to it }
+        }.toMap()
+        val starting = remembered.ifEmpty { PresetMatcher.bestPairings(preset, greenhouses, noRotate).associate { it.grid to it.plot } }
+        addOverlay(MatchPlotsOverlay(width, height, preset, greenhouses, starting, noRotate, this) { pairs, noRotateChosen ->
+            applyPairings(preset, pairs.map { (grid, plot) -> PresetMatcher.pairingOf(plot, grid, noRotateChosen) }, noRotateChosen, warnsLeftOut = false)
+        })
+    }
+
+    private fun openFlowEditor() {
+        val preset = GreenhouseData.currentPreset ?: run {
+            ChatUtils.sendWithPrefix("No preset to edit.")
+            return
+        }
+        val plot = shownPlot ?: run {
+            ChatUtils.sendWithPrefix("No plot shown.")
+            return
+        }
+        addOverlay(PlotFlowEditor(width, height, preset, plot, this) {
+            GreenhouseData.noteUnsavedChange()
+            lastShownStepIndex = lastShownStepIndex.coerceAtMost(plot.steps.lastIndex)
+            GreenhouseData.greenhouseGrids.filter { grid -> grid.state.assignedLayout?.let { assigned -> preset.plotOf(assigned) === plot && plot.stepIndexOf(assigned) == null } == true }
+                .forEach { grid ->
+                    val pairing = PresetMatcher.pairingOf(plot, grid, grid.state.noRotateAssignedLayout)
+                    FlowRunner.assign(grid, plot, pairing.stepIndex, pairing.turns, grid.state.noRotateAssignedLayout)
+                }
+            initPresetLayout()
+        })
     }
 
     private fun addPlot() {
@@ -2218,11 +2412,13 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
             return
         }
         shownPlot = shownPreset.addPlot()
+        GreenhouseData.noteUnsavedChange()
         initPresetLayout()
     }
 
     private fun addPresetLayout(preset: GreenhouseLayout) {
         GreenhouseData.presetGrids.add(preset)
+        GreenhouseData.noteUnsavedChange()
         GreenhouseData.currentPreset = preset
         shownPlot = null
         isPresetCleared = false
@@ -2265,6 +2461,8 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
     companion object {
         private var lastDisplay: DisplayMode = DisplayMode.Greenhouses
         private var lastShownPlotIndex: Int = 0
+        private var lastShownStepIndex: Int = 0
+        private var lastNoRotate: Boolean = false
         private val undoStack = ArrayDeque<HistoryStep>()
         private val redoStack = ArrayDeque<HistoryStep>()
         private var warnedMissingGreenhouses: Boolean = false
@@ -2281,7 +2479,11 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
         private const val NAME_TOP: Int = 9
         private const val TICK_TIME_LEFT: Int = 10
         private const val TICK_TIME_CENTER_Y: Int = 18
-        private const val TELEPORT_WIDTH: Int = 110
+        private const val STEP_TAB_LENGTH: Int = 22
+        private val CHIP_STRIP_HEIGHT: Int = PlantLabelChips.HEIGHT + Common.UI.SPACING_SMALL * 2 + 2
+        private const val FLOW_BOX_PADDING: Int = 3
+        private val FLOW_BOX_HEIGHT: Int = Minecraft.getInstance().font.lineHeight * 2 + FLOW_BOX_PADDING * 2 + 2
+        private const val BACK_STEP_LABEL: String = "Back a step"
         private const val PREDICT_LABEL_WIDTH: Int = 22
         private const val UNPLANNED_LINE_HEIGHT: Int = 12
         private const val CONTENTS_ICON_SIZE: Int = 12
@@ -2303,7 +2505,6 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
         private const val EMPTY_GRID_ID: String = "preset_none"
         private const val TOGGLE_PLOTS: String = "Plots"
         private const val TOGGLE_PRESETS: String = "Presets"
-        private const val TELEPORT_LABEL: String = "Teleport to Plot"
         private const val UNMARK_PLACED_AWAY: String = "Stand in that greenhouse to unmark placed crops"
         private const val SHELF_VIEW: String = "View"
         private const val SHELF_PREDICT: String = "Prediction"

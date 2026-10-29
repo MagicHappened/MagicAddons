@@ -3,6 +3,7 @@ package org.magic.magicaddons.data.greenhouse.plot
 import com.mojang.datafixers.util.Either
 import org.magic.magicaddons.data.greenhouse.plot.GreenhouseGrid.GridState
 import com.mojang.serialization.Codec
+import com.mojang.serialization.MapCodec
 import com.mojang.serialization.codecs.RecordCodecBuilder
 import java.time.Instant
 import java.util.*
@@ -14,8 +15,8 @@ import org.magic.magicaddons.data.greenhouse.crops.PlantStage.Estimated
 import org.magic.magicaddons.data.greenhouse.crops.PlantStage.Known
 
 object Codecs {
-    val GREENHOUSE_LAYOUT_CODEC: Codec<PlotLayout> by lazy {
-        RecordCodecBuilder.create { instance ->
+    private val PLAIN_LAYOUT_CODEC: MapCodec<PlotLayout> by lazy {
+        RecordCodecBuilder.mapCodec { instance ->
             instance.group(
                 Codec.STRING.fieldOf("layout_id").forGetter { it.id },
 
@@ -55,14 +56,120 @@ object Codecs {
         }
     }
 
+    private class StoredCondition(val kind: String, val crop: String, val amount: Int)
+
+    private class StoredStep(
+        val label: Optional<String>,
+        val exits: List<List<StoredCondition>>,
+        val fullClear: Boolean,
+        val keepIdentical: Boolean,
+        val inputSpawns: String,
+        val layout: Optional<PlotLayout>
+    )
+
+    private class StoredFlow(val loop: Boolean, val steps: List<StoredStep>)
+
+    private const val KIND_SPAWNED: String = "spawned"
+    private const val KIND_STAGE: String = "stage"
+    private const val KIND_HARVESTED: String = "harvested"
+
+    private val STORED_CONDITION_CODEC: Codec<StoredCondition> by lazy {
+        RecordCodecBuilder.create { instance ->
+            instance.group(
+                Codec.STRING.fieldOf("kind").forGetter { it.kind },
+                Codec.STRING.fieldOf("crop").forGetter { it.crop },
+                Codec.INT.fieldOf("amount").forGetter { it.amount }
+            ).apply(instance, ::StoredCondition)
+        }
+    }
+
+    private val STORED_STEP_CODEC: Codec<StoredStep> by lazy {
+        RecordCodecBuilder.create { instance ->
+            instance.group(
+                Codec.STRING.optionalFieldOf("label").forGetter { it.label },
+                STORED_CONDITION_CODEC.listOf().listOf().optionalFieldOf("exits", emptyList()).forGetter { it.exits },
+                Codec.BOOL.optionalFieldOf("full_clear", false).forGetter { it.fullClear },
+                Codec.BOOL.optionalFieldOf("keep_identical", true).forGetter { it.keepIdentical },
+                Codec.STRING.optionalFieldOf("input_spawns", InputSpawns.Keep.name).forGetter { it.inputSpawns },
+                PLAIN_LAYOUT_CODEC.codec().optionalFieldOf("layout").forGetter { it.layout }
+            ).apply(instance, ::StoredStep)
+        }
+    }
+
+    private val STORED_FLOW_CODEC: Codec<StoredFlow> by lazy {
+        RecordCodecBuilder.create { instance ->
+            instance.group(
+                Codec.BOOL.optionalFieldOf("loop", false).forGetter { it.loop },
+                STORED_STEP_CODEC.listOf().fieldOf("steps").forGetter { it.steps }
+            ).apply(instance, ::StoredFlow)
+        }
+    }
+
+    private fun storedConditionOf(condition: ExitCondition): StoredCondition = when (condition) {
+        is ExitCondition.MutationSpawned -> StoredCondition(KIND_SPAWNED, condition.crop.name, condition.count)
+        is ExitCondition.HighestStageAtLeast -> StoredCondition(KIND_STAGE, condition.crop.name, condition.stage)
+        is ExitCondition.MutationHarvested -> StoredCondition(KIND_HARVESTED, condition.crop.name, condition.count)
+    }
+
+    private fun conditionOf(stored: StoredCondition): ExitCondition? {
+        val crop = CropRegistry.findByIdOrNameIgnoringCase(stored.crop) ?: return null
+        return when (stored.kind) {
+            KIND_SPAWNED -> ExitCondition.MutationSpawned(crop, stored.amount)
+            KIND_STAGE -> ExitCondition.HighestStageAtLeast(crop, stored.amount)
+            KIND_HARVESTED -> ExitCondition.MutationHarvested(crop, stored.amount)
+            else -> null
+        }
+    }
+
+    private fun storedFlowOf(flow: PlotFlow): StoredFlow = StoredFlow(flow.loop, flow.steps.mapIndexed { index, step ->
+        StoredStep(
+            label = Optional.ofNullable(step.label),
+            exits = step.exits.map { exit -> exit.conditions.map(::storedConditionOf) },
+            fullClear = step.policies.fullClear,
+            keepIdentical = step.policies.keepIdentical,
+            inputSpawns = step.policies.inputSpawns.name,
+            layout = if (index == 0) Optional.empty() else Optional.of(step.layout)
+        )
+    })
+
+    private fun plotFlowOf(stored: StoredFlow, plot: PlotLayout): PlotFlow? {
+        val steps = stored.steps.mapIndexedNotNull { index, step ->
+            val layout = if (index == 0) plot else step.layout.orElse(null) ?: return@mapIndexedNotNull null
+            FlowStep(
+                label = step.label.orElse(null),
+                layout = layout,
+                exits = step.exits.map { conditions -> StepExit(conditions.mapNotNull(::conditionOf)) },
+                policies = StepPolicies(
+                    fullClear = step.fullClear,
+                    keepIdentical = step.keepIdentical,
+                    inputSpawns = InputSpawns.entries.firstOrNull { it.name == step.inputSpawns } ?: InputSpawns.Keep
+                )
+            )
+        }
+        if (steps.size < 2) return null
+        return PlotFlow(stored.loop, steps.toMutableList())
+    }
+
+    val GREENHOUSE_LAYOUT_CODEC: Codec<PlotLayout> by lazy {
+        RecordCodecBuilder.create { instance ->
+            instance.group(
+                PLAIN_LAYOUT_CODEC.forGetter { it },
+                STORED_FLOW_CODEC.optionalFieldOf("flow").forGetter { Optional.ofNullable(it.flow?.let(::storedFlowOf)) }
+            ).apply(instance) { layout, flow ->
+                layout.also { it.flow = flow.orElse(null)?.let { stored -> plotFlowOf(stored, it) } }
+            }
+        }
+    }
+
     val MASTER_LAYOUT_CODEC: Codec<GreenhouseLayout> by lazy {
         val master = RecordCodecBuilder.create<GreenhouseLayout> { instance ->
             instance.group(
                 Codec.STRING.fieldOf("preset_id").forGetter { it.id },
                 Codec.STRING.optionalFieldOf("preset_name").forGetter { Optional.ofNullable(it.name) },
-                GREENHOUSE_LAYOUT_CODEC.listOf().fieldOf("plots").forGetter { it.plots }
-            ).apply(instance) { id, nameOpt, plots ->
-                GreenhouseLayout(id, nameOpt.orElse(null), plots.toMutableList())
+                GREENHOUSE_LAYOUT_CODEC.listOf().fieldOf("plots").forGetter { it.plots },
+                Codec.unboundedMap(Codec.STRING, Codec.STRING).optionalFieldOf("last_application", emptyMap()).forGetter { it.lastApplication }
+            ).apply(instance) { id, nameOpt, plots, lastApplication ->
+                GreenhouseLayout(id, nameOpt.orElse(null), plots.toMutableList()).also { it.lastApplication.putAll(lastApplication) }
             }
         }
 
@@ -256,6 +363,18 @@ object Codecs {
         }
     }
 
+    private val HARVEST_COUNTS_CODEC: Codec<Map<String, Int>> by lazy { Codec.unboundedMap(Codec.STRING, Codec.INT) }
+
+    private val STEP_SNAPSHOT_CODEC: Codec<GridState.StepSnapshot> by lazy {
+        RecordCodecBuilder.create { instance ->
+            instance.group(
+                Codec.STRING.fieldOf("layout_id").forGetter { it.layoutId },
+                Codec.LONG.optionalFieldOf("started_at").forGetter { Optional.ofNullable(it.startedAt) },
+                HARVEST_COUNTS_CODEC.optionalFieldOf("harvested", emptyMap()).forGetter { it.harvested }
+            ).apply(instance) { layoutId, startedAt, harvested -> GridState.StepSnapshot(layoutId, startedAt.orElse(null), harvested) }
+        }
+    }
+
     val GRID_STATE_CODEC: Codec<GridState> by lazy {
         RecordCodecBuilder.create { instance ->
             instance.group(
@@ -277,8 +396,12 @@ object Codecs {
                 Codec.DOUBLE.listOf().listOf().optionalFieldOf("spawn_chance_by_tick", emptyList()).forGetter {
                     it.spawnChances?.storedRows().orEmpty()
                 },
-                Codec.STRING.listOf().optionalFieldOf("spawn_crops", emptyList()).forGetter { it.spawnChances?.crops.orEmpty() }
-            ).apply(instance) { lastUpdate, assignedLayout, planTurns, noRotateAssignedLayout, ticksSinceLastScan, chorusLossChances, uncertainSpawns, lastChangedAt, predictTicks, spawnChanceRows, spawnCrops ->
+                Codec.STRING.listOf().optionalFieldOf("spawn_crops", emptyList()).forGetter { it.spawnChances?.crops.orEmpty() },
+                Codec.LONG.optionalFieldOf("step_started_at").forGetter { Optional.ofNullable(it.stepStartedAt) },
+                HARVEST_COUNTS_CODEC.optionalFieldOf("harvested_this_step", emptyMap()).forGetter { it.harvestedThisStep },
+                STEP_SNAPSHOT_CODEC.optionalFieldOf("previous_step").forGetter { Optional.ofNullable(it.previousStep) },
+                Codec.STRING.listOf().optionalFieldOf("clear_marked", emptyList()).forGetter { it.clearMarked.toList() }
+            ).apply(instance) { lastUpdate, assignedLayout, planTurns, noRotateAssignedLayout, ticksSinceLastScan, chorusLossChances, uncertainSpawns, lastChangedAt, predictTicks, spawnChanceRows, spawnCrops, stepStartedAt, harvestedThisStep, previousStep, clearMarked ->
                 GridState(
                     lastScanTime = lastUpdate.orElse(null)?.let { Instant.ofEpochMilli(it) },
                     planTurns = planTurns,
@@ -291,6 +414,10 @@ object Codecs {
                     it.lastChangedAt = lastChangedAt.orElse(null)
                     it.predictTicks = predictTicks
                     it.spawnChances = PlotPrediction.SpawnChances.fromStoredRows(spawnChanceRows, spawnCrops)
+                    it.stepStartedAt = stepStartedAt.orElse(null)
+                    it.harvestedThisStep.putAll(harvestedThisStep)
+                    it.previousStep = previousStep.orElse(null)
+                    it.clearMarked.addAll(clearMarked)
                 }
             }
         }

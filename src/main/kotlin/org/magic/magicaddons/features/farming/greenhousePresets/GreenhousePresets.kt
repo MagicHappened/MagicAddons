@@ -539,6 +539,12 @@ object GreenhousePresets : Feature() {
                 children = listOf(spawnConfidenceSetting, spawnCountSetting)
             ),
             BooleanSetting(
+                key = PlantWarnings.FLOW_STEP_KEY,
+                displayName = "Flow Step",
+                description = "Says in chat when a greenhouse plot finishes a step of its preset and moves to the next",
+                value = true
+            ),
+            BooleanSetting(
                 key = PlantWarnings.OTHER_PROFILES_KEY,
                 displayName = "Other Profiles",
                 description = "Lets the greenhouses of your other profiles warn too",

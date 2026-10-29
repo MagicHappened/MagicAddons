@@ -46,6 +46,7 @@ object PlantWarnings {
     const val LIKELY_SPAWNS_KEY: String = "LikelySpawnsWarning"
     const val SPAWN_CONFIDENCE_KEY: String = "SpawnConfidencePercent"
     const val SPAWN_COUNT_KEY: String = "SpawnCountThreshold"
+    const val FLOW_STEP_KEY: String = "FlowStepWarning"
 
     private const val HOVER_LINES: Int = 5
 
@@ -363,7 +364,6 @@ object PlantWarnings {
         return Section("Attention plants", counts.values.sum(), "Needs attention:", lines, clickExplains = chorusRisks.isNotEmpty())
     }
 
-    /** the chance that teleporting chorus destroy a plant at the next tick, for every greenhouse over the tolerance */
     private fun chorusRisksOverTolerance(profile: ProfileGreenhouses): List<Double> {
         if (!warningEnabled(GreenhousePresets.CHORUS_KEY)) return emptyList()
         val tolerance = GreenhousePresets.chorusLossTolerance()

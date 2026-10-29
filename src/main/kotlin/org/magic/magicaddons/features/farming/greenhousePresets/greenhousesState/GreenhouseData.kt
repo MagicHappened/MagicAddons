@@ -28,6 +28,7 @@ import org.magic.magicaddons.events.world.WorldTickEvent
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhousePresets
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhousePresets.baseSetting
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseSpawnLog
+import org.magic.magicaddons.features.farming.greenhousePresets.flows.FlowRunner
 import org.magic.magicaddons.features.farming.greenhousePresets.playerActions.ChorusBreakRule
 import org.magic.magicaddons.features.farming.greenhousePresets.playerActions.GreenhousePlantDischarge
 import org.magic.magicaddons.features.farming.greenhousePresets.playerActions.GreenhouseWatering
@@ -78,14 +79,18 @@ object GreenhouseData : GridCallbacks {
     var greenhouseGrids = mutableListOf<GreenhouseGrid>()
     var presetGrids = mutableListOf<GreenhouseLayout>()
 
-    fun greenhouseLayoutFor(plot: PlotLayout): GreenhouseLayout? = presetGrids.find { plot in it.plots }
+    fun greenhouseLayoutFor(plot: PlotLayout): GreenhouseLayout? = presetGrids.find { it.holds(plot) }
+
+    fun presetPlotOf(layout: PlotLayout): PlotLayout? = greenhouseLayoutFor(layout)?.plotOf(layout)
 
     fun resolveAssignedLayoutIds() {
-        val plots = presetGrids.flatMap { it.plots }
+        val layouts = presetGrids.flatMap { preset -> preset.plots.flatMap { plot -> plot.steps.map { it.layout } } }
 
         greenhouseGrids.forEach { grid ->
-            grid.state.assignedLayout = plots.find { it.id == grid.state.assignedLayoutId }
+            grid.state.assignedLayout = layouts.find { it.id == grid.state.assignedLayoutId }
             grid.state.assignedLayoutId = null
+            grid.state.previousStep?.let { previous -> previous.layout = layouts.find { it.id == previous.layoutId } }
+            if (grid.state.assignedLayout == null) FlowRunner.clearState(grid)
         }
     }
 
@@ -574,7 +579,10 @@ object GreenhouseData : GridCallbacks {
         plant.waterExact = plant.cropDef.needsWater
         plant.waterBestCase = null
 
-        if (attackedSlots.remove(plant.slot.x to plant.slot.y) != null) CoopSync.noteHarvested(grid)
+        if (attackedSlots.remove(plant.slot.x to plant.slot.y) != null) {
+            CoopSync.noteHarvested(grid)
+            FlowRunner.noteHarvested(grid, plant.cropDef)
+        }
     }
 
     override fun wasAttacked(grid: GreenhouseGrid, x: Int, y: Int): Boolean =
@@ -592,6 +600,7 @@ object GreenhouseData : GridCallbacks {
             attackedSlots.remove(it.x to it.y)
             noteHarvest(grid, it.x, it.y, it.elementId)
             CoopSync.noteHarvested(grid)
+            CropRegistry.allCrops.find { crop -> crop.elementId == it.elementId }?.let { crop -> FlowRunner.noteHarvested(grid, crop) }
         }
     }
 
@@ -775,6 +784,7 @@ object GreenhouseData : GridCallbacks {
     private fun noteSettledScan(grid: GreenhouseGrid) {
         if (grid.state.ticksSinceLastScan > 0) grid.state.lastChorusBreaks = emptyList()
         grid.state.ticksSinceLastScan = 0
+        FlowRunner.onScanSettled(grid)
     }
 
     @EventHandler
@@ -1021,6 +1031,7 @@ object GreenhouseData : GridCallbacks {
         updateTickTimeAfterJoin()
         checkForTickTimeUpdate()
         PlantWarnings.onTick()
+        saveIfIdle()
         CoopSync.onTick()
         calculateQuietForecasts()
 
@@ -1077,7 +1088,28 @@ object GreenhouseData : GridCallbacks {
         saveForThisNetwork()
     }
 
+    private const val IDLE_BEFORE_SAVE_MS: Long = 2_000
+
+    private var unsavedSince: Long? = null
+
+    fun noteUnsavedChange() {
+        unsavedSince = System.currentTimeMillis()
+    }
+
+    private fun saveIfIdle() {
+        val since = unsavedSince ?: return
+        if (System.currentTimeMillis() - since < IDLE_BEFORE_SAVE_MS) return
+        saveIfChanged()
+    }
+
+    fun saveIfChanged() {
+        if (unsavedSince == null) return
+        saveForThisNetwork()
+    }
+
+    @Synchronized
     fun saveForThisNetwork() {
+        unsavedSince = null
         PresetStorage.savePresets()
         if (!GreenhouseProfiles.holdsAlphaData) GreenhouseProfiles.saveGreenhouseData()
     }
@@ -1153,6 +1185,8 @@ object GreenhouseData : GridCallbacks {
 
         grid.state.assignedLayout = null
         grid.state.buildAnnounced = false
+        FlowRunner.clearState(grid)
+        noteUnsavedChange()
 
         regenRender()
 
@@ -1207,6 +1241,7 @@ object GreenhouseData : GridCallbacks {
                 if (GreenhousePresets.isHarvestable(removed.plant)) {
                     noteHarvest(grid, removed.plant.slot.x, removed.plant.slot.y, removed.plant.elementId)
                     CoopSync.noteHarvested(grid)
+                    FlowRunner.noteHarvested(grid, removed.plant.cropDef)
                 }
             }
         }
@@ -1506,7 +1541,9 @@ object GreenhouseData : GridCallbacks {
         scannedGrid()?.let { grid -> plantAtStand(stand, grid) }
 
     fun isPlannedIngredient(plant: Plant): Boolean {
-        val planned = scannedGrid()?.plannedPlantAt(plant.slot.x, plant.slot.y) ?: return false
+        val grid = scannedGrid() ?: return false
+        val planned = grid.plannedPlantAt(plant.slot.x, plant.slot.y) ?: return false
+        if (plant.cropDef.isMutation && !plant.placed && FlowRunner.harvestsSpawnedIngredients(grid)) return false
 
         return planned.slot.mark == LayoutSlot.Marking.Ingredient && planned.acceptsCrop(plant.cropDef)
     }
@@ -1514,6 +1551,7 @@ object GreenhouseData : GridCallbacks {
     fun isInTheWayOfPlan(plant: Plant): Boolean {
         val grid = scannedGrid() ?: return false
         if (grid.state.assignedLayout == null) return false
+        if (FlowRunner.isMarkedForClear(grid, plant)) return true
 
         val planned = grid.plannedPlantAt(plant.slot.x, plant.slot.y) ?: return true
         return planned.slot.x != plant.slot.x || planned.slot.y != plant.slot.y || !planned.acceptsCrop(plant.cropDef)

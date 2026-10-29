@@ -3,7 +3,6 @@ package org.magic.magicaddons.ui.widgets.greenhouse
 import net.minecraft.client.Minecraft
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.network.chat.Component
-import org.magic.magicaddons.data.greenhouse.plot.GreenhouseGrid
 import org.magic.magicaddons.data.greenhouse.plot.GreenhouseLayout
 import org.magic.magicaddons.data.greenhouse.plot.PlotLayout
 import org.magic.magicaddons.data.greenhouse.transfer.LayoutFormat
@@ -20,8 +19,9 @@ import org.magic.magicaddons.util.ChatUtils
 
 class PresetPanel(
     overlayContext: OverlayContext,
-    val onAssignToGreenhouse: (assignedLayout: PlotLayout?, selectedGrid: GreenhouseGrid, noRotate: Boolean) -> Unit,
-    val onImported: (LayoutTransferResult.Imported, isSoftImport: Boolean) -> Unit,
+    val onPlanner: (MouseButtonEvent) -> Unit,
+    val onEditFlow: () -> Unit,
+    val onImported: (LayoutTransferResult.Imported, isSoftImport: Boolean, asNewPreset: Boolean) -> Unit,
     val onDelete: (PlotLayout?) -> Unit,
     val onNewPreset: () -> Unit,
     val shownPlot: () -> PlotLayout?,
@@ -31,13 +31,14 @@ class PresetPanel(
     private val importButton = ClickableButtonWidget("Import")
     private val exportButton = ClickableButtonWidget("Export")
     private val plannerButton = ClickableButtonWidget("Planner")
+    private val editFlowButton = ClickableButtonWidget("Edit Plot Flow")
     private val deleteButton = ClickableButtonWidget("Delete")
     private val newButton = ClickableButtonWidget(ClickableButtonWidget.DEFAULT_HEIGHT, ClickableButtonWidget.DEFAULT_HEIGHT, Component.literal("+"))
     private val turnLeftButton = ClickableButtonWidget(ClickableButtonWidget.DEFAULT_HEIGHT, ClickableButtonWidget.DEFAULT_HEIGHT, Component.literal("↺"))
     private val turnRightButton = ClickableButtonWidget(ClickableButtonWidget.DEFAULT_HEIGHT, ClickableButtonWidget.DEFAULT_HEIGHT, Component.literal("↻"))
 
     override val buttons: List<ClickableButtonWidget> =
-        listOf(newButton, turnLeftButton, turnRightButton, importButton, exportButton, plannerButton, deleteButton)
+        listOf(newButton, turnLeftButton, turnRightButton, importButton, exportButton, plannerButton, editFlowButton, deleteButton)
 
     override fun onPressed(button: ClickableButtonWidget, event: MouseButtonEvent): Boolean {
         when (button) {
@@ -46,16 +47,12 @@ class PresetPanel(
             turnRightButton -> onTurn(1)
             importButton -> openImportMenu(event)
             exportButton -> openExportMenu(event)
-            plannerButton -> openAssignMenu(event)
+            plannerButton -> onPlanner(event)
+            editFlowButton -> onEditFlow()
             deleteButton -> askDelete(event)
             else -> return false
         }
         return true
-    }
-
-    private fun greenhousesToAssign(): List<GreenhouseGrid> {
-        val current = GreenhouseData.getCurrentGrid()
-        return GreenhouseData.greenhouseGrids.sortedByDescending { it === current }
     }
 
     private fun openImportMenu(event: MouseButtonEvent) {
@@ -69,13 +66,6 @@ class PresetPanel(
         openMenuWithOption(event, "Format:", LayoutFormatType.entries, SHOWN_PLOT_LABEL, exportShownOnly, SHOWN_PLOT_TOOLTIP) { type, shownOnly ->
             exportShownOnly = shownOnly
             exportPreset(type, shownOnly)
-        }
-    }
-
-    private fun openAssignMenu(event: MouseButtonEvent) {
-        openMenuWithOption(event, "Assign To:", greenhousesToAssign(), NO_ROTATE_LABEL, noRotate, NO_ROTATE_TOOLTIP) { grid, noRotateChecked ->
-            noRotate = noRotateChecked
-            onAssignToGreenhouse(shownPlot(), grid, noRotateChecked)
         }
     }
 
@@ -113,17 +103,13 @@ class PresetPanel(
             return
         }
 
-        val result = format.import(clipboard, PlotLayout.presetId(GreenhouseData.computeNextAvailableId()))
-
-        result.notes.forEach { ChatUtils.sendWithPrefix(it) }
-
-        when (result) {
+        when (val result = format.import(clipboard, PlotLayout.presetId(GreenhouseData.computeNextAvailableId()))) {
             is LayoutTransferResult.Failure -> ChatUtils.sendWithPrefix(result.reason)
             is LayoutTransferResult.Imported -> {
                 val plants = result.plots.sumOf { it.plants.size }
                 val plots = if (result.plots.size > 1) " over ${result.plots.size} plots" else ""
                 ChatUtils.sendWithPrefix("Imported $plants plants$plots from ${format.displayName}")
-                onImported.invoke(result, soft)
+                onImported.invoke(result, soft, format.importsAsNewPreset)
             }
             is LayoutTransferResult.Exported -> Unit
         }
@@ -138,7 +124,7 @@ class PresetPanel(
         }
 
         val format = type.format
-        val shown = shownPlot()
+        val shown = shownPlot()?.let { if (format.carriesSteps) GreenhouseData.presetPlotOf(it) ?: it else it }
         val result = if (!shownOnly && preset.plots.size > 1 && shown != null && !format.isSinglePlot()) {
             format.exportAll(preset)
         } else {
@@ -160,7 +146,6 @@ class PresetPanel(
 
         private var softImport: Boolean = false
         private var exportShownOnly: Boolean = false
-        private var noRotate: Boolean = false
     }
 
     private class DeleteChoice(private val label: String, val plot: PlotLayout?) {

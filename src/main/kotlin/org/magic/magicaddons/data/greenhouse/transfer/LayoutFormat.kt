@@ -22,6 +22,10 @@ interface LayoutFormat {
 
     val displayName: String
 
+    val importsAsNewPreset: Boolean get() = false
+
+    val carriesSteps: Boolean get() = false
+
     fun canImport(text: String): Boolean
 
     fun import(text: String, layoutId: String): LayoutTransferResult
@@ -35,16 +39,16 @@ enum class LayoutFormatType(val format: LayoutFormat) {
     MagicAddons(MagicAddonsFormat),
     SkyLayouts(SkyLayoutsFormat),
     SkyShards(SkyShardsFormat),
-    SkyMutations(SkyMutationsFormat)
+    SkyShardsFlows(SkyShardsFlowsFormat),
+    SkyMutations(SkyMutationsFormat);
+
+    override fun toString(): String = format.displayName
 }
 
 sealed interface LayoutTransferResult {
 
-    val notes: List<String>
-
     data class Imported(
         val layout: PlotLayout,
-        override val notes: List<String> = emptyList(),
         val extraPlots: List<PlotLayout> = emptyList(),
         val presetName: String? = null
     ) : LayoutTransferResult {
@@ -52,13 +56,7 @@ sealed interface LayoutTransferResult {
         val nameForPreset: String? get() = presetName ?: layout.name
     }
 
-    data class Exported(
-        val text: String,
-        override val notes: List<String> = emptyList()
-    ) : LayoutTransferResult
+    data class Exported(val text: String) : LayoutTransferResult
 
-    data class Failure(
-        val reason: String,
-        override val notes: List<String> = emptyList()
-    ) : LayoutTransferResult
+    data class Failure(val reason: String) : LayoutTransferResult
 }

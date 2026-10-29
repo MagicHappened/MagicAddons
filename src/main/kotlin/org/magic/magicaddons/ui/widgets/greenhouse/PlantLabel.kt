@@ -7,10 +7,10 @@ import org.magic.magicaddons.data.greenhouse.crops.PlantStage
 import org.magic.magicaddons.data.greenhouse.plot.PlotPrediction
 import org.magic.magicaddons.util.toCoarseDuration
 
-enum class PlantLabel(val color: Int, val tabName: String) {
-    GrowthStage(0xFF3FBF3F.toInt(), "Growth stage"),
-    WaterLevel(Common.UI.WATER_FULL_COLOR, "Water level"),
-    DecayTime(Common.UI.DECAY_TIME_COLOR, "Decay time");
+enum class PlantLabel(val color: Int, val chipName: String) {
+    GrowthStage(0xFF3FBF3F.toInt(), "Stage"),
+    WaterLevel(Common.UI.WATER_FULL_COLOR, "Water"),
+    DecayTime(Common.UI.DECAY_TIME_COLOR, "Decay");
 
     fun valueFor(plant: Plant, decayOutlook: DecayOutlook?): String? = when (this) {
         GrowthStage -> when {

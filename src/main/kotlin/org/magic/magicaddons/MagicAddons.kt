@@ -1,12 +1,14 @@
 package org.magic.magicaddons
 
 import net.fabricmc.api.ClientModInitializer
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents
 import net.fabricmc.fabric.api.client.rendering.v1.PictureInPictureRendererRegistry
 import org.magic.magicaddons.commands.MainCommand
 import org.magic.magicaddons.config.MagicAddonsConfigJsonHandler
 import org.magic.magicaddons.data.handlers.ModFiles
 import org.magic.magicaddons.data.server.GreenhouseDataSync
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhouseSpawnLog
+import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseData
 import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.PresetStorage
 import org.magic.magicaddons.data.server.ServerSession
 import org.magic.magicaddons.features.farming.greenhousePresets.shrunkPlants.ShorterCaneCrops
@@ -47,6 +49,7 @@ class MagicAddons : ClientModInitializer {
         MarkerRenderer
         ModFiles.init()
         PresetStorage.loadPresets()
+        ClientLifecycleEvents.CLIENT_STOPPING.register { GreenhouseData.saveForThisNetwork() }
         SystemFonts.init()
         ShorterCaneCrops.init()
         VersionChecker

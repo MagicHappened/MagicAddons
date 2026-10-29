@@ -31,6 +31,7 @@ import org.magic.magicaddons.events.ConfigChangedEvent
 import org.magic.magicaddons.events.EventHandler
 import org.magic.magicaddons.events.greenhouse.GreenhouseChangedEvent
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhousePresets
+import org.magic.magicaddons.features.farming.greenhousePresets.flows.FlowRunner
 import org.magic.magicaddons.features.farming.greenhousePresets.PlannerNeeds
 import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseData
 import org.magic.magicaddons.render.WorldRenderer
@@ -272,7 +273,8 @@ object LayoutRenderState {
                 if (growing.isNotEmpty()) {
                     val right = growing.singleOrNull()?.takeIf {
                         layoutPlant.acceptsCrop(it.plant.cropDef) &&
-                                it.plant.slot.x == layoutPlant.slot.x && it.plant.slot.y == layoutPlant.slot.y
+                                it.plant.slot.x == layoutPlant.slot.x && it.plant.slot.y == layoutPlant.slot.y &&
+                                !FlowRunner.isMarkedForClear(grid, it.plant)
                     }
                     if (right != null) return@forEach
 
@@ -311,6 +313,8 @@ object LayoutRenderState {
                     .forEach { badStands.add(it.uuid) }
             }
         }
+
+        grid.scannedPlants.filter { FlowRunner.isMarkedForClear(grid, it.plant) }.forEach { markInTheWay(level, it, marks, badStands) }
 
         val watchMarks = mutableMapOf<BlockPos, Pair<VoxelShape, PlannerMark>>()
         val watchStands = mutableMapOf<UUID, Int>()

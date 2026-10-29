@@ -78,6 +78,7 @@ class GreenhousePanel(
         if (assignedPlan !== assignedChoice?.plot) {
             assignedPlan = assignedChoice?.plot
             noRotateCheckbox.isChecked = assignedChoice != null && isAssignedNoRotate
+            layoutIn(x, y, availableWidth)
         }
     }
 

@@ -5,6 +5,8 @@ data class GreenhouseLayout(
     var name: String? = null,
     val plots: MutableList<PlotLayout> = mutableListOf()
 ) {
+    val lastApplication: MutableMap<String, String> = mutableMapOf()
+
     fun displayName(): String = name
         ?: id.removePrefix(PlotLayout.GREENHOUSE_PRESET_PREFIX).takeIf { it != id }?.let { "Preset $it" }
         ?: id
@@ -13,7 +15,17 @@ data class GreenhouseLayout(
 
     fun plotId(index: Int): String = plotId(id, index)
 
-    fun plotTitle(plot: PlotLayout): String = plot.displayName()
+    fun plotOf(layout: PlotLayout): PlotLayout? = plots.find { plot -> plot === layout || plot.steps.any { it.layout === layout } }
+
+    fun plotTitle(layout: PlotLayout): String {
+        val plot = plotOf(layout) ?: return layout.displayName()
+        val stepIndex = plot.stepIndexOf(layout) ?: return plot.displayName()
+        if (!plot.hasSteps || stepIndex == 0) return plot.displayName()
+
+        return "${plot.displayName()} s${stepIndex + 1}"
+    }
+
+    fun holds(layout: PlotLayout): Boolean = plotOf(layout) != null
 
     fun addPlot(): PlotLayout = PlotLayout(id = firstFreePlotId()).also { plots.add(it) }
 
@@ -35,7 +47,7 @@ data class GreenhouseLayout(
                 size = plot.size,
                 slots = plot.slots,
                 plants = plot.plants
-            )
+            ).also { it.adoptFlowFrom(plot) }
             repaired = true
         }
 
