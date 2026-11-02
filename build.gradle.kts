@@ -72,6 +72,7 @@ repositories {
 }
 
 
+val enhancedStorageV1: Configuration by configurations.creating { isTransitive = false }
 
 dependencies {
 
@@ -95,6 +96,8 @@ dependencies {
 
     // read at compile time only: the planner asks it for storage contents when the player runs it
     compileOnly("maven.modrinth:skyblock-enhanced-storage:${project.property("enhanced_storage_version")}")
+    enhancedStorageV1("maven.modrinth:skyblock-enhanced-storage:${project.property("enhanced_storage_v1_version")}")
+    compileOnly(files(enhancedStorageV1))
 }
 
 
