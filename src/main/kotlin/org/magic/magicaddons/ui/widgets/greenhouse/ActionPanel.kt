@@ -6,6 +6,8 @@ import org.magic.magicaddons.util.ScreenUtil.modText
 import net.minecraft.client.gui.components.Renderable
 import net.minecraft.client.gui.components.events.GuiEventListener
 import net.minecraft.client.input.MouseButtonEvent
+import net.minecraft.network.chat.Component
+import net.minecraft.util.FormattedCharSequence
 import org.magic.magicaddons.Common
 import org.magic.magicaddons.data.greenhouse.transfer.LayoutFormat
 import org.magic.magicaddons.data.greenhouse.transfer.LayoutTransferResult
@@ -42,6 +44,10 @@ abstract class ActionPanel(protected val overlayContext: OverlayContext) : Rende
 
     protected open fun groupLabel(group: Int): String? = null
 
+    protected open fun groupNotes(): Map<Int, String> = emptyMap()
+
+    private class PlacedNote(val x: Int, val y: Int, val lines: List<FormattedCharSequence>)
+
     protected open val dropdowns: List<DropdownWidget<*>> = emptyList()
 
     protected open fun isShown(dropdown: DropdownWidget<*>): Boolean = true
@@ -49,6 +55,8 @@ abstract class ActionPanel(protected val overlayContext: OverlayContext) : Rende
     protected open fun groupOf(dropdown: DropdownWidget<*>): Int = 0
 
     private val groupLabelPositions = mutableMapOf<Int, Pair<Int, Int>>()
+
+    private val placedNotes = mutableListOf<PlacedNote>()
 
     private val font get() = Minecraft.getInstance().font
 
@@ -59,12 +67,14 @@ abstract class ActionPanel(protected val overlayContext: OverlayContext) : Rende
         this.y = y
         this.availableWidth = availableWidth
         groupLabelPositions.clear()
+        placedNotes.clear()
 
         var rowY = y + PADDING + headerHeight()
         val shownButtonsByGroup = buttons.filter { isShown(it) }.groupBy { groupOf(it) }
         val shownDropdownsByGroup = shownDropdowns().groupBy { groupOf(it) }
+        val notesByGroup = groupNotes()
 
-        (shownButtonsByGroup.keys + shownDropdownsByGroup.keys).sorted().forEach { group ->
+        (shownButtonsByGroup.keys + shownDropdownsByGroup.keys + notesByGroup.keys).sorted().forEach { group ->
             groupLabel(group)?.let {
                 groupLabelPositions[group] = (x + PADDING) to rowY
                 rowY += font.lineHeight + Common.UI.SPACING
@@ -98,7 +108,14 @@ abstract class ActionPanel(protected val overlayContext: OverlayContext) : Rende
                 dropdown.y = dropdownY
             }
 
-            rowY += rowHeight + Common.UI.SPACING_LARGE
+            rowY += rowHeight
+            notesByGroup[group]?.let { note ->
+                if (rowHeight > 0) rowY += Common.UI.SPACING
+                val noteLines = font.split(Component.literal(note), availableWidth - PADDING * 2)
+                placedNotes += PlacedNote(x + PADDING, rowY, noteLines)
+                rowY += noteLines.size * font.lineHeight
+            }
+            rowY += Common.UI.SPACING_LARGE
         }
     }
 
@@ -106,7 +123,8 @@ abstract class ActionPanel(protected val overlayContext: OverlayContext) : Rende
 
     val contentHeight: Int
         get() {
-            val bottom = (buttons.filter { isShown(it) }.map { it.y + it.height } + shownDropdowns().map { it.y + it.height })
+            val bottom = (buttons.filter { isShown(it) }.map { it.y + it.height } + shownDropdowns().map { it.y + it.height } +
+                    placedNotes.map { it.y + it.lines.size * font.lineHeight })
                 .maxOrNull() ?: return 0
 
             return bottom - y + PADDING
@@ -115,6 +133,9 @@ abstract class ActionPanel(protected val overlayContext: OverlayContext) : Rende
     override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
         groupLabelPositions.forEach { (group, at) ->
             groupLabel(group)?.let { graphics.modText(font, it, at.first, at.second, Common.UI.TEXT_DIM_COLOR) }
+        }
+        placedNotes.forEach { note ->
+            note.lines.forEachIndexed { index, line -> graphics.modText(font, line, note.x, note.y + index * font.lineHeight, Common.UI.TEXT_DIM_COLOR) }
         }
         buttons.filter { isShown(it) }
             .forEach { it.extractRenderState(graphics, mouseX, mouseY, delta) }

@@ -936,16 +936,86 @@ class GreenhouseGrid(
         }
     }
 
+    class PlanProgress {
+        var assignedLayout: PlotLayout? = null
+
+        var planTurns: Int = 0
+
+        var noRotateAssignedLayout: Boolean = false
+
+        var buildAnnounced: Boolean = false
+
+        var stepStartedAt: Long? = null
+
+        val harvestedThisStep: MutableMap<String, Int> = mutableMapOf()
+
+        var previousStep: GridState.StepSnapshot? = null
+
+        val clearMarked: MutableSet<String> = mutableSetOf()
+    }
+
     data class GridState(
         var lastScanTime: Instant? = null,
         var needsRescan: Boolean = false,
-        var assignedLayout: PlotLayout? = null,
         var scanned: Boolean = false,
-        var ticksSinceLastScan: Int = 0,
-        var buildAnnounced: Boolean = false,
-        var planTurns: Int = 0,
-        var noRotateAssignedLayout: Boolean = false
+        var ticksSinceLastScan: Int = 0
     ) {
+        val ownPlan: PlanProgress = PlanProgress()
+
+        var runs: PlanOwner = PlanOwner.Mine
+
+        var coopPlan: CoopPlan? = null
+
+        private val emptyCoopSlotPlan: PlanProgress = PlanProgress()
+
+        val isFollowingCoopPlan: Boolean
+            get() = runs == PlanOwner.Coop && coopPlan != null
+
+        val runningPlan: PlanProgress
+            get() = if (runs == PlanOwner.Coop) coopPlan?.progress ?: emptyCoopSlotPlan else ownPlan
+
+        var assignedLayout: PlotLayout?
+            get() = runningPlan.assignedLayout
+            set(value) {
+                runningPlan.assignedLayout = value
+            }
+
+        var planTurns: Int
+            get() = runningPlan.planTurns
+            set(value) {
+                runningPlan.planTurns = value
+            }
+
+        var noRotateAssignedLayout: Boolean
+            get() = runningPlan.noRotateAssignedLayout
+            set(value) {
+                runningPlan.noRotateAssignedLayout = value
+            }
+
+        var buildAnnounced: Boolean
+            get() = runningPlan.buildAnnounced
+            set(value) {
+                runningPlan.buildAnnounced = value
+            }
+
+        var stepStartedAt: Long?
+            get() = runningPlan.stepStartedAt
+            set(value) {
+                runningPlan.stepStartedAt = value
+            }
+
+        val harvestedThisStep: MutableMap<String, Int>
+            get() = runningPlan.harvestedThisStep
+
+        var previousStep: StepSnapshot?
+            get() = runningPlan.previousStep
+            set(value) {
+                runningPlan.previousStep = value
+            }
+
+        val clearMarked: MutableSet<String>
+            get() = runningPlan.clearMarked
+
         var assignedLayoutId: String? = null
 
         var glasscornsReset: Int = 0
@@ -970,19 +1040,15 @@ class GreenhouseGrid(
 
         var spawnChances: PlotPrediction.SpawnChances? = null
 
-        var spawnChanceCalculation: LikelySpawns.Calculation? = null
+        var spawnChanceCalculation: LikelySpawns.Calculation<PlotPrediction.SpawnChances>? = null
+
+        var exitCropSpawnChances: Map<String, PlotPrediction.SpawnChances>? = null
+
+        var exitCropSpawnCalculation: LikelySpawns.Calculation<Map<String, PlotPrediction.SpawnChances>>? = null
 
         class StepSnapshot(val layoutId: String, val startedAt: Long?, val harvested: Map<String, Int>) {
             var layout: PlotLayout? = null
         }
-
-        var stepStartedAt: Long? = null
-
-        val harvestedThisStep: MutableMap<String, Int> = mutableMapOf()
-
-        var previousStep: StepSnapshot? = null
-
-        val clearMarked: MutableSet<String> = mutableSetOf()
 
         var predictTicks: Int = 0
 

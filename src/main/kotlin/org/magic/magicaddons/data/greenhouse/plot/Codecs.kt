@@ -13,6 +13,7 @@ import net.minecraft.world.level.block.Blocks
 import org.magic.magicaddons.data.greenhouse.crops.*
 import org.magic.magicaddons.data.greenhouse.crops.PlantStage.Estimated
 import org.magic.magicaddons.data.greenhouse.crops.PlantStage.Known
+import org.magic.magicaddons.features.farming.greenhousePresets.warnings.ChorusCollision
 
 object Codecs {
     private val PLAIN_LAYOUT_CODEC: MapCodec<PlotLayout> by lazy {
@@ -40,9 +41,9 @@ object Codecs {
                 PlotLayout(
                     id = id,
                     name = nameOpt.orElse(null),
-                    slots = slots
+                    slots = slots.take(MAX_GRID_CELLS)
                 ).also { layout ->
-                    elements.forEach { plant ->
+                    elements.take(MAX_GRID_CELLS).forEach { plant ->
                         val slot = layout.getSlot(plant.slot.x, plant.slot.y)
                         if (slot == null) {
                             layout.plants.add(plant)
@@ -357,11 +358,15 @@ object Codecs {
             Codec.INT.optionalFieldOf("draw_size", 0).forGetter { it.drawCandidateCount }
         ).apply(instance) { x, y, crop, contributors, createdAt, isInEveryDiagnosis, minimumCount, isCountExact, maximumCount, drawGroupId, drawCreditedCount, drawCandidateCount ->
             UncertainSpawns(
-                x, y, crop, contributors.mapNotNull(::slotOf).toSet(), createdAt, isInEveryDiagnosis, minimumCount, isCountExact,
+                x, y, crop, contributors.take(MAX_GRID_CELLS).mapNotNull(::slotOf).toSet(), createdAt, isInEveryDiagnosis, minimumCount, isCountExact,
                 maximumCount.orElse(null), drawGroupId.orElse(null), drawCreditedCount, drawCandidateCount
             )
         }
     }
+
+    private const val MAX_GRID_CELLS: Int = GREENHOUSE_SIZE * GREENHOUSE_SIZE
+
+    private const val MAX_STORED_HARVEST_CROPS: Int = 64
 
     private val HARVEST_COUNTS_CODEC: Codec<Map<String, Int>> by lazy { Codec.unboundedMap(Codec.STRING, Codec.INT) }
 
@@ -371,21 +376,23 @@ object Codecs {
                 Codec.STRING.fieldOf("layout_id").forGetter { it.layoutId },
                 Codec.LONG.optionalFieldOf("started_at").forGetter { Optional.ofNullable(it.startedAt) },
                 HARVEST_COUNTS_CODEC.optionalFieldOf("harvested", emptyMap()).forGetter { it.harvested }
-            ).apply(instance) { layoutId, startedAt, harvested -> GridState.StepSnapshot(layoutId, startedAt.orElse(null), harvested) }
+            ).apply(instance) { layoutId, startedAt, harvested ->
+                GridState.StepSnapshot(layoutId, startedAt.orElse(null), harvested.entries.take(MAX_STORED_HARVEST_CROPS).associate { it.key to it.value })
+            }
         }
     }
 
-    val GRID_STATE_CODEC: Codec<GridState> by lazy {
-        RecordCodecBuilder.create { instance ->
+    private val GRID_STATE_FIELDS: MapCodec<GridState> by lazy {
+        RecordCodecBuilder.mapCodec { instance ->
             instance.group(
                 Codec.LONG.optionalFieldOf("lastUpdateTimestamp").forGetter {
                     Optional.ofNullable(it.lastScanTime?.toEpochMilli())
                 },
                 Codec.STRING.optionalFieldOf("assigned_layout_id").forGetter {
-                    Optional.ofNullable(it.assignedLayout?.id)
+                    Optional.ofNullable(it.ownPlan.assignedLayout?.id)
                 },
-                Codec.INT.optionalFieldOf("plan_turns", 0).forGetter { it.planTurns },
-                Codec.BOOL.optionalFieldOf("no_rotate_assigned_layout", false).forGetter { it.noRotateAssignedLayout },
+                Codec.INT.optionalFieldOf("plan_turns", 0).forGetter { it.ownPlan.planTurns },
+                Codec.BOOL.optionalFieldOf("no_rotate_assigned_layout", false).forGetter { it.ownPlan.noRotateAssignedLayout },
                 Codec.INT.optionalFieldOf("ticks_since_last_scan", 0).forGetter { it.ticksSinceLastScan },
                 Codec.DOUBLE.listOf().optionalFieldOf("chorus_loss_chance_by_tick").forGetter {
                     Optional.ofNullable(it.chorusLossChanceByTick?.toList())
@@ -397,27 +404,130 @@ object Codecs {
                     it.spawnChances?.storedRows().orEmpty()
                 },
                 Codec.STRING.listOf().optionalFieldOf("spawn_crops", emptyList()).forGetter { it.spawnChances?.crops.orEmpty() },
-                Codec.LONG.optionalFieldOf("step_started_at").forGetter { Optional.ofNullable(it.stepStartedAt) },
-                HARVEST_COUNTS_CODEC.optionalFieldOf("harvested_this_step", emptyMap()).forGetter { it.harvestedThisStep },
-                STEP_SNAPSHOT_CODEC.optionalFieldOf("previous_step").forGetter { Optional.ofNullable(it.previousStep) },
-                Codec.STRING.listOf().optionalFieldOf("clear_marked", emptyList()).forGetter { it.clearMarked.toList() }
+                Codec.LONG.optionalFieldOf("step_started_at").forGetter { Optional.ofNullable(it.ownPlan.stepStartedAt) },
+                HARVEST_COUNTS_CODEC.optionalFieldOf("harvested_this_step", emptyMap()).forGetter { it.ownPlan.harvestedThisStep },
+                STEP_SNAPSHOT_CODEC.optionalFieldOf("previous_step").forGetter { Optional.ofNullable(it.ownPlan.previousStep) },
+                Codec.STRING.listOf().optionalFieldOf("clear_marked", emptyList()).forGetter { it.ownPlan.clearMarked.toList() }
             ).apply(instance) { lastUpdate, assignedLayout, planTurns, noRotateAssignedLayout, ticksSinceLastScan, chorusLossChances, uncertainSpawns, lastChangedAt, predictTicks, spawnChanceRows, spawnCrops, stepStartedAt, harvestedThisStep, previousStep, clearMarked ->
                 GridState(
                     lastScanTime = lastUpdate.orElse(null)?.let { Instant.ofEpochMilli(it) },
-                    planTurns = planTurns,
-                    noRotateAssignedLayout = noRotateAssignedLayout,
                     ticksSinceLastScan = ticksSinceLastScan
                 ).also {
                     it.assignedLayoutId = assignedLayout.orElse(null)
-                    it.chorusLossChanceByTick = chorusLossChances.orElse(null)?.toDoubleArray()
-                    it.uncertainSpawns += uncertainSpawns
+                    it.chorusLossChanceByTick = chorusLossChances.orElse(null)?.take(ChorusCollision.RISK_HORIZON_TICKS)?.toDoubleArray()
+                    it.uncertainSpawns += uncertainSpawns.take(MAX_GRID_CELLS)
                     it.lastChangedAt = lastChangedAt.orElse(null)
                     it.predictTicks = predictTicks
                     it.spawnChances = PlotPrediction.SpawnChances.fromStoredRows(spawnChanceRows, spawnCrops)
-                    it.stepStartedAt = stepStartedAt.orElse(null)
-                    it.harvestedThisStep.putAll(harvestedThisStep)
-                    it.previousStep = previousStep.orElse(null)
-                    it.clearMarked.addAll(clearMarked)
+                    with(it.ownPlan) {
+                        this.planTurns = planTurns
+                        this.noRotateAssignedLayout = noRotateAssignedLayout
+                        this.stepStartedAt = stepStartedAt.orElse(null)
+                        harvestedThisStep.entries.take(MAX_STORED_HARVEST_CROPS).forEach { (cropName, count) -> this.harvestedThisStep[cropName] = count }
+                        this.previousStep = previousStep.orElse(null)
+                        this.clearMarked.addAll(clearMarked.take(MAX_GRID_CELLS))
+                    }
+                }
+            }
+        }
+    }
+
+    val GRID_STATE_CODEC: Codec<GridState> by lazy { GRID_STATE_FIELDS.codec() }
+
+    private val SAVED_GRID_STATE_CODEC: Codec<GridState> by lazy {
+        RecordCodecBuilder.create { instance ->
+            instance.group(
+                GRID_STATE_FIELDS.forGetter { it },
+                Codec.STRING.optionalFieldOf("runs").forGetter { state ->
+                    Optional.ofNullable(state.runs.takeIf { it == PlanOwner.Coop }?.storedName)
+                }
+            ).apply(instance) { state, runs -> state.also { it.runs = PlanOwner.ofStoredName(runs.orElse(null)) } }
+        }
+    }
+
+    private class StoredCoopPlan(
+        val code: String,
+        val plot: Int,
+        val name: String,
+        val stepLabels: List<String>,
+        val sharedBy: Optional<String>,
+        val sharedAt: Long,
+        val version: Int,
+        val step: Int,
+        val stepStartedAt: Long,
+        val stepChangedBy: Optional<String>,
+        val stepChange: Optional<String>,
+        val harvested: Map<String, Int>
+    )
+
+    private val STORED_COOP_PLAN_CODEC: Codec<StoredCoopPlan> by lazy {
+        RecordCodecBuilder.create { instance ->
+            instance.group(
+                Codec.STRING.fieldOf("code").forGetter { it.code },
+                Codec.INT.fieldOf("plot").forGetter { it.plot },
+                Codec.STRING.fieldOf("name").forGetter { it.name },
+                Codec.STRING.listOf().fieldOf("step_labels").forGetter { it.stepLabels },
+                Codec.STRING.optionalFieldOf("shared_by").forGetter { it.sharedBy },
+                Codec.LONG.fieldOf("shared_at").forGetter { it.sharedAt },
+                Codec.INT.fieldOf("version").forGetter { it.version },
+                Codec.INT.fieldOf("step").forGetter { it.step },
+                Codec.LONG.fieldOf("step_started_at").forGetter { it.stepStartedAt },
+                Codec.STRING.optionalFieldOf("step_changed_by").forGetter { it.stepChangedBy },
+                Codec.STRING.optionalFieldOf("step_change").forGetter { it.stepChange },
+                HARVEST_COUNTS_CODEC.optionalFieldOf("harvested", emptyMap()).forGetter { it.harvested }
+            ).apply(instance, ::StoredCoopPlan)
+        }
+    }
+
+    private fun storedCoopPlanOf(plan: CoopPlan): StoredCoopPlan = StoredCoopPlan(
+        code = plan.code,
+        plot = plan.plotIndex,
+        name = plan.name,
+        stepLabels = plan.stepLabels,
+        sharedBy = Optional.ofNullable(plan.sharedBy),
+        sharedAt = plan.sharedAt,
+        version = plan.version,
+        step = plan.stepIndex + 1,
+        stepStartedAt = plan.progress.stepStartedAt ?: plan.sharedAt,
+        stepChangedBy = Optional.ofNullable(plan.stepChangedBy),
+        stepChange = Optional.ofNullable(plan.stepChange?.storedName),
+        harvested = plan.progress.harvestedThisStep.toMap()
+    )
+
+    private fun coopPlanOf(stored: StoredCoopPlan, grid: GreenhouseGrid): CoopPlan? {
+        val plan = CoopPlan.decodedOrNull(
+            plotId = grid.layout.id,
+            code = stored.code,
+            plotIndex = stored.plot,
+            name = stored.name,
+            stepLabels = stored.stepLabels,
+            sharedBy = stored.sharedBy.orElse(null),
+            sharedAt = stored.sharedAt,
+            version = stored.version,
+            stepNumber = stored.step,
+            stepStartedAt = stored.stepStartedAt,
+            stepChangedBy = stored.stepChangedBy.orElse(null),
+            stepChange = StepChange.ofStoredName(stored.stepChange.orElse(null)),
+            fallbackStepIndexOf = null
+        ) ?: return null
+        plan.progress.harvestedThisStep.putAll(CoopPlan.harvestCountsOf(stored.harvested))
+        plan.ownHarvestedInCoopTotals = null
+        plan.progress.planTurns = plan.progress.assignedLayout?.let { grid.bestRotationFor(it) } ?: 0
+        return plan
+    }
+
+    val SAVED_GREENHOUSE_CODEC: Codec<GreenhouseGrid> by lazy {
+        RecordCodecBuilder.create { instance ->
+            instance.group(
+                SAVED_GRID_STATE_CODEC.fieldOf("state").forGetter { it.state },
+                GREENHOUSE_LAYOUT_CODEC.fieldOf("layout").forGetter { it.layout },
+                STORED_COOP_PLAN_CODEC.optionalFieldOf("coop_plan").forGetter { grid ->
+                    Optional.ofNullable(grid.state.coopPlan?.let(::storedCoopPlanOf))
+                }
+            ).apply(instance) { state, layout, storedCoopPlan ->
+                GreenhouseGrid(state, layout).also { grid ->
+                    grid.state.coopPlan = storedCoopPlan.orElse(null)?.let { coopPlanOf(it, grid) }
+                    if (storedCoopPlan.isPresent && grid.state.coopPlan == null) grid.state.runs = PlanOwner.Mine
                 }
             }
         }

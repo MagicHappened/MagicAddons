@@ -14,6 +14,10 @@ import org.magic.magicaddons.data.greenhouse.plot.ExitCondition
 import org.magic.magicaddons.data.greenhouse.plot.FlowStep
 import org.magic.magicaddons.data.greenhouse.plot.GreenhouseLayout
 import org.magic.magicaddons.data.greenhouse.plot.InputSpawns
+import org.magic.magicaddons.data.greenhouse.plot.MAX_CONDITIONS_PER_EXIT
+import org.magic.magicaddons.data.greenhouse.plot.MAX_CONDITION_COUNT
+import org.magic.magicaddons.data.greenhouse.plot.MAX_EXITS_PER_STEP
+import org.magic.magicaddons.data.greenhouse.plot.MAX_FLOW_STEPS
 import org.magic.magicaddons.data.greenhouse.plot.PlotFlow
 import org.magic.magicaddons.data.greenhouse.plot.PlotLayout
 import org.magic.magicaddons.data.greenhouse.plot.StepExit
@@ -59,7 +63,7 @@ class PlotFlowEditor(
         val amountField = TextField(AMOUNT_WIDTH, FIELD_HEIGHT).apply {
             isFramed = true
             value = amount.toString()
-            setMaxLength(4)
+            setMaxLength(MAX_CONDITION_COUNT.toString().length)
         }
         val removeButton = ClickableButtonWidget(SQUARE, SQUARE, Component.literal("×"))
         var handleBox: ScreenRect = ScreenRect(0, 0, 0, 0)
@@ -73,11 +77,11 @@ class PlotFlowEditor(
 
         fun toCondition(): ExitCondition? {
             val crop = cropSelector.currentValue ?: return null
-            val amount = amountField.value.toIntOrNull()?.coerceAtLeast(1) ?: 1
+            val typedAmount = amountField.value.toIntOrNull() ?: 1
             return when (kindSelector.currentValue ?: Kind.Spawned) {
-                Kind.Spawned -> ExitCondition.MutationSpawned(crop, amount)
-                Kind.Stage -> ExitCondition.HighestStageAtLeast(crop, amount)
-                Kind.Harvested -> ExitCondition.MutationHarvested(crop, amount)
+                Kind.Spawned -> ExitCondition.MutationSpawned(crop, typedAmount.coerceIn(1, MAX_CONDITION_COUNT))
+                Kind.Stage -> ExitCondition.HighestStageAtLeast(crop, typedAmount.coerceIn(1, crop.maxStage))
+                Kind.Harvested -> ExitCondition.MutationHarvested(crop, typedAmount.coerceIn(1, MAX_CONDITION_COUNT))
             }
         }
     }
@@ -99,6 +103,17 @@ class PlotFlowEditor(
         var isFolded: Boolean = false
         var foldBox: ScreenRect = ScreenRect(0, 0, 0, 0)
         var headerBox: ScreenRect = ScreenRect(0, 0, 0, 0)
+
+        val conditionCountByExit: List<Int>
+            get() = buildList {
+                conditions.forEachIndexed { index, condition -> if (index == 0 || condition.joinsWithOr) add(1) else set(lastIndex, last() + 1) }
+            }
+
+        val isWithinExitLimits: Boolean
+            get() = conditionCountByExit.let { counts -> counts.size <= MAX_EXITS_PER_STEP && counts.all { it <= MAX_CONDITIONS_PER_EXIT } }
+
+        val canTakeCondition: Boolean
+            get() = isWithinExitLimits && conditionCountByExit.let { counts -> counts.isEmpty() || counts.last() < MAX_CONDITIONS_PER_EXIT || counts.size < MAX_EXITS_PER_STEP }
 
         fun exits(): List<StepExit> {
             val exits = mutableListOf<MutableList<ExitCondition>>()
@@ -238,7 +253,8 @@ class PlotFlowEditor(
         if (isRowVisible(addStepButton.y, addStepButton.height)) {
             addStepButton.extractRenderState(graphics, mouseX, mouseY, delta)
             val last = steps.lastIndex + 1
-            graphics.modText(font, "starts as a copy of step $last's layout", addStepButton.x + addStepButton.width + Common.UI.SPACING_LARGE, addStepButton.y + (addStepButton.height - font.lineHeight) / 2 + 1, Common.UI.TEXT_DIM_COLOR)
+            val addStepHint = if (steps.size < MAX_FLOW_STEPS) "starts as a copy of step $last's layout" else "${steps.size} steps (max $MAX_FLOW_STEPS)"
+            graphics.modText(font, addStepHint, addStepButton.x + addStepButton.width + Common.UI.SPACING_LARGE, addStepButton.y + (addStepButton.height - font.lineHeight) / 2 + 1, Common.UI.TEXT_DIM_COLOR)
         }
         graphics.disableScissor()
 
@@ -295,8 +311,13 @@ class PlotFlowEditor(
             if (kind.amountLabel.isNotEmpty()) graphics.modText(font, kind.amountLabel, condition.amountField.x + condition.amountField.width + Common.UI.SPACING, rowTextY, Common.UI.TEXT_DIM_COLOR)
             condition.removeButton.extractRenderState(graphics, mouseX, mouseY, delta)
         }
-        if (step.conditions.isEmpty()) {
-            graphics.modText(font, NO_EXIT, step.addConditionButton.x + step.addConditionButton.width + Common.UI.SPACING_LARGE, step.addConditionButton.y + (step.addConditionButton.height - font.lineHeight) / 2 + 1, Common.UI.TEXT_DIM_COLOR)
+        val addConditionHint = when {
+            step.conditions.isEmpty() -> NO_EXIT
+            !step.canTakeCondition -> EXIT_LIMIT_HINT
+            else -> null
+        }
+        if (addConditionHint != null) {
+            graphics.modText(font, addConditionHint, step.addConditionButton.x + step.addConditionButton.width + Common.UI.SPACING_LARGE, step.addConditionButton.y + (step.addConditionButton.height - font.lineHeight) / 2 + 1, Common.UI.TEXT_DIM_COLOR)
         }
         step.addConditionButton.extractRenderState(graphics, mouseX, mouseY, delta)
     }
@@ -347,7 +368,7 @@ class PlotFlowEditor(
         if (mouseY < listTop() || mouseY >= listBottom()) return isMouseOver(mouseX, mouseY)
 
         if (addStepButton.mouseClicked(mouseButtonEvent, doubled)) {
-            steps.add(EditedStep(null, null, StepPolicies(), emptyList()))
+            if (steps.size < MAX_FLOW_STEPS) steps.add(EditedStep(null, null, StepPolicies(), emptyList()))
             return true
         }
         steps.toList().forEachIndexed { index, step ->
@@ -376,7 +397,10 @@ class PlotFlowEditor(
             }
             if (step.isFolded) return@forEachIndexed
             if (step.addConditionButton.mouseClicked(mouseButtonEvent, doubled)) {
-                step.conditions.add(EditedCondition(Kind.Spawned, cropsFor(Kind.Spawned).firstOrNull(), 1, joinsWithOr = false))
+                if (step.canTakeCondition) {
+                    val isLastExitFull = (step.conditionCountByExit.lastOrNull() ?: 0) >= MAX_CONDITIONS_PER_EXIT
+                    step.conditions.add(EditedCondition(Kind.Spawned, cropsFor(Kind.Spawned).firstOrNull(), 1, joinsWithOr = isLastExitFull))
+                }
                 return true
             }
             step.conditions.toList().forEachIndexed { conditionIndex, condition ->
@@ -386,7 +410,9 @@ class PlotFlowEditor(
                     return true
                 }
                 if (conditionIndex > 0 && inRect(mouseX, mouseY, condition.joinBox.x, condition.joinBox.y, condition.joinBox.width, condition.joinBox.height)) {
+                    val wasWithinExitLimits = step.isWithinExitLimits
                     condition.joinsWithOr = !condition.joinsWithOr
+                    if (wasWithinExitLimits && !step.isWithinExitLimits) condition.joinsWithOr = !condition.joinsWithOr
                     return true
                 }
                 if (inRect(mouseX, mouseY, condition.handleBox.x, condition.handleBox.y, condition.handleBox.width, condition.handleBox.height)) {
@@ -409,9 +435,17 @@ class PlotFlowEditor(
         if (from < 0) return
         val to = step.conditions.indexOfFirst { mouseY < it.handleBox.y + it.handleBox.height / 2 }.let { if (it < 0) step.conditions.lastIndex else it }
         if (to == from) return
+        val wasWithinExitLimits = step.isWithinExitLimits
+        val conditionsBeforeDrag = step.conditions.toList()
+        val joinsWithOrBeforeDrag = conditionsBeforeDrag.map { it.joinsWithOr }
         step.conditions.removeAt(from)
         step.conditions.add(to, condition)
         step.conditions.first().joinsWithOr = false
+        if (wasWithinExitLimits && !step.isWithinExitLimits) {
+            step.conditions.clear()
+            step.conditions.addAll(conditionsBeforeDrag)
+            conditionsBeforeDrag.zip(joinsWithOrBeforeDrag).forEach { (restored, joinsWithOr) -> restored.joinsWithOr = joinsWithOr }
+        }
     }
 
     override fun charTyped(characterEvent: CharacterEvent): Boolean = textFields().any { it.charTyped(characterEvent) }
@@ -471,6 +505,7 @@ class PlotFlowEditor(
         private const val KEEP_IDENTICAL_LABEL: String = "keep identical"
         private const val HARVEST_INPUTS_LABEL: String = "harvest input spawns"
         private const val NO_EXIT: String = "no exit"
+        private const val EXIT_LIMIT_HINT: String = "$MAX_EXITS_PER_STEP exits of $MAX_CONDITIONS_PER_EXIT conditions (max $MAX_CONDITIONS_PER_EXIT)"
         private const val WHEN_LABEL: String = "when"
         private const val AND_LABEL: String = "and"
         private const val OR_LABEL: String = "or"

@@ -67,7 +67,7 @@ object LayoutRenderState {
 
     private fun heldBlock(): Block? = (Minecraft.getInstance().player?.mainHandItem?.item as? BlockItem)?.block
 
-    private val TILLABLE: Set<Block> = setOf(
+    val TILLABLE: Set<Block> = setOf(
         Blocks.DIRT,
         Blocks.GRASS_BLOCK,
         Blocks.COARSE_DIRT,
@@ -237,6 +237,7 @@ object LayoutRenderState {
         val cropsNeeded = linkedMapOf<CropDefinition, Int>()
         val unplaceableSoils = if (GreenhousePresets.ignoresSoilsNextToBuggedJellybeans()) cellsNextToYoungJellybeans(grid) else emptySet()
         val toleratedGhosts = mutableSetOf<BlockPos>()
+        val cropsHarvestedToExit = FlowRunner.cropsHarvestedToExit(grid)
 
         layout.slots.forEach { slot ->
             val wantedSoil = slot.soil ?: return@forEach
@@ -268,7 +269,7 @@ object LayoutRenderState {
                 if (footprintSlots.any { slot -> (slot.x to slot.y) in unplaceableSoils && grid.getPosForSlotCoords(slot.x, slot.y)?.let { level.getBlockState(it).isAir } == true }) return@forEach
                 val growing = footprintSlots.mapNotNull { grid.elementCoveringSlot(it) }.distinct()
 
-                val target = layoutPlant.slot.mark == LayoutSlot.Marking.Target
+                val isLeftUnplaced = layoutPlant.slot.mark == LayoutSlot.Marking.Target || layoutPlant.cropDef in cropsHarvestedToExit
 
                 if (growing.isNotEmpty()) {
                     val right = growing.singleOrNull()?.takeIf {
@@ -289,7 +290,7 @@ object LayoutRenderState {
                     obstructedSoils.add(soil)
                     return@forEach
                 }
-                if (target) return@forEach
+                if (isLeftUnplaced) return@forEach
 
                 cropsNeeded.merge(layoutPlant.cropDef, 1, Int::plus)
 
@@ -318,7 +319,7 @@ object LayoutRenderState {
 
         val watchMarks = mutableMapOf<BlockPos, Pair<VoxelShape, PlannerMark>>()
         val watchStands = mutableMapOf<UUID, Int>()
-        if (GreenhousePresets.harvestHighlightOnlyTargets()) watchTargets(level, grid, layout, watchMarks, watchStands)
+        if (GreenhousePresets.harvestHighlightOnlyTargets()) watchTargets(level, grid, layout, cropsHarvestedToExit, watchMarks, watchStands)
         else watchHarvestable(level, grid, watchMarks, watchStands)
 
         val next = PlannerLayout(phase, marks, ghosts, badStands, obstructedSoils, ghostStandsByPlant, watchMarks, watchStands, ghostCrops, standCrops, toleratedGhosts)
@@ -380,13 +381,14 @@ object LayoutRenderState {
         level: Level,
         grid: GreenhouseGrid,
         layout: PlotLayout,
+        cropsHarvestedToExit: Set<CropDefinition>,
         marks: MutableMap<BlockPos, Pair<VoxelShape, PlannerMark>>,
         stands: MutableMap<UUID, Int>
     ) {
         if (!GreenhousePresets.harvestHighlightOn()) return
 
         layout.plants
-            .filter { it.slot.mark == LayoutSlot.Marking.Target }
+            .filter { it.slot.mark == LayoutSlot.Marking.Target || it.cropDef in cropsHarvestedToExit }
             .forEach { target ->
                 val footprint = target.cropDef.footprint
                 val covering = buildList {

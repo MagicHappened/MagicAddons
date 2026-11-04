@@ -20,6 +20,7 @@ import org.magic.magicaddons.commands.debug.PlaySound
 import org.magic.magicaddons.commands.farming.GreenhouseScreenCommand
 import org.magic.magicaddons.commands.foraging.SafariHelperCommand
 import org.magic.magicaddons.commands.internal.ChorusExplanation
+import org.magic.magicaddons.commands.internal.FollowCoopPlanCommand
 import org.magic.magicaddons.commands.internal.GetPlannerItemCommand
 import org.magic.magicaddons.commands.internal.TickReport
 import org.magic.magicaddons.commands.misc.VersionCommand
@@ -53,7 +54,8 @@ object MainCommand {
         ExportCropIcons,
         TickReport,
         ChorusExplanation,
-        GetPlannerItemCommand
+        GetPlannerItemCommand,
+        FollowCoopPlanCommand
     )
 
     private val internalDispatcher: CommandDispatcher<FabricClientCommandSource> by lazy {

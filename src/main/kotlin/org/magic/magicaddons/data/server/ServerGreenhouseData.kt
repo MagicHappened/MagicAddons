@@ -7,11 +7,15 @@ import net.minecraft.world.level.block.Blocks
 import org.magic.magicaddons.data.greenhouse.crops.CropTableExport
 import org.magic.magicaddons.data.greenhouse.crops.DecayOutlook
 import org.magic.magicaddons.data.greenhouse.crops.PlantStage
+import org.magic.magicaddons.data.greenhouse.plot.ExitCondition
 import org.magic.magicaddons.data.greenhouse.plot.GREENHOUSE_SIZE
 import org.magic.magicaddons.data.greenhouse.plot.GreenhouseGrid
+import org.magic.magicaddons.data.greenhouse.plot.MAX_STEP_LABEL_LENGTH
 import org.magic.magicaddons.data.greenhouse.plot.PlotLayout
 import org.magic.magicaddons.data.greenhouse.plot.PlotPrediction
+import org.magic.magicaddons.data.greenhouse.transfer.toShareableName
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhousePresets
+import org.magic.magicaddons.features.farming.greenhousePresets.flows.FlowRunner
 import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseData
 import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseProfiles
 import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseTickTime
@@ -66,8 +70,31 @@ data class ServerGreenhouseData(
         val chorusLossChanceByTick: List<Double>?,
         val spawnChanceByTick: List<Double>?,
         val spawnCountByTick: List<Int>?,
-        val spawnCrops: List<String>?
+        val spawnCrops: List<String>?,
+        val flow: Flow?
     )
+
+    data class Flow(
+        val name: String,
+        val step: Int,
+        val stepCount: Int,
+        val loops: Boolean,
+        val stepLabel: String,
+        val nextStepLabel: String?,
+        val stepStartedAt: Long?,
+        val isCoopPlan: Boolean,
+        val exits: List<List<FlowCondition>>,
+        val progress: List<List<Int?>>,
+        val spawnCountByTickOf: Map<String, List<Int>>?
+    )
+
+    data class FlowCondition(val kind: FlowConditionKind, val crop: String, val amount: Int)
+
+    enum class FlowConditionKind {
+        @SerializedName("spawned") Spawned,
+        @SerializedName("stage") Stage,
+        @SerializedName("harvested") Harvested
+    }
 
     data class Plant(
         @SerializedName("c") val crop: String,
@@ -94,6 +121,10 @@ data class ServerGreenhouseData(
         private const val NO_SOIL: String = "none"
 
         private const val MS_PER_MINUTE: Long = 60_000
+
+        private const val MAX_FLOW_NAME_LENGTH: Int = 64
+
+        private const val MAX_FLOW_PROGRESS: Int = 9999
 
         fun missingDataOfActiveProfile(): List<MissingData> = buildList {
             if (GreenhouseData.miscInfo.cropGrowthValue == null) add(MissingData.CropGrowth)
@@ -143,7 +174,7 @@ data class ServerGreenhouseData(
         }
 
         private fun spawnChancesOf(grid: GreenhouseGrid): PlotPrediction.SpawnChances? =
-            grid.state.spawnChances ?: grid.state.spawnChanceCalculation?.chances?.getNow(null)
+            grid.state.spawnChances ?: grid.state.spawnChanceCalculation?.chances?.takeUnless { it.isCompletedExceptionally }?.getNow(null)
 
         private fun plotOf(grid: GreenhouseGrid): Plot = Plot(
             id = grid.layout.id,
@@ -165,8 +196,49 @@ data class ServerGreenhouseData(
                 ?: grid.state.chorusRiskCalculation?.takeIf { grid.state.isChorusRiskCalculating }?.immediateLossChanceByTick())?.toList(),
             spawnChanceByTick = spawnChancesOf(grid)?.chancesOfAtLeast(GreenhousePresets.spawnCountThreshold()),
             spawnCountByTick = spawnChancesOf(grid)?.countsReachedWith(GreenhousePresets.spawnConfidence()),
-            spawnCrops = spawnChancesOf(grid)?.crops
+            spawnCrops = spawnChancesOf(grid)?.crops,
+            flow = flowOf(grid)
         )
+
+        private fun flowOf(grid: GreenhouseGrid): Flow? {
+            val running = FlowRunner.runningOn(grid) ?: return null
+            val plotFlow = running.plot.flow ?: return null
+            if (!plotFlow.isWithinSharedBounds) return null
+            val exits = running.step.exits
+
+            return Flow(
+                name = GreenhouseData.fullPlotName(running.plot).toShareableName(MAX_FLOW_NAME_LENGTH),
+                step = running.stepIndex + 1,
+                stepCount = running.stepCount,
+                loops = plotFlow.loop,
+                stepLabel = running.title(running.stepIndex).toShareableName(MAX_STEP_LABEL_LENGTH),
+                nextStepLabel = running.nextIndex?.let { running.title(it).toShareableName(MAX_STEP_LABEL_LENGTH) },
+                stepStartedAt = grid.state.stepStartedAt,
+                isCoopPlan = grid.state.isFollowingCoopPlan,
+                exits = exits.map { exit -> exit.conditions.map(::flowConditionOf) },
+                progress = exits.map { exit -> exit.conditions.map { FlowRunner.progressOf(grid, it)?.coerceIn(0, MAX_FLOW_PROGRESS) } },
+                spawnCountByTickOf = spawnCountByTickOfExitCrops(grid)
+            )
+        }
+
+        private fun flowConditionOf(condition: ExitCondition): FlowCondition = when (condition) {
+            is ExitCondition.MutationSpawned -> FlowCondition(FlowConditionKind.Spawned, condition.crop.name, condition.count)
+            is ExitCondition.HighestStageAtLeast -> FlowCondition(FlowConditionKind.Stage, condition.crop.name, condition.stage)
+            is ExitCondition.MutationHarvested -> FlowCondition(FlowConditionKind.Harvested, condition.crop.name, condition.count)
+        }
+
+        private fun spawnCountByTickOfExitCrops(grid: GreenhouseGrid): Map<String, List<Int>>? {
+            val chancesByCrop = grid.state.exitCropSpawnChances
+                ?: grid.state.exitCropSpawnCalculation?.chances?.takeUnless { it.isCompletedExceptionally }?.getNow(null)
+                ?: return null
+            val cropNamesSpawnedToExit = FlowRunner.cropsSpawnedToExit(grid).mapTo(HashSet()) { it.name }
+            val confidence = GreenhousePresets.spawnConfidence()
+
+            return chancesByCrop
+                .filterKeys { it in cropNamesSpawnedToExit }
+                .mapValues { (_, chances) -> chances.countsReachedWith(confidence) }
+                .takeIf { it.isNotEmpty() }
+        }
 
         private fun isDecayReachable(outlook: DecayOutlook): Boolean = outlook.isReachableFromCurrentSpots
 

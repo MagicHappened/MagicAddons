@@ -59,6 +59,10 @@ object PlotPrediction {
 
     const val LIKELY_SPAWNS_HORIZON_TICKS: Int = 150
 
+    private const val MAX_STORED_SPAWN_ROWS: Int = LIKELY_SPAWNS_HORIZON_TICKS + 1
+
+    private const val MAX_STORED_SPAWN_CROPS: Int = 64
+
     private const val SPAWN_CHANCE_RUNS: Int = 10_000
 
     private const val STORED_CHANCE_DECIMALS: Double = 10_000.0
@@ -70,6 +74,8 @@ object PlotPrediction {
     private const val LARGEST_FOOTPRINT: Int = 3
 
     private val neverPlannedCrops: Set<CropDefinition> = setOf(Lonelily.definition)
+
+    fun countsAsLikelySpawn(crop: CropDefinition): Boolean = crop.maxStage == 1 && crop !in neverPlannedCrops
 
     fun expectedSpawnsDuringAbsence(
         layoutBefore: PlotLayout,
@@ -118,7 +124,10 @@ object PlotPrediction {
         companion object {
             fun fromStoredRows(rows: List<List<Double>>, crops: List<String>): SpawnChances? {
                 if (rows.isEmpty()) return null
-                return SpawnChances(rows.map { row -> DoubleArray(MAX_COUNTED_SPAWNS) { row.getOrElse(it) { 0.0 } } }, crops)
+                return SpawnChances(
+                    rows.take(MAX_STORED_SPAWN_ROWS).map { row -> DoubleArray(MAX_COUNTED_SPAWNS) { row.getOrElse(it) { 0.0 } } },
+                    crops.take(MAX_STORED_SPAWN_CROPS)
+                )
             }
         }
     }
@@ -185,7 +194,6 @@ object PlotPrediction {
                             crop.footprint.cellsFrom(x, y).all { (cellX, cellY) -> layout.getSlot(cellX, cellY)?.soil?.let { it in crop.requiredSoil } == true } &&
                             (!rule.needsOwnEffectsAround || effectsReceivedAround(layout, crop, x, y, null).containsAll(crop.effects))
                 }
-                val isCountable = crop.maxStage == 1 && crop !in neverPlannedCrops
                 SpawnableCrop(
                     crop = crop,
                     id = idOf(crop.name),
@@ -198,7 +206,7 @@ object PlotPrediction {
                         val slot = layout.getSlot(cell % size, cell / size) ?: return@IntArray NEVER_TICK
                         ticksUntilHalt(0.0, GreenhouseGrid.waterEffectAt(layout, slot)) ?: NEVER_TICK
                     },
-                    counted = BooleanArray(tileCount) { cell -> isCountable && originOk[cell] && countsSpawn(crop, cell % size, cell / size) }
+                    counted = BooleanArray(tileCount) { cell -> originOk[cell] && countsSpawn(crop, cell % size, cell / size) }
                 )
             }
         return SpawnSimulation(size, idByCropName.size, deadPlantId, spawnables, occupants, contributesUntil, decaysAt)
@@ -251,30 +259,49 @@ object PlotPrediction {
 
         fun cropOf(spawnable: Int): CropDefinition = spawnables[spawnable].crop
 
-        fun spawnChancesByTick(random: Random, isCancelled: () -> Boolean): SpawnChances? {
+        fun spawnChancesByTick(random: Random, isCancelled: () -> Boolean): SpawnChances? =
+            spawnChancesByTickOfGroups(random, isCancelled, IntArray(spawnables.size), groupCount = 1)?.single()
+
+        fun spawnChancesByTickOfCrop(random: Random, isCancelled: () -> Boolean): Map<String, SpawnChances>? {
+            val countedSpawnables = spawnables.indices.filter { spawnable -> spawnables[spawnable].counted.any { it } }
+            val groupOfSpawnable = IntArray(spawnables.size) { countedSpawnables.indexOf(it) }
+            val chancesByGroup = spawnChancesByTickOfGroups(random, isCancelled, groupOfSpawnable, countedSpawnables.size) ?: return null
+
+            return countedSpawnables.withIndex().associate { (group, spawnable) -> spawnables[spawnable].crop.name to chancesByGroup[group] }
+        }
+
+        private fun spawnChancesByTickOfGroups(random: Random, isCancelled: () -> Boolean, groupOfSpawnable: IntArray, groupCount: Int): List<SpawnChances>? {
             val horizon = LIKELY_SPAWNS_HORIZON_TICKS
-            val hits = Array(horizon + 1) { IntArray(MAX_COUNTED_SPAWNS) }
-            val spawnsAtTick = IntArray(horizon)
+            val hitsByGroup = Array(groupCount) { Array(horizon + 1) { IntArray(MAX_COUNTED_SPAWNS) } }
+            val spawnsAtTickByGroup = Array(groupCount) { IntArray(horizon) }
             val spawnsBySpawnable = IntArray(spawnables.size)
 
             repeat(SPAWN_CHANCE_RUNS) {
                 if (isCancelled()) return null
-                spawnsAtTick.fill(0)
+                spawnsAtTickByGroup.forEach { it.fill(0) }
                 run(random, horizon) { tick, spawnable, x, y ->
                     if (!spawnables[spawnable].counted[y * size + x]) return@run
-                    spawnsAtTick[tick]++
+                    spawnsAtTickByGroup[groupOfSpawnable[spawnable]][tick]++
                     spawnsBySpawnable[spawnable]++
                 }
-                var spawned = 0
-                for (tick in 0 until horizon) {
-                    spawned += spawnsAtTick[tick]
-                    val row = hits[tick + 1]
-                    for (index in 0 until min(spawned, MAX_COUNTED_SPAWNS)) row[index]++
+                for (group in 0 until groupCount) {
+                    val spawnsAtTick = spawnsAtTickByGroup[group]
+                    var spawned = 0
+                    for (tick in 0 until horizon) {
+                        spawned += spawnsAtTick[tick]
+                        val row = hitsByGroup[group][tick + 1]
+                        for (index in 0 until min(spawned, MAX_COUNTED_SPAWNS)) row[index]++
+                    }
                 }
             }
-            val chancesByTick = hits.map { row -> DoubleArray(MAX_COUNTED_SPAWNS) { row[it].toDouble() / SPAWN_CHANCE_RUNS } }
-            val crops = spawnables.indices.filter { spawnsBySpawnable[it] > 0 }.sortedByDescending { spawnsBySpawnable[it] }.map { spawnables[it].crop.name }
-            return SpawnChances(chancesByTick, crops)
+            return List(groupCount) { group ->
+                val chancesByTick = hitsByGroup[group].map { row -> DoubleArray(MAX_COUNTED_SPAWNS) { row[it].toDouble() / SPAWN_CHANCE_RUNS } }
+                val crops = spawnables.indices
+                    .filter { groupOfSpawnable[it] == group && spawnsBySpawnable[it] > 0 }
+                    .sortedByDescending { spawnsBySpawnable[it] }
+                    .map { spawnables[it].crop.name }
+                SpawnChances(chancesByTick, crops)
+            }
         }
 
         fun run(random: Random, horizon: Int, onSpawn: (tick: Int, spawnable: Int, x: Int, y: Int) -> Unit) {

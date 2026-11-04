@@ -2,12 +2,16 @@ package org.magic.magicaddons.features.farming.greenhousePresets.flows
 
 import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
 import org.magic.magicaddons.data.greenhouse.crops.Plant
+import net.minecraft.client.Minecraft
+import org.magic.magicaddons.data.greenhouse.plot.CoopPlan
 import org.magic.magicaddons.data.greenhouse.plot.ExitCondition
 import org.magic.magicaddons.data.greenhouse.plot.FlowStep
 import org.magic.magicaddons.data.greenhouse.plot.GreenhouseGrid
 import org.magic.magicaddons.data.greenhouse.plot.GreenhouseLayout
 import org.magic.magicaddons.data.greenhouse.plot.InputSpawns
+import org.magic.magicaddons.data.greenhouse.plot.PlanOwner
 import org.magic.magicaddons.data.greenhouse.plot.PlotLayout
+import org.magic.magicaddons.data.greenhouse.plot.StepChange
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhousePresets
 import org.magic.magicaddons.features.farming.greenhousePresets.PlannerNeeds
 import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseData
@@ -24,8 +28,10 @@ object FlowRunner {
         fun title(index: Int): String = plot.steps[index].title(index)
     }
 
-    fun runningOn(grid: GreenhouseGrid): Running? {
-        val layout = grid.state.assignedLayout ?: return null
+    fun runningOn(grid: GreenhouseGrid): Running? = runningOf(grid.state.assignedLayout)
+
+    private fun runningOf(layout: PlotLayout?): Running? {
+        layout ?: return null
         val preset = GreenhouseData.greenhouseLayoutFor(layout) ?: return null
         val plot = preset.plotOf(layout) ?: return null
         if (!plot.hasSteps) return null
@@ -35,55 +41,101 @@ object FlowRunner {
     }
 
     fun assign(grid: GreenhouseGrid, plot: PlotLayout, stepIndex: Int, turns: Int, noRotate: Boolean) {
-        val state = grid.state
-        val keepsStep = runningOn(grid)?.plot === plot
+        val ownPlan = grid.state.ownPlan
+        val keepsStep = runningOf(ownPlan.assignedLayout)?.plot === plot
         if (!keepsStep) {
             val step = plot.steps.getOrElse(stepIndex) { plot.steps.first() }
-            state.assignedLayout = step.layout
-            state.previousStep = null
-            startStep(grid, step)
+            ownPlan.assignedLayout = step.layout
+            ownPlan.previousStep = null
+            startStep(grid, ownPlan, step, System.currentTimeMillis())
         }
-        state.noRotateAssignedLayout = noRotate
-        state.planTurns = turns
-        state.buildAnnounced = false
+        ownPlan.noRotateAssignedLayout = noRotate
+        ownPlan.planTurns = turns
+        ownPlan.buildAnnounced = false
         PlannerNeeds.forgetSentLines(grid)
         GreenhouseData.noteUnsavedChange()
         GreenhouseData.regenRender()
+        GreenhouseData.calculateSpawnForecasts(grid)
     }
 
-    fun clearState(grid: GreenhouseGrid) {
-        val state = grid.state
-        state.stepStartedAt = null
-        state.harvestedThisStep.clear()
-        state.previousStep = null
-        state.clearMarked.clear()
+    fun switchRunningPlan(grid: GreenhouseGrid, owner: PlanOwner) {
+        if (grid.state.runs == owner) return
+        grid.state.runs = owner
+        grid.state.buildAnnounced = false
+        PlannerNeeds.forgetSentLines(grid)
+        GreenhouseData.noteUnsavedChange()
+        GreenhouseData.regenRender()
+        GreenhouseData.calculateSpawnForecasts(grid)
     }
 
-    private fun startStep(grid: GreenhouseGrid, step: FlowStep) {
-        val state = grid.state
-        state.stepStartedAt = System.currentTimeMillis()
-        state.harvestedThisStep.clear()
-        state.clearMarked.clear()
+    fun startCoopPlan(grid: GreenhouseGrid, plan: CoopPlan) {
+        val progress = plan.progress
+        val layout = progress.assignedLayout ?: return
+        progress.planTurns = grid.bestRotationFor(layout)
+        startStep(grid, progress, plan.plot.steps[plan.stepIndex], progress.stepStartedAt ?: System.currentTimeMillis())
+    }
+
+    fun moveCoopPlanToStep(grid: GreenhouseGrid, plan: CoopPlan, stepIndex: Int, startedAt: Long) {
+        val progress = plan.progress
+        val leftLayout = progress.assignedLayout
+        progress.previousStep = leftLayout?.let { layout ->
+            GreenhouseGrid.GridState.StepSnapshot(layout.id, progress.stepStartedAt, progress.harvestedThisStep.toMap()).also { it.layout = layout }
+        }
+        val step = plan.plot.steps[stepIndex]
+        progress.assignedLayout = step.layout
+        startStep(grid, progress, step, startedAt)
+        progress.buildAnnounced = false
+        plan.forgetCoopHarvests()
+        GreenhouseData.noteUnsavedChange()
+        if (grid.state.coopPlan !== plan || !grid.state.isFollowingCoopPlan) return
+        PlannerNeeds.forgetSentLines(grid)
+        GreenhouseData.regenRender()
+        GreenhouseData.calculateSpawnForecasts(grid)
+    }
+
+    fun clearState(progress: GreenhouseGrid.PlanProgress) {
+        progress.stepStartedAt = null
+        progress.harvestedThisStep.clear()
+        progress.previousStep = null
+        progress.clearMarked.clear()
+    }
+
+    private fun startStep(grid: GreenhouseGrid, progress: GreenhouseGrid.PlanProgress, step: FlowStep, startedAt: Long) {
+        progress.stepStartedAt = startedAt
+        progress.harvestedThisStep.clear()
+        progress.clearMarked.clear()
         val clearsEverything = step.policies.fullClear || !step.policies.keepIdentical
-        grid.layout.plants.filter { clearsEverything || !isWantedByPlan(grid, it) }.mapTo(state.clearMarked) { clearKeyOf(it) }
+        val plan = progress.assignedLayout?.turnedBy(progress.planTurns)
+        grid.layout.plants.filter { clearsEverything || !isWantedBy(plan, it) }.mapTo(progress.clearMarked) { clearKeyOf(it) }
     }
 
-    private fun isWantedByPlan(grid: GreenhouseGrid, plant: Plant): Boolean {
-        val planned = grid.plannedPlantAt(plant.slot.x, plant.slot.y) ?: return false
+    private fun isWantedBy(plan: PlotLayout?, plant: Plant): Boolean {
+        val planned = plan?.getSlot(plant.slot.x, plant.slot.y)?.let { plan.plantCovering(it) } ?: return false
         return planned.slot.x == plant.slot.x && planned.slot.y == plant.slot.y && planned.acceptsCrop(plant.cropDef)
+    }
+
+    private fun followedCoopPlanOf(grid: GreenhouseGrid): CoopPlan? = grid.state.coopPlan?.takeIf { grid.state.isFollowingCoopPlan }
+
+    private fun noteCoopStepChange(grid: GreenhouseGrid, change: StepChange) {
+        val plan = followedCoopPlanOf(grid) ?: return
+        plan.unreportedStepChange = change
+        plan.stepChangedBy = Minecraft.getInstance().user.name
+        plan.stepChange = change
+        plan.forgetCoopHarvests()
     }
 
     fun onScanSettled(grid: GreenhouseGrid) {
         val state = grid.state
-        if (state.clearMarked.isNotEmpty()) {
-            val standing = grid.layout.plants.mapTo(HashSet()) { clearKeyOf(it) }
-            state.clearMarked.retainAll(standing)
-        }
+        val standing = grid.layout.plants.mapTo(HashSet()) { clearKeyOf(it) }
+        listOfNotNull(state.ownPlan, state.coopPlan?.progress)
+            .filter { it.clearMarked.isNotEmpty() }
+            .forEach { it.clearMarked.retainAll(standing) }
         val running = runningOn(grid) ?: return
         val next = running.nextIndex ?: return
         if (running.step.exits.none { exit -> exit.conditions.all { holds(grid, running, it) } }) return
 
         advance(grid, running, next)
+        noteCoopStepChange(grid, StepChange.Scan)
         if (GreenhousePresets.warningTypeEnabled(PlantWarnings.FLOW_STEP_KEY)) {
             val where = if (next == 0 && running.isLoopingBack) "back on" else "on"
             ChatUtils.sendWithPrefix("${grid.layout.displayName()} finished ${running.title(running.stepIndex)}, now $where ${running.title(next)}")
@@ -95,7 +147,7 @@ object FlowRunner {
         state.previousStep = GreenhouseGrid.GridState.StepSnapshot(running.step.layout.id, state.stepStartedAt, state.harvestedThisStep.toMap())
             .also { it.layout = running.step.layout }
         state.assignedLayout = running.plot.steps[toIndex].layout
-        startStep(grid, running.plot.steps[toIndex])
+        startStep(grid, state.runningPlan, running.plot.steps[toIndex], System.currentTimeMillis())
         state.buildAnnounced = false
         PlannerNeeds.forgetSentLines(grid)
         GreenhouseData.noteUnsavedChange()
@@ -106,6 +158,7 @@ object FlowRunner {
         val state = grid.state
         val previous = state.previousStep ?: return false
         val layout = previous.layout ?: return false
+        if (state.isFollowingCoopPlan) return stepCoopPlanBack(grid, layout)
         state.assignedLayout = layout
         state.stepStartedAt = previous.startedAt
         state.harvestedThisStep.clear()
@@ -116,7 +169,19 @@ object FlowRunner {
         PlannerNeeds.forgetSentLines(grid)
         GreenhouseData.noteUnsavedChange()
         GreenhouseData.regenRender()
+        GreenhouseData.calculateSpawnForecasts(grid)
         runningOn(grid)?.let { ChatUtils.sendWithPrefix("${grid.layout.displayName()} moved back to ${it.title(it.stepIndex)}") }
+        return true
+    }
+
+    private fun stepCoopPlanBack(grid: GreenhouseGrid, layout: PlotLayout): Boolean {
+        val running = runningOn(grid) ?: return false
+        val backIndex = running.plot.stepIndexOf(layout) ?: return false
+        advance(grid, running, backIndex)
+        grid.state.previousStep = null
+        noteCoopStepChange(grid, StepChange.Back)
+        GreenhouseData.calculateSpawnForecasts(grid)
+        ChatUtils.sendWithPrefix("${grid.layout.displayName()} moved back to ${running.title(backIndex)}")
         return true
     }
 
@@ -124,6 +189,8 @@ object FlowRunner {
         val running = runningOn(grid) ?: return
         if (stepIndex == running.stepIndex || stepIndex !in running.plot.steps.indices) return
         advance(grid, running, stepIndex)
+        noteCoopStepChange(grid, StepChange.Pick)
+        GreenhouseData.calculateSpawnForecasts(grid)
         ChatUtils.sendWithPrefix("${grid.layout.displayName()} moved to ${running.title(stepIndex)}")
     }
 
@@ -133,6 +200,18 @@ object FlowRunner {
     }
 
     fun isMarkedForClear(grid: GreenhouseGrid, plant: Plant): Boolean = clearKeyOf(plant) in grid.state.clearMarked
+
+    fun cropsHarvestedToExit(grid: GreenhouseGrid): Set<CropDefinition> =
+        runningOn(grid)?.step?.exits.orEmpty()
+            .flatMap { it.conditions }
+            .filterIsInstance<ExitCondition.MutationHarvested>()
+            .mapTo(HashSet()) { it.crop }
+
+    fun cropsSpawnedToExit(grid: GreenhouseGrid): Set<CropDefinition> =
+        runningOn(grid)?.step?.exits.orEmpty()
+            .flatMap { it.conditions }
+            .filterIsInstance<ExitCondition.MutationSpawned>()
+            .mapTo(LinkedHashSet()) { it.crop }
 
     fun harvestsSpawnedIngredients(grid: GreenhouseGrid): Boolean = runningOn(grid)?.step?.policies?.inputSpawns == InputSpawns.Harvest
 
@@ -161,7 +240,8 @@ object FlowRunner {
     private fun highestStageOf(grid: GreenhouseGrid, crop: CropDefinition): Int? =
         grid.layout.plants.filter { it.cropDef == crop }.mapNotNull { it.highestStage }.maxOrNull()
 
-    private fun harvestedCount(grid: GreenhouseGrid, crop: CropDefinition): Int = grid.state.harvestedThisStep[crop.name] ?: 0
+    private fun harvestedCount(grid: GreenhouseGrid, crop: CropDefinition): Int =
+        followedCoopPlanOf(grid)?.harvestedByCoop(crop.name) ?: grid.state.harvestedThisStep[crop.name] ?: 0
 
     fun needLine(grid: GreenhouseGrid, running: Running): String? {
         val exit = running.step.exits.firstOrNull() ?: return null

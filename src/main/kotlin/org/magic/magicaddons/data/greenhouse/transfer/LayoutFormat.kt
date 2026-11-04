@@ -18,6 +18,11 @@ fun PlotLayout.placeImportedPlant(definition: CropDefinition, x: Int, y: Int, ma
     plants.add(Plant(definition.elementId, originSlot, cropDef = definition))
 }
 
+private const val SHAREABLE_NAME_PUNCTUATION: String = "'-_.()"
+
+fun String.toShareableName(maxLength: Int): String =
+    filter { it in 'a'..'z' || it in 'A'..'Z' || it in '0'..'9' || it == ' ' || it in SHAREABLE_NAME_PUNCTUATION }.trim().take(maxLength).trimEnd()
+
 interface LayoutFormat {
 
     val displayName: String

@@ -9,10 +9,13 @@ import org.magic.magicaddons.data.greenhouse.plot.LayoutSlot
 import org.magic.magicaddons.data.greenhouse.plot.PlotLayout
 import org.magic.magicaddons.data.greenhouse.plot.PlotPrediction
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhousePresets
+import org.magic.magicaddons.features.farming.greenhousePresets.flows.FlowRunner
 import org.magic.magicaddons.features.farming.greenhousePresets.greenhousesState.GreenhouseTickTime
 import org.magic.magicaddons.features.farming.greenhousePresets.lookups.BioanalysisAccessory
 
 object LikelySpawns {
+
+    private const val MAX_SIMULATED_EXIT_CROPS: Int = 4
 
     private val worker = Executors.newSingleThreadExecutor { task ->
         Thread(task, "MagicAddons likely spawns").apply {
@@ -21,14 +24,17 @@ object LikelySpawns {
         }
     }
 
-    class Calculation(private val simulation: PlotPrediction.SpawnSimulation) {
+    class Calculation<T>(
+        private val simulation: PlotPrediction.SpawnSimulation,
+        chancesOf: PlotPrediction.SpawnSimulation.(Random, () -> Boolean) -> T?
+    ) {
         val fingerprint: Int get() = simulation.fingerprint
 
         @Volatile
         private var isCancelled: Boolean = false
 
-        val chances: CompletableFuture<PlotPrediction.SpawnChances?> = CompletableFuture.supplyAsync({
-            simulation.spawnChancesByTick(Random(simulation.fingerprint.toLong())) { isCancelled }
+        val chances: CompletableFuture<T?> = CompletableFuture.supplyAsync({
+            simulation.chancesOf(Random(simulation.fingerprint.toLong())) { isCancelled }
         }, worker)
 
         val isRunning: Boolean get() = !chances.isDone
@@ -49,7 +55,20 @@ object LikelySpawns {
         ) { crop, x, y -> countsSpawn(plan, crop, x, y) }
     }
 
+    fun exitCropSimulationOf(grid: GreenhouseGrid): PlotPrediction.SpawnSimulation? {
+        val cropsSpawnedToExit = FlowRunner.cropsSpawnedToExit(grid).take(MAX_SIMULATED_EXIT_CROPS).toSet()
+        if (cropsSpawnedToExit.isEmpty()) return null
+
+        return PlotPrediction.spawnSimulationOf(
+            grid.layout,
+            BioanalysisAccessory.mutationWeightMultiplier(),
+            GreenhouseTickTime.remainingTickMs(),
+            GreenhouseTickTime.tickMs
+        ) { crop, _, _ -> crop in cropsSpawnedToExit }
+    }
+
     private fun countsSpawn(plan: PlotLayout?, crop: CropDefinition, x: Int, y: Int): Boolean {
+        if (!PlotPrediction.countsAsLikelySpawn(crop)) return false
         val planned = plan?.getSlot(x, y)?.let { plan.plantCovering(it) }
         if (planned != null && planned.slot.mark == LayoutSlot.Marking.Ingredient && planned.acceptsCrop(crop)) {
             if (!GreenhousePresets.countsIngredientsAsHarvestable()) return false

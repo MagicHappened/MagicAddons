@@ -79,7 +79,10 @@ object GreenhouseData : GridCallbacks {
     var greenhouseGrids = mutableListOf<GreenhouseGrid>()
     var presetGrids = mutableListOf<GreenhouseLayout>()
 
-    fun greenhouseLayoutFor(plot: PlotLayout): GreenhouseLayout? = presetGrids.find { it.holds(plot) }
+    fun coopPlanHolding(layout: PlotLayout): CoopPlan? =
+        greenhouseGrids.firstNotNullOfOrNull { grid -> grid.state.coopPlan?.takeIf { it.preset.holds(layout) } }
+
+    fun greenhouseLayoutFor(plot: PlotLayout): GreenhouseLayout? = presetGrids.find { it.holds(plot) } ?: coopPlanHolding(plot)?.preset
 
     fun presetPlotOf(layout: PlotLayout): PlotLayout? = greenhouseLayoutFor(layout)?.plotOf(layout)
 
@@ -87,14 +90,16 @@ object GreenhouseData : GridCallbacks {
         val layouts = presetGrids.flatMap { preset -> preset.plots.flatMap { plot -> plot.steps.map { it.layout } } }
 
         greenhouseGrids.forEach { grid ->
-            grid.state.assignedLayout = layouts.find { it.id == grid.state.assignedLayoutId }
+            val ownPlan = grid.state.ownPlan
+            ownPlan.assignedLayout = layouts.find { it.id == grid.state.assignedLayoutId }
             grid.state.assignedLayoutId = null
-            grid.state.previousStep?.let { previous -> previous.layout = layouts.find { it.id == previous.layoutId } }
-            if (grid.state.assignedLayout == null) FlowRunner.clearState(grid)
+            ownPlan.previousStep?.let { previous -> previous.layout = layouts.find { it.id == previous.layoutId } }
+            if (ownPlan.assignedLayout == null) FlowRunner.clearState(ownPlan)
         }
     }
 
     fun fullPlotName(plot: PlotLayout): String {
+        coopPlanHolding(plot)?.let { return it.name }
         val greenhouse = greenhouseLayoutFor(plot) ?: return plot.displayName()
         return if (greenhouse.plots.size > 1) "${greenhouse.plotTitle(plot)} of ${greenhouse.displayName()}" else greenhouse.displayName()
     }
@@ -196,7 +201,6 @@ object GreenhouseData : GridCallbacks {
                 val gridState = GreenhouseGrid.GridState(
                     lastScanTime = null,
                     needsRescan = true,
-                    assignedLayout = null,
                     scanned = false
                 )
 
@@ -691,6 +695,8 @@ object GreenhouseData : GridCallbacks {
             chorusRiskCalculation = null
             spawnChances = incoming.state.spawnChances
             spawnChanceCalculation = null
+            exitCropSpawnChances = null
+            exitCropSpawnCalculation = null
             uncertainSpawns.clear()
             uncertainSpawns += incoming.state.uncertainSpawns
             this.lastChangedAt = lastChangedAt
@@ -768,7 +774,7 @@ object GreenhouseData : GridCallbacks {
         grid.state.countedSignature = TimesMutatedCounter.countInputsSignatureOf(grid.layout, grid.state.uncertainSpawns)
     }
 
-    private class PendingForecasts(val chorusFingerprint: Int?, val spawnFingerprint: Int, val changedAt: Long)
+    private class PendingForecasts(val chorusFingerprint: Int?, val spawnFingerprint: Int, val exitCropSpawnFingerprint: Int?, val changedAt: Long)
 
     private val pendingForecasts: MutableMap<GreenhouseGrid, PendingForecasts> = mutableMapOf()
 
@@ -792,15 +798,18 @@ object GreenhouseData : GridCallbacks {
         val grid = event.grid
         val chorusFingerprint = chorusRiskOf(grid)?.fingerprint
         val spawnFingerprint = LikelySpawns.simulationOf(grid).fingerprint
+        val exitCropSpawnFingerprint = LikelySpawns.exitCropSimulationOf(grid)?.fingerprint
         val isChorusCurrent = chorusFingerprint != null && chorusFingerprint == grid.state.chorusRiskCalculation?.fingerprint
         val isSpawnCurrent = spawnFingerprint == grid.state.spawnChanceCalculation?.fingerprint
-        if (isChorusCurrent && isSpawnCurrent) {
+        val isExitCropSpawnCurrent = exitCropSpawnFingerprint == grid.state.exitCropSpawnCalculation?.fingerprint
+        if (isChorusCurrent && isSpawnCurrent && isExitCropSpawnCurrent) {
             pendingForecasts.remove(grid)
             return
         }
         val pending = pendingForecasts[grid]
-        if (pending != null && pending.chorusFingerprint == chorusFingerprint && pending.spawnFingerprint == spawnFingerprint) return
-        pendingForecasts[grid] = PendingForecasts(chorusFingerprint, spawnFingerprint, System.currentTimeMillis())
+        if (pending != null && pending.chorusFingerprint == chorusFingerprint && pending.spawnFingerprint == spawnFingerprint &&
+            pending.exitCropSpawnFingerprint == exitCropSpawnFingerprint) return
+        pendingForecasts[grid] = PendingForecasts(chorusFingerprint, spawnFingerprint, exitCropSpawnFingerprint, System.currentTimeMillis())
     }
 
     private fun calculateQuietForecasts() {
@@ -816,7 +825,13 @@ object GreenhouseData : GridCallbacks {
         pendingForecasts.remove(grid)
         if (greenhouseGrids.none { it === grid }) return
         calculateChorusRisk(grid)
+        calculateSpawnForecasts(grid)
+    }
+
+    fun calculateSpawnForecasts(grid: GreenhouseGrid) {
+        if (greenhouseGrids.none { it === grid }) return
         calculateSpawnChances(grid)
+        calculateExitCropSpawnChances(grid)
     }
 
     private fun calculateSpawnChances(grid: GreenhouseGrid) {
@@ -825,7 +840,7 @@ object GreenhouseData : GridCallbacks {
 
         grid.state.spawnChanceCalculation?.cancel()
         grid.state.spawnChances = null
-        val calculation = LikelySpawns.Calculation(simulation)
+        val calculation = LikelySpawns.Calculation(simulation, PlotPrediction.SpawnSimulation::spawnChancesByTick)
         grid.state.spawnChanceCalculation = calculation
 
         calculation.chances
@@ -836,6 +851,28 @@ object GreenhouseData : GridCallbacks {
             }
             .exceptionally { failure ->
                 Common.LOGGER.warn("Could not work out the likely spawns for ${grid.layout.displayName()}", failure)
+                null
+            }
+    }
+
+    private fun calculateExitCropSpawnChances(grid: GreenhouseGrid) {
+        val simulation = LikelySpawns.exitCropSimulationOf(grid)
+        if (simulation?.fingerprint == grid.state.exitCropSpawnCalculation?.fingerprint) return
+
+        grid.state.exitCropSpawnCalculation?.cancel()
+        grid.state.exitCropSpawnChances = null
+        val calculation = simulation?.let { LikelySpawns.Calculation(it, PlotPrediction.SpawnSimulation::spawnChancesByTickOfCrop) }
+        grid.state.exitCropSpawnCalculation = calculation
+        calculation ?: return
+
+        calculation.chances
+            .thenAccept { chancesByCrop ->
+                Minecraft.getInstance().execute {
+                    if (chancesByCrop != null && grid.state.exitCropSpawnCalculation === calculation) grid.state.exitCropSpawnChances = chancesByCrop
+                }
+            }
+            .exceptionally { failure ->
+                Common.LOGGER.warn("Could not work out the likely exit crop spawns for ${grid.layout.displayName()}", failure)
                 null
             }
     }
@@ -1178,14 +1215,15 @@ object GreenhouseData : GridCallbacks {
     }
 
     fun unplanGreenhouse(grid: GreenhouseGrid): Boolean {
-        if (grid.state.assignedLayout == null) {
+        val ownPlan = grid.state.ownPlan
+        if (ownPlan.assignedLayout == null) {
             ChatUtils.sendWithPrefix("No planner running on ${grid.layout.displayName()}.")
             return false
         }
 
-        grid.state.assignedLayout = null
-        grid.state.buildAnnounced = false
-        FlowRunner.clearState(grid)
+        ownPlan.assignedLayout = null
+        ownPlan.buildAnnounced = false
+        FlowRunner.clearState(ownPlan)
         noteUnsavedChange()
 
         regenRender()

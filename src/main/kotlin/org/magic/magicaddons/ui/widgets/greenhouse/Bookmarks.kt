@@ -17,6 +17,7 @@ class Bookmarks<T>(
     private val labelOf: (T) -> String,
     private val fillColorOf: (T) -> Int = { Common.UI.BACKGROUND_COLOR },
     private val tooltipOf: (T) -> String? = { null },
+    private val dotColorOf: (T) -> Int? = { null },
     private val tabLength: Int? = null,
     private val alignToEnd: Boolean = false,
     private val tuckUnderFrame: Int = Common.UI.BORDER_SIZE,
@@ -115,18 +116,26 @@ class Bookmarks<T>(
                     false
                 )
             } else if (side != Side.Right) {
-                val labelRoomWidth = width - Common.UI.TEXT_X_PAD * 2
+                val dotColor = dotColorOf(item)
+                val dotRoomWidth = if (dotColor != null) TAB_DOT_SIZE + Common.UI.SPACING_SMALL else 0
+                val labelRoomWidth = width - Common.UI.TEXT_X_PAD * 2 - dotRoomWidth
                 val shownLabel = ellipsised(font, labelOf(item), labelRoomWidth)
                 val textTop = if (side == Side.Top) top + (TAB_THICKNESS - font.lineHeight) / 2 + Common.UI.BORDER_SIZE / 2
                 else top + tuckUnderFrame + (TAB_THICKNESS - font.lineHeight) / 2 + Common.UI.BORDER_SIZE / 2
+                val labelLeft = left + (width - font.width(shownLabel) - dotRoomWidth) / 2
                 graphics.text(
                     font,
                     Component.literal(shownLabel),
-                    left + (width - font.width(shownLabel)) / 2,
+                    labelLeft,
                     textTop,
                     Common.UI.TEXT_COLOR,
                     false
                 )
+                dotColor?.let { color ->
+                    val dotLeft = labelLeft + font.width(shownLabel) + Common.UI.SPACING_SMALL
+                    val dotTop = textTop + (font.lineHeight - 1 - TAB_DOT_SIZE) / 2
+                    graphics.fill(dotLeft, dotTop, dotLeft + TAB_DOT_SIZE, dotTop + TAB_DOT_SIZE, color)
+                }
             }
         }
     }
@@ -165,6 +174,7 @@ class Bookmarks<T>(
         const val TOTAL_REACH: Int = TAB_THICKNESS + SELECTED_LIFT
 
         private const val MAX_TAB_WIDTH: Int = 100
+        private const val TAB_DOT_SIZE: Int = 4
         private const val LIFT_ANIMATION_MS: Float = 150f
     }
 }

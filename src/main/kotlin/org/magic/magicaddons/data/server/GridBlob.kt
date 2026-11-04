@@ -14,6 +14,8 @@ object GridBlob {
 
     private val gson = Gson()
 
+    private const val MAX_UNZIPPED_GRID_BYTES: Int = 1024 * 1024
+
     fun encode(grid: GreenhouseGrid): String {
         val json = gson.toJson(GREENHOUSE_GRID_CODEC.encodeStart(JsonOps.INSTANCE, grid).getOrThrow())
         val bytes = ByteArrayOutputStream().also { output -> GZIPOutputStream(output).use { it.write(json.toByteArray(Charsets.UTF_8)) } }.toByteArray()
@@ -23,7 +25,9 @@ object GridBlob {
 
     fun decode(blob: String): GreenhouseGrid {
         val bytes = Base64.getDecoder().decode(blob)
-        val json = GZIPInputStream(bytes.inputStream()).use { String(it.readAllBytes(), Charsets.UTF_8) }
+        val unzippedBytes = GZIPInputStream(bytes.inputStream()).use { it.readNBytes(MAX_UNZIPPED_GRID_BYTES + 1) }
+        check(unzippedBytes.size <= MAX_UNZIPPED_GRID_BYTES) { "grid blob unzips past $MAX_UNZIPPED_GRID_BYTES bytes" }
+        val json = String(unzippedBytes, Charsets.UTF_8)
 
         return GREENHOUSE_GRID_CODEC.parse(JsonOps.INSTANCE, JsonParser.parseString(json)).getOrThrow()
     }

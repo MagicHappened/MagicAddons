@@ -93,12 +93,17 @@ object CoopSync {
         isPullInFlight = false
         scanHeldUntilMs = 0
         clearActivity()
+        CoopPlanSync.resetForProfile()
     }
 
     private fun onGardenEntered() {
         if (!isEligible) return
         sendHeartbeat(inGarden = true)
         if (state?.isCoop == true && state?.version != lastPulledVersion) requestPull(holdScan = false)
+    }
+
+    fun requestCoopPlanPull() {
+        if (isEligible) requestPull(holdScan = false)
     }
 
     private fun onGardenLeft() {
@@ -134,6 +139,7 @@ object CoopSync {
         if (isAlways && SBLocation.OwnGarden.inside() && now - lastUploadAtMs >= ALWAYS_UPLOAD_INTERVAL.toMillis() && hasChangesSinceLastUpload()) {
             GreenhouseDataSync.uploadForCoop("coop interval")
         }
+        CoopPlanSync.moveOrClearPlansOfGoneGreenhouses()
     }
 
     @EventHandler
@@ -210,11 +216,13 @@ object CoopSync {
         val profileId = profileId ?: return
         lastContactAtMs = System.currentTimeMillis()
         val setting = GreenhousePresets.greenhouseCoop()
+        val sentCoopSteps = CoopPlanSync.coopStepsForHeartbeat()
         val body = JsonObject().apply {
             addProperty("profileId", profileId)
             addProperty("inGarden", inGarden)
             addProperty("coopSetting", setting.name)
             addProperty("name", Minecraft.getInstance().user.name)
+            sentCoopSteps?.let { add("coopSteps", it.body) }
         }
         ServerSession.sendAuthorized("/heartbeat") {
             header("Content-Type", "application/json")
@@ -224,13 +232,31 @@ object CoopSync {
                 Common.LOGGER.warn("coop heartbeat refused: {}", response?.statusCode())
                 return@thenAccept
             }
+            if (!isActiveProfile(profileId)) return@thenAccept
             lastSentCoopSetting = setting
-            parseState(response)?.let { state = it }
+            val reply = runCatching { JsonParser.parseString(response.body()).asJsonObject }
+                .onFailure { Common.LOGGER.warn("could not read the coop state", it) }
+                .getOrNull() ?: return@thenAccept
+            val repliedState = parseState(reply) ?: return@thenAccept
+            state = repliedState
+            Minecraft.getInstance().execute {
+                if (isActiveProfile(profileId)) readCoopPlanState(reply, repliedState, sentCoopSteps)
+            }
         }
     }
 
-    private fun parseState(response: HttpResponse<String>): CoopState? = runCatching {
-        val json = JsonParser.parseString(response.body()).asJsonObject
+    private fun isActiveProfile(sentProfileId: String): Boolean = profileId == sentProfileId
+
+    private fun readCoopPlanState(reply: JsonObject, repliedState: CoopState, sentCoopSteps: CoopPlanSync.SentCoopSteps?) {
+        if (!repliedState.isCoop) {
+            CoopPlanSync.runOwnPlansOutsideCoop()
+            return
+        }
+        CoopPlanSync.readCoopHarvested(reply, sentCoopSteps)
+        if (repliedState.version != lastPulledVersion) requestPull(holdScan = false)
+    }
+
+    private fun parseState(json: JsonObject): CoopState? = runCatching {
         CoopState(
             isCoop = json.get("isCoop").asBoolean,
             members = json.get("members").asInt,
@@ -250,6 +276,7 @@ object CoopSync {
         val body = JsonObject().apply {
             addProperty("profileId", profileId)
             add("plots", plots)
+            add("knownPlans", CoopPlanSync.knownPlanVersions())
         }
         if (holdScan) {
             isPullInFlight = true
@@ -261,7 +288,7 @@ object CoopSync {
             header("Content-Type", "application/json")
             POST(HttpRequest.BodyPublishers.ofString(body.toString()))
         }.thenAccept { response ->
-            Minecraft.getInstance().execute { receivePull(response, holdScan) }
+            Minecraft.getInstance().execute { if (isActiveProfile(profileId)) receivePull(response, holdScan) }
         }
     }
 
@@ -276,14 +303,16 @@ object CoopSync {
         val json = runCatching { JsonParser.parseString(response.body()).asJsonObject }.getOrNull() ?: return
         lastPulledVersion = json.get("version")?.asInt
         val pulled = json.getAsJsonArray("plots").map { gson.fromJson(it, PulledPlot::class.java) }
-        if (pulled.isEmpty()) return
 
-        val adopted = pulled.mapNotNull { plot ->
-            runCatching { GridBlob.decode(plot.grid) }
-                .onFailure { Common.LOGGER.warn("could not read the pulled plot {}", plot.id, it) }
-                .getOrNull()
-                ?.let { grid -> GreenhouseData.adoptPulledGrid(grid, plot.lastChangedAt) }
+        if (pulled.isNotEmpty()) {
+            val adopted = pulled.mapNotNull { plot ->
+                runCatching { GridBlob.decode(plot.grid) }
+                    .onFailure { Common.LOGGER.warn("could not read the pulled plot {}", plot.id, it) }
+                    .getOrNull()
+                    ?.let { grid -> GreenhouseData.adoptPulledGrid(grid, plot.lastChangedAt) }
+            }
+            Common.LOGGER.info("coop pull adopted {} of {} plots", adopted.size, pulled.size)
         }
-        Common.LOGGER.info("coop pull adopted {} of {} plots", adopted.size, pulled.size)
+        (json.get("coopPlans") as? JsonObject)?.let { CoopPlanSync.applyPulledPlans(it) }
     }
 }

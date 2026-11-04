@@ -21,15 +21,19 @@ import org.magic.magicaddons.data.greenhouse.crops.CropDefinition
 import org.magic.magicaddons.data.greenhouse.crops.CropRegistry
 import org.magic.magicaddons.data.greenhouse.crops.Footprint
 import org.magic.magicaddons.data.greenhouse.crops.Plant
+import org.magic.magicaddons.data.greenhouse.plot.CoopPlan
 import org.magic.magicaddons.data.greenhouse.plot.DiagnosticPlanner
 import org.magic.magicaddons.data.greenhouse.plot.GREENHOUSE_SIZE
 import org.magic.magicaddons.data.greenhouse.plot.GreenhouseGrid
 import org.magic.magicaddons.data.greenhouse.plot.GreenhouseLayout
 import org.magic.magicaddons.data.greenhouse.plot.LayoutSlot
+import org.magic.magicaddons.data.greenhouse.plot.PlanOwner
 import org.magic.magicaddons.data.greenhouse.plot.PlotLayout
 import org.magic.magicaddons.data.greenhouse.plot.PlotPrediction
 import org.magic.magicaddons.data.greenhouse.plot.SoftImport
 import org.magic.magicaddons.data.greenhouse.transfer.LayoutTransferResult
+import org.magic.magicaddons.data.server.CoopPlanSync
+import org.magic.magicaddons.data.server.CoopSync
 import org.magic.magicaddons.features.customization.Customization
 import org.magic.magicaddons.features.farming.greenhousePresets.GreenhousePresets
 import org.magic.magicaddons.features.farming.greenhousePresets.PlannerNeeds
@@ -138,7 +142,11 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
         onEditPreset = { editAssignedPreset() },
         onSaveAsPreset = { saveGreenhouseAsPreset() },
         onRescan = { askRescan(it) },
-        layoutToExport = { displayedGrid()?.let { presetCopyOf(it.layout) } }
+        layoutToExport = { displayedGrid()?.let { presetCopyOf(it.layout) } },
+        onRunningPlanPicked = { owner -> pickRunningPlanForDisplayedGrid(owner) },
+        onShareToCoop = { askShareToCoop(it) },
+        onCopyCoopPlan = { copyCoopPlanToPresets() },
+        onClearCoopPlan = { askClearCoopPlan(it) }
     )
 
     private var actionRowX: Int = 0
@@ -222,6 +230,8 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
     private val plotTabs = Bookmarks<PlotLayout>(
         side = Bookmarks.Side.Top,
         labelOf = { it.displayName() },
+        tooltipOf = { layout -> followedCoopPlanOn(layout)?.let { coopPlanTabTooltipOf(it) } },
+        dotColorOf = { layout -> Common.UI.CHECK_COLOR.takeIf { followedCoopPlanOn(layout) != null } },
         onPick = { layout, event ->
             if (event.button() == 1) {
                 openRenameContext(event, layout.displayName()) { name -> layout.name = name }
@@ -230,6 +240,12 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
             }
         }
     )
+
+    private fun followedCoopPlanOn(layout: PlotLayout): CoopPlan? =
+        GreenhouseData.greenhouseGrids.firstOrNull { it.layout === layout }?.state?.takeIf { it.isFollowingCoopPlan }?.coopPlan
+
+    private fun coopPlanTabTooltipOf(plan: CoopPlan): String =
+        "Coop plan: ${plan.name} · step ${plan.stepIndex + 1} of ${plan.stepCount} · shared by ${CoopPlan.memberNameInSentence(plan.sharedBy)}"
 
     private fun teleportToDisplayedPlot() {
         displayedGridWidget?.layout
@@ -1022,7 +1038,7 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
     private fun stopPlannersOn(plot: PlotLayout) {
         val layouts = plot.steps.map { it.layout }
         GreenhouseData.greenhouseGrids
-            .filter { grid -> layouts.any { it === grid.state.assignedLayout } }
+            .filter { grid -> layouts.any { it === grid.state.ownPlan.assignedLayout } }
             .forEach { GreenhouseData.unplanGreenhouse(it) }
     }
 
@@ -1037,8 +1053,9 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
         }
 
         GreenhouseData.greenhouseGrids
-            .filter { greenhouse -> layouts.any { it === greenhouse.state.assignedLayout } }
-            .forEach { it.state.planTurns = Math.floorMod(it.state.planTurns - turns, 4) }
+            .map { it.state.ownPlan }
+            .filter { ownPlan -> layouts.any { it === ownPlan.assignedLayout } }
+            .forEach { it.planTurns = Math.floorMod(it.planTurns - turns, 4) }
 
         presetGridWidgets.filter { widget -> layouts.any { it === widget.layout } }.forEach { it.rebuildWidgets() }
     }
@@ -1074,14 +1091,16 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
         followPlayerTurn()
 
         val grid = displayedGrid()
-        val assignedChoice = grid?.state?.assignedLayout?.let { plan ->
+        val ownPlan = grid?.state?.ownPlan
+        val assignedChoice = ownPlan?.assignedLayout?.let { plan ->
             val plot = GreenhouseData.presetPlotOf(plan) ?: plan
-            GreenhousePanel.PlanChoice(plot, GreenhouseData.nameInFull(plan) + if (grid.state.planTurns == 0) "" else " (turned ${grid.state.planTurns * 90}°)")
+            GreenhousePanel.PlanChoice(plot, GreenhouseData.nameInFull(plan) + if (ownPlan.planTurns == 0) "" else " (turned ${ownPlan.planTurns * 90}°)")
         }
         val planChoices = GreenhouseData.presetGrids.flatMap { it.plots }.map { plan ->
             assignedChoice?.takeIf { it.plot === plan } ?: GreenhousePanel.PlanChoice(plan, GreenhouseData.nameInFull(plan) + if (plan.hasSteps) " (${plan.steps.size} steps)" else "")
         }
-        greenhousePanel.showPlans(planChoices, assignedChoice, grid?.state?.noRotateAssignedLayout == true)
+        greenhousePanel.showPlans(planChoices, assignedChoice, ownPlan?.noRotateAssignedLayout == true)
+        greenhousePanel.showCoopSlot(coopSlotOf(grid))
 
         if (displayedGridWidget != null) {
             when (currentDisplay) {
@@ -1654,7 +1673,8 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
     private fun renderRunningFlowBox(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
         val grid = displayedGrid() ?: return
         val running = FlowRunner.runningOn(grid) ?: return
-        val first = "Running ${running.preset.displayName()} · ${running.preset.plotTitle(running.plot)}, step ${running.stepIndex + 1} of ${running.stepCount}: ${running.step.title(running.stepIndex)}"
+        val runningName = if (grid.state.isFollowingCoopPlan) "Coop plan" else "Running ${running.preset.displayName()}"
+        val first = "$runningName · ${running.preset.plotTitle(running.plot)}, step ${running.stepIndex + 1} of ${running.stepCount}: ${running.step.title(running.stepIndex)}"
         val second = FlowRunner.needLine(grid, running) ?: if (running.nextIndex == null) "Last step, nothing more to wait for" else "No exit, move on by hand"
         val boxWidth = gridSpan + BORDER_PADDING * 2
         val hasBack = grid.state.previousStep != null
@@ -2267,24 +2287,85 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
 
     private fun reassignWithNoRotate(noRotate: Boolean) {
         val grid = displayedGrid() ?: return
-        val plan = grid.state.assignedLayout ?: return
+        val plan = grid.state.ownPlan.assignedLayout ?: return
         assignPlotToGrid(GreenhouseData.presetPlotOf(plan) ?: plan, grid, noRotate = noRotate)
     }
 
     private fun turnPlan() {
         val grid = displayedGrid() ?: return
-        if (grid.state.assignedLayout == null) return
+        val ownPlan = grid.state.ownPlan
+        val plan = ownPlan.assignedLayout ?: return
 
-        grid.state.planTurns = Math.floorMod(grid.state.planTurns + 1, 4)
+        ownPlan.planTurns = Math.floorMod(ownPlan.planTurns + 1, 4)
         GreenhouseData.regenRender()
 
-        val plan = grid.state.assignedLayout ?: return
-        val planConfiguration = grid.configurationForLayout(plan.turnedBy(grid.state.planTurns))
-        ChatUtils.sendWithPrefix("Plan turned to ${grid.state.planTurns * 90}°. $planConfiguration")
+        val planConfiguration = grid.configurationForLayout(plan.turnedBy(ownPlan.planTurns))
+        ChatUtils.sendWithPrefix("Plan turned to ${ownPlan.planTurns * 90}°. $planConfiguration")
+    }
+
+    private fun coopSlotOf(grid: GreenhouseGrid?): GreenhousePanel.CoopSlot? {
+        grid ?: return null
+        if (CoopSync.state?.isCoop != true && !grid.state.isFollowingCoopPlan) return null
+        val plan = grid.state.coopPlan
+        val isPlanInMyPresets = plan != null && GreenhouseData.presetGrids.any { preset -> preset.plots.any { plan.hasSameStepsAs(it) } }
+
+        return GreenhousePanel.CoopSlot(grid.state.runs, grid.layout.displayName(), plan, isPlanInMyPresets)
+    }
+
+    private fun pickRunningPlanForDisplayedGrid(owner: PlanOwner) {
+        val grid = displayedGrid() ?: return
+        FlowRunner.switchRunningPlan(grid, owner)
+        initGreenhouseLayout()
+    }
+
+    private fun askShareToCoop(event: MouseButtonEvent) {
+        val grid = displayedGrid() ?: return
+        val ownLayout = grid.state.ownPlan.assignedLayout ?: return
+        val plot = GreenhouseData.presetPlotOf(ownLayout) ?: return
+        val plotName = grid.layout.displayName()
+        val question = "Share ${GreenhouseData.fullPlotName(plot)} as $plotName's coop plan?"
+        val note = grid.state.coopPlan?.let { replaced -> "It replaces ${replaced.name}, shared by ${CoopPlan.memberNameInSentence(replaced.sharedBy)}; everyone following it switches." }
+        val (menuX, menuY) = OverlayRenderable.placeOnScreen(
+            event.x.toInt(),
+            event.y.toInt(),
+            ConfirmContext.widthFor(question, note = note, confirmLabel = SHARE_TO_COOP_LABEL, cancelLabel = CANCEL_LABEL),
+            ConfirmContext.heightFor(note = note)
+        )
+        addContext(ConfirmContext(menuX, menuY, question, this, note = note, confirmLabel = SHARE_TO_COOP_LABEL, cancelLabel = CANCEL_LABEL) {
+            CoopPlanSync.sharePlotAsCoopPlan(grid, plot)
+        })
+    }
+
+    private fun askClearCoopPlan(event: MouseButtonEvent) {
+        val grid = displayedGrid() ?: return
+        if (grid.state.coopPlan == null) return
+        val plotName = grid.layout.displayName()
+        val question = "Clear $plotName's coop plan?"
+        val note = "Everyone following it goes back to their own plan on $plotName."
+        val (menuX, menuY) = OverlayRenderable.placeOnScreen(
+            event.x.toInt(),
+            event.y.toInt(),
+            ConfirmContext.widthFor(question, note = note, confirmLabel = CLEAR_COOP_PLAN_LABEL, cancelLabel = CANCEL_LABEL),
+            ConfirmContext.heightFor(note = note)
+        )
+        addContext(ConfirmContext(menuX, menuY, question, this, note = note, confirmLabel = CLEAR_COOP_PLAN_LABEL, cancelLabel = CANCEL_LABEL) {
+            CoopPlanSync.clearCoopPlan(grid)
+        })
+    }
+
+    private fun copyCoopPlanToPresets() {
+        val plan = displayedGrid()?.state?.coopPlan ?: return
+        val presetId = PlotLayout.presetId(GreenhouseData.computeNextAvailableId())
+        val copiedPlot = plan.plot.copyWithSteps(GreenhouseLayout.plotId(presetId, 0))
+        val copiedPreset = GreenhouseLayout(id = presetId, name = plan.name, plots = mutableListOf(copiedPlot))
+
+        isPresetCleared = false
+        addPresetLayout(copiedPreset)
+        showDisplay(DisplayMode.Presets)
     }
 
     private fun editAssignedPreset() {
-        val layout = displayedGrid()?.state?.assignedLayout ?: return
+        val layout = displayedGrid()?.state?.ownPlan?.assignedLayout ?: return
         val parentPreset = GreenhouseData.greenhouseLayoutFor(layout) ?: return
 
         GreenhouseData.currentPreset = parentPreset
@@ -2315,12 +2396,15 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
     }
 
     private fun assignPlotToGrid(plot: PlotLayout, grid: GreenhouseGrid, noRotate: Boolean, pairing: PresetMatcher.Pairing? = null) {
-        val running = FlowRunner.runningOn(grid)?.takeIf { it.plot === plot }
+        val ownRunningStepIndex = grid.state.ownPlan.assignedLayout
+            ?.takeIf { plot.hasSteps && GreenhouseData.presetPlotOf(it) === plot }
+            ?.let { plot.stepIndexOf(it) }
         val (stepIndex, turns) = when {
-            running != null -> running.stepIndex to if (noRotate) 0 else grid.bestRotationFor(running.step.layout)
+            ownRunningStepIndex != null -> ownRunningStepIndex to if (noRotate) 0 else grid.bestRotationFor(plot.steps[ownRunningStepIndex].layout)
             else -> (pairing ?: PresetMatcher.pairingOf(plot, grid, noRotate)).let { it.stepIndex to it.turns }
         }
         FlowRunner.assign(grid, plot, stepIndex, turns, noRotate)
+        FlowRunner.switchRunningPlan(grid, PlanOwner.Mine)
         GreenhouseData.greenhouseLayoutFor(plot)?.lastApplication?.put(grid.layout.id, plot.id)
 
         val steps = if (plot.hasSteps) " at step ${stepIndex + 1} of ${plot.steps.size}" else ""
@@ -2396,10 +2480,11 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
         addOverlay(PlotFlowEditor(width, height, preset, plot, this) {
             GreenhouseData.noteUnsavedChange()
             lastShownStepIndex = lastShownStepIndex.coerceAtMost(plot.steps.lastIndex)
-            GreenhouseData.greenhouseGrids.filter { grid -> grid.state.assignedLayout?.let { assigned -> preset.plotOf(assigned) === plot && plot.stepIndexOf(assigned) == null } == true }
+            GreenhouseData.greenhouseGrids.filter { grid -> grid.state.ownPlan.assignedLayout?.let { assigned -> preset.plotOf(assigned) === plot && plot.stepIndexOf(assigned) == null } == true }
                 .forEach { grid ->
-                    val pairing = PresetMatcher.pairingOf(plot, grid, grid.state.noRotateAssignedLayout)
-                    FlowRunner.assign(grid, plot, pairing.stepIndex, pairing.turns, grid.state.noRotateAssignedLayout)
+                    val noRotate = grid.state.ownPlan.noRotateAssignedLayout
+                    val pairing = PresetMatcher.pairingOf(plot, grid, noRotate)
+                    FlowRunner.assign(grid, plot, pairing.stepIndex, pairing.turns, noRotate)
                 }
             initPresetLayout()
         })
@@ -2484,6 +2569,9 @@ class GreenhouseScreen : MagicAddonsScreen(Component.literal("Greenhouse Screen"
         private const val FLOW_BOX_PADDING: Int = 3
         private val FLOW_BOX_HEIGHT: Int = Minecraft.getInstance().font.lineHeight * 2 + FLOW_BOX_PADDING * 2 + 2
         private const val BACK_STEP_LABEL: String = "Back a step"
+        private const val SHARE_TO_COOP_LABEL: String = "Share to coop"
+        private const val CLEAR_COOP_PLAN_LABEL: String = "Clear coop plan"
+        private const val CANCEL_LABEL: String = "Cancel"
         private const val PREDICT_LABEL_WIDTH: Int = 22
         private const val UNPLANNED_LINE_HEIGHT: Int = 12
         private const val CONTENTS_ICON_SIZE: Int = 12

@@ -42,7 +42,7 @@ with `/ma link` in game and `/link` in Discord.
 - **Greenhouse Coop**: coop members running the mod share their plots, and the Greenhouse Coop setting
   decides how reminders behave while a coop member is online.
 
-What the server stores and how to delete it is in the [privacy policy](PRIVACY.md). `/unlink` in Discord
+What the server stores and how to delete it is in the [privacy policy](https://magichappened.github.io/MagicAddons/privacy/). `/unlink` in Discord
 or `/ma privacy DeleteMe` in game deletes everything.
 
 ## Other features

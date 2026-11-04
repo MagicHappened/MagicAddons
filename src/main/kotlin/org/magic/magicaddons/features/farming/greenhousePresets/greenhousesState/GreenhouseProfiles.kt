@@ -10,9 +10,9 @@ import kotlin.io.path.listDirectoryEntries
 import kotlin.io.path.name
 import kotlin.io.path.readText
 import org.magic.magicaddons.Common
-import org.magic.magicaddons.data.greenhouse.plot.Codecs.GREENHOUSE_GRID_CODEC
 import org.magic.magicaddons.data.greenhouse.plot.Codecs.MASTER_LAYOUT_CODEC
 import org.magic.magicaddons.data.greenhouse.plot.Codecs.MISC_GREENHOUSE_INFO_CODEC
+import org.magic.magicaddons.data.greenhouse.plot.Codecs.SAVED_GREENHOUSE_CODEC
 import org.magic.magicaddons.data.greenhouse.plot.GreenhouseGrid
 import org.magic.magicaddons.data.greenhouse.plot.GreenhouseLayout
 import org.magic.magicaddons.data.greenhouse.plot.MiscGreenhouseInfo
@@ -73,7 +73,7 @@ object GreenhouseProfiles {
     private fun decodeGreenhouseFile(root: JsonObject): GreenhouseFileContents = GreenhouseFileContents(
         miscInfo = CodecStorage.decodeEntry(root, MISC_GREENHOUSE_INFO_CODEC, MISC_INFO_KEY),
         presets = CodecStorage.decodeEntry(root, MASTER_LAYOUT_CODEC.listOf(), PRESETS_KEY),
-        greenhouses = CodecStorage.decodeEntry(root, GREENHOUSE_GRID_CODEC.listOf(), GREENHOUSES_KEY)
+        greenhouses = CodecStorage.decodeEntry(root, SAVED_GREENHOUSE_CODEC.listOf(), GREENHOUSES_KEY)
     )
 
     fun switchProfile(profileId: UUID, name: String) {
@@ -157,7 +157,7 @@ object GreenhouseProfiles {
         greenhouses.forEach { grid ->
             val assignedId = grid.state.assignedLayoutId?.let { renamedPlotIds[it] ?: it }
             grid.state.assignedLayoutId = assignedId
-            grid.state.assignedLayout = presetPlots.find { it.id == assignedId }
+            grid.state.ownPlan.assignedLayout = presetPlots.find { it.id == assignedId }
         }
         writeGreenhouseFile(profileId, contents.miscInfo, greenhouses)
     }
@@ -171,7 +171,7 @@ object GreenhouseProfiles {
                 file,
                 listOfNotNull(
                     miscInfo?.let { CodecStorage.RootEntry(MISC_INFO_KEY, MISC_GREENHOUSE_INFO_CODEC, it) },
-                    CodecStorage.RootEntry(GREENHOUSES_KEY, GREENHOUSE_GRID_CODEC.listOf(), greenhouses)
+                    CodecStorage.RootEntry(GREENHOUSES_KEY, SAVED_GREENHOUSE_CODEC.listOf(), greenhouses)
                 ),
                 ::decodeGreenhouseFile
             )

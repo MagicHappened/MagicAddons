@@ -7,6 +7,8 @@ import java.util.zip.Inflater
 
 object RawDeflate {
 
+    private const val MAX_DECODED_BYTES: Int = 64 * 1024
+
     fun encode(bytes: ByteArray): String {
         val deflater = Deflater(Deflater.BEST_COMPRESSION, true)
         deflater.setInput(bytes)
@@ -21,18 +23,20 @@ object RawDeflate {
     }
 
     fun decode(text: String): ByteArray? = runCatching {
-        val inflater = Inflater(true)
-        inflater.setInput(Base64.getUrlDecoder().decode(text.trim()))
+        Inflater(true).use { inflater ->
+            inflater.setInput(Base64.getUrlDecoder().decode(text.trim()))
 
-        val out = ByteArrayOutputStream()
-        val buffer = ByteArray(4096)
-        while (!inflater.finished()) {
-            val count = inflater.inflate(buffer)
-            if (count == 0 && inflater.needsInput()) break
-            out.write(buffer, 0, count)
+            val out = ByteArrayOutputStream()
+            val buffer = ByteArray(4096)
+            while (!inflater.finished()) {
+                val inflatedByteCount = inflater.inflate(buffer)
+                if (inflater.needsDictionary()) return null
+                if (inflatedByteCount == 0 && inflater.needsInput()) break
+                if (out.size() + inflatedByteCount > MAX_DECODED_BYTES) return null
+                out.write(buffer, 0, inflatedByteCount)
+            }
+
+            out.toByteArray()
         }
-        inflater.end()
-
-        out.toByteArray()
     }.getOrNull()
 }
